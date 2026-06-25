@@ -1,0 +1,217 @@
+{
+  "activities": [
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "bonus",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": true,
+          "max": "5 * @classes.paladin.levels - @item.uses.spent"
+        },
+        "spell_slot": true,
+        "targets": [
+          {
+            "scaling": {
+              "formula": "",
+              "mode": "amount"
+            },
+            "target": "",
+            "type": "itemUses",
+            "value": "1"
+          }
+        ]
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [],
+      "flags": {},
+      "healing": {
+        "bonus": "",
+        "custom": {
+          "enabled": true,
+          "formula": "@scaling"
+        },
+        "denomination": 0,
+        "number": null,
+        "scaling": {
+          "formula": "",
+          "mode": "",
+          "number": 1
+        },
+        "types": [
+          "healing"
+        ]
+      },
+      "id": "gXZh9aGHcywV9huC",
+      "img": "",
+      "kind": "heal",
+      "name": "",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "self",
+        "value": null
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "1",
+          "special": "",
+          "type": "creature"
+        },
+        "override": false,
+        "prompt": false,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "ft",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    },
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "bonus",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": [
+          {
+            "scaling": {
+              "formula": "",
+              "mode": ""
+            },
+            "target": "",
+            "type": "itemUses",
+            "value": "5"
+          }
+        ]
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [],
+      "flags": {},
+      "id": "K6UeXQwTyDHWvis8",
+      "img": "",
+      "kind": "utility",
+      "name": "Remove Poison",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "self",
+        "value": null
+      },
+      "roll": {
+        "formula": "",
+        "name": "",
+        "prompt": false,
+        "visible": false
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "1",
+          "special": "",
+          "type": "creature"
+        },
+        "override": false,
+        "prompt": false,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "ft",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    }
+  ],
+  "description": "Your blessed touch can heal wounds. You have a pool of healing power that replenishes when you finish a Long Rest. With that pool, you can restore a total number of Hit Points equal to five times your Paladin level.\n\nAs a Bonus Action, you can touch a creature (which could be yourself) and draw power from the pool of healing to restore a number of Hit Points to that creature, up to the maximum amount remaining in the pool.\n\nYou can also expend 5 Hit Points from the pool of healing power to remove the Poisoned condition from the creature; those points don't also restore Hit Points to the creature.\n\nFoundry Note\n\nThe Heal activity allows you to select the number of Hit Points you would like to restore and reduces your Lay on Hands pool by that amount.\n\nThe Remove Poison activity reduces your pool by 5 but does not automatically remove the Poisoned condition.",
+  "entry_kind": "feature",
+  "feature_type": "class_feature",
+  "foundry_id": "phbpdnLayOnHands",
+  "name": "Lay on Hands",
+  "passive_effects": [],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/paladin/class-features/lay-on-hands.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "lay-on-hands",
+  "source_slug": "paladin"
+}

@@ -1,0 +1,337 @@
+{
+  "activities": [
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "action",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": []
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [
+        {
+          "id": "NEFWcyysYgsE6de3",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        }
+      ],
+      "flags": {},
+      "id": "dnd5eactivity000",
+      "img": "",
+      "kind": "utility",
+      "name": "Cast",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "self",
+        "value": null
+      },
+      "roll": {
+        "formula": "",
+        "name": "",
+        "prompt": false,
+        "visible": false
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "1",
+          "special": "",
+          "type": "willing"
+        },
+        "override": false,
+        "prompt": true,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    },
+    {
+      "activation": {
+        "condition": "",
+        "override": true,
+        "type": "",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": false,
+        "targets": []
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": true,
+        "special": "",
+        "units": "round",
+        "value": "1"
+      },
+      "effects": [
+        {
+          "id": "S5XcFawnnNHO8bUr",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        }
+      ],
+      "flags": {},
+      "id": "rBQrZnq7cHkSUAK9",
+      "img": "",
+      "kind": "utility",
+      "name": "Apply Lethargy",
+      "range": {
+        "override": true,
+        "special": "",
+        "units": "any",
+        "value": null
+      },
+      "roll": {
+        "formula": "",
+        "name": "",
+        "prompt": false,
+        "visible": false
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "1",
+          "special": "",
+          "type": "willing"
+        },
+        "override": false,
+        "prompt": true,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    }
+  ],
+  "casting_time": {
+    "condition": "",
+    "unit": "action",
+    "value": 1
+  },
+  "components": [
+    "M",
+    "S",
+    "V"
+  ],
+  "concentration": true,
+  "description": "Choose a willing creature that you can see within range. Until the spell ends, the target's Speed is doubled, it gains a +2 bonus to Armor Class, it has Advantage on Dexterity saving throws, and it gains an additional action on each of its turns. That action can be used to take only the Attack (one attack only), Dash, Disengage, Hide, or Utilize action.\n\nWhen the spell ends, the target is &amp;Reference[Incapacitated apply=false] and has a Speed of 0 until the end of its next turn, as a wave of lethargy washes over it.",
+  "duration": {
+    "units": "minute",
+    "value": 1
+  },
+  "entry_kind": "spell",
+  "level": 3,
+  "materials": {
+    "consumed": false,
+    "cost": 0,
+    "supply": 0,
+    "value": "a shaving of licorice root"
+  },
+  "name": "Haste",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.attributes.movement.walk",
+          "mode": 1,
+          "priority": null,
+          "value": "2"
+        },
+        {
+          "key": "system.attributes.movement.burrow",
+          "mode": 1,
+          "priority": null,
+          "value": "2"
+        },
+        {
+          "key": "system.attributes.movement.climb",
+          "mode": 1,
+          "priority": null,
+          "value": "2"
+        },
+        {
+          "key": "system.attributes.movement.fly",
+          "mode": 1,
+          "priority": null,
+          "value": "2"
+        },
+        {
+          "key": "system.attributes.movement.swim",
+          "mode": 1,
+          "priority": null,
+          "value": "2"
+        },
+        {
+          "key": "system.attributes.ac.bonus",
+          "mode": 2,
+          "priority": null,
+          "value": "2"
+        },
+        {
+          "key": "system.abilities.dex.save.roll.mode",
+          "mode": 2,
+          "priority": null,
+          "value": "1"
+        }
+      ],
+      "description": "<p>Until the spell ends, the target\u2019s Speed is doubled, it gains a +2 bonus to Armor Class, it has Advantage on Dexterity saving throws, and it gains an additional action on each of its turns. That action can be used to take only the Attack (one attack only), Dash, Disengage, Hide, or Utilize action.</p><p>When the spell ends, the target is Incapacitated and has a Speed of 0 until the end of its next turn, as a @UUID[Compendium.dnd5e.spells24.Item.phbsplHaste00000.ActiveEffect.S5XcFawnnNHO8bUr]{wave of lethargy} washes over it.</p>",
+      "disabled": false,
+      "duration": {
+        "seconds": 60
+      },
+      "id": "NEFWcyysYgsE6de3",
+      "name": "Hasted",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.attributes.movement.walk",
+          "mode": 3,
+          "priority": null,
+          "value": "0"
+        },
+        {
+          "key": "system.attributes.movement.burrow",
+          "mode": 3,
+          "priority": null,
+          "value": "0"
+        },
+        {
+          "key": "system.attributes.movement.climb",
+          "mode": 3,
+          "priority": null,
+          "value": "0"
+        },
+        {
+          "key": "system.attributes.movement.fly",
+          "mode": 3,
+          "priority": null,
+          "value": "0"
+        },
+        {
+          "key": "system.attributes.movement.swim",
+          "mode": 3,
+          "priority": null,
+          "value": "0"
+        }
+      ],
+      "description": "<p>When the spell ends, the target is &amp;Reference[incapacitated apply=false] and has a Speed of 0 until the end of its next turn, as a wave of lethargy washes over it.</p>",
+      "disabled": false,
+      "duration": {
+        "rounds": 1
+      },
+      "id": "S5XcFawnnNHO8bUr",
+      "name": "Lethargy",
+      "statuses": [
+        "incapacitated"
+      ],
+      "transfer": false
+    }
+  ],
+  "preparation": {
+    "mode": "prepared",
+    "prepared": false
+  },
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/spells24/3rd-level/haste.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "range": {
+    "special": null,
+    "units": "ft",
+    "value": 30
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "ritual": false,
+  "school": "trs",
+  "slug": "haste"
+}

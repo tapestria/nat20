@@ -1,0 +1,95 @@
+{
+  "ability_options": {
+    "cap": 2,
+    "options": [
+      "cha",
+      "int",
+      "wis"
+    ],
+    "points": 3
+  },
+  "description": "Ability Scores: Intelligence, Wisdom, Charisma\n\nFeat: Magic Initiate (Cleric)\n\nSkill Proficiencies: Insight and Religion\n\nTool Proficiency: Calligrapher's Supplies\n\nEquipment: Choose A or B: (A) Calligrapher's Supplies, Book (prayers), Holy Symbol, Parchment (10 sheets), Robe, 8 GP; or (B) 50 GP\n\n@Embed[Compendium.dnd5e.content24.JournalEntry.phbAppendixBackg.JournalEntryPage.phbbgAcolyte0000 inline classes=\"free-rules-embed\"]",
+  "entry_kind": "background",
+  "languages": [
+    "common"
+  ],
+  "name": "Acolyte",
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/origins24/backgrounds/acolyte.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "skill_proficiencies": [
+    "ins",
+    "rel"
+  ],
+  "slug": "acolyte",
+  "starting_equipment": [
+    {
+      "_id": "jBbYoNZtbWE8sFAK",
+      "group": "",
+      "requiresProficiency": false,
+      "sort": 100000,
+      "type": "AND"
+    },
+    {
+      "_id": "SJ6L0ftgjWR0IHqf",
+      "count": null,
+      "group": "jBbYoNZtbWE8sFAK",
+      "key": "Compendium.dnd5e.equipment24.Item.phbtulCalligraph",
+      "requiresProficiency": false,
+      "sort": 200000,
+      "type": "linked"
+    },
+    {
+      "_id": "JyGC1bsbScRwmhwo",
+      "count": null,
+      "group": "jBbYoNZtbWE8sFAK",
+      "key": "Compendium.dnd5e.equipment24.Item.phbagBook0000000",
+      "requiresProficiency": false,
+      "sort": 300000,
+      "type": "linked"
+    },
+    {
+      "_id": "mqDqagje0Uupgti8",
+      "count": null,
+      "group": "jBbYoNZtbWE8sFAK",
+      "key": "holy",
+      "requiresProficiency": false,
+      "sort": 350000,
+      "type": "focus"
+    },
+    {
+      "_id": "XjrKVdIBjZzoS9w2",
+      "count": null,
+      "group": "jBbYoNZtbWE8sFAK",
+      "key": "Compendium.dnd5e.equipment24.Item.phbagRobe0000000",
+      "requiresProficiency": false,
+      "sort": 600000,
+      "type": "linked"
+    },
+    {
+      "_id": "0MPEwCGayquuW846",
+      "count": 10,
+      "group": "jBbYoNZtbWE8sFAK",
+      "key": "Compendium.dnd5e.equipment24.Item.phbagParchment00",
+      "requiresProficiency": false,
+      "sort": 475000,
+      "type": "linked"
+    }
+  ],
+  "starting_feat_slug": "phbftMagicInitia",
+  "tool_proficiencies": [
+    "art:calligrapher"
+  ],
+  "wealth": "50"
+}

@@ -1,0 +1,220 @@
+{
+  "activities": [
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "action",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": []
+      },
+      "damage": {
+        "on_save": "half",
+        "parts": []
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [
+        {
+          "id": "Xt8AUh0PfYhGYBvY",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": false,
+          "riders": null
+        },
+        {
+          "id": "sFyjp6wt9bjyIl9W",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": true,
+          "riders": null
+        }
+      ],
+      "flags": {},
+      "id": "g34TzvzMcBYBxqp4",
+      "img": "",
+      "kind": "save",
+      "name": "",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "self",
+        "value": null
+      },
+      "save": {
+        "ability": [
+          "con"
+        ],
+        "dc": {
+          "calculation": "spellcasting",
+          "formula": ""
+        }
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "1",
+          "special": "",
+          "type": "creature"
+        },
+        "override": false,
+        "prompt": true,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    }
+  ],
+  "casting_time": {
+    "condition": "",
+    "unit": "action",
+    "value": 1
+  },
+  "components": [
+    "M",
+    "S",
+    "V"
+  ],
+  "concentration": true,
+  "description": "You attempt to turn one creature that you can see within range into stone. The target makes a Constitution saving throw. On a failed save, it has the &amp;Reference[Restrained apply=false] condition for the duration. On a successful save, its Speed is 0 until the start of your next turn. Constructs automatically succeed on the save.\n\nA Restrained target makes another Constitution saving throw at the end of each of its turns. If it successfully saves against this spell three times, the spell ends. If it fails its saves three times, it is turned to stone and has the &amp;Reference[Petrified] condition for the duration. The successes and failures needn't be consecutive; keep track of both until the target collects three of a kind.\n\nIf you maintain your Concentration on this spell for the entire possible duration, the target is Petrified until the condition is ended by Greater Restoration or similar magic.",
+  "duration": {
+    "units": "minute",
+    "value": 1
+  },
+  "entry_kind": "spell",
+  "level": 6,
+  "materials": {
+    "consumed": false,
+    "cost": 0,
+    "supply": 0,
+    "value": "a cockatrice feather"
+  },
+  "name": "Flesh to Stone",
+  "passive_effects": [
+    {
+      "changes": [],
+      "description": "<p>A &amp;Reference[Restrained apply=false] target makes another [[/save ability=con format=long]] at the end of each of its turns. If it successfully saves against this spell three times, the spell ends. If it fails its saves three times, it is turned to stone and has the &amp;Reference[Petrified] condition for the duration. </p>",
+      "disabled": false,
+      "duration": {
+        "seconds": 60
+      },
+      "id": "Xt8AUh0PfYhGYBvY",
+      "name": "Turning to Stone",
+      "statuses": [
+        "restrained"
+      ],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.attributes.movement.walk",
+          "mode": 3,
+          "priority": null,
+          "value": "0"
+        },
+        {
+          "key": "system.attributes.movement.fly",
+          "mode": 3,
+          "priority": null,
+          "value": "0"
+        },
+        {
+          "key": "system.attributes.movement.swim",
+          "mode": 3,
+          "priority": null,
+          "value": "0"
+        },
+        {
+          "key": "system.attributes.movement.climb",
+          "mode": 3,
+          "priority": null,
+          "value": "0"
+        },
+        {
+          "key": "system.attributes.movement.burrow",
+          "mode": 3,
+          "priority": null,
+          "value": "0"
+        }
+      ],
+      "description": "<p>On a successful save, its Speed is 0 until the start of your next turn.</p>",
+      "disabled": false,
+      "duration": {
+        "rounds": 1
+      },
+      "id": "sFyjp6wt9bjyIl9W",
+      "name": "Unable to Move",
+      "statuses": [],
+      "transfer": false
+    }
+  ],
+  "preparation": {
+    "mode": "prepared",
+    "prepared": false
+  },
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/spells24/6th-level/flesh-to-stone.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "range": {
+    "special": null,
+    "units": "ft",
+    "value": 60
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "ritual": false,
+  "school": "trs",
+  "slug": "flesh-to-stone"
+}

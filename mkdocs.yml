@@ -1,0 +1,38 @@
+site_name: Nat20 — D&D 5e SRD Rules Engine
+site_description: >-
+  Nat20 is an open-source, pure-Python D&D 5e SRD 5.2 rules engine and dataset
+  (CC-BY-4.0). Deterministic combat, skill checks, effects, and grid movement.
+  Not affiliated with or endorsed by Wizards of the Coast.
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - content.code.copy
+    - content.code.annotate
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.snippets:
+      base_path: ["."]
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: ["packages/dnd5e-engine/src", "packages/dnd5e-srd-data/src"]
+          options:
+            show_source: false
+            docstring_style: google
+not_in_nav: |
+  dev/*
+nav:
+  - Home: index.md
+  - Quickstart: quickstart.md
+  - Concepts:
+      - Combat model: concepts/combat.md
+      - Activities: concepts/activities.md
+      - Effects: concepts/effects.md
+      - Grid: concepts/grid.md
+  - API reference: api.md
+  - Comparison: comparison.md

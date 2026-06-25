@@ -1,0 +1,719 @@
+{
+  "advancement": [
+    {
+      "class_restriction": "",
+      "configuration": {},
+      "hint": "",
+      "id": "wu4INYdfnMUSeDqH",
+      "level": 0,
+      "title": "",
+      "type": "HitPoints",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbscrSpellcasti"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbscrInnateSorc"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "preISmaDhLpsoWqy",
+      "level": 1,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbscrFontOfMagi"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbscrMetamagic0"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "c5fRAxTbRHamZM7M",
+      "level": 2,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbscrSorcerousR"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "SihgGDvXjAktGkt1",
+      "level": 5,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbscrSorceryInc"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "vGoDRNITjHNqxW1z",
+      "level": 7,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbscrArcaneApot"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "g3PLJU1zYyUrHCY0",
+      "level": 20,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "cap": 2,
+        "fixed": {
+          "cha": 0,
+          "con": 0,
+          "dex": 0,
+          "int": 0,
+          "str": 0,
+          "wis": 0
+        },
+        "locked": [],
+        "points": 2,
+        "recommendation": null
+      },
+      "hint": "",
+      "id": "bwCLOdauuzoHofil",
+      "level": 4,
+      "title": "",
+      "type": "AbilityScoreImprovement",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "cap": 2,
+        "fixed": {
+          "cha": 0,
+          "con": 0,
+          "dex": 0,
+          "int": 0,
+          "str": 0,
+          "wis": 0
+        },
+        "locked": [],
+        "points": 2,
+        "recommendation": null
+      },
+      "hint": "",
+      "id": "mRSh9oUVjLU33e7p",
+      "level": 8,
+      "title": "",
+      "type": "AbilityScoreImprovement",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "cap": 2,
+        "fixed": {
+          "cha": 0,
+          "con": 0,
+          "dex": 0,
+          "int": 0,
+          "str": 0,
+          "wis": 0
+        },
+        "locked": [],
+        "points": 2,
+        "recommendation": null
+      },
+      "hint": "",
+      "id": "mhZh3LfLMa15tXee",
+      "level": 12,
+      "title": "",
+      "type": "AbilityScoreImprovement",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "cap": 2,
+        "fixed": {
+          "cha": 0,
+          "con": 0,
+          "dex": 0,
+          "int": 0,
+          "str": 0,
+          "wis": 0
+        },
+        "locked": [],
+        "points": 2,
+        "recommendation": null
+      },
+      "hint": "",
+      "id": "FOf5CkGnSs0OlppY",
+      "level": 16,
+      "title": "",
+      "type": "AbilityScoreImprovement",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "distance": {
+          "units": ""
+        },
+        "identifier": "max-prepared",
+        "scale": {
+          "1": {
+            "value": 2
+          },
+          "10": {
+            "value": 15
+          },
+          "11": {
+            "value": 16
+          },
+          "13": {
+            "value": 17
+          },
+          "15": {
+            "value": 18
+          },
+          "17": {
+            "value": 19
+          },
+          "18": {
+            "value": 20
+          },
+          "19": {
+            "value": 21
+          },
+          "2": {
+            "value": 4
+          },
+          "20": {
+            "value": 22
+          },
+          "3": {
+            "value": 6
+          },
+          "4": {
+            "value": 7
+          },
+          "5": {
+            "value": 9
+          },
+          "6": {
+            "value": 10
+          },
+          "7": {
+            "value": 11
+          },
+          "8": {
+            "value": 12
+          },
+          "9": {
+            "value": 14
+          }
+        },
+        "type": "number"
+      },
+      "hint": "",
+      "id": "DUHZI0oND7OQ6lox",
+      "level": 0,
+      "title": "Max Prepared Spells",
+      "type": "ScaleValue",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "distance": {
+          "units": ""
+        },
+        "identifier": "",
+        "scale": {
+          "1": {
+            "value": 4
+          },
+          "10": {
+            "value": 6
+          },
+          "4": {
+            "value": 5
+          }
+        },
+        "type": "number"
+      },
+      "hint": "",
+      "id": "zMjMi0B3XrcQMqAS",
+      "level": 0,
+      "title": "Cantrips Known",
+      "type": "ScaleValue",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "allowDrops": true,
+        "choices": {
+          "10": {
+            "count": 2,
+            "replacement": false
+          },
+          "17": {
+            "count": 2,
+            "replacement": false
+          },
+          "2": {
+            "count": 2,
+            "replacement": false
+          }
+        },
+        "pool": [
+          {
+            "uuid": "Compendium.dnd5e.classes24.Item.phbmmoCarefulSpe"
+          },
+          {
+            "uuid": "Compendium.dnd5e.classes24.Item.phbmmoDistantSpe"
+          },
+          {
+            "uuid": "Compendium.dnd5e.classes24.Item.phbmmoEmpoweredS"
+          },
+          {
+            "uuid": "Compendium.dnd5e.classes24.Item.phbmmoExtendedSp"
+          },
+          {
+            "uuid": "Compendium.dnd5e.classes24.Item.phbmmoHeightened"
+          },
+          {
+            "uuid": "Compendium.dnd5e.classes24.Item.phbmmoQuickenedS"
+          },
+          {
+            "uuid": "Compendium.dnd5e.classes24.Item.phbmmoSeekingSpe"
+          },
+          {
+            "uuid": "Compendium.dnd5e.classes24.Item.phbmmoSubtleSpel"
+          },
+          {
+            "uuid": "Compendium.dnd5e.classes24.Item.phbmmoTransmuted"
+          },
+          {
+            "uuid": "Compendium.dnd5e.classes24.Item.phbmmoTwinnedSpe"
+          }
+        ],
+        "restriction": {
+          "list": [],
+          "subtype": "metamagic",
+          "type": "class"
+        },
+        "spell": null,
+        "type": "feat"
+      },
+      "hint": "Because your magic flows from within, you can alter your spells to suit your needs; you gain two Metamagic options.",
+      "id": "nIaa61I4SSnwAQvz",
+      "level": 0,
+      "title": "Metamagic",
+      "type": "ItemChoice",
+      "value": {
+        "added": {},
+        "replaced": {}
+      }
+    },
+    {
+      "class_restriction": "",
+      "configuration": {},
+      "hint": "",
+      "id": "q7N6Am8hFSq15JTl",
+      "level": 3,
+      "title": "",
+      "type": "Subclass",
+      "value": {
+        "document": null,
+        "uuid": null
+      }
+    },
+    {
+      "class_restriction": "primary",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [],
+        "grants": [
+          "saves:con",
+          "saves:cha"
+        ],
+        "mode": "default"
+      },
+      "hint": "",
+      "id": "XzTd1a6iGhCAqMs3",
+      "level": 1,
+      "title": "Saving Throw Proficiencies",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "primary",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [
+          {
+            "count": 2,
+            "pool": [
+              "skills:arc",
+              "skills:dec",
+              "skills:ins",
+              "skills:itm",
+              "skills:per",
+              "skills:rel"
+            ]
+          }
+        ],
+        "grants": [],
+        "mode": "default"
+      },
+      "hint": "",
+      "id": "7xtY4ilruYHMPFfM",
+      "level": 1,
+      "title": "Skill Proficiencies",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "primary",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [],
+        "grants": [
+          "weapon:sim"
+        ],
+        "mode": "default"
+      },
+      "hint": "",
+      "id": "nFvwOhQGBMwm07Fa",
+      "level": 1,
+      "title": "Weapon Proficiencies",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "distance": {
+          "units": ""
+        },
+        "identifier": "points",
+        "scale": {
+          "10": {
+            "value": 10
+          },
+          "11": {
+            "value": 11
+          },
+          "12": {
+            "value": 12
+          },
+          "13": {
+            "value": 13
+          },
+          "14": {
+            "value": 14
+          },
+          "15": {
+            "value": 15
+          },
+          "16": {
+            "value": 16
+          },
+          "17": {
+            "value": 17
+          },
+          "18": {
+            "value": 18
+          },
+          "19": {
+            "value": 19
+          },
+          "2": {
+            "value": 2
+          },
+          "20": {
+            "value": 20
+          },
+          "3": {
+            "value": 3
+          },
+          "4": {
+            "value": 4
+          },
+          "5": {
+            "value": 5
+          },
+          "6": {
+            "value": 6
+          },
+          "7": {
+            "value": 7
+          },
+          "8": {
+            "value": 8
+          },
+          "9": {
+            "value": 9
+          }
+        },
+        "type": "number"
+      },
+      "hint": "",
+      "id": "mQyTV3LMkMQT1zfO",
+      "level": 0,
+      "title": "Sorcery Points",
+      "type": "ScaleValue",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "cap": 2,
+        "fixed": {
+          "cha": 0,
+          "con": 0,
+          "dex": 0,
+          "int": 0,
+          "str": 0,
+          "wis": 0
+        },
+        "locked": [],
+        "max": null,
+        "points": 2,
+        "recommendation": "Compendium.dnd5e.feats24.Item.phbBoonofDimensi"
+      },
+      "hint": "",
+      "id": "EgWvwpbMp6gDqqiT",
+      "level": 19,
+      "title": "",
+      "type": "AbilityScoreImprovement",
+      "value": {}
+    }
+  ],
+  "description": "Core Sorcerer Traits\n\nPrimary Ability\n\nCharisma\n\nHit Point Die\n\nD6 per Sorcerer level\n\nSaving Throw Proficiencies\n\nConstitution and Charisma\n\nSkill Proficiencies\n\nChoose 2: Arcana, Deception, Insight, Intimidation, Persuasion, or Religion\n\nWeapon Proficiencies\n\nSimple weapons\n\nArmor Training\n\nNone\n\nStarting Equipment\n\nChoose A or B: (A) Spear, 2 Daggers, Arcane Focus (crystal), Dungeoneer's Pack, and [[/award 28GP]]; or (B) [[/award 50GP]]\n\n@Embed[Compendium.dnd5e.content24.JournalEntry.phbAppendixClass.JournalEntryPage.phbscrSorcerer00 inline classes=\"free-rules-embed\"]\n\nBecoming a Sorcerer \u2026\n\nAs a Level 1 Character\n\nGain all the traits in the Core Sorcerer Traits table.\n\nGain the Sorcerer's level 1 features, which are listed in the Sorcerer Features table.\n\nAs a Multiclass Character\n\nGain the Hit Point Die from the Core Sorcerer Traits table.\n\nGain the Sorcerer's level 1 features, which are listed in the Sorcerer Features table. See the multiclassing rules to determine your available spell slots.",
+  "entry_kind": "class",
+  "feature_choices": [
+    {
+      "pool": [
+        {
+          "level": 0,
+          "optional": false,
+          "ref_type": "feature",
+          "slug": "careful-spell"
+        },
+        {
+          "level": 0,
+          "optional": false,
+          "ref_type": "feature",
+          "slug": "distant-spell"
+        },
+        {
+          "level": 0,
+          "optional": false,
+          "ref_type": "feature",
+          "slug": "empowered-spell"
+        },
+        {
+          "level": 0,
+          "optional": false,
+          "ref_type": "feature",
+          "slug": "extended-spell"
+        },
+        {
+          "level": 0,
+          "optional": false,
+          "ref_type": "feature",
+          "slug": "heightened-spell"
+        },
+        {
+          "level": 0,
+          "optional": false,
+          "ref_type": "feature",
+          "slug": "quickened-spell"
+        },
+        {
+          "level": 0,
+          "optional": false,
+          "ref_type": "feature",
+          "slug": "seeking-spell"
+        },
+        {
+          "level": 0,
+          "optional": false,
+          "ref_type": "feature",
+          "slug": "subtle-spell"
+        },
+        {
+          "level": 0,
+          "optional": false,
+          "ref_type": "feature",
+          "slug": "transmuted-spell"
+        },
+        {
+          "level": 0,
+          "optional": false,
+          "ref_type": "feature",
+          "slug": "twinned-spell"
+        }
+      ],
+      "restriction_subtype": "metamagic",
+      "schedule": [
+        {
+          "count": 2,
+          "level": 2,
+          "replacement": false
+        },
+        {
+          "count": 2,
+          "level": 10,
+          "replacement": false
+        },
+        {
+          "count": 2,
+          "level": 17,
+          "replacement": false
+        }
+      ]
+    }
+  ],
+  "granted_features": [
+    {
+      "level": 1,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "spellcasting"
+    },
+    {
+      "level": 1,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "innate-sorcery"
+    },
+    {
+      "level": 2,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "font-of-magic"
+    },
+    {
+      "level": 2,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "metamagic"
+    },
+    {
+      "level": 5,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "sorcerous-restoration"
+    },
+    {
+      "level": 7,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "sorcery-incarnate"
+    },
+    {
+      "level": 20,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "arcane-apotheosis"
+    }
+  ],
+  "hit_die": "d6",
+  "identifier": "sorcerer",
+  "name": "Sorcerer",
+  "primary_ability": {
+    "all": true,
+    "value": [
+      "cha"
+    ]
+  },
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/sorcerer/sorcerer.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "saving_throws": [
+    "cha",
+    "con"
+  ],
+  "slug": "sorcerer",
+  "spellcasting": {
+    "ability": "cha",
+    "progression": "full"
+  },
+  "subclass_identifiers": [
+    "draconic"
+  ],
+  "wealth": "50"
+}

@@ -1,0 +1,110 @@
+{
+  "activities": [
+    {
+      "activation": {
+        "condition": "Whenever you cast a spell with a level 1-4 spell slot",
+        "override": false,
+        "type": "",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": []
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [],
+      "flags": {},
+      "id": "mN72GMXgdNXQJhJN",
+      "img": "systems/dnd5e/icons/svg/dice/d4.svg",
+      "kind": "utility",
+      "name": "Free Cast Roll",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "self",
+        "value": null
+      },
+      "roll": {
+        "formula": "1d4",
+        "name": "Roll",
+        "prompt": false,
+        "visible": false
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "",
+          "special": "",
+          "type": ""
+        },
+        "override": false,
+        "prompt": false,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "ft",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    }
+  ],
+  "category": "epic_boon",
+  "description": "You gain the following benefits.\n\nAbility Score Increase. Increase your Intelligence, Wisdom, or Charisma score by 1, to a maximum of 30.\n\nFree Casting. Whenever you cast a spell with a level 1\u20134 spell slot, roll [[/r 1d4]]. If the number you roll is the same as the slot's level, the slot isn't expended.\n\nFoundry Note\n\nIf the number is the same, uncheck the Consumption option when using the spell.",
+  "entry_kind": "feat",
+  "name": "Boon of Spell Recall",
+  "prerequisites": [
+    {
+      "feats": [],
+      "level": 19,
+      "requirement": ""
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/feats24/epic-boon-feats/boon-of-spell-recall.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "boon-of-spell-recall"
+}

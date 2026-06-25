@@ -1,0 +1,190 @@
+{
+  "activities": [
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "action",
+        "value": null
+      },
+      "bonuses": {
+        "ac": "@item.level",
+        "attack_damage": "@item.level",
+        "hd": "",
+        "healing": "",
+        "hp": "10 * (@item.level - 4)",
+        "save_damage": ""
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": []
+      },
+      "creature_sizes": [],
+      "creature_types": [],
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [],
+      "flags": {},
+      "id": "dnd5eactivity000",
+      "img": "",
+      "kind": "summon",
+      "match": {
+        "ability": "",
+        "attacks": true,
+        "disposition": false,
+        "proficiency": true,
+        "saves": true
+      },
+      "name": "",
+      "profiles": [
+        {
+          "count": "",
+          "cr": "",
+          "id": "87m6T7MhqiLf4cce",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "name": "",
+          "types": [],
+          "uuid": "Compendium.dnd5e.actors24.Actor.phbginGiantCenti"
+        },
+        {
+          "count": "",
+          "cr": "",
+          "id": "iFpFFJ3LnEvpmc03",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "name": "",
+          "types": [],
+          "uuid": "Compendium.dnd5e.actors24.Actor.phbginGiantSpide"
+        },
+        {
+          "count": "",
+          "cr": "",
+          "id": "S3oooMSQPdPsBiVU",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "name": "",
+          "types": [],
+          "uuid": "Compendium.dnd5e.actors24.Actor.phbginGiantWasp0"
+        }
+      ],
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "self",
+        "value": null
+      },
+      "sort": 0,
+      "summon": {
+        "identifier": "",
+        "mode": "",
+        "prompt": true
+      },
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "1",
+          "special": "",
+          "type": "space"
+        },
+        "override": false,
+        "prompt": true,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "",
+          "width": ""
+        }
+      },
+      "temp_hp": "",
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    }
+  ],
+  "casting_time": {
+    "condition": "",
+    "unit": "action",
+    "value": 1
+  },
+  "components": [
+    "S",
+    "V"
+  ],
+  "concentration": true,
+  "description": "You summon a giant centipede, spider, or wasp (chosen when you cast the spell). It manifests in an unoccupied space you can see within range and uses the Giant Insect stat block. The form you choose determines certain details in its stat block. The creature disappears when it drops to 0 Hit Points or when the spell ends.\n\nThe creature is an ally to you and your allies. In combat, the creature shares your Initiative count, but it takes its turn immediately after yours. It obeys your verbal commands (no action required by you). If you don't issue any, it takes the &amp;Reference[Dodge] action and uses its movement to avoid danger.\n\nUsing a Higher-Level Spell Slot.\u00a0Use the spell slot's level for the spell's level in the stat block.\n\nIn addition to the noted usage of the spell's level in the insect's Traits and Actions, the following attributes are also affected.\n\nGiant Insect\n\nAC\n\n11 + the spell's level\n\nHP\n\n30 + 10 for each spell level above 4\n\nSpeed\n\n40 ft., Climb 40 ft., Fly 40 ft. (Wasp only)\n\nPB\n\nequals your Proficiency Bonus",
+  "duration": {
+    "units": "minute",
+    "value": 10
+  },
+  "entry_kind": "spell",
+  "level": 4,
+  "materials": {
+    "consumed": false,
+    "cost": 0,
+    "supply": 0,
+    "value": ""
+  },
+  "name": "Giant Insect",
+  "passive_effects": [],
+  "preparation": {
+    "mode": "prepared",
+    "prepared": false
+  },
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/spells24/4th-level/giant-insect.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "range": {
+    "special": null,
+    "units": "ft",
+    "value": 60
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "ritual": false,
+  "school": "con",
+  "slug": "giant-insect"
+}

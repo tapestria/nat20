@@ -1,0 +1,244 @@
+{
+  "activities": [
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "action",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": []
+      },
+      "damage": {
+        "on_save": "half",
+        "parts": []
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [
+        {
+          "id": "RCuPR9PN6DD1YDFc",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": false,
+          "riders": null
+        },
+        {
+          "id": "VrrFIk47pnm9qKuX",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": false,
+          "riders": null
+        },
+        {
+          "id": "6P8mzDayeidhwod7",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": false,
+          "riders": null
+        },
+        {
+          "id": "ApXXZFLy8fD2cWO0",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": false,
+          "riders": null
+        },
+        {
+          "id": "R4BMRAXaadQwpvwk",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        }
+      ],
+      "flags": {},
+      "id": "lQVWdTLYPGVts5eR",
+      "img": "",
+      "kind": "save",
+      "name": "",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "self",
+        "value": null
+      },
+      "save": {
+        "ability": [
+          "wis"
+        ],
+        "dc": {
+          "calculation": "spellcasting",
+          "formula": ""
+        }
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "1",
+          "special": "",
+          "type": "creature"
+        },
+        "override": false,
+        "prompt": true,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    }
+  ],
+  "casting_time": {
+    "condition": "",
+    "unit": "minute",
+    "value": 1
+  },
+  "components": [
+    "M",
+    "S",
+    "V"
+  ],
+  "concentration": false,
+  "description": "You create a magical restraint to hold a creature that you can see within range. The target must make a Wisdom saving throw. On a successful save, the target is unaffected, and it is immune to this spell for the next 24 hours. On a failed save, the target is imprisoned. While imprisoned, the target doesn't need to breathe, eat, or drink, and it doesn't age. Divination spells can't locate or perceive the imprisoned target, and the target can't teleport.\n\nUntil the spell ends, the target is also affected by one of the following effects of your choice:\n\nBurial. The target is entombed beneath the earth in a hollow globe of magical force that is just large enough to contain the target. Nothing can pass into or out of the globe.\n\nChaining. Chains firmly rooted in the ground hold the target in place. The target has the &amp;Reference[Restrained apply=false] condition and can't be moved by any means.\n\nHedged Prison. The target is trapped in a demiplane that is warded against teleportation and planar travel. The demiplane is your choice of a labyrinth, a cage, a tower, or the like.\n\nMinimus Containment. The target becomes 1 inch tall and is trapped inside an indestructible gemstone or a similar object. Light can pass through the gemstone (allowing the target to see out and other creatures to see in), but nothing else can pass through by any means.\n\nSlumber. The target has the &amp;Reference[Unconscious apply=false] condition and can't be awoken.\n\nEnding the Spell. When you cast the spell, specify a trigger that will end it. The trigger can be as simple or as elaborate as you choose, but the DM must agree that it has a high likelihood of happening within the next decade. The trigger must be an observable action, such as someone making a particular offering at the temple of your god, saving your true love, or defeating a specific monster.\n\nA Dispel Magic spell can end the spell only if it is cast with a level 9 spell slot, targeting either the prison or the component used to create it.",
+  "duration": {
+    "units": "disp",
+    "value": null
+  },
+  "entry_kind": "spell",
+  "level": 9,
+  "materials": {
+    "consumed": false,
+    "cost": 0,
+    "supply": 0,
+    "value": "a statuette of the target worth 5,000+ GP"
+  },
+  "name": "Imprisonment",
+  "passive_effects": [
+    {
+      "changes": [],
+      "description": "<p>The target is entombed beneath the earth in a hollow globe of magical force that is just large enough to contain the target. Nothing can pass into or out of the globe.</p>",
+      "disabled": false,
+      "duration": null,
+      "id": "RCuPR9PN6DD1YDFc",
+      "name": "Burial",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [],
+      "description": "<p>Chains firmly rooted in the ground hold the target in place. The target has the &amp;Reference[Restrained apply=false] condition and can\u2019t be moved by any means.</p>",
+      "disabled": false,
+      "duration": null,
+      "id": "VrrFIk47pnm9qKuX",
+      "name": "Chaining",
+      "statuses": [
+        "restrained"
+      ],
+      "transfer": false
+    },
+    {
+      "changes": [],
+      "description": "<p>The target is trapped in a demiplane that is warded against teleportation and planar travel. The demiplane is your choice of a labyrinth, a cage, a tower, or the like.</p>",
+      "disabled": false,
+      "duration": null,
+      "id": "6P8mzDayeidhwod7",
+      "name": "Hedged Prison",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [],
+      "description": "<p>The target becomes 1 inch tall and is trapped inside an indestructible gemstone or a similar object. Light can pass through the gemstone (allowing the target to see out and other creatures to see in), but nothing else can pass through by any means.</p>",
+      "disabled": false,
+      "duration": null,
+      "id": "ApXXZFLy8fD2cWO0",
+      "name": "Minimus Containment",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [],
+      "description": "<p>The target has the &amp;Reference[Unconscious apply=false] condition and can\u2019t be awoken.</p>",
+      "disabled": false,
+      "duration": null,
+      "id": "R4BMRAXaadQwpvwk",
+      "name": "Slumber",
+      "statuses": [
+        "unconscious"
+      ],
+      "transfer": false
+    }
+  ],
+  "preparation": {
+    "mode": "prepared",
+    "prepared": false
+  },
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/spells24/9th-level/imprisonment.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "range": {
+    "special": null,
+    "units": "ft",
+    "value": 30
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "ritual": false,
+  "school": "abj",
+  "slug": "imprisonment"
+}

@@ -1,0 +1,224 @@
+{
+  "activities": [
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "bonus",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": true,
+          "max": "5"
+        },
+        "spell_slot": true,
+        "targets": [
+          {
+            "scaling": {
+              "formula": "",
+              "mode": ""
+            },
+            "target": "",
+            "type": "itemUses",
+            "value": "1 + @scaling + floor(@scaling / 3)"
+          },
+          {
+            "scaling": {
+              "formula": "",
+              "mode": "level"
+            },
+            "target": "1",
+            "type": "spellSlots",
+            "value": "-1"
+          }
+        ]
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [],
+      "flags": {},
+      "id": "rYDgagyWjp6f3jtO",
+      "img": "systems/dnd5e/icons/svg/damage/force.svg",
+      "kind": "utility",
+      "name": "Regain Spell Slot",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "self",
+        "value": null
+      },
+      "roll": {
+        "formula": "",
+        "name": "",
+        "prompt": false,
+        "visible": false
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "",
+          "special": "",
+          "type": ""
+        },
+        "override": false,
+        "prompt": false,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "ft",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    },
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": true,
+          "max": "9"
+        },
+        "spell_slot": true,
+        "targets": [
+          {
+            "scaling": {
+              "formula": "",
+              "mode": "level"
+            },
+            "target": "1",
+            "type": "spellSlots",
+            "value": "1"
+          },
+          {
+            "scaling": {
+              "formula": "",
+              "mode": "amount"
+            },
+            "target": "",
+            "type": "itemUses",
+            "value": "0 - @scaling"
+          }
+        ]
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [],
+      "flags": {},
+      "id": "qAphJay1yKd7VWxH",
+      "img": "systems/dnd5e/icons/svg/activity/heal.svg",
+      "kind": "utility",
+      "name": "Regain Sorcery Points",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "self",
+        "value": null
+      },
+      "roll": {
+        "formula": "",
+        "name": "",
+        "prompt": false,
+        "visible": false
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "",
+          "special": "",
+          "type": ""
+        },
+        "override": false,
+        "prompt": false,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "ft",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    }
+  ],
+  "description": "You can tap into the wellspring of magic within yourself. This wellspring is represented by Sorcery Points, which allow you to create a variety of magical effects.\n\nYou have 2 Sorcery Points, and you gain more as you reach higher levels, as shown in the Sorcery Points column of the Sorcerer Features table. You can't have more Sorcery Points than the number shown in the table for your level. You regain all expended Sorcery Points when you finish a Long Rest.\n\nYou can use your Sorcery Points to fuel the options below, along with other features, such as Metamagic, that use those points.\n\nConverting Spell Slots to Sorcery Points. You can expend a spell slot to gain a number of Sorcery Points equal to the slot's level (no action required).\n\nCreating Spell Slots. As a Bonus Action, you can transform unexpended Sorcery Points into one spell slot. The Creating Spell Slots table shows the cost of creating a spell slot of a given level, and it lists the minimum Sorcerer level you must be to create a slot. You can create a spell slot no higher than level\u00a05.\n\nAny spell slot you create with this feature vanishes when you finish a Long Rest.\n\nCreating Spell Slots\n\nSpell Slot Level\n\nSorcery Point Cost\n\nMin. Sorcerer Level\n\n1\n\n2\n\n2\n\n2\n\n3\n\n3\n\n3\n\n5\n\n5\n\n4\n\n6\n\n7\n\n5\n\n7\n\n9\n\nFoundry Note\n\nThe Regain Spell Slot activity will convert your Sorcery Points into spell slots.\n\nThe Regain Sorcery Points activity will convert your chosen spell slot into Sorcery Points.",
+  "entry_kind": "feature",
+  "feature_type": "class_feature",
+  "foundry_id": "phbscrFontOfMagi",
+  "name": "Font of Magic",
+  "passive_effects": [],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/sorcerer/class-features/font-of-magic.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "font-of-magic",
+  "source_slug": "sorcerer"
+}

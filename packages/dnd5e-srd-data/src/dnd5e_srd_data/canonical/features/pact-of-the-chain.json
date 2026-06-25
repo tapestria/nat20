@@ -1,0 +1,362 @@
+{
+  "activities": [
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "action",
+        "value": 1
+      },
+      "bonuses": {
+        "ac": "",
+        "attack_damage": "",
+        "hd": "",
+        "healing": "",
+        "hp": "",
+        "save_damage": ""
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": [
+          {
+            "scaling": {
+              "formula": "",
+              "mode": ""
+            },
+            "target": "spells.pact.value",
+            "type": "attribute",
+            "value": "1"
+          }
+        ]
+      },
+      "creature_sizes": [],
+      "creature_types": [
+        "celestial",
+        "fey",
+        "fiend"
+      ],
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [],
+      "flags": {},
+      "id": "uehA2kfgOCKRIqAs",
+      "img": "",
+      "kind": "summon",
+      "match": {
+        "ability": "",
+        "attacks": false,
+        "disposition": false,
+        "proficiency": false,
+        "saves": false
+      },
+      "name": "Find Familiar",
+      "profiles": [
+        {
+          "count": "1",
+          "cr": "0",
+          "id": "e5dWV5L2uBJ2KPAM",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "name": "CR 0 Beast",
+          "types": [
+            "beast"
+          ],
+          "uuid": ""
+        }
+      ],
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "ft",
+        "value": "10"
+      },
+      "sort": 0,
+      "summon": {
+        "identifier": "",
+        "mode": "cr",
+        "prompt": true
+      },
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "1",
+          "special": "",
+          "type": "space"
+        },
+        "override": false,
+        "prompt": false,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "ft",
+          "width": ""
+        }
+      },
+      "temp_hp": "",
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    },
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "action",
+        "value": 1
+      },
+      "bonuses": {
+        "ac": "",
+        "attack_damage": "",
+        "hd": "",
+        "healing": "",
+        "hp": "",
+        "save_damage": ""
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": [
+          {
+            "scaling": {
+              "formula": "",
+              "mode": ""
+            },
+            "target": "spells.pact.value",
+            "type": "attribute",
+            "value": "1"
+          }
+        ]
+      },
+      "creature_sizes": [],
+      "creature_types": [
+        "celestial",
+        "fey",
+        "fiend"
+      ],
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [],
+      "flags": {},
+      "id": "5W78W2Opzhax0Jcf",
+      "img": "",
+      "kind": "summon",
+      "match": {
+        "ability": "",
+        "attacks": false,
+        "disposition": false,
+        "proficiency": false,
+        "saves": false
+      },
+      "name": "Find Familiar (Expanded Options)",
+      "profiles": [
+        {
+          "count": "",
+          "cr": "",
+          "id": "Rr8F49wXgEzvI3Je",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "name": "",
+          "types": [],
+          "uuid": "Compendium.dnd5e.actors24.Actor.mmImp00000000000"
+        },
+        {
+          "count": "",
+          "cr": "",
+          "id": "Cg8B2qkwRo7qh7oZ",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "name": "",
+          "types": [],
+          "uuid": "Compendium.dnd5e.actors24.Actor.mmPseudodragon00"
+        },
+        {
+          "count": "",
+          "cr": "",
+          "id": "8NAn0ZR5HRnRJvqs",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "name": "",
+          "types": [],
+          "uuid": "Compendium.dnd5e.actors24.Actor.mmQuasit00000000"
+        },
+        {
+          "count": "",
+          "cr": "",
+          "id": "Gik7lMg53Gno0nSf",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "name": "",
+          "types": [],
+          "uuid": "Compendium.dnd5e.actors24.Actor.mmSphinxOfWonder"
+        },
+        {
+          "count": "",
+          "cr": "",
+          "id": "m5hfZoWAcEjKrkxo",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "name": "",
+          "types": [],
+          "uuid": "Compendium.dnd5e.actors24.Actor.mmSkeleton000000"
+        },
+        {
+          "count": "",
+          "cr": "",
+          "id": "mDue5EQkMxi5G6Pf",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "name": "",
+          "types": [],
+          "uuid": "Compendium.dnd5e.actors24.Actor.mmSlaadTadpole00"
+        },
+        {
+          "count": "",
+          "cr": "",
+          "id": "U60QGv6hzjT15bFK",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "name": "",
+          "types": [],
+          "uuid": "Compendium.dnd5e.actors24.Actor.mmSprite00000000"
+        },
+        {
+          "count": "",
+          "cr": "",
+          "id": "ZtrQLBrDRmN97IvI",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "name": "",
+          "types": [],
+          "uuid": "Compendium.dnd5e.actors24.Actor.mmVenomousSnake0"
+        }
+      ],
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "ft",
+        "value": "10"
+      },
+      "sort": 0,
+      "summon": {
+        "identifier": "",
+        "mode": "",
+        "prompt": true
+      },
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "1",
+          "special": "",
+          "type": "space"
+        },
+        "override": false,
+        "prompt": false,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "ft",
+          "width": ""
+        }
+      },
+      "temp_hp": "",
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    }
+  ],
+  "description": "You learn the Find Familiar spell and can cast it as a Magic action without expending a spell slot.\n\nWhen you cast the spell, you choose one of the normal forms for your familiar or one of the following special forms: Imp, Pseudodragon, Quasit, Skeleton, Slaad Tadpole, Sphinx of Wonder, Sprite, or Venomous Snake.\n\nAdditionally, when you take the Attack action, you can forgo one of your own attacks to allow your familiar to make one attack of its own with its Reaction.\n\nFoundry Note\n\nThe Summon Familiar activity includes the normal summoning options and the Summon Familiar (Expanded Options) activity includes the additional options.",
+  "entry_kind": "feature",
+  "feature_type": "class_feature",
+  "foundry_id": "phbinvPactChain0",
+  "name": "Pact of the Chain",
+  "passive_effects": [],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/warlock/eldritch-invocation-options/pact-of-the-chain.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "pact-of-the-chain",
+  "source_slug": "warlock"
+}

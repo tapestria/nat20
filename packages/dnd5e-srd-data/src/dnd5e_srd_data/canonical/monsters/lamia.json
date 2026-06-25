@@ -1,0 +1,1032 @@
+{
+  "ability_scores": {
+    "cha": 16,
+    "con": 15,
+    "dex": 13,
+    "int": 14,
+    "str": 16,
+    "wis": 15
+  },
+  "ac": 13,
+  "actions": [
+    {
+      "activities": [
+        {
+          "activation": {
+            "condition": "",
+            "override": false,
+            "type": "action",
+            "value": null
+          },
+          "consumption": {
+            "scaling": {
+              "allowed": false,
+              "max": ""
+            },
+            "spell_slot": true,
+            "targets": []
+          },
+          "description": {
+            "chat_flavor": ""
+          },
+          "duration": {
+            "concentration": false,
+            "override": false,
+            "special": "",
+            "units": "inst",
+            "value": null
+          },
+          "effects": [],
+          "flags": {},
+          "id": "UR4LCJNHzUJ1JvEW",
+          "img": "systems/dnd5e/icons/svg/monster.svg",
+          "kind": "utility",
+          "name": "Expend Use",
+          "range": {
+            "override": false,
+            "special": "",
+            "units": "self",
+            "value": null
+          },
+          "roll": {
+            "formula": "",
+            "name": "",
+            "prompt": false,
+            "visible": false
+          },
+          "sort": 0,
+          "target": {
+            "affects": {
+              "choice": false,
+              "count": "",
+              "special": "",
+              "type": ""
+            },
+            "override": false,
+            "prompt": false,
+            "template": {
+              "contiguous": false,
+              "count": "",
+              "height": "",
+              "size": "",
+              "stationary": false,
+              "type": "",
+              "units": "ft",
+              "width": ""
+            }
+          },
+          "uses": {
+            "max": "",
+            "recovery": [],
+            "spent": 0
+          },
+          "visibility": {
+            "identifier": "",
+            "level": {
+              "max": null,
+              "min": null
+            },
+            "require_attunement": false,
+            "require_identification": false,
+            "require_magic": false
+          }
+        }
+      ],
+      "description": "The [[lookup @name lowercase]]{monster} makes two [[/item .mmClaw0000000000]] attacks. It can replace one attack with a use of [[/item .mmCorruptingTouc]].",
+      "kind": "action",
+      "legendary_cost": null,
+      "name": "Multiattack",
+      "recharge": null,
+      "slug": "multiattack",
+      "uses_per_day": null
+    },
+    {
+      "activities": [
+        {
+          "activation": {
+            "condition": "",
+            "override": false,
+            "type": "action",
+            "value": null
+          },
+          "attack": {
+            "ability": "",
+            "bonus": "",
+            "critical": {
+              "threshold": null
+            },
+            "flat": false,
+            "type": {
+              "classification": "",
+              "value": ""
+            }
+          },
+          "consumption": {
+            "scaling": {
+              "allowed": false,
+              "max": ""
+            },
+            "spell_slot": true,
+            "targets": []
+          },
+          "damage": {
+            "critical": {
+              "bonus": ""
+            },
+            "include_base": true,
+            "parts": [
+              {
+                "bonus": "",
+                "custom": {
+                  "enabled": false,
+                  "formula": ""
+                },
+                "denomination": 8,
+                "number": 1,
+                "scaling": {
+                  "formula": "",
+                  "mode": "",
+                  "number": 1
+                },
+                "types": [
+                  "slashing"
+                ]
+              },
+              {
+                "bonus": "",
+                "custom": {
+                  "enabled": false,
+                  "formula": ""
+                },
+                "denomination": 6,
+                "number": 2,
+                "scaling": {
+                  "formula": "",
+                  "mode": "",
+                  "number": 1
+                },
+                "types": [
+                  "psychic"
+                ]
+              }
+            ]
+          },
+          "description": {
+            "chat_flavor": ""
+          },
+          "duration": {
+            "concentration": false,
+            "override": false,
+            "special": "",
+            "units": "inst",
+            "value": null
+          },
+          "effects": [],
+          "flags": {},
+          "id": "W1T7dZnG8GMMwyEP",
+          "img": "",
+          "kind": "attack",
+          "name": "",
+          "range": {
+            "override": false,
+            "special": "",
+            "units": "self",
+            "value": null
+          },
+          "sort": 0,
+          "target": {
+            "affects": {
+              "choice": false,
+              "count": "1",
+              "special": "",
+              "type": "creature"
+            },
+            "override": false,
+            "prompt": true,
+            "template": {
+              "contiguous": false,
+              "count": "",
+              "height": "",
+              "size": "",
+              "stationary": false,
+              "type": "",
+              "units": "ft",
+              "width": ""
+            }
+          },
+          "uses": {
+            "max": "",
+            "recovery": [],
+            "spent": 0
+          },
+          "visibility": {
+            "identifier": "",
+            "level": {
+              "max": null,
+              "min": null
+            },
+            "require_attunement": false,
+            "require_identification": false,
+            "require_magic": false
+          }
+        }
+      ],
+      "description": "[[/attack extended]]. [[/damage average extended]].",
+      "kind": "action",
+      "legendary_cost": null,
+      "name": "Claw",
+      "recharge": null,
+      "slug": "claw",
+      "uses_per_day": null
+    },
+    {
+      "activities": [
+        {
+          "activation": {
+            "condition": "",
+            "override": false,
+            "type": "action",
+            "value": null
+          },
+          "consumption": {
+            "scaling": {
+              "allowed": false,
+              "max": ""
+            },
+            "spell_slot": true,
+            "targets": []
+          },
+          "damage": {
+            "on_save": "none",
+            "parts": [
+              {
+                "bonus": "",
+                "custom": {
+                  "enabled": false,
+                  "formula": ""
+                },
+                "denomination": 8,
+                "number": 3,
+                "scaling": {
+                  "formula": "",
+                  "mode": "",
+                  "number": 1
+                },
+                "types": [
+                  "psychic"
+                ]
+              }
+            ]
+          },
+          "description": {
+            "chat_flavor": ""
+          },
+          "duration": {
+            "concentration": false,
+            "override": false,
+            "special": "",
+            "units": "inst",
+            "value": null
+          },
+          "effects": [
+            {
+              "id": "SuBPepD5ynNLNy8h",
+              "level": {
+                "max": null,
+                "min": null
+              },
+              "on_save": false,
+              "riders": null
+            }
+          ],
+          "flags": {},
+          "id": "F4cByCi1IEouN08a",
+          "img": "",
+          "kind": "save",
+          "name": "",
+          "range": {
+            "override": true,
+            "special": "",
+            "units": "ft",
+            "value": "5"
+          },
+          "save": {
+            "ability": [
+              "wis"
+            ],
+            "dc": {
+              "calculation": "str",
+              "formula": "8 + @mod + @prof"
+            }
+          },
+          "sort": 0,
+          "target": {
+            "affects": {
+              "choice": false,
+              "count": "1",
+              "special": "",
+              "type": "creature"
+            },
+            "override": false,
+            "prompt": true,
+            "template": {
+              "contiguous": false,
+              "count": "",
+              "height": "",
+              "size": "",
+              "stationary": false,
+              "type": "",
+              "units": "ft",
+              "width": ""
+            }
+          },
+          "uses": {
+            "max": "",
+            "recovery": [],
+            "spent": 0
+          },
+          "visibility": {
+            "identifier": "",
+            "level": {
+              "max": null,
+              "min": null
+            },
+            "require_attunement": false,
+            "require_identification": false,
+            "require_magic": false
+          }
+        }
+      ],
+      "description": "Wisdom Saving Throw: DC [[lookup @save.dc.value activity=F4cByCi1IEouN08a]], [[lookup @target.affects.labels.statblock activity=F4cByCi1IEouN08a]] the [[lookup @name lowercase]]{monster} can see within [[lookup @range.value activity=F4cByCi1IEouN08a]] feet.\n\nFailure: [[/damage average]] damage, and the target is cursed for 1 hour. Until the curse ends, the target has the &amp;Reference[Charmed apply=false] and &amp;Reference[Poisoned apply=false] conditions.",
+      "kind": "action",
+      "legendary_cost": null,
+      "name": "Corrupting Touch",
+      "recharge": null,
+      "slug": "corrupting-touch",
+      "uses_per_day": null
+    },
+    {
+      "activities": [
+        {
+          "activation": {
+            "condition": "",
+            "override": false,
+            "type": "action",
+            "value": null
+          },
+          "consumption": {
+            "scaling": {
+              "allowed": false,
+              "max": ""
+            },
+            "spell_slot": true,
+            "targets": []
+          },
+          "description": {
+            "chat_flavor": ""
+          },
+          "duration": {
+            "concentration": false,
+            "override": false,
+            "special": "",
+            "units": "inst",
+            "value": null
+          },
+          "flags": {},
+          "id": "3MkhXZwZstyLUC3q",
+          "img": "",
+          "kind": "cast",
+          "name": "",
+          "range": {
+            "override": false,
+            "special": "",
+            "units": "self",
+            "value": null
+          },
+          "sort": 0,
+          "spell": {
+            "ability": "",
+            "challenge": {
+              "attack": null,
+              "override": false,
+              "save": null
+            },
+            "level": 1,
+            "properties": [
+              "material"
+            ],
+            "spellbook": true,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplDisguiseSe"
+          },
+          "target": {
+            "affects": {
+              "choice": false,
+              "count": "",
+              "special": "",
+              "type": ""
+            },
+            "override": false,
+            "prompt": true,
+            "template": {
+              "contiguous": false,
+              "count": "",
+              "height": "",
+              "size": "",
+              "stationary": false,
+              "type": "",
+              "units": "ft",
+              "width": ""
+            }
+          },
+          "uses": {
+            "max": "",
+            "recovery": [],
+            "spent": 0
+          },
+          "visibility": {
+            "identifier": "",
+            "level": {
+              "max": null,
+              "min": null
+            },
+            "require_attunement": false,
+            "require_identification": false,
+            "require_magic": false
+          }
+        },
+        {
+          "activation": {
+            "condition": "",
+            "override": false,
+            "type": "action",
+            "value": null
+          },
+          "consumption": {
+            "scaling": {
+              "allowed": false,
+              "max": ""
+            },
+            "spell_slot": true,
+            "targets": []
+          },
+          "description": {
+            "chat_flavor": ""
+          },
+          "duration": {
+            "concentration": false,
+            "override": false,
+            "special": "",
+            "units": "inst",
+            "value": null
+          },
+          "flags": {},
+          "id": "KQenmPwveGFdDTl4",
+          "img": "",
+          "kind": "cast",
+          "name": "",
+          "range": {
+            "override": false,
+            "special": "",
+            "units": "self",
+            "value": null
+          },
+          "sort": 0,
+          "spell": {
+            "ability": "",
+            "challenge": {
+              "attack": null,
+              "override": false,
+              "save": null
+            },
+            "level": null,
+            "properties": [
+              "material"
+            ],
+            "spellbook": true,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplMinorIllus"
+          },
+          "target": {
+            "affects": {
+              "choice": false,
+              "count": "",
+              "special": "",
+              "type": ""
+            },
+            "override": false,
+            "prompt": true,
+            "template": {
+              "contiguous": false,
+              "count": "",
+              "height": "",
+              "size": "",
+              "stationary": false,
+              "type": "",
+              "units": "ft",
+              "width": ""
+            }
+          },
+          "uses": {
+            "max": "",
+            "recovery": [],
+            "spent": 0
+          },
+          "visibility": {
+            "identifier": "",
+            "level": {
+              "max": null,
+              "min": null
+            },
+            "require_attunement": false,
+            "require_identification": false,
+            "require_magic": false
+          }
+        },
+        {
+          "activation": {
+            "condition": "",
+            "override": false,
+            "type": "action",
+            "value": null
+          },
+          "consumption": {
+            "scaling": {
+              "allowed": false,
+              "max": ""
+            },
+            "spell_slot": true,
+            "targets": [
+              {
+                "scaling": {
+                  "formula": "",
+                  "mode": ""
+                },
+                "target": "",
+                "type": "activityUses",
+                "value": "1"
+              }
+            ]
+          },
+          "description": {
+            "chat_flavor": ""
+          },
+          "duration": {
+            "concentration": false,
+            "override": false,
+            "special": "",
+            "units": "inst",
+            "value": null
+          },
+          "flags": {},
+          "id": "EEQKe7QUHksJRZCn",
+          "img": "",
+          "kind": "cast",
+          "name": "",
+          "range": {
+            "override": false,
+            "special": "",
+            "units": "self",
+            "value": null
+          },
+          "sort": 0,
+          "spell": {
+            "ability": "",
+            "challenge": {
+              "attack": null,
+              "override": false,
+              "save": null
+            },
+            "level": 5,
+            "properties": [
+              "material"
+            ],
+            "spellbook": true,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplGeas000000"
+          },
+          "target": {
+            "affects": {
+              "choice": false,
+              "count": "",
+              "special": "",
+              "type": ""
+            },
+            "override": false,
+            "prompt": true,
+            "template": {
+              "contiguous": false,
+              "count": "",
+              "height": "",
+              "size": "",
+              "stationary": false,
+              "type": "",
+              "units": "ft",
+              "width": ""
+            }
+          },
+          "uses": {
+            "max": "1",
+            "recovery": [
+              {
+                "formula": "",
+                "period": "day",
+                "type": "recoverAll"
+              }
+            ],
+            "spent": 0
+          },
+          "visibility": {
+            "identifier": "",
+            "level": {
+              "max": null,
+              "min": null
+            },
+            "require_attunement": false,
+            "require_identification": false,
+            "require_magic": false
+          }
+        },
+        {
+          "activation": {
+            "condition": "",
+            "override": false,
+            "type": "action",
+            "value": null
+          },
+          "consumption": {
+            "scaling": {
+              "allowed": false,
+              "max": ""
+            },
+            "spell_slot": true,
+            "targets": [
+              {
+                "scaling": {
+                  "formula": "",
+                  "mode": ""
+                },
+                "target": "",
+                "type": "activityUses",
+                "value": "1"
+              }
+            ]
+          },
+          "description": {
+            "chat_flavor": ""
+          },
+          "duration": {
+            "concentration": false,
+            "override": false,
+            "special": "",
+            "units": "inst",
+            "value": null
+          },
+          "flags": {},
+          "id": "QOd5ZmnhW1loMD5H",
+          "img": "",
+          "kind": "cast",
+          "name": "",
+          "range": {
+            "override": false,
+            "special": "",
+            "units": "self",
+            "value": null
+          },
+          "sort": 0,
+          "spell": {
+            "ability": "",
+            "challenge": {
+              "attack": null,
+              "override": false,
+              "save": null
+            },
+            "level": 3,
+            "properties": [
+              "material"
+            ],
+            "spellbook": true,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplMajorImage"
+          },
+          "target": {
+            "affects": {
+              "choice": false,
+              "count": "",
+              "special": "",
+              "type": ""
+            },
+            "override": false,
+            "prompt": true,
+            "template": {
+              "contiguous": false,
+              "count": "",
+              "height": "",
+              "size": "",
+              "stationary": false,
+              "type": "",
+              "units": "ft",
+              "width": ""
+            }
+          },
+          "uses": {
+            "max": "1",
+            "recovery": [
+              {
+                "formula": "",
+                "period": "day",
+                "type": "recoverAll"
+              }
+            ],
+            "spent": 0
+          },
+          "visibility": {
+            "identifier": "",
+            "level": {
+              "max": null,
+              "min": null
+            },
+            "require_attunement": false,
+            "require_identification": false,
+            "require_magic": false
+          }
+        },
+        {
+          "activation": {
+            "condition": "",
+            "override": false,
+            "type": "action",
+            "value": null
+          },
+          "consumption": {
+            "scaling": {
+              "allowed": false,
+              "max": ""
+            },
+            "spell_slot": true,
+            "targets": [
+              {
+                "scaling": {
+                  "formula": "",
+                  "mode": ""
+                },
+                "target": "",
+                "type": "activityUses",
+                "value": "1"
+              }
+            ]
+          },
+          "description": {
+            "chat_flavor": ""
+          },
+          "duration": {
+            "concentration": false,
+            "override": false,
+            "special": "",
+            "units": "inst",
+            "value": null
+          },
+          "flags": {},
+          "id": "UipKtGZRaCQEBS4Y",
+          "img": "",
+          "kind": "cast",
+          "name": "",
+          "range": {
+            "override": false,
+            "special": "",
+            "units": "self",
+            "value": null
+          },
+          "sort": 0,
+          "spell": {
+            "ability": "",
+            "challenge": {
+              "attack": null,
+              "override": false,
+              "save": null
+            },
+            "level": 5,
+            "properties": [
+              "material"
+            ],
+            "spellbook": true,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplScrying000"
+          },
+          "target": {
+            "affects": {
+              "choice": false,
+              "count": "",
+              "special": "",
+              "type": ""
+            },
+            "override": false,
+            "prompt": true,
+            "template": {
+              "contiguous": false,
+              "count": "",
+              "height": "",
+              "size": "",
+              "stationary": false,
+              "type": "",
+              "units": "ft",
+              "width": ""
+            }
+          },
+          "uses": {
+            "max": "1",
+            "recovery": [
+              {
+                "formula": "",
+                "period": "day",
+                "type": "recoverAll"
+              }
+            ],
+            "spent": 0
+          },
+          "visibility": {
+            "identifier": "",
+            "level": {
+              "max": null,
+              "min": null
+            },
+            "require_attunement": false,
+            "require_identification": false,
+            "require_magic": false
+          }
+        }
+      ],
+      "description": "The [[lookup @name lowercase]]{monster} casts one of the following spells, requiring no Material components and using Charisma as the spellcasting ability (spell save DC [[lookup @attributes.spell.dc]]):\n\nAt Will: Disguise Self (can appear as a Large or Medium biped), Minor Illusion\n\n1/Day Each: Geas, Major Image, Scrying",
+      "kind": "action",
+      "legendary_cost": null,
+      "name": "Spellcasting",
+      "recharge": null,
+      "slug": "spellcasting",
+      "uses_per_day": null
+    },
+    {
+      "activities": [
+        {
+          "activation": {
+            "condition": "spending 10 feet of movement",
+            "override": false,
+            "type": "bonus",
+            "value": null
+          },
+          "consumption": {
+            "scaling": {
+              "allowed": false,
+              "max": ""
+            },
+            "spell_slot": true,
+            "targets": []
+          },
+          "description": {
+            "chat_flavor": ""
+          },
+          "duration": {
+            "concentration": false,
+            "override": false,
+            "special": "",
+            "units": "inst",
+            "value": null
+          },
+          "effects": [],
+          "flags": {},
+          "id": "C28C43DeD8iFtZMe",
+          "img": "systems/dnd5e/icons/svg/monster.svg",
+          "kind": "utility",
+          "name": "Expend Use",
+          "range": {
+            "override": false,
+            "special": "",
+            "units": "ft",
+            "value": "30"
+          },
+          "roll": {
+            "formula": "",
+            "name": "",
+            "prompt": false,
+            "visible": false
+          },
+          "sort": 0,
+          "target": {
+            "affects": {
+              "choice": false,
+              "count": "",
+              "special": "",
+              "type": ""
+            },
+            "override": false,
+            "prompt": false,
+            "template": {
+              "contiguous": false,
+              "count": "",
+              "height": "",
+              "size": "",
+              "stationary": false,
+              "type": "",
+              "units": "ft",
+              "width": ""
+            }
+          },
+          "uses": {
+            "max": "",
+            "recovery": [],
+            "spent": 0
+          },
+          "visibility": {
+            "identifier": "",
+            "level": {
+              "max": null,
+              "min": null
+            },
+            "require_attunement": false,
+            "require_identification": false,
+            "require_magic": false
+          }
+        }
+      ],
+      "description": "The [[lookup @name lowercase]]{monster} jumps up to [[lookup @range.value activity=C28C43DeD8iFtZMe]] feet by [[lookup @activation.condition activity=C28C43DeD8iFtZMe]].",
+      "kind": "bonus_action",
+      "legendary_cost": null,
+      "name": "Leap",
+      "recharge": null,
+      "slug": "leap",
+      "uses_per_day": null
+    }
+  ],
+  "alignment": "Chaotic Evil",
+  "condition_immunities": [],
+  "cr": 4.0,
+  "creature_size": "large",
+  "creature_type": "fiend",
+  "damage_immunities": [],
+  "damage_resistances": [],
+  "damage_vulnerabilities": [],
+  "description": "",
+  "hp": 97,
+  "hp_dice": "13d10 + 26",
+  "lair_actions": [],
+  "languages": [
+    "Common",
+    "Abyssal"
+  ],
+  "legendary_actions": [],
+  "movement": {
+    "burrow": null,
+    "climb": null,
+    "fly": null,
+    "hover": false,
+    "swim": null,
+    "walk": 40
+  },
+  "name": "Lamia",
+  "proficiency_bonus": 2,
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/actors24/fiend/lamia.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "saving_throws": {
+    "cha": null,
+    "con": null,
+    "dex": null,
+    "int": null,
+    "str": null,
+    "wis": null
+  },
+  "senses": {
+    "blindsight": null,
+    "darkvision": 60,
+    "passive_perception": 12,
+    "tremorsense": null,
+    "truesight": null
+  },
+  "skills": {
+    "acrobatics": null,
+    "animal_handling": null,
+    "arcana": null,
+    "athletics": null,
+    "deception": 7,
+    "history": null,
+    "insight": 4,
+    "intimidation": null,
+    "investigation": null,
+    "medicine": null,
+    "nature": null,
+    "perception": null,
+    "performance": null,
+    "persuasion": null,
+    "religion": null,
+    "sleight_of_hand": null,
+    "stealth": 5,
+    "survival": null
+  },
+  "slug": "lamia",
+  "special_abilities": []
+}

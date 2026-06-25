@@ -1,0 +1,43 @@
+{
+  "activities": [],
+  "description": "Your speed increases by 10 feet while you aren't wearing Heavy armor.\n\nFoundry Note\n\nThis feature includes an Active Effect which will automatically increase your movement speed. Disable the Fast Movement Active Effect if you're wearing Heavy armor.",
+  "entry_kind": "feature",
+  "feature_type": "class_feature",
+  "foundry_id": "phbbrbFastMoveme",
+  "name": "Fast Movement",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.attributes.movement.walk",
+          "mode": 2,
+          "priority": null,
+          "value": "10"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "Ln2upWfCALSwthX1",
+      "name": "Fast Movement",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/barbarian/class-features/fast-movement.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "fast-movement",
+  "source_slug": "barbarian"
+}

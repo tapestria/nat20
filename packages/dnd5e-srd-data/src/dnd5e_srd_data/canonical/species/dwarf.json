@@ -1,0 +1,128 @@
+{
+  "advancement": [
+    {
+      "class_restriction": "",
+      "configuration": {
+        "sizes": [
+          "med"
+        ]
+      },
+      "hint": "Medium (about 4\u20135 feet tall)",
+      "id": "6HdONjMD4UozXSfC",
+      "level": 0,
+      "title": "",
+      "type": "Size",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.origins24.Item.phbsptDwarvenRes"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.origins24.Item.phbsptDwarvenTou"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.origins24.Item.phbsptStonecunni"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "PphNMhWLl5mEgAZf",
+      "level": 0,
+      "title": "Dwarf Traits",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [],
+        "grants": [
+          "dr:poison"
+        ],
+        "mode": "default"
+      },
+      "hint": "You have Resistance to Poison damage.",
+      "id": "S3kro3b0bq0Ks6Y8",
+      "level": 0,
+      "title": "Dwarven Resilience",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    }
+  ],
+  "creature_type": {
+    "custom": "",
+    "subtype": "Dwarf",
+    "value": "humanoid"
+  },
+  "description": "@Embed[Compendium.dnd5e.content24.JournalEntry.phbAppendixSpeci.JournalEntryPage.phbspDwarf000000 inline classes=\"free-rules-embed\"]\n\nDwarf Traits\n\nCreature Type: Humanoid\n\nSize: Medium (about 4\u20135 feet tall)\n\nSpeed: 30 feet\n\nAs a Dwarf, you have these special traits.\n\nDarkvision. You have Darkvision with a range of 120 feet.\n\nDwarven Resilience. You have Resistance to Poison damage. You also have Advantage on saving throws you make to avoid or end the Poisoned condition.\n\nDwarven Toughness. Your Hit Point maximum increases by 1, and it increases by 1 again whenever you gain a level.\n\nStonecunning. As a Bonus Action, you gain Tremorsense with a range of 60 feet for 10 minutes. You must be on a stone surface or touching a stone surface to use this Tremorsense. The stone can be natural or worked.You can use this Bonus Action a number of times equal to your Proficiency Bonus, and you regain all expended uses when you finish a Long Rest.",
+  "entry_kind": "species",
+  "feature_choices": [],
+  "granted_features": [
+    {
+      "level": 0,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "dwarven-resilience"
+    },
+    {
+      "level": 0,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "dwarven-toughness"
+    },
+    {
+      "level": 0,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "stonecunning"
+    }
+  ],
+  "languages": [],
+  "movement": {
+    "burrow": null,
+    "climb": null,
+    "fly": null,
+    "hover": false,
+    "swim": null,
+    "walk": 30
+  },
+  "name": "Dwarf",
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/origins24/species/dwarf.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "senses": {
+    "blindsight": null,
+    "darkvision": 120,
+    "passive_perception": null,
+    "tremorsense": null,
+    "truesight": null
+  },
+  "size": "medium",
+  "slug": "dwarf",
+  "trait_grants": [
+    "dr:poison"
+  ]
+}

@@ -1,0 +1,233 @@
+{
+  "activities": [
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "action",
+        "value": null
+      },
+      "bonuses": {
+        "ac": "",
+        "attack_damage": "",
+        "hd": "",
+        "healing": "",
+        "hp": "",
+        "save_damage": ""
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": [
+          {
+            "scaling": {
+              "formula": "",
+              "mode": ""
+            },
+            "target": "",
+            "type": "itemUses",
+            "value": "1"
+          }
+        ]
+      },
+      "creature_sizes": [],
+      "creature_types": [],
+      "description": {
+        "chat_flavor": "Transformed creature determined by GM or table roll"
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "Until the next dawn or when creature is reduced to 0 Hit Points.",
+        "units": "spec",
+        "value": null
+      },
+      "effects": [],
+      "flags": {},
+      "id": "v5llnlVkusldILPp",
+      "img": "",
+      "kind": "summon",
+      "match": {
+        "ability": "",
+        "attacks": false,
+        "disposition": false,
+        "proficiency": false,
+        "saves": false
+      },
+      "name": "Pull and Throw",
+      "profiles": [
+        {
+          "count": "",
+          "cr": "",
+          "id": "GHPZeky1w72GL4lN",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "name": "",
+          "types": [],
+          "uuid": "Compendium.dnd5e.actors24.Actor.phbmobApe0000000"
+        },
+        {
+          "count": "",
+          "cr": "",
+          "id": "oJtdCfur0YjQcN5S",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "name": "",
+          "types": [],
+          "uuid": "Compendium.dnd5e.actors24.Actor.MZYCPIVoBs918qGZ"
+        },
+        {
+          "count": "",
+          "cr": "",
+          "id": "mK0C90AP9NoSoDHc",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "name": "",
+          "types": [],
+          "uuid": "Compendium.dnd5e.actors24.Actor.JW8bXggOMBx1S6tF"
+        },
+        {
+          "count": "",
+          "cr": "",
+          "id": "Q84QytFBOgZlPYyK",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "name": "",
+          "types": [],
+          "uuid": "Compendium.dnd5e.actors24.Actor.SXXvwaLBNuzBymp3"
+        },
+        {
+          "count": "",
+          "cr": "",
+          "id": "paUPq24gdSjQUCNq",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "name": "",
+          "types": [],
+          "uuid": "Compendium.dnd5e.actors24.Actor.phbmobBlackBear0"
+        },
+        {
+          "count": "",
+          "cr": "",
+          "id": "yFG9Dsrd6Dd4qI2J",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "name": "",
+          "types": [],
+          "uuid": "Compendium.dnd5e.actors24.Actor.phbmobGiantWease"
+        },
+        {
+          "count": "",
+          "cr": "",
+          "id": "W3Q0TgeomalBWPDE",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "name": "",
+          "types": [],
+          "uuid": "Compendium.dnd5e.actors24.Actor.aAqfEHPiVbhMwZ6j"
+        },
+        {
+          "count": "",
+          "cr": "",
+          "id": "Eonmk8mpWd3O0Xn1",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "name": "",
+          "types": [],
+          "uuid": "Compendium.dnd5e.actors24.Actor.phbmobTiger00000"
+        }
+      ],
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "ft",
+        "value": "20"
+      },
+      "sort": 0,
+      "summon": {
+        "identifier": "",
+        "mode": "",
+        "prompt": false
+      },
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "1",
+          "special": "",
+          "type": "space"
+        },
+        "override": false,
+        "prompt": true,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "ft",
+          "width": ""
+        }
+      },
+      "temp_hp": "",
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": true
+      }
+    }
+  ],
+  "attunement_constraint": null,
+  "cost_gp": 400.0,
+  "description": "Wondrous Item, Uncommon\n\nThis bag made from gray, rust, or tan cloth appears empty. Reaching inside the bag, however, reveals the presence of a small, fuzzy object.\n\nYou can take a Magic action to pull the fuzzy object from the bag and throw it up to 20 feet. When the object lands, it transforms into a creature you determine by rolling on the table that corresponds to the bag's color. See Monsters for the creature's stat block. The creature vanishes at the next dawn or when it is reduced to 0 Hit Points.\n\nThe creature is Friendly to you and your allies, and it acts immediately after you on your Initiative count. You can take a Bonus Action to command how the creature moves and what action it takes on its next turn, such as attacking an enemy. In the absence of such orders, the creature acts in a fashion appropriate to its nature.\n\nOnce three fuzzy objects have been pulled from the bag, the bag can't be used again until the next dawn.\n\n@Embed[Compendium.dnd5e.tables24.RollTable.dmgTanBagOfTrick rollable]",
+  "item_kind": "magic_item",
+  "name": "Tan Bag of Tricks",
+  "passive_effects": [],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/equipment24/equipment/bags-of-tricks/tan-bag-of-tricks.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "rarity": "uncommon",
+  "requires_attunement": false,
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "bag-of-tricks",
+  "weight": 0.0
+}

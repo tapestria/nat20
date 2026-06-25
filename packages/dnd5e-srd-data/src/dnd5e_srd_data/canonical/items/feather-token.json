@@ -1,0 +1,27 @@
+{
+  "activities": [],
+  "attunement_constraint": null,
+  "cost_gp": 0.0,
+  "description": "Wondrous Item, Rarity Varies\n\nThis object looks like a feather. Different types of feather tokens exist, each with a different single-use effect. The GM chooses the kind of token or determines it randomly by rolling on the Feather Tokens table. The type of token determines its rarity.\n\n@Embed[Compendium.dnd5e.tables24.RollTable.dmgQuaalsFeather caption=false rollable]",
+  "item_kind": "item",
+  "name": "Feather Token",
+  "passive_effects": [],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/equipment24/consumables/feather-token.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "rarity": "common",
+  "requires_attunement": false,
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "feather-token",
+  "weight": 0.0
+}

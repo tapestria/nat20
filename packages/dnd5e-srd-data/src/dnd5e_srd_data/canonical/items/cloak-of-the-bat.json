@@ -1,0 +1,226 @@
+{
+  "activities": [
+    {
+      "activation": {
+        "condition": "in an area of Dim Light or Darkness",
+        "override": false,
+        "type": "",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": []
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "fail to grip the cloak\u2019s edges while flying in this way, or if you are no longer in Dim Light or Darkness",
+        "units": "spec",
+        "value": null
+      },
+      "effects": [
+        {
+          "id": "LOByj7F1KjZdSUMi",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        }
+      ],
+      "flags": {},
+      "id": "bHixxjmSIBwsov9t",
+      "img": "",
+      "kind": "utility",
+      "name": "Grip Edges",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "self",
+        "value": null
+      },
+      "roll": {
+        "formula": "",
+        "name": "",
+        "prompt": false,
+        "visible": false
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "",
+          "special": "edges of the cloak",
+          "type": "self"
+        },
+        "override": false,
+        "prompt": true,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "ft",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": true,
+        "require_magic": true
+      }
+    },
+    {
+      "activation": {
+        "condition": "in an area of Dim Light or Darkness",
+        "override": true,
+        "type": "action",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": [
+          {
+            "scaling": {
+              "formula": "",
+              "mode": ""
+            },
+            "target": "",
+            "type": "itemUses",
+            "value": "1"
+          }
+        ]
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "flags": {},
+      "id": "baY1WKtwieimGXWd",
+      "img": "",
+      "kind": "cast",
+      "name": "",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "self",
+        "value": null
+      },
+      "sort": 0,
+      "spell": {
+        "ability": "",
+        "challenge": {
+          "attack": null,
+          "override": false,
+          "save": null
+        },
+        "level": 4,
+        "properties": [],
+        "spellbook": true,
+        "uuid": "Compendium.dnd5e.spells24.Item.phbsplPolymorph0"
+      },
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "",
+          "special": "",
+          "type": "self"
+        },
+        "override": true,
+        "prompt": true,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "ft",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": true,
+        "require_magic": false
+      }
+    }
+  ],
+  "attunement_constraint": null,
+  "cost_gp": 4000.0,
+  "description": "Wondrous Item, Rare (Requires Attunement)\n\nWhile wearing this cloak, you have Advantage on Dexterity (Stealth) checks. In an area of Dim Light or Darkness, you can grip the edges of the cloak and use it to gain a Fly Speed of 40 feet. If you ever fail to grip the cloak's edges while flying in this way, or if you are no longer in &amp;Reference[DimLight] or &amp;Reference[Darkness], you lose this Fly Speed.\n\nWhile wearing the cloak in an area of Dim Light or Darkness, you can cast Polymorph on yourself, shape-shifting into a Bat. While in that form, you retain your Intelligence, Wisdom, and Charisma scores. The cloak can't be used this way again until the next dawn.",
+  "item_kind": "magic_item",
+  "name": "Cloak of the Bat",
+  "passive_effects": [
+    {
+      "changes": [],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "LOByj7F1KjZdSUMi",
+      "name": "Fly Speed",
+      "statuses": [
+        "flying"
+      ],
+      "transfer": false
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/equipment24/equipment/cloak-of-the-bat.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "rarity": "rare",
+  "requires_attunement": true,
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "cloak-of-the-bat",
+  "weight": 2.0
+}

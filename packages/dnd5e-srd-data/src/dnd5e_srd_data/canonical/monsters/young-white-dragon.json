@@ -1,0 +1,460 @@
+{
+  "ability_scores": {
+    "cha": 12,
+    "con": 18,
+    "dex": 10,
+    "int": 6,
+    "str": 18,
+    "wis": 11
+  },
+  "ac": 17,
+  "actions": [
+    {
+      "activities": [
+        {
+          "activation": {
+            "condition": "",
+            "override": false,
+            "type": "action",
+            "value": null
+          },
+          "consumption": {
+            "scaling": {
+              "allowed": false,
+              "max": ""
+            },
+            "spell_slot": true,
+            "targets": []
+          },
+          "description": {
+            "chat_flavor": ""
+          },
+          "duration": {
+            "concentration": false,
+            "override": false,
+            "special": "",
+            "units": "inst",
+            "value": null
+          },
+          "effects": [],
+          "flags": {},
+          "id": "Ms63W7e3Mv2Margn",
+          "img": "",
+          "kind": "utility",
+          "name": "Use",
+          "range": {
+            "override": false,
+            "special": "",
+            "units": "self",
+            "value": null
+          },
+          "roll": {
+            "formula": "",
+            "name": "",
+            "prompt": false,
+            "visible": false
+          },
+          "sort": 0,
+          "target": {
+            "affects": {
+              "choice": false,
+              "count": "",
+              "special": "",
+              "type": ""
+            },
+            "override": false,
+            "prompt": true,
+            "template": {
+              "contiguous": false,
+              "count": "",
+              "height": "",
+              "size": "",
+              "stationary": false,
+              "type": "",
+              "units": "ft",
+              "width": ""
+            }
+          },
+          "uses": {
+            "max": "",
+            "recovery": [],
+            "spent": 0
+          },
+          "visibility": {
+            "identifier": "",
+            "level": {
+              "max": null,
+              "min": null
+            },
+            "require_attunement": false,
+            "require_identification": false,
+            "require_magic": false
+          }
+        }
+      ],
+      "description": "The [[lookup @name lowercase]]{monster} makes three [[/item .mmRend0000000000]] attacks.",
+      "kind": "action",
+      "legendary_cost": null,
+      "name": "Multiattack",
+      "recharge": null,
+      "slug": "multiattack",
+      "uses_per_day": null
+    },
+    {
+      "activities": [
+        {
+          "activation": {
+            "condition": "",
+            "override": false,
+            "type": "action",
+            "value": null
+          },
+          "attack": {
+            "ability": "",
+            "bonus": "",
+            "critical": {
+              "threshold": null
+            },
+            "flat": false,
+            "type": {
+              "classification": "",
+              "value": ""
+            }
+          },
+          "consumption": {
+            "scaling": {
+              "allowed": false,
+              "max": ""
+            },
+            "spell_slot": true,
+            "targets": []
+          },
+          "damage": {
+            "critical": {
+              "bonus": ""
+            },
+            "include_base": true,
+            "parts": [
+              {
+                "bonus": "",
+                "custom": {
+                  "enabled": false,
+                  "formula": ""
+                },
+                "denomination": 4,
+                "number": 2,
+                "scaling": {
+                  "formula": "",
+                  "mode": "",
+                  "number": 1
+                },
+                "types": [
+                  "slashing"
+                ]
+              },
+              {
+                "bonus": "",
+                "custom": {
+                  "enabled": false,
+                  "formula": ""
+                },
+                "denomination": 4,
+                "number": 1,
+                "scaling": {
+                  "formula": "",
+                  "mode": "",
+                  "number": 1
+                },
+                "types": [
+                  "cold"
+                ]
+              }
+            ]
+          },
+          "description": {
+            "chat_flavor": ""
+          },
+          "duration": {
+            "concentration": false,
+            "override": false,
+            "special": "",
+            "units": "inst",
+            "value": null
+          },
+          "effects": [],
+          "flags": {},
+          "id": "VP3t6lmmuXKGCRwX",
+          "img": "",
+          "kind": "attack",
+          "name": "",
+          "range": {
+            "override": false,
+            "special": "",
+            "units": "self",
+            "value": null
+          },
+          "sort": 0,
+          "target": {
+            "affects": {
+              "choice": false,
+              "count": "",
+              "special": "",
+              "type": ""
+            },
+            "override": false,
+            "prompt": true,
+            "template": {
+              "contiguous": false,
+              "count": "",
+              "height": "",
+              "size": "",
+              "stationary": false,
+              "type": "",
+              "units": "ft",
+              "width": ""
+            }
+          },
+          "uses": {
+            "max": "",
+            "recovery": [],
+            "spent": 0
+          },
+          "visibility": {
+            "identifier": "",
+            "level": {
+              "max": null,
+              "min": null
+            },
+            "require_attunement": false,
+            "require_identification": false,
+            "require_magic": false
+          }
+        }
+      ],
+      "description": "[[/attack extended]]. [[/damage average extended]].",
+      "kind": "action",
+      "legendary_cost": null,
+      "name": "Rend",
+      "recharge": null,
+      "slug": "rend",
+      "uses_per_day": null
+    },
+    {
+      "activities": [
+        {
+          "activation": {
+            "condition": "",
+            "override": false,
+            "type": "action",
+            "value": null
+          },
+          "consumption": {
+            "scaling": {
+              "allowed": false,
+              "max": ""
+            },
+            "spell_slot": true,
+            "targets": [
+              {
+                "scaling": {
+                  "formula": "",
+                  "mode": ""
+                },
+                "target": "",
+                "type": "itemUses",
+                "value": "1"
+              }
+            ]
+          },
+          "damage": {
+            "on_save": "half",
+            "parts": [
+              {
+                "bonus": "",
+                "custom": {
+                  "enabled": false,
+                  "formula": ""
+                },
+                "denomination": 8,
+                "number": 9,
+                "scaling": {
+                  "formula": "",
+                  "mode": "",
+                  "number": 1
+                },
+                "types": [
+                  "cold"
+                ]
+              }
+            ]
+          },
+          "description": {
+            "chat_flavor": ""
+          },
+          "duration": {
+            "concentration": false,
+            "override": false,
+            "special": "",
+            "units": "inst",
+            "value": null
+          },
+          "effects": [],
+          "flags": {},
+          "id": "8P7hmd3Nron4RAIv",
+          "img": "",
+          "kind": "save",
+          "name": "",
+          "range": {
+            "override": false,
+            "special": "",
+            "units": "self",
+            "value": null
+          },
+          "save": {
+            "ability": [
+              "con"
+            ],
+            "dc": {
+              "calculation": "con",
+              "formula": ""
+            }
+          },
+          "sort": 0,
+          "target": {
+            "affects": {
+              "choice": false,
+              "count": "",
+              "special": "",
+              "type": "creature"
+            },
+            "override": false,
+            "prompt": true,
+            "template": {
+              "contiguous": false,
+              "count": "",
+              "height": "",
+              "size": "30",
+              "stationary": false,
+              "type": "cone",
+              "units": "ft",
+              "width": ""
+            }
+          },
+          "uses": {
+            "max": "",
+            "recovery": [],
+            "spent": 0
+          },
+          "visibility": {
+            "identifier": "",
+            "level": {
+              "max": null,
+              "min": null
+            },
+            "require_attunement": false,
+            "require_identification": false,
+            "require_magic": false
+          }
+        }
+      ],
+      "description": "Constitution Saving Throw: DC [[lookup @save.dc.value activity=8P7hmd3Nron4RAIv]], each [[lookup @target.affects.type activity=8P7hmd3Nron4RAIv]] in a [[lookup @target.template.size activity=8P7hmd3Nron4RAIv]]-foot Cone.\n\nFailure: [[/damage average]] damage.\n\nSuccess: Half damage.",
+      "kind": "action",
+      "legendary_cost": null,
+      "name": "Cold Breath",
+      "recharge": "5-6",
+      "slug": "cold-breath",
+      "uses_per_day": null
+    }
+  ],
+  "alignment": "Chaotic Evil",
+  "condition_immunities": [],
+  "cr": 6.0,
+  "creature_size": "large",
+  "creature_type": "dragon",
+  "damage_immunities": [
+    "cold"
+  ],
+  "damage_resistances": [],
+  "damage_vulnerabilities": [],
+  "description": "",
+  "hp": 123,
+  "hp_dice": "13d10 + 52",
+  "lair_actions": [],
+  "languages": [
+    "Common",
+    "Draconic"
+  ],
+  "legendary_actions": [],
+  "movement": {
+    "burrow": 20,
+    "climb": null,
+    "fly": 80,
+    "hover": false,
+    "swim": 40,
+    "walk": 40
+  },
+  "name": "Young White Dragon",
+  "proficiency_bonus": 3,
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/actors24/dragon/young-white-dragon.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "saving_throws": {
+    "cha": null,
+    "con": null,
+    "dex": 3,
+    "int": null,
+    "str": null,
+    "wis": 3
+  },
+  "senses": {
+    "blindsight": 30,
+    "darkvision": 120,
+    "passive_perception": 16,
+    "tremorsense": null,
+    "truesight": null
+  },
+  "skills": {
+    "acrobatics": null,
+    "animal_handling": null,
+    "arcana": null,
+    "athletics": null,
+    "deception": null,
+    "history": null,
+    "insight": null,
+    "intimidation": null,
+    "investigation": null,
+    "medicine": null,
+    "nature": null,
+    "perception": 6,
+    "performance": null,
+    "persuasion": null,
+    "religion": null,
+    "sleight_of_hand": null,
+    "stealth": 3,
+    "survival": null
+  },
+  "slug": "young-white-dragon",
+  "special_abilities": [
+    {
+      "activities": [],
+      "description": "The [[lookup @name lowercase]]{monster} can move across and climb icy surfaces without needing to make an ability check. Additionally, &amp;Reference[Difficult Terrain] composed of ice or snow doesn't cost it extra movement.",
+      "kind": "special",
+      "legendary_cost": null,
+      "name": "Ice Walk",
+      "recharge": null,
+      "slug": "ice-walk",
+      "uses_per_day": null
+    }
+  ]
+}

@@ -1,0 +1,1597 @@
+{
+  "ability_scores": {
+    "cha": 18,
+    "con": 18,
+    "dex": 18,
+    "int": 17,
+    "str": 18,
+    "wis": 15
+  },
+  "ac": 16,
+  "actions": [
+    {
+      "activities": [
+        {
+          "activation": {
+            "condition": "",
+            "override": false,
+            "type": "action",
+            "value": null
+          },
+          "consumption": {
+            "scaling": {
+              "allowed": false,
+              "max": ""
+            },
+            "spell_slot": true,
+            "targets": []
+          },
+          "description": {
+            "chat_flavor": ""
+          },
+          "duration": {
+            "concentration": false,
+            "override": false,
+            "special": "",
+            "units": "inst",
+            "value": null
+          },
+          "effects": [],
+          "flags": {},
+          "id": "Ms63W7e3Mv2Margn",
+          "img": "",
+          "kind": "utility",
+          "name": "Use",
+          "range": {
+            "override": false,
+            "special": "",
+            "units": "self",
+            "value": null
+          },
+          "roll": {
+            "formula": "",
+            "name": "",
+            "prompt": false,
+            "visible": false
+          },
+          "sort": 0,
+          "target": {
+            "affects": {
+              "choice": false,
+              "count": "",
+              "special": "",
+              "type": ""
+            },
+            "override": false,
+            "prompt": true,
+            "template": {
+              "contiguous": false,
+              "count": "",
+              "height": "",
+              "size": "",
+              "stationary": false,
+              "type": "",
+              "units": "ft",
+              "width": ""
+            }
+          },
+          "uses": {
+            "max": "",
+            "recovery": [],
+            "spent": 0
+          },
+          "visibility": {
+            "identifier": "",
+            "level": {
+              "max": null,
+              "min": null
+            },
+            "require_attunement": false,
+            "require_identification": false,
+            "require_magic": false
+          }
+        }
+      ],
+      "description": "The [[lookup @name lowercase]]{monster} makes two [[/item .mmGraveStrike000]]{Grave Strike} attacks and uses [[/item .mmBite0000000000]]{Bite}.",
+      "kind": "action",
+      "legendary_cost": null,
+      "name": "Multiattack (Vampire Form Only)",
+      "recharge": null,
+      "slug": "multiattack",
+      "uses_per_day": null
+    },
+    {
+      "activities": [
+        {
+          "activation": {
+            "condition": "",
+            "override": false,
+            "type": "action",
+            "value": null
+          },
+          "attack": {
+            "ability": "",
+            "bonus": "",
+            "critical": {
+              "threshold": null
+            },
+            "flat": false,
+            "type": {
+              "classification": "",
+              "value": ""
+            }
+          },
+          "consumption": {
+            "scaling": {
+              "allowed": false,
+              "max": ""
+            },
+            "spell_slot": true,
+            "targets": []
+          },
+          "damage": {
+            "critical": {
+              "bonus": ""
+            },
+            "include_base": true,
+            "parts": [
+              {
+                "bonus": "",
+                "custom": {
+                  "enabled": false,
+                  "formula": ""
+                },
+                "denomination": 8,
+                "number": 1,
+                "scaling": {
+                  "formula": "",
+                  "mode": "",
+                  "number": 1
+                },
+                "types": [
+                  "bludgeoning"
+                ]
+              },
+              {
+                "bonus": "",
+                "custom": {
+                  "enabled": false,
+                  "formula": ""
+                },
+                "denomination": 6,
+                "number": 2,
+                "scaling": {
+                  "formula": "",
+                  "mode": "",
+                  "number": 1
+                },
+                "types": [
+                  "necrotic"
+                ]
+              }
+            ]
+          },
+          "description": {
+            "chat_flavor": "Vampire Form Only"
+          },
+          "duration": {
+            "concentration": false,
+            "override": false,
+            "special": "",
+            "units": "inst",
+            "value": null
+          },
+          "effects": [
+            {
+              "id": "BCbp3JZoHEGQ3Nzu",
+              "level": {
+                "max": null,
+                "min": null
+              },
+              "on_save": null,
+              "riders": null
+            }
+          ],
+          "flags": {},
+          "id": "cyu0AKgdlXdB7Mys",
+          "img": "",
+          "kind": "attack",
+          "name": "",
+          "range": {
+            "override": false,
+            "special": "",
+            "units": "self",
+            "value": null
+          },
+          "sort": 0,
+          "target": {
+            "affects": {
+              "choice": false,
+              "count": "",
+              "special": "",
+              "type": ""
+            },
+            "override": false,
+            "prompt": true,
+            "template": {
+              "contiguous": false,
+              "count": "",
+              "height": "",
+              "size": "",
+              "stationary": false,
+              "type": "",
+              "units": "ft",
+              "width": ""
+            }
+          },
+          "uses": {
+            "max": "",
+            "recovery": [],
+            "spent": 0
+          },
+          "visibility": {
+            "identifier": "",
+            "level": {
+              "max": null,
+              "min": null
+            },
+            "require_attunement": false,
+            "require_identification": false,
+            "require_magic": false
+          }
+        },
+        {
+          "activation": {
+            "condition": "",
+            "override": false,
+            "type": "special",
+            "value": null
+          },
+          "check": {
+            "ability": "",
+            "associated": [
+              "acr",
+              "ath"
+            ],
+            "dc": {
+              "calculation": "",
+              "formula": "@skills.ath.passive"
+            }
+          },
+          "consumption": {
+            "scaling": {
+              "allowed": false,
+              "max": ""
+            },
+            "spell_slot": true,
+            "targets": []
+          },
+          "description": {
+            "chat_flavor": ""
+          },
+          "duration": {
+            "concentration": false,
+            "override": false,
+            "special": "",
+            "units": "inst",
+            "value": null
+          },
+          "effects": [],
+          "flags": {},
+          "id": "eUp578Oy5y1HidZ9",
+          "img": "",
+          "kind": "check",
+          "name": "Escape Check",
+          "range": {
+            "override": false,
+            "special": "",
+            "units": "self",
+            "value": null
+          },
+          "sort": 0,
+          "target": {
+            "affects": {
+              "choice": false,
+              "count": "",
+              "special": "",
+              "type": ""
+            },
+            "override": false,
+            "prompt": true,
+            "template": {
+              "contiguous": false,
+              "count": "",
+              "height": "",
+              "size": "",
+              "stationary": false,
+              "type": "",
+              "units": "ft",
+              "width": ""
+            }
+          },
+          "uses": {
+            "max": "",
+            "recovery": [],
+            "spent": 0
+          },
+          "visibility": {
+            "identifier": "",
+            "level": {
+              "max": null,
+              "min": null
+            },
+            "require_attunement": false,
+            "require_identification": false,
+            "require_magic": false
+          }
+        }
+      ],
+      "description": "[[/attack extended]]. [[/damage average extended]]. If the target is a Large or smaller creature, it has the &amp;Reference[Grappled apply=false] condition (escape DC [[lookup @skills.ath.passive]]) from one of two hands.",
+      "kind": "action",
+      "legendary_cost": null,
+      "name": "Grave Strike (Vampire Form Only)",
+      "recharge": null,
+      "slug": "grave-strike",
+      "uses_per_day": null
+    },
+    {
+      "activities": [
+        {
+          "activation": {
+            "condition": "",
+            "override": false,
+            "type": "action",
+            "value": null
+          },
+          "consumption": {
+            "scaling": {
+              "allowed": false,
+              "max": ""
+            },
+            "spell_slot": true,
+            "targets": []
+          },
+          "damage": {
+            "on_save": "none",
+            "parts": [
+              {
+                "bonus": "@mod",
+                "custom": {
+                  "enabled": false,
+                  "formula": ""
+                },
+                "denomination": 4,
+                "number": 1,
+                "scaling": {
+                  "formula": "",
+                  "mode": "",
+                  "number": 1
+                },
+                "types": [
+                  "piercing"
+                ]
+              },
+              {
+                "bonus": "",
+                "custom": {
+                  "enabled": false,
+                  "formula": ""
+                },
+                "denomination": 8,
+                "number": 3,
+                "scaling": {
+                  "formula": "",
+                  "mode": "",
+                  "number": 1
+                },
+                "types": [
+                  "necrotic"
+                ]
+              }
+            ]
+          },
+          "description": {
+            "chat_flavor": ""
+          },
+          "duration": {
+            "concentration": false,
+            "override": false,
+            "special": "",
+            "units": "inst",
+            "value": null
+          },
+          "effects": [],
+          "flags": {},
+          "id": "ngPzlEI5pVSdBv86",
+          "img": "",
+          "kind": "save",
+          "name": "",
+          "range": {
+            "override": true,
+            "special": "",
+            "units": "ft",
+            "value": "5"
+          },
+          "save": {
+            "ability": [
+              "con"
+            ],
+            "dc": {
+              "calculation": "cha",
+              "formula": "8 + @mod + @prof"
+            }
+          },
+          "sort": 0,
+          "target": {
+            "affects": {
+              "choice": false,
+              "count": "1",
+              "special": "that is willing or that has the Grappled, Incapacitated, or Restrained condition",
+              "type": "creature"
+            },
+            "override": false,
+            "prompt": true,
+            "template": {
+              "contiguous": false,
+              "count": "",
+              "height": "",
+              "size": "",
+              "stationary": false,
+              "type": "",
+              "units": "ft",
+              "width": ""
+            }
+          },
+          "uses": {
+            "max": "",
+            "recovery": [],
+            "spent": 0
+          },
+          "visibility": {
+            "identifier": "",
+            "level": {
+              "max": null,
+              "min": null
+            },
+            "require_attunement": false,
+            "require_identification": false,
+            "require_magic": false
+          }
+        },
+        {
+          "activation": {
+            "condition": "",
+            "override": false,
+            "type": "action",
+            "value": null
+          },
+          "bonuses": {
+            "ac": "",
+            "attack_damage": "",
+            "hd": "",
+            "healing": "",
+            "hp": "",
+            "save_damage": ""
+          },
+          "consumption": {
+            "scaling": {
+              "allowed": false,
+              "max": ""
+            },
+            "spell_slot": true,
+            "targets": []
+          },
+          "creature_sizes": [],
+          "creature_types": [],
+          "description": {
+            "chat_flavor": ""
+          },
+          "duration": {
+            "concentration": false,
+            "override": false,
+            "special": "",
+            "units": "inst",
+            "value": null
+          },
+          "effects": [],
+          "flags": {},
+          "id": "oLqtEY8JoKIopB6u",
+          "img": "",
+          "kind": "summon",
+          "match": {
+            "ability": "",
+            "attacks": false,
+            "disposition": false,
+            "proficiency": false,
+            "saves": false
+          },
+          "name": "Vampire Spawn Rises",
+          "profiles": [
+            {
+              "count": "",
+              "cr": "",
+              "id": "OlYpkQNoTxYKs5gm",
+              "level": {
+                "max": null,
+                "min": null
+              },
+              "name": "",
+              "types": [],
+              "uuid": "Compendium.dnd5e.actors24.Actor.mmVampireSpawn00"
+            }
+          ],
+          "range": {
+            "override": false,
+            "special": "",
+            "units": "self",
+            "value": null
+          },
+          "sort": 0,
+          "summon": {
+            "identifier": null,
+            "mode": "",
+            "prompt": true
+          },
+          "target": {
+            "affects": {
+              "choice": false,
+              "count": "",
+              "special": "",
+              "type": ""
+            },
+            "override": false,
+            "prompt": true,
+            "template": {
+              "contiguous": false,
+              "count": "",
+              "height": "",
+              "size": "",
+              "stationary": false,
+              "type": "",
+              "units": "ft",
+              "width": ""
+            }
+          },
+          "temp_hp": "",
+          "uses": {
+            "max": "",
+            "recovery": [],
+            "spent": 0
+          },
+          "visibility": {
+            "identifier": "",
+            "level": {
+              "max": null,
+              "min": null
+            },
+            "require_attunement": false,
+            "require_identification": false,
+            "require_magic": false
+          }
+        }
+      ],
+      "description": "Constitution Saving Throw: DC [[lookup @save.dc.value activity=ngPzlEI5pVSdBv86]], one [[lookup @target.affects.type activity=ngPzlEI5pVSdBv86]] within [[lookup @range.value activity=ngPzlEI5pVSdBv86]] feet [[lookup @target.affects.special activity=ngPzlEI5pVSdBv86]].\n\nFailure: [[/damage average]] damage. The target's Hit Point maximum decreases by an amount equal to the Necrotic damage taken, and the [[lookup @name lowercase]]{monster} regains Hit Points equal to that amount. A Humanoid reduced to 0 Hit Points by this damage and then buried rises the following sunset as a Vampire Spawn under the [[lookup @name lowercase]]{monster}'s control.",
+      "kind": "action",
+      "legendary_cost": null,
+      "name": "Bite (Bat or Vampire Form Only)",
+      "recharge": null,
+      "slug": "bite",
+      "uses_per_day": null
+    },
+    {
+      "activities": [
+        {
+          "activation": {
+            "condition": "",
+            "override": true,
+            "type": "bonus",
+            "value": null
+          },
+          "consumption": {
+            "scaling": {
+              "allowed": false,
+              "max": ""
+            },
+            "spell_slot": true,
+            "targets": [
+              {
+                "scaling": {
+                  "formula": "",
+                  "mode": ""
+                },
+                "target": "",
+                "type": "itemUses",
+                "value": "1"
+              }
+            ]
+          },
+          "description": {
+            "chat_flavor": ""
+          },
+          "duration": {
+            "concentration": false,
+            "override": true,
+            "special": "",
+            "units": "hour",
+            "value": "24"
+          },
+          "flags": {},
+          "id": "fcRXSTOlFJShCl52",
+          "img": "",
+          "kind": "cast",
+          "name": "",
+          "range": {
+            "override": false,
+            "special": "",
+            "units": "self",
+            "value": null
+          },
+          "sort": 0,
+          "spell": {
+            "ability": "cha",
+            "challenge": {
+              "attack": null,
+              "override": false,
+              "save": null
+            },
+            "level": 1,
+            "properties": [
+              "vocal",
+              "somatic",
+              "material"
+            ],
+            "spellbook": true,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplCharmPerso"
+          },
+          "target": {
+            "affects": {
+              "choice": false,
+              "count": "",
+              "special": "",
+              "type": ""
+            },
+            "override": false,
+            "prompt": true,
+            "template": {
+              "contiguous": false,
+              "count": "",
+              "height": "",
+              "size": "",
+              "stationary": false,
+              "type": "",
+              "units": "ft",
+              "width": ""
+            }
+          },
+          "uses": {
+            "max": "",
+            "recovery": [],
+            "spent": 0
+          },
+          "visibility": {
+            "identifier": "",
+            "level": {
+              "max": null,
+              "min": null
+            },
+            "require_attunement": false,
+            "require_identification": false,
+            "require_magic": false
+          }
+        }
+      ],
+      "description": "The [[lookup @name lowercase]]{monster} casts phbsplCharmPerso, requiring no spell components and using Charisma as the spellcasting ability (spell save DC [[lookup @abilities.cha.dc]]), and the duration is [[lookup @duration.value activity=fcRXSTOlFJShCl52]] hours. The &amp;Reference[Charmed apply=false] target is a willing recipient of the [[lookup @name lowercase]]{monster}'s [[/item .mmBite0000000000]]{Bite}, the damage of which doesn't end the spell. When the spell ends, the target is unaware it was Charmed by the [[lookup @name lowercase]]{monster}.",
+      "kind": "bonus_action",
+      "legendary_cost": null,
+      "name": "Charm",
+      "recharge": "5-6",
+      "slug": "charm",
+      "uses_per_day": null
+    },
+    {
+      "activities": [
+        {
+          "activation": {
+            "condition": "",
+            "override": false,
+            "type": "bonus",
+            "value": null
+          },
+          "bonuses": {
+            "ac": "",
+            "attack_damage": "",
+            "hd": "",
+            "healing": "",
+            "hp": "",
+            "save_damage": ""
+          },
+          "consumption": {
+            "scaling": {
+              "allowed": false,
+              "max": ""
+            },
+            "spell_slot": true,
+            "targets": []
+          },
+          "creature_sizes": [],
+          "creature_types": [],
+          "description": {
+            "chat_flavor": ""
+          },
+          "duration": {
+            "concentration": false,
+            "override": false,
+            "special": "",
+            "units": "inst",
+            "value": null
+          },
+          "effects": [],
+          "flags": {},
+          "id": "b2dx1XJb3K6MU5tB",
+          "img": "",
+          "kind": "summon",
+          "match": {
+            "ability": "",
+            "attacks": false,
+            "disposition": false,
+            "proficiency": false,
+            "saves": false
+          },
+          "name": "Transform Into Bat",
+          "profiles": [
+            {
+              "count": "",
+              "cr": "",
+              "id": "vWYuudvXTt7s5kuC",
+              "level": {
+                "max": null,
+                "min": null
+              },
+              "name": "",
+              "types": [],
+              "uuid": "Compendium.dnd5e.actors24.Actor.mmBat00000000000"
+            }
+          ],
+          "range": {
+            "override": false,
+            "special": "",
+            "units": "self",
+            "value": null
+          },
+          "sort": 0,
+          "summon": {
+            "identifier": null,
+            "mode": "",
+            "prompt": false
+          },
+          "target": {
+            "affects": {
+              "choice": false,
+              "count": "",
+              "special": "",
+              "type": ""
+            },
+            "override": false,
+            "prompt": false,
+            "template": {
+              "contiguous": false,
+              "count": "",
+              "height": "",
+              "size": "",
+              "stationary": false,
+              "type": "",
+              "units": "ft",
+              "width": ""
+            }
+          },
+          "temp_hp": "",
+          "uses": {
+            "max": "",
+            "recovery": [],
+            "spent": 0
+          },
+          "visibility": {
+            "identifier": "",
+            "level": {
+              "max": null,
+              "min": null
+            },
+            "require_attunement": false,
+            "require_identification": false,
+            "require_magic": false
+          }
+        }
+      ],
+      "description": "If the [[lookup @name lowercase]]{monster} isn't in sunlight or running water, it shape-shifts into a Tiny bat (Speed 5 ft., Fly Speed 30 ft.) or a Medium cloud of mist (Speed 5 ft., Fly Speed 20 ft. [hover]), or it returns to its vampire form. Anything it is wearing transforms with it.\n\nWhile in bat form, the [[lookup @name lowercase]]{monster} can't speak. Its game statistics, other than its size and Speed, are unchanged.\n\nWhile in mist form, the [[lookup @name lowercase]]{monster} can't take any actions, speak, or manipulate objects. It is weightless and can enter an enemy's space and stop there. If air can pass through a space, the mist can do so, but it can't pass through liquid. It has Resistance to all damage, except the damage it takes from sunlight.",
+      "kind": "bonus_action",
+      "legendary_cost": null,
+      "name": "Shape-Shift",
+      "recharge": null,
+      "slug": "shape-shift",
+      "uses_per_day": null
+    }
+  ],
+  "alignment": "Lawful Evil",
+  "condition_immunities": [],
+  "cr": 13.0,
+  "creature_size": "medium",
+  "creature_type": "undead",
+  "damage_immunities": [],
+  "damage_resistances": [
+    "necrotic"
+  ],
+  "damage_vulnerabilities": [],
+  "description": "",
+  "hp": 195,
+  "hp_dice": "23d8 + 92",
+  "lair_actions": [],
+  "languages": [
+    "Common plus two other languages"
+  ],
+  "legendary_actions": [
+    {
+      "activities": [
+        {
+          "activation": {
+            "condition": "",
+            "override": true,
+            "type": "legendary",
+            "value": 1
+          },
+          "consumption": {
+            "scaling": {
+              "allowed": false,
+              "max": ""
+            },
+            "spell_slot": true,
+            "targets": []
+          },
+          "description": {
+            "chat_flavor": ""
+          },
+          "duration": {
+            "concentration": false,
+            "override": false,
+            "special": "",
+            "units": "inst",
+            "value": null
+          },
+          "flags": {},
+          "id": "M0FuOWsRw7TefgiH",
+          "img": "",
+          "kind": "cast",
+          "name": "",
+          "range": {
+            "override": false,
+            "special": "",
+            "units": "self",
+            "value": null
+          },
+          "sort": 0,
+          "spell": {
+            "ability": "cha",
+            "challenge": {
+              "attack": null,
+              "override": false,
+              "save": null
+            },
+            "level": 1,
+            "properties": [
+              "vocal",
+              "somatic",
+              "material"
+            ],
+            "spellbook": true,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplCommand000"
+          },
+          "target": {
+            "affects": {
+              "choice": false,
+              "count": "",
+              "special": "",
+              "type": ""
+            },
+            "override": false,
+            "prompt": true,
+            "template": {
+              "contiguous": false,
+              "count": "",
+              "height": "",
+              "size": "",
+              "stationary": false,
+              "type": "",
+              "units": "ft",
+              "width": ""
+            }
+          },
+          "uses": {
+            "max": "",
+            "recovery": [],
+            "spent": 0
+          },
+          "visibility": {
+            "identifier": "",
+            "level": {
+              "max": null,
+              "min": null
+            },
+            "require_attunement": false,
+            "require_identification": false,
+            "require_magic": false
+          }
+        }
+      ],
+      "description": "The [[lookup @name lowercase]]{monster} casts phbsplCommand000, requiring no spell components and using Charisma as the spellcasting ability (spell save DC [[lookup @abilities.cha.dc]]). The [[lookup @name lowercase]]{monster} can't take this action again until the start of its next turn.",
+      "kind": "legendary",
+      "legendary_cost": 1,
+      "name": "Beguile",
+      "recharge": null,
+      "slug": "beguile",
+      "uses_per_day": null
+    },
+    {
+      "activities": [
+        {
+          "activation": {
+            "condition": "",
+            "override": false,
+            "type": "legendary",
+            "value": 1
+          },
+          "consumption": {
+            "scaling": {
+              "allowed": false,
+              "max": ""
+            },
+            "spell_slot": true,
+            "targets": []
+          },
+          "description": {
+            "chat_flavor": ""
+          },
+          "duration": {
+            "concentration": false,
+            "override": false,
+            "special": "",
+            "units": "inst",
+            "value": null
+          },
+          "effects": [],
+          "flags": {},
+          "id": "uCN3OgNKbq0iI81F",
+          "img": "systems/dnd5e/icons/svg/monster.svg",
+          "kind": "utility",
+          "name": "Expend Use",
+          "range": {
+            "override": false,
+            "special": "",
+            "units": "self",
+            "value": null
+          },
+          "roll": {
+            "formula": "",
+            "name": "",
+            "prompt": false,
+            "visible": false
+          },
+          "sort": 0,
+          "target": {
+            "affects": {
+              "choice": false,
+              "count": "",
+              "special": "",
+              "type": ""
+            },
+            "override": false,
+            "prompt": false,
+            "template": {
+              "contiguous": false,
+              "count": "",
+              "height": "",
+              "size": "",
+              "stationary": false,
+              "type": "",
+              "units": "ft",
+              "width": ""
+            }
+          },
+          "uses": {
+            "max": "",
+            "recovery": [],
+            "spent": 0
+          },
+          "visibility": {
+            "identifier": "",
+            "level": {
+              "max": null,
+              "min": null
+            },
+            "require_attunement": false,
+            "require_identification": false,
+            "require_magic": false
+          }
+        }
+      ],
+      "description": "The [[lookup @name lowercase]]{monster} moves up to half its Speed, and it makes one [[/item .mmGraveStrike000]]{Grave Strike} attack.",
+      "kind": "legendary",
+      "legendary_cost": 1,
+      "name": "Deathless Strike",
+      "recharge": null,
+      "slug": "deathless-strike",
+      "uses_per_day": null
+    }
+  ],
+  "movement": {
+    "burrow": null,
+    "climb": 40,
+    "fly": null,
+    "hover": false,
+    "swim": null,
+    "walk": 40
+  },
+  "name": "Vampire",
+  "proficiency_bonus": 5,
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/actors24/undead/vampire.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "saving_throws": {
+    "cha": 9,
+    "con": 9,
+    "dex": 9,
+    "int": null,
+    "str": null,
+    "wis": 7
+  },
+  "senses": {
+    "blindsight": null,
+    "darkvision": 120,
+    "passive_perception": 17,
+    "tremorsense": null,
+    "truesight": null
+  },
+  "skills": {
+    "acrobatics": null,
+    "animal_handling": null,
+    "arcana": null,
+    "athletics": null,
+    "deception": null,
+    "history": null,
+    "insight": null,
+    "intimidation": null,
+    "investigation": null,
+    "medicine": null,
+    "nature": null,
+    "perception": 7,
+    "performance": null,
+    "persuasion": null,
+    "religion": null,
+    "sleight_of_hand": null,
+    "stealth": 9,
+    "survival": null
+  },
+  "slug": "vampire",
+  "special_abilities": [
+    {
+      "activities": [
+        {
+          "activation": {
+            "condition": "fails a saving throw",
+            "override": false,
+            "type": "special",
+            "value": null
+          },
+          "consumption": {
+            "scaling": {
+              "allowed": false,
+              "max": ""
+            },
+            "spell_slot": true,
+            "targets": [
+              {
+                "scaling": {
+                  "formula": "",
+                  "mode": ""
+                },
+                "target": "resources.legres.value",
+                "type": "attribute",
+                "value": "1"
+              }
+            ]
+          },
+          "description": {
+            "chat_flavor": ""
+          },
+          "duration": {
+            "concentration": false,
+            "override": false,
+            "special": "",
+            "units": "inst",
+            "value": null
+          },
+          "effects": [],
+          "flags": {},
+          "id": "nLPRJi7ipeAet7ir",
+          "img": "systems/dnd5e/icons/svg/monster.svg",
+          "kind": "utility",
+          "name": "Expend Use",
+          "range": {
+            "override": false,
+            "special": "",
+            "units": "self",
+            "value": null
+          },
+          "roll": {
+            "formula": "",
+            "name": "",
+            "prompt": false,
+            "visible": false
+          },
+          "sort": 0,
+          "target": {
+            "affects": {
+              "choice": false,
+              "count": "",
+              "special": "",
+              "type": ""
+            },
+            "override": false,
+            "prompt": true,
+            "template": {
+              "contiguous": false,
+              "count": "",
+              "height": "",
+              "size": "",
+              "stationary": false,
+              "type": "",
+              "units": "ft",
+              "width": ""
+            }
+          },
+          "uses": {
+            "max": "",
+            "recovery": [],
+            "spent": 0
+          },
+          "visibility": {
+            "identifier": "",
+            "level": {
+              "max": null,
+              "min": null
+            },
+            "require_attunement": false,
+            "require_identification": false,
+            "require_magic": false
+          }
+        }
+      ],
+      "description": "If the [[lookup @name lowercase]]{monster} fails a saving throw, it can choose to succeed instead.",
+      "kind": "special",
+      "legendary_cost": null,
+      "name": "Legendary Resistance",
+      "recharge": null,
+      "slug": "legendary-resistance",
+      "uses_per_day": null
+    },
+    {
+      "activities": [
+        {
+          "activation": {
+            "condition": "",
+            "override": false,
+            "type": "",
+            "value": null
+          },
+          "consumption": {
+            "scaling": {
+              "allowed": false,
+              "max": ""
+            },
+            "spell_slot": true,
+            "targets": []
+          },
+          "description": {
+            "chat_flavor": ""
+          },
+          "duration": {
+            "concentration": false,
+            "override": false,
+            "special": "",
+            "units": "inst",
+            "value": null
+          },
+          "effects": [
+            {
+              "id": "SGrTBpl938UIe4e3",
+              "level": {
+                "max": null,
+                "min": null
+              },
+              "on_save": null,
+              "riders": null
+            }
+          ],
+          "flags": {},
+          "id": "OJoFvF9VhZ0OuwfH",
+          "img": "systems/dnd5e/icons/svg/statuses/paralyzed.svg",
+          "kind": "utility",
+          "name": "Paralyzed",
+          "range": {
+            "override": false,
+            "special": "",
+            "units": "self",
+            "value": null
+          },
+          "roll": {
+            "formula": "",
+            "name": "",
+            "prompt": false,
+            "visible": false
+          },
+          "sort": 0,
+          "target": {
+            "affects": {
+              "choice": false,
+              "count": "",
+              "special": "",
+              "type": ""
+            },
+            "override": false,
+            "prompt": false,
+            "template": {
+              "contiguous": false,
+              "count": "",
+              "height": "",
+              "size": "",
+              "stationary": false,
+              "type": "",
+              "units": "ft",
+              "width": ""
+            }
+          },
+          "uses": {
+            "max": "",
+            "recovery": [],
+            "spent": 0
+          },
+          "visibility": {
+            "identifier": "",
+            "level": {
+              "max": null,
+              "min": null
+            },
+            "require_attunement": false,
+            "require_identification": false,
+            "require_magic": false
+          }
+        }
+      ],
+      "description": "If the [[lookup @name lowercase]]{monster} drops to 0 Hit Points outside its resting place, the [[lookup @name lowercase]]{monster} uses Shape-Shift to become mist (no action required). If it can't use Shape-Shift, it is destroyed.\n\nWhile it has 0 Hit Points in mist form, it can't return to its vampire form, and it must reach its resting place within 2 hours or be destroyed. Once in its resting place, it returns to its vampire form and has the &amp;Reference[Paralyzed apply=false] condition until it regains any Hit Points, and it regains 1 Hit Point after spending 1 hour there.",
+      "kind": "special",
+      "legendary_cost": null,
+      "name": "Misty Escape",
+      "recharge": null,
+      "slug": "misty-escape",
+      "uses_per_day": null
+    },
+    {
+      "activities": [],
+      "description": "The [[lookup @name lowercase]]{monster} can climb difficult surfaces, including along ceilings, without needing to make an ability check.",
+      "kind": "special",
+      "legendary_cost": null,
+      "name": "Spider Climb",
+      "recharge": null,
+      "slug": "spider-climb",
+      "uses_per_day": null
+    },
+    {
+      "activities": [
+        {
+          "activation": {
+            "condition": "",
+            "override": false,
+            "type": "",
+            "value": null
+          },
+          "consumption": {
+            "scaling": {
+              "allowed": false,
+              "max": ""
+            },
+            "spell_slot": true,
+            "targets": []
+          },
+          "damage": {
+            "critical": {
+              "allow": false,
+              "bonus": ""
+            },
+            "parts": [
+              {
+                "bonus": "20",
+                "custom": {
+                  "enabled": false,
+                  "formula": ""
+                },
+                "denomination": 0,
+                "number": null,
+                "scaling": {
+                  "formula": "",
+                  "mode": "",
+                  "number": 1
+                },
+                "types": [
+                  "acid"
+                ]
+              }
+            ]
+          },
+          "description": {
+            "chat_flavor": "Damage from Running Water"
+          },
+          "duration": {
+            "concentration": false,
+            "override": false,
+            "special": "",
+            "units": "inst",
+            "value": null
+          },
+          "effects": [],
+          "flags": {},
+          "id": "Ss5LwXo6bHOciPNQ",
+          "img": "",
+          "kind": "damage",
+          "name": "Damage: Running Water",
+          "range": {
+            "override": false,
+            "special": "",
+            "units": "self",
+            "value": null
+          },
+          "sort": 100000,
+          "target": {
+            "affects": {
+              "choice": false,
+              "count": "",
+              "special": "",
+              "type": ""
+            },
+            "override": false,
+            "prompt": true,
+            "template": {
+              "contiguous": false,
+              "count": "",
+              "height": "",
+              "size": "",
+              "stationary": false,
+              "type": "",
+              "units": "ft",
+              "width": ""
+            }
+          },
+          "uses": {
+            "max": "",
+            "recovery": [],
+            "spent": 0
+          },
+          "visibility": {
+            "identifier": "",
+            "level": {
+              "max": null,
+              "min": null
+            },
+            "require_attunement": false,
+            "require_identification": false,
+            "require_magic": false
+          }
+        },
+        {
+          "activation": {
+            "condition": "",
+            "override": false,
+            "type": "",
+            "value": null
+          },
+          "consumption": {
+            "scaling": {
+              "allowed": false,
+              "max": ""
+            },
+            "spell_slot": true,
+            "targets": []
+          },
+          "damage": {
+            "critical": {
+              "allow": false,
+              "bonus": ""
+            },
+            "parts": [
+              {
+                "bonus": "20",
+                "custom": {
+                  "enabled": false,
+                  "formula": ""
+                },
+                "denomination": 0,
+                "number": null,
+                "scaling": {
+                  "formula": "",
+                  "mode": "",
+                  "number": 1
+                },
+                "types": [
+                  "radiant"
+                ]
+              }
+            ]
+          },
+          "description": {
+            "chat_flavor": "Damage from Sunligvht"
+          },
+          "duration": {
+            "concentration": false,
+            "override": false,
+            "special": "",
+            "units": "inst",
+            "value": null
+          },
+          "effects": [
+            {
+              "id": "v2EdEMrtcddO1p8U",
+              "level": {
+                "max": null,
+                "min": null
+              },
+              "on_save": null,
+              "riders": null
+            }
+          ],
+          "flags": {},
+          "id": "Q18pvRsbOyRbHiVK",
+          "img": "",
+          "kind": "damage",
+          "name": "Damage: Sunlight",
+          "range": {
+            "override": false,
+            "special": "",
+            "units": "self",
+            "value": null
+          },
+          "sort": 300000,
+          "target": {
+            "affects": {
+              "choice": false,
+              "count": "",
+              "special": "",
+              "type": ""
+            },
+            "override": false,
+            "prompt": true,
+            "template": {
+              "contiguous": false,
+              "count": "",
+              "height": "",
+              "size": "",
+              "stationary": false,
+              "type": "",
+              "units": "ft",
+              "width": ""
+            }
+          },
+          "uses": {
+            "max": "",
+            "recovery": [],
+            "spent": 0
+          },
+          "visibility": {
+            "identifier": "",
+            "level": {
+              "max": null,
+              "min": null
+            },
+            "require_attunement": false,
+            "require_identification": false,
+            "require_magic": false
+          }
+        },
+        {
+          "activation": {
+            "condition": "",
+            "override": false,
+            "type": "",
+            "value": null
+          },
+          "consumption": {
+            "scaling": {
+              "allowed": false,
+              "max": ""
+            },
+            "spell_slot": true,
+            "targets": []
+          },
+          "description": {
+            "chat_flavor": ""
+          },
+          "duration": {
+            "concentration": false,
+            "override": false,
+            "special": "",
+            "units": "inst",
+            "value": null
+          },
+          "effects": [],
+          "flags": {},
+          "id": "HsKPQH0SsWtL4znC",
+          "img": "systems/dnd5e/icons/svg/monster.svg",
+          "kind": "utility",
+          "name": "Staked to the Heart",
+          "range": {
+            "override": false,
+            "special": "",
+            "units": "self",
+            "value": null
+          },
+          "roll": {
+            "formula": "",
+            "name": "",
+            "prompt": false,
+            "visible": false
+          },
+          "sort": 200000,
+          "target": {
+            "affects": {
+              "choice": false,
+              "count": "",
+              "special": "",
+              "type": ""
+            },
+            "override": false,
+            "prompt": false,
+            "template": {
+              "contiguous": false,
+              "count": "",
+              "height": "",
+              "size": "",
+              "stationary": false,
+              "type": "",
+              "units": "ft",
+              "width": ""
+            }
+          },
+          "uses": {
+            "max": "",
+            "recovery": [],
+            "spent": 0
+          },
+          "visibility": {
+            "identifier": "",
+            "level": {
+              "max": null,
+              "min": null
+            },
+            "require_attunement": false,
+            "require_identification": false,
+            "require_magic": false
+          }
+        }
+      ],
+      "description": "The [[lookup @name lowercase]]{monster} has these weaknesses:\n\nForbiddance. The [[lookup @name lowercase]]{monster} can't enter a residence without an invitation from an occupant.\n\nRunning Water. The [[lookup @name lowercase]]{monster} takes 20 Acid damage if it ends its turn in running water.\n\nStake to the Heart. The [[lookup @name lowercase]]{monster} is destroyed if a weapon that deals Piercing damage is driven into the [[lookup @name lowercase]]{monster}'s heart while the [[lookup @name lowercase]]{monster} has the Incapacitated condition.\n\nSunlight. The [[lookup @name lowercase]]{monster} takes 20 Radiant damage if it starts its turn in sunlight. While in sunlight, it has Disadvantage on attack rolls and ability checks.",
+      "kind": "special",
+      "legendary_cost": null,
+      "name": "Vampire Weakness",
+      "recharge": null,
+      "slug": "vampire-weakness",
+      "uses_per_day": null
+    }
+  ]
+}

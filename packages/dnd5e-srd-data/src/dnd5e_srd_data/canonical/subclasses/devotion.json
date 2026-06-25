@@ -1,0 +1,356 @@
+{
+  "advancement": [
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbpdnDevotionSp"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbpdnSacredWeap"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "jxzvTfXzjLzIvQbF",
+      "level": 3,
+      "title": "Subclass Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbpdnDevotionAu"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "jix1tV556sLlpGYr",
+      "level": 7,
+      "title": "Subclass Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbpdnSmiteOfPro"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "3t0heVzpZV6AClAz",
+      "level": 15,
+      "title": "Subclass Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbpdnHolyNimbus"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "1Koj8mZO5gVtRril",
+      "level": 20,
+      "title": "Subclass Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplShieldofFa"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbEvilAndGoodPr"
+          }
+        ],
+        "optional": false,
+        "spell": {
+          "ability": [],
+          "preparation": "always",
+          "uses": {
+            "max": "",
+            "per": "",
+            "requireSlot": false
+          }
+        }
+      },
+      "hint": "",
+      "id": "vplzciS9QHhcjdQt",
+      "level": 3,
+      "title": "Oath of Devotion Spells",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplZoneofTrut"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplAid0000000"
+          }
+        ],
+        "optional": false,
+        "spell": {
+          "ability": [],
+          "preparation": "always",
+          "uses": {
+            "max": "",
+            "per": "",
+            "requireSlot": false
+          }
+        }
+      },
+      "hint": "",
+      "id": "9rAVikjK0DFEkhXH",
+      "level": 5,
+      "title": "Oath of Devotion Spells",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplDispelMagi"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplBeaconofHo"
+          }
+        ],
+        "optional": false,
+        "spell": {
+          "ability": [],
+          "preparation": "always",
+          "uses": {
+            "max": "",
+            "per": "",
+            "requireSlot": false
+          }
+        }
+      },
+      "hint": "",
+      "id": "K8RRsq7vmiYuKAAv",
+      "level": 9,
+      "title": "Oath of Devotion Spells",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplGuardianof"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplFreedomofM"
+          }
+        ],
+        "optional": false,
+        "spell": {
+          "ability": [],
+          "preparation": "always",
+          "uses": {
+            "max": "",
+            "per": "",
+            "requireSlot": false
+          }
+        }
+      },
+      "hint": "",
+      "id": "VuZSFzUklRDrpP5g",
+      "level": 13,
+      "title": "Oath of Devotion Spells",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplFlameStrik"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplCommune000"
+          }
+        ],
+        "optional": false,
+        "spell": {
+          "ability": [],
+          "preparation": "always",
+          "uses": {
+            "max": "",
+            "per": "",
+            "requireSlot": false
+          }
+        }
+      },
+      "hint": "",
+      "id": "Qji0iHmIWmCZcKt8",
+      "level": 17,
+      "title": "Oath of Devotion Spells",
+      "type": "ItemGrant",
+      "value": {}
+    }
+  ],
+  "class_identifier": "paladin",
+  "description": "Uphold the Ideals of Justice and Order\n\nThe Oath of Devotion binds Paladins to the ideals of justice and order. These Paladins meet the archetype of the knight in shining armor. They hold themselves to the highest standards of conduct, and some\u2014for better or worse\u2014hold the rest of the world to the same standards.\n\nMany who swear this oath are devoted to gods of law and good and use their gods' tenets as the measure of personal devotion. Others hold angels as their ideals and incorporate images of angelic wings into their helmets or coats of arms.\n\nThese paladins share the following tenets:\n\nLet your word be your promise.\n\nProtect the weak and never fear to act.\n\nLet your honorable deeds be an example.",
+  "entry_kind": "subclass",
+  "feature_choices": [],
+  "granted_features": [
+    {
+      "level": 3,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "oath-of-devotion-spells"
+    },
+    {
+      "level": 3,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "sacred-weapon"
+    },
+    {
+      "level": 7,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "aura-of-devotion"
+    },
+    {
+      "level": 15,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "smite-of-protection"
+    },
+    {
+      "level": 20,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "holy-nimbus"
+    },
+    {
+      "level": 3,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "shield-of-faith"
+    },
+    {
+      "level": 3,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "protection-from-evil-and-good"
+    },
+    {
+      "level": 5,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "zone-of-truth"
+    },
+    {
+      "level": 5,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "aid"
+    },
+    {
+      "level": 9,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "dispel-magic"
+    },
+    {
+      "level": 9,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "beacon-of-hope"
+    },
+    {
+      "level": 13,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "guardian-of-faith"
+    },
+    {
+      "level": 13,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "freedom-of-movement"
+    },
+    {
+      "level": 17,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "flame-strike"
+    },
+    {
+      "level": 17,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "commune"
+    }
+  ],
+  "identifier": "devotion",
+  "name": "Oath of Devotion",
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/paladin/oath-of-devotion.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "devotion",
+  "spellcasting": {
+    "ability": "",
+    "progression": "none"
+  }
+}

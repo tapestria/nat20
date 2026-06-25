@@ -1,0 +1,518 @@
+{
+  "ability_scores": {
+    "cha": 5,
+    "con": 21,
+    "dex": 11,
+    "int": 2,
+    "str": 19,
+    "wis": 10
+  },
+  "ac": 17,
+  "actions": [
+    {
+      "activities": [
+        {
+          "activation": {
+            "condition": "",
+            "override": false,
+            "type": "action",
+            "value": null
+          },
+          "consumption": {
+            "scaling": {
+              "allowed": false,
+              "max": ""
+            },
+            "spell_slot": true,
+            "targets": []
+          },
+          "description": {
+            "chat_flavor": ""
+          },
+          "duration": {
+            "concentration": false,
+            "override": false,
+            "special": "",
+            "units": "inst",
+            "value": null
+          },
+          "effects": [],
+          "flags": {},
+          "id": "Ms63W7e3Mv2Margn",
+          "img": "systems/dnd5e/icons/svg/monster.svg",
+          "kind": "utility",
+          "name": "Expend Use",
+          "range": {
+            "override": false,
+            "special": "",
+            "units": "self",
+            "value": null
+          },
+          "roll": {
+            "formula": "",
+            "name": "",
+            "prompt": false,
+            "visible": false
+          },
+          "sort": 0,
+          "target": {
+            "affects": {
+              "choice": false,
+              "count": "",
+              "special": "",
+              "type": ""
+            },
+            "override": false,
+            "prompt": true,
+            "template": {
+              "contiguous": false,
+              "count": "",
+              "height": "",
+              "size": "",
+              "stationary": false,
+              "type": "",
+              "units": "ft",
+              "width": ""
+            }
+          },
+          "uses": {
+            "max": "",
+            "recovery": [],
+            "spent": 0
+          },
+          "visibility": {
+            "identifier": "",
+            "level": {
+              "max": null,
+              "min": null
+            },
+            "require_attunement": false,
+            "require_identification": false,
+            "require_magic": false
+          }
+        }
+      ],
+      "description": "The [[lookup @name lowercase]]{monster} makes two [[/item .mmBite0000000000]] attacks.",
+      "kind": "action",
+      "legendary_cost": null,
+      "name": "Multiattack",
+      "recharge": null,
+      "slug": "multiattack",
+      "uses_per_day": null
+    },
+    {
+      "activities": [
+        {
+          "activation": {
+            "condition": "",
+            "override": false,
+            "type": "action",
+            "value": null
+          },
+          "attack": {
+            "ability": "",
+            "bonus": "",
+            "critical": {
+              "threshold": null
+            },
+            "flat": false,
+            "type": {
+              "classification": "",
+              "value": ""
+            }
+          },
+          "consumption": {
+            "scaling": {
+              "allowed": false,
+              "max": ""
+            },
+            "spell_slot": true,
+            "targets": []
+          },
+          "damage": {
+            "critical": {
+              "bonus": ""
+            },
+            "include_base": true,
+            "parts": [
+              {
+                "bonus": "",
+                "custom": {
+                  "enabled": false,
+                  "formula": ""
+                },
+                "denomination": 12,
+                "number": 2,
+                "scaling": {
+                  "formula": "",
+                  "mode": "",
+                  "number": 1
+                },
+                "types": [
+                  "piercing"
+                ]
+              }
+            ]
+          },
+          "description": {
+            "chat_flavor": ""
+          },
+          "duration": {
+            "concentration": false,
+            "override": false,
+            "special": "",
+            "units": "inst",
+            "value": null
+          },
+          "effects": [],
+          "flags": {},
+          "id": "xWlMeXFjELfSUWX9",
+          "img": "",
+          "kind": "attack",
+          "name": "",
+          "range": {
+            "override": false,
+            "special": "",
+            "units": "self",
+            "value": null
+          },
+          "sort": 0,
+          "target": {
+            "affects": {
+              "choice": false,
+              "count": "",
+              "special": "",
+              "type": ""
+            },
+            "override": false,
+            "prompt": true,
+            "template": {
+              "contiguous": false,
+              "count": "",
+              "height": "",
+              "size": "",
+              "stationary": false,
+              "type": "",
+              "units": "ft",
+              "width": ""
+            }
+          },
+          "uses": {
+            "max": "",
+            "recovery": [],
+            "spent": 0
+          },
+          "visibility": {
+            "identifier": "",
+            "level": {
+              "max": null,
+              "min": null
+            },
+            "require_attunement": false,
+            "require_identification": false,
+            "require_magic": false
+          }
+        }
+      ],
+      "description": "[[/attack extended]]. [[/damage average extended]].",
+      "kind": "action",
+      "legendary_cost": null,
+      "name": "Bite",
+      "recharge": null,
+      "slug": "bite",
+      "uses_per_day": null
+    },
+    {
+      "activities": [
+        {
+          "activation": {
+            "condition": "",
+            "override": false,
+            "type": "action",
+            "value": null
+          },
+          "consumption": {
+            "scaling": {
+              "allowed": false,
+              "max": ""
+            },
+            "spell_slot": true,
+            "targets": []
+          },
+          "damage": {
+            "on_save": "half",
+            "parts": [
+              {
+                "bonus": "",
+                "custom": {
+                  "enabled": false,
+                  "formula": ""
+                },
+                "denomination": 12,
+                "number": 3,
+                "scaling": {
+                  "formula": "",
+                  "mode": "",
+                  "number": 1
+                },
+                "types": [
+                  "bludgeoning"
+                ]
+              }
+            ]
+          },
+          "description": {
+            "chat_flavor": ""
+          },
+          "duration": {
+            "concentration": false,
+            "override": false,
+            "special": "",
+            "units": "inst",
+            "value": null
+          },
+          "effects": [
+            {
+              "id": "6922OmgCjpz242Ib",
+              "level": {
+                "max": null,
+                "min": null
+              },
+              "on_save": false,
+              "riders": null
+            }
+          ],
+          "flags": {},
+          "id": "IPCXEQoTuaAG5l52",
+          "img": "",
+          "kind": "save",
+          "name": "Save",
+          "range": {
+            "override": false,
+            "special": "",
+            "units": "self",
+            "value": null
+          },
+          "save": {
+            "ability": [
+              "dex"
+            ],
+            "dc": {
+              "calculation": "str",
+              "formula": "8 + @mod + @prof"
+            }
+          },
+          "sort": 0,
+          "target": {
+            "affects": {
+              "choice": false,
+              "count": "",
+              "special": "in the creature's destination space",
+              "type": "creature"
+            },
+            "override": false,
+            "prompt": false,
+            "template": {
+              "contiguous": false,
+              "count": "",
+              "height": "",
+              "size": "15",
+              "stationary": false,
+              "type": "line",
+              "units": "ft",
+              "width": ""
+            }
+          },
+          "uses": {
+            "max": "",
+            "recovery": [],
+            "spent": 0
+          },
+          "visibility": {
+            "identifier": "",
+            "level": {
+              "max": null,
+              "min": null
+            },
+            "require_attunement": false,
+            "require_identification": false,
+            "require_magic": false
+          }
+        }
+      ],
+      "description": "The [[lookup @name lowercase]]{monster} spends 5 feet of movement to jump to a space within 15 feet that contains one or more Large or smaller creatures.\n\nDexterity Saving Throw: DC [[lookup @save.dc.value activity=IPCXEQoTuaAG5l52]], each [[lookup @target.affects.type activity=IPCXEQoTuaAG5l52]] in the [[lookup @name lowercase]]{monster}'s destination space.\n\nFailure: [[/damage average]] damage, and the target has the &amp;Reference[Prone apply=false] condition.\n\nSuccess: Half damage, and the target is pushed 5 feet straight away from the [[lookup @name lowercase]]{monster}.",
+      "kind": "action",
+      "legendary_cost": null,
+      "name": "Deadly Leap",
+      "recharge": null,
+      "slug": "deadly-leap",
+      "uses_per_day": null
+    },
+    {
+      "activities": [
+        {
+          "activation": {
+            "condition": "spending 10 feet of movement",
+            "override": false,
+            "type": "bonus",
+            "value": null
+          },
+          "consumption": {
+            "scaling": {
+              "allowed": false,
+              "max": ""
+            },
+            "spell_slot": true,
+            "targets": []
+          },
+          "description": {
+            "chat_flavor": ""
+          },
+          "duration": {
+            "concentration": false,
+            "override": false,
+            "special": "",
+            "units": "inst",
+            "value": null
+          },
+          "effects": [],
+          "flags": {},
+          "id": "C28C43DeD8iFtZMe",
+          "img": "systems/dnd5e/icons/svg/monster.svg",
+          "kind": "utility",
+          "name": "Expend Use",
+          "range": {
+            "override": false,
+            "special": "",
+            "units": "ft",
+            "value": "30"
+          },
+          "roll": {
+            "formula": "",
+            "name": "",
+            "prompt": false,
+            "visible": false
+          },
+          "sort": 0,
+          "target": {
+            "affects": {
+              "choice": false,
+              "count": "",
+              "special": "",
+              "type": ""
+            },
+            "override": false,
+            "prompt": false,
+            "template": {
+              "contiguous": false,
+              "count": "",
+              "height": "",
+              "size": "",
+              "stationary": false,
+              "type": "",
+              "units": "ft",
+              "width": ""
+            }
+          },
+          "uses": {
+            "max": "",
+            "recovery": [],
+            "spent": 0
+          },
+          "visibility": {
+            "identifier": "",
+            "level": {
+              "max": null,
+              "min": null
+            },
+            "require_attunement": false,
+            "require_identification": false,
+            "require_magic": false
+          }
+        }
+      ],
+      "description": "The [[lookup @name lowercase]]{monster} jumps up to [[lookup @range.value activity=C28C43DeD8iFtZMe]] feet by [[lookup @activation.condition activity=C28C43DeD8iFtZMe]].",
+      "kind": "bonus_action",
+      "legendary_cost": null,
+      "name": "Leap",
+      "recharge": null,
+      "slug": "leap",
+      "uses_per_day": null
+    }
+  ],
+  "alignment": "Unaligned",
+  "condition_immunities": [],
+  "cr": 5.0,
+  "creature_size": "large",
+  "creature_type": "monstrosity",
+  "damage_immunities": [],
+  "damage_resistances": [],
+  "damage_vulnerabilities": [],
+  "description": "",
+  "hp": 94,
+  "hp_dice": "9d10 + 45",
+  "lair_actions": [],
+  "languages": [],
+  "legendary_actions": [],
+  "movement": {
+    "burrow": 40,
+    "climb": null,
+    "fly": null,
+    "hover": false,
+    "swim": null,
+    "walk": 40
+  },
+  "name": "Bulette",
+  "proficiency_bonus": 3,
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/actors24/monstrosity/bulette.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "saving_throws": {
+    "cha": null,
+    "con": null,
+    "dex": null,
+    "int": null,
+    "str": null,
+    "wis": null
+  },
+  "senses": {
+    "blindsight": null,
+    "darkvision": 60,
+    "passive_perception": 16,
+    "tremorsense": 120,
+    "truesight": null
+  },
+  "skills": {
+    "acrobatics": null,
+    "animal_handling": null,
+    "arcana": null,
+    "athletics": null,
+    "deception": null,
+    "history": null,
+    "insight": null,
+    "intimidation": null,
+    "investigation": null,
+    "medicine": null,
+    "nature": null,
+    "perception": 6,
+    "performance": null,
+    "persuasion": null,
+    "religion": null,
+    "sleight_of_hand": null,
+    "stealth": null,
+    "survival": null
+  },
+  "slug": "bulette",
+  "special_abilities": []
+}

@@ -1,0 +1,27 @@
+{
+  "activities": [],
+  "attunement_constraint": null,
+  "cost_gp": 0.0,
+  "description": "A Druidic Focus takes one of the forms in the Druidic Focuses table and is carved, tied with ribbon, or painted to channel primal magic. A Druid or Ranger can use such an object as a Spellcasting Focus.\n\nDruidic Focuses\n\nFocus\n\nWeight\n\nCost\n\nSprig of mistletoe\n\n\u2014\n\n1 GP\n\nWooden staff (also a Quarterstaff)\n\n4 lb.\n\n5 GP\n\nYew wand\n\n1 lb.\n\n10 GP",
+  "item_kind": "item",
+  "name": "Druidic Focus (Varies)",
+  "passive_effects": [],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/equipment24/adventuring-gear/spellcasting-focuses/druidic-focus-varies.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "rarity": "common",
+  "requires_attunement": false,
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "druidic-focus-varies",
+  "weight": 0.0
+}

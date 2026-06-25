@@ -1,0 +1,285 @@
+{
+  "activities": [
+    {
+      "activation": {
+        "condition": "when you roll a 20 on an attack against a creature with fewer than 100 Hit Points",
+        "override": false,
+        "type": "action",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": [
+          {
+            "scaling": {
+              "formula": "",
+              "mode": ""
+            },
+            "target": "",
+            "type": "activityUses",
+            "value": "1"
+          }
+        ]
+      },
+      "damage": {
+        "on_save": "none",
+        "parts": []
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [],
+      "flags": {},
+      "id": "QxD7LVTB9MWX8QmK",
+      "img": "",
+      "kind": "save",
+      "name": "Life Stealing",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "ft",
+        "value": ""
+      },
+      "save": {
+        "ability": [
+          "con"
+        ],
+        "dc": {
+          "calculation": "",
+          "formula": "15"
+        }
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "",
+          "special": "",
+          "type": ""
+        },
+        "override": false,
+        "prompt": true,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "ft",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "5",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": true,
+        "require_identification": true,
+        "require_magic": true
+      }
+    },
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": []
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [
+        {
+          "id": "qiwTWGRINh3WFPaA",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": {
+            "activity": [
+              "QxD7LVTB9MWX8QmK"
+            ],
+            "effect": [],
+            "item": []
+          }
+        }
+      ],
+      "enchant": {
+        "identifier": "",
+        "self": false
+      },
+      "flags": {},
+      "id": "9rvsI8e3iaHSuv1k",
+      "img": "",
+      "kind": "enchant",
+      "name": "Nine Lives Stealer",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "self",
+        "value": null
+      },
+      "restrictions": {
+        "allow_magical": false,
+        "categories": [],
+        "properties": [],
+        "type": ""
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "",
+          "special": "",
+          "type": ""
+        },
+        "override": false,
+        "prompt": true,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "ft",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    }
+  ],
+  "attunement_constraint": null,
+  "cost_gp": 40000.0,
+  "damage_parts": [],
+  "description": "Weapon (Any Simple or Martial), Very Rare (Requires Attunement)\n\nYou gain a +2 bonus to attack rolls and damage rolls made with this magic weapon.\n\nLife Stealing. The weapon has [[/r 1d8 + 1]] charges. When you attack a creature that has fewer than 100 Hit Points with this weapon and roll a 20 on the d20 for the attack roll, the creature must succeed on a DC 15 Constitution saving throw or be slain instantly as the sword tears its life force from its body. Constructs and Undead succeed on the save automatically. The weapon loses 1 charge if the creature is slain. When the weapon has no charges remaining, it loses this property.\n\nFoundry Note\n\nThe Life Stealing activity should be updated with its max uses set to the number of charges rolled.\n\n@Embed[Compendium.dnd5e.content24.JournalEntry.dmgFoundryRefere.JournalEntryPage.Ok4iCgD25ENgoRxE cite=false caption=false classes=\"hide-in-embed\"]",
+  "item_kind": "weapon",
+  "magical_bonus": 2,
+  "mastery": null,
+  "name": "Nine Lives Stealer",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "name",
+          "mode": 5,
+          "priority": null,
+          "value": "Nine Lives Stealer {}"
+        },
+        {
+          "key": "system.description.value",
+          "mode": 5,
+          "priority": null,
+          "value": "{}<p>@Embed[Compendium.dnd5e.equipment24.Item.dmgNineLivesStea caption=false]</p>"
+        },
+        {
+          "key": "system.rarity",
+          "mode": 5,
+          "priority": null,
+          "value": "veryRare"
+        },
+        {
+          "key": "system.properties",
+          "mode": 2,
+          "priority": null,
+          "value": "mgc"
+        },
+        {
+          "key": "system.attunement",
+          "mode": 5,
+          "priority": null,
+          "value": "required"
+        },
+        {
+          "key": "system.magicalBonus",
+          "mode": 4,
+          "priority": null,
+          "value": "2"
+        }
+      ],
+      "description": "",
+      "disabled": true,
+      "duration": null,
+      "id": "qiwTWGRINh3WFPaA",
+      "name": "Nine Lives Stealer",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "properties": [],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/equipment24/weapons/magical/nine-lives-stealer.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "range": {
+    "kind": "melee",
+    "long": null,
+    "units": null,
+    "value": null
+  },
+  "rarity": "very_rare",
+  "requires_attunement": true,
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "nine-lives-stealer",
+  "versatile_damage": null,
+  "weapon_category": "simple_melee",
+  "weight": 0.0
+}

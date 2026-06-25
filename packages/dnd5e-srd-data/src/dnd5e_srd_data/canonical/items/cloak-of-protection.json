@@ -1,0 +1,51 @@
+{
+  "activities": [],
+  "attunement_constraint": null,
+  "cost_gp": 400.0,
+  "description": "Wondrous Item, Uncommon (Requires Attunement)\n\nYou gain a +1 bonus to Armor Class and saving throws while you wear this cloak.",
+  "item_kind": "magic_item",
+  "name": "Cloak of Protection",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.attributes.ac.bonus",
+          "mode": 2,
+          "priority": null,
+          "value": "1"
+        },
+        {
+          "key": "system.bonuses.abilities.save",
+          "mode": 2,
+          "priority": null,
+          "value": "1"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "LsvHisOX7EGZ8oQg",
+      "name": "Bonus AC/Saves: +1",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/equipment24/equipment/cloak-of-protection.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "rarity": "uncommon",
+  "requires_attunement": true,
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "cloak-of-protection",
+  "weight": 2.0
+}

@@ -1,0 +1,337 @@
+{
+  "advancement": [
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbwlkDarkOnesBl"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbwlkFiendSpell"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "EyDjHPlaiU9pcKWc",
+      "level": 3,
+      "title": "Subclass Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbwlkDarkOnesOw"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "pkjDsDeyI1xHOSDb",
+      "level": 6,
+      "title": "Subclass Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbwlkFiendishRe"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "hEHLXeuzpfLUyPbb",
+      "level": 10,
+      "title": "Subclass Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbwlkHurlThroug"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "BXdX73NWYsGIrZyc",
+      "level": 14,
+      "title": "Subclass Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplBurningHan"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplCommand000"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplScorchingR"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplSuggestion"
+          }
+        ],
+        "optional": false,
+        "spell": {
+          "ability": [],
+          "method": "pact",
+          "prepared": 2,
+          "uses": {
+            "max": "",
+            "per": "",
+            "requireSlot": false
+          }
+        }
+      },
+      "hint": "The magic of your patron ensures you always have certain spells ready; when you reach a Warlock level specified in the Fiend Spells table, you thereafter always have the listed spells prepared.",
+      "id": "BL0KO6NHMdWDzORz",
+      "level": 3,
+      "title": "Fiend Spells",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplFireball00"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplStinkingCl"
+          }
+        ],
+        "optional": false,
+        "spell": {
+          "ability": [],
+          "method": "pact",
+          "prepared": 2,
+          "uses": {
+            "max": "",
+            "per": "",
+            "requireSlot": false
+          }
+        }
+      },
+      "hint": "The magic of your patron ensures you always have certain spells ready; when you reach a Warlock level specified in the Fiend Spells table, you thereafter always have the listed spells prepared.",
+      "id": "RQGbS50hbBG90d1e",
+      "level": 5,
+      "title": "Fiend Spells",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplFireShield"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplWallofFire"
+          }
+        ],
+        "optional": false,
+        "spell": {
+          "ability": [],
+          "method": "pact",
+          "prepared": 2,
+          "uses": {
+            "max": "",
+            "per": "",
+            "requireSlot": false
+          }
+        }
+      },
+      "hint": "The magic of your patron ensures you always have certain spells ready; when you reach a Warlock level specified in the Fiend Spells table, you thereafter always have the listed spells prepared.",
+      "id": "HI0odgqJuVranhPH",
+      "level": 7,
+      "title": "Fiend Spells",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplGeas000000"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplInsectPlag"
+          }
+        ],
+        "optional": false,
+        "spell": {
+          "ability": [],
+          "method": "pact",
+          "prepared": 2,
+          "uses": {
+            "max": "",
+            "per": "",
+            "requireSlot": false
+          }
+        }
+      },
+      "hint": "The magic of your patron ensures you always have certain spells ready; when you reach a Warlock level specified in the Fiend Spells table, you thereafter always have the listed spells prepared.",
+      "id": "Aqu6VkaM9Z70GTtM",
+      "level": 9,
+      "title": "Fiend Spells",
+      "type": "ItemGrant",
+      "value": {}
+    }
+  ],
+  "class_identifier": "warlock",
+  "description": "Make a Deal with the Lower Planes\n\nYour pact draws on the Lower Planes, the realms of perdition. You might forge a bargain with a demon lord such as Demogorgon or Orcus; an archdevil such as Asmodeus; or a pit fiend, balor, yugoloth, or night hag that is especially mighty. That patron's aims are evil\u2014the corruption or destruction of all things, ultimately including you\u2014and your path is defined by the extent to which you strive against those aims.",
+  "entry_kind": "subclass",
+  "feature_choices": [],
+  "granted_features": [
+    {
+      "level": 3,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "dark-ones-blessing"
+    },
+    {
+      "level": 3,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "fiend-spells"
+    },
+    {
+      "level": 6,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "dark-ones-own-luck"
+    },
+    {
+      "level": 10,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "fiendish-resilience"
+    },
+    {
+      "level": 14,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "hurl-through-hell"
+    },
+    {
+      "level": 3,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "burning-hands"
+    },
+    {
+      "level": 3,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "command"
+    },
+    {
+      "level": 3,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "scorching-ray"
+    },
+    {
+      "level": 3,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "suggestion"
+    },
+    {
+      "level": 5,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "fireball"
+    },
+    {
+      "level": 5,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "stinking-cloud"
+    },
+    {
+      "level": 7,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "fire-shield"
+    },
+    {
+      "level": 7,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "wall-of-fire"
+    },
+    {
+      "level": 9,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "geas"
+    },
+    {
+      "level": 9,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "insect-plague"
+    }
+  ],
+  "identifier": "fiend",
+  "name": "Fiend Patron",
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/warlock/fiend-patron.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "fiend",
+  "spellcasting": {
+    "ability": "",
+    "progression": "none"
+  }
+}

@@ -1,0 +1,884 @@
+{
+  "advancement": [
+    {
+      "class_restriction": "",
+      "configuration": {},
+      "hint": "",
+      "id": "wp38UtjwG71SVceB",
+      "level": 0,
+      "title": "",
+      "type": "HitPoints",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbdrdSpellcasti"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbdrdDruidic000"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbdrdPrimalOrde"
+          }
+        ],
+        "optional": false,
+        "spell": {
+          "ability": [],
+          "prepared": 0,
+          "uses": {
+            "max": "",
+            "per": "",
+            "requireSlot": false
+          }
+        }
+      },
+      "hint": "",
+      "id": "P65WodekLKSPQLGZ",
+      "level": 1,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbdrdWildShape0"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbdrdWildCompan"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "hmO24ovOBpmXAb4U",
+      "level": 2,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbdrdWildResurg"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "J2JpbQEZhVD3Dnjz",
+      "level": 5,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbdrdElementalF"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "2G5tFifGdMns95Jw",
+      "level": 7,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbdrdImprovedEl"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "uNjxqZQ9lZuOKmU7",
+      "level": 15,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbdrdBeastSpell"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "3DZ1Olv41g5BzP4z",
+      "level": 18,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbdrdArchdruid0"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "K72jypxSpzVJRXDh",
+      "level": 20,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "cap": 2,
+        "fixed": {
+          "cha": 0,
+          "con": 0,
+          "dex": 0,
+          "int": 0,
+          "str": 0,
+          "wis": 0
+        },
+        "locked": [],
+        "points": 2,
+        "recommendation": null
+      },
+      "hint": "",
+      "id": "bwCLOdauuzoHofil",
+      "level": 4,
+      "title": "",
+      "type": "AbilityScoreImprovement",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "cap": 2,
+        "fixed": {
+          "cha": 0,
+          "con": 0,
+          "dex": 0,
+          "int": 0,
+          "str": 0,
+          "wis": 0
+        },
+        "locked": [],
+        "points": 2,
+        "recommendation": null
+      },
+      "hint": "",
+      "id": "mRSh9oUVjLU33e7p",
+      "level": 8,
+      "title": "",
+      "type": "AbilityScoreImprovement",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "cap": 2,
+        "fixed": {
+          "cha": 0,
+          "con": 0,
+          "dex": 0,
+          "int": 0,
+          "str": 0,
+          "wis": 0
+        },
+        "locked": [],
+        "points": 2,
+        "recommendation": null
+      },
+      "hint": "",
+      "id": "mhZh3LfLMa15tXee",
+      "level": 12,
+      "title": "",
+      "type": "AbilityScoreImprovement",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "cap": 2,
+        "fixed": {
+          "cha": 0,
+          "con": 0,
+          "dex": 0,
+          "int": 0,
+          "str": 0,
+          "wis": 0
+        },
+        "locked": [],
+        "points": 2,
+        "recommendation": null
+      },
+      "hint": "",
+      "id": "FOf5CkGnSs0OlppY",
+      "level": 16,
+      "title": "",
+      "type": "AbilityScoreImprovement",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "distance": {
+          "units": ""
+        },
+        "identifier": "",
+        "scale": {
+          "1": {
+            "value": 2
+          },
+          "10": {
+            "value": 4
+          },
+          "4": {
+            "value": 3
+          }
+        },
+        "type": "number"
+      },
+      "hint": "",
+      "id": "JoHnvnMWRhadHGwf",
+      "level": 0,
+      "title": "Cantrips Known",
+      "type": "ScaleValue",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "distance": {
+          "units": ""
+        },
+        "identifier": "max-prepared",
+        "scale": {
+          "1": {
+            "value": 4
+          },
+          "10": {
+            "value": 15
+          },
+          "11": {
+            "value": 16
+          },
+          "13": {
+            "value": 17
+          },
+          "15": {
+            "value": 18
+          },
+          "17": {
+            "value": 19
+          },
+          "18": {
+            "value": 20
+          },
+          "19": {
+            "value": 21
+          },
+          "2": {
+            "value": 5
+          },
+          "20": {
+            "value": 22
+          },
+          "3": {
+            "value": 6
+          },
+          "4": {
+            "value": 7
+          },
+          "5": {
+            "value": 9
+          },
+          "6": {
+            "value": 10
+          },
+          "7": {
+            "value": 11
+          },
+          "8": {
+            "value": 12
+          },
+          "9": {
+            "value": 14
+          }
+        },
+        "type": "number"
+      },
+      "hint": "",
+      "id": "VmNGSY7Jbmy4AwBb",
+      "level": 0,
+      "title": "Max Prepared Spells",
+      "type": "ScaleValue",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "distance": {
+          "units": ""
+        },
+        "identifier": "wild-shape",
+        "scale": {
+          "2": {
+            "value": 0.25
+          },
+          "4": {
+            "value": 0.5
+          },
+          "8": {
+            "value": 1
+          }
+        },
+        "type": "cr"
+      },
+      "hint": "",
+      "id": "pIfdGSkqdp00omkE",
+      "level": 0,
+      "title": "Wild Shape CR",
+      "type": "ScaleValue",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "distance": {
+          "units": ""
+        },
+        "identifier": "",
+        "scale": {
+          "17": {
+            "value": 4
+          },
+          "2": {
+            "value": 2
+          },
+          "6": {
+            "value": 3
+          }
+        },
+        "type": "number"
+      },
+      "hint": "",
+      "id": "MIVwoANGkc6gmUWN",
+      "level": 0,
+      "title": "Wild Shape Uses",
+      "type": "ScaleValue",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "distance": {
+          "units": ""
+        },
+        "identifier": "",
+        "scale": {
+          "2": {
+            "value": 4
+          },
+          "4": {
+            "value": 6
+          },
+          "8": {
+            "value": 8
+          }
+        },
+        "type": "number"
+      },
+      "hint": "",
+      "id": "EoM7g9kruaS8VvhA",
+      "level": 0,
+      "title": "Known Forms",
+      "type": "ScaleValue",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplSpeakwithA"
+          }
+        ],
+        "optional": false,
+        "spell": {
+          "ability": [],
+          "method": "spell",
+          "prepared": 2,
+          "uses": {
+            "max": "",
+            "per": "",
+            "requireSlot": false
+          }
+        }
+      },
+      "hint": "",
+      "id": "SpGvDfOabbJrOR3K",
+      "level": 1,
+      "title": "Druidic Spells",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "allowDrops": false,
+        "choices": {
+          "1": {
+            "count": 1,
+            "replacement": false
+          }
+        },
+        "pool": [
+          {
+            "uuid": "Compendium.dnd5e.classes24.Item.phbPrimalOrderMa"
+          },
+          {
+            "uuid": "Compendium.dnd5e.classes24.Item.phbPrimalOrderWa"
+          }
+        ],
+        "restriction": {
+          "list": [],
+          "subtype": "",
+          "type": "class"
+        },
+        "spell": null,
+        "type": "feat"
+      },
+      "hint": "You have dedicated yourself to one of the following sacred roles of your choice.",
+      "id": "NpBpNlHOO43gMD0U",
+      "level": 0,
+      "title": "Primal Order",
+      "type": "ItemChoice",
+      "value": {
+        "added": {},
+        "replaced": {}
+      }
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "allowDrops": false,
+        "choices": {
+          "7": {
+            "count": 1,
+            "replacement": false
+          }
+        },
+        "pool": [
+          {
+            "uuid": "Compendium.dnd5e.classes24.Item.phbFuryPotentSpe"
+          },
+          {
+            "uuid": "Compendium.dnd5e.classes24.Item.phbFuryPrimalStr"
+          }
+        ],
+        "restriction": {
+          "list": [],
+          "type": "class"
+        },
+        "spell": null,
+        "type": "feat"
+      },
+      "hint": "The might of the elements flows through you. You gain one of the following options of your choice.",
+      "id": "HYDmnuNUbI5liP08",
+      "level": 0,
+      "title": "Elemental Fury",
+      "type": "ItemChoice",
+      "value": {
+        "added": {},
+        "replaced": {}
+      }
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "distance": {
+          "units": ""
+        },
+        "identifier": "",
+        "scale": {
+          "15": {
+            "faces": 8,
+            "modifiers": [],
+            "number": 2
+          },
+          "7": {
+            "faces": 8,
+            "modifiers": [],
+            "number": 1
+          }
+        },
+        "type": "dice"
+      },
+      "hint": "",
+      "id": "W0d3c6X31SgnFFYM",
+      "level": 0,
+      "title": "Elemental Fury",
+      "type": "ScaleValue",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {},
+      "hint": "",
+      "id": "jOMGuG8a0KfmaeJd",
+      "level": 3,
+      "title": "",
+      "type": "Subclass",
+      "value": {
+        "document": null,
+        "uuid": null
+      }
+    },
+    {
+      "class_restriction": "primary",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [],
+        "grants": [
+          "saves:int",
+          "saves:wis"
+        ],
+        "mode": "default"
+      },
+      "hint": "",
+      "id": "Kx19MYNjomUt6m4p",
+      "level": 1,
+      "title": "Saving Throw Proficiencies",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "primary",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [
+          {
+            "count": 2,
+            "pool": [
+              "skills:ani",
+              "skills:arc",
+              "skills:ins",
+              "skills:med",
+              "skills:nat",
+              "skills:prc",
+              "skills:rel",
+              "skills:sur"
+            ]
+          }
+        ],
+        "grants": [],
+        "mode": "default"
+      },
+      "hint": "",
+      "id": "ail7EZ56O8d037cL",
+      "level": 1,
+      "title": "Skill Proficiencies",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "primary",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [],
+        "grants": [
+          "weapon:sim"
+        ],
+        "mode": "default"
+      },
+      "hint": "",
+      "id": "Eq4uHvKtlKorid7h",
+      "level": 1,
+      "title": "Weapon Proficiencies",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "primary",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [],
+        "grants": [
+          "tool:herb"
+        ],
+        "mode": "default"
+      },
+      "hint": "",
+      "id": "wB9ulPjnFnueTfr5",
+      "level": 1,
+      "title": "Tool Proficiencies",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [],
+        "grants": [
+          "armor:lgt",
+          "armor:shl"
+        ],
+        "mode": "default"
+      },
+      "hint": "",
+      "id": "iqdFykNhppeEsmtM",
+      "level": 1,
+      "title": "Armor Training",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [],
+        "grants": [
+          "languages:exotic:druidic"
+        ],
+        "mode": "default"
+      },
+      "hint": "You know Druidic, the secret language of Druids.",
+      "id": "fwwJ7sF6UAsgWaLf",
+      "level": 1,
+      "title": "Druidic",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "cap": 2,
+        "fixed": {
+          "cha": 0,
+          "con": 0,
+          "dex": 0,
+          "int": 0,
+          "str": 0,
+          "wis": 0
+        },
+        "locked": [],
+        "max": null,
+        "points": 2,
+        "recommendation": "Compendium.dnd5e.feats24.Item.phbBoonofDimensi"
+      },
+      "hint": "",
+      "id": "gLRZK2OjtSnWNVJv",
+      "level": 19,
+      "title": "",
+      "type": "AbilityScoreImprovement",
+      "value": {}
+    }
+  ],
+  "description": "Core Druid Traits\n\nPrimary Ability\n\nWisdom\n\nHit Point Die\n\nD8 per Druid level\n\nSaving Throw Proficiencies\n\nIntelligence and Wisdom\n\nSkill Proficiencies\n\nChoose 2: Animal Handling, Arcana, Insight, Medicine, Nature, Perception, Religion, or Survival\n\nWeapon Proficiencies\n\nSimple weapons\n\nTool Proficiencies\n\nHerbalism Kit\n\nArmor Training\n\nLight armor and Shields\n\nStarting Equipment\n\nChoose A or B: (A) Leather Armor, Shield, Sickle, Druidic Focus (Quarterstaff), Explorer's Pack, Herbalism Kit, and [[/award 9GP]]; or (B) [[/award 50GP]]\n\n@Embed[Compendium.dnd5e.content24.JournalEntry.phbAppendixClass.JournalEntryPage.phbdrdDruid00000 inline classes=\"free-rules-embed\"]\n\nBecoming a Druid \u2026\n\nAs a Level 1 Character\n\nGain all the traits in the Core Druid Traits table.\n\nGain the Druid's level 1 features, which are listed in the Druid Features table.\n\nAs a Multiclass Character\n\nGain the following traits from the Core Druid Traits table: Hit Point Die and training with Light armor and Shields.\n\nGain the Druid's level 1 features, which are listed in the Druid Features table. See the multiclassing rules in chapter 2 to determine your available spell slots.",
+  "entry_kind": "class",
+  "feature_choices": [
+    {
+      "pool": [
+        {
+          "level": 0,
+          "optional": false,
+          "ref_type": "feature",
+          "slug": "primal-order-magician"
+        },
+        {
+          "level": 0,
+          "optional": false,
+          "ref_type": "feature",
+          "slug": "primal-order-warden"
+        }
+      ],
+      "restriction_subtype": "",
+      "schedule": [
+        {
+          "count": 1,
+          "level": 1,
+          "replacement": false
+        }
+      ]
+    },
+    {
+      "pool": [
+        {
+          "level": 0,
+          "optional": false,
+          "ref_type": "feature",
+          "slug": "elemental-fury-potent-spellcasting"
+        },
+        {
+          "level": 0,
+          "optional": false,
+          "ref_type": "feature",
+          "slug": "elemental-fury-primal-strike"
+        }
+      ],
+      "restriction_subtype": "",
+      "schedule": [
+        {
+          "count": 1,
+          "level": 7,
+          "replacement": false
+        }
+      ]
+    }
+  ],
+  "granted_features": [
+    {
+      "level": 1,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "spellcasting"
+    },
+    {
+      "level": 1,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "druidic"
+    },
+    {
+      "level": 1,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "primal-order"
+    },
+    {
+      "level": 2,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "wild-shape"
+    },
+    {
+      "level": 2,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "wild-companion"
+    },
+    {
+      "level": 5,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "wild-resurgence"
+    },
+    {
+      "level": 7,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "elemental-fury"
+    },
+    {
+      "level": 15,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "improved-elemental-fury"
+    },
+    {
+      "level": 18,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "beast-spells"
+    },
+    {
+      "level": 20,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "archdruid"
+    },
+    {
+      "level": 1,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "speak-with-animals"
+    }
+  ],
+  "hit_die": "d8",
+  "identifier": "druid",
+  "name": "Druid",
+  "primary_ability": {
+    "all": true,
+    "value": [
+      "wis"
+    ]
+  },
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/druid/druid.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "saving_throws": [
+    "int",
+    "wis"
+  ],
+  "slug": "druid",
+  "spellcasting": {
+    "ability": "wis",
+    "progression": "full"
+  },
+  "subclass_identifiers": [
+    "land"
+  ],
+  "wealth": "50"
+}

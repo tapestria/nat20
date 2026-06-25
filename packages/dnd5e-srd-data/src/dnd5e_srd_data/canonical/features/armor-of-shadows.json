@@ -1,0 +1,136 @@
+{
+  "activities": [
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "action",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": []
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "hour",
+        "value": "8"
+      },
+      "effects": [
+        {
+          "id": "3UaxEJx1X9kDrR65",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        }
+      ],
+      "flags": {},
+      "id": "XKx7cpBQ8AvRs6Kl",
+      "img": "",
+      "kind": "utility",
+      "name": "Mage Armor",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "touch",
+        "value": null
+      },
+      "roll": {
+        "formula": "",
+        "name": "",
+        "prompt": false,
+        "visible": false
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "",
+          "special": "",
+          "type": "self"
+        },
+        "override": false,
+        "prompt": true,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "ft",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    }
+  ],
+  "description": "You can cast Mage Armor on yourself without expending a spell slot.\n\nFoundry Note\n\nThe Mage Armor activity is configured with the spell's effect and duration, including an Active Effect to set the spell's provided AC formula.",
+  "entry_kind": "feature",
+  "feature_type": "class_feature",
+  "foundry_id": "phbinvArmorofSha",
+  "name": "Armor of Shadows",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.attributes.ac.calc",
+          "mode": 5,
+          "priority": null,
+          "value": "mage"
+        }
+      ],
+      "description": "<p>The target's base AC becomes 13 + its Dexterity modifier.</p>",
+      "disabled": true,
+      "duration": {
+        "seconds": 28800
+      },
+      "id": "3UaxEJx1X9kDrR65",
+      "name": "Mage Armor",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/warlock/eldritch-invocation-options/armor-of-shadows.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "armor-of-shadows",
+  "source_slug": "warlock"
+}

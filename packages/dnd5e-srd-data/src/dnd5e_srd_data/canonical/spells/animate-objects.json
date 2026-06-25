@@ -1,0 +1,214 @@
+{
+  "activities": [
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "action",
+        "value": null
+      },
+      "bonuses": {
+        "ac": "",
+        "attack_damage": "",
+        "hd": "",
+        "healing": "",
+        "hp": "",
+        "save_damage": ""
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": []
+      },
+      "creature_sizes": [],
+      "creature_types": [],
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [],
+      "flags": {},
+      "id": "dnd5eactivity000",
+      "img": "",
+      "kind": "summon",
+      "match": {
+        "ability": "",
+        "attacks": true,
+        "disposition": false,
+        "proficiency": true,
+        "saves": false
+      },
+      "name": "",
+      "profiles": [
+        {
+          "count": "floor(@attributes.spell.mod / 3)",
+          "cr": "",
+          "id": "wlo67rwZWeVG9YzC",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "name": "Huge Object (costs 3)",
+          "types": [],
+          "uuid": "Compendium.dnd5e.actors24.Actor.phbhaoAnimatedOb"
+        },
+        {
+          "count": "floor(@attributes.spell.mod / 2)",
+          "cr": "",
+          "id": "9gKBKcYbDDeyXoPY",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "name": "Large Object (costs 2)",
+          "types": [],
+          "uuid": "Compendium.dnd5e.actors24.Actor.phblaoAnimatedOb"
+        },
+        {
+          "count": "@attributes.spell.mod",
+          "cr": "",
+          "id": "j8huhBMmSxwSoBCq",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "name": "Medium Object",
+          "types": [],
+          "uuid": "Compendium.dnd5e.actors24.Actor.phbmaoAnimatedOb"
+        },
+        {
+          "count": "@attributes.spell.mod",
+          "cr": "",
+          "id": "TZYGQ4aQjvvAIRPe",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "name": "Small Object",
+          "types": [],
+          "uuid": "Compendium.dnd5e.actors24.Actor.phbsaoAnimatedOb"
+        },
+        {
+          "count": "@attributes.spell.mod",
+          "cr": "",
+          "id": "RUknezIXLCycNPIH",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "name": "Tiny Object",
+          "types": [],
+          "uuid": "Compendium.dnd5e.actors24.Actor.phbtaoAnimatedOb"
+        }
+      ],
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "self",
+        "value": null
+      },
+      "sort": 0,
+      "summon": {
+        "identifier": "",
+        "mode": "",
+        "prompt": true
+      },
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "@attributes.spell.mod",
+          "special": "",
+          "type": "object"
+        },
+        "override": false,
+        "prompt": true,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "",
+          "width": ""
+        }
+      },
+      "temp_hp": "",
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    }
+  ],
+  "casting_time": {
+    "condition": "",
+    "unit": "action",
+    "value": 1
+  },
+  "components": [
+    "S",
+    "V"
+  ],
+  "concentration": true,
+  "description": "Objects animate at your command. Choose a number of nonmagical objects within range that aren't being worn or carried, aren't fixed to a surface, and aren't Gargantuan. The maximum number of objects is equal to your spellcasting ability modifier; for this number, a Medium or smaller target counts as one object, a Large target counts as two, and a Huge target counts as three.\n\nEach target animates, sprouts legs, and becomes a Construct that uses the Animated Object stat block; this creature is under your control until the spell ends or until it is reduced to 0 Hit Points. Each creature you make with this spell is an ally to you and your allies. In combat, it shares your Initiative count and takes its turn immediately after yours.\n\nUntil the spell ends, you can take a Bonus Action to mentally command any creature you made with this spell if the creature is within 500 feet of you (if you control multiple creatures, you can command any of them at the same time, issuing the same command to each one). If you issue no commands, the creature takes the &amp;Reference[Dodge] action and moves only to avoid harm. When the creature drops to 0 Hit Points, it reverts to its object form, and any remaining damage carries over to that form.\n\nUsing a Higher-Level Spell Slot. The creature's Slam damage increases by 1d4 (Medium or smaller), 1d6 (Large), or 1d12 (Huge) for each spell slot level above 5.\n\nAnimated Object Sizes\n\nTiny, Small, Medium, Large, Huge",
+  "duration": {
+    "units": "minute",
+    "value": 1
+  },
+  "entry_kind": "spell",
+  "level": 5,
+  "materials": {
+    "consumed": false,
+    "cost": 0,
+    "supply": 0,
+    "value": ""
+  },
+  "name": "Animate Objects",
+  "passive_effects": [],
+  "preparation": {
+    "mode": "prepared",
+    "prepared": false
+  },
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/spells24/5th-level/animate-objects.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "range": {
+    "special": null,
+    "units": "ft",
+    "value": 120
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "ritual": false,
+  "school": "trs",
+  "slug": "animate-objects"
+}

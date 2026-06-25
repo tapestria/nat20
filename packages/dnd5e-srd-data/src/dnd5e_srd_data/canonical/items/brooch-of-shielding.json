@@ -1,0 +1,45 @@
+{
+  "activities": [],
+  "attunement_constraint": null,
+  "cost_gp": 400.0,
+  "description": "Wondrous Item, Uncommon (Requires Attunement)\n\nWhile wearing this brooch, you have Resistance to Force damage, and you have Immunity to damage from the Magic Missile spell.",
+  "item_kind": "magic_item",
+  "name": "Brooch of Shielding",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "force"
+        }
+      ],
+      "description": "<p>Additionally, you have Immunity to damage from the <em>@UUID[Compendium.dnd5e.spells24.Item.phbsplMagicMissi]{Magic Missile}</em> spell.</p>",
+      "disabled": false,
+      "duration": null,
+      "id": "rTeT5OPP4biUfHyX",
+      "name": "Resistance: Force",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/equipment24/equipment/brooch-of-shielding.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "rarity": "uncommon",
+  "requires_attunement": true,
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "brooch-of-shielding",
+  "weight": 0.2
+}

@@ -1,0 +1,179 @@
+{
+  "ability_scores": {
+    "cha": 1,
+    "con": 10,
+    "dex": 1,
+    "int": 1,
+    "str": 1,
+    "wis": 3
+  },
+  "ac": null,
+  "actions": [
+    {
+      "activities": [
+        {
+          "activation": {
+            "condition": "",
+            "override": false,
+            "type": "reaction",
+            "value": null
+          },
+          "consumption": {
+            "scaling": {
+              "allowed": false,
+              "max": ""
+            },
+            "spell_slot": true,
+            "targets": []
+          },
+          "description": {
+            "chat_flavor": ""
+          },
+          "duration": {
+            "concentration": false,
+            "override": false,
+            "special": "",
+            "units": "minute",
+            "value": "1"
+          },
+          "effects": [],
+          "flags": {},
+          "id": "Tlv3gcYk5KfdtV7c",
+          "img": "systems/dnd5e/icons/svg/activity/utility.svg",
+          "kind": "utility",
+          "name": "Use",
+          "range": {
+            "override": false,
+            "special": "",
+            "units": "ft",
+            "value": "30"
+          },
+          "roll": {
+            "formula": "",
+            "name": "",
+            "prompt": false,
+            "visible": false
+          },
+          "sort": 0,
+          "target": {
+            "affects": {
+              "choice": false,
+              "count": "1",
+              "special": "",
+              "type": "creature"
+            },
+            "override": false,
+            "prompt": false,
+            "template": {
+              "contiguous": false,
+              "count": "",
+              "height": "",
+              "size": "300",
+              "stationary": false,
+              "type": "circle",
+              "units": "ft",
+              "width": ""
+            }
+          },
+          "uses": {
+            "max": "",
+            "recovery": [],
+            "spent": 0
+          },
+          "visibility": {
+            "identifier": "",
+            "level": {
+              "max": null,
+              "min": null
+            },
+            "require_attunement": false,
+            "require_identification": false,
+            "require_magic": false
+          }
+        }
+      ],
+      "description": "Trigger: A [[lookup @target.affects.type activity=Tlv3gcYk5KfdtV7c]] or a source of Bright Light moves within [[lookup @range.value activity=Tlv3gcYk5KfdtV7c]] feet of the [[lookup @name lowercase]]{monster}. Response: The [[lookup @name lowercase]]{monster} emits a shriek audible within [[lookup @target.template.size activity=Tlv3gcYk5KfdtV7c]] feet of itself for [[lookup @duration.value activity=Tlv3gcYk5KfdtV7c]] minute or until the [[lookup @name lowercase]]{monster} dies.",
+      "kind": "reaction",
+      "legendary_cost": null,
+      "name": "Shriek",
+      "recharge": null,
+      "slug": "shriek",
+      "uses_per_day": null
+    }
+  ],
+  "alignment": "Unaligned",
+  "condition_immunities": [],
+  "cr": 0.0,
+  "creature_size": "medium",
+  "creature_type": "plant",
+  "damage_immunities": [],
+  "damage_resistances": [],
+  "damage_vulnerabilities": [],
+  "description": "",
+  "hp": 13,
+  "hp_dice": "3d8",
+  "lair_actions": [],
+  "languages": [],
+  "legendary_actions": [],
+  "movement": {
+    "burrow": null,
+    "climb": null,
+    "fly": null,
+    "hover": false,
+    "swim": null,
+    "walk": 5
+  },
+  "name": "Shrieker Fungus",
+  "proficiency_bonus": 2,
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/actors24/plant/shrieker-fungus.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "saving_throws": {
+    "cha": null,
+    "con": null,
+    "dex": null,
+    "int": null,
+    "str": null,
+    "wis": null
+  },
+  "senses": {
+    "blindsight": 30,
+    "darkvision": null,
+    "passive_perception": 6,
+    "tremorsense": null,
+    "truesight": null
+  },
+  "skills": {
+    "acrobatics": null,
+    "animal_handling": null,
+    "arcana": null,
+    "athletics": null,
+    "deception": null,
+    "history": null,
+    "insight": null,
+    "intimidation": null,
+    "investigation": null,
+    "medicine": null,
+    "nature": null,
+    "perception": null,
+    "performance": null,
+    "persuasion": null,
+    "religion": null,
+    "sleight_of_hand": null,
+    "stealth": null,
+    "survival": null
+  },
+  "slug": "shrieker-fungus",
+  "special_abilities": []
+}

@@ -1,0 +1,43 @@
+{
+  "activities": [],
+  "description": "You have Advantage on any ability check you make to end the &amp;Reference[Grappled apply=false] condition. You also count as one size larger when determining your carrying capacity.\n\nFoundry Note\n\nThis feature includes an Active Effect which automatically upgrades your size when determining carrying capacity.",
+  "entry_kind": "feature",
+  "feature_type": "species_trait",
+  "foundry_id": "phbsptPowerfulBu",
+  "name": "Powerful Build",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "flags.dnd5e.powerfulBuild",
+          "mode": 5,
+          "priority": null,
+          "value": "true"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "ge1u3EIFvsoj3jZu",
+      "name": "Powerful Build",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/origins24/species/traits/goliath/powerful-build.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "powerful-build",
+  "source_slug": "goliath"
+}

@@ -1,0 +1,400 @@
+{
+  "activities": [
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "action",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": [
+          {
+            "scaling": {
+              "formula": "",
+              "mode": ""
+            },
+            "target": "",
+            "type": "itemUses",
+            "value": "1"
+          }
+        ]
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [
+        {
+          "id": "rp68qDxzWquL4KsY",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "En6oT73Shu6Alr46",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "UI7peFQB9vCGuwpG",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "CuxyOkR4W9VP8KOM",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "ZPdhGzt0bhaZyVd2",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "29M8rjINOWKcHek6",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "VAndQR2Hu88gg4NF",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "4YWphFJwC5ojd6Ib",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "SH3poodOtfaaAiv8",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "hSarjVpqNwhqKOB1",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        }
+      ],
+      "flags": {},
+      "id": "n52xzzYU7CI8sywr",
+      "img": "",
+      "kind": "utility",
+      "name": "Drink Potion",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "self",
+        "value": null
+      },
+      "roll": {
+        "formula": "",
+        "name": "",
+        "prompt": false,
+        "visible": false
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "",
+          "special": "",
+          "type": "self"
+        },
+        "override": false,
+        "prompt": false,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "ft",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": true
+      }
+    }
+  ],
+  "attunement_constraint": null,
+  "cost_gp": 200.0,
+  "description": "Potion, Uncommon\n\nWhen you drink this potion, you have Resistance to one type of damage for 1 hour. The GM chooses the type or determines it randomly by rolling on the following table.\n\n@Embed[Compendium.dnd5e.tables24.RollTable.dmgPotionOfResis caption=false rollable]\n\nFoundry Note\n\nThis item includes Active Effects for each type of resistance. Use the AE for the type of damage chosen by your DM.",
+  "item_kind": "magic_item",
+  "name": "Potion of Resistance",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "acid"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "seconds": 3600
+      },
+      "id": "rp68qDxzWquL4KsY",
+      "name": "Acid  Resistance",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "cold"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "seconds": 3600
+      },
+      "id": "En6oT73Shu6Alr46",
+      "name": "Cold Resistance",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "fire"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "seconds": 3600
+      },
+      "id": "UI7peFQB9vCGuwpG",
+      "name": "Fire Resistance",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "force"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "seconds": 3600
+      },
+      "id": "CuxyOkR4W9VP8KOM",
+      "name": "Force Resistance",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "lightning"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "seconds": 3600
+      },
+      "id": "ZPdhGzt0bhaZyVd2",
+      "name": "Lightning Resistance",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "necrotic"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "seconds": 3600
+      },
+      "id": "29M8rjINOWKcHek6",
+      "name": "Necrotic Resistance",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "poison"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "seconds": 3600
+      },
+      "id": "VAndQR2Hu88gg4NF",
+      "name": "Poison Resistance",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "psychic"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "seconds": 3600
+      },
+      "id": "4YWphFJwC5ojd6Ib",
+      "name": "Psychic Resistance",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "radiant"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "seconds": 3600
+      },
+      "id": "SH3poodOtfaaAiv8",
+      "name": "Radiant Resistance",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "thunder"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "seconds": 3600
+      },
+      "id": "hSarjVpqNwhqKOB1",
+      "name": "Thunder Resistance",
+      "statuses": [],
+      "transfer": false
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/equipment24/consumables/potions/potion-of-resistance.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "rarity": "uncommon",
+  "requires_attunement": false,
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "potion-of-resistance",
+  "weight": 0.5
+}

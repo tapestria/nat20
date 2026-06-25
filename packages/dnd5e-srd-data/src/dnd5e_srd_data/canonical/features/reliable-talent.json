@@ -1,0 +1,43 @@
+{
+  "activities": [],
+  "description": "Whenever you make an ability check that uses one of your skill or tool proficiencies, you can treat a d20 roll of 9 or lower as a 10.\n\nFoundry Note\n\nThis feature includes an Active Effect which automates the minimum roll of 10 on your skill and tool proficiencies.",
+  "entry_kind": "feature",
+  "feature_type": "class_feature",
+  "foundry_id": "phbrgeReliableTa",
+  "name": "Reliable Talent",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "flags.dnd5e.reliableTalent",
+          "mode": 5,
+          "priority": null,
+          "value": "true"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "TIw25thHBYEPdKR1",
+      "name": "Reliable Talent",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/rogue/class-features/reliable-talent.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "reliable-talent",
+  "source_slug": "rogue"
+}

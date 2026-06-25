@@ -1,0 +1,39 @@
+_id: goblin
+name: Goblin
+type: npc
+system:
+  description:
+    value: "A small humanoid."
+  details:
+    type:
+      value: humanoid
+    cr: 0.25
+    alignment: "neutral evil"
+  abilities:
+    str: {value: 8, proficient: 0, save: null}
+    dex: {value: 14, proficient: 0, save: null}
+    con: {value: 10, proficient: 0, save: null}
+    int: {value: 10, proficient: 0, save: null}
+    wis: {value: 8, proficient: 0, save: null}
+    cha: {value: 8, proficient: 0, save: null}
+  attributes:
+    ac:
+      flat: 15
+    hp:
+      value: 7
+      max: 7
+      formula: "2d6"
+    movement:
+      walk: 30
+      units: "ft"
+    senses:
+      darkvision: 60
+    prof: 2
+  traits:
+    size: "sm"
+    languages:
+      value: ["common", "goblin"]
+  skills:
+    ste: {value: 1, bonus: 0}
+flags:
+  srd: true

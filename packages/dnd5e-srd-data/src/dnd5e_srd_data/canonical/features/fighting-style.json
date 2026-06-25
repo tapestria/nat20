@@ -1,0 +1,25 @@
+{
+  "activities": [],
+  "description": "You gain a Fighting Style feat of your choice. Instead of choosing one of those feats, you can choose the option below.\n\n@Embed[Compendium.dnd5e.classes24.Item.phbfstDruidicWar caption=false]",
+  "entry_kind": "feature",
+  "feature_type": "class_feature",
+  "foundry_id": "phbrgrFightingSt",
+  "name": "Fighting Style",
+  "passive_effects": [],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/ranger/class-features/fighting-style.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "fighting-style",
+  "source_slug": "ranger"
+}

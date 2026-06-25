@@ -1,0 +1,310 @@
+{
+  "activities": [
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "action",
+        "value": 1
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": [
+          {
+            "scaling": {
+              "formula": "",
+              "mode": ""
+            },
+            "target": "Compendium.dnd5e.classes24.Item.phbdrdWildShape0",
+            "type": "itemUses",
+            "value": "1"
+          }
+        ]
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "minute",
+        "value": "1"
+      },
+      "effects": [
+        {
+          "id": "h0xW0mOYF8frKgHf",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "7YVMASgXswIFXNs2",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "Gqgjm2NswU6f7qVL",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "LKxwXqkEIXJR2XAa",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        }
+      ],
+      "flags": {},
+      "id": "dnd5eactivity000",
+      "img": "",
+      "kind": "utility",
+      "name": "Spectral Trees and Vines",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "ft",
+        "value": "120"
+      },
+      "roll": {
+        "formula": "",
+        "name": "",
+        "prompt": false,
+        "visible": false
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": true,
+          "count": "",
+          "special": "",
+          "type": "ally"
+        },
+        "override": false,
+        "prompt": true,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "15",
+          "stationary": false,
+          "type": "cube",
+          "units": "ft",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    },
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "bonus",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": []
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [],
+      "flags": {},
+      "id": "oV51RLBkYFH4MPrS",
+      "img": "",
+      "kind": "utility",
+      "name": "Move",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "ft",
+        "value": "120"
+      },
+      "roll": {
+        "formula": "",
+        "name": "",
+        "prompt": false,
+        "visible": false
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "",
+          "special": "",
+          "type": ""
+        },
+        "override": false,
+        "prompt": false,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "ft",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    }
+  ],
+  "description": "As a Magic action, you can expend a use of your Wild Shape and cause spectral trees and vines to appear in a 15-foot Cube on the ground within 120 feet of yourself. They last there for 1 minute or until you have the Incapacitated condition or die. You and your allies have Half Cover while in that area, and your allies gain the current Resistance of your Nature's Ward while there.\n\nAs a Bonus Action, you can move the Cube up to 60 feet to ground within 120 feet of yourself.\n\nFoundry Note\n\nThis feature includes Active Effects for each Nature's Ward land type and adds the Half Cover status effect which automatically applies the relevant bonuses. Apply the relevant effect to your allies.\n\nThese Active Effects are not automatically added/removed to/from Actors in the designated area however.\n\nIt also includes an activity which can be used for tracking your Bonus Action usage when moving the spectral trees and vines.",
+  "entry_kind": "feature",
+  "feature_type": "subclass_feature",
+  "foundry_id": "phbdrdNaturesSan",
+  "name": "Nature's Sanctuary",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "fire"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "h0xW0mOYF8frKgHf",
+      "name": "Nature's Ward: Arid",
+      "statuses": [
+        "coverHalf"
+      ],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "cold"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "7YVMASgXswIFXNs2",
+      "name": "Nature's Ward: Polar",
+      "statuses": [
+        "coverHalf"
+      ],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "lightning"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "Gqgjm2NswU6f7qVL",
+      "name": "Nature's Ward: Temperate",
+      "statuses": [
+        "coverHalf"
+      ],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "poison"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "LKxwXqkEIXJR2XAa",
+      "name": "Nature's Ward: Tropical",
+      "statuses": [
+        "coverHalf"
+      ],
+      "transfer": false
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/druid/subclass-features/circle-of-land/natures-sanctuary.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "natures-sanctuary",
+  "source_slug": "circle-of-land"
+}

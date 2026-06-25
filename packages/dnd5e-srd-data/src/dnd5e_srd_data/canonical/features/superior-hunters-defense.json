@@ -1,0 +1,472 @@
+{
+  "activities": [
+    {
+      "activation": {
+        "condition": "When you take damage",
+        "override": false,
+        "type": "reaction",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": []
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [
+        {
+          "id": "jZGIulxQFLY7uRDe",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "HybTLXiZgGa3t61e",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "6z5fLOHiOiHHcuac",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "DW6JJBsbBtR1Z75R",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "2kTlaPSpacxduIm7",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "5ZizSWuVy8cy77K1",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "fcFLysPw4llFTQsg",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "8Uf0Dw8A3l7CI8Fd",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "PpWYucbhugNEIBJ7",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "BbvC3rh4RDmi06XI",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "IFg9ae4ZyhMDPa3m",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "30KWef6vBjF8RChr",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "P7YUT6Y1NXGpo5Er",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        }
+      ],
+      "flags": {},
+      "id": "KAgnJeRtqjDeYJ2S",
+      "img": "systems/dnd5e/icons/svg/rosa-shield.svg",
+      "kind": "utility",
+      "name": "Resistances",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "self",
+        "value": null
+      },
+      "roll": {
+        "formula": "",
+        "name": "",
+        "prompt": false,
+        "visible": false
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "",
+          "special": "",
+          "type": "self"
+        },
+        "override": false,
+        "prompt": false,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "ft",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    }
+  ],
+  "description": "When you take damage, you can take a Reaction to give yourself Resistance to that damage and any other damage of the same type until the end of the current turn.\n\nFoundry Note\n\nThis feature includes an Active Effect for resisting each type of damage which can be applied to get the relevant resistance. Be sure you disable/delete the previous Active Effect in the \"Effects\" tab of your sheet when you change Resistances.",
+  "entry_kind": "feature",
+  "feature_type": "subclass_feature",
+  "foundry_id": "phbrgrSuperiorDe",
+  "name": "Superior Hunter's Defense",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "acid"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "turns": 1
+      },
+      "id": "jZGIulxQFLY7uRDe",
+      "name": "Hunter's Defense: Acid",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "bludgeoning"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "turns": 1
+      },
+      "id": "HybTLXiZgGa3t61e",
+      "name": "Hunter's Defense: Bludgeoning",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "cold"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "turns": 1
+      },
+      "id": "6z5fLOHiOiHHcuac",
+      "name": "Hunter's Defense: Cold",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "fire"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "turns": 1
+      },
+      "id": "DW6JJBsbBtR1Z75R",
+      "name": "Hunter's Defense: Fire",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "force"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "turns": 1
+      },
+      "id": "2kTlaPSpacxduIm7",
+      "name": "Hunter's Defense: Force",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "lightning"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "turns": 1
+      },
+      "id": "5ZizSWuVy8cy77K1",
+      "name": "Hunter's Defense: Lightning",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "necrotic"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "turns": 1
+      },
+      "id": "fcFLysPw4llFTQsg",
+      "name": "Hunter's Defense: Necrotic",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "piercing"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "turns": 1
+      },
+      "id": "8Uf0Dw8A3l7CI8Fd",
+      "name": "Hunter's Defense: Piercing",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "poison"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "turns": 1
+      },
+      "id": "PpWYucbhugNEIBJ7",
+      "name": "Hunter's Defense: Poison",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "psychic"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "turns": 1
+      },
+      "id": "BbvC3rh4RDmi06XI",
+      "name": "Hunter's Defense: Psychic",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "radiant"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "turns": 1
+      },
+      "id": "IFg9ae4ZyhMDPa3m",
+      "name": "Hunter's Defense: Radiant",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "slashing"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "turns": 1
+      },
+      "id": "30KWef6vBjF8RChr",
+      "name": "Hunter's Defense: Slashing",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "thunder"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "turns": 1
+      },
+      "id": "P7YUT6Y1NXGpo5Er",
+      "name": "Hunter's Defense: Thunder",
+      "statuses": [],
+      "transfer": false
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/ranger/subclass-features/hunter/superior-hunters-defense.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "superior-hunters-defense",
+  "source_slug": "hunter"
+}

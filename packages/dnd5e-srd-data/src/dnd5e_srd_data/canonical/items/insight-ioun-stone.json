@@ -1,0 +1,51 @@
+{
+  "activities": [],
+  "attunement_constraint": null,
+  "cost_gp": 40000.0,
+  "description": "See: Ioun Stone\n\nWhen you take a Magic action to toss an Ioun Stone into the air, the stone orbits your head at a distance of 1d3 feet, conferring its benefit to you while doing so. You can have up to three Ioun Stones orbiting your head at the same time.\n\nAs a Utilize action, you can seize and stow any number of Ioun Stones orbiting your head. If your Attunement to an Ioun Stone ends while it's orbiting your head, the stone falls as though you had dropped it.\n\nYour Wisdom increases by 2, to a maximum of 20, while this incandescent blue sphere orbits your head.",
+  "item_kind": "magic_item",
+  "name": "Ioun Stone of Insight",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.abilities.wis.value",
+          "mode": 2,
+          "priority": null,
+          "value": "2"
+        },
+        {
+          "key": "system.abilities.wis.value",
+          "mode": 3,
+          "priority": null,
+          "value": "20"
+        }
+      ],
+      "description": "<p>Your Wisdom increases by 2, to a maximum of 20, while this incandescent blue sphere orbits your head.</p>",
+      "disabled": false,
+      "duration": null,
+      "id": "47SuTikkluIDzGhZ",
+      "name": "Enhanced Insight: Wisdom Bonus",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/equipment24/equipment/ioun-stones/ioun-stone-of-insight.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "rarity": "very_rare",
+  "requires_attunement": true,
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "insight-ioun-stone",
+  "weight": 0.0
+}

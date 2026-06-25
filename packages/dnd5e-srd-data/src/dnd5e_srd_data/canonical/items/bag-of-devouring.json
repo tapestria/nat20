@@ -1,0 +1,27 @@
+{
+  "activities": [],
+  "attunement_constraint": null,
+  "cost_gp": 40000.0,
+  "description": "This bag resembles a Bag of Holding but is a feeding orifice for a gigantic extradimensional creature. Turning the bag inside out closes the orifice.\n\nThe extradimensional creature attached to the bag can sense whatever is placed inside the bag. Animal or vegetable matter placed wholly in the bag is devoured and lost forever. When part of a living creature is placed in the bag, as happens when someone reaches inside it, there is a [[/r 1dc#Creature pulled in on a 1, or \"Heads\"]]{50 percent} chance that the creature is pulled inside the bag. A creature inside the bag can take an action to try to escape, doing so with a successful [[/check ability=str skill=ath dc=15 format=long]]. Another creature can take an action to reach into the bag to pull a creature out, doing so with a successful [[/check ability=str skill=ath dc=20 format=long]], provided the puller isn't pulled inside the bag first. Any creature that starts its turn inside the bag is devoured, its body destroyed.\n\nInanimate objects can be stored in the bag, which can hold a cubic foot of such material. However, once each day, the bag swallows any objects inside it and spits them out into another plane of existence. The GM determines the time and plane.\n\nIf the bag is pierced or torn, it is destroyed, and anything contained within it is transported to a random location on the Astral Plane.",
+  "item_kind": "magic_item",
+  "name": "Bag of Devouring",
+  "passive_effects": [],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/equipment24/containers/bag-of-devouring/_container.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "rarity": "very_rare",
+  "requires_attunement": false,
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "bag-of-devouring",
+  "weight": 5.0
+}

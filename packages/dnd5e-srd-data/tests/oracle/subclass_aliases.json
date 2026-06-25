@@ -1,0 +1,13 @@
+{
+  "_comment": "Canonical-subclass-slug → 2024 5e-bits-index slug map. Canonical carries the Foundry short `system.identifier` (berserker, lore, life); the 2024 5e-bits SRD oracle uses the long descriptive index (path-of-the-berserker, college-of-lore, life-domain). The 8 SRD subclasses whose two slug forms differ are aliased here so both test_subclasses_match_oracle and the class-check's subclass_identifiers comparison resolve full coverage. (champion/evoker/hunter/thief match 1:1 and need no alias.)",
+  "aliases": {
+    "berserker": "path-of-the-berserker",
+    "lore": "college-of-lore",
+    "life": "life-domain",
+    "land": "circle-of-the-land",
+    "hand": "warrior-of-the-open-hand",
+    "devotion": "oath-of-devotion",
+    "draconic": "draconic-sorcery",
+    "fiend": "fiend-patron"
+  }
+}

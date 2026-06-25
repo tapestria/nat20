@@ -1,0 +1,25 @@
+{
+  "activities": [],
+  "description": "Your Aura of Protection is now a 30-foot Emanation.\n\nFoundry Note\n\nThe range of your auras update automatically as you level up.",
+  "entry_kind": "feature",
+  "feature_type": "class_feature",
+  "foundry_id": "phbpdnAuraExpans",
+  "name": "Aura Expansion",
+  "passive_effects": [],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/paladin/class-features/aura-expansion.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "aura-expansion",
+  "source_slug": "paladin"
+}

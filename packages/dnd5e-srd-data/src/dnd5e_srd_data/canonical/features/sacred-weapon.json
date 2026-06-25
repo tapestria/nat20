@@ -1,0 +1,169 @@
+{
+  "activities": [
+    {
+      "activation": {
+        "condition": "when taking the Attack action",
+        "override": false,
+        "type": "special",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": [
+          {
+            "scaling": {
+              "formula": "",
+              "mode": ""
+            },
+            "target": "feat:channel-divinity-paladin",
+            "type": "itemUses",
+            "value": "1"
+          }
+        ]
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "minute",
+        "value": "10"
+      },
+      "effects": [
+        {
+          "id": "sEWDFOuWn47L5860",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": {
+            "activity": [],
+            "effect": [],
+            "item": []
+          }
+        }
+      ],
+      "enchant": {
+        "identifier": "",
+        "self": false
+      },
+      "flags": {},
+      "id": "Ew70lNTD8dR3vREt",
+      "img": "",
+      "kind": "enchant",
+      "name": "",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "self",
+        "value": null
+      },
+      "restrictions": {
+        "allow_magical": true,
+        "categories": [
+          "simpleM",
+          "martialM"
+        ],
+        "properties": [],
+        "type": "weapon"
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "",
+          "special": "",
+          "type": ""
+        },
+        "override": false,
+        "prompt": false,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "ft",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    }
+  ],
+  "description": "When you take the Attack action, you can expend one use of your Channel Divinity to imbue one Melee weapon that you are holding with positive energy. For 10 minutes or until you use this feature again, you add your Charisma modifier to attack rolls you make with that weapon (minimum bonus of +1), and each time you hit with it, you cause it to deal its normal damage type or Radiant damage.\n\nThe weapon also emits Bright Light in a 20-foot radius and Dim Light 20 feet beyond that.\n\nYou can end this effect early (no action required). This effect also ends if you aren't carrying the weapon.",
+  "entry_kind": "feature",
+  "feature_type": "subclass_feature",
+  "foundry_id": "phbpdnSacredWeap",
+  "name": "Sacred Weapon",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "name",
+          "mode": 2,
+          "priority": null,
+          "value": ", Sacred Weapon"
+        },
+        {
+          "key": "system.damage.base.types",
+          "mode": 2,
+          "priority": null,
+          "value": "radiant"
+        },
+        {
+          "key": "activities[attack].attack.bonus",
+          "mode": 2,
+          "priority": null,
+          "value": "(max(1,@abilities.cha.mod))"
+        }
+      ],
+      "description": "",
+      "disabled": true,
+      "duration": {
+        "seconds": 600
+      },
+      "id": "sEWDFOuWn47L5860",
+      "name": "Sacred Weapon",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/paladin/subclass-features/oath-of-devotion/sacred-weapon.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "sacred-weapon",
+  "source_slug": "oath-of-devotion"
+}

@@ -1,0 +1,25 @@
+{
+  "activities": [],
+  "description": "You have Resistance to Poison damage. You also have Advantage on saving throws you make to avoid or end the Poisoned condition.\n\nFoundry Note\n\nYou will automatically be granted Resistance to Poison damage but not Advantage on saving throws to avoid/end the Poisoned condition.",
+  "entry_kind": "feature",
+  "feature_type": "species_trait",
+  "foundry_id": "phbsptDwarvenRes",
+  "name": "Dwarven Resilience",
+  "passive_effects": [],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/origins24/species/traits/dwarf/dwarven-resilience.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "dwarven-resilience",
+  "source_slug": "dwarf"
+}

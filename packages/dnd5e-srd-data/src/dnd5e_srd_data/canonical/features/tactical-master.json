@@ -1,0 +1,55 @@
+{
+  "activities": [],
+  "description": "When you attack with a weapon whose mastery property you can use, you can replace that property with the Push, Sap, or Slow property for that attack.",
+  "entry_kind": "feature",
+  "feature_type": "class_feature",
+  "foundry_id": "phbftrTacticalMa",
+  "name": "Tactical Master",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.traits.weaponProf.mastery.bonus",
+          "mode": 2,
+          "priority": null,
+          "value": "push"
+        },
+        {
+          "key": "system.traits.weaponProf.mastery.bonus",
+          "mode": 2,
+          "priority": null,
+          "value": "sap"
+        },
+        {
+          "key": "system.traits.weaponProf.mastery.bonus",
+          "mode": 2,
+          "priority": null,
+          "value": "slow"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "9Dwnc4r39iE997j0",
+      "name": "Tactial Master",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/fighter/class-features/tactical-master.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "tactical-master",
+  "source_slug": "fighter"
+}

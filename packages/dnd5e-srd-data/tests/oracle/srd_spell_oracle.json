@@ -1,0 +1,7572 @@
+{
+  "acid-arrow": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 2,
+    "material": "Powdered rhubarb leaf and an adder's stomach.",
+    "name": "Acid Arrow",
+    "range": {
+      "units": "ft",
+      "value": 90
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "acid-splash": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 0,
+    "material": null,
+    "name": "Acid Splash",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "aid": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 8
+    },
+    "level": 2,
+    "material": "A tiny strip of white cloth.",
+    "name": "Aid",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": false,
+    "school": "abj"
+  },
+  "alarm": {
+    "casting_time": [
+      1,
+      "minute"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 8
+    },
+    "level": 1,
+    "material": "A tiny bell and a piece of fine silver wire.",
+    "name": "Alarm",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": true,
+    "school": "abj"
+  },
+  "alter-self": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 2,
+    "material": null,
+    "name": "Alter Self",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "animal-friendship": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 24
+    },
+    "level": 1,
+    "material": "A morsel of food.",
+    "name": "Animal Friendship",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": false,
+    "school": "enc"
+  },
+  "animal-messenger": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 24
+    },
+    "level": 2,
+    "material": "A morsel of food.",
+    "name": "Animal Messenger",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": true,
+    "school": "enc"
+  },
+  "animal-shapes": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "hour",
+      "value": 24
+    },
+    "level": 8,
+    "material": null,
+    "name": "Animal Shapes",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "animate-dead": {
+    "casting_time": [
+      1,
+      "minute"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 3,
+    "material": "A drop of blood, a piece of flesh, and a pinch of bone dust.",
+    "name": "Animate Dead",
+    "range": {
+      "units": "ft",
+      "value": 10
+    },
+    "ritual": false,
+    "school": "nec"
+  },
+  "animate-objects": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 5,
+    "material": null,
+    "name": "Animate Objects",
+    "range": {
+      "units": "ft",
+      "value": 120
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "antilife-shell": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 5,
+    "material": null,
+    "name": "Antilife Shell",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "abj"
+  },
+  "antimagic-field": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 8,
+    "material": "A pinch of powdered iron or iron filings.",
+    "name": "Antimagic Field",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "abj"
+  },
+  "antipathy-sympathy": {
+    "casting_time": [
+      1,
+      "hour"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "day",
+      "value": 10
+    },
+    "level": 8,
+    "material": "Either a lump of alum soaked in vinegar for the antipathy effect or a drop of honey for the sympathy effect.",
+    "name": "Antipathy/Sympathy",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "enc"
+  },
+  "arcane-eye": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 4,
+    "material": "A bit of bat fur.",
+    "name": "Arcane Eye",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": false,
+    "school": "div"
+  },
+  "arcane-hand": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 5,
+    "material": "An eggshell and a snakeskin glove.",
+    "name": "Arcane Hand",
+    "range": {
+      "units": "ft",
+      "value": 120
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "arcane-lock": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "perm"
+    },
+    "level": 2,
+    "material": "Gold dust worth at least 25gp, which the spell consumes.",
+    "name": "Arcane Lock",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "abj"
+  },
+  "arcane-sword": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 7,
+    "material": "A miniature platinum sword with a grip and pommel of copper and zinc, worth 250 gp.",
+    "name": "Arcane Sword",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "arcanists-magic-aura": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 24
+    },
+    "level": 2,
+    "material": "A small square of silk.",
+    "name": "Arcanist's Magic Aura",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "ill"
+  },
+  "astral-projection": {
+    "casting_time": [
+      1,
+      "hour"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "spec"
+    },
+    "level": 9,
+    "material": "For each creature you affect with this spell, you must provide one jacinth worth at least 1,000gp and one ornately carved bar of silver worth at least 100gp, all of which the spell consumes.",
+    "name": "Astral Projection",
+    "range": {
+      "units": "ft",
+      "value": 10
+    },
+    "ritual": false,
+    "school": "nec"
+  },
+  "augury": {
+    "casting_time": [
+      1,
+      "minute"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 2,
+    "material": "Specially marked sticks, bones, or similar tokens worth at least 25gp.",
+    "name": "Augury",
+    "range": {
+      "units": "self"
+    },
+    "ritual": true,
+    "school": "div"
+  },
+  "awaken": {
+    "casting_time": [
+      8,
+      "hour"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 5,
+    "material": "An agate worth at least 1,000 gp, which the spell consumes.",
+    "name": "Awaken",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "bane": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 1,
+    "material": "A drop of blood.",
+    "name": "Bane",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": false,
+    "school": "enc"
+  },
+  "banishment": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 4,
+    "material": "An item distasteful to the target.",
+    "name": "Banishment",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "abj"
+  },
+  "barkskin": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 2,
+    "material": "A handful of oak bark.",
+    "name": "Barkskin",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "beacon-of-hope": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 3,
+    "material": null,
+    "name": "Beacon of Hope",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": false,
+    "school": "abj"
+  },
+  "bestow-curse": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 3,
+    "material": null,
+    "name": "Bestow Curse",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "nec"
+  },
+  "black-tentacles": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 4,
+    "material": "A piece of tentacle from a giant octopus or a giant squid",
+    "name": "Black Tentacles",
+    "range": {
+      "units": "ft",
+      "value": 90
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "blade-barrier": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 10
+    },
+    "level": 6,
+    "material": null,
+    "name": "Blade Barrier",
+    "range": {
+      "units": "ft",
+      "value": 90
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "bless": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 1,
+    "material": "A sprinkling of holy water.",
+    "name": "Bless",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": false,
+    "school": "enc"
+  },
+  "blight": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 4,
+    "material": null,
+    "name": "Blight",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": false,
+    "school": "nec"
+  },
+  "blindness-deafness": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 2,
+    "material": null,
+    "name": "Blindness/Deafness",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": false,
+    "school": "nec"
+  },
+  "blink": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 3,
+    "material": null,
+    "name": "Blink",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "blur": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 2,
+    "material": null,
+    "name": "Blur",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "ill"
+  },
+  "branding-smite": {
+    "casting_time": [
+      1,
+      "bonus"
+    ],
+    "components": [
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 2,
+    "material": null,
+    "name": "Branding Smite",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "burning-hands": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 1,
+    "material": null,
+    "name": "Burning Hands",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "call-lightning": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 10
+    },
+    "level": 3,
+    "material": null,
+    "name": "Call Lightning",
+    "range": {
+      "units": "ft",
+      "value": 120
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "calm-emotions": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 2,
+    "material": null,
+    "name": "Calm Emotions",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "enc"
+  },
+  "chain-lightning": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 6,
+    "material": "A bit of fur; a piece of amber, glass, or a crystal rod; and three silver pins.",
+    "name": "Chain Lightning",
+    "range": {
+      "units": "ft",
+      "value": 150
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "charm-person": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 1,
+    "material": null,
+    "name": "Charm Person",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": false,
+    "school": "enc"
+  },
+  "chill-touch": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "round",
+      "value": 1
+    },
+    "level": 0,
+    "material": null,
+    "name": "Chill Touch",
+    "range": {
+      "units": "ft",
+      "value": 120
+    },
+    "ritual": false,
+    "school": "nec"
+  },
+  "circle-of-death": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 6,
+    "material": "The powder of a crushed black pearl worth at least 500 gp.",
+    "name": "Circle of Death",
+    "range": {
+      "units": "ft",
+      "value": 150
+    },
+    "ritual": false,
+    "school": "nec"
+  },
+  "clairvoyance": {
+    "casting_time": [
+      10,
+      "minute"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 10
+    },
+    "level": 3,
+    "material": "A focus worth at least 100gp, either a jeweled horn for hearing or a glass eye for seeing.",
+    "name": "Clairvoyance",
+    "range": {
+      "units": "mi",
+      "value": 1
+    },
+    "ritual": false,
+    "school": "div"
+  },
+  "clone": {
+    "casting_time": [
+      1,
+      "hour"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 8,
+    "material": "A diamond worth at least 1,000 gp and at least 1 cubic inch of flesh of the creature that is to be cloned, which the spell consumes, and a vessel worth at least 2,000 gp that has a sealable lid and is large enough to hold a Medium creature, such as a huge urn, coffin, mud-filled cyst in the ground, or crystal container filled with salt water.",
+    "name": "Clone",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "nec"
+  },
+  "cloudkill": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 10
+    },
+    "level": 5,
+    "material": null,
+    "name": "Cloudkill",
+    "range": {
+      "units": "ft",
+      "value": 120
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "color-spray": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "round",
+      "value": 1
+    },
+    "level": 1,
+    "material": "A pinch of powder or sand that is colored red, yellow, and blue.",
+    "name": "Color Spray",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "ill"
+  },
+  "command": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "round",
+      "value": 1
+    },
+    "level": 1,
+    "material": null,
+    "name": "Command",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "enc"
+  },
+  "commune": {
+    "casting_time": [
+      1,
+      "minute"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 5,
+    "material": "Incense and a vial of holy or unholy water.",
+    "name": "Commune",
+    "range": {
+      "units": "self"
+    },
+    "ritual": true,
+    "school": "div"
+  },
+  "commune-with-nature": {
+    "casting_time": [
+      1,
+      "minute"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 5,
+    "material": null,
+    "name": "Commune With Nature",
+    "range": {
+      "units": "self"
+    },
+    "ritual": true,
+    "school": "div"
+  },
+  "comprehend-languages": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 1,
+    "material": "A pinch of soot and salt.",
+    "name": "Comprehend Languages",
+    "range": {
+      "units": "self"
+    },
+    "ritual": true,
+    "school": "div"
+  },
+  "compulsion": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 4,
+    "material": null,
+    "name": "Compulsion",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": false,
+    "school": "enc"
+  },
+  "cone-of-cold": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 5,
+    "material": "A small crystal or glass cone.",
+    "name": "Cone of Cold",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "confusion": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 4,
+    "material": "Three walnut shells.",
+    "name": "Confusion",
+    "range": {
+      "units": "ft",
+      "value": 90
+    },
+    "ritual": false,
+    "school": "enc"
+  },
+  "conjure-animals": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 3,
+    "material": null,
+    "name": "Conjure Animals",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "conjure-celestial": {
+    "casting_time": [
+      1,
+      "minute"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 7,
+    "material": null,
+    "name": "Conjure Celestial",
+    "range": {
+      "units": "ft",
+      "value": 90
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "conjure-elemental": {
+    "casting_time": [
+      1,
+      "minute"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 5,
+    "material": "Burning incense for air, soft clay for earth, sulfur and phosphorus for fire, or water and sand for water.",
+    "name": "Conjure Elemental",
+    "range": {
+      "units": "ft",
+      "value": 90
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "conjure-fey": {
+    "casting_time": [
+      1,
+      "minute"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 6,
+    "material": null,
+    "name": "Conjure Fey",
+    "range": {
+      "units": "ft",
+      "value": 90
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "conjure-minor-elementals": {
+    "casting_time": [
+      1,
+      "minute"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 4,
+    "material": null,
+    "name": "Conjure Minor Elementals",
+    "range": {
+      "units": "ft",
+      "value": 90
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "conjure-woodland-beings": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 4,
+    "material": "One holly berry per creature summoned.",
+    "name": "Conjure Woodland Beings",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "contact-other-plane": {
+    "casting_time": [
+      1,
+      "minute"
+    ],
+    "components": [
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 5,
+    "material": null,
+    "name": "Contact Other Plane",
+    "range": {
+      "units": "self"
+    },
+    "ritual": true,
+    "school": "div"
+  },
+  "contagion": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "day",
+      "value": 7
+    },
+    "level": 5,
+    "material": null,
+    "name": "Contagion",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "nec"
+  },
+  "contingency": {
+    "casting_time": [
+      10,
+      "minute"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "day",
+      "value": 10
+    },
+    "level": 6,
+    "material": "A statuette of yourself carved from ivory and decorated with gems worth at least 1,500 gp.",
+    "name": "Contingency",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "continual-flame": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "perm"
+    },
+    "level": 2,
+    "material": "Ruby dust worth 50 gp, which the spell consumes.",
+    "name": "Continual Flame",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "control-water": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 10
+    },
+    "level": 4,
+    "material": "A drop of water and a pinch of dust.",
+    "name": "Control Water",
+    "range": {
+      "units": "ft",
+      "value": 300
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "control-weather": {
+    "casting_time": [
+      10,
+      "minute"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "hour",
+      "value": 8
+    },
+    "level": 8,
+    "material": "Burning incense and bits of earth and wood mixed in water.",
+    "name": "Control Weather",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "counterspell": {
+    "casting_time": [
+      1,
+      "reaction"
+    ],
+    "components": [
+      "S"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 3,
+    "material": null,
+    "name": "Counterspell",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "abj"
+  },
+  "create-food-and-water": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 3,
+    "material": null,
+    "name": "Create Food and Water",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "create-or-destroy-water": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 1,
+    "material": "A drop of water if creating water, or a few grains of sand if destroying it.",
+    "name": "Create or Destroy Water",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "create-undead": {
+    "casting_time": [
+      1,
+      "minute"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 6,
+    "material": "One clay pot filled with grave dirt, one clay pot filled with brackish water, and one 150 gp black onyx stone for each corpse.",
+    "name": "Create Undead",
+    "range": {
+      "units": "ft",
+      "value": 10
+    },
+    "ritual": false,
+    "school": "nec"
+  },
+  "creation": {
+    "casting_time": [
+      1,
+      "minute"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "spec"
+    },
+    "level": 5,
+    "material": "A tiny piece of matter of the same type of the item you plan to create.",
+    "name": "Creation",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": false,
+    "school": "ill"
+  },
+  "cure-wounds": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 1,
+    "material": null,
+    "name": "Cure Wounds",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "dancing-lights": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 0,
+    "material": "A bit of phosphorus or wychwood, or a glowworm.",
+    "name": "Dancing Lights",
+    "range": {
+      "units": "ft",
+      "value": 120
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "darkness": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 10
+    },
+    "level": 2,
+    "material": "Bat fur and a drop of pitch or piece of coal.",
+    "name": "Darkness",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "darkvision": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 8
+    },
+    "level": 2,
+    "material": "Either a pinch of dried carrot or an agate.",
+    "name": "Darkvision",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "daylight": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 3,
+    "material": null,
+    "name": "Daylight",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "death-ward": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 8
+    },
+    "level": 4,
+    "material": null,
+    "name": "Death Ward",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "abj"
+  },
+  "delayed-blast-fireball": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 7,
+    "material": "A tiny ball of bat guano and sulfur.",
+    "name": "Delayed Blast Fireball",
+    "range": {
+      "units": "ft",
+      "value": 150
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "demiplane": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 8,
+    "material": null,
+    "name": "Demiplane",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "detect-evil-and-good": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 10
+    },
+    "level": 1,
+    "material": null,
+    "name": "Detect Evil and Good",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "div"
+  },
+  "detect-magic": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 10
+    },
+    "level": 1,
+    "material": null,
+    "name": "Detect Magic",
+    "range": {
+      "units": "self"
+    },
+    "ritual": true,
+    "school": "div"
+  },
+  "detect-poison-and-disease": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 10
+    },
+    "level": 1,
+    "material": "A yew leaf.",
+    "name": "Detect Poison and Disease",
+    "range": {
+      "units": "self"
+    },
+    "ritual": true,
+    "school": "div"
+  },
+  "detect-thoughts": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 2,
+    "material": "A copper coin.",
+    "name": "Detect Thoughts",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "div"
+  },
+  "dimension-door": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 4,
+    "material": null,
+    "name": "Dimension Door",
+    "range": {
+      "units": "ft",
+      "value": 500
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "disguise-self": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 1,
+    "material": null,
+    "name": "Disguise Self",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "ill"
+  },
+  "disintegrate": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 6,
+    "material": "A lodestone and a pinch of dust.",
+    "name": "Disintegrate",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "dispel-evil-and-good": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 5,
+    "material": "Holy water or powdered silver and iron.",
+    "name": "Dispel Evil and Good",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "abj"
+  },
+  "dispel-magic": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 3,
+    "material": null,
+    "name": "Dispel Magic",
+    "range": {
+      "units": "ft",
+      "value": 120
+    },
+    "ritual": false,
+    "school": "abj"
+  },
+  "divination": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 4,
+    "material": "Incense and a sacrificial offering appropriate to your religion, together worth at least 25gp, which the spell consumes.",
+    "name": "Divination",
+    "range": {
+      "units": "self"
+    },
+    "ritual": true,
+    "school": "div"
+  },
+  "divine-favor": {
+    "casting_time": [
+      1,
+      "bonus"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 1,
+    "material": null,
+    "name": "Divine Favor",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "divine-word": {
+    "casting_time": [
+      1,
+      "bonus"
+    ],
+    "components": [
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 7,
+    "material": null,
+    "name": "Divine Word",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "dominate-beast": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 4,
+    "material": null,
+    "name": "Dominate Beast",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "enc"
+  },
+  "dominate-monster": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 8,
+    "material": null,
+    "name": "Dominate Monster",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "enc"
+  },
+  "dominate-person": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 5,
+    "material": null,
+    "name": "Dominate Person",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "enc"
+  },
+  "dream": {
+    "casting_time": [
+      1,
+      "minute"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 8
+    },
+    "level": 5,
+    "material": "A handful of sand, a dab of ink, and a writing quill plucked from a sleeping bird.",
+    "name": "Dream",
+    "range": {
+      "special": "Special",
+      "units": "spec"
+    },
+    "ritual": false,
+    "school": "ill"
+  },
+  "druidcraft": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 0,
+    "material": null,
+    "name": "Druidcraft",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "earthquake": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 8,
+    "material": "A pinch of dirt, a piece of rock, and a lump of clay.",
+    "name": "Earthquake",
+    "range": {
+      "units": "ft",
+      "value": 500
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "eldritch-blast": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 0,
+    "material": null,
+    "name": "Eldritch Blast",
+    "range": {
+      "units": "ft",
+      "value": 120
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "enhance-ability": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 2,
+    "material": "Fur or a feather from a beast.",
+    "name": "Enhance Ability",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "enlarge-reduce": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 2,
+    "material": "A pinch iron powder.",
+    "name": "Enlarge/Reduce",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "entangle": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 1,
+    "material": null,
+    "name": "Entangle",
+    "range": {
+      "units": "ft",
+      "value": 90
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "enthrall": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 2,
+    "material": null,
+    "name": "Enthrall",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "enc"
+  },
+  "etherealness": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 8
+    },
+    "level": 7,
+    "material": null,
+    "name": "Etherealness",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "expeditious-retreat": {
+    "casting_time": [
+      1,
+      "bonus"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 10
+    },
+    "level": 1,
+    "material": null,
+    "name": "Expeditious Retreat",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "eyebite": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 6,
+    "material": null,
+    "name": "Eyebite",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "nec"
+  },
+  "fabricate": {
+    "casting_time": [
+      10,
+      "minute"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 4,
+    "material": null,
+    "name": "Fabricate",
+    "range": {
+      "units": "ft",
+      "value": 120
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "faerie-fire": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 1,
+    "material": null,
+    "name": "Faerie Fire",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "faithful-hound": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 8
+    },
+    "level": 4,
+    "material": "A tiny silver whistle, a piece of bone, and a thread",
+    "name": "Faithful Hound",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "false-life": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 1,
+    "material": "A small amount of alcohol or distilled spirits.",
+    "name": "False Life",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "nec"
+  },
+  "fear": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 3,
+    "material": "A white feather or the heart of a hen.",
+    "name": "Fear",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "ill"
+  },
+  "feather-fall": {
+    "casting_time": [
+      1,
+      "reaction"
+    ],
+    "components": [
+      "M",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 1,
+    "material": "A small feather or a piece of down.",
+    "name": "Feather Fall",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "feeblemind": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 8,
+    "material": "A handful of clay, crystal, glass, or mineral spheres.",
+    "name": "Feeblemind",
+    "range": {
+      "units": "ft",
+      "value": 150
+    },
+    "ritual": false,
+    "school": "enc"
+  },
+  "find-familiar": {
+    "casting_time": [
+      1,
+      "hour"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 1,
+    "material": "10gp worth of charcoal, incense, and herbs that must be consumed by fire in a brass brazier.",
+    "name": "Find Familiar",
+    "range": {
+      "units": "ft",
+      "value": 10
+    },
+    "ritual": true,
+    "school": "con"
+  },
+  "find-steed": {
+    "casting_time": [
+      10,
+      "minute"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 2,
+    "material": null,
+    "name": "Find Steed",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "find-the-path": {
+    "casting_time": [
+      1,
+      "minute"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "hour",
+      "value": 24
+    },
+    "level": 6,
+    "material": "A set of divinatory tools--such as bones, ivory sticks, cards, teeth, or carved runes--worth 100gp and an object from the location you wish to find.",
+    "name": "Find the Path",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "div"
+  },
+  "find-traps": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 2,
+    "material": null,
+    "name": "Find Traps",
+    "range": {
+      "units": "ft",
+      "value": 120
+    },
+    "ritual": false,
+    "school": "div"
+  },
+  "finger-of-death": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 7,
+    "material": null,
+    "name": "Finger of Death",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "nec"
+  },
+  "fire-bolt": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 0,
+    "material": null,
+    "name": "Fire Bolt",
+    "range": {
+      "units": "ft",
+      "value": 120
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "fire-shield": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "minute",
+      "value": 10
+    },
+    "level": 4,
+    "material": "A little phosphorus or a firefly.",
+    "name": "Fire Shield",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "fire-storm": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 7,
+    "material": null,
+    "name": "Fire Storm",
+    "range": {
+      "units": "ft",
+      "value": 150
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "fireball": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 3,
+    "material": "A tiny ball of bat guano and sulfur.",
+    "name": "Fireball",
+    "range": {
+      "units": "ft",
+      "value": 150
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "flame-blade": {
+    "casting_time": [
+      1,
+      "bonus"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 10
+    },
+    "level": 2,
+    "material": "Leaf of sumac.",
+    "name": "Flame Blade",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "flame-strike": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 5,
+    "material": "Pinch of sulfur.",
+    "name": "Flame Strike",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "flaming-sphere": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 2,
+    "material": "A bit of tallow, a pinch of brimstone, and a dusting of powdered iron.",
+    "name": "Flaming Sphere",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "flesh-to-stone": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 6,
+    "material": "A pinch of lime, water, and earth.",
+    "name": "Flesh to Stone",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "floating-disk": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 1,
+    "material": "A drop of mercury.",
+    "name": "Floating Disk",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": true,
+    "school": "con"
+  },
+  "fly": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 10
+    },
+    "level": 3,
+    "material": "A wing feather from any bird.",
+    "name": "Fly",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "fog-cloud": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 1,
+    "material": null,
+    "name": "Fog Cloud",
+    "range": {
+      "units": "ft",
+      "value": 120
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "forbiddance": {
+    "casting_time": [
+      10,
+      "minute"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 24
+    },
+    "level": 6,
+    "material": "A sprinkling of holy water, rare incense, and powdered ruby worth at least 1,000 gp.",
+    "name": "Forbiddance",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": true,
+    "school": "abj"
+  },
+  "forcecage": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 7,
+    "material": "Ruby dust worth 1,500 gp.",
+    "name": "Forcecage",
+    "range": {
+      "units": "ft",
+      "value": 100
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "foresight": {
+    "casting_time": [
+      1,
+      "minute"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 8
+    },
+    "level": 9,
+    "material": "A hummingbird feather.",
+    "name": "Foresight",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "div"
+  },
+  "freedom-of-movement": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 4,
+    "material": "A leather strap, bound around the arm or a similar appendage.",
+    "name": "Freedom of Movement",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "abj"
+  },
+  "freezing-sphere": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 6,
+    "material": "A small crystal sphere.",
+    "name": "Freezing Sphere",
+    "range": {
+      "units": "ft",
+      "value": 300
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "gaseous-form": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 3,
+    "material": "A bit of gauze and a wisp of smoke.",
+    "name": "Gaseous Form",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "gate": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 9,
+    "material": "A diamond worth at least 5,000gp.",
+    "name": "Gate",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "geas": {
+    "casting_time": [
+      1,
+      "minute"
+    ],
+    "components": [
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "day",
+      "value": 30
+    },
+    "level": 5,
+    "material": null,
+    "name": "Geas",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "enc"
+  },
+  "gentle-repose": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "day",
+      "value": 10
+    },
+    "level": 2,
+    "material": "A pinch of salt and one copper piece placed on each of the corpse's eyes, which must remain there for the duration.",
+    "name": "Gentle Repose",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": true,
+    "school": "nec"
+  },
+  "giant-insect": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 10
+    },
+    "level": 4,
+    "material": null,
+    "name": "Giant Insect",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "glibness": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 8,
+    "material": null,
+    "name": "Glibness",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "globe-of-invulnerability": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 6,
+    "material": "A glass or crystal bead that shatters when the spell ends.",
+    "name": "Globe of Invulnerability",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "abj"
+  },
+  "glyph-of-warding": {
+    "casting_time": [
+      1,
+      "hour"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "perm"
+    },
+    "level": 3,
+    "material": "Incense and powdered diamond worth at least 200 gp, which the spell consumes.",
+    "name": "Glyph of Warding",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "abj"
+  },
+  "goodberry": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 1,
+    "material": "A sprig of mistletoe.",
+    "name": "Goodberry",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "grease": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 1,
+    "material": "A bit of pork rind or butter.",
+    "name": "Grease",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "greater-invisibility": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 4,
+    "material": null,
+    "name": "Greater Invisibility",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "ill"
+  },
+  "greater-restoration": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 5,
+    "material": "Diamond dust worth at least 100gp, which the spell consumes.",
+    "name": "Greater Restoration",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "abj"
+  },
+  "guardian-of-faith": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 8
+    },
+    "level": 4,
+    "material": null,
+    "name": "Guardian of Faith",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "guards-and-wards": {
+    "casting_time": [
+      10,
+      "minute"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 24
+    },
+    "level": 6,
+    "material": "Burning incense, a small measure of brimstone and oil, a knotted string, a small amount of umber hulk blood, and a small silver rod worth at least 10 gp.",
+    "name": "Guards and Wards",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "abj"
+  },
+  "guidance": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 0,
+    "material": null,
+    "name": "Guidance",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "div"
+  },
+  "guiding-bolt": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "round",
+      "value": 1
+    },
+    "level": 1,
+    "material": null,
+    "name": "Guiding Bolt",
+    "range": {
+      "units": "ft",
+      "value": 120
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "gust-of-wind": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 2,
+    "material": "A legume seed.",
+    "name": "Gust of Wind",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "hallow": {
+    "casting_time": [
+      24,
+      "hour"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "perm"
+    },
+    "level": 5,
+    "material": "Herbs, oils, and incense worth at least 1,000 gp, which the spell consumes.",
+    "name": "Hallow",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "hallucinatory-terrain": {
+    "casting_time": [
+      10,
+      "minute"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 24
+    },
+    "level": 4,
+    "material": "A stone, a twig, and a bit of green plant.",
+    "name": "Hallucinatory Terrain",
+    "range": {
+      "units": "ft",
+      "value": 300
+    },
+    "ritual": false,
+    "school": "ill"
+  },
+  "harm": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 6,
+    "material": null,
+    "name": "Harm",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "nec"
+  },
+  "haste": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 3,
+    "material": "A shaving of licorice root.",
+    "name": "Haste",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "heal": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 6,
+    "material": null,
+    "name": "Heal",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "healing-word": {
+    "casting_time": [
+      1,
+      "bonus"
+    ],
+    "components": [
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 1,
+    "material": null,
+    "name": "Healing Word",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "heat-metal": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 2,
+    "material": "A piece of iron and a flame.",
+    "name": "Heat Metal",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "hellish-rebuke": {
+    "casting_time": [
+      1,
+      "reaction"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 1,
+    "material": null,
+    "name": "Hellish Rebuke",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "heroes-feast": {
+    "casting_time": [
+      10,
+      "minute"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 6,
+    "material": "A gem-encrusted bowl worth at least 1,000gp, which the spell consumes.",
+    "name": "Heroes' Feast",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "heroism": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 1,
+    "material": null,
+    "name": "Heroism",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "enc"
+  },
+  "hideous-laughter": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 1,
+    "material": "Tiny tarts and a feather that is waved in the air.",
+    "name": "Hideous Laughter",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": false,
+    "school": "enc"
+  },
+  "hold-monster": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 5,
+    "material": "A small piece of iron.",
+    "name": "Hold Monster",
+    "range": {
+      "units": "ft",
+      "value": 90
+    },
+    "ritual": false,
+    "school": "enc"
+  },
+  "hold-person": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 2,
+    "material": "A small, straight piece of iron.",
+    "name": "Hold Person",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "enc"
+  },
+  "holy-aura": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 8,
+    "material": "A tiny reliquary worth at least 1,000gp containing a sacred relic, such as a scrap of cloth from a saint's robe or a piece of parchment from a religious text.",
+    "name": "Holy Aura",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "abj"
+  },
+  "hunters-mark": {
+    "casting_time": [
+      1,
+      "bonus"
+    ],
+    "components": [
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 1,
+    "material": null,
+    "name": "Hunter's Mark",
+    "range": {
+      "units": "ft",
+      "value": 90
+    },
+    "ritual": false,
+    "school": "div"
+  },
+  "hypnotic-pattern": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 3,
+    "material": "A glowing stick of incense or a crystal vial filled with phosphorescent material.",
+    "name": "Hypnotic Pattern",
+    "range": {
+      "units": "ft",
+      "value": 120
+    },
+    "ritual": false,
+    "school": "ill"
+  },
+  "ice-storm": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 4,
+    "material": "A pinch of dust and a few drops of water.",
+    "name": "Ice Storm",
+    "range": {
+      "units": "ft",
+      "value": 300
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "identify": {
+    "casting_time": [
+      1,
+      "minute"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 1,
+    "material": "A pearl worth at least 100gp and an owl feather.",
+    "name": "Identify",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": true,
+    "school": "div"
+  },
+  "illusory-script": {
+    "casting_time": [
+      1,
+      "minute"
+    ],
+    "components": [
+      "M",
+      "S"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "day",
+      "value": 10
+    },
+    "level": 1,
+    "material": "A lead-based ink worth at least 10gp, which this spell consumes.",
+    "name": "Illusory Script",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": true,
+    "school": "ill"
+  },
+  "imprisonment": {
+    "casting_time": [
+      1,
+      "minute"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "perm"
+    },
+    "level": 9,
+    "material": "A vellum depiction or a carved statuette in the likeness of the target, and a special component that varies according to the version of the spell you choose, worth at least 500gp per Hit Die of the target.",
+    "name": "Imprisonment",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": false,
+    "school": "abj"
+  },
+  "incendiary-cloud": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 8,
+    "material": null,
+    "name": "Incendiary Cloud",
+    "range": {
+      "units": "ft",
+      "value": 150
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "inflict-wounds": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 1,
+    "material": null,
+    "name": "Inflict Wounds",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "nec"
+  },
+  "insect-plague": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 10
+    },
+    "level": 5,
+    "material": "A few grains of sugar, some kernels of grain, and a smear of fat.",
+    "name": "Insect Plague",
+    "range": {
+      "units": "ft",
+      "value": 300
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "instant-summons": {
+    "casting_time": [
+      1,
+      "minute"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "perm"
+    },
+    "level": 6,
+    "material": "A sapphire worth 1,000 gp.",
+    "name": "Instant Summons",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": true,
+    "school": "con"
+  },
+  "invisibility": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 2,
+    "material": "An eyelash encased in gum arabic.",
+    "name": "Invisibility",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "ill"
+  },
+  "irresistible-dance": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 6,
+    "material": null,
+    "name": "Irresistible Dance",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": false,
+    "school": "enc"
+  },
+  "jump": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 1,
+    "material": "A grasshopper's hind leg.",
+    "name": "Jump",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "knock": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 2,
+    "material": null,
+    "name": "Knock",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "legend-lore": {
+    "casting_time": [
+      10,
+      "minute"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 5,
+    "material": "Incense worth at least 250 gp, which the spell consumes, and four ivory strips worth at least 50 gp each.",
+    "name": "Legend Lore",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "div"
+  },
+  "lesser-restoration": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 2,
+    "material": null,
+    "name": "Lesser Restoration",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "abj"
+  },
+  "levitate": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 10
+    },
+    "level": 2,
+    "material": "Either a small leather loop or a piece of golden wire bent into a cup shape with a long shank on one end.",
+    "name": "Levitate",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "light": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 0,
+    "material": "A firefly or phosphorescent moss.",
+    "name": "Light",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "lightning-bolt": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 3,
+    "material": "A bit of fur and a rod of amber, crystal, or glass.",
+    "name": "Lightning Bolt",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "locate-animals-or-plants": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 2,
+    "material": "A bit of fur from a bloodhound.",
+    "name": "Locate Animals or Plants",
+    "range": {
+      "units": "self"
+    },
+    "ritual": true,
+    "school": "div"
+  },
+  "locate-creature": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 4,
+    "material": "A bit of fur from a bloodhound.",
+    "name": "Locate Creature",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "div"
+  },
+  "locate-object": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 10
+    },
+    "level": 2,
+    "material": "A forked twig.",
+    "name": "Locate Object",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "div"
+  },
+  "longstrider": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 1,
+    "material": "A pinch of dirt.",
+    "name": "Longstrider",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "mage-armor": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 8
+    },
+    "level": 1,
+    "material": "A piece of cured leather.",
+    "name": "Mage Armor",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "abj"
+  },
+  "mage-hand": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 0,
+    "material": null,
+    "name": "Mage Hand",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "magic-circle": {
+    "casting_time": [
+      1,
+      "minute"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 3,
+    "material": "Holy water or powdered silver and iron worth at least 100 gp, which the spell consumes.",
+    "name": "Magic Circle",
+    "range": {
+      "units": "ft",
+      "value": 10
+    },
+    "ritual": false,
+    "school": "abj"
+  },
+  "magic-jar": {
+    "casting_time": [
+      1,
+      "minute"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "perm"
+    },
+    "level": 6,
+    "material": "A gem, crystal, reliquary, or some other ornamental container worth at least 500 gp.",
+    "name": "Magic Jar",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "nec"
+  },
+  "magic-missile": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 1,
+    "material": null,
+    "name": "Magic Missile",
+    "range": {
+      "units": "ft",
+      "value": 120
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "magic-mouth": {
+    "casting_time": [
+      1,
+      "minute"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "perm"
+    },
+    "level": 2,
+    "material": "A honeycomb and jade dust of at least 10 inches, the spell consumes.",
+    "name": "Magic Mouth",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": true,
+    "school": "ill"
+  },
+  "magic-weapon": {
+    "casting_time": [
+      1,
+      "bonus"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 2,
+    "material": null,
+    "name": "Magic Weapon",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "magnificent-mansion": {
+    "casting_time": [
+      1,
+      "minute"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 24
+    },
+    "level": 7,
+    "material": "A miniature portal carved from ivory, a small piece of polished marble, and a tiny silver spoon, each item worth at least 5 gp.",
+    "name": "Magnificent Mansion",
+    "range": {
+      "units": "ft",
+      "value": 300
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "major-image": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 10
+    },
+    "level": 3,
+    "material": "A bit of fleece.",
+    "name": "Major Image",
+    "range": {
+      "units": "ft",
+      "value": 120
+    },
+    "ritual": false,
+    "school": "ill"
+  },
+  "mass-cure-wounds": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 5,
+    "material": null,
+    "name": "Mass Cure Wounds",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "mass-heal": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 9,
+    "material": null,
+    "name": "Mass Heal",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "mass-healing-word": {
+    "casting_time": [
+      1,
+      "bonus"
+    ],
+    "components": [
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 3,
+    "material": null,
+    "name": "Mass Healing Word",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "mass-suggestion": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 24
+    },
+    "level": 6,
+    "material": "A snake's tongue and either a bit of honeycomb or a drop of sweet oil.",
+    "name": "Mass Suggestion",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "enc"
+  },
+  "maze": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 10
+    },
+    "level": 8,
+    "material": null,
+    "name": "Maze",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "meld-into-stone": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 8
+    },
+    "level": 3,
+    "material": null,
+    "name": "Meld Into Stone",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": true,
+    "school": "trs"
+  },
+  "mending": {
+    "casting_time": [
+      1,
+      "minute"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 0,
+    "material": "Two lodestones.",
+    "name": "Mending",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "message": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "round",
+      "value": 1
+    },
+    "level": 0,
+    "material": "A short piece of copper wire.",
+    "name": "Message",
+    "range": {
+      "units": "ft",
+      "value": 120
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "meteor-swarm": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 9,
+    "material": null,
+    "name": "Meteor Swarm",
+    "range": {
+      "units": "mi",
+      "value": 1
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "mind-blank": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 24
+    },
+    "level": 8,
+    "material": null,
+    "name": "Mind Blank",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "abj"
+  },
+  "minor-illusion": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 0,
+    "material": "A bit of fleece.",
+    "name": "Minor Illusion",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": false,
+    "school": "ill"
+  },
+  "mirage-arcane": {
+    "casting_time": [
+      10,
+      "minute"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "day",
+      "value": 10
+    },
+    "level": 7,
+    "material": null,
+    "name": "Mirage Arcane",
+    "range": {
+      "special": "Sight",
+      "units": "spec"
+    },
+    "ritual": false,
+    "school": "ill"
+  },
+  "mirror-image": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 2,
+    "material": null,
+    "name": "Mirror Image",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "ill"
+  },
+  "mislead": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 5,
+    "material": null,
+    "name": "Mislead",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "ill"
+  },
+  "misty-step": {
+    "casting_time": [
+      1,
+      "bonus"
+    ],
+    "components": [
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 2,
+    "material": null,
+    "name": "Misty Step",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "modify-memory": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 5,
+    "material": null,
+    "name": "Modify Memory",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": false,
+    "school": "enc"
+  },
+  "moonbeam": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 2,
+    "material": "Several seeds of any moonseed plant and a piece of opalescent feldspar.",
+    "name": "Moonbeam",
+    "range": {
+      "units": "ft",
+      "value": 120
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "move-earth": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "hour",
+      "value": 2
+    },
+    "level": 6,
+    "material": "An iron blade and a small bag containing a mixture of soils--clay, loam, and sand.",
+    "name": "Move Earth",
+    "range": {
+      "units": "ft",
+      "value": 120
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "nondetection": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 8
+    },
+    "level": 3,
+    "material": "A pinch of diamond dust worth 25 gp sprinkled over the target, which the spell consumes.",
+    "name": "Nondetection",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "abj"
+  },
+  "pass-without-trace": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 2,
+    "material": "Ashes from a burned leaf of mistletoe and a sprig of spruce.",
+    "name": "Pass Without Trace",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "abj"
+  },
+  "passwall": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 5,
+    "material": "A pinch of sesame seeds.",
+    "name": "Passwall",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "phantasmal-killer": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 4,
+    "material": null,
+    "name": "Phantasmal Killer",
+    "range": {
+      "units": "ft",
+      "value": 120
+    },
+    "ritual": false,
+    "school": "ill"
+  },
+  "phantom-steed": {
+    "casting_time": [
+      1,
+      "minute"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 3,
+    "material": null,
+    "name": "Phantom Steed",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": true,
+    "school": "ill"
+  },
+  "planar-ally": {
+    "casting_time": [
+      10,
+      "minute"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 6,
+    "material": null,
+    "name": "Planar Ally",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "planar-binding": {
+    "casting_time": [
+      1,
+      "hour"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 24
+    },
+    "level": 5,
+    "material": "A jewel worth at least 1,000 gp, which the spell consumes.",
+    "name": "Planar Binding",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "abj"
+  },
+  "plane-shift": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 7,
+    "material": "A forked, metal rod worth at least 250 gp, attuned to a particular plane of existence.",
+    "name": "Plane Shift",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "plant-growth": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 3,
+    "material": null,
+    "name": "Plant Growth",
+    "range": {
+      "units": "ft",
+      "value": 150
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "poison-spray": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 0,
+    "material": null,
+    "name": "Poison Spray",
+    "range": {
+      "units": "ft",
+      "value": 10
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "polymorph": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 4,
+    "material": "A caterpillar cocoon.",
+    "name": "Polymorph",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "power-word-kill": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 9,
+    "material": null,
+    "name": "Power Word Kill",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "enc"
+  },
+  "power-word-stun": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 8,
+    "material": null,
+    "name": "Power Word Stun",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "enc"
+  },
+  "prayer-of-healing": {
+    "casting_time": [
+      10,
+      "minute"
+    ],
+    "components": [
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 2,
+    "material": null,
+    "name": "Prayer of Healing",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "prestidigitation": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 0,
+    "material": null,
+    "name": "Prestidigitation",
+    "range": {
+      "units": "ft",
+      "value": 10
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "prismatic-spray": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 7,
+    "material": null,
+    "name": "Prismatic Spray",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "prismatic-wall": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "minute",
+      "value": 10
+    },
+    "level": 9,
+    "material": null,
+    "name": "Prismatic Wall",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "abj"
+  },
+  "private-sanctum": {
+    "casting_time": [
+      10,
+      "minute"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 24
+    },
+    "level": 4,
+    "material": "A thin sheet of lead, a piece of opaque glass, a wad of cotton or cloth, and powdered chrysolite.",
+    "name": "Private Sanctum",
+    "range": {
+      "units": "ft",
+      "value": 120
+    },
+    "ritual": false,
+    "school": "abj"
+  },
+  "produce-flame": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "minute",
+      "value": 10
+    },
+    "level": 0,
+    "material": null,
+    "name": "Produce Flame",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "programmed-illusion": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "perm"
+    },
+    "level": 6,
+    "material": "A bit of fleece and jade dust worth at least 25 gp.",
+    "name": "Programmed Illusion",
+    "range": {
+      "units": "ft",
+      "value": 120
+    },
+    "ritual": false,
+    "school": "ill"
+  },
+  "project-image": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "hour",
+      "value": 24
+    },
+    "level": 7,
+    "material": "A small replica of you made from materials worth at least 5 gp.",
+    "name": "Project Image",
+    "range": {
+      "units": "mi",
+      "value": 500
+    },
+    "ritual": false,
+    "school": "ill"
+  },
+  "protection-from-energy": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 3,
+    "material": null,
+    "name": "Protection From Energy",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "abj"
+  },
+  "protection-from-evil-and-good": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 10
+    },
+    "level": 1,
+    "material": "Holy water or powdered silver and iron, which the spell consumes.",
+    "name": "Protection from Evil and Good",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "abj"
+  },
+  "protection-from-poison": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 2,
+    "material": null,
+    "name": "Protection from Poison",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "abj"
+  },
+  "purify-food-and-drink": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 1,
+    "material": null,
+    "name": "Purify Food and Drink",
+    "range": {
+      "units": "ft",
+      "value": 10
+    },
+    "ritual": true,
+    "school": "trs"
+  },
+  "raise-dead": {
+    "casting_time": [
+      1,
+      "hour"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 5,
+    "material": "A diamond worth at least 500gp, which the spell consumes.",
+    "name": "Raise Dead",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "nec"
+  },
+  "ray-of-enfeeblement": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 2,
+    "material": null,
+    "name": "Ray of Enfeeblement",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "nec"
+  },
+  "ray-of-frost": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 0,
+    "material": null,
+    "name": "Ray of Frost",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "regenerate": {
+    "casting_time": [
+      1,
+      "minute"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 7,
+    "material": "A prayer wheel and holy water.",
+    "name": "Regenerate",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "reincarnate": {
+    "casting_time": [
+      1,
+      "hour"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 5,
+    "material": "Rare oils and unguents worth at least 1,000 gp, which the spell consumes.",
+    "name": "Reincarnate",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "remove-curse": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 3,
+    "material": null,
+    "name": "Remove Curse",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "abj"
+  },
+  "resilient-sphere": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 4,
+    "material": "A hemispherical piece of clear crystal and a matching hemispherical piece of gum arabic.",
+    "name": "Resilient Sphere",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "resistance": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 0,
+    "material": "A miniature cloak.",
+    "name": "Resistance",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "abj"
+  },
+  "resurrection": {
+    "casting_time": [
+      1,
+      "hour"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 7,
+    "material": "A diamond worth at least 1,000gp, which the spell consumes.",
+    "name": "Resurrection",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "nec"
+  },
+  "reverse-gravity": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 7,
+    "material": "A lodestone and iron filings.",
+    "name": "Reverse Gravity",
+    "range": {
+      "units": "ft",
+      "value": 100
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "revivify": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 3,
+    "material": "Diamonds worth 300gp, which the spell consumes.",
+    "name": "Revivify",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "rope-trick": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 2,
+    "material": "Powdered corn extract and a twisted loop of parchment.",
+    "name": "Rope Trick",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "sacred-flame": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 0,
+    "material": null,
+    "name": "Sacred Flame",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "sanctuary": {
+    "casting_time": [
+      1,
+      "bonus"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 1,
+    "material": "A small silver mirror.",
+    "name": "Sanctuary",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": false,
+    "school": "abj"
+  },
+  "scorching-ray": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 2,
+    "material": null,
+    "name": "Scorching Ray",
+    "range": {
+      "units": "ft",
+      "value": 120
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "scrying": {
+    "casting_time": [
+      10,
+      "minute"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 10
+    },
+    "level": 5,
+    "material": "A focus worth at least 1,000 gp, such as a crystal ball, a silver mirror, or a font filled with holy water.",
+    "name": "Scrying",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "div"
+  },
+  "secret-chest": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 4,
+    "material": "An exquisite chest, 3 feet by 2 feet by 2 feet, constructed from rare materials worth at least 5,000 gp, and a Tiny replica made from the same materials worth at least 50 gp.",
+    "name": "Secret Chest",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "see-invisibility": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 2,
+    "material": "A dash of talc and a small amount of silver powder.",
+    "name": "See Invisibility",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "div"
+  },
+  "seeming": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 8
+    },
+    "level": 5,
+    "material": null,
+    "name": "Seeming",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": false,
+    "school": "ill"
+  },
+  "sending": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "round",
+      "value": 1
+    },
+    "level": 3,
+    "material": "A short piece of fine copper wire.",
+    "name": "Sending",
+    "range": {
+      "special": "Unlimited",
+      "units": "any"
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "sequester": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "perm"
+    },
+    "level": 7,
+    "material": "A powder composed of diamond, emerald, ruby, and sapphire dust worth at least 5,000 gp, which the spell consumes.",
+    "name": "Sequester",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "shapechange": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 9,
+    "material": "A jade circlet worth at least 1,500 gp, which you must place on your head before you cast the spell.",
+    "name": "Shapechange",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "shatter": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 2,
+    "material": "A burst of mica.",
+    "name": "Shatter",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "shield": {
+    "casting_time": [
+      1,
+      "reaction"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "round",
+      "value": 1
+    },
+    "level": 1,
+    "material": null,
+    "name": "Shield",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "abj"
+  },
+  "shield-of-faith": {
+    "casting_time": [
+      1,
+      "bonus"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 10
+    },
+    "level": 1,
+    "material": "A small parchment with a bit of holy text written on it.",
+    "name": "Shield of Faith",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "abj"
+  },
+  "shillelagh": {
+    "casting_time": [
+      1,
+      "bonus"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 0,
+    "material": "Mistletoe, a shamrock leaf, and a club or quarterstaff.",
+    "name": "Shillelagh",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "shocking-grasp": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 0,
+    "material": null,
+    "name": "Shocking Grasp",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "silence": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 10
+    },
+    "level": 2,
+    "material": null,
+    "name": "Silence",
+    "range": {
+      "units": "ft",
+      "value": 120
+    },
+    "ritual": true,
+    "school": "ill"
+  },
+  "silent-image": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 10
+    },
+    "level": 1,
+    "material": "A bit of fleece.",
+    "name": "Silent Image",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "ill"
+  },
+  "simulacrum": {
+    "casting_time": [
+      12,
+      "hour"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "perm"
+    },
+    "level": 7,
+    "material": "Snow or ice in quantities sufficient to made a life-size copy of the duplicated creature; some hair, fingernail clippings, or other piece of that creature's body placed inside the snow or ice; and powdered ruby worth 1,500 gp, sprinkled over the duplicate and consumed by the spell.",
+    "name": "Simulacrum",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "ill"
+  },
+  "sleep": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 1,
+    "material": "A pinch of fine sand, rose petals, or a cricket.",
+    "name": "Sleep",
+    "range": {
+      "units": "ft",
+      "value": 90
+    },
+    "ritual": false,
+    "school": "enc"
+  },
+  "sleet-storm": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 3,
+    "material": "A pinch of dust and a few drops of water.",
+    "name": "Sleet Storm",
+    "range": {
+      "units": "ft",
+      "value": 150
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "slow": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 3,
+    "material": "A drop of molasses.",
+    "name": "Slow",
+    "range": {
+      "units": "ft",
+      "value": 120
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "spare-the-dying": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 0,
+    "material": null,
+    "name": "Spare the Dying",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "nec"
+  },
+  "speak-with-animals": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "minute",
+      "value": 10
+    },
+    "level": 1,
+    "material": null,
+    "name": "Speak with Animals",
+    "range": {
+      "units": "self"
+    },
+    "ritual": true,
+    "school": "div"
+  },
+  "speak-with-dead": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "minute",
+      "value": 10
+    },
+    "level": 3,
+    "material": "Burning incense.",
+    "name": "Speak with Dead",
+    "range": {
+      "units": "ft",
+      "value": 10
+    },
+    "ritual": false,
+    "school": "nec"
+  },
+  "speak-with-plants": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "minute",
+      "value": 10
+    },
+    "level": 3,
+    "material": null,
+    "name": "Speak with Plants",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "spider-climb": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 2,
+    "material": "A drop of bitumen and a spider.",
+    "name": "Spider Climb",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "spike-growth": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 10
+    },
+    "level": 2,
+    "material": "Seven sharp thorns or seven small twigs, each sharpened to a point.",
+    "name": "Spike Growth",
+    "range": {
+      "units": "ft",
+      "value": 150
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "spirit-guardians": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 10
+    },
+    "level": 3,
+    "material": "A holy symbol.",
+    "name": "Spirit Guardians",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "spiritual-weapon": {
+    "casting_time": [
+      1,
+      "bonus"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 2,
+    "material": null,
+    "name": "Spiritual Weapon",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "stinking-cloud": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 3,
+    "material": "A rotten egg or several skunk cabbage leaves.",
+    "name": "Stinking Cloud",
+    "range": {
+      "units": "ft",
+      "value": 90
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "stone-shape": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 4,
+    "material": "Soft clay, to be crudely worked into the desired shape for the stone object.",
+    "name": "Stone Shape",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "stoneskin": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 4,
+    "material": "Diamond dust worth 100 gp, which the spell consumes.",
+    "name": "Stoneskin",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "abj"
+  },
+  "storm-of-vengeance": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 9,
+    "material": null,
+    "name": "Storm of Vengeance",
+    "range": {
+      "special": "Sight",
+      "units": "spec"
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "suggestion": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "hour",
+      "value": 8
+    },
+    "level": 2,
+    "material": "A snake's tongue and either a bit of honeycomb or a drop of sweet oil.",
+    "name": "Suggestion",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": false,
+    "school": "enc"
+  },
+  "sunbeam": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 6,
+    "material": "A magnifying glass.",
+    "name": "Sunbeam",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "sunburst": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 8,
+    "material": "Fire and a piece of sunstone.",
+    "name": "Sunburst",
+    "range": {
+      "units": "ft",
+      "value": 150
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "symbol": {
+    "casting_time": [
+      1,
+      "minute"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "perm"
+    },
+    "level": 7,
+    "material": "Mercury, phosphorus, and powdered diamond and opal with a total value of at least 1,000 gp, which the spell consumes.",
+    "name": "Symbol",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "abj"
+  },
+  "telekinesis": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 10
+    },
+    "level": 5,
+    "material": null,
+    "name": "Telekinesis",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "telepathic-bond": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 5,
+    "material": "Pieces of eggshell from two different kinds of creatures",
+    "name": "Telepathic Bond",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": true,
+    "school": "div"
+  },
+  "teleport": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 7,
+    "material": null,
+    "name": "Teleport",
+    "range": {
+      "units": "ft",
+      "value": 10
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "teleportation-circle": {
+    "casting_time": [
+      1,
+      "minute"
+    ],
+    "components": [
+      "M",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "round",
+      "value": 1
+    },
+    "level": 5,
+    "material": "Rare chalks and inks infused with precious gems with 50 gp, which the spell consumes.",
+    "name": "Teleportation Circle",
+    "range": {
+      "units": "ft",
+      "value": 10
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "thaumaturgy": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 0,
+    "material": null,
+    "name": "Thaumaturgy",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "thunderwave": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 1,
+    "material": null,
+    "name": "Thunderwave",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "time-stop": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 9,
+    "material": null,
+    "name": "Time Stop",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "tiny-hut": {
+    "casting_time": [
+      1,
+      "minute"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 8
+    },
+    "level": 3,
+    "material": "A small crystal bead.",
+    "name": "Tiny Hut",
+    "range": {
+      "units": "self"
+    },
+    "ritual": true,
+    "school": "evo"
+  },
+  "tongues": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 3,
+    "material": "A small clay model of a ziggurat.",
+    "name": "Tongues",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "div"
+  },
+  "transport-via-plants": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "round",
+      "value": 1
+    },
+    "level": 6,
+    "material": null,
+    "name": "Transport via Plants",
+    "range": {
+      "units": "ft",
+      "value": 10
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "tree-stride": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 5,
+    "material": null,
+    "name": "Tree Stride",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "true-polymorph": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 9,
+    "material": "A drop of mercury, a dollop of gum arabic, and a wisp of smoke.",
+    "name": "True Polymorph",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "true-resurrection": {
+    "casting_time": [
+      1,
+      "hour"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 9,
+    "material": "A sprinkle of holy water and diamonds worth at least 25,000gp, which the spell consumes.",
+    "name": "True Resurrection",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "nec"
+  },
+  "true-seeing": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 6,
+    "material": "An ointment for the eyes that costs 25gp; is made from mushroom powder, saffron, and fat; and is consumed by the spell.",
+    "name": "True Seeing",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "div"
+  },
+  "true-strike": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "round",
+      "value": 1
+    },
+    "level": 0,
+    "material": null,
+    "name": "True Strike",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": false,
+    "school": "div"
+  },
+  "unseen-servant": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 1,
+    "material": "A piece of string and a bit of wood.",
+    "name": "Unseen Servant",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": true,
+    "school": "con"
+  },
+  "vampiric-touch": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 3,
+    "material": null,
+    "name": "Vampiric Touch",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "nec"
+  },
+  "vicious-mockery": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 0,
+    "material": null,
+    "name": "Vicious Mockery",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "enc"
+  },
+  "wall-of-fire": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 4,
+    "material": "A small piece of phosphorus.",
+    "name": "Wall of Fire",
+    "range": {
+      "units": "ft",
+      "value": 120
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "wall-of-force": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 10
+    },
+    "level": 5,
+    "material": "A pinch of powder made by crushing a clear gemstone.",
+    "name": "Wall of Force",
+    "range": {
+      "units": "ft",
+      "value": 120
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "wall-of-ice": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 10
+    },
+    "level": 6,
+    "material": "A small piece of quartz.",
+    "name": "Wall of Ice",
+    "range": {
+      "units": "ft",
+      "value": 120
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "wall-of-stone": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 10
+    },
+    "level": 5,
+    "material": "A small block of granite.",
+    "name": "Wall of Stone",
+    "range": {
+      "units": "ft",
+      "value": 120
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "wall-of-thorns": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 10
+    },
+    "level": 6,
+    "material": "A handful of thorns.",
+    "name": "Wall of Thorns",
+    "range": {
+      "units": "ft",
+      "value": 120
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "warding-bond": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 2,
+    "material": "A pair of platinum rings worth at least 50gp each, which you and the target must wear for the duration.",
+    "name": "Warding Bond",
+    "range": {
+      "units": "touch"
+    },
+    "ritual": false,
+    "school": "abj"
+  },
+  "water-breathing": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 24
+    },
+    "level": 3,
+    "material": "A short piece of reed or straw.",
+    "name": "Water Breathing",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": true,
+    "school": "trs"
+  },
+  "water-walk": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 3,
+    "material": "A piece of cork.",
+    "name": "Water Walk",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": true,
+    "school": "trs"
+  },
+  "web": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "hour",
+      "value": 1
+    },
+    "level": 2,
+    "material": "A bit of spiderweb.",
+    "name": "Web",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "weird": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 9,
+    "material": null,
+    "name": "Weird",
+    "range": {
+      "units": "ft",
+      "value": 120
+    },
+    "ritual": false,
+    "school": "ill"
+  },
+  "wind-walk": {
+    "casting_time": [
+      1,
+      "minute"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "hour",
+      "value": 8
+    },
+    "level": 6,
+    "material": "Fire and holy water.",
+    "name": "Wind Walk",
+    "range": {
+      "units": "ft",
+      "value": 30
+    },
+    "ritual": false,
+    "school": "trs"
+  },
+  "wind-wall": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "M",
+      "S",
+      "V"
+    ],
+    "concentration": true,
+    "duration": {
+      "units": "minute",
+      "value": 1
+    },
+    "level": 3,
+    "material": "A tiny fan and a feather of exotic origin.",
+    "name": "Wind Wall",
+    "range": {
+      "units": "ft",
+      "value": 120
+    },
+    "ritual": false,
+    "school": "evo"
+  },
+  "wish": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 9,
+    "material": null,
+    "name": "Wish",
+    "range": {
+      "units": "self"
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "word-of-recall": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "inst"
+    },
+    "level": 6,
+    "material": null,
+    "name": "Word of Recall",
+    "range": {
+      "units": "ft",
+      "value": 5
+    },
+    "ritual": false,
+    "school": "con"
+  },
+  "zone-of-truth": {
+    "casting_time": [
+      1,
+      "action"
+    ],
+    "components": [
+      "S",
+      "V"
+    ],
+    "concentration": false,
+    "duration": {
+      "units": "minute",
+      "value": 10
+    },
+    "level": 2,
+    "material": null,
+    "name": "Zone of Truth",
+    "range": {
+      "units": "ft",
+      "value": 60
+    },
+    "ritual": false,
+    "school": "enc"
+  }
+}

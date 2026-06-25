@@ -1,0 +1,137 @@
+{
+  "activities": [
+    {
+      "activation": {
+        "condition": "Deal damage with any Cleric cantrip",
+        "override": false,
+        "type": "",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": []
+      },
+      "damage": {
+        "critical": {
+          "allow": false,
+          "bonus": ""
+        },
+        "parts": [
+          {
+            "bonus": "@abilities.wis.mod",
+            "custom": {
+              "enabled": false,
+              "formula": ""
+            },
+            "denomination": 0,
+            "number": null,
+            "scaling": {
+              "formula": "",
+              "mode": "",
+              "number": 1
+            },
+            "types": [
+              "acid",
+              "bludgeoning",
+              "cold",
+              "fire",
+              "force",
+              "lightning",
+              "necrotic",
+              "piercing",
+              "poison",
+              "psychic",
+              "radiant",
+              "slashing",
+              "thunder"
+            ]
+          }
+        ]
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [],
+      "flags": {},
+      "id": "2ADklkzUUW3aAeOt",
+      "img": "",
+      "kind": "damage",
+      "name": "",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "self",
+        "value": null
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "",
+          "special": "",
+          "type": "creature"
+        },
+        "override": false,
+        "prompt": false,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "ft",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    }
+  ],
+  "description": "Add your Wisdom modifier to the damage you deal with any Cleric cantrip.\n\nFoundry Note\n\nThis bonus damage is not automatically included in your cantrips.\n\nYou can add [[lookup @abilities.wis.mod]] to the Situational Bonus field of your cantrip's damage rolls or you can permanently add it to your cantrips by adding \"@abilities.wis.mod\" (minus the quotes) in the Bonus field.\n\nAlternatively, the Damage activity on this feature includes your Wisdom modifier and allows you to choose the damage type in the roll's dialog box.",
+  "entry_kind": "feature",
+  "feature_type": "class_feature",
+  "foundry_id": "phbClcPotentSpel",
+  "name": "Blessed Strikes: Potent Spellcasting",
+  "passive_effects": [],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/cleric/class-features/blessed-strikes-potent-spellcasting.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "blessed-strikes-potent-spellcasting",
+  "source_slug": "cleric"
+}

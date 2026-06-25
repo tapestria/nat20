@@ -1,0 +1,780 @@
+{
+  "activities": [
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "hour",
+        "value": 1
+      },
+      "bonuses": {
+        "ac": "",
+        "attack_damage": "",
+        "hd": "",
+        "healing": "",
+        "hp": "",
+        "save_damage": ""
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": [
+          {
+            "scaling": {
+              "formula": "",
+              "mode": ""
+            },
+            "target": "spells.pact.value",
+            "type": "attribute",
+            "value": "1"
+          }
+        ]
+      },
+      "creature_sizes": [],
+      "creature_types": [
+        "celestial",
+        "fey",
+        "fiend"
+      ],
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [
+        {
+          "id": "Ziuu5P6LoAvevtuN",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        }
+      ],
+      "flags": {},
+      "id": "wk5D1U5DnMRJ40KK",
+      "img": "",
+      "kind": "summon",
+      "match": {
+        "ability": "",
+        "attacks": false,
+        "disposition": false,
+        "proficiency": false,
+        "saves": true
+      },
+      "name": "Find Familiar with Flight",
+      "profiles": [
+        {
+          "count": "1",
+          "cr": "0",
+          "id": "e5dWV5L2uBJ2KPAM",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "name": "CR 0 Beast",
+          "types": [
+            "beast"
+          ],
+          "uuid": ""
+        }
+      ],
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "ft",
+        "value": "10"
+      },
+      "sort": 0,
+      "summon": {
+        "identifier": "",
+        "mode": "cr",
+        "prompt": true
+      },
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "1",
+          "special": "",
+          "type": "space"
+        },
+        "override": false,
+        "prompt": false,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "ft",
+          "width": ""
+        }
+      },
+      "temp_hp": "",
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    },
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "hour",
+        "value": 1
+      },
+      "bonuses": {
+        "ac": "",
+        "attack_damage": "",
+        "hd": "",
+        "healing": "",
+        "hp": "",
+        "save_damage": ""
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": [
+          {
+            "scaling": {
+              "formula": "",
+              "mode": ""
+            },
+            "target": "spells.pact.value",
+            "type": "attribute",
+            "value": "1"
+          }
+        ]
+      },
+      "creature_sizes": [],
+      "creature_types": [
+        "celestial",
+        "fey",
+        "fiend"
+      ],
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [
+        {
+          "id": "Ziuu5P6LoAvevtuN",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        }
+      ],
+      "flags": {},
+      "id": "uehA2kfgOCKRIqAs",
+      "img": "",
+      "kind": "summon",
+      "match": {
+        "ability": "",
+        "attacks": false,
+        "disposition": false,
+        "proficiency": false,
+        "saves": true
+      },
+      "name": "Find Familiar with Swimming",
+      "profiles": [
+        {
+          "count": "1",
+          "cr": "0",
+          "id": "e5dWV5L2uBJ2KPAM",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "name": "CR 0 Beast",
+          "types": [
+            "beast"
+          ],
+          "uuid": ""
+        }
+      ],
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "ft",
+        "value": "10"
+      },
+      "sort": 0,
+      "summon": {
+        "identifier": "",
+        "mode": "cr",
+        "prompt": true
+      },
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "1",
+          "special": "",
+          "type": "space"
+        },
+        "override": false,
+        "prompt": false,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "ft",
+          "width": ""
+        }
+      },
+      "temp_hp": "",
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    },
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "reaction",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": []
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [
+        {
+          "id": "chVfpaM9kmt2hOWW",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "SzrV0ZUdpHCl8ury",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "dNB2b7C34xZ8f1VC",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "J9HrAcFSX8Oiz5Os",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "931L7kMtCmfeKCke",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "ftnhEVvBRxrbAfa3",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "wNoq81xzNrVLdSGT",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "8tJH6UHt7riDLp1q",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "W1jLBRVt0gryqFMJ",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "XYrQSl0kdJtV6Bf0",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "hNA4gzQMT9cM2ALU",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "QDl6CxMONYK8Kru1",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "0vsrMfL3s6IQtWcM",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        }
+      ],
+      "flags": {},
+      "id": "fHEY2QcPTBaT4lBF",
+      "img": "systems/dnd5e/icons/svg/trait-damage-resistances.svg",
+      "kind": "utility",
+      "name": "Invest with Resistance",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "self",
+        "value": null
+      },
+      "roll": {
+        "formula": "",
+        "name": "",
+        "prompt": false,
+        "visible": false
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "1",
+          "special": "Your familiar",
+          "type": "creature"
+        },
+        "override": false,
+        "prompt": false,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "ft",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    }
+  ],
+  "description": "Prerequisite: Level 5+ Warlock, Pact of the Chain Invocation\n\nWhen you cast Find Familiar, you infuse the summoned familiar with a measure of your eldritch power, granting the creature the following benefits.\n\nAerial or Aquatic. The familiar gains either a Fly Speed or a Swim Speed (your choice) of 40 feet.\n\nQuick Attack. As a Bonus Action, you can command the familiar to take the\u00a0Attack\u00a0action.\n\nNecrotic or Radiant Damage. Whenever the familiar deals Bludgeoning, Piercing, or Slashing damage, you can make it deal Necrotic or Radiant damage instead.\n\nYour Save DC. If the familiar forces a creature to make a saving throw, it uses your spell save DC.\n\nResistance. When the familiar takes damage, you can take a Reaction to grant it Resistance against that damage.\n\nFoundry Note\n\nThe Find Familiar with Flight and with Swimming activities both allow you to summon a familiar with the relevant movement bonus. Both activities consume a Pact Magic spell slot.\n\nThe Invest with Resistance activity includes an Active Effect for resisting each type of damage which can be applied to get the relevant resistance. Be sure you disable/delete the previous Active Effect in the \"Effects\" tab of your sheet when you change Resistances.\n\nThe familiar automatically uses your Save DC.",
+  "entry_kind": "feature",
+  "feature_type": "class_feature",
+  "foundry_id": "phbinvInvestment",
+  "name": "Investment of the Chain Master",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.attributes.movement.fly",
+          "mode": 4,
+          "priority": null,
+          "value": "40"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "Ziuu5P6LoAvevtuN",
+      "name": "Investment of Flight",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.attributes.movement.swim",
+          "mode": 4,
+          "priority": null,
+          "value": "40"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "VxM3FsirIcd3Of7q",
+      "name": "Investment of Swimming",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "acid"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "turns": 1
+      },
+      "id": "chVfpaM9kmt2hOWW",
+      "name": "Resist Acid",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "bludgeoning"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "turns": 1
+      },
+      "id": "SzrV0ZUdpHCl8ury",
+      "name": "Resist Bludgeoning",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "cold"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "turns": 1
+      },
+      "id": "dNB2b7C34xZ8f1VC",
+      "name": "Resist Cold",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "fire"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "turns": 1
+      },
+      "id": "J9HrAcFSX8Oiz5Os",
+      "name": "Resist Fire",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "force"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "turns": 1
+      },
+      "id": "931L7kMtCmfeKCke",
+      "name": "Resist Force",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "lightning"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "turns": 1
+      },
+      "id": "ftnhEVvBRxrbAfa3",
+      "name": "Resist Lightning",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "necrotic"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "turns": 1
+      },
+      "id": "wNoq81xzNrVLdSGT",
+      "name": "Resist Necrotic",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "piercing"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "turns": 1
+      },
+      "id": "8tJH6UHt7riDLp1q",
+      "name": "Resist Piercing",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "poison"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "turns": 1
+      },
+      "id": "W1jLBRVt0gryqFMJ",
+      "name": "Resist Poison",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "psychic"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "turns": 1
+      },
+      "id": "XYrQSl0kdJtV6Bf0",
+      "name": "Resist Psychic",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "radiant"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "turns": 1
+      },
+      "id": "hNA4gzQMT9cM2ALU",
+      "name": "Resist Radiant",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "slashing"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "turns": 1
+      },
+      "id": "QDl6CxMONYK8Kru1",
+      "name": "Resist Slashing",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "thunder"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "turns": 1
+      },
+      "id": "0vsrMfL3s6IQtWcM",
+      "name": "Resist Thunder",
+      "statuses": [],
+      "transfer": false
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/warlock/eldritch-invocation-options/investment-of-the-chain-master.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "investment-of-the-chain-master",
+  "source_slug": "warlock"
+}

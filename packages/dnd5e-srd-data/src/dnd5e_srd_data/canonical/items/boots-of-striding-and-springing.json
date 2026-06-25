@@ -1,0 +1,45 @@
+{
+  "activities": [],
+  "attunement_constraint": null,
+  "cost_gp": 400.0,
+  "description": "Wondrous Item, Uncommon (Requires Attunement)\n\nWhile you wear these boots, your Speed becomes 30 feet unless your Speed is higher, and your Speed isn't reduced by you carrying weight in excess of your carrying capacity or wearing Heavy Armor.\n\nOnce on each of your turns, you can jump up to 30 feet by spending only 10 feet of movement.",
+  "item_kind": "magic_item",
+  "name": "Boots of Striding and Springing",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.attributes.movement.walk",
+          "mode": 4,
+          "priority": null,
+          "value": "30"
+        }
+      ],
+      "description": "<p>Your Speed becomes 30 feet unless your Speed is higher, and your Speed isn\u2019t reduced by you carrying weight in excess of your carrying capacity or wearing Heavy Armor.</p>",
+      "disabled": false,
+      "duration": null,
+      "id": "XQcjU7ekeFYPMM2R",
+      "name": "Unburdened Movement",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/equipment24/equipment/boots-of-striding-and-springing.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "rarity": "uncommon",
+  "requires_attunement": true,
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "boots-of-striding-and-springing",
+  "weight": 0.0
+}

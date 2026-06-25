@@ -1,0 +1,25 @@
+{
+  "activities": [],
+  "description": "You are the recipient of a legacy that grants you supernatural abilities.\n\nWhen you reach character levels 3 and 5, you learn a higher-level spell, as shown on the table. You always have that spell prepared. You can cast it once without a spell slot, and you regain the ability to cast it in that way when you finish a Long Rest. You can also cast the spell using any spell slots you have of the appropriate level. Intelligence, Wisdom, or Charisma is your spellcasting ability for the spells you cast with this trait (choose the ability when you select the legacy).\n\nChthonic\n\nTieflings who have the chthonic legacy feel not only the tug of Carceri but also the greed of Gehenna and the gloom of Hades. Some of these tieflings look cadaverous. Others possess the unearthly beauty of a succubus, or they have physical features in common with a night hag, a yugoloth, or some other Neutral Evil fiendish ancestor.\n\nChthonic Legacy Traits\n\nLevel 1\n\nLevel 3\n\nLevel 5\n\nYou have Resistance to Necrotic damage.You also know the Chill Touch cantrip.\n\nFalse Life\n\nRay of Enfeeblement\n\nFoundry Note\n\nThe Resistance and spells are granted to you automatically and you will be prompted to choose the spellcasting ability during advancement.",
+  "entry_kind": "feature",
+  "feature_type": "species_trait",
+  "foundry_id": "phbsptChthonicLe",
+  "name": "Fiendish Legacy, Chthonic",
+  "passive_effects": [],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/origins24/species/traits/tiefling/fiendish-legacy-chthonic.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "fiendish-legacy-chthonic",
+  "source_slug": "tiefling"
+}

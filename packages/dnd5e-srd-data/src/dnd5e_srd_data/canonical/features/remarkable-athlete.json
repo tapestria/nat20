@@ -1,0 +1,43 @@
+{
+  "activities": [],
+  "description": "Thanks to your athleticism, you have Advantage on Initiative rolls and Strength (Athletics) checks.\n\nIn addition, immediately after you score a Critical Hit, you can move up to half your Speed without provoking Opportunity Attacks.\n\nFoundry Note\n\nThis feature automatically grants Advantage on Initiative rolls.",
+  "entry_kind": "feature",
+  "feature_type": "subclass_feature",
+  "foundry_id": "phbftrRemarkable",
+  "name": "Remarkable Athlete",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "flags.dnd5e.remarkableAthlete",
+          "mode": 5,
+          "priority": null,
+          "value": "true"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "1f8R9CFfhsetkhF5",
+      "name": "Remarkable Athlete",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/fighter/subclass-features/champion/remarkable-athlete.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "remarkable-athlete",
+  "source_slug": "champion"
+}

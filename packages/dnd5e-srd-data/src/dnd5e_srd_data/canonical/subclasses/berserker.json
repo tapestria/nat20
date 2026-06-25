@@ -1,0 +1,131 @@
+{
+  "advancement": [
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbbrbFrenzy0000"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "F2EPRo00Nf6Ds8Lk",
+      "level": 3,
+      "title": "Subclass Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbbrbMindlessRa"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "2AGvW4P2FHYxDTmU",
+      "level": 6,
+      "title": "Subclass Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbbrbRetaliatio"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "HPirEn8oG5KFLosG",
+      "level": 10,
+      "title": "Subclass Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbbrbIntimidati"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "GouI4YrjO1nFz4uM",
+      "level": 14,
+      "title": "Subclass Features",
+      "type": "ItemGrant",
+      "value": {}
+    }
+  ],
+  "class_identifier": "barbarian",
+  "description": "Channel Rage into Violent Fury\n\nBarbarians who walk the Path of the Berserker direct their Rage primarily toward violence. Their path is one of untrammeled fury, and they thrill in the chaos of battle as they allow their Rage to seize and empower them.",
+  "entry_kind": "subclass",
+  "feature_choices": [],
+  "granted_features": [
+    {
+      "level": 3,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "frenzy"
+    },
+    {
+      "level": 6,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "mindless-rage"
+    },
+    {
+      "level": 10,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "retaliation"
+    },
+    {
+      "level": 14,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "intimidating-presence"
+    }
+  ],
+  "identifier": "berserker",
+  "name": "Path of the Berserker",
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/barbarian/path-of-the-berserker.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "berserker",
+  "spellcasting": {
+    "ability": "",
+    "progression": "none"
+  }
+}

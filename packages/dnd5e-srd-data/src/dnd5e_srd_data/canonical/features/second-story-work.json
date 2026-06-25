@@ -1,0 +1,43 @@
+{
+  "activities": [],
+  "description": "You've trained to get into especially hard-to-reach places, granting you these benefits.\n\nClimber. You gain a Climb Speed equal to your Speed.\n\nJumper. You can determine your &amp;Reference[Jumping]{jump} distance using your Dexterity rather than your Strength.\n\nFoundry Note\n\nThis feature does not automatically add the Climb Speed and will have to be added manually.",
+  "entry_kind": "feature",
+  "feature_type": "subclass_feature",
+  "foundry_id": "phbrgeSecondstor",
+  "name": "Second-Story Work",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.attributes.movement.climb",
+          "mode": 4,
+          "priority": null,
+          "value": "@attributes.movement.speed"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "qPdh1z9RMd6oBcoj",
+      "name": "Second-Story Work",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/rogue/subclass-features/thief/second-story-work.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "second-story-work",
+  "source_slug": "thief"
+}

@@ -1,0 +1,553 @@
+{
+  "activities": [
+    {
+      "activation": {
+        "condition": "whenever you hit the target with an attack roll",
+        "override": true,
+        "type": "",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": false,
+        "targets": []
+      },
+      "damage": {
+        "critical": {
+          "allow": true,
+          "bonus": ""
+        },
+        "parts": [
+          {
+            "bonus": "",
+            "custom": {
+              "enabled": false,
+              "formula": ""
+            },
+            "denomination": 6,
+            "number": 1,
+            "scaling": {
+              "formula": "",
+              "mode": "",
+              "number": 1
+            },
+            "types": [
+              "necrotic"
+            ]
+          }
+        ]
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": true,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [],
+      "flags": {},
+      "id": "dnd5eactivity000",
+      "img": "",
+      "kind": "damage",
+      "name": "Bonus Hex Damage",
+      "range": {
+        "override": true,
+        "special": "",
+        "units": "any",
+        "value": null
+      },
+      "sort": 200000,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "1",
+          "special": "",
+          "type": "creature"
+        },
+        "override": false,
+        "prompt": true,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    },
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "action",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": []
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [
+        {
+          "id": "ljMTBKPVmEnLPX1b",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "Mmss2SPIy7wtt2PV",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "XVQwGWbC0A1svBNm",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "FfVB2Yyb7wfgpsQB",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "k2569xtIeXKRReLU",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "sC2IXWDs07oTt5JN",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        }
+      ],
+      "flags": {},
+      "id": "Btl8HmGdooXEh2gP",
+      "img": "",
+      "kind": "utility",
+      "name": "Place Curse",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "self",
+        "value": null
+      },
+      "roll": {
+        "formula": "",
+        "name": "",
+        "prompt": false,
+        "visible": true
+      },
+      "sort": 100000,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "1",
+          "special": "",
+          "type": "creature"
+        },
+        "override": false,
+        "prompt": true,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    },
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "action",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": false,
+        "targets": []
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": true,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [
+        {
+          "id": "ljMTBKPVmEnLPX1b",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "Mmss2SPIy7wtt2PV",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "XVQwGWbC0A1svBNm",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "FfVB2Yyb7wfgpsQB",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "k2569xtIeXKRReLU",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "sC2IXWDs07oTt5JN",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        }
+      ],
+      "flags": {},
+      "id": "E3f3Y8ULb3t5mBQu",
+      "img": "",
+      "kind": "utility",
+      "name": "Curse New Creature",
+      "range": {
+        "override": true,
+        "special": "",
+        "units": "any",
+        "value": null
+      },
+      "roll": {
+        "formula": "",
+        "name": "",
+        "prompt": false,
+        "visible": true
+      },
+      "sort": 300000,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "1",
+          "special": "",
+          "type": "creature"
+        },
+        "override": false,
+        "prompt": true,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    }
+  ],
+  "casting_time": {
+    "condition": "",
+    "unit": "bonus",
+    "value": 1
+  },
+  "components": [
+    "M",
+    "S",
+    "V"
+  ],
+  "concentration": true,
+  "description": "You place a curse on a creature that you can see within range. Until the spell ends, you deal an extra 1d6 Necrotic damage to the target whenever you hit it with an attack roll. Also, choose one ability when you cast the spell. The target has Disadvantage on ability checks made with the chosen ability.\n\nIf the target drops to 0 Hit Points before this spell ends, you can take a Bonus Action on a later turn to curse a new creature.\n\nUsing a Higher-Level Spell Slot. Your Concentration can last longer with a spell slot of level 2 (up to 4 hours), 3\u20134 (up to 8 hours), or 5+ (24 hours).",
+  "duration": {
+    "units": "hour",
+    "value": 1
+  },
+  "entry_kind": "spell",
+  "level": 1,
+  "materials": {
+    "consumed": false,
+    "cost": 0,
+    "supply": 0,
+    "value": "the petrified eye of a newt"
+  },
+  "name": "Hex",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.abilities.str.check.roll.mode",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        }
+      ],
+      "description": "<p>The target has Disadvantage on ability checks made with the chosen ability.</p>",
+      "disabled": false,
+      "duration": {
+        "seconds": 3600
+      },
+      "id": "ljMTBKPVmEnLPX1b",
+      "name": "Hexed Strength",
+      "statuses": [
+        "cursed"
+      ],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.abilities.dex.check.roll.mode",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        }
+      ],
+      "description": "<p>The target has Disadvantage on ability checks made with the chosen ability.</p>",
+      "disabled": false,
+      "duration": {
+        "rounds": 1,
+        "seconds": 3600
+      },
+      "id": "Mmss2SPIy7wtt2PV",
+      "name": "Hexed Dexterity",
+      "statuses": [
+        "cursed"
+      ],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.abilities.con.check.roll.mode",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        }
+      ],
+      "description": "<p>The target has Disadvantage on ability checks made with the chosen ability.</p>",
+      "disabled": false,
+      "duration": {
+        "seconds": 3600
+      },
+      "id": "XVQwGWbC0A1svBNm",
+      "name": "Hexed Constitution",
+      "statuses": [
+        "cursed"
+      ],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.abilities.int.check.roll.mode",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        }
+      ],
+      "description": "<p>The target has Disadvantage on ability checks made with the chosen ability.</p>",
+      "disabled": false,
+      "duration": {
+        "seconds": 3600
+      },
+      "id": "FfVB2Yyb7wfgpsQB",
+      "name": "Hexed Intelligence",
+      "statuses": [
+        "cursed"
+      ],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.abilities.wis.check.roll.mode",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        }
+      ],
+      "description": "<p>The target has Disadvantage on ability checks made with the chosen ability.</p>",
+      "disabled": false,
+      "duration": {
+        "seconds": 3600
+      },
+      "id": "k2569xtIeXKRReLU",
+      "name": "Hexed Wisdom",
+      "statuses": [
+        "cursed"
+      ],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.abilities.cha.check.roll.mode",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        }
+      ],
+      "description": "<p>The target has Disadvantage on ability checks made with the chosen ability.</p>",
+      "disabled": false,
+      "duration": {
+        "seconds": 3600
+      },
+      "id": "sC2IXWDs07oTt5JN",
+      "name": "Hexed Charisma",
+      "statuses": [
+        "cursed"
+      ],
+      "transfer": false
+    }
+  ],
+  "preparation": {
+    "mode": "prepared",
+    "prepared": false
+  },
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/spells24/1st-level/hex.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "range": {
+    "special": null,
+    "units": "ft",
+    "value": 90
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "ritual": false,
+  "school": "enc",
+  "slug": "hex"
+}

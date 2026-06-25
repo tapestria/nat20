@@ -1,0 +1,204 @@
+{
+  "activities": [
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "action",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": []
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [
+        {
+          "id": "fSXff5Y6ILs6gJT7",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": {
+            "activity": [],
+            "effect": [],
+            "item": []
+          }
+        }
+      ],
+      "enchant": {
+        "identifier": null,
+        "self": false
+      },
+      "flags": {},
+      "id": "IvHRnKPwz1WWjFkN",
+      "img": "",
+      "kind": "enchant",
+      "name": "Sword of Life Stealing",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "self",
+        "value": null
+      },
+      "restrictions": {
+        "allow_magical": false,
+        "categories": [],
+        "properties": [],
+        "type": ""
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "",
+          "special": "",
+          "type": ""
+        },
+        "override": false,
+        "prompt": true,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "ft",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    }
+  ],
+  "attunement_constraint": null,
+  "cost_gp": 4000.0,
+  "damage_parts": [],
+  "description": "Weapon (Glaive, Greatsword, Longsword, Rapier, Scimitar, or Shortsword), Rare (Requires Attunement)\n\nWhen you attack a creature with this magic weapon and roll a 20 on the d20 for the attack roll, that target takes an extra 15 Necrotic damage if it isn't a Construct or an Undead, and you gain Temporary Hit Points equal to the amount of Necrotic damage taken.\n\n@Embed[Compendium.dnd5e.content24.JournalEntry.dmgFoundryRefere.JournalEntryPage.Ok4iCgD25ENgoRxE cite=false caption=false classes=\"hide-in-embed\"]",
+  "item_kind": "weapon",
+  "magical_bonus": 0,
+  "mastery": null,
+  "name": "Sword of Life Stealing",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "name",
+          "mode": 5,
+          "priority": null,
+          "value": "{} of Life Stealing"
+        },
+        {
+          "key": "system.rarity",
+          "mode": 5,
+          "priority": null,
+          "value": "rare"
+        },
+        {
+          "key": "system.description.value",
+          "mode": 5,
+          "priority": null,
+          "value": "{}<p>@Embed[Compendium.dnd5e.equipment24.Item.dmgSwordOfLifeSt caption=false]</p>"
+        },
+        {
+          "key": "system.properties",
+          "mode": 2,
+          "priority": null,
+          "value": "mgc"
+        },
+        {
+          "key": "system.attunement",
+          "mode": 5,
+          "priority": null,
+          "value": "required"
+        },
+        {
+          "key": "activities[attack].damage.critical.bonus",
+          "mode": 2,
+          "priority": null,
+          "value": "15[necrotic]"
+        },
+        {
+          "key": "system.price.value",
+          "mode": 2,
+          "priority": null,
+          "value": "4000"
+        },
+        {
+          "key": "system.price.denomination",
+          "mode": 5,
+          "priority": null,
+          "value": "gp"
+        },
+        {
+          "key": "img",
+          "mode": 5,
+          "priority": null,
+          "value": "icons/weapons/swords/sword-guard-worn.webp"
+        }
+      ],
+      "description": "",
+      "disabled": true,
+      "duration": null,
+      "id": "fSXff5Y6ILs6gJT7",
+      "name": "Sword of Life Stealing",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "properties": [],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/equipment24/weapons/magical/sword-of-life-stealing.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "range": {
+    "kind": "melee",
+    "long": null,
+    "units": null,
+    "value": null
+  },
+  "rarity": "rare",
+  "requires_attunement": true,
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "sword-of-life-stealing",
+  "versatile_damage": null,
+  "weapon_category": "martial_melee",
+  "weight": 0.0
+}

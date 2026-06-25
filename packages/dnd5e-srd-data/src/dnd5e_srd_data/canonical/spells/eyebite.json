@@ -1,0 +1,328 @@
+{
+  "activities": [
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "action",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": []
+      },
+      "damage": {
+        "on_save": "half",
+        "parts": []
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [
+        {
+          "id": "5btX5iwwleMMzkvj",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": false,
+          "riders": null
+        },
+        {
+          "id": "Kj1GwWXD5k0Zen75",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": false,
+          "riders": null
+        },
+        {
+          "id": "5ZKeVyumUK0i76am",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        }
+      ],
+      "flags": {},
+      "id": "r5eaxtkEdeKOXeHb",
+      "img": "",
+      "kind": "save",
+      "name": "Initial Cast",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "self",
+        "value": null
+      },
+      "save": {
+        "ability": [
+          "wis"
+        ],
+        "dc": {
+          "calculation": "spellcasting",
+          "formula": ""
+        }
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "1",
+          "special": "cannot target a creature that has succeeded on a save against this casting",
+          "type": "creature"
+        },
+        "override": false,
+        "prompt": true,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    },
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "action",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": false,
+        "targets": []
+      },
+      "damage": {
+        "on_save": "half",
+        "parts": []
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": true,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [
+        {
+          "id": "5btX5iwwleMMzkvj",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": false,
+          "riders": null
+        },
+        {
+          "id": "Kj1GwWXD5k0Zen75",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": false,
+          "riders": null
+        },
+        {
+          "id": "5ZKeVyumUK0i76am",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": false,
+          "riders": null
+        }
+      ],
+      "flags": {},
+      "id": "3PZbzzH8sBJl3heA",
+      "img": "systems/dnd5e/icons/svg/statuses/concentrating.svg",
+      "kind": "save",
+      "name": "While Concentrating",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "self",
+        "value": null
+      },
+      "save": {
+        "ability": [
+          "wis"
+        ],
+        "dc": {
+          "calculation": "spellcasting",
+          "formula": ""
+        }
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "1",
+          "special": "cannot target a creature that has succeeded on a save against this casting",
+          "type": "creature"
+        },
+        "override": false,
+        "prompt": true,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    }
+  ],
+  "casting_time": {
+    "condition": "",
+    "unit": "action",
+    "value": 1
+  },
+  "components": [
+    "S",
+    "V"
+  ],
+  "concentration": true,
+  "description": "For the duration, your eyes become an inky void. One creature of your choice within 60 feet of you that you can see must succeed on a Wisdom saving throw or be affected by one of the following effects of your choice for the duration.\n\nOn each of your turns until the spell ends, you can take a Magic action to target another creature but can't target a creature again if it has succeeded on a save against this casting of the spell.\n\nAsleep. The target has the &amp;Reference[Unconscious apply=false] condition. It wakes up if it takes any damage or if another creature takes an action to shake it awake.\n\nPanicked. The target has the &amp;Reference[Frightened apply=false] condition. On each of its turns, the Frightened target must take the &amp;Reference[Dash] action and move away from you by the safest and shortest route available. If the target moves to a space at least 60 feet away from you where it can't see you, this effect ends.\n\nSickened. The target has the &amp;Reference[Poisoned apply=false] condition.",
+  "duration": {
+    "units": "minute",
+    "value": 1
+  },
+  "entry_kind": "spell",
+  "level": 6,
+  "materials": {
+    "consumed": false,
+    "cost": 0,
+    "supply": 0,
+    "value": ""
+  },
+  "name": "Eyebite",
+  "passive_effects": [
+    {
+      "changes": [],
+      "description": "<p>The target has the &amp;Reference[Unconscious apply=false] condition. It wakes up if it takes any damage or if another creature takes an action to shake it awake.</p>",
+      "disabled": false,
+      "duration": {
+        "seconds": 60
+      },
+      "id": "5btX5iwwleMMzkvj",
+      "name": "Asleep",
+      "statuses": [
+        "unconscious"
+      ],
+      "transfer": false
+    },
+    {
+      "changes": [],
+      "description": "<p>The target has the &amp;Reference[Frightened apply=false] condition. On each of its turns, the Frightened target must take the &amp;Reference[Dash] action and move away from you by the safest and shortest route available. If the target moves to a space at least 60 feet away from you where it can\u2019t see you, this effect ends.</p>",
+      "disabled": false,
+      "duration": {
+        "seconds": 60
+      },
+      "id": "Kj1GwWXD5k0Zen75",
+      "name": "Panicked",
+      "statuses": [
+        "frightened"
+      ],
+      "transfer": false
+    },
+    {
+      "changes": [],
+      "description": "<p>The target has the &amp;Reference[Poisoned apply=false] condition.</p>",
+      "disabled": false,
+      "duration": {
+        "seconds": 60
+      },
+      "id": "5ZKeVyumUK0i76am",
+      "name": "Sickened",
+      "statuses": [
+        "poisoned"
+      ],
+      "transfer": false
+    }
+  ],
+  "preparation": {
+    "mode": "prepared",
+    "prepared": false
+  },
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/spells24/6th-level/eyebite.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "range": {
+    "special": null,
+    "units": "ft",
+    "value": 60
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "ritual": false,
+  "school": "nec",
+  "slug": "eyebite"
+}

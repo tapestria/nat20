@@ -1,0 +1,141 @@
+{
+  "advancement": [
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbrgeFastHands0"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbrgeSecondstor"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "52x82ltPXCgmrh1K",
+      "level": 3,
+      "title": "Subclass Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbrgeSupremeSne"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "MlEcUhyGRGitfiUJ",
+      "level": 9,
+      "title": "Subclass Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbrgeUseMagicDe"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "aNcqA4J0puHsYiyv",
+      "level": 13,
+      "title": "Subclass Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbrgeThiefsRefl"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "Q45sJX4IS3NbsrtV",
+      "level": 17,
+      "title": "Subclass Features",
+      "type": "ItemGrant",
+      "value": {}
+    }
+  ],
+  "class_identifier": "rogue",
+  "description": "Hunt for Treasure as a Classic Adventurer\n\nA mix of burglar, treasure hunter, and explorer, you are the epitome of an adventurer. In addition to improving your agility and stealth, you gain abilities useful for delving into ruins and getting maximum benefit from the magic items you find there.",
+  "entry_kind": "subclass",
+  "feature_choices": [],
+  "granted_features": [
+    {
+      "level": 3,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "fast-hands"
+    },
+    {
+      "level": 3,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "second-story-work"
+    },
+    {
+      "level": 9,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "supreme-sneak"
+    },
+    {
+      "level": 13,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "use-magic-device"
+    },
+    {
+      "level": 17,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "thiefs-reflexes"
+    }
+  ],
+  "identifier": "thief",
+  "name": "Thief",
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/rogue/thief.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "thief",
+  "spellcasting": {
+    "ability": "int",
+    "progression": "none"
+  }
+}

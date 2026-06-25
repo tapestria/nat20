@@ -1,0 +1,25 @@
+{
+  "activities": [],
+  "description": "Your damaging cantrips affect even creatures that avoid the brunt of the effect. When you cast a cantrip at a creature and you miss with the attack roll or the target succeeds on a saving throw against the cantrip, the target takes half the cantrip's damage (if any) but suffers no additional effect from the cantrip.\n\nFoundry Note\n\nWith their token selected you can either right click on the damage roll's chat card and select \u00a0Apply Half Damage or click the \"1/2\" button and then the \u00a0Apply button.",
+  "entry_kind": "feature",
+  "feature_type": "subclass_feature",
+  "foundry_id": "phbwzdPotentCant",
+  "name": "Potent Cantrip",
+  "passive_effects": [],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/wizard/subclass-features/evoker/potent-cantrip.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "potent-cantrip",
+  "source_slug": "evoker"
+}

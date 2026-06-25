@@ -1,0 +1,43 @@
+{
+  "activities": [],
+  "description": "Your connection to the forces of nature grants you Blindsight with a range of 30 feet.\n\nFoundry Note\n\nThis feature includes an Active Effect which upgrades your Blindsight to 30 feet if you do not already have it.",
+  "entry_kind": "feature",
+  "feature_type": "class_feature",
+  "foundry_id": "phbrgrFeralSense",
+  "name": "Feral Senses",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.attributes.senses.blindsight",
+          "mode": 4,
+          "priority": null,
+          "value": "30"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "ji48r1IGeRKQhpi9",
+      "name": "Feral Senses",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/ranger/class-features/feral-senses.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "feral-senses",
+  "source_slug": "ranger"
+}

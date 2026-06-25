@@ -1,0 +1,267 @@
+{
+  "advancement": [
+    {
+      "class_restriction": "",
+      "configuration": {
+        "sizes": [
+          "sm",
+          "med"
+        ]
+      },
+      "hint": "Meidum (about 4-7 feet tall) or Small (about 3-4 feet tall)",
+      "id": "lskxIeib6rIreZ1h",
+      "level": 0,
+      "title": "",
+      "type": "Size",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.origins24.Item.phbsptOtherworld"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.origins24.Item.phbsptInfernalLe"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "T8T6H9TudTleafUL",
+      "level": 0,
+      "title": "Tiefling Traits",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplThaumaturg"
+          }
+        ],
+        "optional": false,
+        "spell": {
+          "ability": [
+            "int",
+            "wis",
+            "cha"
+          ],
+          "preparation": "",
+          "uses": {
+            "max": "",
+            "per": "",
+            "requireSlot": false
+          }
+        }
+      },
+      "hint": "",
+      "id": "bD2XFMWGPkFJLr2w",
+      "level": 0,
+      "title": "Otherworldly Presence",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [],
+        "grants": [
+          "dr:fire"
+        ],
+        "mode": "default"
+      },
+      "hint": "You have Resistance to Fire damage.",
+      "id": "9V9xGP0Fsqh3NDsB",
+      "level": 1,
+      "title": "Infernal Tiefling Traits",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplFireBolt00"
+          }
+        ],
+        "optional": false,
+        "spell": {
+          "ability": [
+            "int",
+            "wis",
+            "cha"
+          ],
+          "preparation": "",
+          "uses": {
+            "max": "",
+            "per": "",
+            "requireSlot": false
+          }
+        }
+      },
+      "hint": "Intelligence, Wisdom, or Charisma is your spellcasting ability for the spells you cast with this trait.",
+      "id": "gMovXMwHeD9cCL99",
+      "level": 1,
+      "title": "Infernal Tiefling Traits",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplHellishReb"
+          }
+        ],
+        "optional": false,
+        "spell": {
+          "ability": [
+            "int",
+            "wis",
+            "cha"
+          ],
+          "preparation": "always",
+          "uses": {
+            "max": "1",
+            "per": "lr",
+            "requireSlot": false
+          }
+        }
+      },
+      "hint": "Intelligence, Wisdom, or Charisma is your spellcasting ability for the spells you cast with this trait.",
+      "id": "ol3SWLw2FTNEiXrb",
+      "level": 3,
+      "title": "Infernal Tiefling Traits",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplDarkness00"
+          }
+        ],
+        "optional": false,
+        "spell": {
+          "ability": [
+            "int",
+            "wis",
+            "cha"
+          ],
+          "preparation": "always",
+          "uses": {
+            "max": "1",
+            "per": "lr",
+            "requireSlot": false
+          }
+        }
+      },
+      "hint": "Intelligence, Wisdom, or Charisma is your spellcasting ability for the spells you cast with this trait.",
+      "id": "cj8h25IH0Zvdy3Bm",
+      "level": 5,
+      "title": "Infernal Tiefling Traits",
+      "type": "ItemGrant",
+      "value": {}
+    }
+  ],
+  "creature_type": {
+    "custom": "",
+    "subtype": "Tiefling",
+    "value": "humanoid"
+  },
+  "description": "@Embed[Compendium.dnd5e.content24.JournalEntry.phbAppendixSpeci.JournalEntryPage.phbspTiefling000 inline classes=\"free-rules-embed\"]\n\nInfernal\n\n@Embed[Compendium.dnd5e.content24.JournalEntry.phbAppendixSpeci.JournalEntryPage.phbspInfernalTie inline classes=\"free-rules-embed\"]\n\nTiefling Traits\n\nCreature Type: Humanoid\n\nSize: Medium (about 4\u20137 feet tall) or Small (about 3\u20134 feet tall), chosen when you select this species\n\nSpeed: 30 feet\n\nAs a Tiefling, you have the following special traits.\n\nDarkvision. You have Darkvision with a range of 60 feet.\n\nFiendish Legacy. You are the recipient of a legacy that grants you supernatural abilities.\n\nWhen you reach character levels 3 and 5, you learn a higher-level spell, as shown on the table. You always have that spell prepared. You can cast it once without a spell slot, and you regain the ability to cast it in that way when you finish a Long Rest. You can also cast the spell using any spell slots you have of the appropriate level. Intelligence, Wisdom, or Charisma is your spellcasting ability for the spells you cast with this trait (choose the ability when you select the legacy).\n\nOtherworldly Presence. You know the Thaumaturgy cantrip. When you cast it with this trait, the spell uses the same spellcasting ability you use for your Fiendish Legacy trait.\n\nFiendish Legacies\n\nLevel 1\n\nLevel 3\n\nLevel 5\n\nYou have Resistance to Fire damage. You also know the Fire Bolt cantrip.\n\nHellish Rebuke\n\nDarkness",
+  "entry_kind": "species",
+  "feature_choices": [],
+  "granted_features": [
+    {
+      "level": 0,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "otherworldly-presence"
+    },
+    {
+      "level": 0,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "fiendish-legacy-infernal"
+    },
+    {
+      "level": 0,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "thaumaturgy"
+    },
+    {
+      "level": 1,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "fire-bolt"
+    },
+    {
+      "level": 3,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "hellish-rebuke"
+    },
+    {
+      "level": 5,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "darkness"
+    }
+  ],
+  "languages": [],
+  "movement": {
+    "burrow": null,
+    "climb": null,
+    "fly": null,
+    "hover": false,
+    "swim": null,
+    "walk": 30
+  },
+  "name": "Tiefling, Infernal",
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/origins24/species/tiefling-infernal.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "senses": {
+    "blindsight": null,
+    "darkvision": 60,
+    "passive_perception": null,
+    "tremorsense": null,
+    "truesight": null
+  },
+  "size": "medium",
+  "slug": "tiefling-infernal",
+  "trait_grants": [
+    "dr:fire"
+  ]
+}

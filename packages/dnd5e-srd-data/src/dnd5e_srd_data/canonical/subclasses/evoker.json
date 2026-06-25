@@ -1,0 +1,141 @@
+{
+  "advancement": [
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbwzdEvocationS"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbwzdPotentCant"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "NElqwo5qeP2KjewN",
+      "level": 3,
+      "title": "Subclass Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbwzdSculptSpel"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "MnGUHDUfl1pqbwJK",
+      "level": 6,
+      "title": "Subclass Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbwzdEmpoweredE"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "vyrvNKiCAYyJcR9l",
+      "level": 10,
+      "title": "Subclass Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbwzdOverchanne"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "GeBj8GgEaEGUkxxL",
+      "level": 14,
+      "title": "Subclass Features",
+      "type": "ItemGrant",
+      "value": {}
+    }
+  ],
+  "class_identifier": "wizard",
+  "description": "Create Explosive Elemental Effects\n\nYour studies focus on magic that creates powerful elemental effects such as bitter cold, searing flame, rolling thunder, crackling lightning, and burning acid. Some Evokers find employment in military forces, serving as artillery to blast armies from afar. Others use their power to protect others, while some seek their own gain.",
+  "entry_kind": "subclass",
+  "feature_choices": [],
+  "granted_features": [
+    {
+      "level": 3,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "evocation-savant"
+    },
+    {
+      "level": 3,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "potent-cantrip"
+    },
+    {
+      "level": 6,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "sculpt-spells"
+    },
+    {
+      "level": 10,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "empowered-evocation"
+    },
+    {
+      "level": 14,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "overchannel"
+    }
+  ],
+  "identifier": "evoker",
+  "name": "Evoker",
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/wizard/evoker.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "evoker",
+  "spellcasting": {
+    "ability": "",
+    "progression": "none"
+  }
+}

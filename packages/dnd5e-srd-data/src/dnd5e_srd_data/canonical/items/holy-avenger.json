@@ -1,0 +1,206 @@
+{
+  "activities": [
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "action",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": []
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [
+        {
+          "id": "I7Iwl7awPq2wftoF",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": {
+            "activity": [
+              "6vKfMHP7AWboTcww"
+            ],
+            "effect": [],
+            "item": []
+          }
+        }
+      ],
+      "enchant": {
+        "identifier": "",
+        "self": false
+      },
+      "flags": {},
+      "id": "IMVUc41lxWG8Hyq3",
+      "img": "",
+      "kind": "enchant",
+      "name": "Holy Avenger",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "self",
+        "value": null
+      },
+      "restrictions": {
+        "allow_magical": false,
+        "categories": [],
+        "properties": [],
+        "type": ""
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "",
+          "special": "",
+          "type": ""
+        },
+        "override": false,
+        "prompt": true,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "ft",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    }
+  ],
+  "attunement_constraint": "by a Paladin",
+  "cost_gp": 200000.0,
+  "damage_parts": [],
+  "description": "Weapon (Any Simple or Martial), Legendary (Requires Attunement by a Paladin)\n\nYou gain a +3 bonus to attack rolls and damage rolls made with this magic weapon. When you hit a Fiend or an Undead with it, that creature takes an extra 2d10 Radiant damage.\n\nWhile you hold the drawn weapon, it creates a 10-foot Emanation originating from you. You and all creatures Friendly to you in the Emanation have Advantage on saving throws against spells and other magical effects. If you have 17 or more levels in the Paladin class, the size of the Emanation increases to 30 feet.\n\n[[10 + floor(@classes.paladin.levels / 17) * 20]]{Emanation Size (feet)}\n\n@Embed[Compendium.dnd5e.content24.JournalEntry.dmgFoundryRefere.JournalEntryPage.Ok4iCgD25ENgoRxE cite=false caption=false classes=\"hide-in-embed\"]",
+  "item_kind": "weapon",
+  "magical_bonus": 3,
+  "mastery": null,
+  "name": "Holy Avenger",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "name",
+          "mode": 5,
+          "priority": null,
+          "value": "Holy Avenger {}"
+        },
+        {
+          "key": "system.description.value",
+          "mode": 5,
+          "priority": null,
+          "value": "{}<p>@Embed[Compendium.dnd5e.equipment24.Item.dmgHolyAvenger00 caption=false]</p>"
+        },
+        {
+          "key": "system.rarity",
+          "mode": 5,
+          "priority": null,
+          "value": "legendary"
+        },
+        {
+          "key": "system.attunement",
+          "mode": 5,
+          "priority": null,
+          "value": "required"
+        },
+        {
+          "key": "system.properties",
+          "mode": 2,
+          "priority": null,
+          "value": "mgc"
+        },
+        {
+          "key": "system.magicalBonus",
+          "mode": 4,
+          "priority": null,
+          "value": "3"
+        },
+        {
+          "key": "img",
+          "mode": 5,
+          "priority": null,
+          "value": "icons/weapons/swords/greatsword-guard-gem-blue.webp"
+        },
+        {
+          "key": "activities[attack].description.chatFlavor",
+          "mode": 5,
+          "priority": null,
+          "value": "{} Bonus Damage: 2d10 Radiant vs Fiend/Undead"
+        },
+        {
+          "key": "system.damage.parts",
+          "mode": 2,
+          "priority": null,
+          "value": "[[\"0\", \"radiant\"]]"
+        }
+      ],
+      "description": "",
+      "disabled": true,
+      "duration": null,
+      "id": "I7Iwl7awPq2wftoF",
+      "name": "Holy Avenger",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "properties": [],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/equipment24/weapons/magical/holy-avenger.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "range": {
+    "kind": "melee",
+    "long": null,
+    "units": null,
+    "value": null
+  },
+  "rarity": "legendary",
+  "requires_attunement": true,
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "holy-avenger",
+  "versatile_damage": null,
+  "weapon_category": "simple_melee",
+  "weight": 0.0
+}

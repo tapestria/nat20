@@ -1,0 +1,27 @@
+{
+  "activities": [],
+  "attunement_constraint": null,
+  "cost_gp": 4000.0,
+  "description": "Ring, Rare (Requires Attunement)\n\nThis ring stores spells cast into it, holding them until the attuned wearer uses them. The ring can store up to 5 levels worth of spells at a time. When found, it contains [[/r 1d6 \u2212 1]] levels of stored spells chosen by the GM.\n\nAny creature can cast a spell of level 1 through 5 into the ring by touching the ring as the spell is cast. The spell has no effect other than to be stored in the ring. If the ring can't hold the spell, the spell is expended without effect. The level of the slot used to cast the spell determines how much space it uses.\n\nWhile wearing this ring, you can cast any spell stored in it. The spell uses the slot level, spell save DC, spell attack bonus, and spellcasting ability of the original caster but is otherwise treated as if you cast the spell. The spell cast from the ring is no longer stored in it, freeing up space.\n\nFoundry Note\n\nTo store a spell in this ring, drag the spell onto the Activities tab to create a \"Cast a Spell\" activity. Then change to the \"Spell\" tab, set the \"Casting Level\", check the \"Override Values\" box and enter the relevant Attack Bonus and Save DC from the original caster's values. You will then be able to cast that spell from this ring without expending your own slots. You will then need to delete the activity since each spell is a one-time use.",
+  "item_kind": "magic_item",
+  "name": "Ring of Spell Storing",
+  "passive_effects": [],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/equipment24/equipment/rings/ring-of-spell-storing.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "rarity": "rare",
+  "requires_attunement": true,
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "ring-of-spell-storing",
+  "weight": 0.0
+}

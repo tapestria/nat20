@@ -1,0 +1,25 @@
+{
+  "activities": [],
+  "description": "The magic of your patron ensures you always have certain spells ready; when you reach a Warlock level specified in the Fiend Spells table, you thereafter always have the listed spells prepared.\n\nFiend Spells\n\nWarlock Level\n\nSpells\n\n3\n\nBurning Hands, Command, Scorching Ray, Suggestion\n\n5\n\nFireball, Stinking Cloud\n\n7\n\nFire Shield, Wall of Fire\n\n9\n\nGeas, Insect Plague\n\nFoundry Note\n\nAs you level up these spells will be granted to you automatically.",
+  "entry_kind": "feature",
+  "feature_type": "subclass_feature",
+  "foundry_id": "phbwlkFiendSpell",
+  "name": "Fiend Spells",
+  "passive_effects": [],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/warlock/subclass-features/fiend-patron/fiend-spells.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "fiend-spells",
+  "source_slug": "fiend-patron"
+}

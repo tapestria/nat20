@@ -1,0 +1,38 @@
+{
+  "activities": [],
+  "description": "Your magical smite now radiates protective energy. Whenever you cast Divine Smite, you and your allies have Half Cover while in your Aura of Protection. The aura has this benefit until the start of your next turn.\n\nFoundry Note\n\nThis feature includes an Active Effect which provides the Half Cover status but it is not automatically granted as creatures enter/exit your aura.",
+  "entry_kind": "feature",
+  "feature_type": "subclass_feature",
+  "foundry_id": "phbpdnSmiteOfPro",
+  "name": "Smite of Protection",
+  "passive_effects": [
+    {
+      "changes": [],
+      "description": "",
+      "disabled": true,
+      "duration": null,
+      "id": "EyWEQv8qPwbXyDmA",
+      "name": "Smite of Protection",
+      "statuses": [
+        "coverHalf"
+      ],
+      "transfer": true
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/paladin/subclass-features/oath-of-devotion/smite-of-protection.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "smite-of-protection",
+  "source_slug": "oath-of-devotion"
+}

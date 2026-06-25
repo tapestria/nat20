@@ -1,0 +1,189 @@
+{
+  "activities": [
+    {
+      "activation": {
+        "condition": "When you hit a target with an attack roll and deal damage to it",
+        "override": false,
+        "type": "",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": [
+          {
+            "scaling": {
+              "formula": "",
+              "mode": ""
+            },
+            "target": "",
+            "type": "itemUses",
+            "value": "1"
+          }
+        ]
+      },
+      "damage": {
+        "critical": {
+          "allow": false,
+          "bonus": ""
+        },
+        "parts": [
+          {
+            "bonus": "",
+            "custom": {
+              "enabled": false,
+              "formula": ""
+            },
+            "denomination": 6,
+            "number": 1,
+            "scaling": {
+              "formula": "",
+              "mode": "",
+              "number": 1
+            },
+            "types": [
+              "cold"
+            ]
+          }
+        ]
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [
+        {
+          "id": "YHKgdj2KIbQRBZWW",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        }
+      ],
+      "flags": {},
+      "id": "6goWQaWLexUqgig8",
+      "img": "",
+      "kind": "damage",
+      "name": "Chill",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "spec",
+        "value": null
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "1",
+          "special": "",
+          "type": "creature"
+        },
+        "override": false,
+        "prompt": false,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "ft",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    }
+  ],
+  "description": "When you hit a target with an attack roll and deal damage to it, you can also deal 1d6 Cold damage to that target and reduce its Speed by 10 feet until the start of your next turn.\n\nFoundry Note\n\nThis feature includes an Active Effect which can be used for tracking and reduces their Speed by 10.",
+  "entry_kind": "feature",
+  "feature_type": "species_trait",
+  "foundry_id": "phbsptFrostsChil",
+  "name": "Frost's Chill",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.attributes.movement.walk",
+          "mode": 2,
+          "priority": null,
+          "value": "-10"
+        },
+        {
+          "key": "system.attributes.movement.burrow",
+          "mode": 2,
+          "priority": null,
+          "value": "-10"
+        },
+        {
+          "key": "system.attributes.movement.climb",
+          "mode": 2,
+          "priority": null,
+          "value": "-10"
+        },
+        {
+          "key": "system.attributes.movement.fly",
+          "mode": 2,
+          "priority": null,
+          "value": "-10"
+        },
+        {
+          "key": "system.attributes.movement.swim",
+          "mode": 2,
+          "priority": null,
+          "value": "-10"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "turns": 1
+      },
+      "id": "YHKgdj2KIbQRBZWW",
+      "name": "Chilled",
+      "statuses": [],
+      "transfer": false
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/origins24/species/traits/goliath/frosts-chill.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "frosts-chill",
+  "source_slug": "goliath"
+}

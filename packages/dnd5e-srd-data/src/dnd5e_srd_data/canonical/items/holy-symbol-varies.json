@@ -1,0 +1,27 @@
+{
+  "activities": [],
+  "attunement_constraint": null,
+  "cost_gp": 0.0,
+  "description": "A Holy Symbol takes one of the forms in the Holy Symbol table and is bejeweled or painted to channel divine magic. A Cleric or Paladin can use a Holy Symbol as a Spellcasting Focus.\n\nThe table indicates whether a Holy Symbol needs to be held, worn, or borne on fabric (such as a tabard or banner) or a Shield.\n\nHoly Symbols\n\nSymbol\n\nWeight\n\nCost\n\nAmulet (worn or held)\n\n1 lb.\n\n5 GP\n\nEmblem (borne on fabric or a Shield)\n\n\u2014\n\n5 GP\n\nReliquary (held)\n\n2 lb.\n\n5 GP",
+  "item_kind": "item",
+  "name": "Holy Symbol (Varies)",
+  "passive_effects": [],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/equipment24/adventuring-gear/spellcasting-focuses/holy-symbol-varies.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "rarity": "common",
+  "requires_attunement": false,
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "holy-symbol-varies",
+  "weight": 0.0
+}

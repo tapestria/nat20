@@ -1,0 +1,149 @@
+{
+  "dragonborn": {
+    "name": "Dragonborn",
+    "size": "medium",
+    "speed": 30,
+    "traits": [
+      "darkvision-60",
+      "draconic-flight"
+    ]
+  },
+  "dwarf": {
+    "name": "Dwarf",
+    "size": "medium",
+    "speed": 30,
+    "traits": [
+      "darkvision-120",
+      "dwarven-resilience",
+      "dwarven-toughness",
+      "stonecunning"
+    ]
+  },
+  "elf-drow": {
+    "name": "Elf",
+    "size": "medium",
+    "speed": 30,
+    "traits": [
+      "darkvision-60",
+      "elven-lineage",
+      "fey-ancestry",
+      "keen-senses",
+      "trance"
+    ]
+  },
+  "elf-high": {
+    "name": "Elf",
+    "size": "medium",
+    "speed": 30,
+    "traits": [
+      "darkvision-60",
+      "elven-lineage",
+      "fey-ancestry",
+      "keen-senses",
+      "trance"
+    ]
+  },
+  "elf-wood": {
+    "name": "Elf",
+    "size": "medium",
+    "speed": 30,
+    "traits": [
+      "darkvision-60",
+      "elven-lineage",
+      "fey-ancestry",
+      "keen-senses",
+      "trance"
+    ]
+  },
+  "gnome-forest": {
+    "name": "Gnome",
+    "size": "small",
+    "speed": 30,
+    "traits": [
+      "darkvision-60",
+      "gnomish-cunning",
+      "gnomish-lineage"
+    ]
+  },
+  "gnome-rock": {
+    "name": "Gnome",
+    "size": "small",
+    "speed": 30,
+    "traits": [
+      "darkvision-60",
+      "gnomish-cunning",
+      "gnomish-lineage"
+    ]
+  },
+  "goliath": {
+    "name": "Goliath",
+    "size": "medium",
+    "speed": 35,
+    "traits": [
+      "giant-ancestry",
+      "large-form",
+      "powerful-build"
+    ]
+  },
+  "halfling": {
+    "name": "Halfling",
+    "size": "small",
+    "speed": 30,
+    "traits": [
+      "brave",
+      "halfling-nimbleness",
+      "luck",
+      "naturally-stealthy"
+    ]
+  },
+  "human": {
+    "name": "Human",
+    "size": "medium",
+    "speed": 30,
+    "traits": [
+      "resourceful",
+      "skillful",
+      "versatile"
+    ]
+  },
+  "orc": {
+    "name": "Orc",
+    "size": "medium",
+    "speed": 30,
+    "traits": [
+      "adrenaline-rush",
+      "darkvision-120",
+      "relentless-endurance"
+    ]
+  },
+  "tiefling-abyssal": {
+    "name": "Tiefling",
+    "size": "",
+    "speed": 30,
+    "traits": [
+      "darkvision-60",
+      "fiendish-legacy",
+      "otherworldly-presence"
+    ]
+  },
+  "tiefling-chthonic": {
+    "name": "Tiefling",
+    "size": "",
+    "speed": 30,
+    "traits": [
+      "darkvision-60",
+      "fiendish-legacy",
+      "otherworldly-presence"
+    ]
+  },
+  "tiefling-infernal": {
+    "name": "Tiefling",
+    "size": "",
+    "speed": 30,
+    "traits": [
+      "darkvision-60",
+      "fiendish-legacy",
+      "otherworldly-presence"
+    ]
+  }
+}

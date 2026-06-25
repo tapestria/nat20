@@ -1,0 +1,25 @@
+{
+  "activities": [],
+  "description": "When you reach a Sorcerer level specified in the Draconic Spells table, you thereafter always have the listed spells prepared.\n\nDraconic Spells\n\nSorcerer Level\n\nSpells\n\n3\n\nAlter Self, Chromatic Orb, Command, Dragon's Breath\n\n5\n\nFear, Fly\n\n7\n\nArcane Eye, Charm Monster\n\n9\n\nLegend Lore, Summon Dragon\n\nFoundry Note\n\nThe spells will be automatically granted as you level up.",
+  "entry_kind": "feature",
+  "feature_type": "subclass_feature",
+  "foundry_id": "phbscrDraconicSp",
+  "name": "Draconic Spells",
+  "passive_effects": [],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/sorcerer/subclass-features/draconic-sorcery/draconic-spells.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "draconic-spells",
+  "source_slug": "draconic-sorcery"
+}

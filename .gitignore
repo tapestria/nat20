@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+dist/
+build/
+
+# uv
+# (uv.lock at root IS tracked; member uv.lock files are removed)
+
+# Tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Docs build output
+site/
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/
+
+# Upstream raw sources (regenerated locally via `make refresh-upstream`; never committed)
+packages/dnd5e-srd-data/raw_sources/foundry/
+packages/dnd5e-srd-data/raw_sources/open5e/
+packages/dnd5e-srd-data/raw_sources/five_e_bits/

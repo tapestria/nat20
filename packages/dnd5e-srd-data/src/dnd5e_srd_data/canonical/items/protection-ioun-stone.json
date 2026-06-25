@@ -1,0 +1,45 @@
+{
+  "activities": [],
+  "attunement_constraint": null,
+  "cost_gp": 4000.0,
+  "description": "See: Ioun Stone\n\nWhen you take a Magic action to toss an Ioun Stone into the air, the stone orbits your head at a distance of 1d3 feet, conferring its benefit to you while doing so. You can have up to three Ioun Stones orbiting your head at the same time.\n\nAs a Utilize action, you can seize and stow any number of Ioun Stones orbiting your head. If your Attunement to an Ioun Stone ends while it's orbiting your head, the stone falls as though you had dropped it.\n\nYou gain a +1 bonus to Armor Class while this dusty-rose prism orbits your head.",
+  "item_kind": "magic_item",
+  "name": "Ioun Stone of Protection",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.attributes.ac.bonus",
+          "mode": 2,
+          "priority": null,
+          "value": "1"
+        }
+      ],
+      "description": "<p>You gain a +1 bonus to Armor Class while this dusty-rose prism orbits your head.</p>",
+      "disabled": false,
+      "duration": null,
+      "id": "DjgONYhHwEnVKjfF",
+      "name": "Enhanced Protection: +1 AC",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/equipment24/equipment/ioun-stones/ioun-stone-of-protection.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "rarity": "rare",
+  "requires_attunement": true,
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "protection-ioun-stone",
+  "weight": 0.0
+}

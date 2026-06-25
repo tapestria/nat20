@@ -1,0 +1,397 @@
+{
+  "activities": [
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "action",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": []
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [
+        {
+          "id": "etY0sDrXe6DcFEzc",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "QUWVMgg2HidYsUxy",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "0EAyGy8YaKbvgvkm",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "vyf4vVVoGkZPyAqa",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        }
+      ],
+      "flags": {},
+      "healing": {
+        "bonus": "1",
+        "custom": {
+          "enabled": false,
+          "formula": ""
+        },
+        "denomination": null,
+        "number": null,
+        "scaling": {
+          "formula": "",
+          "mode": "",
+          "number": 1
+        },
+        "types": [
+          "healing"
+        ]
+      },
+      "id": "uWlCOEUlvMdeWVvb",
+      "img": "",
+      "kind": "heal",
+      "name": "Revive",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "self",
+        "value": null
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "1",
+          "special": "a dead creature",
+          "type": "creature"
+        },
+        "override": false,
+        "prompt": true,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    }
+  ],
+  "casting_time": {
+    "condition": "",
+    "unit": "hour",
+    "value": 1
+  },
+  "components": [
+    "M",
+    "S",
+    "V"
+  ],
+  "concentration": false,
+  "description": "With a touch, you revive a dead creature if it has been dead no longer than 10 days and it wasn't Undead when it died.\n\nThe creature returns to life with 1 Hit Point. This spell also neutralizes any poisons that affected the creature at the time of death.\n\nThis spell closes all mortal wounds, but it doesn't restore missing body parts. If the creature is lacking body parts or organs integral for its survival\u2014its head, for instance\u2014the spell automatically fails.\n\nComing back from the dead is an ordeal. The target takes a \u22124 penalty to D20 Tests. Every time the target finishes a Long Rest, the penalty is reduced by 1 until it becomes 0.",
+  "duration": {
+    "units": "inst",
+    "value": null
+  },
+  "entry_kind": "spell",
+  "level": 5,
+  "materials": {
+    "consumed": true,
+    "cost": 0,
+    "supply": 0,
+    "value": "a diamond worth 500+ GP, which the spell consumes"
+  },
+  "name": "Raise Dead",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.bonuses.abilities.check",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        },
+        {
+          "key": "system.bonuses.abilities.save",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        },
+        {
+          "key": "system.attributes.init.bonus",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        },
+        {
+          "key": "system.bonuses.mwak.attack",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        },
+        {
+          "key": "system.bonuses.msak.attack",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        },
+        {
+          "key": "system.bonuses.rsak.attack",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        },
+        {
+          "key": "system.bonuses.rwak.attack",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        }
+      ],
+      "description": "<p>Coming back from the dead is an ordeal. The target takes a \u22124 penalty to D20 Tests. Every time the target finishes a Long Rest, the penalty is reduced by 1 until it becomes 0.</p>",
+      "disabled": false,
+      "duration": null,
+      "id": "etY0sDrXe6DcFEzc",
+      "name": "Resurrection Sickness (Day 1)",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.bonuses.abilities.check",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        },
+        {
+          "key": "system.bonuses.abilities.save",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        },
+        {
+          "key": "system.attributes.init.bonus",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        },
+        {
+          "key": "system.bonuses.mwak.attack",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        },
+        {
+          "key": "system.bonuses.msak.attack",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        },
+        {
+          "key": "system.bonuses.rsak.attack",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        },
+        {
+          "key": "system.bonuses.rwak.attack",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        }
+      ],
+      "description": "<p>Coming back from the dead is an ordeal. The target takes a \u22124 penalty to D20 Tests. Every time the target finishes a Long Rest, the penalty is reduced by 1 until it becomes 0.</p>",
+      "disabled": false,
+      "duration": null,
+      "id": "QUWVMgg2HidYsUxy",
+      "name": "Resurrection Sickness (Day 2)",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.bonuses.abilities.check",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        },
+        {
+          "key": "system.bonuses.abilities.save",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        },
+        {
+          "key": "system.attributes.init.bonus",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        },
+        {
+          "key": "system.bonuses.mwak.attack",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        },
+        {
+          "key": "system.bonuses.msak.attack",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        },
+        {
+          "key": "system.bonuses.rsak.attack",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        },
+        {
+          "key": "system.bonuses.rwak.attack",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        }
+      ],
+      "description": "<p>Coming back from the dead is an ordeal. The target takes a \u22124 penalty to D20 Tests. Every time the target finishes a Long Rest, the penalty is reduced by 1 until it becomes 0.</p>",
+      "disabled": false,
+      "duration": null,
+      "id": "vyf4vVVoGkZPyAqa",
+      "name": "Resurrection Sickness (Day 4)",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.bonuses.abilities.check",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        },
+        {
+          "key": "system.bonuses.abilities.save",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        },
+        {
+          "key": "system.attributes.init.bonus",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        },
+        {
+          "key": "system.bonuses.mwak.attack",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        },
+        {
+          "key": "system.bonuses.msak.attack",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        },
+        {
+          "key": "system.bonuses.rsak.attack",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        },
+        {
+          "key": "system.bonuses.rwak.attack",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        }
+      ],
+      "description": "<p>Coming back from the dead is an ordeal. The target takes a \u22124 penalty to D20 Tests. Every time the target finishes a Long Rest, the penalty is reduced by 1 until it becomes 0.</p>",
+      "disabled": false,
+      "duration": null,
+      "id": "0EAyGy8YaKbvgvkm",
+      "name": "Resurrection Sickness (Day 3)",
+      "statuses": [],
+      "transfer": false
+    }
+  ],
+  "preparation": {
+    "mode": "prepared",
+    "prepared": false
+  },
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/spells24/5th-level/raise-dead.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "range": {
+    "special": null,
+    "units": "self",
+    "value": null
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "ritual": false,
+  "school": "nec",
+  "slug": "raise-dead"
+}

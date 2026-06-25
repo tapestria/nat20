@@ -1,0 +1,312 @@
+{
+  "activities": [
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": []
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "perm",
+        "value": null
+      },
+      "effects": [
+        {
+          "id": "VtBOwsAVipxkP2f5",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": {
+            "activity": [
+              "FrNZRC1C2HFJxUNu"
+            ],
+            "effect": [],
+            "item": []
+          }
+        }
+      ],
+      "enchant": {
+        "identifier": "",
+        "self": false
+      },
+      "flags": {},
+      "id": "QYYI3r1wlDAyKzAv",
+      "img": "",
+      "kind": "enchant",
+      "name": "Flame Tongue",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "self",
+        "value": null
+      },
+      "restrictions": {
+        "allow_magical": false,
+        "categories": [],
+        "properties": [],
+        "type": ""
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "",
+          "special": "",
+          "type": ""
+        },
+        "override": false,
+        "prompt": true,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "ft",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    },
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "bonus",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": []
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "disp",
+        "value": null
+      },
+      "effects": [
+        {
+          "id": "MHnAqxEXBhUbnjPq",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": {
+            "activity": [],
+            "effect": [],
+            "item": []
+          }
+        }
+      ],
+      "enchant": {
+        "identifier": "",
+        "self": true
+      },
+      "flags": {},
+      "id": "FrNZRC1C2HFJxUNu",
+      "img": "",
+      "kind": "enchant",
+      "name": "Engulf in Flames",
+      "range": {
+        "override": true,
+        "special": "",
+        "units": "self",
+        "value": null
+      },
+      "restrictions": {
+        "allow_magical": true,
+        "categories": [
+          "simpleM",
+          "martialM"
+        ],
+        "properties": [],
+        "type": "weapon"
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "1",
+          "special": "",
+          "type": "object"
+        },
+        "override": false,
+        "prompt": true,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "ft",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": true,
+        "require_identification": true,
+        "require_magic": true
+      }
+    }
+  ],
+  "attunement_constraint": null,
+  "cost_gp": 4000.0,
+  "damage_parts": [],
+  "description": "Weapon (Any Melee Weapon), Rare (Requires Attunement)\n\nWhile holding this magic weapon, you can take a Bonus Action and use a command word to cause flames to engulf the damage-dealing part of the weapon. These flames shed Bright Light in a 40-foot radius and Dim Light for an additional 40 feet. While the weapon is ablaze, it deals an extra 2d6 Fire damage on a hit. The flames last until you take a Bonus Action to issue the command again or until you drop, stow, or sheathe the weapon.\n\n@Embed[Compendium.dnd5e.content24.JournalEntry.dmgFoundryRefere.JournalEntryPage.Ok4iCgD25ENgoRxE cite=false caption=false classes=\"hide-in-embed\"]",
+  "item_kind": "weapon",
+  "magical_bonus": 0,
+  "mastery": null,
+  "name": "Flame Tongue",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "name",
+          "mode": 5,
+          "priority": null,
+          "value": "Flame Tongue {}"
+        },
+        {
+          "key": "system.description.value",
+          "mode": 5,
+          "priority": null,
+          "value": "{}<p>@Embed[Compendium.dnd5e.equipment24.Item.dmgFlameTongue00 caption=false]</p>"
+        },
+        {
+          "key": "system.properties",
+          "mode": 2,
+          "priority": null,
+          "value": "mgc"
+        },
+        {
+          "key": "system.attunement",
+          "mode": 5,
+          "priority": null,
+          "value": "required"
+        },
+        {
+          "key": "system.price.value",
+          "mode": 2,
+          "priority": null,
+          "value": "4000"
+        },
+        {
+          "key": "system.price.denomination",
+          "mode": 5,
+          "priority": null,
+          "value": "gp"
+        }
+      ],
+      "description": "",
+      "disabled": true,
+      "duration": null,
+      "id": "VtBOwsAVipxkP2f5",
+      "name": "Flame Tongue",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "system.damage.parts",
+          "mode": 2,
+          "priority": null,
+          "value": "[[\"2d6\", \"fire\"]]"
+        },
+        {
+          "key": "name",
+          "mode": 5,
+          "priority": null,
+          "value": "{} (Ablaze)"
+        }
+      ],
+      "description": "",
+      "disabled": true,
+      "duration": null,
+      "id": "MHnAqxEXBhUbnjPq",
+      "name": "Ablaze",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "properties": [],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/equipment24/weapons/magical/flame-tongue.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "range": {
+    "kind": "melee",
+    "long": null,
+    "units": null,
+    "value": null
+  },
+  "rarity": "rare",
+  "requires_attunement": true,
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "flame-tongue",
+  "versatile_damage": null,
+  "weapon_category": "simple_melee",
+  "weight": 0.0
+}

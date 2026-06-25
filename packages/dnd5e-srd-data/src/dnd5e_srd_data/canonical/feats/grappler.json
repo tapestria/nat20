@@ -1,0 +1,29 @@
+{
+  "activities": [],
+  "category": "general",
+  "description": "You gain the following benefits.\n\nAbility Score Increase. Increase your Strength or Dexterity score by 1, to a maximum of 20.\n\nPunch and Grab. When you hit a creature with an Unarmed Strike as part of the Attack action on your turn, you can use both the Damage and the Grapple option. You can use this benefit only once per turn.\n\nAttack Advantage. You have Advantage on attack rolls against a creature &amp;Reference[Grappled] by you.\n\nFast Wrestler. You don't have to spend extra movement to move a creature by you if the creature is your size or smaller.\n\nFoundry Note\n\nThe Advantage is not automated.",
+  "entry_kind": "feat",
+  "name": "Grappler",
+  "prerequisites": [
+    {
+      "feats": [],
+      "level": 4,
+      "requirement": "Strength or Dexterity 13+"
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/feats24/general-feats/grappler.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "grappler"
+}

@@ -1,0 +1,131 @@
+{
+  "advancement": [
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbmnkOpenHandTe"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "VeL49OqjttBKjx3J",
+      "level": 3,
+      "title": "Subclass Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbmnkWholenessO"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "KKc6VtzWsSGh2NnC",
+      "level": 6,
+      "title": "Subclass Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbmnkFleetStep0"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "M7cvHrnI6p0Yo150",
+      "level": 11,
+      "title": "Subclass Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbmnkQuiveringP"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "1kqB8Z5f6UcgmGjY",
+      "level": 17,
+      "title": "Subclass Features",
+      "type": "ItemGrant",
+      "value": {}
+    }
+  ],
+  "class_identifier": "monk",
+  "description": "Master Unarmed Combat Techniques\n\nWarriors of the Open Hand are masters of unarmed combat. They learn techniques to push and trip their opponents and manipulate their own energy to protect themselves from harm.",
+  "entry_kind": "subclass",
+  "feature_choices": [],
+  "granted_features": [
+    {
+      "level": 3,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "open-hand-technique"
+    },
+    {
+      "level": 6,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "wholeness-of-body"
+    },
+    {
+      "level": 11,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "fleet-step"
+    },
+    {
+      "level": 17,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "quivering-palm"
+    }
+  ],
+  "identifier": "hand",
+  "name": "Warrior of the Open Hand",
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/monk/warrior-of-the-open-hand.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "hand",
+  "spellcasting": {
+    "ability": "",
+    "progression": "none"
+  }
+}

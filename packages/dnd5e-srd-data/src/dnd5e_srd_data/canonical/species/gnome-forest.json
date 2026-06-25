@@ -1,0 +1,171 @@
+{
+  "advancement": [
+    {
+      "class_restriction": "",
+      "configuration": {
+        "sizes": [
+          "sm"
+        ]
+      },
+      "hint": "Small (about 3-4 feet tall)",
+      "id": "O7gYRGMSW3atQ2Yc",
+      "level": 0,
+      "title": "",
+      "type": "Size",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.origins24.Item.phbsptGnomishCun"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.origins24.Item.phbsptForestGnom"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "LcGnqnqKYFw0PcE9",
+      "level": 0,
+      "title": "Gnome Traits",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplSpeakwithA"
+          }
+        ],
+        "optional": false,
+        "spell": {
+          "ability": [
+            "int",
+            "wis",
+            "cha"
+          ],
+          "preparation": "always",
+          "uses": {
+            "max": "@prof",
+            "per": "lr",
+            "requireSlot": false
+          }
+        }
+      },
+      "hint": "Intelligence, Wisdom, or Charisma can be chosen for your spellcasting ability.",
+      "id": "KIOe7GcuEGboouMQ",
+      "level": 0,
+      "title": "Forest Gnome Lineage Spell",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplMinorIllus"
+          }
+        ],
+        "optional": false,
+        "spell": {
+          "ability": [
+            "int",
+            "wis",
+            "cha"
+          ],
+          "preparation": "always",
+          "uses": {
+            "max": "",
+            "per": "",
+            "requireSlot": false
+          }
+        }
+      },
+      "hint": "Intelligence, Wisdom, or Charisma can be chosen for your spellcasting ability.",
+      "id": "5ENIyYfAxcpuh426",
+      "level": 0,
+      "title": "Forest Gnome Lineage Cantrip",
+      "type": "ItemGrant",
+      "value": {}
+    }
+  ],
+  "creature_type": {
+    "custom": "",
+    "subtype": "Gnome",
+    "value": "humanoid"
+  },
+  "description": "@Embed[Compendium.dnd5e.content24.JournalEntry.phbAppendixSpeci.JournalEntryPage.phbspGnome000000 inline classes=\"free-rules-embed\"]\n\nGnome Traits\n\nCreature Type: Humanoid\n\nSize: Small (about 3\u20134 feet tall)\n\nSpeed: 30 feet\n\nAs a Gnome, you have these special traits.\n\nDarkvision. You have Darkvision with a range of 60 feet.\n\nGnomish Cunning. You have Advantage on Intelligence, Wisdom, and Charisma saving throws.\n\nGnomish Lineage. You are part of a lineage that grants you supernatural abilities. Whichever lineage you choose, Intelligence, Wisdom, or Charisma is your spellcasting ability for the spells you cast with this trait (choose the ability when you select the lineage):\n\nForest Gnome. You know the Minor Illusion cantrip. You also always have the Speak with Animals spell prepared. You can cast it without a spell slot a number of times equal to your Proficiency Bonus, and you regain all expended uses when you finish a Long Rest. You can also use any spell slots you have to cast the spell.",
+  "entry_kind": "species",
+  "feature_choices": [],
+  "granted_features": [
+    {
+      "level": 0,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "gnomish-cunning"
+    },
+    {
+      "level": 0,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "gnomish-lineage-forest"
+    },
+    {
+      "level": 0,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "speak-with-animals"
+    },
+    {
+      "level": 0,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "minor-illusion"
+    }
+  ],
+  "languages": [],
+  "movement": {
+    "burrow": null,
+    "climb": null,
+    "fly": null,
+    "hover": false,
+    "swim": null,
+    "walk": 30
+  },
+  "name": "Gnome, Forest",
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/origins24/species/gnome-forest.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "senses": {
+    "blindsight": null,
+    "darkvision": 60,
+    "passive_perception": null,
+    "tremorsense": null,
+    "truesight": null
+  },
+  "size": "small",
+  "slug": "gnome-forest",
+  "trait_grants": []
+}

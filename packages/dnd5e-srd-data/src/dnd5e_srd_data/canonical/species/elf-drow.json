@@ -1,0 +1,254 @@
+{
+  "advancement": [
+    {
+      "class_restriction": "",
+      "configuration": {
+        "sizes": [
+          "med"
+        ]
+      },
+      "hint": "Medium (about 5\u20136 feet tall)",
+      "id": "5w2FaHXRKiN7v1rE",
+      "level": 0,
+      "title": "",
+      "type": "Size",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.origins24.Item.phbsptFeyAncestr"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.origins24.Item.phbsptKeenSenses"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.origins24.Item.phbsptTrance0000"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.origins24.Item.phbsptDrowElfLin"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "boHzoT53gYPvJ9o2",
+      "level": 0,
+      "title": "Elf Traits",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [
+          {
+            "count": 1,
+            "pool": [
+              "skills:ins",
+              "skills:prc",
+              "skills:sur"
+            ]
+          }
+        ],
+        "grants": [],
+        "mode": "default"
+      },
+      "hint": "You have proficiency in the Insight, Perception, or Survival skill.",
+      "id": "nccRK77cXNtEHCHX",
+      "level": 0,
+      "title": "Keen Senses",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplDancingLig"
+          }
+        ],
+        "optional": false,
+        "spell": {
+          "ability": [
+            "int",
+            "wis",
+            "cha"
+          ],
+          "preparation": "",
+          "uses": {
+            "max": "",
+            "per": "",
+            "requireSlot": false
+          }
+        }
+      },
+      "hint": "Intelligence, Wisdom, or Charisma can be chosen for your spellcasting ability.",
+      "id": "LWGXpgeZc3PwUgTg",
+      "level": 1,
+      "title": "Drow Traits",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplFaerieFire"
+          }
+        ],
+        "optional": false,
+        "spell": {
+          "ability": [
+            "int",
+            "wis",
+            "cha"
+          ],
+          "preparation": "always",
+          "uses": {
+            "max": "1",
+            "per": "lr",
+            "requireSlot": false
+          }
+        }
+      },
+      "hint": "Intelligence, Wisdom, or Charisma can be chosen for your spellcasting ability.",
+      "id": "hIn6cR8fRweVWhTp",
+      "level": 3,
+      "title": "Drow Traits",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplDarkness00"
+          }
+        ],
+        "optional": false,
+        "spell": {
+          "ability": [
+            "int",
+            "wis",
+            "cha"
+          ],
+          "preparation": "always",
+          "uses": {
+            "max": "1",
+            "per": "lr",
+            "requireSlot": false
+          }
+        }
+      },
+      "hint": "Intelligence, Wisdom, or Charisma can be chosen for your spellcasting ability.",
+      "id": "18x2qczDE0MerZfa",
+      "level": 5,
+      "title": "Drow Traits",
+      "type": "ItemGrant",
+      "value": {}
+    }
+  ],
+  "creature_type": {
+    "custom": "",
+    "subtype": "Elf",
+    "value": "humanoid"
+  },
+  "description": "@Embed[Compendium.dnd5e.content24.JournalEntry.phbAppendixSpeci.JournalEntryPage.phbspElf00000000 inline classes=\"free-rules-embed\"]\n\nDrow\n\n@Embed[Compendium.dnd5e.content24.JournalEntry.phbAppendixSpeci.JournalEntryPage.phbspDrow0000000 inline classes=\"free-rules-embed\"]\n\nElf Traits\n\nCreature Type: Humanoid\n\nSize: Medium (about 5\u20136 feet tall)\n\nSpeed: 30 feet\n\nAs an Elf, you have these special traits.\n\nDarkvision. You have Darkvision with a range of 60 feet.\n\nElven Lineage. You are part of a lineage that grants you supernatural abilities.\n\nWhen you reach character levels 3 and 5, you learn a higher-level spell, as shown on the table. You always have that spell prepared. You can cast it once without a spell slot, and you regain the ability to cast it in that way when you finish a Long Rest. You can also cast the spell using any spell slots you have of the appropriate level. Intelligence, Wisdom, or Charisma is your spellcasting ability for the spells you cast with this trait (choose the ability when you select the lineage).\n\nDrow Lineage Features\n\nLevel 1\n\nLevel 3\n\nLevel 5\n\nThe range of your Darkvision increases to 120 feet. You also know the Dancing Lights cantrip.\n\nFaerie Fire\n\nDarkness\n\nFey Ancestry. You have Advantage on saving throws you make to avoid or end the &amp;Reference[Charmed] condition.\n\nKeen Senses. You have proficiency in the Insight, Perception, or Survival skill.\n\nTrance. You don't need to sleep, and magic can't put you to sleep. You can finish a Long Rest in 4 hours if you spend those hours in a trancelike meditation, during which you retain consciousness.",
+  "entry_kind": "species",
+  "feature_choices": [],
+  "granted_features": [
+    {
+      "level": 0,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "fey-ancestry"
+    },
+    {
+      "level": 0,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "keen-senses"
+    },
+    {
+      "level": 0,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "trance"
+    },
+    {
+      "level": 0,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "elven-lineage-drow"
+    },
+    {
+      "level": 1,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "dancing-lights"
+    },
+    {
+      "level": 3,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "faerie-fire"
+    },
+    {
+      "level": 5,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "darkness"
+    }
+  ],
+  "languages": [],
+  "movement": {
+    "burrow": null,
+    "climb": null,
+    "fly": null,
+    "hover": false,
+    "swim": null,
+    "walk": 30
+  },
+  "name": "Elf, Drow",
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/origins24/species/elf-drow.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "senses": {
+    "blindsight": null,
+    "darkvision": 120,
+    "passive_perception": null,
+    "tremorsense": null,
+    "truesight": null
+  },
+  "size": "medium",
+  "slug": "elf-drow",
+  "trait_grants": []
+}

@@ -1,0 +1,489 @@
+{
+  "ability_scores": {
+    "cha": 1,
+    "con": 16,
+    "dex": 5,
+    "int": 1,
+    "str": 16,
+    "wis": 6
+  },
+  "ac": null,
+  "actions": [
+    {
+      "activities": [
+        {
+          "activation": {
+            "condition": "is Large or Medium and has 10+ Hit Points, it becomes Bloodied or is subjected to Lightning or Slashing damage.",
+            "override": false,
+            "type": "reaction",
+            "value": null
+          },
+          "bonuses": {
+            "ac": "",
+            "attack_damage": "",
+            "hd": "",
+            "healing": "",
+            "hp": "-@summon.attributes.hp.value + floor(@attributes.hp.value / 2)",
+            "save_damage": ""
+          },
+          "consumption": {
+            "scaling": {
+              "allowed": false,
+              "max": ""
+            },
+            "spell_slot": true,
+            "targets": []
+          },
+          "creature_sizes": [
+            "sm",
+            "med"
+          ],
+          "creature_types": [],
+          "description": {
+            "chat_flavor": ""
+          },
+          "duration": {
+            "concentration": false,
+            "override": false,
+            "special": "",
+            "units": "inst",
+            "value": null
+          },
+          "effects": [],
+          "flags": {},
+          "id": "zoXFSgzmWq8frUjI",
+          "img": "",
+          "kind": "summon",
+          "match": {
+            "ability": "",
+            "attacks": false,
+            "disposition": false,
+            "proficiency": false,
+            "saves": false
+          },
+          "name": "Split",
+          "profiles": [
+            {
+              "count": "2",
+              "cr": "",
+              "id": "tqwi23UTxK7RtlbZ",
+              "level": {
+                "max": null,
+                "min": null
+              },
+              "name": "Black Pudding",
+              "types": [],
+              "uuid": "Compendium.dnd5e.actors24.Actor.mmBlackPudding00"
+            }
+          ],
+          "range": {
+            "override": false,
+            "special": "",
+            "units": "self",
+            "value": null
+          },
+          "sort": 0,
+          "summon": {
+            "identifier": null,
+            "mode": "",
+            "prompt": true
+          },
+          "target": {
+            "affects": {
+              "choice": false,
+              "count": "",
+              "special": "",
+              "type": "self"
+            },
+            "override": false,
+            "prompt": false,
+            "template": {
+              "contiguous": false,
+              "count": "",
+              "height": "",
+              "size": "",
+              "stationary": false,
+              "type": "",
+              "units": "ft",
+              "width": ""
+            }
+          },
+          "temp_hp": "",
+          "uses": {
+            "max": "",
+            "recovery": [],
+            "spent": 0
+          },
+          "visibility": {
+            "identifier": "",
+            "level": {
+              "max": null,
+              "min": null
+            },
+            "require_attunement": false,
+            "require_identification": false,
+            "require_magic": false
+          }
+        }
+      ],
+      "description": "Trigger: While the [[lookup @name lowercase]]{monster} [[lookup @activation.condition activity=zoXFSgzmWq8frUjI]] Response: The [[lookup @name lowercase]]{monster} splits into two new [[lookup @name capitalize]]{monster}. Each new [[lookup @name lowercase]]{monster} is one size smaller than the original [[lookup @name lowercase]]{monster} and acts on its Initiative. The original [[lookup @name lowercase]]{monster}'s Hit Points are divided evenly between the new [[lookup @name lowercase]]{monster}s (round down).",
+      "kind": "reaction",
+      "legendary_cost": null,
+      "name": "Split",
+      "recharge": null,
+      "slug": "split",
+      "uses_per_day": null
+    },
+    {
+      "activities": [
+        {
+          "activation": {
+            "condition": "",
+            "override": false,
+            "type": "action",
+            "value": null
+          },
+          "attack": {
+            "ability": "",
+            "bonus": "",
+            "critical": {
+              "threshold": null
+            },
+            "flat": false,
+            "type": {
+              "classification": "",
+              "value": ""
+            }
+          },
+          "consumption": {
+            "scaling": {
+              "allowed": false,
+              "max": ""
+            },
+            "spell_slot": true,
+            "targets": []
+          },
+          "damage": {
+            "critical": {
+              "bonus": ""
+            },
+            "include_base": true,
+            "parts": [
+              {
+                "bonus": "",
+                "custom": {
+                  "enabled": false,
+                  "formula": ""
+                },
+                "denomination": 6,
+                "number": 4,
+                "scaling": {
+                  "formula": "",
+                  "mode": "",
+                  "number": 1
+                },
+                "types": [
+                  "acid"
+                ]
+              }
+            ]
+          },
+          "description": {
+            "chat_flavor": ""
+          },
+          "duration": {
+            "concentration": false,
+            "override": false,
+            "special": "",
+            "units": "inst",
+            "value": null
+          },
+          "effects": [
+            {
+              "id": "qYzNNpsYbmdB2cg6",
+              "level": {
+                "max": null,
+                "min": null
+              },
+              "on_save": null,
+              "riders": null
+            }
+          ],
+          "flags": {},
+          "id": "HGEMC3ouhGsC1a1a",
+          "img": "",
+          "kind": "attack",
+          "name": "",
+          "range": {
+            "override": false,
+            "special": "",
+            "units": "self",
+            "value": null
+          },
+          "sort": 0,
+          "target": {
+            "affects": {
+              "choice": false,
+              "count": "",
+              "special": "",
+              "type": ""
+            },
+            "override": false,
+            "prompt": true,
+            "template": {
+              "contiguous": false,
+              "count": "",
+              "height": "",
+              "size": "",
+              "stationary": false,
+              "type": "",
+              "units": "ft",
+              "width": ""
+            }
+          },
+          "uses": {
+            "max": "",
+            "recovery": [],
+            "spent": 0
+          },
+          "visibility": {
+            "identifier": "",
+            "level": {
+              "max": null,
+              "min": null
+            },
+            "require_attunement": false,
+            "require_identification": false,
+            "require_magic": false
+          }
+        }
+      ],
+      "description": "[[/attack extended]]. [[/damage average extended]]. Nonmagical armor worn by the target takes a -1 penalty to the AC it offers. The armor is destroyed if the penalty reduces its AC to 10. The penalty can be removed by casting the Mending spell on the armor.",
+      "kind": "action",
+      "legendary_cost": null,
+      "name": "Dissolving Pseudopod",
+      "recharge": null,
+      "slug": "dissolving-pseudopod",
+      "uses_per_day": null
+    }
+  ],
+  "alignment": "Unaligned",
+  "condition_immunities": [
+    "charmed",
+    "deafened",
+    "exhaustion",
+    "frightened",
+    "grappled",
+    "prone",
+    "restrained"
+  ],
+  "cr": 4.0,
+  "creature_size": "large",
+  "creature_type": "ooze",
+  "damage_immunities": [
+    "acid",
+    "cold",
+    "lightning",
+    "slashing"
+  ],
+  "damage_resistances": [],
+  "damage_vulnerabilities": [],
+  "description": "",
+  "hp": 68,
+  "hp_dice": "8d10 + 24",
+  "lair_actions": [],
+  "languages": [],
+  "legendary_actions": [],
+  "movement": {
+    "burrow": null,
+    "climb": 20,
+    "fly": null,
+    "hover": false,
+    "swim": null,
+    "walk": 20
+  },
+  "name": "Black Pudding",
+  "proficiency_bonus": 2,
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/actors24/ooze/black-pudding.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "saving_throws": {
+    "cha": null,
+    "con": null,
+    "dex": null,
+    "int": null,
+    "str": null,
+    "wis": null
+  },
+  "senses": {
+    "blindsight": 60,
+    "darkvision": null,
+    "passive_perception": 8,
+    "tremorsense": null,
+    "truesight": null
+  },
+  "skills": {
+    "acrobatics": null,
+    "animal_handling": null,
+    "arcana": null,
+    "athletics": null,
+    "deception": null,
+    "history": null,
+    "insight": null,
+    "intimidation": null,
+    "investigation": null,
+    "medicine": null,
+    "nature": null,
+    "perception": null,
+    "performance": null,
+    "persuasion": null,
+    "religion": null,
+    "sleight_of_hand": null,
+    "stealth": null,
+    "survival": null
+  },
+  "slug": "black-pudding",
+  "special_abilities": [
+    {
+      "activities": [],
+      "description": "The [[lookup @name lowercase]]{monster} can move through a space as narrow as 1 inch without expending extra movement to do so.",
+      "kind": "special",
+      "legendary_cost": null,
+      "name": "Amorphous",
+      "recharge": null,
+      "slug": "amorphous",
+      "uses_per_day": null
+    },
+    {
+      "activities": [
+        {
+          "activation": {
+            "condition": "",
+            "override": false,
+            "type": "",
+            "value": null
+          },
+          "consumption": {
+            "scaling": {
+              "allowed": false,
+              "max": ""
+            },
+            "spell_slot": true,
+            "targets": []
+          },
+          "damage": {
+            "critical": {
+              "allow": false,
+              "bonus": ""
+            },
+            "parts": [
+              {
+                "bonus": "",
+                "custom": {
+                  "enabled": false,
+                  "formula": ""
+                },
+                "denomination": 8,
+                "number": 1,
+                "scaling": {
+                  "formula": "",
+                  "mode": "",
+                  "number": 1
+                },
+                "types": [
+                  "acid"
+                ]
+              }
+            ]
+          },
+          "description": {
+            "chat_flavor": ""
+          },
+          "duration": {
+            "concentration": false,
+            "override": false,
+            "special": "",
+            "units": "inst",
+            "value": null
+          },
+          "effects": [],
+          "flags": {},
+          "id": "OzlTY1z1gup4C2Qq",
+          "img": "",
+          "kind": "damage",
+          "name": "",
+          "range": {
+            "override": false,
+            "special": "",
+            "units": "self",
+            "value": null
+          },
+          "sort": 0,
+          "target": {
+            "affects": {
+              "choice": false,
+              "count": "1",
+              "special": "",
+              "type": "creature"
+            },
+            "override": false,
+            "prompt": true,
+            "template": {
+              "contiguous": false,
+              "count": "",
+              "height": "",
+              "size": "",
+              "stationary": false,
+              "type": "",
+              "units": "ft",
+              "width": ""
+            }
+          },
+          "uses": {
+            "max": "",
+            "recovery": [],
+            "spent": 0
+          },
+          "visibility": {
+            "identifier": "",
+            "level": {
+              "max": null,
+              "min": null
+            },
+            "require_attunement": false,
+            "require_identification": false,
+            "require_magic": false
+          }
+        }
+      ],
+      "description": "A creature that hits the [[lookup @name lowercase]]{monster} with a melee attack roll takes [[/damage average]] damage. Nonmagical ammunition is destroyed immediately after hitting the [[lookup @name lowercase]]{monster} and dealing any damage. Any nonmagical weapon takes a cumulative \u22121 penalty to attack rolls immediately after dealing damage to the [[lookup @name lowercase]]{monster} and coming into contact with it. The weapon is destroyed if the penalty reaches \u22125. The penalty can be removed by casting the Mending spell on the weapon.\n\nIn 1 minute, the [[lookup @name lowercase]]{monster} can eat through 2 feet of nonmagical wood or metal.\n\nFoundry Note\n\nThis feature provides an Attack Penalty active effect that will modify a targeted weapon. Since this penalty can be applied multiple times to multiple nonmagical weapons, this active effect needs to be dragged from this item's Effect tab onto the target Item's weapons.",
+      "kind": "special",
+      "legendary_cost": null,
+      "name": "Corrosive Form",
+      "recharge": null,
+      "slug": "corrosive-form",
+      "uses_per_day": null
+    },
+    {
+      "activities": [],
+      "description": "The [[lookup @name lowercase]]{monster} can climb difficult surfaces, including along ceilings, without needing to make an ability check.",
+      "kind": "special",
+      "legendary_cost": null,
+      "name": "Spider Climb",
+      "recharge": null,
+      "slug": "spider-climb",
+      "uses_per_day": null
+    }
+  ]
+}

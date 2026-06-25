@@ -1,0 +1,840 @@
+{
+  "advancement": [
+    {
+      "class_restriction": "",
+      "configuration": {},
+      "hint": "",
+      "id": "6zkx7K1uPW2IQ5JA",
+      "level": 0,
+      "title": "",
+      "type": "HitPoints",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbrgeExpertise0"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbrgeSneakAttac"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbrgeThievesCan"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbrgeWeaponMast"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "4lvoA3fvGLv15lyc",
+      "level": 1,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbrgeCunningAct"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "MWgIb29krlDy6YW6",
+      "level": 2,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbrgeSteadyAim0"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "py3wJiuRo9A5PlZb",
+      "level": 3,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbrgeCunningStr"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbrgeUncannyDod"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "hsOIIBWwSrWJvTuc",
+      "level": 5,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbrgeEvasion000"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbrgeReliableTa"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "6lgPpApxgrLKsNdH",
+      "level": 7,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbrgeImprovedCu"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "G8gk2pfQ2FIn6lX9",
+      "level": 11,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbrgeDeviousStr"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "bUBIV36rJZHw5GKr",
+      "level": 14,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbrgeSlipperyMi"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "mC2Y1MpLlQ7uSnvk",
+      "level": 15,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbrgeElusive000"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "n1IVdZzKh3PPG915",
+      "level": 18,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbrgeStrokeOfLu"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "Rb7qWhNRuua2brG0",
+      "level": 20,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "cap": 2,
+        "fixed": {
+          "cha": 0,
+          "con": 0,
+          "dex": 0,
+          "int": 0,
+          "str": 0,
+          "wis": 0
+        },
+        "locked": [],
+        "points": 2,
+        "recommendation": null
+      },
+      "hint": "",
+      "id": "bwCLOdauuzoHofil",
+      "level": 4,
+      "title": "",
+      "type": "AbilityScoreImprovement",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "cap": 2,
+        "fixed": {
+          "cha": 0,
+          "con": 0,
+          "dex": 0,
+          "int": 0,
+          "str": 0,
+          "wis": 0
+        },
+        "locked": [],
+        "points": 2,
+        "recommendation": null
+      },
+      "hint": "",
+      "id": "mRSh9oUVjLU33e7p",
+      "level": 8,
+      "title": "",
+      "type": "AbilityScoreImprovement",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "cap": 2,
+        "fixed": {
+          "cha": 0,
+          "con": 0,
+          "dex": 0,
+          "int": 0,
+          "str": 0,
+          "wis": 0
+        },
+        "locked": [],
+        "points": 2,
+        "recommendation": null
+      },
+      "hint": "",
+      "id": "mhZh3LfLMa15tXee",
+      "level": 12,
+      "title": "",
+      "type": "AbilityScoreImprovement",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "cap": 2,
+        "fixed": {
+          "cha": 0,
+          "con": 0,
+          "dex": 0,
+          "int": 0,
+          "str": 0,
+          "wis": 0
+        },
+        "locked": [],
+        "points": 2,
+        "recommendation": null
+      },
+      "hint": "",
+      "id": "FOf5CkGnSs0OlppY",
+      "level": 16,
+      "title": "",
+      "type": "AbilityScoreImprovement",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "cap": 2,
+        "fixed": {
+          "cha": 0,
+          "con": 0,
+          "dex": 0,
+          "int": 0,
+          "str": 0,
+          "wis": 0
+        },
+        "locked": [],
+        "points": 2,
+        "recommendation": null
+      },
+      "hint": "",
+      "id": "PbZFa8JfPdQcvr1Q",
+      "level": 10,
+      "title": "",
+      "type": "AbilityScoreImprovement",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [
+          {
+            "count": 2,
+            "pool": [
+              "skills:*"
+            ]
+          }
+        ],
+        "grants": [],
+        "mode": "expertise"
+      },
+      "hint": "You gain Expertise in two of your skill proficiencies of your choice. Sleight of Hand and Stealth are recommended if you have proficiency in them.",
+      "id": "4doj2kFD8sIYiX8X",
+      "level": 1,
+      "title": "Expertise",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [
+          {
+            "count": 2,
+            "pool": [
+              "skills:*"
+            ]
+          }
+        ],
+        "grants": [],
+        "mode": "expertise"
+      },
+      "hint": "",
+      "id": "sqWH6tnUg7jiGaEj",
+      "level": 6,
+      "title": "Expertise",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "distance": {
+          "units": ""
+        },
+        "identifier": "",
+        "scale": {
+          "1": {
+            "faces": 6,
+            "modifiers": [],
+            "number": 1
+          },
+          "11": {
+            "faces": 6,
+            "modifiers": [],
+            "number": 6
+          },
+          "13": {
+            "faces": 6,
+            "modifiers": [],
+            "number": 7
+          },
+          "15": {
+            "faces": 6,
+            "modifiers": [],
+            "number": 8
+          },
+          "17": {
+            "faces": 6,
+            "modifiers": [],
+            "number": 9
+          },
+          "19": {
+            "faces": 6,
+            "modifiers": [],
+            "number": 10
+          },
+          "3": {
+            "faces": 6,
+            "modifiers": [],
+            "number": 2
+          },
+          "5": {
+            "faces": 6,
+            "modifiers": [],
+            "number": 3
+          },
+          "7": {
+            "faces": 6,
+            "modifiers": [],
+            "number": 4
+          },
+          "9": {
+            "faces": 6,
+            "modifiers": [],
+            "number": 5
+          }
+        },
+        "type": "dice"
+      },
+      "hint": "",
+      "id": "4uOxepnMxb2TYDY4",
+      "level": 0,
+      "title": "Sneak Attack",
+      "type": "ScaleValue",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [
+          {
+            "count": 1,
+            "pool": [
+              "languages:*"
+            ]
+          }
+        ],
+        "grants": [
+          "languages:exotic:cant"
+        ],
+        "mode": "default"
+      },
+      "hint": "You picked up various languages in the communities where you plied your roguish talents. You know Thieves\u2019 Cant and one other language of your choice, which you can choose from the languages below.",
+      "id": "IHbn6EXoBfxHdj7c",
+      "level": 1,
+      "title": "Thieves' Cant",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [],
+        "grants": [
+          "saves:wis",
+          "saves:cha"
+        ],
+        "mode": "default"
+      },
+      "hint": "Your cunning mind is exceptionally difficult to control. You gain proficiency in Wisdom and Charisma saving throws.",
+      "id": "FiaNLovfP6tnY4tD",
+      "level": 15,
+      "title": "",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "",
+      "configuration": {},
+      "hint": "",
+      "id": "YW6yxOO45ACMgnJT",
+      "level": 3,
+      "title": "",
+      "type": "Subclass",
+      "value": {
+        "document": null,
+        "uuid": null
+      }
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [
+          {
+            "count": 2,
+            "pool": [
+              "weapon:*"
+            ]
+          }
+        ],
+        "grants": [],
+        "mode": "mastery"
+      },
+      "hint": "",
+      "id": "yp6ZCsT10nGs4J4q",
+      "level": 1,
+      "title": "Weapon Mastery",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "primary",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [],
+        "grants": [
+          "saves:dex",
+          "saves:int"
+        ],
+        "mode": "default"
+      },
+      "hint": "",
+      "id": "OJXVOKQhi05P672u",
+      "level": 1,
+      "title": "Saving Throw Proficiencies",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "primary",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [
+          {
+            "count": 4,
+            "pool": [
+              "skills:acr",
+              "skills:ath",
+              "skills:dec",
+              "skills:ins",
+              "skills:itm",
+              "skills:inv",
+              "skills:prc",
+              "skills:per",
+              "skills:slt",
+              "skills:ste"
+            ]
+          }
+        ],
+        "grants": [],
+        "mode": "default"
+      },
+      "hint": "",
+      "id": "xE00qAIjMdw63Kja",
+      "level": 1,
+      "title": "Skill Proficiencies",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "primary",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [],
+        "grants": [
+          "weapon:sim",
+          "weapon:mar:handcrossbow",
+          "weapon:mar:rapier",
+          "weapon:mar:scimitar",
+          "weapon:mar:shortsword",
+          "weapon:mar:whip"
+        ],
+        "mode": "default"
+      },
+      "hint": "",
+      "id": "q22sm4VsezAltuqE",
+      "level": 1,
+      "title": "Weapon Proficiencies",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [],
+        "grants": [
+          "tool:thief"
+        ],
+        "mode": "default"
+      },
+      "hint": "",
+      "id": "N5TGZDRu7NwVSaq6",
+      "level": 1,
+      "title": "Tool Proficiencies",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [],
+        "grants": [
+          "armor:lgt"
+        ],
+        "mode": "default"
+      },
+      "hint": "",
+      "id": "UH1CrcBv6JRJJxsQ",
+      "level": 1,
+      "title": "Armor Training",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "secondary",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [
+          {
+            "count": 1,
+            "pool": [
+              "skills:acr",
+              "skills:ath",
+              "skills:dec",
+              "skills:ins",
+              "skills:itm",
+              "skills:prc",
+              "skills:per",
+              "skills:slt",
+              "skills:ste"
+            ]
+          }
+        ],
+        "grants": [],
+        "mode": "default"
+      },
+      "hint": "",
+      "id": "tSxdQdTxlNVE1kdD",
+      "level": 1,
+      "title": "Skill Proficiencies",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "cap": 2,
+        "fixed": {
+          "cha": 0,
+          "con": 0,
+          "dex": 0,
+          "int": 0,
+          "str": 0,
+          "wis": 0
+        },
+        "locked": [],
+        "max": null,
+        "points": 2,
+        "recommendation": "Compendium.dnd5e.feats24.Item.phbBoonoftheNigh"
+      },
+      "hint": "",
+      "id": "8tx2HViuTjfSr4D9",
+      "level": 19,
+      "title": "",
+      "type": "AbilityScoreImprovement",
+      "value": {}
+    }
+  ],
+  "description": "Core Rogue Traits\n\nPrimary Ability\n\nDexterity\n\nHit Point Die\n\nD8 per Rogue level\n\nSaving Throw Proficiencies\n\nDexterity and Intelligence\n\nSkill Proficiencies\n\nChoose 4: Acrobatics, Athletics, Deception, Insight, Intimidation, Investigation, Perception, Persuasion, Sleight of Hand, or Stealth\n\nWeapon Proficiencies\n\nSimple weapons and Martial weapons that have the Finesse or Light property\n\nTool Proficiencies\n\nThieves' Tools\n\nArmor Training\n\nLight armor\n\nStarting Equipment\n\nChoose A or B: (A) Leather Armor, 2 Daggers, Short\u00adsword, Shortbow, 20 Arrows, Quiver, Thieves' Tools, Burglar's Pack, and [[/award 8GP]]; or (B) [[/award 100GP]]\n\n@Embed[Compendium.dnd5e.content24.JournalEntry.phbAppendixClass.JournalEntryPage.phbrgeRogue00000 inline classes=\"free-rules-embed\"]\n\nBecoming a Rogue \u2026\n\nAs a Level 1 Character\n\nGain all the traits in the Core Rogue Traits table.\n\nGain the Rogue's level 1 features, which are listed in the Rogue Features table.\n\nAs a Multiclass Character\n\nGain the following traits from the Core Rogue Traits table: Hit Point Die, proficiency in one skill of your choice from the Rogue's skill list, proficiency with Thieves' Tools, and training with Light armor.\n\nGain the Rogue's level 1 features, which are listed in the Rogue Features table.",
+  "entry_kind": "class",
+  "feature_choices": [],
+  "granted_features": [
+    {
+      "level": 1,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "expertise"
+    },
+    {
+      "level": 1,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "sneak-attack"
+    },
+    {
+      "level": 1,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "thieves-cant"
+    },
+    {
+      "level": 1,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "weapon-mastery"
+    },
+    {
+      "level": 2,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "cunning-action"
+    },
+    {
+      "level": 3,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "steady-aim"
+    },
+    {
+      "level": 5,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "cunning-strike"
+    },
+    {
+      "level": 5,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "uncanny-dodge"
+    },
+    {
+      "level": 7,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "evasion"
+    },
+    {
+      "level": 7,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "reliable-talent"
+    },
+    {
+      "level": 11,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "improved-cunning-strike"
+    },
+    {
+      "level": 14,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "devious-strikes"
+    },
+    {
+      "level": 15,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "slippery-mind"
+    },
+    {
+      "level": 18,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "elusive"
+    },
+    {
+      "level": 20,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "stroke-of-luck"
+    }
+  ],
+  "hit_die": "d8",
+  "identifier": "rogue",
+  "name": "Rogue",
+  "primary_ability": {
+    "all": true,
+    "value": [
+      "dex"
+    ]
+  },
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/rogue/rogue.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "saving_throws": [
+    "dex",
+    "int"
+  ],
+  "slug": "rogue",
+  "spellcasting": {
+    "ability": "",
+    "progression": "none"
+  },
+  "subclass_identifiers": [
+    "thief"
+  ],
+  "wealth": "100"
+}

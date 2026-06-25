@@ -1,0 +1,55 @@
+{
+  "activities": [],
+  "description": "You have dedicated yourself to the following sacred role:\n\nThaumaturge. You know one extra cantrip from the Cleric spell list. In addition, your mystical connection to the divine gives you a bonus to your Intelligence (Arcana or Religion) checks. The bonus equals your Wisdom modifier (minimum of +1, currently [[lookup @abilities.wis.mod]]).\n\nFoundry Note\n\nThis feature includes an Active Effect which increases the number of cantrips you can know and grants the bonus to your Intelligence (Arcana or Religion) checks.",
+  "entry_kind": "feature",
+  "feature_type": "class_feature",
+  "foundry_id": "phbDivineOrderTh",
+  "name": "Divine Order: Thaumaturge",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.scale.cleric.cantrips-known.value",
+          "mode": 2,
+          "priority": null,
+          "value": "1"
+        },
+        {
+          "key": "system.skills.arc.bonuses.check",
+          "mode": 2,
+          "priority": null,
+          "value": "(max(1,@abilities.wis.mod))"
+        },
+        {
+          "key": "system.skills.rel.bonuses.check",
+          "mode": 2,
+          "priority": null,
+          "value": "(max(1,@abilities.wis.mod))"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "7fucT9vgkryEEoxI",
+      "name": "Thaumaturge",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/cleric/class-features/divine-order-thaumaturge.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "divine-order-thaumaturge",
+  "source_slug": "cleric"
+}

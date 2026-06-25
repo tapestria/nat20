@@ -1,0 +1,25 @@
+{
+  "activities": [],
+  "description": "You have proficiency in the Insight, Perception, or Survival skill.\n\nFoundry Note\n\nYou will be prompted for your choice after selecting this species.",
+  "entry_kind": "feature",
+  "feature_type": "species_trait",
+  "foundry_id": "phbsptKeenSenses",
+  "name": "Keen Senses",
+  "passive_effects": [],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/origins24/species/traits/elf/keen-senses.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "keen-senses",
+  "source_slug": "elf"
+}

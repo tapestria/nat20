@@ -1,0 +1,612 @@
+{
+  "activities": [
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": []
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [
+        {
+          "id": "GTBlnwp18lMmlhNY",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": {
+            "activity": [],
+            "effect": [
+              "cPxO25ckNFWtuPOT"
+            ],
+            "item": []
+          }
+        },
+        {
+          "id": "oAMZPSz9ScJ9kzJS",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": {
+            "activity": [],
+            "effect": [
+              "7pZPJW8286U9Tg7k"
+            ],
+            "item": []
+          }
+        },
+        {
+          "id": "YnovzwTfQAEO8okl",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": {
+            "activity": [],
+            "effect": [
+              "QZXLvBG314EsIM0W"
+            ],
+            "item": []
+          }
+        },
+        {
+          "id": "SXYzllaQnbyxFGJu",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": {
+            "activity": [],
+            "effect": [
+              "Dp2k2G8cSCRIb3bp"
+            ],
+            "item": []
+          }
+        },
+        {
+          "id": "7R5dtsUNiWZhXhS3",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": {
+            "activity": [],
+            "effect": [
+              "jn9U4aMx0EjCXD2Y"
+            ],
+            "item": []
+          }
+        },
+        {
+          "id": "kwIXULk6aDknIZnv",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": {
+            "activity": [],
+            "effect": [
+              "nPEOMehkECBedpCX"
+            ],
+            "item": []
+          }
+        },
+        {
+          "id": "4MsmIVyXTFt4AKuD",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": {
+            "activity": [],
+            "effect": [
+              "GDfu0ASHkIc3ZYpz"
+            ],
+            "item": []
+          }
+        },
+        {
+          "id": "WnwsmlBDChjhXgAj",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": {
+            "activity": [],
+            "effect": [
+              "wodSF9vN42I3xmPq"
+            ],
+            "item": []
+          }
+        },
+        {
+          "id": "wVh8ceMKvVud2qyr",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": {
+            "activity": [],
+            "effect": [
+              "YCUy12OF1A6oWyEt"
+            ],
+            "item": []
+          }
+        },
+        {
+          "id": "QzV7iJWMlEePDrjN",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": {
+            "activity": [],
+            "effect": [
+              "8Y80BGFPEux1Ifdz"
+            ],
+            "item": []
+          }
+        }
+      ],
+      "enchant": {
+        "identifier": "",
+        "self": false
+      },
+      "flags": {},
+      "id": "bXwjIvHcsOYbGkj6",
+      "img": "",
+      "kind": "enchant",
+      "name": "Select Dragon Type",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "self",
+        "value": null
+      },
+      "restrictions": {
+        "allow_magical": true,
+        "categories": [
+          "medium"
+        ],
+        "properties": [],
+        "type": "equipment"
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "1",
+          "special": "",
+          "type": "object"
+        },
+        "override": false,
+        "prompt": true,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "ft",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    }
+  ],
+  "armor_category": "medium",
+  "attunement_constraint": null,
+  "base_ac": 14,
+  "cost_gp": 40050.0,
+  "description": "Armor (Scale Mail), Very Rare (Requires Attunement)\n\nDragon Scale Mail is made of the scales of one kind of dragon. Sometimes dragons collect their cast-off scales and gift them. Other times, hunters carefully preserve the hide of a dead dragon. In either case, Dragon Scale Mail is highly valued.\n\nWhile wearing this armor, you gain a +1 bonus to Armor Class, you have Advantage on saving throws against the breath weapons of Dragons, and you have Resistance to one damage type determined by the kind of dragon that provided the scales (see the accompanying table).\n\nAdditionally, you can focus your senses as a Magic action to discern the distance and direction to the closest dragon within 30 miles of yourself that is of the same type as the armor. This action can't be used again until the next dawn. Resistance Table\n\nDragon\n\nResistance\n\nBlack\n\nAcid\n\nGold\n\nFire\n\nBlue\n\nLightning\n\nGreen\n\nPoison\n\nBrass\n\nFire\n\nRed\n\nFire\n\nBronze\n\nLightning\n\nSilver\n\nCold\n\nCopper\n\nAcid\n\nWhite\n\nCold\n\nFoundry Note\n\nThe Select Dragon Type activity can be used to select the type of dragon for this armor. It includes the +1 bonus and an Active Effect that provides the Resistance.",
+  "dex_bonus_max": 2,
+  "item_kind": "armor",
+  "magical_bonus": 1,
+  "name": "Dragon Scale Mail",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "name",
+          "mode": 5,
+          "priority": null,
+          "value": "Black {}"
+        }
+      ],
+      "description": "",
+      "disabled": true,
+      "duration": null,
+      "id": "GTBlnwp18lMmlhNY",
+      "name": "Black Scale",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "acid"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "cPxO25ckNFWtuPOT",
+      "name": "Black Scale",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "name",
+          "mode": 5,
+          "priority": null,
+          "value": "Gold {}"
+        }
+      ],
+      "description": "",
+      "disabled": true,
+      "duration": null,
+      "id": "oAMZPSz9ScJ9kzJS",
+      "name": "Gold Scale",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "fire"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "7pZPJW8286U9Tg7k",
+      "name": "Gold Scale",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "lightning"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "QZXLvBG314EsIM0W",
+      "name": "Blue Scale",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "poison"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "Dp2k2G8cSCRIb3bp",
+      "name": "Green Scale",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "fire"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "jn9U4aMx0EjCXD2Y",
+      "name": "Brass Scale",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "fire"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "nPEOMehkECBedpCX",
+      "name": "Red Scale",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "lightning"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "GDfu0ASHkIc3ZYpz",
+      "name": "Bronze Scale",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "cold"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "wodSF9vN42I3xmPq",
+      "name": "Silver Scale",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "acid"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "YCUy12OF1A6oWyEt",
+      "name": "Copper Scale",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "cold"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "8Y80BGFPEux1Ifdz",
+      "name": "White Scale",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "name",
+          "mode": 5,
+          "priority": null,
+          "value": "Blue {}"
+        }
+      ],
+      "description": "",
+      "disabled": true,
+      "duration": null,
+      "id": "YnovzwTfQAEO8okl",
+      "name": "Blue Scale",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "name",
+          "mode": 5,
+          "priority": null,
+          "value": "Green {}"
+        }
+      ],
+      "description": "",
+      "disabled": true,
+      "duration": null,
+      "id": "SXYzllaQnbyxFGJu",
+      "name": "Green Scale",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "name",
+          "mode": 5,
+          "priority": null,
+          "value": "Fire {}"
+        }
+      ],
+      "description": "",
+      "disabled": true,
+      "duration": null,
+      "id": "7R5dtsUNiWZhXhS3",
+      "name": "Brass Scale",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "name",
+          "mode": 5,
+          "priority": null,
+          "value": "Red {}"
+        }
+      ],
+      "description": "",
+      "disabled": true,
+      "duration": null,
+      "id": "kwIXULk6aDknIZnv",
+      "name": "Red Scale",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "name",
+          "mode": 5,
+          "priority": null,
+          "value": "Bronze {}"
+        }
+      ],
+      "description": "",
+      "disabled": true,
+      "duration": null,
+      "id": "4MsmIVyXTFt4AKuD",
+      "name": "Bronze Scale",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "name",
+          "mode": 5,
+          "priority": null,
+          "value": "Silver {}"
+        }
+      ],
+      "description": "",
+      "disabled": true,
+      "duration": null,
+      "id": "WnwsmlBDChjhXgAj",
+      "name": "Silver Scale",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "name",
+          "mode": 5,
+          "priority": null,
+          "value": "Copper {}"
+        }
+      ],
+      "description": "",
+      "disabled": true,
+      "duration": null,
+      "id": "wVh8ceMKvVud2qyr",
+      "name": "Copper Scale",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "name",
+          "mode": 5,
+          "priority": null,
+          "value": "White {}"
+        }
+      ],
+      "description": "",
+      "disabled": true,
+      "duration": null,
+      "id": "QzV7iJWMlEePDrjN",
+      "name": "White Scale",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/equipment24/armor/magical/dragon-scale-mail.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "rarity": "very_rare",
+  "requires_attunement": true,
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "dragon-scale-mail",
+  "stealth_disadvantage": true,
+  "strength_min": null,
+  "weight": 45.0
+}

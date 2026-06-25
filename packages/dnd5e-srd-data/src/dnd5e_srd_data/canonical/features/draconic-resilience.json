@@ -1,0 +1,60 @@
+{
+  "activities": [],
+  "description": "The magic in your body manifests physical traits of your draconic gift. Your Hit Point maximum increases by 3, and it increases by 1 whenever you gain another Sorcerer level.\n\nParts of you are also covered by dragon-like scales. While you aren't wearing armor, your base Armor Class equals 10 plus your Dexterity and Charisma modifiers.\n\nFoundry Note\n\nThis feature includes an Active Effect that automatically increases your Hit Point maximum and sets up your Unarmored Defense which can be disabled if you would prefer to use armor.",
+  "entry_kind": "feature",
+  "feature_type": "subclass_feature",
+  "foundry_id": "phbscrDraconicRe",
+  "name": "Draconic Resilience",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.attributes.ac.calc",
+          "mode": 5,
+          "priority": null,
+          "value": "unarmoredBard"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "ZoJYjZ3KGM30khz3",
+      "name": "Draconic Resilience: Armor",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "system.attributes.hp.bonuses.overall",
+          "mode": 2,
+          "priority": null,
+          "value": "@classes.sorcerer.levels"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "vMrqtNbCcIgCcl1Q",
+      "name": "Draconic Resilience: HP",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/sorcerer/subclass-features/draconic-sorcery/draconic-resilience.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "draconic-resilience",
+  "source_slug": "draconic-sorcery"
+}

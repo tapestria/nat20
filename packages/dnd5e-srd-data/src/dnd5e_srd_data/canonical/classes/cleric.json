@@ -1,0 +1,729 @@
+{
+  "advancement": [
+    {
+      "class_restriction": "",
+      "configuration": {},
+      "hint": "",
+      "id": "NCN5ZAV8TtveRR4d",
+      "level": 0,
+      "title": "",
+      "type": "HitPoints",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbclcSpellcasti"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbclcDivineOrde"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "rQCM2OtE22hoSikN",
+      "level": 1,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbclcChannelDiv"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "sbC9gYqIKyBudLEX",
+      "level": 2,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbclcSearUndead"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "iyByIlgOSTkVdiIb",
+      "level": 5,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbclcDivineInte"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "fMMlnS7XNj4jHolA",
+      "level": 10,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbclcImprovedBl"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "db2RJZ0xSSbbOPIk",
+      "level": 14,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbclcGreaterDiv"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "ilTop8eaoKLL9KVJ",
+      "level": 20,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "cap": 2,
+        "fixed": {
+          "cha": 0,
+          "con": 0,
+          "dex": 0,
+          "int": 0,
+          "str": 0,
+          "wis": 0
+        },
+        "locked": [],
+        "points": 2,
+        "recommendation": null
+      },
+      "hint": "",
+      "id": "bwCLOdauuzoHofil",
+      "level": 4,
+      "title": "",
+      "type": "AbilityScoreImprovement",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "cap": 2,
+        "fixed": {
+          "cha": 0,
+          "con": 0,
+          "dex": 0,
+          "int": 0,
+          "str": 0,
+          "wis": 0
+        },
+        "locked": [],
+        "points": 2,
+        "recommendation": null
+      },
+      "hint": "",
+      "id": "mRSh9oUVjLU33e7p",
+      "level": 8,
+      "title": "",
+      "type": "AbilityScoreImprovement",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "cap": 2,
+        "fixed": {
+          "cha": 0,
+          "con": 0,
+          "dex": 0,
+          "int": 0,
+          "str": 0,
+          "wis": 0
+        },
+        "locked": [],
+        "points": 2,
+        "recommendation": null
+      },
+      "hint": "",
+      "id": "mhZh3LfLMa15tXee",
+      "level": 12,
+      "title": "",
+      "type": "AbilityScoreImprovement",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "cap": 2,
+        "fixed": {
+          "cha": 0,
+          "con": 0,
+          "dex": 0,
+          "int": 0,
+          "str": 0,
+          "wis": 0
+        },
+        "locked": [],
+        "points": 2,
+        "recommendation": null
+      },
+      "hint": "",
+      "id": "FOf5CkGnSs0OlppY",
+      "level": 16,
+      "title": "",
+      "type": "AbilityScoreImprovement",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "distance": {
+          "units": ""
+        },
+        "identifier": "channel-divinity",
+        "scale": {
+          "18": {
+            "value": 4
+          },
+          "2": {
+            "value": 2
+          },
+          "6": {
+            "value": 3
+          }
+        },
+        "type": "number"
+      },
+      "hint": "",
+      "id": "ivrX9MYiE52lFZLI",
+      "level": 0,
+      "title": "Channel Divinity Uses",
+      "type": "ScaleValue",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "distance": {
+          "units": ""
+        },
+        "identifier": "max-prepared",
+        "scale": {
+          "1": {
+            "value": 4
+          },
+          "10": {
+            "value": 15
+          },
+          "11": {
+            "value": 16
+          },
+          "13": {
+            "value": 17
+          },
+          "15": {
+            "value": 18
+          },
+          "17": {
+            "value": 19
+          },
+          "18": {
+            "value": 20
+          },
+          "19": {
+            "value": 21
+          },
+          "2": {
+            "value": 5
+          },
+          "20": {
+            "value": 22
+          },
+          "3": {
+            "value": 6
+          },
+          "4": {
+            "value": 7
+          },
+          "5": {
+            "value": 9
+          },
+          "6": {
+            "value": 10
+          },
+          "7": {
+            "value": 11
+          },
+          "8": {
+            "value": 12
+          },
+          "9": {
+            "value": 14
+          }
+        },
+        "type": "number"
+      },
+      "hint": "",
+      "id": "jMZmkkMc9XLsde4W",
+      "level": 0,
+      "title": "Max Prepared Spells",
+      "type": "ScaleValue",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "distance": {
+          "units": ""
+        },
+        "identifier": "",
+        "scale": {
+          "1": {
+            "value": 3
+          },
+          "10": {
+            "value": 5
+          },
+          "4": {
+            "value": 4
+          }
+        },
+        "type": "number"
+      },
+      "hint": "",
+      "id": "FjHGiO7BkbHTcQ2J",
+      "level": 0,
+      "title": "Cantrips Known",
+      "type": "ScaleValue",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbclcBlessedStr"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "X3bKJF53QCfKsonV",
+      "level": 7,
+      "title": "Blessed Strikes",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "allowDrops": false,
+        "choices": {
+          "1": {
+            "count": 1,
+            "replacement": false
+          }
+        },
+        "pool": [
+          {
+            "uuid": "Compendium.dnd5e.classes24.Item.phbDivineOrderPr"
+          },
+          {
+            "uuid": "Compendium.dnd5e.classes24.Item.phbDivineOrderTh"
+          }
+        ],
+        "restriction": {
+          "list": [],
+          "subtype": "",
+          "type": "class"
+        },
+        "spell": null,
+        "type": "feat"
+      },
+      "hint": "You have dedicated yourself to one of the following sacred roles of your choice.",
+      "id": "V8GfnoZYTe1PLXPI",
+      "level": 0,
+      "title": "Divine Order Choice",
+      "type": "ItemChoice",
+      "value": {
+        "added": {},
+        "replaced": {}
+      }
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "allowDrops": false,
+        "choices": {
+          "7": {
+            "count": 1,
+            "replacement": false
+          }
+        },
+        "pool": [
+          {
+            "uuid": "Compendium.dnd5e.classes24.Item.phbDivineStrike0"
+          },
+          {
+            "uuid": "Compendium.dnd5e.classes24.Item.phbClcPotentSpel"
+          }
+        ],
+        "restriction": {
+          "list": [],
+          "subtype": "",
+          "type": "class"
+        },
+        "spell": null,
+        "type": "feat"
+      },
+      "hint": "Divine power infuses you in battle. You gain one of the following options of your choice (if you get either option from a Cleric subclass in an older book, use only the option you choose for this feature).",
+      "id": "C9ABIfTHZkeFpUva",
+      "level": 0,
+      "title": "Blessed Strikes Choice",
+      "type": "ItemChoice",
+      "value": {
+        "added": {},
+        "replaced": {}
+      }
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "distance": {
+          "units": ""
+        },
+        "identifier": "",
+        "scale": {
+          "14": {
+            "faces": 8,
+            "modifiers": [],
+            "number": 2
+          },
+          "7": {
+            "faces": 8,
+            "modifiers": [],
+            "number": 1
+          }
+        },
+        "type": "dice"
+      },
+      "hint": "",
+      "id": "14RcvdtbvXnTdR9P",
+      "level": 0,
+      "title": "Divine Strike",
+      "type": "ScaleValue",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {},
+      "hint": "",
+      "id": "xtHP27K3z3naIFTi",
+      "level": 3,
+      "title": "",
+      "type": "Subclass",
+      "value": {
+        "document": null,
+        "uuid": null
+      }
+    },
+    {
+      "class_restriction": "primary",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [],
+        "grants": [
+          "saves:wis",
+          "saves:cha"
+        ],
+        "mode": "default"
+      },
+      "hint": "",
+      "id": "Z9K5kHYMLvroIMpT",
+      "level": 1,
+      "title": "Saving Throw Proficiencies",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "primary",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [
+          {
+            "count": 2,
+            "pool": [
+              "skills:his",
+              "skills:ins",
+              "skills:med",
+              "skills:per",
+              "skills:rel"
+            ]
+          }
+        ],
+        "grants": [],
+        "mode": "default"
+      },
+      "hint": "",
+      "id": "2wUNkQzS4vL9nR6D",
+      "level": 1,
+      "title": "Skill Proficiencies",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "primary",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [],
+        "grants": [
+          "weapon:sim"
+        ],
+        "mode": "default"
+      },
+      "hint": "",
+      "id": "U6GGwY4ZKiXqXBQN",
+      "level": 1,
+      "title": "Weapon Proficiencies",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [],
+        "grants": [
+          "armor:lgt",
+          "armor:med",
+          "armor:shl"
+        ],
+        "mode": "default"
+      },
+      "hint": "",
+      "id": "KfX42cnLxFc9gUxU",
+      "level": 1,
+      "title": "Armor Training",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "cap": 2,
+        "fixed": {
+          "cha": 0,
+          "con": 0,
+          "dex": 0,
+          "int": 0,
+          "str": 0,
+          "wis": 0
+        },
+        "locked": [],
+        "max": null,
+        "points": 2,
+        "recommendation": "Compendium.dnd5e.feats24.Item.phbBoonofFate000"
+      },
+      "hint": "",
+      "id": "8mdNRciTyktb4g40",
+      "level": 19,
+      "title": "",
+      "type": "AbilityScoreImprovement",
+      "value": {}
+    }
+  ],
+  "description": "Core Cleric Traits\n\nPrimary Ability\n\nWisdom\n\nHit Point Die\n\nD8 per Cleric level\n\nSaving Throw Proficiencies\n\nWisdom and Charisma\n\nSkill Proficiencies\n\nChoose 2: History, Insight, Medicine, Persuasion, or Religion\n\nWeapon Proficiencies\n\nSimple weapons\n\nArmor Training\n\nLight and Medium armor and Shields\n\nStarting Equipment\n\nChoose A or B: (A) Chain Shirt, Shield, Mace, Holy Symbol, Priest's Pack, and [[/award 7GP]]; or (B) [[/award 110GP]]\n\n@Embed[Compendium.dnd5e.content24.JournalEntry.phbAppendixClass.JournalEntryPage.phbclcCleric0000 inline classes=\"free-rules-embed\"]\n\nBecoming a Cleric \u2026\n\nAs a Level 1 Character\n\nGain all the traits in the Core Cleric Traits table.\n\nGain the Cleric's level 1 features, which are listed in the Cleric Features table.\n\nAs a Multiclass Character\n\nGain the following traits from the Core Cleric Traits table: Hit Point Die and training with Light and Medium armor and Shields.\n\nGain the Cleric's level 1 features, which are listed in the Cleric Features table. See the multiclassing rules in chapter 2 to determine your available spell slots.",
+  "entry_kind": "class",
+  "feature_choices": [
+    {
+      "pool": [
+        {
+          "level": 0,
+          "optional": false,
+          "ref_type": "feature",
+          "slug": "divine-order-protector"
+        },
+        {
+          "level": 0,
+          "optional": false,
+          "ref_type": "feature",
+          "slug": "divine-order-thaumaturge"
+        }
+      ],
+      "restriction_subtype": "",
+      "schedule": [
+        {
+          "count": 1,
+          "level": 1,
+          "replacement": false
+        }
+      ]
+    },
+    {
+      "pool": [
+        {
+          "level": 0,
+          "optional": false,
+          "ref_type": "feature",
+          "slug": "blessed-strikes-divine-strike"
+        },
+        {
+          "level": 0,
+          "optional": false,
+          "ref_type": "feature",
+          "slug": "blessed-strikes-potent-spellcasting"
+        }
+      ],
+      "restriction_subtype": "",
+      "schedule": [
+        {
+          "count": 1,
+          "level": 7,
+          "replacement": false
+        }
+      ]
+    }
+  ],
+  "granted_features": [
+    {
+      "level": 1,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "spellcasting"
+    },
+    {
+      "level": 1,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "divine-order"
+    },
+    {
+      "level": 2,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "channel-divinity-cleric"
+    },
+    {
+      "level": 5,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "sear-undead"
+    },
+    {
+      "level": 10,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "divine-intervention"
+    },
+    {
+      "level": 14,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "improved-blessed-strikes"
+    },
+    {
+      "level": 20,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "greater-divine-intervention"
+    },
+    {
+      "level": 7,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "blessed-strikes"
+    }
+  ],
+  "hit_die": "d8",
+  "identifier": "cleric",
+  "name": "Cleric",
+  "primary_ability": {
+    "all": true,
+    "value": [
+      "wis"
+    ]
+  },
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/cleric/cleric.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "saving_throws": [
+    "cha",
+    "wis"
+  ],
+  "slug": "cleric",
+  "spellcasting": {
+    "ability": "wis",
+    "progression": "full"
+  },
+  "subclass_identifiers": [
+    "life"
+  ],
+  "wealth": "110"
+}

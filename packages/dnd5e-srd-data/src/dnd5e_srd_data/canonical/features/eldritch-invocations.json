@@ -1,0 +1,25 @@
+{
+  "activities": [],
+  "description": "You have unearthed Eldritch Invocations, pieces of forbidden knowledge that imbue you with an abiding magical ability or other lessons. You gain one invocation of your choice, such as Pact of the Tome. Invocations are described in the Eldritch Invocation Options section.\n\nPrerequisites. If an invocation has a prerequisite, you must meet it to learn that invocation. For example, if an invocation requires you to be a level 5+ Warlock, you can select the invocation once you reach Warlock level 5.\n\nReplacing and Gaining Invocations. Whenever you gain a Warlock level, you can replace one of your invocations with another one for which you qualify. You can't replace an invocation if it's a prerequisite for another invocation that you have.\n\nWhen you gain certain Warlock levels, you gain more invocations of your choice, as shown in the Invocations column of the Warlock Features table.\n\nCurrent Max Eldritch Invocations: [[lookup @scale.warlock.invocations-known]]\n\nYou can't pick the same invocation more than once unless its description says otherwise.\n\nFoundry Note\n\nYou will be prompted for your choices as you level up. The advancement system does not prevent you from taking any invocations so be sure that you meet the requirements before selecting one.",
+  "entry_kind": "feature",
+  "feature_type": "class_feature",
+  "foundry_id": "phbwlkEldritchIn",
+  "name": "Eldritch Invocations",
+  "passive_effects": [],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/warlock/class-features/eldritch-invocations.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "eldritch-invocations",
+  "source_slug": "warlock"
+}

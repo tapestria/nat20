@@ -1,0 +1,45 @@
+{
+  "activities": [],
+  "attunement_constraint": null,
+  "cost_gp": 4000.0,
+  "description": "See: dmgBeltOfGiantSt\n\nWhile wearing this belt, your Strength changes to 21. The type of giant determines the score. The item has no effect on you if your Strength without the belt is equal to or greater than 21.",
+  "item_kind": "magic_item",
+  "name": "Belt of Giant Strength (hill)",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.abilities.str.value",
+          "mode": 4,
+          "priority": null,
+          "value": "21"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "dLiEcoOg6cQcgIP8",
+      "name": "Hill Giant Strength",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/equipment24/equipment/belts-of-giant-strength/belt-of-giant-strength-hill.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "rarity": "rare",
+  "requires_attunement": true,
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "hil-belt-of-giant-strength",
+  "weight": 0.0
+}

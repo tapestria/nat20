@@ -1,0 +1,273 @@
+{
+  "activities": [
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "action",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": []
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [
+        {
+          "id": "IMt1nMPrWppyRYMT",
+          "level": {
+            "max": 2,
+            "min": 2
+          },
+          "on_save": null,
+          "riders": {
+            "activity": [],
+            "effect": [],
+            "item": []
+          }
+        },
+        {
+          "id": "9zA6SFF8HKk9xNn2",
+          "level": {
+            "max": 5,
+            "min": 3
+          },
+          "on_save": null,
+          "riders": {
+            "activity": [],
+            "effect": [],
+            "item": []
+          }
+        },
+        {
+          "id": "AJQwm1dgXz7D333k",
+          "level": {
+            "max": null,
+            "min": 6
+          },
+          "on_save": null,
+          "riders": {
+            "activity": [],
+            "effect": [],
+            "item": []
+          }
+        }
+      ],
+      "enchant": {
+        "identifier": "",
+        "self": false
+      },
+      "flags": {},
+      "id": "dnd5eactivity000",
+      "img": "",
+      "kind": "enchant",
+      "name": "",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "self",
+        "value": null
+      },
+      "restrictions": {
+        "allow_magical": false,
+        "categories": [],
+        "properties": [],
+        "type": "weapon"
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "1",
+          "special": "",
+          "type": "object"
+        },
+        "override": false,
+        "prompt": true,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    }
+  ],
+  "casting_time": {
+    "condition": "",
+    "unit": "bonus",
+    "value": 1
+  },
+  "components": [
+    "S",
+    "V"
+  ],
+  "concentration": false,
+  "description": "You touch a nonmagical weapon. Until the spell ends, that weapon becomes a magic weapon with a +1 bonus to attack rolls and damage rolls. The spell ends early if you cast it again.\n\nUsing a Higher-Level Spell Slot. The bonus increases to +2 with a level 3\u20135 spell slot. The bonus increases to +3 with a level 6+ spell slot.",
+  "duration": {
+    "units": "hour",
+    "value": 1
+  },
+  "entry_kind": "spell",
+  "level": 2,
+  "materials": {
+    "consumed": false,
+    "cost": 0,
+    "supply": 0,
+    "value": ""
+  },
+  "name": "Magic Weapon",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.properties",
+          "mode": 2,
+          "priority": null,
+          "value": "mgc"
+        },
+        {
+          "key": "system.magicalBonus",
+          "mode": 4,
+          "priority": null,
+          "value": "1"
+        },
+        {
+          "key": "name",
+          "mode": 5,
+          "priority": null,
+          "value": "Magic {} +1"
+        }
+      ],
+      "description": "<p>Until the spell ends, that weapon becomes a magic weapon with a +1 bonus to attack rolls and damage rolls.</p>",
+      "disabled": false,
+      "duration": {
+        "seconds": 3600
+      },
+      "id": "IMt1nMPrWppyRYMT",
+      "name": "Magic Weapon +1",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.properties",
+          "mode": 2,
+          "priority": null,
+          "value": "mgc"
+        },
+        {
+          "key": "system.magicalBonus",
+          "mode": 4,
+          "priority": null,
+          "value": "2"
+        },
+        {
+          "key": "name",
+          "mode": 5,
+          "priority": null,
+          "value": "Magic {} +2"
+        }
+      ],
+      "description": "<p>Until the spell ends, that weapon becomes a magic weapon with a +2 bonus to attack rolls and damage rolls.</p>",
+      "disabled": false,
+      "duration": {
+        "seconds": 3600
+      },
+      "id": "9zA6SFF8HKk9xNn2",
+      "name": "Magic Weapon +2",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.properties",
+          "mode": 2,
+          "priority": null,
+          "value": "mgc"
+        },
+        {
+          "key": "system.magicalBonus",
+          "mode": 4,
+          "priority": null,
+          "value": "3"
+        },
+        {
+          "key": "name",
+          "mode": 2,
+          "priority": null,
+          "value": "Magic {} +3"
+        }
+      ],
+      "description": "<p>Until the spell ends, that weapon becomes a magic weapon with a +3 bonus to attack rolls and damage rolls.</p>",
+      "disabled": false,
+      "duration": {
+        "seconds": 3600
+      },
+      "id": "AJQwm1dgXz7D333k",
+      "name": "Magic Weapon +3",
+      "statuses": [],
+      "transfer": false
+    }
+  ],
+  "preparation": {
+    "mode": "prepared",
+    "prepared": false
+  },
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/spells24/2nd-level/magic-weapon.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "range": {
+    "special": null,
+    "units": "touch",
+    "value": null
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "ritual": false,
+  "school": "trs",
+  "slug": "magic-weapon"
+}

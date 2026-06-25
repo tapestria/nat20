@@ -1,0 +1,43 @@
+{
+  "activities": [],
+  "description": "Prerequisite: Level 2+ Warlock\n\nYou can see normally in Dim Light and Darkness\u2014both magical and nonmagical\u2014within 120 feet of yourself.\n\nFoundry Note\n\nThis feature includes an Active Effect that grants you darkvision to 120 feet.",
+  "entry_kind": "feature",
+  "feature_type": "class_feature",
+  "foundry_id": "phbinvDevilsSigh",
+  "name": "Devil's Sight",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.attributes.senses.darkvision",
+          "mode": 4,
+          "priority": null,
+          "value": "120"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "Qfe7snyNHXLJHp4G",
+      "name": "Devil's Sight",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/warlock/eldritch-invocation-options/devils-sight.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "devils-sight",
+  "source_slug": "warlock"
+}

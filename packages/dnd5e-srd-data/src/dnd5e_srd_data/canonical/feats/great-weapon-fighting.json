@@ -1,0 +1,31 @@
+{
+  "activities": [],
+  "category": "fighting_style",
+  "description": "(Prerequisite: Fighting Style Feature)\n\nWhen you roll damage for an attack you make with a Melee weapon that you are holding with two hands, you can treat any 1 or 2 on a damage die as a 3. The weapon must have the Two-Handed or Versatile property to gain this benefit.\n\nFoundry Note\n\nThis effect is not automated.",
+  "entry_kind": "feat",
+  "name": "Great Weapon Fighting",
+  "prerequisites": [
+    {
+      "feats": [
+        "fighting-style"
+      ],
+      "level": null,
+      "requirement": ""
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/feats24/fighting-style-feats/great-weapon-fighting.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "great-weapon-fighting"
+}

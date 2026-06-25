@@ -1,0 +1,18 @@
+{
+  "five_e_bits": {
+    "commit": "3138247ac14381b6ec1008faf00f2611ee19bae5",
+    "pinned_date": "2026-05-30",
+    "url": "https://github.com/5e-bits/5e-database"
+  },
+  "foundry": {
+    "commit": "965ad2d0cf5d063dac675ba078b5bd3c3c0dd449",
+    "content_digest": "758b3a3df15523d7e2e29a50fb71ed08c6f4b462d76cfa0696166800d956c72b",
+    "pinned_date": "2026-05-30",
+    "url": "https://github.com/foundryvtt/dnd5e"
+  },
+  "open5e": {
+    "commit": "5a9ee6da1900276c582445aea6ccdac31c2f685d",
+    "pinned_date": "2026-05-30",
+    "url": "https://github.com/open5e/open5e-api"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "activities": [],
+  "description": "You can call on the aid of an otherworldly steed. You always have the Find Steed spell prepared.\n\nYou can also cast the spell once without expending a spell slot, and you regain the ability to do so when you finish a Long Rest.\n\nFoundry Note\n\nThe Find Steed spell is added to your spell list as always prepared and with a free use per Long Rest when you reach this level.",
+  "entry_kind": "feature",
+  "feature_type": "class_feature",
+  "foundry_id": "phbpdnFaithfulSt",
+  "name": "Faithful Steed",
+  "passive_effects": [],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/paladin/class-features/faithful-steed.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "faithful-steed",
+  "source_slug": "paladin"
+}

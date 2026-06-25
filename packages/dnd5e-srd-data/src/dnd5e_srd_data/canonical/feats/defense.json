@@ -1,0 +1,31 @@
+{
+  "activities": [],
+  "category": "fighting_style",
+  "description": "(Prerequisite: Fighting Style Feature)\n\nWhile you're wearing Light, Medium, or Heavy armor, you gain a +1 bonus to Armor Class.\n\nFoundry Note\n\nThis feature includes an Active Effect which provides the Armor Class bonus. Disable it when you are not wearing armor.",
+  "entry_kind": "feat",
+  "name": "Defense",
+  "prerequisites": [
+    {
+      "feats": [
+        "fighting-style"
+      ],
+      "level": null,
+      "requirement": ""
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/feats24/fighting-style-feats/defense.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "defense"
+}

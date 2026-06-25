@@ -1,0 +1,37 @@
+Nat20 — Pure-Python D&D 5e SRD 5.2 rules engine + dataset.
+
+This repository is a uv workspace of two packages with distinct licenses:
+
+  - dnd5e-engine  — the rules engine CODE, licensed under the MIT License
+                    (see packages/dnd5e-engine/LICENSE). It ships NO SRD data;
+                    the canonical rules content lives in dnd5e-srd-data, which
+                    the engine consumes at runtime via BundledAssetLoader.
+
+  - dnd5e-srd-data — the bundled D&D 5e SRD dataset, distributed under the
+                    Creative Commons Attribution 4.0 International License
+                    (CC-BY-4.0). https://creativecommons.org/licenses/by/4.0/
+                    (see packages/dnd5e-srd-data/LICENSE).
+
+The rules this project implements derive from the D&D 5e System Reference
+Document. The provenance of that ruleset (carried by the dnd5e-srd-data
+dataset, distributed under CC-BY-4.0) is:
+
+Attribution:
+- Portions derived from the Foundry VTT dnd5e system
+  (https://github.com/foundryvtt/dnd5e), CC-BY-4.0.
+- Cross-checked against open5e (https://open5e.com), CC-BY-4.0, and the
+  5e-bits/5e-database project (https://github.com/5e-bits/5e-database), MIT.
+- Original source: System Reference Document 5.1 and 5.2 by Wizards of the
+  Coast LLC, CC-BY-4.0.
+
+See each package's NOTICE and LICENSE for the license texts. The pinned upstream
+sources are recorded in packages/dnd5e-srd-data/raw_sources/PINS.json and
+raw_sources/README.md; the raw upstream snapshots themselves are regenerated locally
+(via `make refresh-upstream`), not distributed in this repository.
+
+Built by the Tapestria team.
+
+Nat20 is an independent, unofficial project. It is not affiliated with or
+endorsed by Wizards of the Coast. "Dungeons & Dragons" and "D&D" are
+trademarks of Wizards of the Coast LLC; their use here is nominative, to
+identify the SRD ruleset this project implements.

@@ -1,0 +1,841 @@
+{
+  "activities": [
+    {
+      "activation": {
+        "condition": "when the specified creature type is damaged by this ammunition",
+        "override": false,
+        "type": "",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": []
+      },
+      "damage": {
+        "on_save": "half",
+        "parts": [
+          {
+            "bonus": "",
+            "custom": {
+              "enabled": false,
+              "formula": ""
+            },
+            "denomination": 10,
+            "number": 6,
+            "scaling": {
+              "formula": "",
+              "mode": "",
+              "number": 1
+            },
+            "types": [
+              "force"
+            ]
+          }
+        ]
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [],
+      "flags": {},
+      "id": "FXPI8uOLJuWDUTax",
+      "img": "",
+      "kind": "save",
+      "name": "Slaying Save",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "any",
+        "value": null
+      },
+      "save": {
+        "ability": [
+          "con"
+        ],
+        "dc": {
+          "calculation": "",
+          "formula": "17"
+        }
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "1",
+          "special": "specific creature type",
+          "type": "creature"
+        },
+        "override": false,
+        "prompt": true,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "ft",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": true
+      }
+    },
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "action",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": []
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [
+        {
+          "id": "4GIkMFeZQHZnfjvq",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": {
+            "activity": [
+              "FXPI8uOLJuWDUTax"
+            ],
+            "effect": [],
+            "item": []
+          }
+        },
+        {
+          "id": "70bFeuTndNorjLBe",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": {
+            "activity": [
+              "FXPI8uOLJuWDUTax"
+            ],
+            "effect": [],
+            "item": []
+          }
+        },
+        {
+          "id": "o4aDyFCK0ekd9w8j",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": {
+            "activity": [
+              "FXPI8uOLJuWDUTax"
+            ],
+            "effect": [],
+            "item": []
+          }
+        },
+        {
+          "id": "AvExH8PizzJN0jSM",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": {
+            "activity": [
+              "FXPI8uOLJuWDUTax"
+            ],
+            "effect": [],
+            "item": []
+          }
+        },
+        {
+          "id": "VRMET3XgPTjBG91L",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": {
+            "activity": [
+              "FXPI8uOLJuWDUTax"
+            ],
+            "effect": [],
+            "item": []
+          }
+        },
+        {
+          "id": "ku2JX8rDga8GUBul",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": {
+            "activity": [
+              "FXPI8uOLJuWDUTax"
+            ],
+            "effect": [],
+            "item": []
+          }
+        },
+        {
+          "id": "ZssaQ07jWS7jFiej",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": {
+            "activity": [
+              "FXPI8uOLJuWDUTax"
+            ],
+            "effect": [],
+            "item": []
+          }
+        },
+        {
+          "id": "3JnW3nSByOVKu1LW",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": {
+            "activity": [
+              "FXPI8uOLJuWDUTax"
+            ],
+            "effect": [],
+            "item": []
+          }
+        },
+        {
+          "id": "ulADMO3yope7gn5R",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": {
+            "activity": [
+              "FXPI8uOLJuWDUTax"
+            ],
+            "effect": [],
+            "item": []
+          }
+        },
+        {
+          "id": "MKSR9zEe2s3qVILa",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": {
+            "activity": [
+              "FXPI8uOLJuWDUTax"
+            ],
+            "effect": [],
+            "item": []
+          }
+        },
+        {
+          "id": "cFNisqoGRSTHYDI4",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": {
+            "activity": [
+              "FXPI8uOLJuWDUTax"
+            ],
+            "effect": [],
+            "item": []
+          }
+        },
+        {
+          "id": "3mSYXVx987sezjuS",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": {
+            "activity": [
+              "FXPI8uOLJuWDUTax"
+            ],
+            "effect": [],
+            "item": []
+          }
+        },
+        {
+          "id": "BsXM9mDyGJ1R754S",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": {
+            "activity": [
+              "FXPI8uOLJuWDUTax"
+            ],
+            "effect": [],
+            "item": []
+          }
+        },
+        {
+          "id": "4NXhqKrNtDQjBcc8",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": {
+            "activity": [
+              "FXPI8uOLJuWDUTax"
+            ],
+            "effect": [],
+            "item": []
+          }
+        }
+      ],
+      "enchant": {
+        "identifier": "",
+        "self": false
+      },
+      "flags": {},
+      "id": "ImH9UxTuyMRjiYzp",
+      "img": "",
+      "kind": "enchant",
+      "name": "Ammunition of Slaying",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "self",
+        "value": null
+      },
+      "restrictions": {
+        "allow_magical": false,
+        "categories": [],
+        "properties": [],
+        "type": ""
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "",
+          "special": "",
+          "type": ""
+        },
+        "override": false,
+        "prompt": true,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "ft",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    }
+  ],
+  "attunement_constraint": null,
+  "cost_gp": 0.0,
+  "description": "This magic ammunition is meant to slay creatures of a particular type, which the GM chooses or determines randomly by rolling on the table below. If a creature of that type takes damage from the ammunition, the creature makes a DC 17 Constitution saving throw, taking an extra 6d10 Force damage on a failed save or half as much extra damage on a successful one.\n\nAfter dealing its extra damage to a creature, the ammunition becomes nonmagical. Creature Type Table (click to expand) @Embed[Compendium.dnd5e.tables24.RollTable.dmgSlayingAmmuni rollable]\n\n@Embed[Compendium.dnd5e.content24.JournalEntry.dmgFoundryRefere.JournalEntryPage.Ok4iCgD25ENgoRxE cite=false caption=false classes=\"hide-in-embed\"]",
+  "item_kind": "magic_item",
+  "name": "Ammunition of Slaying",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "name",
+          "mode": 5,
+          "priority": null,
+          "value": "{} of Slaying (Aberrations)"
+        },
+        {
+          "key": "system.description.value",
+          "mode": 5,
+          "priority": null,
+          "value": "{}<p>@Embed[Compendium.dnd5e.equipment24.Item.dmgSlayingAmmuni caption=false]</p>"
+        },
+        {
+          "key": "system.properties",
+          "mode": 2,
+          "priority": null,
+          "value": "mgc"
+        },
+        {
+          "key": "system.rarity",
+          "mode": 5,
+          "priority": null,
+          "value": "veryRare"
+        }
+      ],
+      "description": "",
+      "disabled": true,
+      "duration": null,
+      "id": "4GIkMFeZQHZnfjvq",
+      "name": "Ammunition of Slaying Aberrations",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "name",
+          "mode": 5,
+          "priority": null,
+          "value": "{} of Slaying (Beasts)"
+        },
+        {
+          "key": "system.description.value",
+          "mode": 5,
+          "priority": null,
+          "value": "{}<p>@Embed[Compendium.dnd5e.equipment24.Item.dmgSlayingAmmuni caption=false]</p>"
+        },
+        {
+          "key": "system.properties",
+          "mode": 2,
+          "priority": null,
+          "value": "mgc"
+        }
+      ],
+      "description": "",
+      "disabled": true,
+      "duration": null,
+      "id": "70bFeuTndNorjLBe",
+      "name": "Ammunition of Slaying Beasts",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "name",
+          "mode": 5,
+          "priority": null,
+          "value": "{} of Slaying (Celestials)"
+        },
+        {
+          "key": "system.description.value",
+          "mode": 5,
+          "priority": null,
+          "value": "{}<p>@Embed[Compendium.dnd5e.equipment24.Item.dmgSlayingAmmuni caption=false]</p>"
+        },
+        {
+          "key": "system.properties",
+          "mode": 2,
+          "priority": null,
+          "value": "mgc"
+        }
+      ],
+      "description": "",
+      "disabled": true,
+      "duration": null,
+      "id": "o4aDyFCK0ekd9w8j",
+      "name": "Ammunition of Slaying Celestials",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "name",
+          "mode": 5,
+          "priority": null,
+          "value": "{} of Slaying (Constructs)"
+        },
+        {
+          "key": "system.description.value",
+          "mode": 5,
+          "priority": null,
+          "value": "{}<p>@Embed[Compendium.dnd5e.equipment24.Item.dmgSlayingAmmuni caption=false]</p>"
+        },
+        {
+          "key": "system.properties",
+          "mode": 2,
+          "priority": null,
+          "value": "mgc"
+        }
+      ],
+      "description": "",
+      "disabled": true,
+      "duration": null,
+      "id": "AvExH8PizzJN0jSM",
+      "name": "Ammunition of Slaying Constructs",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "name",
+          "mode": 5,
+          "priority": null,
+          "value": "{} of Slaying (Dragons)"
+        },
+        {
+          "key": "system.description.value",
+          "mode": 5,
+          "priority": null,
+          "value": "{}<p>@Embed[Compendium.dnd5e.equipment24.Item.dmgSlayingAmmuni caption=false]</p>"
+        },
+        {
+          "key": "system.properties",
+          "mode": 2,
+          "priority": null,
+          "value": "mgc"
+        }
+      ],
+      "description": "",
+      "disabled": true,
+      "duration": null,
+      "id": "VRMET3XgPTjBG91L",
+      "name": "Ammunition of Slaying Dragons",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "name",
+          "mode": 5,
+          "priority": null,
+          "value": "{} of Slaying (Elementals)"
+        },
+        {
+          "key": "system.description.value",
+          "mode": 5,
+          "priority": null,
+          "value": "{}<p>@Embed[Compendium.dnd5e.equipment24.Item.dmgSlayingAmmuni caption=false]</p>"
+        },
+        {
+          "key": "system.properties",
+          "mode": 2,
+          "priority": null,
+          "value": "mgc"
+        }
+      ],
+      "description": "",
+      "disabled": true,
+      "duration": null,
+      "id": "ku2JX8rDga8GUBul",
+      "name": "Ammunition of Slaying Elementals",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "name",
+          "mode": 5,
+          "priority": null,
+          "value": "{} of Slaying (Humanoids)"
+        },
+        {
+          "key": "system.description.value",
+          "mode": 5,
+          "priority": null,
+          "value": "{}<p>@Embed[Compendium.dnd5e.equipment24.Item.dmgSlayingAmmuni caption=false]</p>"
+        },
+        {
+          "key": "system.properties",
+          "mode": 2,
+          "priority": null,
+          "value": "mgc"
+        }
+      ],
+      "description": "",
+      "disabled": true,
+      "duration": null,
+      "id": "ZssaQ07jWS7jFiej",
+      "name": "Ammunition of Slaying Humanoids",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "name",
+          "mode": 5,
+          "priority": null,
+          "value": "{} of Slaying (Fey)"
+        },
+        {
+          "key": "system.description.value",
+          "mode": 5,
+          "priority": null,
+          "value": "{}<p>@Embed[Compendium.dnd5e.equipment24.Item.dmgSlayingAmmuni caption=false]</p>"
+        },
+        {
+          "key": "system.properties",
+          "mode": 2,
+          "priority": null,
+          "value": "mgc"
+        }
+      ],
+      "description": "",
+      "disabled": true,
+      "duration": null,
+      "id": "3JnW3nSByOVKu1LW",
+      "name": "Ammunition of Slaying Fey",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "name",
+          "mode": 5,
+          "priority": null,
+          "value": "{} of Slaying (Fiends)"
+        },
+        {
+          "key": "system.description.value",
+          "mode": 5,
+          "priority": null,
+          "value": "{}<p>@Embed[Compendium.dnd5e.equipment24.Item.dmgSlayingAmmuni caption=false]</p>"
+        },
+        {
+          "key": "system.properties",
+          "mode": 2,
+          "priority": null,
+          "value": "mgc"
+        }
+      ],
+      "description": "",
+      "disabled": true,
+      "duration": null,
+      "id": "ulADMO3yope7gn5R",
+      "name": "Ammunition of Slaying Fiends",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "name",
+          "mode": 5,
+          "priority": null,
+          "value": "{} of Slaying (Giants)"
+        },
+        {
+          "key": "system.description.value",
+          "mode": 5,
+          "priority": null,
+          "value": "{}<p>@Embed[Compendium.dnd5e.equipment24.Item.dmgSlayingAmmuni caption=false]</p>"
+        },
+        {
+          "key": "system.properties",
+          "mode": 2,
+          "priority": null,
+          "value": "mgc"
+        }
+      ],
+      "description": "",
+      "disabled": true,
+      "duration": null,
+      "id": "MKSR9zEe2s3qVILa",
+      "name": "Ammunition of Slaying Giants",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "name",
+          "mode": 5,
+          "priority": null,
+          "value": "{} of Slaying (Monstrosities)"
+        },
+        {
+          "key": "system.description.value",
+          "mode": 5,
+          "priority": null,
+          "value": "{}<p>@Embed[Compendium.dnd5e.equipment24.Item.dmgSlayingAmmuni caption=false]</p>"
+        },
+        {
+          "key": "system.properties",
+          "mode": 2,
+          "priority": null,
+          "value": "mgc"
+        }
+      ],
+      "description": "",
+      "disabled": true,
+      "duration": null,
+      "id": "cFNisqoGRSTHYDI4",
+      "name": "Ammunition of Slaying Monstrosities",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "name",
+          "mode": 5,
+          "priority": null,
+          "value": "{} of Slaying (Oozes)"
+        },
+        {
+          "key": "system.description.value",
+          "mode": 5,
+          "priority": null,
+          "value": "{}<p>@Embed[Compendium.dnd5e.equipment24.Item.dmgSlayingAmmuni caption=false]</p>"
+        },
+        {
+          "key": "system.properties",
+          "mode": 2,
+          "priority": null,
+          "value": "mgc"
+        }
+      ],
+      "description": "",
+      "disabled": true,
+      "duration": null,
+      "id": "3mSYXVx987sezjuS",
+      "name": "Ammunition of Slaying Oozes",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "name",
+          "mode": 5,
+          "priority": null,
+          "value": "{} of Slaying (Plants)"
+        },
+        {
+          "key": "system.description.value",
+          "mode": 5,
+          "priority": null,
+          "value": "{}<p>@Embed[Compendium.dnd5e.equipment24.Item.dmgSlayingAmmuni caption=false]</p>"
+        },
+        {
+          "key": "system.properties",
+          "mode": 2,
+          "priority": null,
+          "value": "mgc"
+        }
+      ],
+      "description": "",
+      "disabled": true,
+      "duration": null,
+      "id": "BsXM9mDyGJ1R754S",
+      "name": "Ammunition of Slaying Plants",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "name",
+          "mode": 5,
+          "priority": null,
+          "value": "{} of Slaying (Undead)"
+        },
+        {
+          "key": "system.description.value",
+          "mode": 5,
+          "priority": null,
+          "value": "{}<p>@Embed[Compendium.dnd5e.equipment24.Item.dmgSlayingAmmuni caption=false]</p>"
+        },
+        {
+          "key": "system.properties",
+          "mode": 2,
+          "priority": null,
+          "value": "mgc"
+        }
+      ],
+      "description": "",
+      "disabled": true,
+      "duration": null,
+      "id": "4NXhqKrNtDQjBcc8",
+      "name": "Ammunition of Slaying Undead",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/equipment24/consumables/ammunition/ammunition-of-slaying.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "rarity": "very_rare",
+  "requires_attunement": false,
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "ammunition-of-slaying",
+  "weight": 0.02
+}

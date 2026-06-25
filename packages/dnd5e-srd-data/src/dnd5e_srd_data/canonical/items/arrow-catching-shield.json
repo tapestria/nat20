@@ -1,0 +1,132 @@
+{
+  "activities": [
+    {
+      "activation": {
+        "condition": "an attacker makes a ranged attack roll against a target within 5 feet of you",
+        "override": false,
+        "type": "reaction",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": []
+      },
+      "description": {
+        "chat_flavor": "You become the target of the ranged attack."
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [],
+      "flags": {},
+      "id": "KZLj6yQjI7Ps1KkW",
+      "img": "",
+      "kind": "utility",
+      "name": "Intercept Attack",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "ft",
+        "value": "5"
+      },
+      "roll": {
+        "formula": "",
+        "name": "",
+        "prompt": false,
+        "visible": false
+      },
+      "sort": 100000,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "1",
+          "special": "attack roll made against target",
+          "type": "any"
+        },
+        "override": false,
+        "prompt": true,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "ft",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": true,
+        "require_magic": true
+      }
+    }
+  ],
+  "armor_category": "shield",
+  "attunement_constraint": null,
+  "base_ac": 2,
+  "cost_gp": 4000.0,
+  "description": "Armor (Shield), Rare (Requires Attunement)\n\nYou gain a +2 bonus to Armor Class against ranged attack rolls while you wield this Shield. This bonus is in addition to the Shield's normal bonus to AC.\n\nWhenever an attacker makes a ranged attack roll against a target within 5 feet of you, you can take a Reaction to become the target of the attack instead.\n\nFoundry Note\n\nThe Ranged Attack AC Bonus effect is provided for optional use and may be toggled active before a ranged attack roll is made against the wearer.",
+  "dex_bonus_max": null,
+  "item_kind": "armor",
+  "magical_bonus": 0,
+  "name": "Arrow-Catching Shield",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.attributes.ac.bonus",
+          "mode": 2,
+          "priority": null,
+          "value": "2"
+        }
+      ],
+      "description": "<p>You gain a +2 bonus to Armor Class against ranged attack rolls while you wield this Shield. This bonus is in addition to the Shield\u2019s normal bonus to AC.</p>",
+      "disabled": true,
+      "duration": null,
+      "id": "nds83KSHN6L236jW",
+      "name": "Ranged Attack AC Bonus",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/equipment24/armor/magical/arrow-catching-shield.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "rarity": "rare",
+  "requires_attunement": true,
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "arrow-catching-shield",
+  "stealth_disadvantage": false,
+  "strength_min": null,
+  "weight": 6.0
+}

@@ -1,0 +1,858 @@
+{
+  "advancement": [
+    {
+      "class_restriction": "",
+      "configuration": {},
+      "hint": "",
+      "id": "H67dh2nWpE6JMoS2",
+      "level": 0,
+      "title": "",
+      "type": "HitPoints",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbpdnLayOnHands"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbpdnSpellcasti"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbpdnWeaponMast"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "Cu9TxxKJqfAOPURY",
+      "level": 1,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbpdnFightingSt"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbpdnPaladinsSm"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplDivineSmit"
+          }
+        ],
+        "optional": false,
+        "spell": {
+          "ability": [],
+          "method": "spell",
+          "prepared": 2,
+          "uses": {
+            "max": "1",
+            "per": "lr",
+            "requireSlot": false
+          }
+        }
+      },
+      "hint": "",
+      "id": "AKkVlHKAVYHNqf6q",
+      "level": 2,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbpdnChannelDiv"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "8I26b7hyVhhTyCho",
+      "level": 3,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbpdnExtraAttac"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbpdnFaithfulSt"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplFindSteed0"
+          }
+        ],
+        "optional": false,
+        "spell": {
+          "ability": [],
+          "method": "spell",
+          "prepared": 2,
+          "uses": {
+            "max": "1",
+            "per": "lr",
+            "requireSlot": false
+          }
+        }
+      },
+      "hint": "",
+      "id": "ETE0AFEPZYVKhGeV",
+      "level": 5,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbpdnProtection"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "4ZvtY8dxJGz7VaDN",
+      "level": 6,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbpdnAbjureFoes"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "S2e43900sVur7sOK",
+      "level": 9,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbpdnCourageAur"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "7Nhpo9BJt103peym",
+      "level": 10,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbpdnRadiantStr"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "sBD0PwAIuNSCs9Px",
+      "level": 11,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbpdnRestoringT"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "G6XicWkWUTdMTmC9",
+      "level": 14,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbpdnAuraExpans"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "dChGldRqBZQFRIoP",
+      "level": 18,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "cap": 2,
+        "fixed": {
+          "cha": 0,
+          "con": 0,
+          "dex": 0,
+          "int": 0,
+          "str": 0,
+          "wis": 0
+        },
+        "locked": [],
+        "points": 2,
+        "recommendation": null
+      },
+      "hint": "",
+      "id": "bwCLOdauuzoHofil",
+      "level": 4,
+      "title": "",
+      "type": "AbilityScoreImprovement",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "cap": 2,
+        "fixed": {
+          "cha": 0,
+          "con": 0,
+          "dex": 0,
+          "int": 0,
+          "str": 0,
+          "wis": 0
+        },
+        "locked": [],
+        "points": 2,
+        "recommendation": null
+      },
+      "hint": "",
+      "id": "mRSh9oUVjLU33e7p",
+      "level": 8,
+      "title": "",
+      "type": "AbilityScoreImprovement",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "cap": 2,
+        "fixed": {
+          "cha": 0,
+          "con": 0,
+          "dex": 0,
+          "int": 0,
+          "str": 0,
+          "wis": 0
+        },
+        "locked": [],
+        "points": 2,
+        "recommendation": null
+      },
+      "hint": "",
+      "id": "mhZh3LfLMa15tXee",
+      "level": 12,
+      "title": "",
+      "type": "AbilityScoreImprovement",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "cap": 2,
+        "fixed": {
+          "cha": 0,
+          "con": 0,
+          "dex": 0,
+          "int": 0,
+          "str": 0,
+          "wis": 0
+        },
+        "locked": [],
+        "points": 2,
+        "recommendation": null
+      },
+      "hint": "",
+      "id": "FOf5CkGnSs0OlppY",
+      "level": 16,
+      "title": "",
+      "type": "AbilityScoreImprovement",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "distance": {
+          "units": ""
+        },
+        "identifier": "aura",
+        "scale": {
+          "18": {
+            "value": 30
+          },
+          "6": {
+            "value": 10
+          }
+        },
+        "type": "distance"
+      },
+      "hint": "",
+      "id": "xNrNjQXdjdqudAk8",
+      "level": 0,
+      "title": "Aura Distance",
+      "type": "ScaleValue",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "distance": {
+          "units": ""
+        },
+        "identifier": "max-prepared",
+        "scale": {
+          "1": {
+            "value": 2
+          },
+          "11": {
+            "value": 10
+          },
+          "13": {
+            "value": 11
+          },
+          "15": {
+            "value": 12
+          },
+          "17": {
+            "value": 14
+          },
+          "19": {
+            "value": 15
+          },
+          "2": {
+            "value": 3
+          },
+          "3": {
+            "value": 4
+          },
+          "4": {
+            "value": 5
+          },
+          "5": {
+            "value": 6
+          },
+          "7": {
+            "value": 7
+          },
+          "9": {
+            "value": 9
+          }
+        },
+        "type": "number"
+      },
+      "hint": "",
+      "id": "K0m33nbxbp3BfUKd",
+      "level": 0,
+      "title": "Max Prepared Spells",
+      "type": "ScaleValue",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "distance": {
+          "units": ""
+        },
+        "identifier": "channel-divinity",
+        "scale": {
+          "11": {
+            "value": 3
+          },
+          "3": {
+            "value": 2
+          }
+        },
+        "type": "number"
+      },
+      "hint": "",
+      "id": "czWJhEH2Xw1gaXzl",
+      "level": 0,
+      "title": "Channel Divinity Uses",
+      "type": "ScaleValue",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {},
+      "hint": "",
+      "id": "tU89l5dpMkYJBBJ5",
+      "level": 3,
+      "title": "",
+      "type": "Subclass",
+      "value": {
+        "document": null,
+        "uuid": null
+      }
+    },
+    {
+      "class_restriction": "primary",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [],
+        "grants": [
+          "saves:wis",
+          "saves:cha"
+        ],
+        "mode": "default"
+      },
+      "hint": "",
+      "id": "eK65opSkuSD1C22h",
+      "level": 1,
+      "title": "Saving Throw Proficiencies",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "primary",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [
+          {
+            "count": 2,
+            "pool": [
+              "skills:ath",
+              "skills:ins",
+              "skills:itm",
+              "skills:med",
+              "skills:per",
+              "skills:rel"
+            ]
+          }
+        ],
+        "grants": [],
+        "mode": "default"
+      },
+      "hint": "",
+      "id": "WdtO0qeppSNvtel8",
+      "level": 1,
+      "title": "Skill Proficiencies",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "primary",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [],
+        "grants": [
+          "weapon:sim",
+          "weapon:mar"
+        ],
+        "mode": "default"
+      },
+      "hint": "",
+      "id": "iZReGwulhKjVqgRD",
+      "level": 1,
+      "title": "Weapon Proficiencies",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "primary",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [],
+        "grants": [
+          "armor:lgt",
+          "armor:med",
+          "armor:hvy",
+          "armor:shl"
+        ],
+        "mode": "default"
+      },
+      "hint": "",
+      "id": "2sq0pcazOXs74X5l",
+      "level": 1,
+      "title": "Armor Training",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "secondary",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [],
+        "grants": [
+          "weapon:mar"
+        ],
+        "mode": "default"
+      },
+      "hint": "",
+      "id": "dSjz0J0F5cQLvWTd",
+      "level": 1,
+      "title": "Weapon Proficiencies",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "secondary",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [],
+        "grants": [
+          "armor:lgt",
+          "armor:med",
+          "armor:shl"
+        ],
+        "mode": "default"
+      },
+      "hint": "",
+      "id": "TZP9M5VqcBv8D313",
+      "level": 1,
+      "title": "Armor Training",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "allowDrops": true,
+        "choices": {
+          "2": {
+            "count": 1,
+            "replacement": false
+          }
+        },
+        "pool": [
+          {
+            "uuid": "Compendium.dnd5e.feats24.Item.phbfstArchery000"
+          },
+          {
+            "uuid": "Compendium.dnd5e.feats24.Item.phbfstDefense000"
+          },
+          {
+            "uuid": "Compendium.dnd5e.feats24.Item.phbfstGreatWeapo"
+          },
+          {
+            "uuid": "Compendium.dnd5e.feats24.Item.phbfstTwoWeaponF"
+          },
+          {
+            "uuid": "Compendium.dnd5e.classes24.Item.phbfstBlessedWar"
+          }
+        ],
+        "restriction": {
+          "list": [],
+          "subtype": "fightingStyle",
+          "type": "feat"
+        },
+        "spell": null,
+        "type": "feat"
+      },
+      "hint": "",
+      "id": "g88kf6OtX8abBt5c",
+      "level": 0,
+      "title": "Fighting Style",
+      "type": "ItemChoice",
+      "value": {
+        "added": {},
+        "replaced": {}
+      }
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [
+          {
+            "count": 2,
+            "pool": [
+              "weapon:*"
+            ]
+          }
+        ],
+        "grants": [],
+        "mode": "mastery"
+      },
+      "hint": "",
+      "id": "H2wzREytOuzt7qqC",
+      "level": 1,
+      "title": "Weapon Mastery",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "cap": 2,
+        "fixed": {
+          "cha": 0,
+          "con": 0,
+          "dex": 0,
+          "int": 0,
+          "str": 0,
+          "wis": 0
+        },
+        "locked": [],
+        "max": null,
+        "points": 2,
+        "recommendation": "Compendium.dnd5e.feats24.Item.phbBoonofTruesig"
+      },
+      "hint": "",
+      "id": "dZtoyI6cd2vRIicZ",
+      "level": 19,
+      "title": "",
+      "type": "AbilityScoreImprovement",
+      "value": {}
+    }
+  ],
+  "description": "Core Paladin Traits\n\nPrimary Ability\n\nStrength and Charisma\n\nHit Point Die\n\nD10 per Paladin level\n\nSaving Throw Proficiencies\n\nWisdom and Charisma\n\nSkill Proficiencies\n\nChoose 2: Athletics, Insight, Intimidation, Medicine, Persuasion, or Religion\n\nWeapon Proficiencies\n\nSimple and Martial weapons\n\nArmor Training\n\nLight, Medium, and Heavy armor and Shields\n\nStarting Equipment\n\nChoose A or B: (A) Chain Mail, Shield, Longsword, 6 Javelins, Holy Symbol, Priest's Pack, and [[/award 9GP]]; or (B) [[/award 150GP]]\n\n@Embed[Compendium.dnd5e.content24.JournalEntry.phbAppendixClass.JournalEntryPage.phbpdnPaladin000 inline classes=\"free-rules-embed\"]\n\nBecoming a Paladin \u2026\n\nAs a Level 1 Character\n\nGain all the traits in the Core Paladin Traits table.\n\nGain the Paladin's level 1 features, which are listed in the Paladin Features table.\n\nAs a Multiclass Character\n\nGain the following traits from the Core Paladin Traits table: Hit Point Die, proficiency with Martial weapons, and training with Light and Medium armor and Shields.\n\nGain the Paladin's level 1 features, which are listed in the Paladin Features table. See the multiclassing rules in chapter 2 to determine your available spell slots.\n\nBreaking Your Oath\n\nA Paladin tries to hold to the highest standards of conduct, but even the most dedicated are fallible. Sometimes a Paladin transgresses their oath.\n\nA Paladin who has broken a vow typically seeks absolution, spending an all-night vigil as a sign of penitence or undertaking a fast. After a rite of forgiveness, the Paladin starts fresh.\n\nIf your Paladin unrepentantly violates their oath, talk to your DM. Your Paladin should probably take a more appropriate subclass or even abandon the class and adopt another one.",
+  "entry_kind": "class",
+  "feature_choices": [
+    {
+      "pool": [
+        {
+          "level": 0,
+          "optional": false,
+          "ref_type": "feat",
+          "slug": "archery"
+        },
+        {
+          "level": 0,
+          "optional": false,
+          "ref_type": "feat",
+          "slug": "defense"
+        },
+        {
+          "level": 0,
+          "optional": false,
+          "ref_type": "feat",
+          "slug": "great-weapon-fighting"
+        },
+        {
+          "level": 0,
+          "optional": false,
+          "ref_type": "feat",
+          "slug": "two-weapon-fighting"
+        },
+        {
+          "level": 0,
+          "optional": false,
+          "ref_type": "feature",
+          "slug": "blessed-warrior"
+        }
+      ],
+      "restriction_subtype": "fightingStyle",
+      "schedule": [
+        {
+          "count": 1,
+          "level": 2,
+          "replacement": false
+        }
+      ]
+    }
+  ],
+  "granted_features": [
+    {
+      "level": 1,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "lay-on-hands"
+    },
+    {
+      "level": 1,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "spellcasting"
+    },
+    {
+      "level": 1,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "weapon-mastery"
+    },
+    {
+      "level": 2,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "fighting-style"
+    },
+    {
+      "level": 2,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "paladins-smite"
+    },
+    {
+      "level": 2,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "divine-smite"
+    },
+    {
+      "level": 3,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "channel-divinity-paladin"
+    },
+    {
+      "level": 5,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "extra-attack"
+    },
+    {
+      "level": 5,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "faithful-steed"
+    },
+    {
+      "level": 5,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "find-steed"
+    },
+    {
+      "level": 6,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "aura-of-protection"
+    },
+    {
+      "level": 9,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "abjure-foes"
+    },
+    {
+      "level": 10,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "aura-of-courage"
+    },
+    {
+      "level": 11,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "radiant-strikes"
+    },
+    {
+      "level": 14,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "restoring-touch"
+    },
+    {
+      "level": 18,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "aura-expansion"
+    }
+  ],
+  "hit_die": "d10",
+  "identifier": "paladin",
+  "name": "Paladin",
+  "primary_ability": {
+    "all": true,
+    "value": [
+      "cha",
+      "str"
+    ]
+  },
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/paladin/paladin.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "saving_throws": [
+    "cha",
+    "wis"
+  ],
+  "slug": "paladin",
+  "spellcasting": {
+    "ability": "cha",
+    "progression": "half"
+  },
+  "subclass_identifiers": [
+    "devotion"
+  ],
+  "wealth": "150"
+}

@@ -1,0 +1,368 @@
+{
+  "activities": [
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "action",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": []
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [
+        {
+          "id": "u2mf5JowVgwqCARq",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "XYOXUUgKLjXXGt9W",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "Wpc5zvXyw2FSCJSD",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "S7XVvtgRT8uEP1iw",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "E8jlVJoTlfjKcz1r",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "2TZhhhCDUC2pqqNg",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "iR95ZjBkbXXD3Ena",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "KZdzty5DTXdpGukZ",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "9EhogBhAM9yIoREK",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "sBrdZmXfn33LhYwh",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "jP1TZyrEYtskdWXf",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        }
+      ],
+      "flags": {},
+      "id": "MYf3X2bK9YdEJPBA",
+      "img": "",
+      "kind": "utility",
+      "name": "",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "self",
+        "value": null
+      },
+      "roll": {
+        "formula": "1d4",
+        "name": "Damage Reduction",
+        "prompt": false,
+        "visible": true
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "1",
+          "special": "",
+          "type": "willing"
+        },
+        "override": false,
+        "prompt": true,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    }
+  ],
+  "casting_time": {
+    "condition": "",
+    "unit": "action",
+    "value": 1
+  },
+  "components": [
+    "S",
+    "V"
+  ],
+  "concentration": true,
+  "description": "You touch a willing creature and choose a damage type: Acid, Bludgeoning, Cold, Fire, Lightning, Necrotic, Piercing, Poison, Radiant, Slashing, or Thunder. When the creature takes damage of the chosen type before the spell ends, the creature reduces the total damage taken by 1d4. A creature can benefit from this spell only once per turn.",
+  "duration": {
+    "units": "minute",
+    "value": 1
+  },
+  "entry_kind": "spell",
+  "level": 0,
+  "materials": {
+    "consumed": false,
+    "cost": 0,
+    "supply": 0,
+    "value": ""
+  },
+  "name": "Resistance",
+  "passive_effects": [
+    {
+      "changes": [],
+      "description": "<p>When the creature takes damage of the chosen type before the spell ends, the creature reduces the total damage taken by [[/r 1d4]]. A creature can benefit from this spell only once per turn.</p>",
+      "disabled": false,
+      "duration": {
+        "seconds": 60
+      },
+      "id": "u2mf5JowVgwqCARq",
+      "name": "Acid Protection",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [],
+      "description": "<p>When the creature takes damage of the chosen type before the spell ends, the creature reduces the total damage taken by [[/r 1d4]]. A creature can benefit from this spell only once per turn.</p>",
+      "disabled": false,
+      "duration": {
+        "seconds": 60
+      },
+      "id": "XYOXUUgKLjXXGt9W",
+      "name": "Bludgeoning Protection",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [],
+      "description": "<p>When the creature takes damage of the chosen type before the spell ends, the creature reduces the total damage taken by [[/r 1d4]]. A creature can benefit from this spell only once per turn.</p>",
+      "disabled": false,
+      "duration": {
+        "seconds": 60
+      },
+      "id": "Wpc5zvXyw2FSCJSD",
+      "name": "Cold Protection",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [],
+      "description": "<p>When the creature takes damage of the chosen type before the spell ends, the creature reduces the total damage taken by [[/r 1d4]]. A creature can benefit from this spell only once per turn.</p>",
+      "disabled": false,
+      "duration": {
+        "seconds": 60
+      },
+      "id": "S7XVvtgRT8uEP1iw",
+      "name": "Fire Protection",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [],
+      "description": "<p>When the creature takes damage of the chosen type before the spell ends, the creature reduces the total damage taken by [[/r 1d4]]. A creature can benefit from this spell only once per turn.</p>",
+      "disabled": false,
+      "duration": {
+        "seconds": 60
+      },
+      "id": "E8jlVJoTlfjKcz1r",
+      "name": "Lightning Protection",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [],
+      "description": "<p>When the creature takes damage of the chosen type before the spell ends, the creature reduces the total damage taken by [[/r 1d4]]. A creature can benefit from this spell only once per turn.</p>",
+      "disabled": false,
+      "duration": {
+        "seconds": 60
+      },
+      "id": "2TZhhhCDUC2pqqNg",
+      "name": "Necrotic Protection",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [],
+      "description": "<p>When the creature takes damage of the chosen type before the spell ends, the creature reduces the total damage taken by [[/r 1d4]]. A creature can benefit from this spell only once per turn.</p>",
+      "disabled": false,
+      "duration": {
+        "seconds": 60
+      },
+      "id": "iR95ZjBkbXXD3Ena",
+      "name": "Piercing Protection",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [],
+      "description": "<p>When the creature takes damage of the chosen type before the spell ends, the creature reduces the total damage taken by [[/r 1d4]]. A creature can benefit from this spell only once per turn.</p>",
+      "disabled": false,
+      "duration": {
+        "seconds": 60
+      },
+      "id": "KZdzty5DTXdpGukZ",
+      "name": "Poison Protection",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [],
+      "description": "<p>When the creature takes damage of the chosen type before the spell ends, the creature reduces the total damage taken by [[/r 1d4]]. A creature can benefit from this spell only once per turn.</p>",
+      "disabled": false,
+      "duration": {
+        "seconds": 60
+      },
+      "id": "9EhogBhAM9yIoREK",
+      "name": "Radiant Protection",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [],
+      "description": "<p>When the creature takes damage of the chosen type before the spell ends, the creature reduces the total damage taken by [[/r 1d4]]. A creature can benefit from this spell only once per turn.</p>",
+      "disabled": false,
+      "duration": {
+        "seconds": 60
+      },
+      "id": "sBrdZmXfn33LhYwh",
+      "name": "Slashing Protection",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [],
+      "description": "<p>When the creature takes damage of the chosen type before the spell ends, the creature reduces the total damage taken by [[/r 1d4]]. A creature can benefit from this spell only once per turn.</p>",
+      "disabled": false,
+      "duration": {
+        "seconds": 60
+      },
+      "id": "jP1TZyrEYtskdWXf",
+      "name": "Thunder Protection",
+      "statuses": [],
+      "transfer": false
+    }
+  ],
+  "preparation": {
+    "mode": "always",
+    "prepared": false
+  },
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/spells24/cantrips/resistance.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "range": {
+    "special": null,
+    "units": "touch",
+    "value": null
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "ritual": false,
+  "school": "abj",
+  "slug": "resistance"
+}

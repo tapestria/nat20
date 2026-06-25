@@ -1,0 +1,237 @@
+{
+  "activities": [
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "action",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": []
+      },
+      "damage": {
+        "on_save": "half",
+        "parts": []
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [
+        {
+          "id": "Wi2E10l7n6Ka8k6u",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": false,
+          "riders": null
+        },
+        {
+          "id": "NXdtOxX4HvPeodml",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": false,
+          "riders": null
+        }
+      ],
+      "flags": {},
+      "id": "dnd5eactivity000",
+      "img": "",
+      "kind": "save",
+      "name": "",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "self",
+        "value": null
+      },
+      "save": {
+        "ability": [
+          "con"
+        ],
+        "dc": {
+          "calculation": "spellcasting",
+          "formula": ""
+        }
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "1",
+          "special": "",
+          "type": "creatureOrObject"
+        },
+        "override": false,
+        "prompt": true,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    }
+  ],
+  "casting_time": {
+    "condition": "",
+    "unit": "action",
+    "value": 1
+  },
+  "components": [
+    "M",
+    "S",
+    "V"
+  ],
+  "concentration": true,
+  "description": "For the duration, the spell enlarges or reduces a creature or an object you can see within range (see the chosen effect below). A targeted object must be neither worn nor carried. If the target is an unwilling creature, it can make a Constitution saving throw. On a successful save, the spell has no effect.\n\nEverything that a targeted creature is wearing and carrying changes size with it. Any item it drops returns to normal size at once. A thrown weapon or piece of ammunition returns to normal size immediately after it hits or misses a target.\n\nEnlarge. The target's size increases by one category\u2014from Medium to Large, for example. The target also has Advantage on Strength checks and Strength saving throws. The target's attacks with its enlarged weapons or Unarmed Strikes deal an extra 1d4 damage on a hit.\n\nReduce. The target's size decreases by one category\u2014from Medium to Small, for example. The target also has Disadvantage on Strength checks and Strength saving throws. The target's attacks with its reduced weapons or Unarmed Strikes deal 1d4 less damage on a hit (this can't reduce the damage below 1).",
+  "duration": {
+    "units": "minute",
+    "value": 1
+  },
+  "entry_kind": "spell",
+  "level": 2,
+  "materials": {
+    "consumed": false,
+    "cost": 0,
+    "supply": 0,
+    "value": "a pinch of powdered iron"
+  },
+  "name": "Enlarge/Reduce",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.bonuses.mwak.damage",
+          "mode": 2,
+          "priority": null,
+          "value": "1d4"
+        },
+        {
+          "key": "system.bonuses.rwak.damage",
+          "mode": 2,
+          "priority": null,
+          "value": "1d4"
+        },
+        {
+          "key": "system.abilities.str.check.roll.mode",
+          "mode": 2,
+          "priority": null,
+          "value": "1"
+        },
+        {
+          "key": "system.abilities.str.save.roll.mode",
+          "mode": 2,
+          "priority": null,
+          "value": "1"
+        }
+      ],
+      "description": "<p>The target\u2019s size increases by one category\u2014from Medium to Large, for example. The target also has Advantage on Strength checks and Strength saving throws. The target\u2019s attacks with its enlarged weapons or Unarmed Strikes deal an extra 1d4 damage on a hit.</p>",
+      "disabled": false,
+      "duration": {
+        "seconds": 60
+      },
+      "id": "Wi2E10l7n6Ka8k6u",
+      "name": "Enlarged",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.bonuses.mwak.damage",
+          "mode": 2,
+          "priority": null,
+          "value": "- 1d4"
+        },
+        {
+          "key": "system.bonuses.rwak.damage",
+          "mode": 2,
+          "priority": null,
+          "value": "- 1d4"
+        },
+        {
+          "key": "system.abilities.str.check.roll.mode",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        },
+        {
+          "key": "system.abilities.str.save.roll.mode",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        }
+      ],
+      "description": "<p>The target\u2019s size decreases by one category\u2014from Medium to Small, for example. The target also has Disadvantage on Strength checks and Strength saving throws. The target\u2019s attacks with its reduced weapons or Unarmed Strikes deal 1d4 less damage on a hit (this can\u2019t reduce the damage below 1).</p>",
+      "disabled": false,
+      "duration": {
+        "seconds": 60
+      },
+      "id": "NXdtOxX4HvPeodml",
+      "name": "Reduced",
+      "statuses": [],
+      "transfer": false
+    }
+  ],
+  "preparation": {
+    "mode": "prepared",
+    "prepared": false
+  },
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/spells24/2nd-level/enlarge-reduce.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "range": {
+    "special": null,
+    "units": "ft",
+    "value": 30
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "ritual": false,
+  "school": "trs",
+  "slug": "enlarge-reduce"
+}

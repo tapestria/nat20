@@ -1,0 +1,373 @@
+{
+  "activities": [
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "action",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": []
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [
+        {
+          "id": "XyGKCCrIhrFlixG8",
+          "level": {
+            "max": 2,
+            "min": 2
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "cTNQ2KRJLj4CRpQJ",
+          "level": {
+            "max": 3,
+            "min": 3
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "6hOGzq87iQntkHE5",
+          "level": {
+            "max": 4,
+            "min": 4
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "Fs7zeTW4u9SvteWO",
+          "level": {
+            "max": 5,
+            "min": 5
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "o1Gvp7nIrEHqdn3g",
+          "level": {
+            "max": 6,
+            "min": 6
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "n4jjrd9bNOaDkos7",
+          "level": {
+            "max": 7,
+            "min": 7
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "EHMDA2J47jwUUTKu",
+          "level": {
+            "max": 8,
+            "min": 8
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "YnQP5Rd6w5NwZVLN",
+          "level": {
+            "max": 9,
+            "min": 9
+          },
+          "on_save": null,
+          "riders": null
+        }
+      ],
+      "flags": {},
+      "healing": {
+        "bonus": "5",
+        "custom": {
+          "enabled": false,
+          "formula": ""
+        },
+        "denomination": null,
+        "number": null,
+        "scaling": {
+          "formula": "5",
+          "mode": "whole",
+          "number": null
+        },
+        "types": [
+          "healing"
+        ]
+      },
+      "id": "2JEDs5yWXLOYGN9m",
+      "img": "",
+      "kind": "heal",
+      "name": "",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "self",
+        "value": null
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "3",
+          "special": "",
+          "type": "creature"
+        },
+        "override": false,
+        "prompt": true,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    }
+  ],
+  "casting_time": {
+    "condition": "",
+    "unit": "action",
+    "value": 1
+  },
+  "components": [
+    "M",
+    "S",
+    "V"
+  ],
+  "concentration": false,
+  "description": "Choose up to three creatures within range. Each target's Hit Point maximum and current Hit Points increase by 5 for the duration.\n\nUsing a Higher-Level Spell Slot. Each target's Hit Points increase by 5 for each spell slot level above 2.",
+  "duration": {
+    "units": "hour",
+    "value": 8
+  },
+  "entry_kind": "spell",
+  "level": 2,
+  "materials": {
+    "consumed": false,
+    "cost": 0,
+    "supply": 0,
+    "value": "a strip of white cloth"
+  },
+  "name": "Aid",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.attributes.hp.tempmax",
+          "mode": 2,
+          "priority": null,
+          "value": "5"
+        }
+      ],
+      "description": "<p>The target's Hit Point maximum is increased for the duration.</p>",
+      "disabled": false,
+      "duration": {
+        "seconds": 28800
+      },
+      "id": "XyGKCCrIhrFlixG8",
+      "name": "Level 2: +5 Max HP",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.attributes.hp.tempmax",
+          "mode": 2,
+          "priority": null,
+          "value": "10"
+        }
+      ],
+      "description": "<p>The target's Hit Point maximum is increased for the duration.</p>",
+      "disabled": false,
+      "duration": {
+        "seconds": 28800
+      },
+      "id": "cTNQ2KRJLj4CRpQJ",
+      "name": "Level 3: +10 Max HP",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.attributes.hp.tempmax",
+          "mode": 2,
+          "priority": null,
+          "value": "15"
+        }
+      ],
+      "description": "<p>The target's Hit Point maximum is increased for the duration.</p>",
+      "disabled": false,
+      "duration": {
+        "seconds": 28800
+      },
+      "id": "6hOGzq87iQntkHE5",
+      "name": "Level 4: +15 Max HP",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.attributes.hp.tempmax",
+          "mode": 2,
+          "priority": null,
+          "value": "20"
+        }
+      ],
+      "description": "<p>The target's Hit Point maximum is increased for the duration.</p>",
+      "disabled": false,
+      "duration": {
+        "seconds": 28800
+      },
+      "id": "Fs7zeTW4u9SvteWO",
+      "name": "Level 5: +20 Max HP",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.attributes.hp.tempmax",
+          "mode": 2,
+          "priority": null,
+          "value": "25"
+        }
+      ],
+      "description": "<p>The target's Hit Point maximum is increased for the duration.</p>",
+      "disabled": false,
+      "duration": {
+        "seconds": 28800
+      },
+      "id": "o1Gvp7nIrEHqdn3g",
+      "name": "Level 6: +25 Max HP",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.attributes.hp.tempmax",
+          "mode": 2,
+          "priority": null,
+          "value": "30"
+        }
+      ],
+      "description": "<p>The target's Hit Point maximum is increased for the duration.</p>",
+      "disabled": false,
+      "duration": {
+        "seconds": 28800
+      },
+      "id": "n4jjrd9bNOaDkos7",
+      "name": "Level 7: +30 Max HP",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.attributes.hp.tempmax",
+          "mode": 2,
+          "priority": null,
+          "value": "35"
+        }
+      ],
+      "description": "<p>The target's Hit Point maximum is increased for the duration.</p>",
+      "disabled": false,
+      "duration": {
+        "seconds": 28800
+      },
+      "id": "EHMDA2J47jwUUTKu",
+      "name": "Level 8: +35 Max HP",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.attributes.hp.tempmax",
+          "mode": 2,
+          "priority": null,
+          "value": "40"
+        }
+      ],
+      "description": "<p>The target's Hit Point maximum is increased for the duration.</p>",
+      "disabled": false,
+      "duration": {
+        "seconds": 28800
+      },
+      "id": "YnQP5Rd6w5NwZVLN",
+      "name": "Level 9: +40 Max HP",
+      "statuses": [],
+      "transfer": false
+    }
+  ],
+  "preparation": {
+    "mode": "prepared",
+    "prepared": false
+  },
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/spells24/2nd-level/aid.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "range": {
+    "special": null,
+    "units": "ft",
+    "value": 30
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "ritual": false,
+  "school": "abj",
+  "slug": "aid"
+}

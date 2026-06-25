@@ -1,0 +1,8 @@
+{
+  "unarmed-strike": [
+    "top-level effects[] preserved"
+  ],
+  "spare-the-dying": [
+    "spell range.value preserved when set"
+  ]
+}

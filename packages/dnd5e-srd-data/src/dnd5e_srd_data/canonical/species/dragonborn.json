@@ -1,0 +1,178 @@
+{
+  "advancement": [
+    {
+      "class_restriction": "",
+      "configuration": {
+        "sizes": [
+          "med"
+        ]
+      },
+      "hint": "Medium (about 5\u20137 feet tall)",
+      "id": "65BqBxGcj6z4S803",
+      "level": 0,
+      "title": "",
+      "type": "Size",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "distance": {
+          "units": ""
+        },
+        "identifier": "breath",
+        "scale": {
+          "0": {
+            "faces": 10,
+            "modifiers": [],
+            "number": 1
+          },
+          "11": {
+            "faces": 10,
+            "modifiers": [],
+            "number": 3
+          },
+          "17": {
+            "faces": 10,
+            "modifiers": [],
+            "number": 4
+          },
+          "5": {
+            "faces": 10,
+            "modifiers": [],
+            "number": 2
+          }
+        },
+        "type": "dice"
+      },
+      "hint": "",
+      "id": "XA1fKbmfBiCHnVzs",
+      "level": 0,
+      "title": "Breath Weapon",
+      "type": "ScaleValue",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.origins24.Item.phbsptBreathWeap"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "raWgGHnxSicEwTb9",
+      "level": 0,
+      "title": "Draconic Ancestry",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [
+          {
+            "count": 1,
+            "pool": [
+              "dr:acid",
+              "dr:cold",
+              "dr:fire",
+              "dr:lightning",
+              "dr:poison"
+            ]
+          }
+        ],
+        "grants": [],
+        "mode": "default"
+      },
+      "hint": "You have Resistance to the damage type determined by your Draconic Ancestry trait.",
+      "id": "8maGZKJ9TOIgNR80",
+      "level": 0,
+      "title": "Damage Resistance",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.origins24.Item.phbsptDraconicFl"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "jOGAWKkPIAbshOpo",
+      "level": 5,
+      "title": "Draconic Flight",
+      "type": "ItemGrant",
+      "value": {}
+    }
+  ],
+  "creature_type": {
+    "custom": "",
+    "subtype": "Dragonborn",
+    "value": "humanoid"
+  },
+  "description": "@Embed[Compendium.dnd5e.content24.JournalEntry.phbAppendixSpeci.JournalEntryPage.phbspDragonborn0 inline classes=\"free-rules-embed\"]\n\nDragonborn Traits\n\nCreature Type: Humanoid\n\nSize: Medium (about 5\u20137 feet tall)\n\nSpeed: 30 feet\n\nAs a Dragonborn, you have these special traits.\n\nDraconic Ancestry. Your lineage stems from a dragon progenitor. Choose the kind of dragon from the Draconic Ancestors table. Your choice affects your Breath Weapon and Damage Resistance traits as well as your appearance.\n\nDraconic Ancestors\n\nDragon\n\nDamage Type\n\nDragon\n\nDamage Type\n\nBlack\n\nAcid\n\nGold\n\nFire\n\nBlue\n\nLightning\n\nGreen\n\nPoison\n\nBrass\n\nFire\n\nRed\n\nFire\n\nBronze\n\nLightning\n\nSilver\n\nCold\n\nCopper\n\nAcid\n\nWhite\n\nCold\n\nBreath Weapon. When you take the Attack action on your turn, you can replace one of your attacks with an exhalation of magical energy in either a 15-foot Cone or a 30-foot Line that is 5 feet wide (choose the shape each time). Each creature in that area must make a Dexterity saving throw (DC 8 plus your Constitution modifier and Proficiency Bonus). On a failed save, a creature takes 1d10 damage of the type determined by your Draconic Ancestry trait. On a successful save, a creature takes half as much damage. This damage increases by 1d10 when you reach character levels 5 (2d10), 11 (3d10), and 17\u00a0(4d10).You can use this Breath Weapon a number of times equal to your Proficiency Bonus, and you regain all expended uses when you finish a Long Rest.\n\nDamage Resistance. You have Resistance to the damage type determined by your Draconic Ancestry trait.\n\nDarkvision. You have Darkvision with a range of 60 feet.\n\nDraconic Flight. When you reach character level 5, you can channel draconic magic to give yourself temporary flight. As a Bonus Action, you sprout spectral wings on your back that last for 10 minutes or until you retract the wings (no action required) or have the Incapacitated condition. During that time, you have a Fly Speed equal to your Speed. Your wings appear to be made of the same energy as your Breath Weapon. Once you use this trait, you can't use it again until you finish a Long Rest.",
+  "entry_kind": "species",
+  "feature_choices": [],
+  "granted_features": [
+    {
+      "level": 0,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "breath-weapon"
+    },
+    {
+      "level": 5,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "draconic-flight"
+    }
+  ],
+  "languages": [],
+  "movement": {
+    "burrow": null,
+    "climb": null,
+    "fly": null,
+    "hover": false,
+    "swim": null,
+    "walk": 30
+  },
+  "name": "Dragonborn",
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/origins24/species/dragonborn.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "senses": {
+    "blindsight": null,
+    "darkvision": 60,
+    "passive_perception": null,
+    "tremorsense": null,
+    "truesight": null
+  },
+  "size": "medium",
+  "slug": "dragonborn",
+  "trait_grants": []
+}

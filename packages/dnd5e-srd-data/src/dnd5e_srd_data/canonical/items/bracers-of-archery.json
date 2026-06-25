@@ -1,0 +1,68 @@
+{
+  "activities": [],
+  "attunement_constraint": null,
+  "cost_gp": 400.0,
+  "description": "Wondrous Item, Uncommon (Requires Attunement)\n\nWhile wearing these bracers, you have proficiency with the Longbow and Shortbow, and you gain a +2 bonus to damage rolls made with such weapons.\n\nFoundry Note\n\nThe Bonus Damage: Bows passive effect applies the damage bonus to all ranged weapon damage rolls and should be disabled before rolling damage for weapons other than a Longbow or Shortbow.",
+  "item_kind": "magic_item",
+  "name": "Bracers of Archery",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.traits.weaponProf.value",
+          "mode": 2,
+          "priority": null,
+          "value": "longbow"
+        },
+        {
+          "key": "system.traits.weaponProf.value",
+          "mode": 2,
+          "priority": null,
+          "value": "shortbow"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "qoOJIw0gTdN8DBKB",
+      "name": "Bow Proficiencies",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "system.bonuses.rwak.damage",
+          "mode": 2,
+          "priority": null,
+          "value": "2"
+        }
+      ],
+      "description": "<p>you gain a +2 bonus to damage rolls on ranged attacks made with a Longbow or Shortbow</p>",
+      "disabled": false,
+      "duration": null,
+      "id": "PSGGfFEy4CjBVzyX",
+      "name": "Bonus Damage: Bows",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/equipment24/equipment/bracers-of-archery.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "rarity": "uncommon",
+  "requires_attunement": true,
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "bracers-of-archery",
+  "weight": 1.0
+}

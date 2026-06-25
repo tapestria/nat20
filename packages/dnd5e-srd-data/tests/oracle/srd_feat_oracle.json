@@ -1,0 +1,70 @@
+{
+  "ability-score-improvement": {
+    "category": "general",
+    "name": "Ability Score Improvement"
+  },
+  "alert": {
+    "category": "origin",
+    "name": "Alert"
+  },
+  "archery": {
+    "category": "fighting_style",
+    "name": "Archery"
+  },
+  "boon-of-combat-prowess": {
+    "category": "epic_boon",
+    "name": "Boon of Combat Prowess"
+  },
+  "boon-of-dimensional-travel": {
+    "category": "epic_boon",
+    "name": "Boon of Dimensional Travel"
+  },
+  "boon-of-fate": {
+    "category": "epic_boon",
+    "name": "Boon of Fate"
+  },
+  "boon-of-irresistible-offense": {
+    "category": "epic_boon",
+    "name": "Boon of Irresistible Offense"
+  },
+  "boon-of-spell-recall": {
+    "category": "epic_boon",
+    "name": "Boon of Spell Recall"
+  },
+  "boon-of-the-night-spirit": {
+    "category": "epic_boon",
+    "name": "Boon of the Night Spirit"
+  },
+  "boon-of-truesight": {
+    "category": "epic_boon",
+    "name": "Boon of Truesight"
+  },
+  "defense": {
+    "category": "fighting_style",
+    "name": "Defense"
+  },
+  "grappler": {
+    "category": "general",
+    "name": "Grappler"
+  },
+  "great-weapon-fighting": {
+    "category": "fighting_style",
+    "name": "Great Weapon Fighting"
+  },
+  "magic-initiate": {
+    "category": "origin",
+    "name": "Magic Initiate"
+  },
+  "savage-attacker": {
+    "category": "origin",
+    "name": "Savage Attacker"
+  },
+  "skilled": {
+    "category": "origin",
+    "name": "Skilled"
+  },
+  "two-weapon-fighting": {
+    "category": "fighting_style",
+    "name": "Two Weapon Fighting"
+  }
+}

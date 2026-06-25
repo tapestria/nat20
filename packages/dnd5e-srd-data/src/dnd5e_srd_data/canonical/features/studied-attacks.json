@@ -1,0 +1,25 @@
+{
+  "activities": [],
+  "description": "You study your opponents and learn from each attack you make. If you make an attack roll against a creature and miss, you have Advantage on your next attack roll against that creature before the end of your next turn.\n\nFoundry Note\n\nThis feature does not automate the Advantage on your next attack roll.",
+  "entry_kind": "feature",
+  "feature_type": "class_feature",
+  "foundry_id": "phbftrStudiedAtt",
+  "name": "Studied Attacks",
+  "passive_effects": [],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/fighter/class-features/studied-attacks.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "studied-attacks",
+  "source_slug": "fighter"
+}

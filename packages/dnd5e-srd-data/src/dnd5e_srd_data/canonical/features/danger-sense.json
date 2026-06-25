@@ -1,0 +1,43 @@
+{
+  "activities": [],
+  "description": "You gain an uncanny sense of when things aren't as they should be, giving you an edge when you dodge perils. You have Advantage on Dexterity saving throws unless you have the &amp;Reference[Incapacitated] condition.\n\nFoundry Note\n\nThis feature automates the Advantage on Dexterity saving throws but is not automatically disabled when Incapacitated. It can be temporarily deactivated in the Effects tab.",
+  "entry_kind": "feature",
+  "feature_type": "class_feature",
+  "foundry_id": "phbbrbDangerSens",
+  "name": "Danger Sense",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.abilities.dex.save.roll.mode",
+          "mode": 2,
+          "priority": null,
+          "value": "1"
+        }
+      ],
+      "description": "<p>You have Advantage on Dexterity saving throws unless you have the &amp;Reference[Incapacitated] condition.</p>",
+      "disabled": false,
+      "duration": null,
+      "id": "lTOwmIJoE8GLm1oy",
+      "name": "Danger Sense",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/barbarian/class-features/danger-sense.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "danger-sense",
+  "source_slug": "barbarian"
+}

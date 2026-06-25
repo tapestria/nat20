@@ -1,0 +1,210 @@
+{
+  "advancement": [
+    {
+      "class_restriction": "",
+      "configuration": {
+        "sizes": [
+          "sm",
+          "med"
+        ]
+      },
+      "hint": "Medium (about 4-7 feet tall) or Small (about 2-4 feet tall), chosen when you select this species",
+      "id": "dLxv96vt2B2KOEe2",
+      "level": 0,
+      "title": "",
+      "type": "Size",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.origins24.Item.phbsptResourcefu"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.origins24.Item.phbsptSkillful00"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.origins24.Item.phbsptVersatile0"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "2H3yQa0PfjBgXw2W",
+      "level": 0,
+      "title": "Human Traits",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [
+          {
+            "count": 1,
+            "pool": [
+              "skills:*"
+            ]
+          }
+        ],
+        "grants": [],
+        "mode": "default"
+      },
+      "hint": "You gain proficiency in one skill of your choice.",
+      "id": "xIdIaWtTj1cBERln",
+      "level": 0,
+      "title": "Skillful",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "allowDrops": true,
+        "choices": {
+          "0": {
+            "count": 1,
+            "replacement": false
+          }
+        },
+        "pool": [
+          {
+            "uuid": "Compendium.dnd5e.feats24.Item.phbftAlert000000"
+          },
+          {
+            "uuid": "Compendium.dnd5e.feats24.Item.phbftMagicInitia"
+          },
+          {
+            "uuid": "Compendium.dnd5e.feats24.Item.phbftSavageAttac"
+          },
+          {
+            "uuid": "Compendium.dnd5e.feats24.Item.phbftSkilled0000"
+          }
+        ],
+        "restriction": {
+          "subtype": "origin",
+          "type": "feat"
+        },
+        "spell": null,
+        "type": "feat"
+      },
+      "hint": "You gain an Origin feat of your choice. Skillful is recommended.",
+      "id": "KB8IQLwyuL6SOFnv",
+      "level": 0,
+      "title": "Versatile",
+      "type": "ItemChoice",
+      "value": {
+        "added": {},
+        "replaced": {}
+      }
+    }
+  ],
+  "creature_type": {
+    "custom": "",
+    "subtype": "Human",
+    "value": "humanoid"
+  },
+  "description": "@Embed[Compendium.dnd5e.content24.JournalEntry.phbAppendixSpeci.JournalEntryPage.phbspHuman000000 inline classes=\"free-rules-embed\"]\n\nHuman Traits\n\nCreature Type: Humanoid\n\nSize: Medium (about 4\u20137 feet tall) or Small (about 2\u20134 feet tall), chosen when you select this species\n\nSpeed: 30 feet\n\nAs a Human, you have these special traits.\n\nResourceful. You gain Heroic Inspiration whenever you finish a Long Rest.\n\nSkillful. You gain proficiency in one skill of your choice.\n\nVersatile. You gain an Origin feat of your choice (see chapter 5). Skilled is recommended.",
+  "entry_kind": "species",
+  "feature_choices": [
+    {
+      "pool": [
+        {
+          "level": 0,
+          "optional": false,
+          "ref_type": "feat",
+          "slug": "alert"
+        },
+        {
+          "level": 0,
+          "optional": false,
+          "ref_type": "feat",
+          "slug": "magic-initiate"
+        },
+        {
+          "level": 0,
+          "optional": false,
+          "ref_type": "feat",
+          "slug": "savage-attacker"
+        },
+        {
+          "level": 0,
+          "optional": false,
+          "ref_type": "feat",
+          "slug": "skilled"
+        }
+      ],
+      "restriction_subtype": "origin",
+      "schedule": [
+        {
+          "count": 1,
+          "level": 0,
+          "replacement": false
+        }
+      ]
+    }
+  ],
+  "granted_features": [
+    {
+      "level": 0,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "resourceful"
+    },
+    {
+      "level": 0,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "skillful"
+    },
+    {
+      "level": 0,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "versatile"
+    }
+  ],
+  "languages": [],
+  "movement": {
+    "burrow": null,
+    "climb": null,
+    "fly": null,
+    "hover": false,
+    "swim": null,
+    "walk": 30
+  },
+  "name": "Human",
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/origins24/species/human.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "senses": {
+    "blindsight": null,
+    "darkvision": null,
+    "passive_perception": null,
+    "tremorsense": null,
+    "truesight": null
+  },
+  "size": "medium",
+  "slug": "human",
+  "trait_grants": []
+}

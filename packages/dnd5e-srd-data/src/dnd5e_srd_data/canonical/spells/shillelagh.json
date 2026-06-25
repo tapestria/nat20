@@ -1,0 +1,533 @@
+{
+  "activities": [
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "action",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": []
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [
+        {
+          "id": "QPsqj6jfS0iXSrTs",
+          "level": {
+            "max": 4,
+            "min": null
+          },
+          "on_save": null,
+          "riders": {
+            "activity": [],
+            "effect": [],
+            "item": []
+          }
+        },
+        {
+          "id": "Oy8fnNNzPmehxXio",
+          "level": {
+            "max": 10,
+            "min": 5
+          },
+          "on_save": null,
+          "riders": {
+            "activity": [],
+            "effect": [],
+            "item": []
+          }
+        },
+        {
+          "id": "advnpQaBnsbuv02y",
+          "level": {
+            "max": 16,
+            "min": 11
+          },
+          "on_save": null,
+          "riders": {
+            "activity": [],
+            "effect": [],
+            "item": []
+          }
+        },
+        {
+          "id": "X9xoN8qHUiCc4SZR",
+          "level": {
+            "max": null,
+            "min": 17
+          },
+          "on_save": null,
+          "riders": {
+            "activity": [],
+            "effect": [],
+            "item": []
+          }
+        }
+      ],
+      "enchant": {
+        "identifier": null,
+        "self": false
+      },
+      "flags": {},
+      "id": "B4nxtIzrCEGEzq1T",
+      "img": "",
+      "kind": "enchant",
+      "name": "Imbue Weapon",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "self",
+        "value": null
+      },
+      "restrictions": {
+        "allow_magical": true,
+        "categories": [
+          "simpleM"
+        ],
+        "properties": [],
+        "type": "weapon"
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "1",
+          "special": "held Club or Quarterstaff",
+          "type": "object"
+        },
+        "override": false,
+        "prompt": true,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    },
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "action",
+        "value": null
+      },
+      "attack": {
+        "ability": "spellcasting",
+        "bonus": "",
+        "critical": {
+          "threshold": null
+        },
+        "flat": false,
+        "type": {
+          "classification": "weapon",
+          "value": "melee"
+        }
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": []
+      },
+      "damage": {
+        "critical": {
+          "bonus": ""
+        },
+        "include_base": true,
+        "parts": []
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "",
+        "value": ""
+      },
+      "effects": [],
+      "flags": {},
+      "id": "ONVab5lmTqJwwMBC",
+      "img": "",
+      "kind": "attack",
+      "name": "Spellcasting Attack",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "",
+        "value": null
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "1",
+          "special": "held Club or Quarterstaff",
+          "type": "object"
+        },
+        "override": false,
+        "prompt": true,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    }
+  ],
+  "casting_time": {
+    "condition": "",
+    "unit": "bonus",
+    "value": 1
+  },
+  "components": [
+    "M",
+    "S",
+    "V"
+  ],
+  "concentration": false,
+  "description": "A Club or Quarterstaff you are holding is imbued with nature's power. For the duration, you can use your spellcasting ability instead of Strength for the attack and damage rolls of melee attacks using that weapon, and the weapon's damage die becomes a d8. If the attack deals damage, it can be Force damage or the weapon's normal damage type (your choice).\n\nThe spell ends early if you cast it again or if you let go of the weapon.\n\nCantrip Upgrade. The damage die changes when you reach levels 5 (d10), 11 (d12), and 17 (2d6).",
+  "duration": {
+    "units": "minute",
+    "value": 1
+  },
+  "entry_kind": "spell",
+  "level": 0,
+  "materials": {
+    "consumed": false,
+    "cost": 0,
+    "supply": 0,
+    "value": "mistletoe"
+  },
+  "name": "Shillelagh",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.damage.base.denomination",
+          "mode": 5,
+          "priority": null,
+          "value": "8"
+        },
+        {
+          "key": "system.damage.base.types",
+          "mode": 2,
+          "priority": null,
+          "value": "force"
+        },
+        {
+          "key": "system.damage.base.number",
+          "mode": 5,
+          "priority": null,
+          "value": "1"
+        },
+        {
+          "key": "name",
+          "mode": 5,
+          "priority": null,
+          "value": "{} Shillelagh"
+        },
+        {
+          "key": "system.damage.base.custom.enabled",
+          "mode": 5,
+          "priority": null,
+          "value": "0"
+        },
+        {
+          "key": "activities[attack].attack.ability",
+          "mode": 5,
+          "priority": null,
+          "value": "none"
+        },
+        {
+          "key": "activities[attack].attack.bonus",
+          "mode": 2,
+          "priority": null,
+          "value": "max(@abilities.str.mod, @attributes.spell.mod)"
+        },
+        {
+          "key": "system.damage.base.bonus",
+          "mode": 2,
+          "priority": null,
+          "value": "max(@abilities.str.mod, @attributes.spell.mod)"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "seconds": 60
+      },
+      "id": "QPsqj6jfS0iXSrTs",
+      "name": "Shillelagh (1d8)",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.damage.base.denomination",
+          "mode": 5,
+          "priority": null,
+          "value": "10"
+        },
+        {
+          "key": "system.damage.base.types",
+          "mode": 2,
+          "priority": null,
+          "value": "force"
+        },
+        {
+          "key": "system.damage.base.number",
+          "mode": 5,
+          "priority": null,
+          "value": "1"
+        },
+        {
+          "key": "name",
+          "mode": 5,
+          "priority": null,
+          "value": "{} (Shillelagh)"
+        },
+        {
+          "key": "system.damage.base.custom.enabled",
+          "mode": 5,
+          "priority": null,
+          "value": "0"
+        },
+        {
+          "key": "activities[attack].attack.ability",
+          "mode": 5,
+          "priority": null,
+          "value": "none"
+        },
+        {
+          "key": "activities[attack].attack.bonus",
+          "mode": 2,
+          "priority": null,
+          "value": "max(@abilities.str.mod, @attributes.spell.mod)"
+        },
+        {
+          "key": "system.damage.base.bonus",
+          "mode": 2,
+          "priority": null,
+          "value": "max(@abilities.str.mod, @attributes.spell.mod)"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "seconds": 60
+      },
+      "id": "Oy8fnNNzPmehxXio",
+      "name": "Shillelagh (1d10)",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.damage.base.denomination",
+          "mode": 5,
+          "priority": null,
+          "value": "12"
+        },
+        {
+          "key": "system.damage.base.types",
+          "mode": 2,
+          "priority": null,
+          "value": "force"
+        },
+        {
+          "key": "system.damage.base.number",
+          "mode": 5,
+          "priority": null,
+          "value": "1"
+        },
+        {
+          "key": "name",
+          "mode": 5,
+          "priority": null,
+          "value": "{} (Shillelagh)"
+        },
+        {
+          "key": "system.damage.base.custom.enabled",
+          "mode": 5,
+          "priority": null,
+          "value": "0"
+        },
+        {
+          "key": "activities[attack].attack.ability",
+          "mode": 5,
+          "priority": null,
+          "value": "none"
+        },
+        {
+          "key": "activities[attack].attack.bonus",
+          "mode": 2,
+          "priority": null,
+          "value": "max(@abilities.str.mod, @attributes.spell.mod)"
+        },
+        {
+          "key": "system.damage.base.bonus",
+          "mode": 2,
+          "priority": null,
+          "value": "max(@abilities.str.mod, @attributes.spell.mod)"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "seconds": 60
+      },
+      "id": "advnpQaBnsbuv02y",
+      "name": "Shillelagh (1d12)",
+      "statuses": [],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.damage.base.denomination",
+          "mode": 5,
+          "priority": null,
+          "value": "6"
+        },
+        {
+          "key": "system.damage.base.types",
+          "mode": 2,
+          "priority": null,
+          "value": "force"
+        },
+        {
+          "key": "system.damage.base.number",
+          "mode": 5,
+          "priority": null,
+          "value": "2"
+        },
+        {
+          "key": "name",
+          "mode": 5,
+          "priority": null,
+          "value": "{} (Shillelagh)"
+        },
+        {
+          "key": "system.damage.base.custom.enabled",
+          "mode": 5,
+          "priority": null,
+          "value": "0"
+        },
+        {
+          "key": "activities[attack].attack.ability",
+          "mode": 5,
+          "priority": null,
+          "value": "none"
+        },
+        {
+          "key": "activities[attack].attack.bonus",
+          "mode": 2,
+          "priority": null,
+          "value": "max(@abilities.str.mod, @attributes.spell.mod)"
+        },
+        {
+          "key": "system.damage.base.bonus",
+          "mode": 2,
+          "priority": null,
+          "value": "max(@abilities.str.mod, @attributes.spell.mod)"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "seconds": 60
+      },
+      "id": "X9xoN8qHUiCc4SZR",
+      "name": "Shillelagh (2d6)",
+      "statuses": [],
+      "transfer": false
+    }
+  ],
+  "preparation": {
+    "mode": "always",
+    "prepared": false
+  },
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/spells24/cantrips/shillelagh.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "range": {
+    "special": null,
+    "units": "self",
+    "value": null
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "ritual": false,
+  "school": "trs",
+  "slug": "shillelagh"
+}

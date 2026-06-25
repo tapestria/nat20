@@ -1,0 +1,69 @@
+{
+  "activities": [],
+  "description": "You gain proficiency in another skill of your choice from the skill list available to Barbarians at level 1.\n\nIn addition, while your Rage is active, you can channel primal power when you attempt certain tasks; whenever you make an ability check using one of the following skills, you can make it as a Strength check even if it normally uses a different ability: Acrobatics, Intimidation, Perception, Stealth, or Survival. When you use this ability, your Strength represents primal power coursing through you, honing your agility, bearing, and senses.\n\nFoundry Note\n\nThis feature includes an Active Effect which will cause those skills to automatically use your Strength modifier if it is higher than the normal Ability Score associated with the Skill.",
+  "entry_kind": "feature",
+  "feature_type": "class_feature",
+  "foundry_id": "phbbrbPrimalKnow",
+  "name": "Primal Knowledge",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.skills.acr.bonuses.check",
+          "mode": 2,
+          "priority": null,
+          "value": "max(0, @abilities.str.mod - @mod)"
+        },
+        {
+          "key": "system.skills.itm.bonuses.check",
+          "mode": 2,
+          "priority": null,
+          "value": "max(0, @abilities.str.mod - @mod)"
+        },
+        {
+          "key": "system.skills.prc.bonuses.check",
+          "mode": 2,
+          "priority": null,
+          "value": "max(0, @abilities.str.mod - @mod)"
+        },
+        {
+          "key": "system.skills.ste.bonuses.check",
+          "mode": 2,
+          "priority": null,
+          "value": "max(0, @abilities.str.mod - @mod)"
+        },
+        {
+          "key": "system.skills.sur.bonuses.check",
+          "mode": 2,
+          "priority": null,
+          "value": "max(0, @abilities.str.mod - @mod)"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": {
+        "startTime": 0
+      },
+      "id": "ufbJRsGGW3REMmJm",
+      "name": "Primal Knowledge",
+      "statuses": [],
+      "transfer": false
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/barbarian/class-features/primal-knowledge.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "primal-knowledge",
+  "source_slug": "barbarian"
+}

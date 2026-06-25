@@ -1,0 +1,262 @@
+{
+  "advancement": [
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbftrImprovedCr"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbftrRemarkable"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "1uBHnM7yyltYiGYr",
+      "level": 3,
+      "title": "Subclass Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbftrAdditional"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "WS2baKDHOKdTHvn4",
+      "level": 7,
+      "title": "Subclass Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbftrHeroicWarr"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "ifmHcVXF9ZqyVhXa",
+      "level": 10,
+      "title": "Subclass Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbftrSuperiorCr"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "DNwHuSG5CFe5o94z",
+      "level": 15,
+      "title": "Subclass Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbftrSurvivor00"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "nAg9H5fvgytySqaf",
+      "level": 18,
+      "title": "Subclass Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "allowDrops": true,
+        "choices": {
+          "7": {
+            "count": 1,
+            "replacement": false
+          }
+        },
+        "pool": [
+          {
+            "uuid": "Compendium.dnd5e.feats24.Item.phbfstArchery000"
+          },
+          {
+            "uuid": "Compendium.dnd5e.feats24.Item.phbfstBlindFight"
+          },
+          {
+            "uuid": "Compendium.dnd5e.feats24.Item.phbfstDefense000"
+          },
+          {
+            "uuid": "Compendium.dnd5e.feats24.Item.phbfstDueling000"
+          },
+          {
+            "uuid": "Compendium.dnd5e.feats24.Item.phbfstGreatWeapo"
+          },
+          {
+            "uuid": "Compendium.dnd5e.feats24.Item.phbfstIntercepti"
+          },
+          {
+            "uuid": "Compendium.dnd5e.feats24.Item.phbfstProtection"
+          },
+          {
+            "uuid": "Compendium.dnd5e.feats24.Item.phbfstThrownWeap"
+          },
+          {
+            "uuid": "Compendium.dnd5e.feats24.Item.phbfstTwoWeaponF"
+          },
+          {
+            "uuid": "Compendium.dnd5e.feats24.Item.phbfstUnarmedFig"
+          }
+        ],
+        "restriction": {
+          "subtype": "fightingStyle",
+          "type": "feat"
+        },
+        "spell": null,
+        "type": "feat"
+      },
+      "hint": "",
+      "id": "F4BJnjlTZ7nAuzjg",
+      "level": 0,
+      "title": "Fighting Style",
+      "type": "ItemChoice",
+      "value": {
+        "added": {},
+        "replaced": {}
+      }
+    }
+  ],
+  "class_identifier": "fighter",
+  "description": "Pursue Physical Excellence in Combat\n\nA Champion focuses on the development of martial prowess in a relentless pursuit of victory. Champions combine rigorous training with physical excellence to deal devastating blows, withstand peril, and garner glory. Whether in athletic contests or bloody battle, Champions strive for the crown of the victor.",
+  "entry_kind": "subclass",
+  "feature_choices": [
+    {
+      "pool": [
+        {
+          "level": 0,
+          "optional": false,
+          "ref_type": "feat",
+          "slug": "archery"
+        },
+        {
+          "level": 0,
+          "optional": false,
+          "ref_type": "feat",
+          "slug": "defense"
+        },
+        {
+          "level": 0,
+          "optional": false,
+          "ref_type": "feat",
+          "slug": "great-weapon-fighting"
+        },
+        {
+          "level": 0,
+          "optional": false,
+          "ref_type": "feat",
+          "slug": "two-weapon-fighting"
+        }
+      ],
+      "restriction_subtype": "fightingStyle",
+      "schedule": [
+        {
+          "count": 1,
+          "level": 7,
+          "replacement": false
+        }
+      ]
+    }
+  ],
+  "granted_features": [
+    {
+      "level": 3,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "improved-critical"
+    },
+    {
+      "level": 3,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "remarkable-athlete"
+    },
+    {
+      "level": 7,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "additional-fighting-style"
+    },
+    {
+      "level": 10,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "heroic-warrior"
+    },
+    {
+      "level": 15,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "superior-critical"
+    },
+    {
+      "level": 18,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "survivor"
+    }
+  ],
+  "identifier": "champion",
+  "name": "Champion",
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/fighter/champion.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "champion",
+  "spellcasting": {
+    "ability": "",
+    "progression": "none"
+  }
+}

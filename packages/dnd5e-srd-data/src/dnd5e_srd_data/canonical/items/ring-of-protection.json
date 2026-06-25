@@ -1,0 +1,51 @@
+{
+  "activities": [],
+  "attunement_constraint": null,
+  "cost_gp": 4000.0,
+  "description": "Ring, Rare (Requires Attunement)\n\nYou gain a +1 bonus to Armor Class and saving throws while wearing this ring.",
+  "item_kind": "magic_item",
+  "name": "Ring of Protection",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.attributes.ac.bonus",
+          "mode": 2,
+          "priority": null,
+          "value": "+1"
+        },
+        {
+          "key": "system.bonuses.abilities.save",
+          "mode": 2,
+          "priority": null,
+          "value": "+1"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "vKSASCidlRLgY3lA",
+      "name": "Ring of Protection",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/equipment24/equipment/rings/ring-of-protection.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "rarity": "rare",
+  "requires_attunement": true,
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "ring-of-protection",
+  "weight": 0.0
+}

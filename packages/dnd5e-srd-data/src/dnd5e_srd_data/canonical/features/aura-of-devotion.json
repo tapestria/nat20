@@ -1,0 +1,36 @@
+{
+  "activities": [],
+  "description": "You and your allies have Immunity to the Charmed condition while in your Aura of Protection. If a Charmed ally enters the aura, that condition has no effect on that ally while there.\n\nFoundry Note\n\nThis feature includes an Active Effect for tracking characters impacted by your aura but does not automate the effects.",
+  "entry_kind": "feature",
+  "feature_type": "subclass_feature",
+  "foundry_id": "phbpdnDevotionAu",
+  "name": "Aura of Devotion",
+  "passive_effects": [
+    {
+      "changes": [],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "iKPJ2nBT687zLvTc",
+      "name": "Devoted",
+      "statuses": [],
+      "transfer": false
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/paladin/subclass-features/oath-of-devotion/aura-of-devotion.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "aura-of-devotion",
+  "source_slug": "oath-of-devotion"
+}

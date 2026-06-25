@@ -1,0 +1,45 @@
+{
+  "activities": [],
+  "attunement_constraint": null,
+  "cost_gp": 400.0,
+  "description": "Wondrous Item, Uncommon\n\nThese gloves are imperceptible while worn. While wearing them, you gain a +5 bonus to Dexterity (Sleight of Hand) checks.\n\nFoundry Note\n\nThe Gloves On Active Effect automates the +5 to your Sleight of Hand checks.",
+  "item_kind": "magic_item",
+  "name": "Gloves of Thievery",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.skills.slt.bonuses.check",
+          "mode": 2,
+          "priority": null,
+          "value": "5"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "6f8ARzOvPmhNZ0NV",
+      "name": "Gloves On",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/equipment24/equipment/gloves-of-thievery.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "rarity": "uncommon",
+  "requires_attunement": false,
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "gloves-of-thievery",
+  "weight": 0.0
+}

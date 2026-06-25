@@ -1,0 +1,25 @@
+{
+  "activities": [],
+  "description": "You are the recipient of a legacy that grants you supernatural abilities.\n\nWhen you reach character levels 3 and 5, you learn a higher-level spell, as shown on the table. You always have that spell prepared. You can cast it once without a spell slot, and you regain the ability to cast it in that way when you finish a Long Rest. You can also cast the spell using any spell slots you have of the appropriate level. Intelligence, Wisdom, or Charisma is your spellcasting ability for the spells you cast with this trait (choose the ability when you select the legacy).\n\nAbyssal\n\nThe entropy of the Abyss, the chaos of Pandemonium, and the despair of Carceri call to tieflings who have the abyssal legacy. Horns, fur, tusks, and peculiar scents are common physical features of such tieflings, most of whom have the blood of demons coursing through their veins.\n\nAbyssal Legacy Traits\n\nLevel 1\n\nLevel 3\n\nLevel 5\n\nYou have Resistance to Poison damage. You also know the Poison Spray cantrip.\n\nRay of Sickness\n\nHold Person\n\nFoundry Note\n\nThe Resistance and spells are granted to you automatically and you will be prompted to choose the spellcasting ability during advancement.",
+  "entry_kind": "feature",
+  "feature_type": "species_trait",
+  "foundry_id": "phbsptAbyssalLeg",
+  "name": "Fiendish Legacy, Abyssal",
+  "passive_effects": [],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/origins24/species/traits/tiefling/fiendish-legacy-abyssal.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "fiendish-legacy-abyssal",
+  "source_slug": "tiefling"
+}

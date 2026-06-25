@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.cache/
+dist/
+*.egg-info/
+raw_sources/foundry/
+raw_sources/open5e/
+raw_sources/five_e_bits/

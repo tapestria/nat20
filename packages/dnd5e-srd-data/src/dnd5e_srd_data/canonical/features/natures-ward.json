@@ -1,0 +1,111 @@
+{
+  "activities": [],
+  "description": "You are immune to the Poisoned condition, and you have Resistance to a damage type associated with your current land choice in the Circle Spells feature, as shown in the Nature's Ward table.\n\nNature's Ward\n\nLand Type\n\nResistance\n\nArid\n\nFire\n\nPolar\n\nCold\n\nTemperate\n\nLightning\n\nTropical\n\nPoison\n\nFoundry Note\n\nThis feature includes an Active Effect for the Poison condition immunity and an Active Effect for each land type. You can activate the Active Effect for your chosen land type.",
+  "entry_kind": "feature",
+  "feature_type": "subclass_feature",
+  "foundry_id": "phbdrdNaturesWar",
+  "name": "Nature's Ward",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.traits.ci.value",
+          "mode": 2,
+          "priority": null,
+          "value": "\"poison\""
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "WWAuOh7qyAZgchmL",
+      "name": "Nature's Ward",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "fire"
+        }
+      ],
+      "description": "",
+      "disabled": true,
+      "duration": null,
+      "id": "J6hYOcVvZlLKuWab",
+      "name": "Nature's Ward: Arid",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "cold"
+        }
+      ],
+      "description": "",
+      "disabled": true,
+      "duration": null,
+      "id": "XLIRgAYPO1ARo5pb",
+      "name": "Nature's Ward: Polar",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "lightning"
+        }
+      ],
+      "description": "",
+      "disabled": true,
+      "duration": null,
+      "id": "yruAlaBCduO8AcnU",
+      "name": "Nature's Ward: Temperate",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "poison"
+        }
+      ],
+      "description": "",
+      "disabled": true,
+      "duration": null,
+      "id": "lDVYGRNqqw3HwcKM",
+      "name": "Nature's Ward: Tropical",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/druid/subclass-features/circle-of-land/natures-ward.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "natures-ward",
+  "source_slug": "circle-of-land"
+}

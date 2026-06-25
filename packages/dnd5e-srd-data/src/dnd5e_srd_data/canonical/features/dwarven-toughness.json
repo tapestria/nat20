@@ -1,0 +1,43 @@
+{
+  "activities": [],
+  "description": "Your Hit Point maximum increases by 1, and it increases by 1 again whenever you gain a level.\n\nFoundry Note\n\nThe Hit Point maximum increase is handled automatically each level.",
+  "entry_kind": "feature",
+  "feature_type": "species_trait",
+  "foundry_id": "phbsptDwarvenTou",
+  "name": "Dwarven Toughness",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.attributes.hp.bonuses.level",
+          "mode": 2,
+          "priority": null,
+          "value": "1"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "Na7W3p67eT9YqW87",
+      "name": "Dwarven Toughness",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/origins24/species/traits/dwarf/dwarven-toughness.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "dwarven-toughness",
+  "source_slug": "dwarf"
+}

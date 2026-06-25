@@ -1,0 +1,51 @@
+{
+  "activities": [],
+  "armor_category": "shield",
+  "attunement_constraint": null,
+  "base_ac": 2,
+  "cost_gp": 0.0,
+  "description": "Armor (Shield), Uncommon\n\nWhile holding this Shield, you have Advantage on Initiative rolls and Wisdom (Perception) checks. The Shield is emblazoned with a symbol of an eye.",
+  "dex_bonus_max": null,
+  "item_kind": "armor",
+  "magical_bonus": 0,
+  "name": "Sentinel Shield",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.attributes.init.roll.mode",
+          "mode": 2,
+          "priority": null,
+          "value": "1"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "bHeGysatAXUbusV0",
+      "name": "Initiative Advantage",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/equipment24/armor/magical/sentinel-shield.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "rarity": "uncommon",
+  "requires_attunement": false,
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "sentinel-shield",
+  "stealth_disadvantage": false,
+  "strength_min": null,
+  "weight": 6.0
+}

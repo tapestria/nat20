@@ -1,0 +1,11 @@
+{
+  "_comment": "5e-bits expands lycanthropes into 3 forms (human/hybrid/<beast>). Foundry ships ONE entry per creature, statted as the hybrid form (the form players fight). Vampire similarly: the canonical Foundry entry maps to 5e-bits' 'vampire-vampire' (with -bat and -mist as alternate forms).",
+  "aliases": {
+    "werewolf": "werewolf-hybrid",
+    "werebear": "werebear-hybrid",
+    "wereboar": "wereboar-hybrid",
+    "wererat": "wererat-hybrid",
+    "weretiger": "weretiger-hybrid",
+    "vampire": "vampire-vampire"
+  }
+}

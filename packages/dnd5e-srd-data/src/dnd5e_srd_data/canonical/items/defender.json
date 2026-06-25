@@ -1,0 +1,301 @@
+{
+  "activities": [
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "action",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": []
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [
+        {
+          "id": "yBwZfNAoRtuUk5mz",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": {
+            "activity": [],
+            "effect": [
+              "4l1ngEyNnOxpfTGs",
+              "jiyXZKFtvIRlZfh2",
+              "v3JBpJJorZfV3fXj"
+            ],
+            "item": []
+          }
+        }
+      ],
+      "enchant": {
+        "identifier": "",
+        "self": false
+      },
+      "flags": {},
+      "id": "ebcTUGifnHkALNVU",
+      "img": "",
+      "kind": "enchant",
+      "name": "Defender",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "self",
+        "value": null
+      },
+      "restrictions": {
+        "allow_magical": false,
+        "categories": [],
+        "properties": [],
+        "type": ""
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "",
+          "special": "",
+          "type": ""
+        },
+        "override": false,
+        "prompt": true,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "ft",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    }
+  ],
+  "attunement_constraint": null,
+  "cost_gp": 200000.0,
+  "damage_parts": [],
+  "description": "Weapon (Any Melee Weapon), Legendary (Requires Attunement)\n\nYou gain a +3 bonus to attack rolls and damage rolls made with this magic weapon.\n\nThe first time you attack with the weapon on each of your turns, you can transfer some or all of the weapon's bonus to your Armor Class. For example, you could reduce the bonus to your attack rolls and damage rolls to +1 and gain a +2 bonus to Armor Class. The adjusted bonuses remain in effect until the start of your next turn, although you must hold the weapon to gain a bonus to AC from it.\n\n@Embed[Compendium.dnd5e.content24.JournalEntry.dmgFoundryRefere.JournalEntryPage.Ok4iCgD25ENgoRxE cite=false caption=false classes=\"hide-in-embed\"]",
+  "item_kind": "weapon",
+  "magical_bonus": 3,
+  "mastery": null,
+  "name": "Defender",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.attributes.ac.bonus",
+          "mode": 2,
+          "priority": null,
+          "value": "1"
+        },
+        {
+          "key": "system.bonuses.mwak.damage",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        },
+        {
+          "key": "system.bonuses.mwak.attack",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        }
+      ],
+      "description": "<p>The adjusted bonuses remain in effect until the start of your next turn, although you must hold the weapon to gain a bonus to AC from it.</p>",
+      "disabled": true,
+      "duration": {
+        "rounds": 1
+      },
+      "id": "4l1ngEyNnOxpfTGs",
+      "name": "Transferred AC Bonus: 1",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "name",
+          "mode": 5,
+          "priority": null,
+          "value": "Defender {}"
+        },
+        {
+          "key": "system.description.value",
+          "mode": 5,
+          "priority": null,
+          "value": "{}<p>@Embed[Compendium.dnd5e.equipment24.Item.dmgDefender00000 caption=false]</p>"
+        },
+        {
+          "key": "system.properties",
+          "mode": 2,
+          "priority": null,
+          "value": "mgc"
+        },
+        {
+          "key": "system.attunement",
+          "mode": 5,
+          "priority": null,
+          "value": "required"
+        },
+        {
+          "key": "system.magicalBonus",
+          "mode": 4,
+          "priority": null,
+          "value": "3"
+        },
+        {
+          "key": "system.rarity",
+          "mode": 5,
+          "priority": null,
+          "value": "legendary"
+        },
+        {
+          "key": "img",
+          "mode": 5,
+          "priority": null,
+          "value": "icons/weapons/swords/greatsword-guard-jewel-green.webp"
+        },
+        {
+          "key": "system.price.value",
+          "mode": 2,
+          "priority": null,
+          "value": "200000"
+        },
+        {
+          "key": "system.price.denomination",
+          "mode": 5,
+          "priority": null,
+          "value": "gp"
+        }
+      ],
+      "description": "",
+      "disabled": true,
+      "duration": null,
+      "id": "yBwZfNAoRtuUk5mz",
+      "name": "Defender",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "system.attributes.ac.bonus",
+          "mode": 2,
+          "priority": null,
+          "value": "2"
+        },
+        {
+          "key": "system.bonuses.mwak.damage",
+          "mode": 2,
+          "priority": null,
+          "value": "-2"
+        },
+        {
+          "key": "system.bonuses.mwak.attack",
+          "mode": 2,
+          "priority": null,
+          "value": "-2"
+        }
+      ],
+      "description": "<p>The adjusted bonuses remain in effect until the start of your next turn, although you must hold the weapon to gain a bonus to AC from it.</p>",
+      "disabled": true,
+      "duration": {
+        "rounds": 1
+      },
+      "id": "jiyXZKFtvIRlZfh2",
+      "name": "Transferred AC Bonus: 2",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "system.attributes.ac.bonus",
+          "mode": 2,
+          "priority": null,
+          "value": "3"
+        },
+        {
+          "key": "system.bonuses.mwak.damage",
+          "mode": 2,
+          "priority": null,
+          "value": "-3"
+        },
+        {
+          "key": "system.bonuses.mwak.attack",
+          "mode": 2,
+          "priority": null,
+          "value": "-3"
+        }
+      ],
+      "description": "<p>The adjusted bonuses remain in effect until the start of your next turn, although you must hold the weapon to gain a bonus to AC from it.</p>",
+      "disabled": true,
+      "duration": {
+        "rounds": 1
+      },
+      "id": "v3JBpJJorZfV3fXj",
+      "name": "Transferred AC Bonus: 3",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "properties": [],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/equipment24/weapons/magical/defender.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "range": {
+    "kind": "melee",
+    "long": null,
+    "units": null,
+    "value": null
+  },
+  "rarity": "legendary",
+  "requires_attunement": true,
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "defender",
+  "versatile_damage": null,
+  "weapon_category": "simple_melee",
+  "weight": 0.0
+}

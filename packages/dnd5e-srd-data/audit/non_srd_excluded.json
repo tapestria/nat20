@@ -1,0 +1,3537 @@
+[
+  {
+    "path": "raw_sources/foundry/packs/_source/equipment24/weapons/unarmed-strike.yml",
+    "reason": "unanimous_non_srd",
+    "slug": "unarmed-strike"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/equipment24/containers/efficient-quiver/long-compartment/_container.yml",
+    "reason": "unanimous_non_srd",
+    "slug": "_container"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/equipment24/containers/efficient-quiver/midsize-compartment/_container.yml",
+    "reason": "unanimous_non_srd",
+    "slug": "_container"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/equipment24/containers/efficient-quiver/short-compartment/_container.yml",
+    "reason": "unanimous_non_srd",
+    "slug": "_container"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/equipment24/containers/handy-haversack/central-pouch/_container.yml",
+    "reason": "unanimous_non_srd",
+    "slug": "_container"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/equipment24/containers/handy-haversack/left-pouch/_container.yml",
+    "reason": "unanimous_non_srd",
+    "slug": "_container"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/equipment24/containers/handy-haversack/right-pouch/_container.yml",
+    "reason": "unanimous_non_srd",
+    "slug": "_container"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/beast/giant-centipede.yml",
+    "reason": "unanimous_non_srd",
+    "slug": "giant-centipede"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/beast/giant-wasp.yml",
+    "reason": "unanimous_non_srd",
+    "slug": "giant-wasp"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/companions/otherworldly-steeds/otherworldly-steed.yml",
+    "reason": "translator_error:ValueError:'custom' is not a valid CreatureType",
+    "slug": "otherworldly-steed"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/conjurations/arcane-eye.yml",
+    "reason": "translator_error:ValueError:'custom' is not a valid CreatureType",
+    "slug": "arcane-eye"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/conjurations/arcane-hand.yml",
+    "reason": "translator_error:ValueError:'custom' is not a valid CreatureType",
+    "slug": "arcane-hand"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/conjurations/arcane-sword.yml",
+    "reason": "translator_error:ValueError:'custom' is not a valid CreatureType",
+    "slug": "arcane-sword"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/conjurations/conjured-animals.yml",
+    "reason": "translator_error:ValueError:'custom' is not a valid CreatureType",
+    "slug": "conjured-animals"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/conjurations/conjured-elementals/conjured-air-elemental.yml",
+    "reason": "translator_error:ValueError:'custom' is not a valid CreatureType",
+    "slug": "conjured-air-elemental"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/conjurations/conjured-elementals/conjured-earth-elemental.yml",
+    "reason": "translator_error:ValueError:'custom' is not a valid CreatureType",
+    "slug": "conjured-earth-elemental"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/conjurations/conjured-elementals/conjured-fire-elemental.yml",
+    "reason": "translator_error:ValueError:'custom' is not a valid CreatureType",
+    "slug": "conjured-fire-elemental"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/conjurations/conjured-elementals/conjured-water-elemental.yml",
+    "reason": "translator_error:ValueError:'custom' is not a valid CreatureType",
+    "slug": "conjured-water-elemental"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/conjurations/conjured-fey.yml",
+    "reason": "translator_error:ValueError:'custom' is not a valid CreatureType",
+    "slug": "conjured-fey"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/conjurations/dancing-light-medium.yml",
+    "reason": "translator_error:ValueError:'custom' is not a valid CreatureType",
+    "slug": "dancing-light-medium"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/conjurations/dancing-light-tiny.yml",
+    "reason": "translator_error:ValueError:'custom' is not a valid CreatureType",
+    "slug": "dancing-light-tiny"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/conjurations/duplicate.yml",
+    "reason": "translator_error:ValidationError:6 validation errors for AbilityScores\nstr\n  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than\ndex\n  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than\ncon\n  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than\nint\n  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than\nwis\n  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than\ncha\n  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than",
+    "slug": "duplicate"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/conjurations/faithful-hound.yml",
+    "reason": "translator_error:ValueError:'custom' is not a valid CreatureType",
+    "slug": "faithful-hound"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/conjurations/flaming-sphere.yml",
+    "reason": "translator_error:ValidationError:6 validation errors for AbilityScores\nstr\n  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than\ndex\n  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than\ncon\n  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than\nint\n  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than\nwis\n  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than\ncha\n  Input should be greater than 0 [type=greater_than, input_value=0, input_type=int]\n    For further information visit https://errors.pydantic.dev/2.13/v/greater_than",
+    "slug": "flaming-sphere"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/conjurations/floating-disk.yml",
+    "reason": "translator_error:ValueError:'custom' is not a valid CreatureType",
+    "slug": "floating-disk"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/conjurations/guardian-of-faith.yml",
+    "reason": "translator_error:ValueError:'custom' is not a valid CreatureType",
+    "slug": "guardian-of-faith"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/conjurations/illusory-creature.yml",
+    "reason": "translator_error:ValueError:'custom' is not a valid CreatureType",
+    "slug": "illusory-creature"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/conjurations/illusory-object.yml",
+    "reason": "translator_error:ValueError:'custom' is not a valid CreatureType",
+    "slug": "illusory-object"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/conjurations/illusory-phenomenon.yml",
+    "reason": "translator_error:ValueError:'custom' is not a valid CreatureType",
+    "slug": "illusory-phenomenon"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/conjurations/invisible-sensor.yml",
+    "reason": "translator_error:ValueError:'custom' is not a valid CreatureType",
+    "slug": "invisible-sensor"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/conjurations/light.yml",
+    "reason": "translator_error:ValueError:'custom' is not a valid CreatureType",
+    "slug": "light"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/conjurations/mage-hand.yml",
+    "reason": "translator_error:ValueError:'custom' is not a valid CreatureType",
+    "slug": "mage-hand"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/conjurations/secret-chest.yml",
+    "reason": "translator_error:ValueError:'custom' is not a valid CreatureType",
+    "slug": "secret-chest"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/conjurations/spiritual-weapon.yml",
+    "reason": "translator_error:ValueError:'custom' is not a valid CreatureType",
+    "slug": "spiritual-weapon"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/conjurations/unseen-servant.yml",
+    "reason": "translator_error:ValueError:'custom' is not a valid CreatureType",
+    "slug": "unseen-servant"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/magic-items/apparatus-of-the-crab.yml",
+    "reason": "wrong_doc_type:vehicle",
+    "slug": "apparatus-of-the-crab"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/magic-items/carpet-of-flying-3-by-5-ft.yml",
+    "reason": "translator_error:ValueError:'custom' is not a valid CreatureType",
+    "slug": "carpet-of-flying-3-by-5-ft"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/magic-items/carpet-of-flying-4-by-6-ft.yml",
+    "reason": "translator_error:ValueError:'custom' is not a valid CreatureType",
+    "slug": "carpet-of-flying-4-by-6-ft"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/magic-items/carpet-of-flying-5-by-7-ft.yml",
+    "reason": "translator_error:ValueError:'custom' is not a valid CreatureType",
+    "slug": "carpet-of-flying-5-by-7-ft"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/magic-items/carpet-of-flying-6-by-9-ft.yml",
+    "reason": "translator_error:ValueError:'custom' is not a valid CreatureType",
+    "slug": "carpet-of-flying-6-by-9-ft"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/magic-items/dancing-sword.yml",
+    "reason": "translator_error:ValueError:'custom' is not a valid CreatureType",
+    "slug": "dancing-sword"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/magic-items/floating-whip.yml",
+    "reason": "translator_error:ValueError:'custom' is not a valid CreatureType",
+    "slug": "floating-whip"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/magic-items/illusory-creature.yml",
+    "reason": "translator_error:ValueError:'custom' is not a valid CreatureType",
+    "slug": "illusory-creature"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/monstrosity/werewolf.yml",
+    "reason": "translator_error:ValueError:'(lycanthrope)' is not a valid CreatureType",
+    "slug": "werewolf"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-1/akra.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "akra"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-1/aoth.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "aoth"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-1/beiro.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "beiro"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-1/krusk.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "krusk"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-1/merric.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "merric"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-1/morthos.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "morthos"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-1/perrin.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "perrin"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-1/quillathe.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "quillathe"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-1/randal.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "randal"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-1/riswynn.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "riswynn"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-1/sefris.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "sefris"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-1/zanna.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "zanna"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-11/akra.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "akra"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-11/aoth.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "aoth"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-11/beiro.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "beiro"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-11/krusk.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "krusk"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-11/merric.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "merric"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-11/morthos.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "morthos"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-11/perrin.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "perrin"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-11/quillathe.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "quillathe"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-11/randal.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "randal"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-11/riswynn.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "riswynn"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-11/sefris.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "sefris"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-11/zanna.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "zanna"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-17/akra.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "akra"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-17/aoth.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "aoth"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-17/beiro.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "beiro"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-17/krusk.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "krusk"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-17/merric.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "merric"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-17/morthos.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "morthos"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-17/perrin.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "perrin"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-17/quillathe.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "quillathe"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-17/randal.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "randal"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-17/riswynn.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "riswynn"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-17/sefris.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "sefris"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-17/zanna.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "zanna"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-5/akra.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "akra"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-5/aoth.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "aoth"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-5/beiro.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "beiro"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-5/krusk.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "krusk"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-5/merric.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "merric"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-5/morthos.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "morthos"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-5/perrin.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "perrin"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-5/quillathe.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "quillathe"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-5/randal.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "randal"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-5/riswynn.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "riswynn"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-5/sefris.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "sefris"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/premades/level-5/zanna.yml",
+    "reason": "wrong_doc_type:character",
+    "slug": "zanna"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/summons/giant-insects/giant-centipede.yml",
+    "reason": "unanimous_non_srd",
+    "slug": "giant-centipede"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/summons/giant-insects/giant-spider.yml",
+    "reason": "unanimous_non_srd",
+    "slug": "giant-spider"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/summons/giant-insects/giant-wasp.yml",
+    "reason": "unanimous_non_srd",
+    "slug": "giant-wasp"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/vehicles/airship.yml",
+    "reason": "wrong_doc_type:vehicle",
+    "slug": "airship"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/vehicles/galley.yml",
+    "reason": "wrong_doc_type:vehicle",
+    "slug": "galley"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/vehicles/keelboat.yml",
+    "reason": "wrong_doc_type:vehicle",
+    "slug": "keelboat"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/vehicles/longship.yml",
+    "reason": "wrong_doc_type:vehicle",
+    "slug": "longship"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/vehicles/rowboat.yml",
+    "reason": "wrong_doc_type:vehicle",
+    "slug": "rowboat"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/vehicles/sailing-ship.yml",
+    "reason": "wrong_doc_type:vehicle",
+    "slug": "sailing-ship"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/actors24/vehicles/warship.yml",
+    "reason": "wrong_doc_type:vehicle",
+    "slug": "warship"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/spells24/1st-level/ice-knife.yml",
+    "reason": "unanimous_non_srd",
+    "slug": "ice-knife"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/spells24/supplemental-items/magical-berries.yml",
+    "reason": "wrong_doc_type:consumable",
+    "slug": "magical-berries"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/origins24/species/traits/dragonborn/breath-weapon.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "breath-weapon"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/origins24/species/traits/dragonborn/draconic-flight.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "draconic-flight"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/origins24/species/traits/dwarf/dwarven-resilience.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "dwarven-resilience"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/origins24/species/traits/dwarf/dwarven-toughness.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "dwarven-toughness"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/origins24/species/traits/dwarf/stonecunning.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "stonecunning"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/origins24/species/traits/elf/elven-lineage-drow.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "elven-lineage-drow"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/origins24/species/traits/elf/elven-lineage-high-elf.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "elven-lineage-high-elf"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/origins24/species/traits/elf/elven-lineage-wood-elf.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "elven-lineage-wood-elf"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/origins24/species/traits/elf/fey-ancestry.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "fey-ancestry"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/origins24/species/traits/elf/keen-senses.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "keen-senses"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/origins24/species/traits/elf/trance.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "trance"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/origins24/species/traits/gnome/gnomish-cunning.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "gnomish-cunning"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/origins24/species/traits/gnome/gnomish-lineage-forest.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "gnomish-lineage-forest"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/origins24/species/traits/gnome/gnomish-lineage-rock.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "gnomish-lineage-rock"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/origins24/species/traits/goliath/clouds-jaunt.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "clouds-jaunt"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/origins24/species/traits/goliath/fires-burn.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "fires-burn"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/origins24/species/traits/goliath/frosts-chill.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "frosts-chill"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/origins24/species/traits/goliath/giant-ancestry.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "giant-ancestry"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/origins24/species/traits/goliath/hills-tumble.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "hills-tumble"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/origins24/species/traits/goliath/large-form.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "large-form"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/origins24/species/traits/goliath/powerful-build.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "powerful-build"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/origins24/species/traits/goliath/stones-endurance.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "stones-endurance"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/origins24/species/traits/goliath/storms-thunder.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "storms-thunder"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/origins24/species/traits/halfling/brave.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "brave"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/origins24/species/traits/halfling/halfling-nimbleness.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "halfling-nimbleness"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/origins24/species/traits/halfling/luck.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "luck"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/origins24/species/traits/halfling/naturally-stealthy.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "naturally-stealthy"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/origins24/species/traits/human/resourceful.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "resourceful"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/origins24/species/traits/human/skillful.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "skillful"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/origins24/species/traits/human/versatile.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "versatile"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/origins24/species/traits/orc/adrenaline-rush.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "adrenaline-rush"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/origins24/species/traits/orc/relentless-endurance.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "relentless-endurance"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/origins24/species/traits/tiefling/fiendish-legacy-abyssal.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "fiendish-legacy-abyssal"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/origins24/species/traits/tiefling/fiendish-legacy-chthonic.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "fiendish-legacy-chthonic"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/origins24/species/traits/tiefling/fiendish-legacy-infernal.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "fiendish-legacy-infernal"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/origins24/species/traits/tiefling/otherworldly-presence.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "otherworldly-presence"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/class-features/brutal-strike.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "brutal-strike"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/class-features/danger-sense.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "danger-sense"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/class-features/epic-boon.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "epic-boon"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/class-features/extra-attack.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "extra-attack"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/class-features/fast-movement.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "fast-movement"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/class-features/feral-instinct.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "feral-instinct"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/class-features/improved-brutal-strike-2.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "improved-brutal-strike-2"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/class-features/improved-brutal-strike.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "improved-brutal-strike"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/class-features/indomitable-might.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "indomitable-might"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/class-features/instinctive-pounce.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "instinctive-pounce"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/class-features/persistent-rage.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "persistent-rage"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/class-features/primal-champion.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "primal-champion"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/class-features/primal-knowledge.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "primal-knowledge"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/class-features/rage.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "rage"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/class-features/reckless-attack.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "reckless-attack"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/class-features/relentless-rage.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "relentless-rage"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/class-features/unarmed-strike.yml",
+    "reason": "wrong_doc_type:weapon",
+    "slug": "unarmed-strike"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/class-features/unarmored-defense.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "unarmored-defense"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/class-features/weapon-mastery.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "weapon-mastery"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/path-of-the-berserker.yml",
+    "reason": "wrong_doc_type:subclass",
+    "slug": "path-of-the-berserker"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/subclass-features/path-of-the-berserker/frenzy.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "frenzy"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/subclass-features/path-of-the-berserker/intimidating-presence.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "intimidating-presence"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/subclass-features/path-of-the-berserker/mindless-rage.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "mindless-rage"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/subclass-features/path-of-the-berserker/retaliation.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "retaliation"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/bard/class-features/bardic-inspiration.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "bardic-inspiration"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/bard/class-features/countercharm.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "countercharm"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/bard/class-features/epic-boon.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "epic-boon"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/bard/class-features/expertise.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "expertise"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/bard/class-features/font-of-inspiration.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "font-of-inspiration"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/bard/class-features/jack-of-all-trades.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "jack-of-all-trades"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/bard/class-features/magical-secrets.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "magical-secrets"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/bard/class-features/spellcasting.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "spellcasting"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/bard/class-features/superior-inspiration.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "superior-inspiration"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/bard/class-features/words-of-creation.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "words-of-creation"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/bard/college-of-lore.yml",
+    "reason": "wrong_doc_type:subclass",
+    "slug": "college-of-lore"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/bard/subclass-features/lore/bonus-proficiencies.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "bonus-proficiencies"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/bard/subclass-features/lore/cutting-words.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "cutting-words"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/bard/subclass-features/lore/magical-discoveries.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "magical-discoveries"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/bard/subclass-features/lore/peerless-skill.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "peerless-skill"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/cleric/class-features/blessed-strikes-divine-strike.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "blessed-strikes-divine-strike"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/cleric/class-features/blessed-strikes-potent-spellcasting.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "blessed-strikes-potent-spellcasting"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/cleric/class-features/blessed-strikes.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "blessed-strikes"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/cleric/class-features/channel-divinity.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "channel-divinity"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/cleric/class-features/divine-intervention.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "divine-intervention"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/cleric/class-features/divine-order-protector.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "divine-order-protector"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/cleric/class-features/divine-order-thaumaturge.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "divine-order-thaumaturge"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/cleric/class-features/divine-order.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "divine-order"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/cleric/class-features/epic-boon.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "epic-boon"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/cleric/class-features/greater-divine-intervention.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "greater-divine-intervention"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/cleric/class-features/improved-blessed-strikes.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "improved-blessed-strikes"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/cleric/class-features/sear-undead.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "sear-undead"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/cleric/class-features/spellcasting.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "spellcasting"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/cleric/life-domain.yml",
+    "reason": "wrong_doc_type:subclass",
+    "slug": "life-domain"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/cleric/subclass-features/life-domain/blessed-healer.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "blessed-healer"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/cleric/subclass-features/life-domain/disciple-of-life.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "disciple-of-life"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/cleric/subclass-features/life-domain/life-domain-spells.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "life-domain-spells"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/cleric/subclass-features/life-domain/preserve-life.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "preserve-life"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/cleric/subclass-features/life-domain/supreme-healing.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "supreme-healing"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/circle-of-the-land.yml",
+    "reason": "wrong_doc_type:subclass",
+    "slug": "circle-of-the-land"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/class-features/archdruid.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "archdruid"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/class-features/beast-spells.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "beast-spells"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/class-features/druidic.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "druidic"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/class-features/elemental-fury-potent-spellcasting.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "elemental-fury-potent-spellcasting"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/class-features/elemental-fury-primal-strike.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "elemental-fury-primal-strike"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/class-features/elemental-fury.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "elemental-fury"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/class-features/epic-boon.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "epic-boon"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/class-features/improved-elemental-fury.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "improved-elemental-fury"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/class-features/primal-order-magician.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "primal-order-magician"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/class-features/primal-order-warden.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "primal-order-warden"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/class-features/primal-order.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "primal-order"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/class-features/spellcasting.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "spellcasting"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/class-features/wild-companion.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "wild-companion"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/class-features/wild-resurgence.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "wild-resurgence"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/class-features/wild-shape.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "wild-shape"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/subclass-features/circle-of-land/circle-of-the-land-spells.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "circle-of-the-land-spells"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/subclass-features/circle-of-land/lands-aid.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "lands-aid"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/subclass-features/circle-of-land/natural-recovery.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "natural-recovery"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/subclass-features/circle-of-land/natures-sanctuary.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "natures-sanctuary"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/subclass-features/circle-of-land/natures-ward.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "natures-ward"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/champion.yml",
+    "reason": "wrong_doc_type:subclass",
+    "slug": "champion"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/class-features/action-surge.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "action-surge"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/class-features/epic-boon.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "epic-boon"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/class-features/extra-attack.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "extra-attack"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/class-features/fighting-style.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "fighting-style"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/class-features/indomitable.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "indomitable"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/class-features/second-wind.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "second-wind"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/class-features/studied-attacks.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "studied-attacks"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/class-features/tactical-master.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "tactical-master"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/class-features/tactical-mind.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "tactical-mind"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/class-features/tactical-shift.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "tactical-shift"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/class-features/three-extra-attacks.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "three-extra-attacks"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/class-features/two-extra-attacks.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "two-extra-attacks"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/class-features/weapon-mastery.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "weapon-mastery"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/subclass-features/champion/additional-fighting-style.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "additional-fighting-style"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/subclass-features/champion/heroic-warrior.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "heroic-warrior"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/subclass-features/champion/improved-critical.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "improved-critical"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/subclass-features/champion/remarkable-athlete.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "remarkable-athlete"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/subclass-features/champion/superior-critical.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "superior-critical"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/subclass-features/champion/survivor.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "survivor"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/class-features/acrobatic-movement.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "acrobatic-movement"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/class-features/body-and-mind.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "body-and-mind"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/class-features/deflect-attacks.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "deflect-attacks"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/class-features/deflect-energy.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "deflect-energy"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/class-features/disciplined-survivor.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "disciplined-survivor"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/class-features/empowered-strikes.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "empowered-strikes"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/class-features/epic-boon.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "epic-boon"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/class-features/evasion.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "evasion"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/class-features/extra-attack.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "extra-attack"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/class-features/heightened-focus.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "heightened-focus"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/class-features/martial-arts.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "martial-arts"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/class-features/monks-focus.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "monks-focus"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/class-features/perfect-focus.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "perfect-focus"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/class-features/slow-fall.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "slow-fall"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/class-features/stunning-strike.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "stunning-strike"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/class-features/superior-defense.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "superior-defense"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/class-features/unarmed-strike.yml",
+    "reason": "wrong_doc_type:weapon",
+    "slug": "unarmed-strike"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/class-features/unarmored-defense.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "unarmored-defense"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/class-features/unarmored-movement.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "unarmored-movement"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/class-features/uncanny-metabolism.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "uncanny-metabolism"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/subclass-features/warrior-of-the-open-hand/fleet-step.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "fleet-step"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/subclass-features/warrior-of-the-open-hand/open-hand-technique.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "open-hand-technique"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/subclass-features/warrior-of-the-open-hand/quivering-palm.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "quivering-palm"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/subclass-features/warrior-of-the-open-hand/wholeness-of-body.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "wholeness-of-body"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/warrior-of-the-open-hand.yml",
+    "reason": "wrong_doc_type:subclass",
+    "slug": "warrior-of-the-open-hand"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/class-features/abjure-foes.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "abjure-foes"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/class-features/aura-expansion.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "aura-expansion"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/class-features/aura-of-courage.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "aura-of-courage"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/class-features/aura-of-protection.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "aura-of-protection"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/class-features/blessed-warrior.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "blessed-warrior"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/class-features/channel-divinity.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "channel-divinity"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/class-features/epic-boon.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "epic-boon"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/class-features/extra-attack.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "extra-attack"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/class-features/faithful-steed.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "faithful-steed"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/class-features/fighting-style.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "fighting-style"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/class-features/lay-on-hands.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "lay-on-hands"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/class-features/paladins-smite.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "paladins-smite"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/class-features/radiant-strikes.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "radiant-strikes"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/class-features/restoring-touch.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "restoring-touch"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/class-features/spellcasting.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "spellcasting"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/class-features/weapon-mastery.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "weapon-mastery"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/oath-of-devotion.yml",
+    "reason": "wrong_doc_type:subclass",
+    "slug": "oath-of-devotion"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/subclass-features/oath-of-devotion/aura-of-devotion.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "aura-of-devotion"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/subclass-features/oath-of-devotion/holy-nimbus.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "holy-nimbus"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/subclass-features/oath-of-devotion/oath-of-devotion-spells.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "oath-of-devotion-spells"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/subclass-features/oath-of-devotion/sacred-weapon.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "sacred-weapon"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/subclass-features/oath-of-devotion/smite-of-protection.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "smite-of-protection"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/class-features/deft-explorer.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "deft-explorer"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/class-features/druidic-warrior.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "druidic-warrior"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/class-features/epic-boon.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "epic-boon"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/class-features/expertise.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "expertise"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/class-features/extra-attack.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "extra-attack"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/class-features/favored-enemy.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "favored-enemy"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/class-features/feral-senses.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "feral-senses"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/class-features/fighting-style.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "fighting-style"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/class-features/foe-slayer.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "foe-slayer"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/class-features/natures-veil.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "natures-veil"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/class-features/precise-hunter.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "precise-hunter"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/class-features/relentless-hunter.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "relentless-hunter"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/class-features/roving.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "roving"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/class-features/spellcasting.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "spellcasting"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/class-features/tireless.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "tireless"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/class-features/weapon-mastery.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "weapon-mastery"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/hunter.yml",
+    "reason": "wrong_doc_type:subclass",
+    "slug": "hunter"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/subclass-features/hunter/defensive-tactics.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "defensive-tactics"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/subclass-features/hunter/hunters-lore.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "hunters-lore"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/subclass-features/hunter/hunters-prey.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "hunters-prey"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/subclass-features/hunter/superior-hunters-defense.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "superior-hunters-defense"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/subclass-features/hunter/superior-hunters-prey.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "superior-hunters-prey"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/class-features/cunning-action.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "cunning-action"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/class-features/cunning-strike.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "cunning-strike"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/class-features/devious-strikes.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "devious-strikes"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/class-features/elusive.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "elusive"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/class-features/epic-boon.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "epic-boon"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/class-features/evasion.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "evasion"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/class-features/expertise.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "expertise"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/class-features/improved-cunning-strike.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "improved-cunning-strike"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/class-features/reliable-talent.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "reliable-talent"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/class-features/slippery-mind.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "slippery-mind"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/class-features/sneak-attack.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "sneak-attack"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/class-features/steady-aim.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "steady-aim"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/class-features/stroke-of-luck.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "stroke-of-luck"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/class-features/thieves-cant.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "thieves-cant"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/class-features/uncanny-dodge.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "uncanny-dodge"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/class-features/weapon-mastery.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "weapon-mastery"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/subclass-features/thief/fast-hands.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "fast-hands"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/subclass-features/thief/second-story-work.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "second-story-work"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/subclass-features/thief/supreme-sneak.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "supreme-sneak"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/subclass-features/thief/thiefs-reflexes.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "thiefs-reflexes"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/subclass-features/thief/use-magic-device.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "use-magic-device"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/thief.yml",
+    "reason": "wrong_doc_type:subclass",
+    "slug": "thief"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/class-features/arcane-apotheosis.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "arcane-apotheosis"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/class-features/epic-boon.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "epic-boon"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/class-features/font-of-magic.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "font-of-magic"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/class-features/innate-sorcery.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "innate-sorcery"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/class-features/metamagic.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "metamagic"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/class-features/sorcerous-restoration.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "sorcerous-restoration"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/class-features/sorcery-incarnate.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "sorcery-incarnate"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/class-features/spellcasting.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "spellcasting"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/draconic-sorcery.yml",
+    "reason": "wrong_doc_type:subclass",
+    "slug": "draconic-sorcery"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/metamagic-options/careful-spell.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "careful-spell"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/metamagic-options/distant-spell.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "distant-spell"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/metamagic-options/empowered-spell.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "empowered-spell"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/metamagic-options/extended-spell.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "extended-spell"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/metamagic-options/heightened-spell.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "heightened-spell"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/metamagic-options/quickened-spell.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "quickened-spell"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/metamagic-options/seeking-spell.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "seeking-spell"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/metamagic-options/subtle-spell.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "subtle-spell"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/metamagic-options/transmuted-spell.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "transmuted-spell"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/metamagic-options/twinned-spell.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "twinned-spell"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/subclass-features/draconic-sorcery/draconic-resilience.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "draconic-resilience"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/subclass-features/draconic-sorcery/draconic-spells.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "draconic-spells"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/subclass-features/draconic-sorcery/dragon-companion.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "dragon-companion"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/subclass-features/draconic-sorcery/dragon-wings.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "dragon-wings"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/subclass-features/draconic-sorcery/elemental-affinity.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "elemental-affinity"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/class-features/contact-patron.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "contact-patron"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/class-features/eldritch-invocations.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "eldritch-invocations"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/class-features/eldritch-master.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "eldritch-master"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/class-features/epic-boon.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "epic-boon"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/class-features/magical-cunning.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "magical-cunning"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/class-features/mystic-arcanum.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "mystic-arcanum"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/class-features/pact-magic.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "pact-magic"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/agonizing-blast.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "agonizing-blast"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/armor-of-shadows.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "armor-of-shadows"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/ascendant-step.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "ascendant-step"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/book-of-shadows.yml",
+    "reason": "wrong_doc_type:weapon",
+    "slug": "book-of-shadows"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/devils-sight.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "devils-sight"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/devouring-blade.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "devouring-blade"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/eldritch-mind.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "eldritch-mind"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/eldritch-smite.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "eldritch-smite"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/eldritch-spear.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "eldritch-spear"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/fiendish-vigor.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "fiendish-vigor"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/gaze-of-two-minds.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "gaze-of-two-minds"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/gift-of-the-depths.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "gift-of-the-depths"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/gift-of-the-protectors.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "gift-of-the-protectors"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/investment-of-the-chain-master.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "investment-of-the-chain-master"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/lessons-of-the-first-ones.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "lessons-of-the-first-ones"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/lifedrinker.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "lifedrinker"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/mask-of-many-faces.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "mask-of-many-faces"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/master-of-myriad-forms.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "master-of-myriad-forms"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/misty-visions.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "misty-visions"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/one-with-shadows.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "one-with-shadows"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/otherworldly-leap.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "otherworldly-leap"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/pact-of-the-blade.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "pact-of-the-blade"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/pact-of-the-chain.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "pact-of-the-chain"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/pact-of-the-tome.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "pact-of-the-tome"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/repelling-blast.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "repelling-blast"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/thirsting-blade.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "thirsting-blade"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/visions-of-distant-realms.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "visions-of-distant-realms"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/whispers-of-the-grave.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "whispers-of-the-grave"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/witch-sight.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "witch-sight"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/fiend-patron.yml",
+    "reason": "wrong_doc_type:subclass",
+    "slug": "fiend-patron"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/subclass-features/fiend-patron/dark-ones-blessing.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "dark-ones-blessing"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/subclass-features/fiend-patron/dark-ones-own-luck.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "dark-ones-own-luck"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/subclass-features/fiend-patron/fiend-spells.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "fiend-spells"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/subclass-features/fiend-patron/fiendish-resilience.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "fiendish-resilience"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/subclass-features/fiend-patron/hurl-through-hell.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "hurl-through-hell"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/wizard/class-features/arcane-recovery.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "arcane-recovery"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/wizard/class-features/epic-boon.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "epic-boon"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/wizard/class-features/memorize-spell.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "memorize-spell"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/wizard/class-features/ritual-adept.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "ritual-adept"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/wizard/class-features/scholar.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "scholar"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/wizard/class-features/signature-spells.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "signature-spells"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/wizard/class-features/spell-mastery.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "spell-mastery"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/wizard/class-features/spellcasting.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "spellcasting"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/wizard/evoker.yml",
+    "reason": "wrong_doc_type:subclass",
+    "slug": "evoker"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/wizard/subclass-features/evoker/empowered-evocation.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "empowered-evocation"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/wizard/subclass-features/evoker/evocation-savant.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "evocation-savant"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/wizard/subclass-features/evoker/overchannel.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "overchannel"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/wizard/subclass-features/evoker/potent-cantrip.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "potent-cantrip"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/wizard/subclass-features/evoker/sculpt-spells.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "sculpt-spells"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/barbarian.yml",
+    "reason": "wrong_doc_type:class",
+    "slug": "barbarian"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/class-features/brutal-strike.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "brutal-strike"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/class-features/danger-sense.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "danger-sense"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/class-features/epic-boon.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "epic-boon"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/class-features/extra-attack.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "extra-attack"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/class-features/fast-movement.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "fast-movement"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/class-features/feral-instinct.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "feral-instinct"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/class-features/improved-brutal-strike-2.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "improved-brutal-strike-2"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/class-features/improved-brutal-strike.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "improved-brutal-strike"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/class-features/indomitable-might.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "indomitable-might"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/class-features/instinctive-pounce.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "instinctive-pounce"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/class-features/persistent-rage.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "persistent-rage"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/class-features/primal-champion.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "primal-champion"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/class-features/primal-knowledge.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "primal-knowledge"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/class-features/rage.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "rage"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/class-features/reckless-attack.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "reckless-attack"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/class-features/relentless-rage.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "relentless-rage"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/class-features/unarmed-strike.yml",
+    "reason": "wrong_doc_type:weapon",
+    "slug": "unarmed-strike"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/class-features/unarmored-defense.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "unarmored-defense"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/class-features/weapon-mastery.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "weapon-mastery"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/subclass-features/path-of-the-berserker/frenzy.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "frenzy"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/subclass-features/path-of-the-berserker/intimidating-presence.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "intimidating-presence"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/subclass-features/path-of-the-berserker/mindless-rage.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "mindless-rage"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/subclass-features/path-of-the-berserker/retaliation.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "retaliation"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/bard/bard.yml",
+    "reason": "wrong_doc_type:class",
+    "slug": "bard"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/bard/class-features/bardic-inspiration.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "bardic-inspiration"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/bard/class-features/countercharm.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "countercharm"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/bard/class-features/epic-boon.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "epic-boon"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/bard/class-features/expertise.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "expertise"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/bard/class-features/font-of-inspiration.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "font-of-inspiration"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/bard/class-features/jack-of-all-trades.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "jack-of-all-trades"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/bard/class-features/magical-secrets.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "magical-secrets"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/bard/class-features/spellcasting.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "spellcasting"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/bard/class-features/superior-inspiration.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "superior-inspiration"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/bard/class-features/words-of-creation.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "words-of-creation"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/bard/subclass-features/lore/bonus-proficiencies.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "bonus-proficiencies"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/bard/subclass-features/lore/cutting-words.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "cutting-words"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/bard/subclass-features/lore/magical-discoveries.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "magical-discoveries"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/bard/subclass-features/lore/peerless-skill.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "peerless-skill"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/cleric/class-features/blessed-strikes-divine-strike.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "blessed-strikes-divine-strike"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/cleric/class-features/blessed-strikes-potent-spellcasting.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "blessed-strikes-potent-spellcasting"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/cleric/class-features/blessed-strikes.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "blessed-strikes"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/cleric/class-features/channel-divinity.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "channel-divinity"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/cleric/class-features/divine-intervention.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "divine-intervention"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/cleric/class-features/divine-order-protector.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "divine-order-protector"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/cleric/class-features/divine-order-thaumaturge.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "divine-order-thaumaturge"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/cleric/class-features/divine-order.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "divine-order"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/cleric/class-features/epic-boon.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "epic-boon"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/cleric/class-features/greater-divine-intervention.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "greater-divine-intervention"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/cleric/class-features/improved-blessed-strikes.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "improved-blessed-strikes"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/cleric/class-features/sear-undead.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "sear-undead"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/cleric/class-features/spellcasting.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "spellcasting"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/cleric/cleric.yml",
+    "reason": "wrong_doc_type:class",
+    "slug": "cleric"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/cleric/subclass-features/life-domain/blessed-healer.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "blessed-healer"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/cleric/subclass-features/life-domain/disciple-of-life.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "disciple-of-life"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/cleric/subclass-features/life-domain/life-domain-spells.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "life-domain-spells"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/cleric/subclass-features/life-domain/preserve-life.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "preserve-life"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/cleric/subclass-features/life-domain/supreme-healing.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "supreme-healing"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/class-features/archdruid.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "archdruid"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/class-features/beast-spells.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "beast-spells"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/class-features/druidic.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "druidic"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/class-features/elemental-fury-potent-spellcasting.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "elemental-fury-potent-spellcasting"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/class-features/elemental-fury-primal-strike.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "elemental-fury-primal-strike"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/class-features/elemental-fury.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "elemental-fury"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/class-features/epic-boon.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "epic-boon"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/class-features/improved-elemental-fury.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "improved-elemental-fury"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/class-features/primal-order-magician.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "primal-order-magician"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/class-features/primal-order-warden.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "primal-order-warden"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/class-features/primal-order.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "primal-order"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/class-features/spellcasting.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "spellcasting"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/class-features/wild-companion.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "wild-companion"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/class-features/wild-resurgence.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "wild-resurgence"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/class-features/wild-shape.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "wild-shape"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/druid.yml",
+    "reason": "wrong_doc_type:class",
+    "slug": "druid"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/subclass-features/circle-of-land/circle-of-the-land-spells.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "circle-of-the-land-spells"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/subclass-features/circle-of-land/lands-aid.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "lands-aid"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/subclass-features/circle-of-land/natural-recovery.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "natural-recovery"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/subclass-features/circle-of-land/natures-sanctuary.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "natures-sanctuary"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/subclass-features/circle-of-land/natures-ward.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "natures-ward"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/class-features/action-surge.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "action-surge"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/class-features/epic-boon.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "epic-boon"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/class-features/extra-attack.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "extra-attack"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/class-features/fighting-style.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "fighting-style"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/class-features/indomitable.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "indomitable"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/class-features/second-wind.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "second-wind"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/class-features/studied-attacks.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "studied-attacks"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/class-features/tactical-master.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "tactical-master"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/class-features/tactical-mind.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "tactical-mind"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/class-features/tactical-shift.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "tactical-shift"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/class-features/three-extra-attacks.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "three-extra-attacks"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/class-features/two-extra-attacks.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "two-extra-attacks"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/class-features/weapon-mastery.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "weapon-mastery"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/fighter.yml",
+    "reason": "wrong_doc_type:class",
+    "slug": "fighter"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/subclass-features/champion/additional-fighting-style.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "additional-fighting-style"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/subclass-features/champion/heroic-warrior.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "heroic-warrior"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/subclass-features/champion/improved-critical.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "improved-critical"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/subclass-features/champion/remarkable-athlete.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "remarkable-athlete"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/subclass-features/champion/superior-critical.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "superior-critical"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/subclass-features/champion/survivor.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "survivor"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/class-features/acrobatic-movement.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "acrobatic-movement"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/class-features/body-and-mind.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "body-and-mind"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/class-features/deflect-attacks.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "deflect-attacks"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/class-features/deflect-energy.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "deflect-energy"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/class-features/disciplined-survivor.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "disciplined-survivor"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/class-features/empowered-strikes.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "empowered-strikes"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/class-features/epic-boon.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "epic-boon"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/class-features/evasion.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "evasion"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/class-features/extra-attack.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "extra-attack"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/class-features/heightened-focus.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "heightened-focus"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/class-features/martial-arts.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "martial-arts"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/class-features/monks-focus.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "monks-focus"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/class-features/perfect-focus.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "perfect-focus"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/class-features/slow-fall.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "slow-fall"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/class-features/stunning-strike.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "stunning-strike"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/class-features/superior-defense.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "superior-defense"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/class-features/unarmed-strike.yml",
+    "reason": "wrong_doc_type:weapon",
+    "slug": "unarmed-strike"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/class-features/unarmored-defense.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "unarmored-defense"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/class-features/unarmored-movement.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "unarmored-movement"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/class-features/uncanny-metabolism.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "uncanny-metabolism"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/monk.yml",
+    "reason": "wrong_doc_type:class",
+    "slug": "monk"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/subclass-features/warrior-of-the-open-hand/fleet-step.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "fleet-step"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/subclass-features/warrior-of-the-open-hand/open-hand-technique.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "open-hand-technique"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/subclass-features/warrior-of-the-open-hand/quivering-palm.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "quivering-palm"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/subclass-features/warrior-of-the-open-hand/wholeness-of-body.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "wholeness-of-body"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/class-features/abjure-foes.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "abjure-foes"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/class-features/aura-expansion.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "aura-expansion"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/class-features/aura-of-courage.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "aura-of-courage"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/class-features/aura-of-protection.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "aura-of-protection"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/class-features/blessed-warrior.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "blessed-warrior"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/class-features/channel-divinity.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "channel-divinity"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/class-features/epic-boon.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "epic-boon"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/class-features/extra-attack.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "extra-attack"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/class-features/faithful-steed.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "faithful-steed"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/class-features/fighting-style.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "fighting-style"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/class-features/lay-on-hands.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "lay-on-hands"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/class-features/paladins-smite.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "paladins-smite"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/class-features/radiant-strikes.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "radiant-strikes"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/class-features/restoring-touch.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "restoring-touch"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/class-features/spellcasting.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "spellcasting"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/class-features/weapon-mastery.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "weapon-mastery"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/paladin.yml",
+    "reason": "wrong_doc_type:class",
+    "slug": "paladin"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/subclass-features/oath-of-devotion/aura-of-devotion.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "aura-of-devotion"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/subclass-features/oath-of-devotion/holy-nimbus.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "holy-nimbus"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/subclass-features/oath-of-devotion/oath-of-devotion-spells.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "oath-of-devotion-spells"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/subclass-features/oath-of-devotion/sacred-weapon.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "sacred-weapon"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/subclass-features/oath-of-devotion/smite-of-protection.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "smite-of-protection"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/class-features/deft-explorer.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "deft-explorer"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/class-features/druidic-warrior.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "druidic-warrior"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/class-features/epic-boon.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "epic-boon"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/class-features/expertise.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "expertise"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/class-features/extra-attack.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "extra-attack"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/class-features/favored-enemy.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "favored-enemy"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/class-features/feral-senses.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "feral-senses"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/class-features/fighting-style.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "fighting-style"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/class-features/foe-slayer.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "foe-slayer"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/class-features/natures-veil.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "natures-veil"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/class-features/precise-hunter.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "precise-hunter"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/class-features/relentless-hunter.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "relentless-hunter"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/class-features/roving.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "roving"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/class-features/spellcasting.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "spellcasting"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/class-features/tireless.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "tireless"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/class-features/weapon-mastery.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "weapon-mastery"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/ranger.yml",
+    "reason": "wrong_doc_type:class",
+    "slug": "ranger"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/subclass-features/hunter/defensive-tactics.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "defensive-tactics"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/subclass-features/hunter/hunters-lore.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "hunters-lore"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/subclass-features/hunter/hunters-prey.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "hunters-prey"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/subclass-features/hunter/superior-hunters-defense.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "superior-hunters-defense"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/subclass-features/hunter/superior-hunters-prey.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "superior-hunters-prey"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/class-features/cunning-action.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "cunning-action"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/class-features/cunning-strike.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "cunning-strike"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/class-features/devious-strikes.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "devious-strikes"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/class-features/elusive.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "elusive"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/class-features/epic-boon.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "epic-boon"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/class-features/evasion.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "evasion"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/class-features/expertise.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "expertise"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/class-features/improved-cunning-strike.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "improved-cunning-strike"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/class-features/reliable-talent.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "reliable-talent"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/class-features/slippery-mind.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "slippery-mind"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/class-features/sneak-attack.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "sneak-attack"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/class-features/steady-aim.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "steady-aim"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/class-features/stroke-of-luck.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "stroke-of-luck"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/class-features/thieves-cant.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "thieves-cant"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/class-features/uncanny-dodge.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "uncanny-dodge"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/class-features/weapon-mastery.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "weapon-mastery"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/rogue.yml",
+    "reason": "wrong_doc_type:class",
+    "slug": "rogue"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/subclass-features/thief/fast-hands.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "fast-hands"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/subclass-features/thief/second-story-work.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "second-story-work"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/subclass-features/thief/supreme-sneak.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "supreme-sneak"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/subclass-features/thief/thiefs-reflexes.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "thiefs-reflexes"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/subclass-features/thief/use-magic-device.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "use-magic-device"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/class-features/arcane-apotheosis.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "arcane-apotheosis"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/class-features/epic-boon.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "epic-boon"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/class-features/font-of-magic.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "font-of-magic"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/class-features/innate-sorcery.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "innate-sorcery"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/class-features/metamagic.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "metamagic"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/class-features/sorcerous-restoration.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "sorcerous-restoration"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/class-features/sorcery-incarnate.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "sorcery-incarnate"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/class-features/spellcasting.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "spellcasting"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/metamagic-options/careful-spell.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "careful-spell"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/metamagic-options/distant-spell.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "distant-spell"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/metamagic-options/empowered-spell.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "empowered-spell"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/metamagic-options/extended-spell.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "extended-spell"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/metamagic-options/heightened-spell.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "heightened-spell"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/metamagic-options/quickened-spell.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "quickened-spell"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/metamagic-options/seeking-spell.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "seeking-spell"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/metamagic-options/subtle-spell.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "subtle-spell"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/metamagic-options/transmuted-spell.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "transmuted-spell"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/metamagic-options/twinned-spell.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "twinned-spell"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/sorcerer.yml",
+    "reason": "wrong_doc_type:class",
+    "slug": "sorcerer"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/subclass-features/draconic-sorcery/draconic-resilience.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "draconic-resilience"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/subclass-features/draconic-sorcery/draconic-spells.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "draconic-spells"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/subclass-features/draconic-sorcery/dragon-companion.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "dragon-companion"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/subclass-features/draconic-sorcery/dragon-wings.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "dragon-wings"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/subclass-features/draconic-sorcery/elemental-affinity.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "elemental-affinity"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/class-features/contact-patron.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "contact-patron"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/class-features/eldritch-invocations.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "eldritch-invocations"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/class-features/eldritch-master.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "eldritch-master"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/class-features/epic-boon.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "epic-boon"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/class-features/magical-cunning.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "magical-cunning"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/class-features/mystic-arcanum.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "mystic-arcanum"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/class-features/pact-magic.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "pact-magic"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/agonizing-blast.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "agonizing-blast"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/armor-of-shadows.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "armor-of-shadows"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/ascendant-step.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "ascendant-step"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/book-of-shadows.yml",
+    "reason": "wrong_doc_type:weapon",
+    "slug": "book-of-shadows"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/devils-sight.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "devils-sight"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/devouring-blade.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "devouring-blade"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/eldritch-mind.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "eldritch-mind"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/eldritch-smite.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "eldritch-smite"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/eldritch-spear.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "eldritch-spear"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/fiendish-vigor.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "fiendish-vigor"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/gaze-of-two-minds.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "gaze-of-two-minds"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/gift-of-the-depths.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "gift-of-the-depths"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/gift-of-the-protectors.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "gift-of-the-protectors"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/investment-of-the-chain-master.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "investment-of-the-chain-master"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/lessons-of-the-first-ones.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "lessons-of-the-first-ones"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/lifedrinker.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "lifedrinker"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/mask-of-many-faces.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "mask-of-many-faces"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/master-of-myriad-forms.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "master-of-myriad-forms"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/misty-visions.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "misty-visions"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/one-with-shadows.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "one-with-shadows"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/otherworldly-leap.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "otherworldly-leap"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/pact-of-the-blade.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "pact-of-the-blade"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/pact-of-the-chain.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "pact-of-the-chain"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/pact-of-the-tome.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "pact-of-the-tome"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/repelling-blast.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "repelling-blast"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/thirsting-blade.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "thirsting-blade"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/visions-of-distant-realms.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "visions-of-distant-realms"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/whispers-of-the-grave.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "whispers-of-the-grave"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/witch-sight.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "witch-sight"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/subclass-features/fiend-patron/dark-ones-blessing.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "dark-ones-blessing"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/subclass-features/fiend-patron/dark-ones-own-luck.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "dark-ones-own-luck"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/subclass-features/fiend-patron/fiend-spells.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "fiend-spells"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/subclass-features/fiend-patron/fiendish-resilience.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "fiendish-resilience"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/subclass-features/fiend-patron/hurl-through-hell.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "hurl-through-hell"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/warlock.yml",
+    "reason": "wrong_doc_type:class",
+    "slug": "warlock"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/wizard/class-features/arcane-recovery.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "arcane-recovery"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/wizard/class-features/epic-boon.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "epic-boon"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/wizard/class-features/memorize-spell.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "memorize-spell"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/wizard/class-features/ritual-adept.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "ritual-adept"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/wizard/class-features/scholar.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "scholar"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/wizard/class-features/signature-spells.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "signature-spells"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/wizard/class-features/spell-mastery.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "spell-mastery"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/wizard/class-features/spellcasting.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "spellcasting"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/wizard/subclass-features/evoker/empowered-evocation.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "empowered-evocation"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/wizard/subclass-features/evoker/evocation-savant.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "evocation-savant"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/wizard/subclass-features/evoker/overchannel.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "overchannel"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/wizard/subclass-features/evoker/potent-cantrip.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "potent-cantrip"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/wizard/subclass-features/evoker/sculpt-spells.yml",
+    "reason": "wrong_doc_type:feat",
+    "slug": "sculpt-spells"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/wizard/wizard.yml",
+    "reason": "wrong_doc_type:class",
+    "slug": "wizard"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/barbarian.yml",
+    "reason": "wrong_doc_type:class",
+    "slug": "barbarian"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/class-features/unarmed-strike.yml",
+    "reason": "wrong_doc_type:weapon",
+    "slug": "unarmed-strike"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/barbarian/path-of-the-berserker.yml",
+    "reason": "wrong_doc_type:subclass",
+    "slug": "path-of-the-berserker"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/bard/bard.yml",
+    "reason": "wrong_doc_type:class",
+    "slug": "bard"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/bard/college-of-lore.yml",
+    "reason": "wrong_doc_type:subclass",
+    "slug": "college-of-lore"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/cleric/cleric.yml",
+    "reason": "wrong_doc_type:class",
+    "slug": "cleric"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/cleric/life-domain.yml",
+    "reason": "wrong_doc_type:subclass",
+    "slug": "life-domain"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/circle-of-the-land.yml",
+    "reason": "wrong_doc_type:subclass",
+    "slug": "circle-of-the-land"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/druid/druid.yml",
+    "reason": "wrong_doc_type:class",
+    "slug": "druid"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/champion.yml",
+    "reason": "wrong_doc_type:subclass",
+    "slug": "champion"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/fighter/fighter.yml",
+    "reason": "wrong_doc_type:class",
+    "slug": "fighter"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/class-features/unarmed-strike.yml",
+    "reason": "wrong_doc_type:weapon",
+    "slug": "unarmed-strike"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/monk.yml",
+    "reason": "wrong_doc_type:class",
+    "slug": "monk"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/monk/warrior-of-the-open-hand.yml",
+    "reason": "wrong_doc_type:subclass",
+    "slug": "warrior-of-the-open-hand"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/oath-of-devotion.yml",
+    "reason": "wrong_doc_type:subclass",
+    "slug": "oath-of-devotion"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/paladin/paladin.yml",
+    "reason": "wrong_doc_type:class",
+    "slug": "paladin"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/hunter.yml",
+    "reason": "wrong_doc_type:subclass",
+    "slug": "hunter"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/ranger/ranger.yml",
+    "reason": "wrong_doc_type:class",
+    "slug": "ranger"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/rogue.yml",
+    "reason": "wrong_doc_type:class",
+    "slug": "rogue"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/rogue/thief.yml",
+    "reason": "wrong_doc_type:subclass",
+    "slug": "thief"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/draconic-sorcery.yml",
+    "reason": "wrong_doc_type:subclass",
+    "slug": "draconic-sorcery"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/sorcerer/sorcerer.yml",
+    "reason": "wrong_doc_type:class",
+    "slug": "sorcerer"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/eldritch-invocation-options/book-of-shadows.yml",
+    "reason": "wrong_doc_type:weapon",
+    "slug": "book-of-shadows"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/fiend-patron.yml",
+    "reason": "wrong_doc_type:subclass",
+    "slug": "fiend-patron"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/warlock/warlock.yml",
+    "reason": "wrong_doc_type:class",
+    "slug": "warlock"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/wizard/evoker.yml",
+    "reason": "wrong_doc_type:subclass",
+    "slug": "evoker"
+  },
+  {
+    "path": "raw_sources/foundry/packs/_source/classes24/wizard/wizard.yml",
+    "reason": "wrong_doc_type:class",
+    "slug": "wizard"
+  }
+]

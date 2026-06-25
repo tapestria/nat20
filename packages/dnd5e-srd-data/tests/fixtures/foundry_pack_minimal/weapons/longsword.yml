@@ -1,0 +1,26 @@
+_id: longsword
+name: Longsword
+type: weapon
+system:
+  description:
+    value: "A versatile slashing weapon."
+  weight: 3
+  price:
+    value: 15
+    denomination: "gp"
+  rarity: "common"
+  damage:
+    parts:
+      - ["1d8", "slashing"]
+    versatile: "1d10"
+  range:
+    value: null
+    long: null
+    units: ""
+  properties:
+    - ver
+  weaponType: "martialM"
+  source:
+    custom: "SRD 5.1"
+flags:
+  srd: true

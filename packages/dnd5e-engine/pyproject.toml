@@ -1,0 +1,76 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "dnd5e-engine"
+version = "0.1.0"
+description = "Pure-Python D&D 5e SRD rules engine — combat, checks, effects. Host-agnostic, zero I/O."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { file = "LICENSE" }
+authors = [{ name = "Tapestria contributors" }]
+keywords = ["dnd", "5e", "srd", "ttrpg", "rules-engine"]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Typing :: Typed",
+]
+dependencies = [
+    "pydantic>=2.10.0",
+    "d20>=1.1.2",
+    # lib_loader imports BundledAssetLoader at runtime; the typed-Activity
+    # resolver reads the canonical corpus through it. The data lib's >=3.12
+    # floor is why this package now also requires >=3.12 (see requires-python).
+    "dnd5e-srd-data>=0.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "ruff>=0.9.0",
+    "mypy>=1.13.0",
+]
+
+[tool.uv.sources]
+dnd5e-srd-data = { workspace = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/dnd5e_engine"]
+
+[tool.mypy]
+python_version = "3.12"
+plugins = ["pydantic.mypy"]
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+warn_unused_ignores = true
+
+# d20 ships no py.typed marker / stubs.
+[[tool.mypy.overrides]]
+module = ["d20"]
+ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E", "F", "I", "N", "UP", "B", "SIM", "T20", "BLE",
+    "ASYNC", "PT", "RUF", "TRY",
+]
+ignore = [
+    "TRY003",
+    "RUF001", "RUF002", "RUF003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["E501", "F841", "PT006", "PT011"]
+# Smoke scripts print human-readable progress/result lines (T201) by design.
+"scripts/**/*.py" = ["T201"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

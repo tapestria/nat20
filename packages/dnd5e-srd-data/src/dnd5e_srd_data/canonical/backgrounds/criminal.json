@@ -1,0 +1,95 @@
+{
+  "ability_options": {
+    "cap": 2,
+    "options": [
+      "con",
+      "dex",
+      "int"
+    ],
+    "points": 3
+  },
+  "description": "Ability Scores: Dexterity, Constitution, Intelligence\n\nFeat: Alert\n\nSkill Proficiencies: Sleight of Hand and Stealth\n\nTool Proficiency: Thieves' Tools\n\nEquipment: Choose A or B: (A) 2 Daggers, Thieves' Tools, Crowbar, 2 Pouches, Traveler's Clothes, 16\u00a0GP; or (B) 50 GP\n\n@Embed[Compendium.dnd5e.content24.JournalEntry.phbAppendixBackg.JournalEntryPage.phbbgCriminal000 inline classes=\"free-rules-embed\"]",
+  "entry_kind": "background",
+  "languages": [
+    "common"
+  ],
+  "name": "Criminal",
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/origins24/backgrounds/criminal.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "skill_proficiencies": [
+    "slt",
+    "ste"
+  ],
+  "slug": "criminal",
+  "starting_equipment": [
+    {
+      "_id": "FIqxCvfdb4YPaDyl",
+      "group": "",
+      "requiresProficiency": false,
+      "sort": 100000,
+      "type": "AND"
+    },
+    {
+      "_id": "7B991PQwtEPst2lm",
+      "count": 2,
+      "group": "FIqxCvfdb4YPaDyl",
+      "key": "Compendium.dnd5e.equipment24.Item.phbwepDagger0000",
+      "requiresProficiency": false,
+      "sort": 200000,
+      "type": "linked"
+    },
+    {
+      "_id": "AlpgDfVKgcYd5rLC",
+      "count": null,
+      "group": "FIqxCvfdb4YPaDyl",
+      "key": "Compendium.dnd5e.equipment24.Item.phbtulThievesToo",
+      "requiresProficiency": false,
+      "sort": 300000,
+      "type": "linked"
+    },
+    {
+      "_id": "8PuRM4pC5hnCsIxs",
+      "count": null,
+      "group": "FIqxCvfdb4YPaDyl",
+      "key": "Compendium.dnd5e.equipment24.Item.phbagCrowbar0000",
+      "requiresProficiency": false,
+      "sort": 400000,
+      "type": "linked"
+    },
+    {
+      "_id": "mp0feeLVQbHaU276",
+      "count": 2,
+      "group": "FIqxCvfdb4YPaDyl",
+      "key": "Compendium.dnd5e.equipment24.Item.phbagPouch000000",
+      "requiresProficiency": false,
+      "sort": 500000,
+      "type": "linked"
+    },
+    {
+      "_id": "2txtXcXiPUM87Yb7",
+      "count": null,
+      "group": "FIqxCvfdb4YPaDyl",
+      "key": "Compendium.dnd5e.equipment24.Item.phbagClothesTrav",
+      "requiresProficiency": false,
+      "sort": 600000,
+      "type": "linked"
+    }
+  ],
+  "starting_feat_slug": "phbftAlert000000",
+  "tool_proficiencies": [
+    "thief"
+  ],
+  "wealth": "50"
+}

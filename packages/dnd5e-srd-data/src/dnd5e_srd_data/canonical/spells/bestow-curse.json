@@ -1,0 +1,716 @@
+{
+  "activities": [
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "action",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": []
+      },
+      "damage": {
+        "on_save": "half",
+        "parts": []
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [
+        {
+          "id": "qLBTtRHOpGfv4IAb",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "m5aRx9iXnJi2WWPU",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "eA7PgIuucNGqZ1AS",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "pG5HdDpW8VELR1O3",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "BXWN6AGeNbxrRBUZ",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "2Xjz5PKhyDferpZ7",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        }
+      ],
+      "flags": {},
+      "id": "PYFPZ4aLWjKJ1tLZ",
+      "img": "",
+      "kind": "save",
+      "name": "Curse Ability",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "self",
+        "value": null
+      },
+      "save": {
+        "ability": [
+          "wis"
+        ],
+        "dc": {
+          "calculation": "spellcasting",
+          "formula": ""
+        }
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "1",
+          "special": "",
+          "type": "creature"
+        },
+        "override": false,
+        "prompt": true,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    },
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "action",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": []
+      },
+      "damage": {
+        "on_save": "half",
+        "parts": []
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [
+        {
+          "id": "u7Yc7mxHYPDvipS1",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        }
+      ],
+      "flags": {},
+      "id": "azVyTkiGPeIqMzxu",
+      "img": "",
+      "kind": "save",
+      "name": "Curse Attacks",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "self",
+        "value": null
+      },
+      "save": {
+        "ability": [
+          "wis"
+        ],
+        "dc": {
+          "calculation": "spellcasting",
+          "formula": ""
+        }
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "1",
+          "special": "",
+          "type": "creature"
+        },
+        "override": false,
+        "prompt": true,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    },
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "action",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": []
+      },
+      "damage": {
+        "on_save": "half",
+        "parts": []
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [
+        {
+          "id": "T3x6XvQbSkg6kW6u",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        }
+      ],
+      "flags": {},
+      "id": "nWXSXy8ybiVolvEP",
+      "img": "",
+      "kind": "save",
+      "name": "Curse Actions",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "self",
+        "value": null
+      },
+      "save": {
+        "ability": [
+          "wis"
+        ],
+        "dc": {
+          "calculation": "spellcasting",
+          "formula": ""
+        }
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "1",
+          "special": "",
+          "type": "creature"
+        },
+        "override": false,
+        "prompt": true,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    },
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "action",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": []
+      },
+      "damage": {
+        "on_save": "none",
+        "parts": [
+          {
+            "bonus": "",
+            "custom": {
+              "enabled": false,
+              "formula": ""
+            },
+            "denomination": 8,
+            "number": 1,
+            "scaling": {
+              "formula": "",
+              "mode": "",
+              "number": 1
+            },
+            "types": [
+              "necrotic"
+            ]
+          }
+        ]
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [
+        {
+          "id": "DRsQi8p3Zvhte2G0",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        }
+      ],
+      "flags": {},
+      "id": "fkQUKM8bxHgAUcg5",
+      "img": "",
+      "kind": "save",
+      "name": "Curse Resilience",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "self",
+        "value": null
+      },
+      "save": {
+        "ability": [
+          "wis"
+        ],
+        "dc": {
+          "calculation": "spellcasting",
+          "formula": ""
+        }
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "1",
+          "special": "",
+          "type": "creature"
+        },
+        "override": false,
+        "prompt": true,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    }
+  ],
+  "casting_time": {
+    "condition": "",
+    "unit": "action",
+    "value": 1
+  },
+  "components": [
+    "S",
+    "V"
+  ],
+  "concentration": true,
+  "description": "You touch a creature, which must succeed on a Wisdom saving throw or become cursed for the duration. Until the curse ends, the target suffers one of the following effects of your choice:\n\nChoose one ability. The target has Disadvantage on ability checks and saving throws made with that ability (Curse Ability activity).\n\nThe target has Disadvantage on attack rolls against you (Curse Attacks activity).\n\nIn combat, the target must succeed on a Wisdom saving throw at the start of each of its turns or be forced to take the &amp;Reference[Dodge] action on that turn (Curse Actions activity).\n\nIf you deal damage to the target with an attack roll or a spell, the target takes an extra 1d8 Necrotic damage (Curse Resilience activity).\n\nUsing a Higher-Level Spell Slot. If you cast this spell using a level 4 spell slot, you can maintain Concentration on it for up to 10 minutes. If you use a level 5+ spell slot, the spell doesn't require Concentration, and the duration becomes 8 hours (level 5\u20136 slot) or 24 hours (level 7\u20138 slot). If you use a level 9 spell slot, the spell lasts until dispelled.",
+  "duration": {
+    "units": "minute",
+    "value": 1
+  },
+  "entry_kind": "spell",
+  "level": 3,
+  "materials": {
+    "consumed": false,
+    "cost": 0,
+    "supply": 0,
+    "value": ""
+  },
+  "name": "Bestow Curse",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.abilities.cha.check.roll.mode",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        },
+        {
+          "key": "system.abilities.cha.save.roll.mode",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        }
+      ],
+      "description": "<p>The target has Disadvantage on ability checks and saving throws made with the chosen ability.</p>",
+      "disabled": false,
+      "duration": {
+        "rounds": 1,
+        "seconds": 60
+      },
+      "id": "2Xjz5PKhyDferpZ7",
+      "name": "Cursed Charisma",
+      "statuses": [
+        "cursed"
+      ],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.abilities.con.check.roll.mode",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        },
+        {
+          "key": "system.abilities.con.save.roll.mode",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        }
+      ],
+      "description": "<p>The target has Disadvantage on ability checks and saving throws made with the chosen ability.</p>",
+      "disabled": false,
+      "duration": {
+        "rounds": 1,
+        "seconds": 60
+      },
+      "id": "BXWN6AGeNbxrRBUZ",
+      "name": "Cursed Constitution",
+      "statuses": [
+        "cursed"
+      ],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.abilities.dex.check.roll.mode",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        },
+        {
+          "key": "system.abilities.dex.save.roll.mode",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        }
+      ],
+      "description": "<p>The target has Disadvantage on ability checks and saving throws made with the chosen ability.</p>",
+      "disabled": false,
+      "duration": {
+        "rounds": 1,
+        "seconds": 60
+      },
+      "id": "pG5HdDpW8VELR1O3",
+      "name": "Cursed Dexterity",
+      "statuses": [
+        "cursed"
+      ],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.abilities.int.check.roll.mode",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        },
+        {
+          "key": "system.abilities.int.save.roll.mode",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        }
+      ],
+      "description": "<p>The target has Disadvantage on ability checks and saving throws made with the chosen ability.</p>",
+      "disabled": false,
+      "duration": {
+        "rounds": 1,
+        "seconds": 60
+      },
+      "id": "eA7PgIuucNGqZ1AS",
+      "name": "Cursed Intelligence",
+      "statuses": [
+        "cursed"
+      ],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.abilities.str.check.roll.mode",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        },
+        {
+          "key": "system.abilities.str.save.roll.mode",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        }
+      ],
+      "description": "<p>The target has Disadvantage on ability checks and saving throws made with the chosen ability.</p>",
+      "disabled": false,
+      "duration": {
+        "seconds": 60
+      },
+      "id": "m5aRx9iXnJi2WWPU",
+      "name": "Cursed Strength",
+      "statuses": [
+        "cursed"
+      ],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.abilities.wis.save.roll.mode",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        },
+        {
+          "key": "system.abilities.wis.save.roll.mode",
+          "mode": 2,
+          "priority": null,
+          "value": "-1"
+        }
+      ],
+      "description": "<p>The target has Disadvantage on ability checks and saving throws made with the chosen ability.</p>",
+      "disabled": false,
+      "duration": {
+        "rounds": 1,
+        "seconds": 60
+      },
+      "id": "qLBTtRHOpGfv4IAb",
+      "name": "Cursed Wisdom",
+      "statuses": [
+        "cursed"
+      ],
+      "transfer": false
+    },
+    {
+      "changes": [],
+      "description": "<p>The target has Disadvantage on attack rolls against you.</p>",
+      "disabled": false,
+      "duration": {
+        "seconds": 60
+      },
+      "id": "u7Yc7mxHYPDvipS1",
+      "name": "Cursed Attacks",
+      "statuses": [
+        "cursed"
+      ],
+      "transfer": false
+    },
+    {
+      "changes": [],
+      "description": "<p>In combat, the target must succeed on a [[/save ability=wis dc=@attributes.spell.dc format=long]] at the start of each of its turns or be forced to take the &amp;Reference[Dodge] action on that turn.</p>",
+      "disabled": false,
+      "duration": {
+        "seconds": 60
+      },
+      "id": "T3x6XvQbSkg6kW6u",
+      "name": "Cursed Actions",
+      "statuses": [
+        "cursed"
+      ],
+      "transfer": false
+    },
+    {
+      "changes": [],
+      "description": "<p>If you deal damage to the target with an attack roll or a spell, the target takes an extra [[/damage 1d8 type=necrotic]] damage.</p>",
+      "disabled": false,
+      "duration": {
+        "seconds": 60
+      },
+      "id": "DRsQi8p3Zvhte2G0",
+      "name": "Cursed Resilience",
+      "statuses": [
+        "cursed"
+      ],
+      "transfer": false
+    }
+  ],
+  "preparation": {
+    "mode": "prepared",
+    "prepared": false
+  },
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/spells24/3rd-level/bestow-curse.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "range": {
+    "special": null,
+    "units": "touch",
+    "value": null
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "ritual": false,
+  "school": "nec",
+  "slug": "bestow-curse"
+}

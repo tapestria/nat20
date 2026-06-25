@@ -1,0 +1,759 @@
+{
+  "advancement": [
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbbrdBardicInsp"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbbrdSpellcasti"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "e0FUZL9SxuBimLv3",
+      "level": 1,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbbrdExpertise0"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbbrdJackOfAllT"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "eHieMgibvVLqVjY8",
+      "level": 2,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbbrdFontOfInsp"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "L3wEIpgyQxfW3Cbu",
+      "level": 5,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "cap": 2,
+        "fixed": {
+          "cha": 0,
+          "con": 0,
+          "dex": 0,
+          "int": 0,
+          "str": 0,
+          "wis": 0
+        },
+        "locked": [],
+        "points": 2,
+        "recommendation": null
+      },
+      "hint": "",
+      "id": "ZxvWh6VVEyxNXBkx",
+      "level": 4,
+      "title": "",
+      "type": "AbilityScoreImprovement",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbbrdCountercha"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "hqCCMUsYBCaBxjd1",
+      "level": 7,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "cap": 2,
+        "fixed": {
+          "cha": 0,
+          "con": 0,
+          "dex": 0,
+          "int": 0,
+          "str": 0,
+          "wis": 0
+        },
+        "locked": [],
+        "points": 2,
+        "recommendation": null
+      },
+      "hint": "",
+      "id": "B8ZYPClljGmIdxjl",
+      "level": 8,
+      "title": "",
+      "type": "AbilityScoreImprovement",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbbrdMagicalSec"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "GXUFneKrn7jWh8FI",
+      "level": 10,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "cap": 2,
+        "fixed": {
+          "cha": 0,
+          "con": 0,
+          "dex": 0,
+          "int": 0,
+          "str": 0,
+          "wis": 0
+        },
+        "locked": [],
+        "points": 2,
+        "recommendation": null
+      },
+      "hint": "",
+      "id": "7R1ktICniomiGkiZ",
+      "level": 12,
+      "title": "",
+      "type": "AbilityScoreImprovement",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "cap": 2,
+        "fixed": {
+          "cha": 0,
+          "con": 0,
+          "dex": 0,
+          "int": 0,
+          "str": 0,
+          "wis": 0
+        },
+        "locked": [],
+        "points": 2,
+        "recommendation": null
+      },
+      "hint": "",
+      "id": "qs1yWeyecJMaX17E",
+      "level": 16,
+      "title": "",
+      "type": "AbilityScoreImprovement",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbbrdSuperiorIn"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "9n9yDwqtG7foinNB",
+      "level": 18,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbbrdWordsOfCre"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "G2PRnWVCjP5c3Cm7",
+      "level": 20,
+      "title": "Class Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "distance": {
+          "units": ""
+        },
+        "identifier": "max-prepared",
+        "scale": {
+          "1": {
+            "value": 4
+          },
+          "10": {
+            "value": 15
+          },
+          "11": {
+            "value": 16
+          },
+          "13": {
+            "value": 17
+          },
+          "15": {
+            "value": 18
+          },
+          "17": {
+            "value": 19
+          },
+          "18": {
+            "value": 20
+          },
+          "19": {
+            "value": 21
+          },
+          "2": {
+            "value": 5
+          },
+          "20": {
+            "value": 22
+          },
+          "3": {
+            "value": 6
+          },
+          "4": {
+            "value": 7
+          },
+          "5": {
+            "value": 9
+          },
+          "6": {
+            "value": 10
+          },
+          "7": {
+            "value": 11
+          },
+          "8": {
+            "value": 12
+          },
+          "9": {
+            "value": 14
+          }
+        },
+        "type": "number"
+      },
+      "hint": "",
+      "id": "A5T1rsj28aK7qQdm",
+      "level": 0,
+      "title": "Max Prepared Spells",
+      "type": "ScaleValue",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "distance": {
+          "units": ""
+        },
+        "identifier": "",
+        "scale": {
+          "1": {
+            "value": 2
+          },
+          "10": {
+            "value": 4
+          },
+          "4": {
+            "value": 3
+          }
+        },
+        "type": "number"
+      },
+      "hint": "",
+      "id": "jhPf4YuOvE1POUaX",
+      "level": 0,
+      "title": "Cantrips Known",
+      "type": "ScaleValue",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "distance": {
+          "units": ""
+        },
+        "identifier": "inspiration",
+        "scale": {
+          "1": {
+            "faces": 6,
+            "modifiers": [],
+            "number": null
+          },
+          "10": {
+            "faces": 10,
+            "modifiers": [],
+            "number": null
+          },
+          "15": {
+            "faces": 12,
+            "modifiers": [],
+            "number": null
+          },
+          "5": {
+            "faces": 8,
+            "modifiers": [],
+            "number": null
+          }
+        },
+        "type": "dice"
+      },
+      "hint": "",
+      "id": "afzqphkin9YZOIBf",
+      "level": 0,
+      "title": "Inspiration Die",
+      "type": "ScaleValue",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [
+          {
+            "count": 2,
+            "pool": [
+              "skills:*"
+            ]
+          }
+        ],
+        "grants": [],
+        "mode": "expertise"
+      },
+      "hint": "",
+      "id": "zHtnbRgLICltyy8V",
+      "level": 2,
+      "title": "Expertise",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [
+          {
+            "count": 2,
+            "pool": [
+              "skills:*"
+            ]
+          }
+        ],
+        "grants": [],
+        "mode": "expertise"
+      },
+      "hint": "",
+      "id": "e8hDmktYGVFiT6M0",
+      "level": 9,
+      "title": "",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "",
+      "configuration": {},
+      "hint": "",
+      "id": "U0u27jvpuWGcbhV5",
+      "level": 0,
+      "title": "",
+      "type": "HitPoints",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplPowerWordH"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplPowerWordK"
+          }
+        ],
+        "optional": false,
+        "spell": {
+          "ability": [],
+          "method": "spell",
+          "prepared": 2,
+          "uses": {
+            "max": "",
+            "per": "",
+            "requireSlot": false
+          }
+        }
+      },
+      "hint": "",
+      "id": "tOHyKfroR3MU9nUq",
+      "level": 20,
+      "title": "Words of Creation",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {},
+      "hint": "",
+      "id": "pqZADBERYfrNsOMx",
+      "level": 3,
+      "title": "",
+      "type": "Subclass",
+      "value": {
+        "document": null,
+        "uuid": null
+      }
+    },
+    {
+      "class_restriction": "primary",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [],
+        "grants": [
+          "saves:dex",
+          "saves:cha"
+        ],
+        "mode": "default"
+      },
+      "hint": "",
+      "id": "fc1RwzQMT6qSaH5v",
+      "level": 1,
+      "title": "Saving Throw Proficiencies",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "primary",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [
+          {
+            "count": 3,
+            "pool": [
+              "skills:*"
+            ]
+          }
+        ],
+        "grants": [],
+        "mode": "default"
+      },
+      "hint": "",
+      "id": "NGtmmsYBnIAGKUSn",
+      "level": 1,
+      "title": "Skill Proficiencies",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [],
+        "grants": [
+          "weapon:sim"
+        ],
+        "mode": "default"
+      },
+      "hint": "",
+      "id": "iFuxb8gJBCVtfegb",
+      "level": 1,
+      "title": "Weapon Proficiencies",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "primary",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [
+          {
+            "count": 3,
+            "pool": [
+              "tool:music:*"
+            ]
+          }
+        ],
+        "grants": [],
+        "mode": "default"
+      },
+      "hint": "",
+      "id": "2ew4StamPWWfQYsf",
+      "level": 1,
+      "title": "Tool Proficiencies",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [],
+        "grants": [
+          "armor:lgt"
+        ],
+        "mode": "default"
+      },
+      "hint": "",
+      "id": "5Dar82bZhYxSpxG7",
+      "level": 1,
+      "title": "Armor Training",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "secondary",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [
+          {
+            "count": 1,
+            "pool": [
+              "skills:*"
+            ]
+          }
+        ],
+        "grants": [],
+        "mode": "default"
+      },
+      "hint": "",
+      "id": "kPeKGxUo8GJygCJG",
+      "level": 1,
+      "title": "Skill Proficiencies",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "secondary",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [
+          {
+            "count": 1,
+            "pool": [
+              "tool:music:*"
+            ]
+          }
+        ],
+        "grants": [],
+        "mode": "default"
+      },
+      "hint": "",
+      "id": "n0aMUQr79P5Pkjpf",
+      "level": 1,
+      "title": "Tool Proficiencies",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "cap": 2,
+        "fixed": {
+          "cha": 0,
+          "con": 0,
+          "dex": 0,
+          "int": 0,
+          "str": 0,
+          "wis": 0
+        },
+        "locked": [],
+        "max": null,
+        "points": 2,
+        "recommendation": "Compendium.dnd5e.feats24.Item.phbBoonofSpellRe"
+      },
+      "hint": "",
+      "id": "TW8tZRiPnGbJ0hCU",
+      "level": 19,
+      "title": "",
+      "type": "AbilityScoreImprovement",
+      "value": {}
+    }
+  ],
+  "description": "Core Bard Traits\n\nPrimary Ability\n\nCharisma\n\nHit Point Die\n\nD8 per Bard level\n\nSaving Throw Proficiencies\n\nDexterity and Charisma\n\nSkill Proficiencies\n\nChoose any 3 skills\n\nWeapon Proficiencies\n\nSimple weapons\n\nTool Proficiencies\n\nChoose 3 Musical Instruments\n\nArmor Training\n\nLight armor\n\nStarting Equipment\n\nChoose A or B: (A) Leather Armor, 2 Daggers, Musical Instrument of your choice, Entertainer's Pack, and [[/award 19gp]]; or (B) [[/award 90GP]]\n\n@Embed[Compendium.dnd5e.content24.JournalEntry.phbAppendixClass.JournalEntryPage.phbbrdBard000000 inline classes=\"free-rules-embed\"]\n\nBecoming a Bard \u2026\n\nAs a Level 1 Character\n\nGain all the traits in the Core Bard Traits table.\n\nGain the Bard's level 1 features, which are listed in the Bard Features table.\n\nAs a Multiclass Character\n\nGain the following traits from the Core Bard Traits table: Hit Point Die, proficiency in one skill of your choice, proficiency with one Musical Instrument of your choice, and training with Light armor.\n\nGain the Bard's level 1 features, which are listed in the Bard Features table. See the multiclassing rules in chapter 2 to determine your available spell slots.",
+  "entry_kind": "class",
+  "feature_choices": [],
+  "granted_features": [
+    {
+      "level": 1,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "bardic-inspiration"
+    },
+    {
+      "level": 1,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "spellcasting"
+    },
+    {
+      "level": 2,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "expertise"
+    },
+    {
+      "level": 2,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "jack-of-all-trades"
+    },
+    {
+      "level": 5,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "font-of-inspiration"
+    },
+    {
+      "level": 7,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "countercharm"
+    },
+    {
+      "level": 10,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "magical-secrets"
+    },
+    {
+      "level": 18,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "superior-inspiration"
+    },
+    {
+      "level": 20,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "words-of-creation"
+    },
+    {
+      "level": 20,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "power-word-heal"
+    },
+    {
+      "level": 20,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "power-word-kill"
+    }
+  ],
+  "hit_die": "d8",
+  "identifier": "bard",
+  "name": "Bard",
+  "primary_ability": {
+    "all": true,
+    "value": [
+      "cha"
+    ]
+  },
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/bard/bard.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "saving_throws": [
+    "cha",
+    "dex"
+  ],
+  "slug": "bard",
+  "spellcasting": {
+    "ability": "cha",
+    "progression": "full"
+  },
+  "subclass_identifiers": [
+    "lore"
+  ],
+  "wealth": "90"
+}

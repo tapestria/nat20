@@ -1,0 +1,121 @@
+{
+  "aboleth": {
+    "ability_scores": {
+      "cha": 18,
+      "con": 15,
+      "dex": 9,
+      "int": 18,
+      "str": 21,
+      "wis": 15
+    },
+    "ac": 17,
+    "ac_max": 17,
+    "ac_type": "natural",
+    "alignment": "lawful evil",
+    "condition_immunities": [],
+    "cr": 10,
+    "creature_size": "large",
+    "creature_type": "aberration",
+    "damage_immunities": [],
+    "damage_resistances": [],
+    "damage_vulnerabilities": [],
+    "hp": 150,
+    "hp_dice": "20d10",
+    "languages": [
+      "Deep Speech",
+      "telepathy 120 ft."
+    ],
+    "name": "Aboleth",
+    "passive_perception": 20,
+    "proficiency_bonus": 4,
+    "saving_throws": {
+      "con": 6,
+      "int": 8,
+      "wis": 6
+    },
+    "skills": {
+      "history": 12,
+      "perception": 10
+    }
+  },
+  "adult-black-dragon": {
+    "ability_scores": {
+      "cha": 19,
+      "con": 21,
+      "dex": 14,
+      "int": 14,
+      "str": 23,
+      "wis": 13
+    },
+    "ac": 19,
+    "ac_max": 19,
+    "ac_type": "natural",
+    "alignment": "chaotic evil",
+    "condition_immunities": [],
+    "cr": 14,
+    "creature_size": "huge",
+    "creature_type": "dragon",
+    "damage_immunities": [
+      "acid"
+    ],
+    "damage_resistances": [],
+    "damage_vulnerabilities": [],
+    "hp": 195,
+    "hp_dice": "17d12",
+    "languages": [
+      "Common",
+      "Draconic"
+    ],
+    "name": "Adult Black Dragon",
+    "passive_perception": 21,
+    "proficiency_bonus": 5,
+    "saving_throws": {
+      "dex": 7,
+      "wis": 6
+    },
+    "skills": {
+      "perception": 11,
+      "stealth": 7
+    }
+  },
+  "adult-blue-dragon": {
+    "ability_scores": {
+      "cha": 20,
+      "con": 23,
+      "dex": 10,
+      "int": 16,
+      "str": 25,
+      "wis": 15
+    },
+    "ac": 19,
+    "ac_max": 19,
+    "ac_type": "natural",
+    "alignment": "lawful evil",
+    "condition_immunities": [],
+    "cr": 16,
+    "creature_size": "huge",
+    "creature_type": "dragon",
+    "damage_immunities": [
+      "lightning"
+    ],
+    "damage_resistances": [],
+    "damage_vulnerabilities": [],
+    "hp": 212,
+    "hp_dice": "17d12",
+    "languages": [
+      "Common",
+      "Draconic"
+    ],
+    "name": "Adult Blue Dragon",
+    "passive_perception": 22,
+    "proficiency_bonus": 5,
+    "saving_throws": {
+      "dex": 5,
+      "wis": 7
+    },
+    "skills": {
+      "perception": 12,
+      "stealth": 5
+    }
+  }
+}

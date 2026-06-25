@@ -1,0 +1,134 @@
+{
+  "barbarian": {
+    "hit_die": 12,
+    "name": "Barbarian",
+    "saving_throws": [
+      "con",
+      "str"
+    ],
+    "subclass_slugs": [
+      "path-of-the-berserker"
+    ]
+  },
+  "bard": {
+    "hit_die": 8,
+    "name": "Bard",
+    "saving_throws": [
+      "cha",
+      "dex"
+    ],
+    "subclass_slugs": [
+      "college-of-lore"
+    ]
+  },
+  "cleric": {
+    "hit_die": 8,
+    "name": "Cleric",
+    "saving_throws": [
+      "cha",
+      "wis"
+    ],
+    "subclass_slugs": [
+      "life-domain"
+    ]
+  },
+  "druid": {
+    "hit_die": 8,
+    "name": "Druid",
+    "saving_throws": [
+      "int",
+      "wis"
+    ],
+    "subclass_slugs": [
+      "circle-of-the-land"
+    ]
+  },
+  "fighter": {
+    "hit_die": 10,
+    "name": "Fighter",
+    "saving_throws": [
+      "con",
+      "str"
+    ],
+    "subclass_slugs": [
+      "champion"
+    ]
+  },
+  "monk": {
+    "hit_die": 8,
+    "name": "Monk",
+    "saving_throws": [
+      "dex",
+      "str"
+    ],
+    "subclass_slugs": [
+      "warrior-of-the-open-hand"
+    ]
+  },
+  "paladin": {
+    "hit_die": 10,
+    "name": "Paladin",
+    "saving_throws": [
+      "cha",
+      "wis"
+    ],
+    "subclass_slugs": [
+      "oath-of-devotion"
+    ]
+  },
+  "ranger": {
+    "hit_die": 10,
+    "name": "Ranger",
+    "saving_throws": [
+      "dex",
+      "str"
+    ],
+    "subclass_slugs": [
+      "hunter"
+    ]
+  },
+  "rogue": {
+    "hit_die": 8,
+    "name": "Rogue",
+    "saving_throws": [
+      "dex",
+      "int"
+    ],
+    "subclass_slugs": [
+      "thief"
+    ]
+  },
+  "sorcerer": {
+    "hit_die": 6,
+    "name": "Sorcerer",
+    "saving_throws": [
+      "cha",
+      "con"
+    ],
+    "subclass_slugs": [
+      "draconic-sorcery"
+    ]
+  },
+  "warlock": {
+    "hit_die": 8,
+    "name": "Warlock",
+    "saving_throws": [
+      "cha",
+      "wis"
+    ],
+    "subclass_slugs": [
+      "fiend-patron"
+    ]
+  },
+  "wizard": {
+    "hit_die": 6,
+    "name": "Wizard",
+    "saving_throws": [
+      "int",
+      "wis"
+    ],
+    "subclass_slugs": [
+      "evoker"
+    ]
+  }
+}

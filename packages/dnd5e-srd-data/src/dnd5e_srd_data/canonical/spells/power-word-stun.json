@@ -1,0 +1,209 @@
+{
+  "activities": [
+    {
+      "activation": {
+        "condition": "",
+        "override": false,
+        "type": "action",
+        "value": null
+      },
+      "consumption": {
+        "scaling": {
+          "allowed": false,
+          "max": ""
+        },
+        "spell_slot": true,
+        "targets": []
+      },
+      "description": {
+        "chat_flavor": ""
+      },
+      "duration": {
+        "concentration": false,
+        "override": false,
+        "special": "",
+        "units": "inst",
+        "value": null
+      },
+      "effects": [
+        {
+          "id": "o7XJceFSBTiIIPFo",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        },
+        {
+          "id": "B5dLPDfw1fDtfRW1",
+          "level": {
+            "max": null,
+            "min": null
+          },
+          "on_save": null,
+          "riders": null
+        }
+      ],
+      "flags": {},
+      "id": "Sy5x2VhhG7mcnPvF",
+      "img": "",
+      "kind": "utility",
+      "name": "",
+      "range": {
+        "override": false,
+        "special": "",
+        "units": "self",
+        "value": null
+      },
+      "roll": {
+        "formula": "",
+        "name": "",
+        "prompt": false,
+        "visible": false
+      },
+      "sort": 0,
+      "target": {
+        "affects": {
+          "choice": false,
+          "count": "1",
+          "special": "",
+          "type": "creature"
+        },
+        "override": false,
+        "prompt": true,
+        "template": {
+          "contiguous": false,
+          "count": "",
+          "height": "",
+          "size": "",
+          "stationary": false,
+          "type": "",
+          "units": "",
+          "width": ""
+        }
+      },
+      "uses": {
+        "max": "",
+        "recovery": [],
+        "spent": 0
+      },
+      "visibility": {
+        "identifier": "",
+        "level": {
+          "max": null,
+          "min": null
+        },
+        "require_attunement": false,
+        "require_identification": false,
+        "require_magic": false
+      }
+    }
+  ],
+  "casting_time": {
+    "condition": "",
+    "unit": "action",
+    "value": 1
+  },
+  "components": [
+    "V"
+  ],
+  "concentration": false,
+  "description": "You overwhelm the mind of one creature you can see within range. If the target has 150 Hit Points or fewer, it has the Stunned condition. Otherwise, its Speed is 0 until the start of your next turn.\n\nThe &amp;Reference[Stunned apply=false] target makes a [[/save ability=con dc=@attributes.spell.dc]] saving throw at the end of each of its turns, ending the condition on itself on a success.",
+  "duration": {
+    "units": "inst",
+    "value": null
+  },
+  "entry_kind": "spell",
+  "level": 8,
+  "materials": {
+    "consumed": false,
+    "cost": 0,
+    "supply": 0,
+    "value": ""
+  },
+  "name": "Power Word Stun",
+  "passive_effects": [
+    {
+      "changes": [],
+      "description": "<p>The &amp;Reference[Stunned apply=false] target makes a [[/save ability=con]] saving throw at the end of each of its turns, ending the condition on itself on a success.</p>",
+      "disabled": false,
+      "duration": null,
+      "id": "o7XJceFSBTiIIPFo",
+      "name": "Stunned",
+      "statuses": [
+        "stunned"
+      ],
+      "transfer": false
+    },
+    {
+      "changes": [
+        {
+          "key": "system.attributes.movement.walk",
+          "mode": 3,
+          "priority": null,
+          "value": "0"
+        },
+        {
+          "key": "system.attributes.movement.climb",
+          "mode": 3,
+          "priority": null,
+          "value": "0"
+        },
+        {
+          "key": "system.attributes.movement.swim",
+          "mode": 3,
+          "priority": null,
+          "value": "0"
+        },
+        {
+          "key": "system.attributes.movement.fly",
+          "mode": 3,
+          "priority": null,
+          "value": "0"
+        },
+        {
+          "key": "system.attributes.movement.burrow",
+          "mode": 3,
+          "priority": null,
+          "value": "0"
+        }
+      ],
+      "description": "<p>The target's Speed is 0 until the start of your next turn.</p>",
+      "disabled": false,
+      "duration": {
+        "rounds": 1
+      },
+      "id": "B5dLPDfw1fDtfRW1",
+      "name": "No Movement",
+      "statuses": [],
+      "transfer": false
+    }
+  ],
+  "preparation": {
+    "mode": "prepared",
+    "prepared": false
+  },
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/spells24/8th-level/power-word-stun.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "range": {
+    "special": null,
+    "units": "ft",
+    "value": 60
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "ritual": false,
+  "school": "enc",
+  "slug": "power-word-stun"
+}

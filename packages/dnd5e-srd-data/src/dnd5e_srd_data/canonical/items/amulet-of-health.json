@@ -1,0 +1,45 @@
+{
+  "activities": [],
+  "attunement_constraint": null,
+  "cost_gp": 4000.0,
+  "description": "Wondrous Item, Rare (Requires Attunement)\n\nYour Constitution is 19 while you wear this amulet. It has no effect on you if your Constitution is 19 or higher without it.",
+  "item_kind": "magic_item",
+  "name": "Amulet of Health",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.abilities.con.value",
+          "mode": 4,
+          "priority": null,
+          "value": "19"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "ObtXWapsou2jYoip",
+      "name": "Upgraded Constitution",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/equipment24/equipment/amulet-of-health.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "rarity": "rare",
+  "requires_attunement": true,
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "amulet-of-health",
+  "weight": 0.0
+}

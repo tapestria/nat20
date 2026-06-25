@@ -1,0 +1,20 @@
+dnd5e-engine — pure-Python D&D 5e SRD rules engine.
+
+The engine CODE is licensed under the MIT License (see LICENSE). It ships NO
+SRD data: the canonical rules content lives in the separate dnd5e-srd-data
+package, which the engine consumes at runtime via BundledAssetLoader.
+
+The rules this engine implements derive from the D&D 5e System Reference
+Document. The provenance of that ruleset (carried by the dnd5e-srd-data
+dataset, distributed under CC-BY-4.0) is:
+
+Attribution:
+- Portions derived from the Foundry VTT dnd5e system
+  (https://github.com/foundryvtt/dnd5e), CC-BY-4.0.
+- Cross-checked against open5e (https://open5e.com), CC-BY-4.0, and the
+  5e-bits/5e-database project (https://github.com/5e-bits/5e-database), MIT.
+- Original source: System Reference Document 5.1 and 5.2 by Wizards of the
+  Coast LLC, CC-BY-4.0.
+
+See the dnd5e-srd-data package for the bundled dataset and its upstream
+license texts.

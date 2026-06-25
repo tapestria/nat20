@@ -1,0 +1,64 @@
+{
+  "acolyte": {
+    "ability_options": [
+      "cha",
+      "int",
+      "wis"
+    ],
+    "feat": "magic-initiate",
+    "name": "Acolyte",
+    "skill_proficiencies": [
+      "insight",
+      "religion"
+    ],
+    "tool_proficiencies": [
+      "calligraphers-supplies"
+    ]
+  },
+  "criminal": {
+    "ability_options": [
+      "con",
+      "dex",
+      "int"
+    ],
+    "feat": "alert",
+    "name": "Criminal",
+    "skill_proficiencies": [
+      "sleight-of-hand",
+      "stealth"
+    ],
+    "tool_proficiencies": [
+      "thieves-tools"
+    ]
+  },
+  "sage": {
+    "ability_options": [
+      "con",
+      "int",
+      "wis"
+    ],
+    "feat": "magic-initiate",
+    "name": "Sage",
+    "skill_proficiencies": [
+      "arcana",
+      "history"
+    ],
+    "tool_proficiencies": [
+      "calligraphers-supplies"
+    ]
+  },
+  "soldier": {
+    "ability_options": [
+      "con",
+      "dex",
+      "str"
+    ],
+    "feat": "savage-attacker",
+    "name": "Soldier",
+    "skill_proficiencies": [
+      "athletics",
+      "intimidation"
+    ],
+    "tool_proficiencies": []
+  }
+}

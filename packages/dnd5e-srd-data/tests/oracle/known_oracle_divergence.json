@@ -1,0 +1,163 @@
+{
+  "aboleth": {
+    "saving_throws": "Foundry 2024 actors24 marks aboleth dex-proficient (save +3); 5e-bits 2024 lists only con/int/wis saves. Two 2024 transcriptions disagree; Foundry value preserved."
+  },
+  "alchemists-fire": {
+    "cost_gp": "Foundry 2024 pack ships cost_gp=50.0 gp; 5e-bits 2024 oracle ships 25.0 gp. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved."
+  },
+  "antitoxin": {
+    "weight": "5e-bits ships weight=0 for antitoxin vial; Foundry/canonical assigns 0.1 lb. SRD doesn't state a weight; both are reasonable encodings of \"trivial\"."
+  },
+  "arrows": {
+    "weight": "Foundry 2024 pack ships weight=0.05 lb; 5e-bits 2024 oracle ships 1.0 lb. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved."
+  },
+  "bagpipes": {
+    "weight": "Foundry 2024 pack ships weight=1.0 lb; 5e-bits 2024 oracle ships 6.0 lb. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved."
+  },
+  "basket": {
+    "cost_gp": "Foundry 2024 pack ships cost_gp=0.4 gp; 5e-bits 2024 oracle ships 2.0 gp. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved."
+  },
+  "bedroll": {
+    "cost_gp": "Foundry 2024 pack ships cost_gp=1.0 gp; 5e-bits 2024 oracle ships 2.0 gp. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved.",
+    "weight": "Foundry 2024 pack ships weight=7.0 lb; 5e-bits 2024 oracle ships 25.0 lb. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved."
+  },
+  "bell": {
+    "weight": "Foundry 2024 pack ships weight=0.0 lb; 5e-bits 2024 oracle ships 1.0 lb. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved."
+  },
+  "blanket": {
+    "cost_gp": "Foundry 2024 pack ships cost_gp=0.5 gp; 5e-bits 2024 oracle ships 5.0 gp. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved."
+  },
+  "bolts": {
+    "weight": "Foundry 2024 pack ships weight=0.075 lb; 5e-bits 2024 oracle ships 1.5 lb. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved."
+  },
+  "bullets-firearm": {
+    "weight": "Foundry 2024 pack ships weight=0.2 lb; 5e-bits 2024 oracle ships 2.0 lb. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved."
+  },
+  "bullets-sling": {
+    "weight": "Foundry 2024 pack ships weight=0.075 lb; 5e-bits 2024 oracle ships 1.5 lb. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved."
+  },
+  "burglars-pack": {
+    "weight": "Foundry 2024 pack ships weight=5.0 lb; 5e-bits 2024 oracle ships 20.0 lb. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved."
+  },
+  "caltrops": {
+    "cost_gp": "Foundry 2024 pack ships cost_gp=1.0 gp; 5e-bits 2024 oracle ships 2.0 gp. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved."
+  },
+  "chain": {
+    "weight": "Foundry 2024 pack ships weight=0.0 lb; 5e-bits 2024 oracle ships 6.0 lb. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved."
+  },
+  "chain-shirt": {
+    "weight": "Foundry 2024 pack ships weight=20.0 lb; 5e-bits 2024 oracle ships 14.0 lb. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved."
+  },
+  "chest": {
+    "cost_gp": "Foundry 2024 pack ships cost_gp=5.0 gp; 5e-bits 2024 oracle ships 50.0 gp. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved.",
+    "weight": "Foundry 2024 pack ships weight=25.0 lb; 5e-bits 2024 oracle ships 20.0 lb. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved."
+  },
+  "climbers-kit": {
+    "weight": "Foundry 2024 pack ships weight=12.0 lb; 5e-bits 2024 oracle ships 8.0 lb. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved."
+  },
+  "clothes-fine": {
+    "weight": "Foundry 2024 pack ships weight=6.0 lb; 5e-bits 2024 oracle ships 3.0 lb. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved."
+  },
+  "clothes-travelers": {
+    "cost_gp": "Foundry 2024 pack ships cost_gp=2.0 gp; 5e-bits 2024 oracle ships 5.0 gp. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved."
+  },
+  "component-pouch": {
+    "cost_gp": "Foundry 2024 pack ships cost_gp=25.0 gp; 5e-bits 2024 oracle ships 2.0 gp. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved.",
+    "weight": "Foundry 2024 pack ships weight=2.0 lb; 5e-bits 2024 oracle ships 1.0 lb. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved."
+  },
+  "conjure-elemental": {
+    "components": "2024 SRD redesigned this spell's components (canonical=['S', 'V'], 2014 oracle=['M', 'S', 'V']). Genuine edition change; Foundry/2024 value preserved."
+  },
+  "conjure-woodland-beings": {
+    "components": "2024 SRD redesigned this spell's components (canonical=['S', 'V'], 2014 oracle=['M', 'S', 'V']). Genuine edition change; Foundry/2024 value preserved."
+  },
+  "dart": {
+    "cost_gp": "Foundry 2024 pack ships cost_gp=0.05 gp; 5e-bits 2024 oracle ships 5.0 gp. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved."
+  },
+  "elf-wood": {
+    "walk_speed": "Foundry's Wood Elf leaf ships the 2024 SRD's 35 ft Wood Elf speed; the 5e-bits oracle merges all elf lineages onto the base elf (30 ft) and does not carry the per-lineage +5 ft. Foundry is the more precise 2024 source; value preserved."
+  },
+  "entertainers-pack": {
+    "weight": "Foundry 2024 pack ships weight=5.0 lb; 5e-bits 2024 oracle ships 0.0 lb. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved."
+  },
+  "explorers-pack": {
+    "weight": "Foundry 2024 pack ships weight=5.0 lb; 5e-bits 2024 oracle ships 55.0 lb. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved."
+  },
+  "fine-clothes": {
+    "weight": "2024 edition/source divergence; Foundry value preserved."
+  },
+  "forbiddance": {
+    "ritual": "2024 SRD changed this spell's ritual flag (canonical=False, 2014 oracle=True). Genuine edition change; Foundry/2024 value preserved."
+  },
+  "hand-crossbow": {
+    "cost_gp": "Foundry 2024 pack ships cost_gp=75.0 gp; 5e-bits 2024 oracle ships 25.0 gp. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved.",
+    "weight": "Foundry 2024 pack ships weight=3.0 lb; 5e-bits 2024 oracle ships 2.0 lb. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved."
+  },
+  "handy-haversack": {
+    "rarity": "Foundry tags rarity 'common'; 5e-bits oracle says 'rare'. Two independent 2024-SRD transcriptions disagree on the base grade; Foundry value preserved."
+  },
+  "herbalism-kit": {
+    "weight": "Foundry 2024 pack ships weight=8.0 lb; 5e-bits 2024 oracle ships 3.0 lb. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved."
+  },
+  "hooded-lantern": {
+    "cost_gp": "Foundry ships 10 gp; 5e-bits ships 5 gp. Foundry matches the SRD equipment table (5gp lantern + 5gp hood); 5e-bits drops the hood premium. Foundry is correct."
+  },
+  "javelin": {
+    "cost_gp": "Foundry 2024 pack ships cost_gp=0.5 gp; 5e-bits 2024 oracle ships 5.0 gp. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved."
+  },
+  "longbow": {
+    "cost_gp": "Foundry 2024 pack ships cost_gp=50.0 gp; 5e-bits 2024 oracle ships 5.0 gp. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved."
+  },
+  "mace": {
+    "weight": "Foundry 2024 pack ships weight=4.0 lb; 5e-bits 2024 oracle ships 2.0 lb. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved."
+  },
+  "message": {
+    "components": "2024 SRD redesigned this spell's components (canonical=['M', 'S'], 2014 oracle=['M', 'S', 'V']). Genuine edition change; Foundry/2024 value preserved."
+  },
+  "needles": {
+    "weight": "Foundry 2024 pack ships weight=0.02 lb; 5e-bits 2024 oracle ships 1.0 lb. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved."
+  },
+  "parchment": {
+    "cost_gp": "Foundry 2024 pack ships cost_gp=0.1 gp; 5e-bits 2024 oracle ships 3.0 gp. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved."
+  },
+  "pike": {
+    "weight": "Foundry 2024 pack ships weight=18.0 lb; 5e-bits 2024 oracle ships 6.0 lb. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved."
+  },
+  "poisoners-kit": {
+    "cost_gp": "Foundry 2024 pack ships cost_gp=50.0 gp; 5e-bits 2024 oracle ships 5.0 gp. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved."
+  },
+  "priests-pack": {
+    "weight": "Foundry 2024 pack ships weight=5.0 lb; 5e-bits 2024 oracle ships 29.0 lb. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved."
+  },
+  "resistance": {
+    "components": "2024 SRD redesigned this spell's components (canonical=['S', 'V'], 2014 oracle=['M', 'S', 'V']). Genuine edition change; Foundry/2024 value preserved."
+  },
+  "robe": {
+    "weight": "Foundry 2024 pack ships weight=4.0 lb; 5e-bits 2024 oracle ships 1.0 lb. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved."
+  },
+  "sack": {
+    "weight": "Foundry 2024 pack ships weight=0.5 lb; 5e-bits 2024 oracle ships 1.0 lb. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved."
+  },
+  "scholars-pack": {
+    "weight": "Foundry 2024 pack ships weight=5.0 lb; 5e-bits 2024 oracle ships 22.0 lb. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved."
+  },
+  "spear": {
+    "cost_gp": "Foundry 2024 pack ships cost_gp=1.0 gp; 5e-bits 2024 oracle ships 5.0 gp. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved.",
+    "weight": "Foundry 2024 pack ships weight=3.0 lb; 5e-bits 2024 oracle ships 2.0 lb. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved."
+  },
+  "spikes-iron": {
+    "weight": "Foundry 2024 pack ships weight=0.5 lb; 5e-bits 2024 oracle ships 2.0 lb. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved."
+  },
+  "true-strike": {
+    "components": "2024 SRD redesigned this spell's components (canonical=['M', 'S'], 2014 oracle=['S']). Genuine edition change; Foundry/2024 value preserved."
+  },
+  "two-weapon-fighting": {
+    "name": "Foundry uses the hyphenated SRD spelling 'Two-Weapon Fighting'; the 2024 5e-bits oracle drops the hyphen ('Two Weapon Fighting'). Cosmetic cross-source punctuation difference; Foundry's hyphenated form matches the printed SRD and is preserved."
+  },
+  "viol": {
+    "weight": "Foundry 2024 pack ships weight=1.0 lb; 5e-bits 2024 oracle ships 2.0 lb. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved."
+  },
+  "waterskin": {
+    "weight": "Foundry 2024 pack ships weight=1.0 lb; 5e-bits 2024 oracle ships 5.0 lb. Genuine cross-source numeric disagreement between two independent 2024 transcriptions; Foundry value preserved."
+  }
+}

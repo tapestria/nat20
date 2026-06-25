@@ -1,0 +1,24 @@
+{
+  "item_kind": "weapon",
+  "slug": "test-longsword",
+  "name": "Test Longsword",
+  "description": "Test fixture.",
+  "weight": 3.0,
+  "cost_gp": 15,
+  "rarity": "common",
+  "weapon_category": "martial_melee",
+  "damage_parts": [{"dice": "1d8", "damage_type": "slashing"}],
+  "versatile_damage": {"dice": "1d10", "damage_type": "slashing"},
+  "range": {"kind": "melee", "value": null, "units": null, "long": null},
+  "properties": ["versatile"],
+  "activities": [],
+  "provenance": {
+    "source": "foundry",
+    "source_url": "test",
+    "ingest_date": "2026-05-30",
+    "ingest_version": "v1",
+    "srd_version": ["5.1"],
+    "license_tag": "CC-BY-4.0"
+  },
+  "review": {"known_divergence": null, "requires_user_decision": false}
+}

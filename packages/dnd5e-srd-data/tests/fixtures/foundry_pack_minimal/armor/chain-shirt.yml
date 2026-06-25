@@ -1,0 +1,21 @@
+_id: chainShirt
+name: Chain Shirt
+type: equipment
+system:
+  description:
+    value: "Medium armor."
+  weight: 20
+  price:
+    value: 50
+    denomination: "gp"
+  rarity: "common"
+  armor:
+    value: 13
+    type: "medium"
+    dex: 2
+  strength: null
+  stealth: false
+  source:
+    custom: "SRD 5.1"
+flags:
+  srd: true

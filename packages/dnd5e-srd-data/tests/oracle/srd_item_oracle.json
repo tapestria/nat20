@@ -1,0 +1,3468 @@
+{
+  "acid": {
+    "cost_gp": 25.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Acid",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 1.0
+  },
+  "adamantine-armor": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Adamantine Armor",
+    "rarity": "uncommon",
+    "requires_attunement": false
+  },
+  "alchemists-fire": {
+    "cost_gp": 25.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Alchemist's Fire",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 1.0
+  },
+  "alchemists-supplies": {
+    "cost_gp": 50.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Alchemist's Supplies",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 8.0
+  },
+  "ammunition": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Ammunition",
+    "rarity": "uncommon_(+1),_rare_(+2),_or_very_rare_(+3)",
+    "requires_attunement": false
+  },
+  "ammunition-1": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Ammunition, +1",
+    "rarity": "uncommon_(+1)",
+    "requires_attunement": false
+  },
+  "ammunition-2": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Ammunition, +2",
+    "rarity": "rare_(+2)",
+    "requires_attunement": false
+  },
+  "ammunition-3": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Ammunition, +3",
+    "rarity": "very_rare_(+3)",
+    "requires_attunement": false
+  },
+  "ammunition-of-slaying": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Ammunition of Slaying",
+    "rarity": "very_rare",
+    "requires_attunement": false
+  },
+  "amulet": {
+    "cost_gp": 5.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Amulet",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 1.0
+  },
+  "amulet-of-health": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Amulet of Health",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "amulet-of-proof-against-detection-and-location": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Amulet of Proof against Detection and Location",
+    "rarity": "uncommon",
+    "requires_attunement": true
+  },
+  "amulet-of-the-planes": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Amulet of the Planes",
+    "rarity": "very_rare",
+    "requires_attunement": true
+  },
+  "animated-shield": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Animated Shield",
+    "rarity": "very_rare",
+    "requires_attunement": true
+  },
+  "antitoxin": {
+    "cost_gp": 50.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Antitoxin",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 1.0
+  },
+  "apparatus-of-the-crab": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Apparatus of the Crab",
+    "rarity": "legendary",
+    "requires_attunement": false
+  },
+  "armor": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Armor",
+    "rarity": "rare_(+1),_very_rare_(+2),_or_legendary_(+3)",
+    "requires_attunement": false
+  },
+  "armor-1": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Armor +1",
+    "rarity": "rare",
+    "requires_attunement": false
+  },
+  "armor-2": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Armor +2",
+    "rarity": "very_rare",
+    "requires_attunement": false
+  },
+  "armor-3": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Armor +3",
+    "rarity": "legendary",
+    "requires_attunement": false
+  },
+  "armor-of-invulnerability": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Armor of Invulnerability",
+    "rarity": "legendary",
+    "requires_attunement": true
+  },
+  "armor-of-resistance": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Armor of Resistance",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "armor-of-vulnerability": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Armor of Vulnerability",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "arrow-catching-shield": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Arrow-Catching Shield",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "arrows": {
+    "cost_gp": 1.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Arrows",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 1.0
+  },
+  "backpack": {
+    "cost_gp": 2.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Backpack",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 5.0
+  },
+  "bag-of-beans": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Bag of Beans",
+    "rarity": "rare",
+    "requires_attunement": false
+  },
+  "bag-of-devouring": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Bag of Devouring",
+    "rarity": "very_rare",
+    "requires_attunement": false
+  },
+  "bag-of-holding": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Bag of Holding",
+    "rarity": "uncommon",
+    "requires_attunement": false
+  },
+  "bag-of-tricks": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Bag of Tricks",
+    "rarity": "uncommon",
+    "requires_attunement": false
+  },
+  "bagpipes": {
+    "cost_gp": 30.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Bagpipes",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 6.0
+  },
+  "ball-bearings": {
+    "cost_gp": 1.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Ball bearings",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 2.0
+  },
+  "barrel": {
+    "cost_gp": 2.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Barrel",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 70.0
+  },
+  "basket": {
+    "cost_gp": 2.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Basket",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 2.0
+  },
+  "battleaxe": {
+    "cost_gp": 10.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Battleaxe",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 4.0
+  },
+  "bead-of-force": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Bead of Force",
+    "rarity": "rare",
+    "requires_attunement": false
+  },
+  "bedroll": {
+    "cost_gp": 2.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Bedroll",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 25.0
+  },
+  "bell": {
+    "cost_gp": 1.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Bell",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 1.0
+  },
+  "belt-of-dwarvenkind": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Belt of Dwarvenkind",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "belt-of-giant-strength": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Belt of Giant Strength",
+    "rarity": "rarity_varies",
+    "requires_attunement": true
+  },
+  "berserker-axe": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Berserker Axe",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "blanket": {
+    "cost_gp": 5.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Blanket",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 3.0
+  },
+  "block-and-tackle": {
+    "cost_gp": 1.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Block and tackle",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 5.0
+  },
+  "blowgun": {
+    "cost_gp": 10.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Blowgun",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 1.0
+  },
+  "bolts": {
+    "cost_gp": 1.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Bolts",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 1.5
+  },
+  "book": {
+    "cost_gp": 25.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Book",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 5.0
+  },
+  "boots-of-elvenkind": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Boots of Elvenkind",
+    "rarity": "uncommon",
+    "requires_attunement": false
+  },
+  "boots-of-levitation": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Boots of Levitation",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "boots-of-speed": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Boots of Speed",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "boots-of-striding-and-springing": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Boots of Striding and Springing",
+    "rarity": "uncommon",
+    "requires_attunement": true
+  },
+  "boots-of-the-winterlands": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Boots of the Winterlands",
+    "rarity": "uncommon",
+    "requires_attunement": true
+  },
+  "bottle-glass": {
+    "cost_gp": 2.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Bottle, Glass",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 2.0
+  },
+  "bowl-of-commanding-water-elementals": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Bowl of Commanding Water Elementals",
+    "rarity": "rare",
+    "requires_attunement": false
+  },
+  "bracers-of-archery": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Bracers of Archery",
+    "rarity": "uncommon",
+    "requires_attunement": true
+  },
+  "bracers-of-defense": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Bracers of Defense",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "brazier-of-commanding-fire-elementals": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Brazier of Commanding Fire Elementals",
+    "rarity": "rare",
+    "requires_attunement": false
+  },
+  "breastplate": {
+    "cost_gp": 400.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Breastplate",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 20.0
+  },
+  "brewers-supplies": {
+    "cost_gp": 20.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Brewer's Supplies",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 9.0
+  },
+  "brooch-of-shielding": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Brooch of Shielding",
+    "rarity": "uncommon",
+    "requires_attunement": true
+  },
+  "broom-of-flying": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Broom of Flying",
+    "rarity": "uncommon",
+    "requires_attunement": true
+  },
+  "bucket": {
+    "cost_gp": 0.05,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Bucket",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 2.0
+  },
+  "bullets-firearm": {
+    "cost_gp": 3.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Bullets, Firearm",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 2.0
+  },
+  "bullets-sling": {
+    "cost_gp": 0.04,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Bullets, Sling",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 1.5
+  },
+  "burglars-pack": {
+    "cost_gp": 16.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Burglar's Pack",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 20.0
+  },
+  "calligraphers-supplies": {
+    "cost_gp": 10.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Calligrapher's Supplies",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 5.0
+  },
+  "caltrops": {
+    "cost_gp": 2.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Caltrops",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 2.0
+  },
+  "candle": {
+    "cost_gp": 0.01,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Candle",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 0.0
+  },
+  "candle-of-invocation": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Candle of Invocation",
+    "rarity": "very_rare",
+    "requires_attunement": true
+  },
+  "cape-of-the-mountebank": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Cape of the Mountebank",
+    "rarity": "rare",
+    "requires_attunement": false
+  },
+  "carpenters-tools": {
+    "cost_gp": 8.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Carpenter's Tools",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 6.0
+  },
+  "carpet-of-flying": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Carpet of Flying",
+    "rarity": "very_rare",
+    "requires_attunement": false
+  },
+  "cartographer-tools": {
+    "cost_gp": 15.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Cartographer's Tools",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 6.0
+  },
+  "case-crossbow-bolt": {
+    "cost_gp": 1.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Case, Crossbow Bolt",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 1.0
+  },
+  "case-map-or-scroll": {
+    "cost_gp": 1.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Case, Map or Scroll",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 1.0
+  },
+  "censer-of-controlling-air-elementals": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Censer of Controlling Air Elementals",
+    "rarity": "rare",
+    "requires_attunement": false
+  },
+  "chain": {
+    "cost_gp": 5.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Chain",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 6.0
+  },
+  "chain-mail": {
+    "cost_gp": 75.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Chain Mail",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 55.0
+  },
+  "chain-shirt": {
+    "cost_gp": 50.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Chain Shirt",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 14.0
+  },
+  "chest": {
+    "cost_gp": 50.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Chest",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 20.0
+  },
+  "chime-of-opening": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Chime of Opening",
+    "rarity": "rare",
+    "requires_attunement": false
+  },
+  "circlet-of-blasting": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Circlet of Blasting",
+    "rarity": "uncommon",
+    "requires_attunement": false
+  },
+  "climbers-kit": {
+    "cost_gp": 25.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Climber's Kit",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 8.0
+  },
+  "cloak-of-arachnida": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Cloak of Arachnida",
+    "rarity": "very_rare",
+    "requires_attunement": true
+  },
+  "cloak-of-displacement": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Cloak of Displacement",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "cloak-of-elvenkind": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Cloak of Elvenkind",
+    "rarity": "uncommon",
+    "requires_attunement": true
+  },
+  "cloak-of-protection": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Cloak of Protection",
+    "rarity": "uncommon",
+    "requires_attunement": true
+  },
+  "cloak-of-the-bat": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Cloak of the Bat",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "cloak-of-the-manta-ray": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Cloak of the Manta Ray",
+    "rarity": "uncommon",
+    "requires_attunement": true
+  },
+  "clothes-fine": {
+    "cost_gp": 15.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Clothes, Fine",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 3.0
+  },
+  "clothes-travelers": {
+    "cost_gp": 5.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Clothes, Traveler's",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 4.0
+  },
+  "club": {
+    "cost_gp": 0.1,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Club",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 2.0
+  },
+  "cobblers-tools": {
+    "cost_gp": 5.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Cobbler's Tools",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 5.0
+  },
+  "component-pouch": {
+    "cost_gp": 2.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Component Pouch",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 1.0
+  },
+  "cooks-utensils": {
+    "cost_gp": 1.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Cook's Utensils",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 8.0
+  },
+  "costume": {
+    "cost_gp": 5.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Costume",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 4.0
+  },
+  "crowbar": {
+    "cost_gp": 2.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Crowbar",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 5.0
+  },
+  "crystal": {
+    "cost_gp": 10.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Crystal",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 1.0
+  },
+  "crystal-ball": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Crystal Ball",
+    "rarity": "very_rare",
+    "requires_attunement": true
+  },
+  "crystal-ball-of-mind-reading": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Crystal Ball of Mind Reading",
+    "rarity": "legendary",
+    "requires_attunement": true
+  },
+  "crystal-ball-of-telepathy": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Crystal Ball of Telepathy",
+    "rarity": "legendary",
+    "requires_attunement": true
+  },
+  "crystal-ball-of-true-seeing": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Crystal Ball of True Seeing",
+    "rarity": "legendary",
+    "requires_attunement": true
+  },
+  "cube-of-force": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Cube of Force",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "cubic-gate": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Cubic Gate",
+    "rarity": "legendary",
+    "requires_attunement": false
+  },
+  "dagger": {
+    "cost_gp": 2.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Dagger",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 1.0
+  },
+  "dagger-of-venom": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Dagger of Venom",
+    "rarity": "rare",
+    "requires_attunement": false
+  },
+  "dancing-sword": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Dancing Sword",
+    "rarity": "very_rare",
+    "requires_attunement": true
+  },
+  "dart": {
+    "cost_gp": 5.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Dart",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 0.25
+  },
+  "decanter-of-endless-water": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Decanter of Endless Water",
+    "rarity": "uncommon",
+    "requires_attunement": false
+  },
+  "deck-of-illusions": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Deck of Illusions",
+    "rarity": "uncommon",
+    "requires_attunement": false
+  },
+  "defender": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Defender",
+    "rarity": "legendary",
+    "requires_attunement": true
+  },
+  "demon-armor": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Demon Armor",
+    "rarity": "very_rare",
+    "requires_attunement": true
+  },
+  "dice": {
+    "cost_gp": 0.1,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Dice",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 0.0
+  },
+  "dimensional-shackles": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Dimensional Shackles",
+    "rarity": "rare",
+    "requires_attunement": false
+  },
+  "diplomat-pack": {
+    "cost_gp": 39.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Diplomat's Pack",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 20.0
+  },
+  "disguise-kit": {
+    "cost_gp": 25.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Disguise Kit",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 3.0
+  },
+  "dragon-orb": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Dragon Orb",
+    "rarity": "artifact",
+    "requires_attunement": true
+  },
+  "dragon-scale-mail": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Dragon Scale Mail",
+    "rarity": "very_rare",
+    "requires_attunement": true
+  },
+  "dragon-slayer": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Dragon Slayer",
+    "rarity": "rare",
+    "requires_attunement": false
+  },
+  "dragonchess": {
+    "cost_gp": 1.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Dragonchess",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 0.0
+  },
+  "drum": {
+    "cost_gp": 6.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Drum",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 3.0
+  },
+  "dulcimer": {
+    "cost_gp": 25.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Dulcimer",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 10.0
+  },
+  "dungeoneer-pack": {
+    "cost_gp": 12.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Dungeoneer's Pack",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 55.0
+  },
+  "dust-of-disappearance": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Dust of Disappearance",
+    "rarity": "uncommon",
+    "requires_attunement": false
+  },
+  "dust-of-dryness": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Dust of Dryness",
+    "rarity": "uncommon",
+    "requires_attunement": false
+  },
+  "dust-of-sneezing-and-choking": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Dust of Sneezing and Choking",
+    "rarity": "uncommon",
+    "requires_attunement": false
+  },
+  "dwarven-plate": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Dwarven Plate",
+    "rarity": "very_rare",
+    "requires_attunement": false
+  },
+  "dwarven-thrower": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Dwarven Thrower",
+    "rarity": "very_rare",
+    "requires_attunement": true
+  },
+  "efficient-quiver": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Efficient Quiver",
+    "rarity": "uncommon",
+    "requires_attunement": false
+  },
+  "efreeti-bottle": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Efreeti Bottle",
+    "rarity": "very_rare",
+    "requires_attunement": false
+  },
+  "elemental-gem": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Elemental Gem",
+    "rarity": "uncommon",
+    "requires_attunement": false
+  },
+  "elven-chain": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Elven Chain",
+    "rarity": "rare",
+    "requires_attunement": false
+  },
+  "emblem": {
+    "cost_gp": 5.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Emblem",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 0.0
+  },
+  "entertainers-pack": {
+    "cost_gp": 40.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Entertainer's Pack",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 0.0
+  },
+  "eversmoking-bottle": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Eversmoking Bottle",
+    "rarity": "uncommon",
+    "requires_attunement": false
+  },
+  "explorers-pack": {
+    "cost_gp": 10.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Explorer's Pack",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 55.0
+  },
+  "eyes-of-charming": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Eyes of Charming",
+    "rarity": "uncommon",
+    "requires_attunement": true
+  },
+  "eyes-of-minute-seeing": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Eyes of Minute Seeing",
+    "rarity": "uncommon",
+    "requires_attunement": false
+  },
+  "eyes-of-the-eagle": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Eyes of the Eagle",
+    "rarity": "uncommon",
+    "requires_attunement": false
+  },
+  "feather-token": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Feather Token",
+    "rarity": "rarity_varies",
+    "requires_attunement": false
+  },
+  "figurine-of-wondrous-power": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Figurine of Wondrous Power",
+    "rarity": "rarity_varies",
+    "requires_attunement": false
+  },
+  "flail": {
+    "cost_gp": 10.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Flail",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 2.0
+  },
+  "flame-tongue": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Flame Tongue",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "flask": {
+    "cost_gp": 0.02,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Flask",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 1.0
+  },
+  "flute": {
+    "cost_gp": 2.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Flute",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 1.0
+  },
+  "folding-boat": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Folding Boat",
+    "rarity": "rare",
+    "requires_attunement": false
+  },
+  "forgery-kit": {
+    "cost_gp": 15.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Forgery Kit",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 5.0
+  },
+  "frost-brand": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Frost Brand",
+    "rarity": "very_rare",
+    "requires_attunement": true
+  },
+  "gauntlets-of-ogre-power": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Gauntlets of Ogre Power",
+    "rarity": "uncommon",
+    "requires_attunement": true
+  },
+  "gem-of-brightness": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Gem of Brightness",
+    "rarity": "uncommon",
+    "requires_attunement": false
+  },
+  "gem-of-seeing": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Gem of Seeing",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "giant-slayer": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Giant Slayer",
+    "rarity": "rare",
+    "requires_attunement": false
+  },
+  "glaive": {
+    "cost_gp": 20.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Glaive",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 6.0
+  },
+  "glamoured-studded-leather": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Glamoured Studded Leather",
+    "rarity": "rare",
+    "requires_attunement": false
+  },
+  "glassblowers-tools": {
+    "cost_gp": 30.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Glassblower's Tools",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 5.0
+  },
+  "gloves-of-missile-snaring": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Gloves of Missile Snaring",
+    "rarity": "uncommon",
+    "requires_attunement": true
+  },
+  "gloves-of-swimming-and-climbing": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Gloves of Swimming and Climbing",
+    "rarity": "uncommon",
+    "requires_attunement": true
+  },
+  "goggles-of-night": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Goggles of Night",
+    "rarity": "uncommon",
+    "requires_attunement": false
+  },
+  "grappling-hook": {
+    "cost_gp": 2.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Grappling Hook",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 4.0
+  },
+  "greataxe": {
+    "cost_gp": 30.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Greataxe",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 7.0
+  },
+  "greatclub": {
+    "cost_gp": 0.2,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Greatclub",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 10.0
+  },
+  "greatsword": {
+    "cost_gp": 50.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Greatsword",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 6.0
+  },
+  "halberd": {
+    "cost_gp": 20.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Halberd",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 6.0
+  },
+  "half-plate-armor": {
+    "cost_gp": 750.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Half-Plate Armor",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 40.0
+  },
+  "hammer-of-thunderbolts": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Hammer of Thunderbolts",
+    "rarity": "legendary",
+    "requires_attunement": true
+  },
+  "hand-crossbow": {
+    "cost_gp": 25.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Hand Crossbow",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 2.0
+  },
+  "handaxe": {
+    "cost_gp": 5.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Handaxe",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 2.0
+  },
+  "handy-haversack": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Handy Haversack",
+    "rarity": "rare",
+    "requires_attunement": false
+  },
+  "hat-of-disguise": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Hat of Disguise",
+    "rarity": "uncommon",
+    "requires_attunement": true
+  },
+  "headband-of-intellect": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Headband of Intellect",
+    "rarity": "uncommon",
+    "requires_attunement": true
+  },
+  "healers-kit": {
+    "cost_gp": 5.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Healer's Kit",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 3.0
+  },
+  "heavy-crossbow": {
+    "cost_gp": 50.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Heavy Crossbow",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 18.0
+  },
+  "helm-of-brilliance": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Helm of Brilliance",
+    "rarity": "very_rare",
+    "requires_attunement": true
+  },
+  "helm-of-comprehending-languages": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Helm of Comprehending Languages",
+    "rarity": "uncommon",
+    "requires_attunement": false
+  },
+  "helm-of-telepathy": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Helm of Telepathy",
+    "rarity": "uncommon",
+    "requires_attunement": true
+  },
+  "helm-of-teleportation": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Helm of Teleportation",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "herbalism-kit": {
+    "cost_gp": 5.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Herbalism Kit",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 3.0
+  },
+  "hide-armor": {
+    "cost_gp": 10.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Hide Armor",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 12.0
+  },
+  "holy-avenger": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Holy Avenger",
+    "rarity": "legendary",
+    "requires_attunement": true
+  },
+  "holy-water": {
+    "cost_gp": 25.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Holy Water",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 1.0
+  },
+  "horn": {
+    "cost_gp": 3.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Horn",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 2.0
+  },
+  "horn-of-blasting": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Horn of Blasting",
+    "rarity": "rare",
+    "requires_attunement": false
+  },
+  "horn-of-valhalla": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Horn of Valhalla",
+    "rarity": "rare_(silver_or_brass),_very_rare_(bronze),_or_legendary_(iron)",
+    "requires_attunement": false
+  },
+  "horn-of-valhalla-1": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Silver Horn of Valhalla",
+    "rarity": "rare",
+    "requires_attunement": false
+  },
+  "horn-of-valhalla-2": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Brass Horn of Valhalla",
+    "rarity": "rare",
+    "requires_attunement": false
+  },
+  "horn-of-valhalla-3": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Bronze Horn of Valhalla",
+    "rarity": "very_rare",
+    "requires_attunement": false
+  },
+  "horn-of-valhalla-4": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Iron Horn of Valhalla",
+    "rarity": "legendary",
+    "requires_attunement": false
+  },
+  "horseshoes-of-a-zephyr": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Horseshoes of a Zephyr",
+    "rarity": "very_rare",
+    "requires_attunement": false
+  },
+  "horseshoes-of-speed": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Horseshoes of Speed",
+    "rarity": "rare",
+    "requires_attunement": false
+  },
+  "hunting-trap": {
+    "cost_gp": 5.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Hunting Trap",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 25.0
+  },
+  "immovable-rod": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Immovable Rod",
+    "rarity": "uncommon",
+    "requires_attunement": false
+  },
+  "ink": {
+    "cost_gp": 10.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Ink",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 0.0
+  },
+  "ink-pen": {
+    "cost_gp": 0.02,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Ink Pen",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 0.0
+  },
+  "instant-fortress": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Instant Fortress",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "ioun-stone": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Ioun Stone",
+    "rarity": "rarity_varies",
+    "requires_attunement": true
+  },
+  "iron-bands": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Iron Bands",
+    "rarity": "rare",
+    "requires_attunement": false
+  },
+  "iron-flask": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Iron Flask",
+    "rarity": "legendary",
+    "requires_attunement": false
+  },
+  "javelin": {
+    "cost_gp": 5.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Javelin",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 2.0
+  },
+  "javelin-of-lightning": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Javelin of Lightning",
+    "rarity": "uncommon",
+    "requires_attunement": false
+  },
+  "jewelers-tools": {
+    "cost_gp": 25.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Jeweler's Tools",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 2.0
+  },
+  "jug": {
+    "cost_gp": 0.02,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Jug",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 4.0
+  },
+  "ladder": {
+    "cost_gp": 0.1,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Ladder",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 25.0
+  },
+  "lamp": {
+    "cost_gp": 0.5,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Lamp",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 1.0
+  },
+  "lance": {
+    "cost_gp": 10.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Lance",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 6.0
+  },
+  "lantern-bullseye": {
+    "cost_gp": 10.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Lantern, Bullseye",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 2.0
+  },
+  "lantern-hooded": {
+    "cost_gp": 5.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Lantern, Hooded",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 2.0
+  },
+  "lantern-of-revealing": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Lantern of Revealing",
+    "rarity": "uncommon",
+    "requires_attunement": false
+  },
+  "leather-armor": {
+    "cost_gp": 10.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Leather Armor",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 10.0
+  },
+  "leatherworkers-tools": {
+    "cost_gp": 5.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Leatherworker's Tools",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 5.0
+  },
+  "light-crossbow": {
+    "cost_gp": 25.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Light Crossbow",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 5.0
+  },
+  "light-hammer": {
+    "cost_gp": 2.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Light Hammer",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 2.0
+  },
+  "lock": {
+    "cost_gp": 10.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Lock",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 1.0
+  },
+  "longbow": {
+    "cost_gp": 5.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Longbow",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 2.0
+  },
+  "longsword": {
+    "cost_gp": 15.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Longsword",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 3.0
+  },
+  "luck-blade": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Luck Blade",
+    "rarity": "legendary",
+    "requires_attunement": true
+  },
+  "lute": {
+    "cost_gp": 35.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Lute",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 2.0
+  },
+  "lyre": {
+    "cost_gp": 30.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Lyre",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 2.0
+  },
+  "mace": {
+    "cost_gp": 5.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Mace",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 2.0
+  },
+  "mace-of-disruption": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Mace of Disruption",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "mace-of-smiting": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Mace of Smiting",
+    "rarity": "rare",
+    "requires_attunement": false
+  },
+  "mace-of-terror": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Mace of Terror",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "magnifying-glass": {
+    "cost_gp": 100.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Magnifying Glass",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 0.0
+  },
+  "manacles": {
+    "cost_gp": 2.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Manacles",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 6.0
+  },
+  "mantle-of-spell-resistance": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Mantle of Spell Resistance",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "manual-of-bodily-health": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Manual of Bodily Health",
+    "rarity": "very_rare",
+    "requires_attunement": false
+  },
+  "manual-of-gainful-exercise": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Manual of Gainful Exercise",
+    "rarity": "very_rare",
+    "requires_attunement": false
+  },
+  "manual-of-golems": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Manual of Golems",
+    "rarity": "very_rare",
+    "requires_attunement": false
+  },
+  "manual-of-quickness-of-action": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Manual of Quickness of Action",
+    "rarity": "very_rare",
+    "requires_attunement": false
+  },
+  "map": {
+    "cost_gp": 1.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Map",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 0.0
+  },
+  "marvelous-pigments": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Marvelous Pigments",
+    "rarity": "very_rare",
+    "requires_attunement": false
+  },
+  "masons-tools": {
+    "cost_gp": 10.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Mason's Tools",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 8.0
+  },
+  "maul": {
+    "cost_gp": 10.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Maul",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 10.0
+  },
+  "medallion-of-thoughts": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Medallion of Thoughts",
+    "rarity": "uncommon",
+    "requires_attunement": true
+  },
+  "mirror": {
+    "cost_gp": 5.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Mirror",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 0.5
+  },
+  "mirror-of-life-trapping": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Mirror of Life Trapping",
+    "rarity": "very_rare",
+    "requires_attunement": false
+  },
+  "mithral-armor": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Mithral Armor",
+    "rarity": "uncommon",
+    "requires_attunement": false
+  },
+  "morningstar": {
+    "cost_gp": 15.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Morningstar",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 4.0
+  },
+  "musket": {
+    "cost_gp": 500.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Musket",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 10.0
+  },
+  "mysterious-deck": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Mysterious Deck",
+    "rarity": "legendary",
+    "requires_attunement": false
+  },
+  "navigators-tools": {
+    "cost_gp": 25.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Navigator's Tools",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 2.0
+  },
+  "necklace-of-adaptation": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Necklace of Adaptation",
+    "rarity": "uncommon",
+    "requires_attunement": true
+  },
+  "necklace-of-fireballs": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Necklace of Fireballs",
+    "rarity": "rare",
+    "requires_attunement": false
+  },
+  "necklace-of-prayer-beads": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Necklace of Prayer Beads",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "needles": {
+    "cost_gp": 1.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Needles",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 1.0
+  },
+  "net": {
+    "cost_gp": 1.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Net",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 3.0
+  },
+  "nine-lives-stealer": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Nine Lives Stealer",
+    "rarity": "very_rare",
+    "requires_attunement": true
+  },
+  "oathbow": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Oathbow",
+    "rarity": "very_rare",
+    "requires_attunement": true
+  },
+  "oil": {
+    "cost_gp": 0.1,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Oil",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 1.0
+  },
+  "oil-of-etherealness": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Oil of Etherealness",
+    "rarity": "rare",
+    "requires_attunement": false
+  },
+  "oil-of-sharpness": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Oil of Sharpness",
+    "rarity": "very_rare",
+    "requires_attunement": false
+  },
+  "oil-of-slipperiness": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Oil of Slipperiness",
+    "rarity": "uncommon",
+    "requires_attunement": false
+  },
+  "orb": {
+    "cost_gp": 20.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Orb",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 3.0
+  },
+  "padded-armor": {
+    "cost_gp": 5.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Padded Armor",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 8.0
+  },
+  "painters-supplies": {
+    "cost_gp": 10.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Painter's Supplies",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 5.0
+  },
+  "pan-flute": {
+    "cost_gp": 12.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Pan flute",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 2.0
+  },
+  "paper": {
+    "cost_gp": 0.2,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Paper",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 0.0
+  },
+  "parchment": {
+    "cost_gp": 3.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Parchment",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 0.0
+  },
+  "pearl-of-power": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Pearl of Power",
+    "rarity": "uncommon",
+    "requires_attunement": true
+  },
+  "perfume": {
+    "cost_gp": 5.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Perfume",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 0.0
+  },
+  "periapt-of-health": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Periapt of Health",
+    "rarity": "uncommon",
+    "requires_attunement": true
+  },
+  "periapt-of-proof-against-poison": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Periapt of Proof against Poison",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "periapt-of-wound-closure": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Periapt of Wound Closure",
+    "rarity": "uncommon",
+    "requires_attunement": true
+  },
+  "philter-of-love": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Philter of Love",
+    "rarity": "uncommon",
+    "requires_attunement": false
+  },
+  "pike": {
+    "cost_gp": 5.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Pike",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 6.0
+  },
+  "pipes-of-haunting": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Pipes of Haunting",
+    "rarity": "uncommon",
+    "requires_attunement": false
+  },
+  "pipes-of-the-sewers": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Pipes of the Sewers",
+    "rarity": "uncommon",
+    "requires_attunement": true
+  },
+  "pistol": {
+    "cost_gp": 250.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Pistol",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 3.0
+  },
+  "plate-armor": {
+    "cost_gp": 1500.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Plate Armor",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 65.0
+  },
+  "plate-armor-of-etherealness": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Plate Armor of Etherealness",
+    "rarity": "legendary",
+    "requires_attunement": true
+  },
+  "playing-cards": {
+    "cost_gp": 0.5,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Playing Cards",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 0.0
+  },
+  "poison-basic": {
+    "cost_gp": 100.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Poison, Basic",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 0.0
+  },
+  "poisoners-kit": {
+    "cost_gp": 5.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Poisoner's Kit",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 2.0
+  },
+  "pole": {
+    "cost_gp": 0.05,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Pole",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 7.0
+  },
+  "portable-hole": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Portable Hole",
+    "rarity": "rare",
+    "requires_attunement": false
+  },
+  "pot-iron": {
+    "cost_gp": 2.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Pot, Iron",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 10.0
+  },
+  "potion-of-animal-friendship": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Potion of Animal Friendship",
+    "rarity": "uncommon",
+    "requires_attunement": false
+  },
+  "potion-of-clairvoyance": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Potion of Clairvoyance",
+    "rarity": "rare",
+    "requires_attunement": false
+  },
+  "potion-of-climbing": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Potion of Climbing",
+    "rarity": "common",
+    "requires_attunement": false
+  },
+  "potion-of-diminution": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Potion of Diminution",
+    "rarity": "rare",
+    "requires_attunement": false
+  },
+  "potion-of-flying": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Potion of Flying",
+    "rarity": "very_rare",
+    "requires_attunement": false
+  },
+  "potion-of-gaseous-form": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Potion of Gaseous Form",
+    "rarity": "rare",
+    "requires_attunement": false
+  },
+  "potion-of-giant-strength": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Potion of Giant Strength",
+    "rarity": "rarity_varies",
+    "requires_attunement": false
+  },
+  "potion-of-growth": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Potion of Growth",
+    "rarity": "uncommon",
+    "requires_attunement": false
+  },
+  "potion-of-healing": {
+    "cost_gp": 50.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Potion of Healing",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 0.5
+  },
+  "potion-of-heroism": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Potion of Heroism",
+    "rarity": "rare",
+    "requires_attunement": false
+  },
+  "potion-of-invisibility": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Potion of Invisibility",
+    "rarity": "rare",
+    "requires_attunement": false
+  },
+  "potion-of-mind-reading": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Potion of Mind Reading",
+    "rarity": "rare",
+    "requires_attunement": false
+  },
+  "potion-of-poison": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Potion of Poison",
+    "rarity": "uncommon",
+    "requires_attunement": false
+  },
+  "potion-of-resistance": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Potion of Resistance",
+    "rarity": "uncommon",
+    "requires_attunement": false
+  },
+  "potion-of-speed": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Potion of Speed",
+    "rarity": "very_rare",
+    "requires_attunement": false
+  },
+  "potion-of-water-breathing": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Potion of Water Breathing",
+    "rarity": "uncommon",
+    "requires_attunement": false
+  },
+  "potions-of-healing": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Potions of Healing",
+    "rarity": "rarity_varies",
+    "requires_attunement": false
+  },
+  "potters-tools": {
+    "cost_gp": 10.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Potter's Tools",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 3.0
+  },
+  "pouch": {
+    "cost_gp": 0.5,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Pouch",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 1.0
+  },
+  "priests-pack": {
+    "cost_gp": 33.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Priest's Pack",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 29.0
+  },
+  "quarterstaff": {
+    "cost_gp": 0.2,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Quarterstaff",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 4.0
+  },
+  "quiver": {
+    "cost_gp": 1.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Quiver",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 1.0
+  },
+  "ram-portable": {
+    "cost_gp": 4.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Ram, Portable",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 35.0
+  },
+  "rapier": {
+    "cost_gp": 25.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Rapier",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 2.0
+  },
+  "rations": {
+    "cost_gp": 0.5,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Rations",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 2.0
+  },
+  "reliquary": {
+    "cost_gp": 5.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Reliquary",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 2.0
+  },
+  "ring-mail": {
+    "cost_gp": 30.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Ring Mail",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 40.0
+  },
+  "ring-of-animal-influence": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Ring of Animal Influence",
+    "rarity": "rare",
+    "requires_attunement": false
+  },
+  "ring-of-djinni-summoning": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Ring of Djinni Summoning",
+    "rarity": "legendary",
+    "requires_attunement": true
+  },
+  "ring-of-elemental-command": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Ring of Elemental Command",
+    "rarity": "legendary",
+    "requires_attunement": true
+  },
+  "ring-of-evasion": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Ring of Evasion",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "ring-of-feather-falling": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Ring of Feather Falling",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "ring-of-free-action": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Ring of Free Action",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "ring-of-invisibility": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Ring of Invisibility",
+    "rarity": "legendary",
+    "requires_attunement": true
+  },
+  "ring-of-jumping": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Ring of Jumping",
+    "rarity": "uncommon",
+    "requires_attunement": true
+  },
+  "ring-of-mind-shielding": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Ring of Mind Shielding",
+    "rarity": "uncommon",
+    "requires_attunement": true
+  },
+  "ring-of-protection": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Ring of Protection",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "ring-of-regeneration": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Ring of Regeneration",
+    "rarity": "very_rare",
+    "requires_attunement": true
+  },
+  "ring-of-resistance": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Ring of Resistance",
+    "rarity": "rare",
+    "requires_attunement": false
+  },
+  "ring-of-shooting-stars": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Ring of Shooting Stars",
+    "rarity": "very_rare",
+    "requires_attunement": true
+  },
+  "ring-of-spell-storing": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Ring of Spell Storing",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "ring-of-spell-turning": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Ring of Spell Turning",
+    "rarity": "legendary",
+    "requires_attunement": true
+  },
+  "ring-of-swimming": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Ring of Swimming",
+    "rarity": "uncommon",
+    "requires_attunement": false
+  },
+  "ring-of-telekinesis": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Ring of Telekinesis",
+    "rarity": "very_rare",
+    "requires_attunement": true
+  },
+  "ring-of-the-ram": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Ring of the Ram",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "ring-of-three-wishes": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Ring of Three Wishes",
+    "rarity": "legendary",
+    "requires_attunement": false
+  },
+  "ring-of-warmth": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Ring of Warmth",
+    "rarity": "uncommon",
+    "requires_attunement": true
+  },
+  "ring-of-water-walking": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Ring of Water Walking",
+    "rarity": "uncommon",
+    "requires_attunement": false
+  },
+  "ring-of-x-ray-vision": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Ring of X-ray Vision",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "robe": {
+    "cost_gp": 1.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Robe",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 1.0
+  },
+  "robe-of-eyes": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Robe of Eyes",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "robe-of-scintillating-colors": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Robe of Scintillating Colors",
+    "rarity": "very_rare",
+    "requires_attunement": true
+  },
+  "robe-of-stars": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Robe of Stars",
+    "rarity": "very_rare",
+    "requires_attunement": true
+  },
+  "robe-of-the-archmagi": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Robe of the Archmagi",
+    "rarity": "legendary",
+    "requires_attunement": true
+  },
+  "robe-of-useful-items": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Robe of Useful Items",
+    "rarity": "uncommon",
+    "requires_attunement": false
+  },
+  "rod": {
+    "cost_gp": 10.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Rod",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 2.0
+  },
+  "rod-of-absorption": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Rod of Absorption",
+    "rarity": "very_rare",
+    "requires_attunement": true
+  },
+  "rod-of-alertness": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Rod of Alertness",
+    "rarity": "very_rare",
+    "requires_attunement": true
+  },
+  "rod-of-lordly-might": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Rod of Lordly Might",
+    "rarity": "legendary",
+    "requires_attunement": true
+  },
+  "rod-of-rulership": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Rod of Rulership",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "rod-of-security": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Rod of Security",
+    "rarity": "very_rare",
+    "requires_attunement": false
+  },
+  "rope": {
+    "cost_gp": 1.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Rope",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 5.0
+  },
+  "rope-of-climbing": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Rope of Climbing",
+    "rarity": "uncommon",
+    "requires_attunement": false
+  },
+  "rope-of-entanglement": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Rope of Entanglement",
+    "rarity": "rare",
+    "requires_attunement": false
+  },
+  "sack": {
+    "cost_gp": 0.01,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Sack",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 1.0
+  },
+  "scale-mail": {
+    "cost_gp": 50.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Scale Mail",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 45.0
+  },
+  "scarab-of-protection": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Scarab of Protection",
+    "rarity": "legendary",
+    "requires_attunement": true
+  },
+  "scholars-pack": {
+    "cost_gp": 40.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Scholar's Pack",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 22.0
+  },
+  "scimitar": {
+    "cost_gp": 25.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Scimitar",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 3.0
+  },
+  "scimitar-of-speed": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Scimitar of Speed",
+    "rarity": "very_rare",
+    "requires_attunement": true
+  },
+  "shawm": {
+    "cost_gp": 2.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Shawm",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 1.0
+  },
+  "shield": {
+    "attunement_constraint": null,
+    "cost_gp": 10.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Shield",
+    "rarity": "uncommon_(+1),_rare_(+2),_or_very_rare_(+3)",
+    "requires_attunement": false,
+    "weight": 6.0
+  },
+  "shield-1": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Shield +1",
+    "rarity": "uncommon",
+    "requires_attunement": false
+  },
+  "shield-2": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Shield +2",
+    "rarity": "rare",
+    "requires_attunement": false
+  },
+  "shield-3": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Shield +3",
+    "rarity": "very_rare",
+    "requires_attunement": false
+  },
+  "shield-of-missile-attraction": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Shield of Missile Attraction",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "shortbow": {
+    "cost_gp": 25.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Shortbow",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 2.0
+  },
+  "shortsword": {
+    "cost_gp": 10.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Shortsword",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 2.0
+  },
+  "shovel": {
+    "cost_gp": 2.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Shovel",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 5.0
+  },
+  "sickle": {
+    "cost_gp": 1.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Sickle",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 2.0
+  },
+  "signal-whistle": {
+    "cost_gp": 0.05,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Signal Whistle",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 0.0
+  },
+  "sling": {
+    "cost_gp": 0.1,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Sling",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 0.0
+  },
+  "slippers-of-spider-climbing": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Slippers of Spider Climbing",
+    "rarity": "uncommon",
+    "requires_attunement": true
+  },
+  "smiths-tools": {
+    "cost_gp": 20.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Smith's Tools",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 8.0
+  },
+  "sovereign-glue": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Sovereign Glue",
+    "rarity": "legendary",
+    "requires_attunement": false
+  },
+  "spear": {
+    "cost_gp": 5.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Spear",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 2.0
+  },
+  "spell-scroll": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Spell Scroll",
+    "rarity": "rarity_varies",
+    "requires_attunement": false
+  },
+  "spell-scroll-cantrip": {
+    "cost_gp": 30.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Spell Scroll, Cantrip",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 0.0
+  },
+  "spell-scroll-level-1": {
+    "cost_gp": 50.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Spell Scroll, Level 1",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 0.0
+  },
+  "spellbook": {
+    "cost_gp": 50.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Spellbook",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 3.0
+  },
+  "spellguard-shield": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Spellguard Shield",
+    "rarity": "very_rare",
+    "requires_attunement": true
+  },
+  "sphere-of-annihilation": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Sphere of Annihilation",
+    "rarity": "legendary",
+    "requires_attunement": false
+  },
+  "spikes-iron": {
+    "cost_gp": 1.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Spikes, Iron",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 2.0
+  },
+  "splint-armor": {
+    "cost_gp": 200.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Splint Armor",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 60.0
+  },
+  "sprig-of-mistletoe": {
+    "cost_gp": 1.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Sprig of Mistletoe",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 0.0
+  },
+  "spyglass": {
+    "cost_gp": 1000.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Spyglass",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 1.0
+  },
+  "staff": {
+    "cost_gp": 5.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Staff",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 4.0
+  },
+  "staff-of-charming": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Staff of Charming",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "staff-of-fire": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Staff of Fire",
+    "rarity": "very_rare",
+    "requires_attunement": true
+  },
+  "staff-of-frost": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Staff of Frost",
+    "rarity": "very_rare",
+    "requires_attunement": true
+  },
+  "staff-of-healing": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Staff of Healing",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "staff-of-power": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Staff of Power",
+    "rarity": "very_rare",
+    "requires_attunement": true
+  },
+  "staff-of-striking": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Staff of Striking",
+    "rarity": "very_rare",
+    "requires_attunement": true
+  },
+  "staff-of-swarming-insects": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Staff of Swarming Insects",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "staff-of-the-magi": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Staff of the Magi",
+    "rarity": "legendary",
+    "requires_attunement": true
+  },
+  "staff-of-the-python": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Staff of the Python",
+    "rarity": "uncommon",
+    "requires_attunement": true
+  },
+  "staff-of-the-woodlands": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Staff of the Woodlands",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "staff-of-thunder-and-lightning": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Staff of Thunder and Lightning",
+    "rarity": "very_rare",
+    "requires_attunement": true
+  },
+  "staff-of-withering": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Staff of Withering",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "stone-of-controlling-earth-elementals": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Stone of Controlling Earth Elementals",
+    "rarity": "rare",
+    "requires_attunement": false
+  },
+  "stone-of-good-luck-(luckstone)": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Stone of Good Luck (Luckstone)",
+    "rarity": "uncommon",
+    "requires_attunement": true
+  },
+  "string": {
+    "cost_gp": 0.1,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "String",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 0.0
+  },
+  "studded-leather-armor": {
+    "cost_gp": 45.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Studded Leather Armor",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 13.0
+  },
+  "sun-blade": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Sun Blade",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "sword-of-life-stealing": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Sword of Life Stealing",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "sword-of-sharpness": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Sword of Sharpness",
+    "rarity": "very_rare",
+    "requires_attunement": true
+  },
+  "sword-of-wounding": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Sword of Wounding",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "talisman-of-pure-good": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Talisman of Pure Good",
+    "rarity": "legendary",
+    "requires_attunement": true
+  },
+  "talisman-of-the-sphere": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Talisman of the Sphere",
+    "rarity": "legendary",
+    "requires_attunement": true
+  },
+  "talisman-of-ultimate-evil": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Talisman of Ultimate Evil",
+    "rarity": "legendary",
+    "requires_attunement": true
+  },
+  "tent": {
+    "cost_gp": 2.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Tent",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 20.0
+  },
+  "thieves-tools": {
+    "cost_gp": 25.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Thieves' Tools",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 1.0
+  },
+  "three-dragon-ante": {
+    "cost_gp": 1.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Three-Dragon Ante",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 0.0
+  },
+  "tinderbox": {
+    "cost_gp": 0.5,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Tinderbox",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 1.0
+  },
+  "tinkers-tools": {
+    "cost_gp": 50.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Tinker's Tools",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 10.0
+  },
+  "tome-of-clear-thought": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Tome of Clear Thought",
+    "rarity": "very_rare",
+    "requires_attunement": false
+  },
+  "tome-of-leadership-and-influence": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Tome of Leadership and Influence",
+    "rarity": "very_rare",
+    "requires_attunement": false
+  },
+  "tome-of-understanding": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Tome of Understanding",
+    "rarity": "very_rare",
+    "requires_attunement": false
+  },
+  "torch": {
+    "cost_gp": 0.01,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Torch",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 1.0
+  },
+  "trident": {
+    "cost_gp": 5.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Trident",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 4.0
+  },
+  "trident-of-fish-command": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Trident of Fish Command",
+    "rarity": "uncommon",
+    "requires_attunement": true
+  },
+  "universal-solvent": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Universal Solvent",
+    "rarity": "legendary",
+    "requires_attunement": false
+  },
+  "vial": {
+    "cost_gp": 1.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Vial",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 0.0
+  },
+  "vicious-weapon": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Vicious Weapon",
+    "rarity": "rare",
+    "requires_attunement": false
+  },
+  "viol": {
+    "cost_gp": 30.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Viol",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 2.0
+  },
+  "vorpal-sword": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Vorpal Sword",
+    "rarity": "legendary",
+    "requires_attunement": true
+  },
+  "wand": {
+    "cost_gp": 10.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Wand",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 1.0
+  },
+  "wand-of-binding": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Wand of Binding",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "wand-of-enemy-detection": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Wand of Enemy Detection",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "wand-of-fear": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Wand of Fear",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "wand-of-fireballs": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Wand of Fireballs",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "wand-of-lightning-bolts": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Wand of Lightning Bolts",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "wand-of-magic-detection": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Wand of Magic Detection",
+    "rarity": "uncommon",
+    "requires_attunement": false
+  },
+  "wand-of-magic-missiles": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Wand of Magic Missiles",
+    "rarity": "uncommon",
+    "requires_attunement": false
+  },
+  "wand-of-paralysis": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Wand of Paralysis",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "wand-of-polymorph": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Wand of Polymorph",
+    "rarity": "very_rare",
+    "requires_attunement": true
+  },
+  "wand-of-secrets": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Wand of Secrets",
+    "rarity": "uncommon",
+    "requires_attunement": false
+  },
+  "wand-of-the-war-mage": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Wand of the War Mage",
+    "rarity": "uncommon_(+1),_rare_(+2),_or_very_rare_(+3)",
+    "requires_attunement": true
+  },
+  "wand-of-the-war-mage-1": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Wand of the War Mage +1",
+    "rarity": "uncommon",
+    "requires_attunement": true
+  },
+  "wand-of-the-war-mage-2": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Wand of the War Mage +2",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "wand-of-the-war-mage-3": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Wand of the War Mage +3",
+    "rarity": "very_rare",
+    "requires_attunement": true
+  },
+  "wand-of-web": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Wand of Web",
+    "rarity": "uncommon",
+    "requires_attunement": true
+  },
+  "wand-of-wonder": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Wand of Wonder",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "war-pick": {
+    "cost_gp": 5.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "War Pick",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 2.0
+  },
+  "warhammer": {
+    "cost_gp": 15.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Warhammer",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 5.0
+  },
+  "waterskin": {
+    "cost_gp": 0.2,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Waterskin",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 5.0
+  },
+  "weapon": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Weapon",
+    "rarity": "uncommon_(+1),_rare_(+2),_or_very_rare_(+3)",
+    "requires_attunement": false
+  },
+  "weapon-1": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Weapon +1",
+    "rarity": "uncommon",
+    "requires_attunement": false
+  },
+  "weapon-2": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Weapon +2",
+    "rarity": "rare",
+    "requires_attunement": false
+  },
+  "weapon-3": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Weapon +3",
+    "rarity": "very_rare",
+    "requires_attunement": false
+  },
+  "weapon-of-warning": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Weapon of Warning",
+    "rarity": "uncommon",
+    "requires_attunement": true
+  },
+  "weavers-tools": {
+    "cost_gp": 1.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Weaver's Tools",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 5.0
+  },
+  "well-of-many-worlds": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Well of Many Worlds",
+    "rarity": "legendary",
+    "requires_attunement": false
+  },
+  "whip": {
+    "cost_gp": 2.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Whip",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 3.0
+  },
+  "wind-fan": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Wind Fan",
+    "rarity": "uncommon",
+    "requires_attunement": false
+  },
+  "winged-boots": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Winged Boots",
+    "rarity": "uncommon",
+    "requires_attunement": true
+  },
+  "wings-of-flying": {
+    "attunement_constraint": null,
+    "kind": "magic",
+    "name": "Wings of Flying",
+    "rarity": "rare",
+    "requires_attunement": true
+  },
+  "woodcarvers-tools": {
+    "cost_gp": 1.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Woodcarver's Tools",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 5.0
+  },
+  "yew-wand": {
+    "cost_gp": 10.0,
+    "equipment_category": null,
+    "kind": "gear",
+    "name": "Yew Wand",
+    "rarity": "common",
+    "requires_attunement": false,
+    "weight": 1.0
+  }
+}

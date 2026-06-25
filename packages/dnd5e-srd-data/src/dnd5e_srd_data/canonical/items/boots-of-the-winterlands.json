@@ -1,0 +1,68 @@
+{
+  "activities": [],
+  "attunement_constraint": null,
+  "cost_gp": 400.0,
+  "description": "Wondrous Item, Uncommon (Requires Attunement)\n\nThese furred boots are snug and feel warm. While wearing them, you gain the following benefits.\n\nCold Resistance. You have Resistance to Cold damage and can tolerate temperatures of 0 degrees Fahrenheit or lower without any additional protection.\n\nWinter Strider. You ignore Difficult Terrain created by ice or snow.",
+  "item_kind": "magic_item",
+  "name": "Boots of the Winterlands",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.traits.dr.value",
+          "mode": 2,
+          "priority": null,
+          "value": "cold"
+        }
+      ],
+      "description": "<p>You have Resistance to Cold damage and can tolerate temperatures of 0 degrees Fahrenheit or lower without any additional protection.</p>",
+      "disabled": false,
+      "duration": null,
+      "id": "QMx1VWIiJ0XZHepP",
+      "name": "Cold Resistance",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "system.attributes.movement.ignoredDifficultTerrain",
+          "mode": 2,
+          "priority": null,
+          "value": "ice"
+        },
+        {
+          "key": "system.attributes.movement.ignoredDifficultTerrain",
+          "mode": 2,
+          "priority": null,
+          "value": "snow"
+        }
+      ],
+      "description": "<p>You ignore Difficult Terrain created by ice or snow.</p>",
+      "disabled": false,
+      "duration": null,
+      "id": "jm5ygTiAc2Vn7LNY",
+      "name": "Winter Strider",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/equipment24/equipment/boots-of-the-winterlands.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "rarity": "uncommon",
+  "requires_attunement": true,
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "boots-of-the-winterlands",
+  "weight": 0.0
+}

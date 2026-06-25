@@ -1,0 +1,1382 @@
+[
+  {
+    "canonical_value": 50.0,
+    "field": "cost_gp",
+    "kind": "item",
+    "oracle_value": 25.0,
+    "slug": "alchemists-fire"
+  },
+  {
+    "canonical_value": 0.0,
+    "field": "weight",
+    "kind": "item",
+    "oracle_value": 1.0,
+    "slug": "antitoxin"
+  },
+  {
+    "canonical_value": 0.05,
+    "field": "weight",
+    "kind": "item",
+    "oracle_value": 1.0,
+    "slug": "arrows"
+  },
+  {
+    "canonical_value": 1.0,
+    "field": "weight",
+    "kind": "item",
+    "oracle_value": 6.0,
+    "slug": "bagpipes"
+  },
+  {
+    "canonical_value": 0.4,
+    "field": "cost_gp",
+    "kind": "item",
+    "oracle_value": 2.0,
+    "slug": "basket"
+  },
+  {
+    "canonical_value": 7.0,
+    "field": "weight",
+    "kind": "item",
+    "oracle_value": 25.0,
+    "slug": "bedroll"
+  },
+  {
+    "canonical_value": 1.0,
+    "field": "cost_gp",
+    "kind": "item",
+    "oracle_value": 2.0,
+    "slug": "bedroll"
+  },
+  {
+    "canonical_value": 0.0,
+    "field": "weight",
+    "kind": "item",
+    "oracle_value": 1.0,
+    "slug": "bell"
+  },
+  {
+    "canonical_value": "legendary",
+    "field": "rarity",
+    "kind": "item",
+    "oracle_value": "rarity_varies",
+    "slug": "belt-of-giant-strength"
+  },
+  {
+    "canonical_value": 0.5,
+    "field": "cost_gp",
+    "kind": "item",
+    "oracle_value": 5.0,
+    "slug": "blanket"
+  },
+  {
+    "canonical_value": 0.075,
+    "field": "weight",
+    "kind": "item",
+    "oracle_value": 1.5,
+    "slug": "bolts"
+  },
+  {
+    "canonical_value": 0.2,
+    "field": "weight",
+    "kind": "item",
+    "oracle_value": 2.0,
+    "slug": "bullets-firearm"
+  },
+  {
+    "canonical_value": 0.075,
+    "field": "weight",
+    "kind": "item",
+    "oracle_value": 1.5,
+    "slug": "bullets-sling"
+  },
+  {
+    "canonical_value": 5.0,
+    "field": "weight",
+    "kind": "item",
+    "oracle_value": 20.0,
+    "slug": "burglars-pack"
+  },
+  {
+    "canonical_value": 1.0,
+    "field": "cost_gp",
+    "kind": "item",
+    "oracle_value": 2.0,
+    "slug": "caltrops"
+  },
+  {
+    "canonical_value": 20.0,
+    "field": "weight",
+    "kind": "item",
+    "oracle_value": 14.0,
+    "slug": "chain-shirt"
+  },
+  {
+    "canonical_value": 0.0,
+    "field": "weight",
+    "kind": "item",
+    "oracle_value": 6.0,
+    "slug": "chain"
+  },
+  {
+    "canonical_value": 25.0,
+    "field": "weight",
+    "kind": "item",
+    "oracle_value": 20.0,
+    "slug": "chest"
+  },
+  {
+    "canonical_value": 5.0,
+    "field": "cost_gp",
+    "kind": "item",
+    "oracle_value": 50.0,
+    "slug": "chest"
+  },
+  {
+    "canonical_value": 12.0,
+    "field": "weight",
+    "kind": "item",
+    "oracle_value": 8.0,
+    "slug": "climbers-kit"
+  },
+  {
+    "canonical_value": 6.0,
+    "field": "weight",
+    "kind": "item",
+    "oracle_value": 3.0,
+    "slug": "clothes-fine"
+  },
+  {
+    "canonical_value": 2.0,
+    "field": "cost_gp",
+    "kind": "item",
+    "oracle_value": 5.0,
+    "slug": "clothes-travelers"
+  },
+  {
+    "canonical_value": 2.0,
+    "field": "weight",
+    "kind": "item",
+    "oracle_value": 1.0,
+    "slug": "component-pouch"
+  },
+  {
+    "canonical_value": 25.0,
+    "field": "cost_gp",
+    "kind": "item",
+    "oracle_value": 2.0,
+    "slug": "component-pouch"
+  },
+  {
+    "canonical_value": 0.05,
+    "field": "cost_gp",
+    "kind": "item",
+    "oracle_value": 5.0,
+    "slug": "dart"
+  },
+  {
+    "canonical_value": 5.0,
+    "field": "weight",
+    "kind": "item",
+    "oracle_value": 55.0,
+    "slug": "explorers-pack"
+  },
+  {
+    "canonical_value": "common",
+    "field": "rarity",
+    "kind": "item",
+    "oracle_value": "rarity_varies",
+    "slug": "feather-token"
+  },
+  {
+    "canonical_value": "common",
+    "field": "rarity",
+    "kind": "item",
+    "oracle_value": "rarity_varies",
+    "slug": "figurine-of-wondrous-power"
+  },
+  {
+    "canonical_value": 3.0,
+    "field": "weight",
+    "kind": "item",
+    "oracle_value": 2.0,
+    "slug": "hand-crossbow"
+  },
+  {
+    "canonical_value": 75.0,
+    "field": "cost_gp",
+    "kind": "item",
+    "oracle_value": 25.0,
+    "slug": "hand-crossbow"
+  },
+  {
+    "canonical_value": "common",
+    "field": "rarity",
+    "kind": "item",
+    "oracle_value": "rare",
+    "slug": "handy-haversack"
+  },
+  {
+    "canonical_value": 8.0,
+    "field": "weight",
+    "kind": "item",
+    "oracle_value": 3.0,
+    "slug": "herbalism-kit"
+  },
+  {
+    "canonical_value": "common",
+    "field": "rarity",
+    "kind": "item",
+    "oracle_value": "rare_(silver_or_brass),_very_rare_(bronze),_or_legendary_(iron)",
+    "slug": "horn-of-valhalla"
+  },
+  {
+    "canonical_value": "common",
+    "field": "rarity",
+    "kind": "item",
+    "oracle_value": "rarity_varies",
+    "slug": "ioun-stone"
+  },
+  {
+    "canonical_value": 0.5,
+    "field": "cost_gp",
+    "kind": "item",
+    "oracle_value": 5.0,
+    "slug": "javelin"
+  },
+  {
+    "canonical_value": 50.0,
+    "field": "cost_gp",
+    "kind": "item",
+    "oracle_value": 5.0,
+    "slug": "longbow"
+  },
+  {
+    "canonical_value": 4.0,
+    "field": "weight",
+    "kind": "item",
+    "oracle_value": 2.0,
+    "slug": "mace"
+  },
+  {
+    "canonical_value": 0.02,
+    "field": "weight",
+    "kind": "item",
+    "oracle_value": 1.0,
+    "slug": "needles"
+  },
+  {
+    "canonical_value": 0.1,
+    "field": "cost_gp",
+    "kind": "item",
+    "oracle_value": 3.0,
+    "slug": "parchment"
+  },
+  {
+    "canonical_value": 18.0,
+    "field": "weight",
+    "kind": "item",
+    "oracle_value": 6.0,
+    "slug": "pike"
+  },
+  {
+    "canonical_value": 50.0,
+    "field": "cost_gp",
+    "kind": "item",
+    "oracle_value": 5.0,
+    "slug": "poisoners-kit"
+  },
+  {
+    "canonical_value": "common",
+    "field": "rarity",
+    "kind": "item",
+    "oracle_value": "rarity_varies",
+    "slug": "potion-of-giant-strength"
+  },
+  {
+    "canonical_value": 5.0,
+    "field": "weight",
+    "kind": "item",
+    "oracle_value": 29.0,
+    "slug": "priests-pack"
+  },
+  {
+    "canonical_value": 4.0,
+    "field": "weight",
+    "kind": "item",
+    "oracle_value": 1.0,
+    "slug": "robe"
+  },
+  {
+    "canonical_value": 0.5,
+    "field": "weight",
+    "kind": "item",
+    "oracle_value": 1.0,
+    "slug": "sack"
+  },
+  {
+    "canonical_value": 5.0,
+    "field": "weight",
+    "kind": "item",
+    "oracle_value": 22.0,
+    "slug": "scholars-pack"
+  },
+  {
+    "canonical_value": "common",
+    "field": "rarity",
+    "kind": "item",
+    "oracle_value": "uncommon_(+1),_rare_(+2),_or_very_rare_(+3)",
+    "slug": "shield"
+  },
+  {
+    "canonical_value": 3.0,
+    "field": "weight",
+    "kind": "item",
+    "oracle_value": 2.0,
+    "slug": "spear"
+  },
+  {
+    "canonical_value": 1.0,
+    "field": "cost_gp",
+    "kind": "item",
+    "oracle_value": 5.0,
+    "slug": "spear"
+  },
+  {
+    "canonical_value": "common",
+    "field": "rarity",
+    "kind": "item",
+    "oracle_value": "rarity_varies",
+    "slug": "spell-scroll"
+  },
+  {
+    "canonical_value": 0.5,
+    "field": "weight",
+    "kind": "item",
+    "oracle_value": 2.0,
+    "slug": "spikes-iron"
+  },
+  {
+    "canonical_value": 1.0,
+    "field": "weight",
+    "kind": "item",
+    "oracle_value": 2.0,
+    "slug": "viol"
+  },
+  {
+    "canonical_value": 1.0,
+    "field": "weight",
+    "kind": "item",
+    "oracle_value": 5.0,
+    "slug": "waterskin"
+  },
+  {
+    "canonical_value": "evo",
+    "field": "school",
+    "kind": "spell",
+    "oracle_value": "con",
+    "slug": "acid-splash"
+  },
+  {
+    "canonical_value": null,
+    "field": "duration.value",
+    "kind": "spell",
+    "oracle_value": 24,
+    "slug": "animal-messenger"
+  },
+  {
+    "canonical_value": false,
+    "field": "concentration",
+    "kind": "spell",
+    "oracle_value": true,
+    "slug": "animal-shapes"
+  },
+  {
+    "canonical_value": "disp",
+    "field": "duration.units",
+    "kind": "spell",
+    "oracle_value": "perm",
+    "slug": "arcane-lock"
+  },
+  {
+    "canonical_value": 90,
+    "field": "range.value",
+    "kind": "spell",
+    "oracle_value": 60,
+    "slug": "arcane-sword"
+  },
+  {
+    "canonical_value": "disp",
+    "field": "duration.units",
+    "kind": "spell",
+    "oracle_value": "spec",
+    "slug": "astral-projection"
+  },
+  {
+    "canonical_value": 30,
+    "field": "range.value",
+    "kind": "spell",
+    "oracle_value": 60,
+    "slug": "banishment"
+  },
+  {
+    "canonical_value": false,
+    "field": "concentration",
+    "kind": "spell",
+    "oracle_value": true,
+    "slug": "barkskin"
+  },
+  {
+    "canonical_value": [
+      1,
+      "bonus"
+    ],
+    "field": "casting_time",
+    "kind": "spell",
+    "oracle_value": [
+      1,
+      "action"
+    ],
+    "slug": "barkskin"
+  },
+  {
+    "canonical_value": "trs",
+    "field": "school",
+    "kind": "spell",
+    "oracle_value": "nec",
+    "slug": "blindness-deafness"
+  },
+  {
+    "canonical_value": 120,
+    "field": "range.value",
+    "kind": "spell",
+    "oracle_value": 30,
+    "slug": "blindness-deafness"
+  },
+  {
+    "canonical_value": "touch",
+    "field": "range.units",
+    "kind": "spell",
+    "oracle_value": "ft",
+    "slug": "chill-touch"
+  },
+  {
+    "canonical_value": null,
+    "field": "range.value",
+    "kind": "spell",
+    "oracle_value": 120,
+    "slug": "chill-touch"
+  },
+  {
+    "canonical_value": "inst",
+    "field": "duration.units",
+    "kind": "spell",
+    "oracle_value": "round",
+    "slug": "chill-touch"
+  },
+  {
+    "canonical_value": null,
+    "field": "duration.value",
+    "kind": "spell",
+    "oracle_value": 1,
+    "slug": "chill-touch"
+  },
+  {
+    "canonical_value": "inst",
+    "field": "duration.units",
+    "kind": "spell",
+    "oracle_value": "round",
+    "slug": "color-spray"
+  },
+  {
+    "canonical_value": null,
+    "field": "duration.value",
+    "kind": "spell",
+    "oracle_value": 1,
+    "slug": "color-spray"
+  },
+  {
+    "canonical_value": "inst",
+    "field": "duration.units",
+    "kind": "spell",
+    "oracle_value": "round",
+    "slug": "command"
+  },
+  {
+    "canonical_value": null,
+    "field": "duration.value",
+    "kind": "spell",
+    "oracle_value": 1,
+    "slug": "command"
+  },
+  {
+    "canonical_value": "minute",
+    "field": "duration.units",
+    "kind": "spell",
+    "oracle_value": "hour",
+    "slug": "conjure-animals"
+  },
+  {
+    "canonical_value": 10,
+    "field": "duration.value",
+    "kind": "spell",
+    "oracle_value": 1,
+    "slug": "conjure-animals"
+  },
+  {
+    "canonical_value": [
+      1,
+      "action"
+    ],
+    "field": "casting_time",
+    "kind": "spell",
+    "oracle_value": [
+      1,
+      "minute"
+    ],
+    "slug": "conjure-celestial"
+  },
+  {
+    "canonical_value": "minute",
+    "field": "duration.units",
+    "kind": "spell",
+    "oracle_value": "hour",
+    "slug": "conjure-celestial"
+  },
+  {
+    "canonical_value": 10,
+    "field": "duration.value",
+    "kind": "spell",
+    "oracle_value": 1,
+    "slug": "conjure-celestial"
+  },
+  {
+    "canonical_value": [
+      "S",
+      "V"
+    ],
+    "field": "components",
+    "kind": "spell",
+    "oracle_value": [
+      "M",
+      "S",
+      "V"
+    ],
+    "slug": "conjure-elemental"
+  },
+  {
+    "canonical_value": [
+      1,
+      "action"
+    ],
+    "field": "casting_time",
+    "kind": "spell",
+    "oracle_value": [
+      1,
+      "minute"
+    ],
+    "slug": "conjure-elemental"
+  },
+  {
+    "canonical_value": 60,
+    "field": "range.value",
+    "kind": "spell",
+    "oracle_value": 90,
+    "slug": "conjure-elemental"
+  },
+  {
+    "canonical_value": "minute",
+    "field": "duration.units",
+    "kind": "spell",
+    "oracle_value": "hour",
+    "slug": "conjure-elemental"
+  },
+  {
+    "canonical_value": 10,
+    "field": "duration.value",
+    "kind": "spell",
+    "oracle_value": 1,
+    "slug": "conjure-elemental"
+  },
+  {
+    "canonical_value": [
+      1,
+      "action"
+    ],
+    "field": "casting_time",
+    "kind": "spell",
+    "oracle_value": [
+      1,
+      "minute"
+    ],
+    "slug": "conjure-fey"
+  },
+  {
+    "canonical_value": 60,
+    "field": "range.value",
+    "kind": "spell",
+    "oracle_value": 90,
+    "slug": "conjure-fey"
+  },
+  {
+    "canonical_value": "minute",
+    "field": "duration.units",
+    "kind": "spell",
+    "oracle_value": "hour",
+    "slug": "conjure-fey"
+  },
+  {
+    "canonical_value": 10,
+    "field": "duration.value",
+    "kind": "spell",
+    "oracle_value": 1,
+    "slug": "conjure-fey"
+  },
+  {
+    "canonical_value": [
+      1,
+      "action"
+    ],
+    "field": "casting_time",
+    "kind": "spell",
+    "oracle_value": [
+      1,
+      "minute"
+    ],
+    "slug": "conjure-minor-elementals"
+  },
+  {
+    "canonical_value": "self",
+    "field": "range.units",
+    "kind": "spell",
+    "oracle_value": "ft",
+    "slug": "conjure-minor-elementals"
+  },
+  {
+    "canonical_value": null,
+    "field": "range.value",
+    "kind": "spell",
+    "oracle_value": 90,
+    "slug": "conjure-minor-elementals"
+  },
+  {
+    "canonical_value": "minute",
+    "field": "duration.units",
+    "kind": "spell",
+    "oracle_value": "hour",
+    "slug": "conjure-minor-elementals"
+  },
+  {
+    "canonical_value": 10,
+    "field": "duration.value",
+    "kind": "spell",
+    "oracle_value": 1,
+    "slug": "conjure-minor-elementals"
+  },
+  {
+    "canonical_value": [
+      "S",
+      "V"
+    ],
+    "field": "components",
+    "kind": "spell",
+    "oracle_value": [
+      "M",
+      "S",
+      "V"
+    ],
+    "slug": "conjure-woodland-beings"
+  },
+  {
+    "canonical_value": "self",
+    "field": "range.units",
+    "kind": "spell",
+    "oracle_value": "ft",
+    "slug": "conjure-woodland-beings"
+  },
+  {
+    "canonical_value": null,
+    "field": "range.value",
+    "kind": "spell",
+    "oracle_value": 60,
+    "slug": "conjure-woodland-beings"
+  },
+  {
+    "canonical_value": "minute",
+    "field": "duration.units",
+    "kind": "spell",
+    "oracle_value": "hour",
+    "slug": "conjure-woodland-beings"
+  },
+  {
+    "canonical_value": 10,
+    "field": "duration.value",
+    "kind": "spell",
+    "oracle_value": 1,
+    "slug": "conjure-woodland-beings"
+  },
+  {
+    "canonical_value": "abj",
+    "field": "school",
+    "kind": "spell",
+    "oracle_value": "evo",
+    "slug": "contingency"
+  },
+  {
+    "canonical_value": "disp",
+    "field": "duration.units",
+    "kind": "spell",
+    "oracle_value": "perm",
+    "slug": "continual-flame"
+  },
+  {
+    "canonical_value": "abj",
+    "field": "school",
+    "kind": "spell",
+    "oracle_value": "evo",
+    "slug": "cure-wounds"
+  },
+  {
+    "canonical_value": "ill",
+    "field": "school",
+    "kind": "spell",
+    "oracle_value": "evo",
+    "slug": "dancing-lights"
+  },
+  {
+    "canonical_value": "trs",
+    "field": "school",
+    "kind": "spell",
+    "oracle_value": "evo",
+    "slug": "divine-favor"
+  },
+  {
+    "canonical_value": false,
+    "field": "concentration",
+    "kind": "spell",
+    "oracle_value": true,
+    "slug": "divine-favor"
+  },
+  {
+    "canonical_value": null,
+    "field": "duration.value",
+    "kind": "spell",
+    "oracle_value": 1,
+    "slug": "dominate-monster"
+  },
+  {
+    "canonical_value": "trs",
+    "field": "school",
+    "kind": "spell",
+    "oracle_value": "evo",
+    "slug": "earthquake"
+  },
+  {
+    "canonical_value": true,
+    "field": "concentration",
+    "kind": "spell",
+    "oracle_value": false,
+    "slug": "enthrall"
+  },
+  {
+    "canonical_value": "con",
+    "field": "school",
+    "kind": "spell",
+    "oracle_value": "trs",
+    "slug": "etherealness"
+  },
+  {
+    "canonical_value": "ft",
+    "field": "range.units",
+    "kind": "spell",
+    "oracle_value": "self",
+    "slug": "eyebite"
+  },
+  {
+    "canonical_value": "inst",
+    "field": "duration.units",
+    "kind": "spell",
+    "oracle_value": "hour",
+    "slug": "false-life"
+  },
+  {
+    "canonical_value": null,
+    "field": "duration.value",
+    "kind": "spell",
+    "oracle_value": 1,
+    "slug": "false-life"
+  },
+  {
+    "canonical_value": [
+      1,
+      "action"
+    ],
+    "field": "casting_time",
+    "kind": "spell",
+    "oracle_value": [
+      10,
+      "minute"
+    ],
+    "slug": "find-steed"
+  },
+  {
+    "canonical_value": "day",
+    "field": "duration.units",
+    "kind": "spell",
+    "oracle_value": "hour",
+    "slug": "find-the-path"
+  },
+  {
+    "canonical_value": 1,
+    "field": "duration.value",
+    "kind": "spell",
+    "oracle_value": 24,
+    "slug": "find-the-path"
+  },
+  {
+    "canonical_value": false,
+    "field": "ritual",
+    "kind": "spell",
+    "oracle_value": true,
+    "slug": "forbiddance"
+  },
+  {
+    "canonical_value": "day",
+    "field": "duration.units",
+    "kind": "spell",
+    "oracle_value": "hour",
+    "slug": "forbiddance"
+  },
+  {
+    "canonical_value": 1,
+    "field": "duration.value",
+    "kind": "spell",
+    "oracle_value": 24,
+    "slug": "forbiddance"
+  },
+  {
+    "canonical_value": true,
+    "field": "concentration",
+    "kind": "spell",
+    "oracle_value": false,
+    "slug": "forcecage"
+  },
+  {
+    "canonical_value": "con",
+    "field": "school",
+    "kind": "spell",
+    "oracle_value": "trs",
+    "slug": "giant-insect"
+  },
+  {
+    "canonical_value": 60,
+    "field": "range.value",
+    "kind": "spell",
+    "oracle_value": 30,
+    "slug": "giant-insect"
+  },
+  {
+    "canonical_value": "enc",
+    "field": "school",
+    "kind": "spell",
+    "oracle_value": "trs",
+    "slug": "glibness"
+  },
+  {
+    "canonical_value": "dstr",
+    "field": "duration.units",
+    "kind": "spell",
+    "oracle_value": "perm",
+    "slug": "glyph-of-warding"
+  },
+  {
+    "canonical_value": "con",
+    "field": "school",
+    "kind": "spell",
+    "oracle_value": "trs",
+    "slug": "goodberry"
+  },
+  {
+    "canonical_value": "self",
+    "field": "range.units",
+    "kind": "spell",
+    "oracle_value": "touch",
+    "slug": "goodberry"
+  },
+  {
+    "canonical_value": "hour",
+    "field": "duration.units",
+    "kind": "spell",
+    "oracle_value": "inst",
+    "slug": "goodberry"
+  },
+  {
+    "canonical_value": [
+      1,
+      "hour"
+    ],
+    "field": "casting_time",
+    "kind": "spell",
+    "oracle_value": [
+      10,
+      "minute"
+    ],
+    "slug": "guards-and-wards"
+  },
+  {
+    "canonical_value": "abj",
+    "field": "school",
+    "kind": "spell",
+    "oracle_value": "evo",
+    "slug": "hallow"
+  },
+  {
+    "canonical_value": "disp",
+    "field": "duration.units",
+    "kind": "spell",
+    "oracle_value": "perm",
+    "slug": "hallow"
+  },
+  {
+    "canonical_value": "abj",
+    "field": "school",
+    "kind": "spell",
+    "oracle_value": "evo",
+    "slug": "heal"
+  },
+  {
+    "canonical_value": "abj",
+    "field": "school",
+    "kind": "spell",
+    "oracle_value": "evo",
+    "slug": "healing-word"
+  },
+  {
+    "canonical_value": "self",
+    "field": "range.units",
+    "kind": "spell",
+    "oracle_value": "ft",
+    "slug": "heroes-feast"
+  },
+  {
+    "canonical_value": null,
+    "field": "range.value",
+    "kind": "spell",
+    "oracle_value": 30,
+    "slug": "heroes-feast"
+  },
+  {
+    "canonical_value": false,
+    "field": "concentration",
+    "kind": "spell",
+    "oracle_value": true,
+    "slug": "hypnotic-pattern"
+  },
+  {
+    "canonical_value": "disp",
+    "field": "duration.units",
+    "kind": "spell",
+    "oracle_value": "perm",
+    "slug": "imprisonment"
+  },
+  {
+    "canonical_value": "disp",
+    "field": "duration.units",
+    "kind": "spell",
+    "oracle_value": "perm",
+    "slug": "instant-summons"
+  },
+  {
+    "canonical_value": [
+      1,
+      "bonus"
+    ],
+    "field": "casting_time",
+    "kind": "spell",
+    "oracle_value": [
+      1,
+      "action"
+    ],
+    "slug": "jump"
+  },
+  {
+    "canonical_value": [
+      1,
+      "bonus"
+    ],
+    "field": "casting_time",
+    "kind": "spell",
+    "oracle_value": [
+      1,
+      "action"
+    ],
+    "slug": "lesser-restoration"
+  },
+  {
+    "canonical_value": null,
+    "field": "duration.value",
+    "kind": "spell",
+    "oracle_value": 1,
+    "slug": "magic-circle"
+  },
+  {
+    "canonical_value": "disp",
+    "field": "duration.units",
+    "kind": "spell",
+    "oracle_value": "perm",
+    "slug": "magic-jar"
+  },
+  {
+    "canonical_value": "disp",
+    "field": "duration.units",
+    "kind": "spell",
+    "oracle_value": "perm",
+    "slug": "magic-mouth"
+  },
+  {
+    "canonical_value": false,
+    "field": "concentration",
+    "kind": "spell",
+    "oracle_value": true,
+    "slug": "magic-weapon"
+  },
+  {
+    "canonical_value": "abj",
+    "field": "school",
+    "kind": "spell",
+    "oracle_value": "con",
+    "slug": "mass-cure-wounds"
+  },
+  {
+    "canonical_value": "abj",
+    "field": "school",
+    "kind": "spell",
+    "oracle_value": "con",
+    "slug": "mass-heal"
+  },
+  {
+    "canonical_value": "abj",
+    "field": "school",
+    "kind": "spell",
+    "oracle_value": "evo",
+    "slug": "mass-healing-word"
+  },
+  {
+    "canonical_value": [
+      "M",
+      "S"
+    ],
+    "field": "components",
+    "kind": "spell",
+    "oracle_value": [
+      "M",
+      "S",
+      "V"
+    ],
+    "slug": "message"
+  },
+  {
+    "canonical_value": "any",
+    "field": "range.units",
+    "kind": "spell",
+    "oracle_value": "spec",
+    "slug": "mirage-arcane"
+  },
+  {
+    "canonical_value": [
+      1,
+      "special"
+    ],
+    "field": "casting_time",
+    "kind": "spell",
+    "oracle_value": [
+      1,
+      "action"
+    ],
+    "slug": "plant-growth"
+  },
+  {
+    "canonical_value": "nec",
+    "field": "school",
+    "kind": "spell",
+    "oracle_value": "con",
+    "slug": "poison-spray"
+  },
+  {
+    "canonical_value": 30,
+    "field": "range.value",
+    "kind": "spell",
+    "oracle_value": 10,
+    "slug": "poison-spray"
+  },
+  {
+    "canonical_value": "abj",
+    "field": "school",
+    "kind": "spell",
+    "oracle_value": "evo",
+    "slug": "prayer-of-healing"
+  },
+  {
+    "canonical_value": [
+      1,
+      "bonus"
+    ],
+    "field": "casting_time",
+    "kind": "spell",
+    "oracle_value": [
+      1,
+      "action"
+    ],
+    "slug": "produce-flame"
+  },
+  {
+    "canonical_value": "disp",
+    "field": "duration.units",
+    "kind": "spell",
+    "oracle_value": "perm",
+    "slug": "programmed-illusion"
+  },
+  {
+    "canonical_value": "day",
+    "field": "duration.units",
+    "kind": "spell",
+    "oracle_value": "hour",
+    "slug": "project-image"
+  },
+  {
+    "canonical_value": 1,
+    "field": "duration.value",
+    "kind": "spell",
+    "oracle_value": 24,
+    "slug": "project-image"
+  },
+  {
+    "canonical_value": "self",
+    "field": "range.units",
+    "kind": "spell",
+    "oracle_value": "touch",
+    "slug": "raise-dead"
+  },
+  {
+    "canonical_value": "nec",
+    "field": "school",
+    "kind": "spell",
+    "oracle_value": "trs",
+    "slug": "reincarnate"
+  },
+  {
+    "canonical_value": "abj",
+    "field": "school",
+    "kind": "spell",
+    "oracle_value": "evo",
+    "slug": "resilient-sphere"
+  },
+  {
+    "canonical_value": false,
+    "field": "concentration",
+    "kind": "spell",
+    "oracle_value": true,
+    "slug": "resilient-sphere"
+  },
+  {
+    "canonical_value": [
+      "S",
+      "V"
+    ],
+    "field": "components",
+    "kind": "spell",
+    "oracle_value": [
+      "M",
+      "S",
+      "V"
+    ],
+    "slug": "resistance"
+  },
+  {
+    "canonical_value": "nec",
+    "field": "school",
+    "kind": "spell",
+    "oracle_value": "con",
+    "slug": "revivify"
+  },
+  {
+    "canonical_value": "disp",
+    "field": "duration.units",
+    "kind": "spell",
+    "oracle_value": "inst",
+    "slug": "secret-chest"
+  },
+  {
+    "canonical_value": "div",
+    "field": "school",
+    "kind": "spell",
+    "oracle_value": "evo",
+    "slug": "sending"
+  },
+  {
+    "canonical_value": "inst",
+    "field": "duration.units",
+    "kind": "spell",
+    "oracle_value": "round",
+    "slug": "sending"
+  },
+  {
+    "canonical_value": null,
+    "field": "duration.value",
+    "kind": "spell",
+    "oracle_value": 1,
+    "slug": "sending"
+  },
+  {
+    "canonical_value": "disp",
+    "field": "duration.units",
+    "kind": "spell",
+    "oracle_value": "perm",
+    "slug": "sequester"
+  },
+  {
+    "canonical_value": "self",
+    "field": "range.units",
+    "kind": "spell",
+    "oracle_value": "touch",
+    "slug": "shillelagh"
+  },
+  {
+    "canonical_value": "disp",
+    "field": "duration.units",
+    "kind": "spell",
+    "oracle_value": "perm",
+    "slug": "simulacrum"
+  },
+  {
+    "canonical_value": true,
+    "field": "concentration",
+    "kind": "spell",
+    "oracle_value": false,
+    "slug": "sleep"
+  },
+  {
+    "canonical_value": 60,
+    "field": "range.value",
+    "kind": "spell",
+    "oracle_value": 90,
+    "slug": "sleep"
+  },
+  {
+    "canonical_value": "ft",
+    "field": "range.units",
+    "kind": "spell",
+    "oracle_value": "touch",
+    "slug": "spare-the-dying"
+  },
+  {
+    "canonical_value": true,
+    "field": "concentration",
+    "kind": "spell",
+    "oracle_value": false,
+    "slug": "spiritual-weapon"
+  },
+  {
+    "canonical_value": "trs",
+    "field": "school",
+    "kind": "spell",
+    "oracle_value": "abj",
+    "slug": "stoneskin"
+  },
+  {
+    "canonical_value": "mi",
+    "field": "range.units",
+    "kind": "spell",
+    "oracle_value": "spec",
+    "slug": "storm-of-vengeance"
+  },
+  {
+    "canonical_value": "dstr",
+    "field": "duration.units",
+    "kind": "spell",
+    "oracle_value": "perm",
+    "slug": "symbol"
+  },
+  {
+    "canonical_value": "minute",
+    "field": "duration.units",
+    "kind": "spell",
+    "oracle_value": "round",
+    "slug": "transport-via-plants"
+  },
+  {
+    "canonical_value": false,
+    "field": "concentration",
+    "kind": "spell",
+    "oracle_value": true,
+    "slug": "true-strike"
+  },
+  {
+    "canonical_value": [
+      "M",
+      "S"
+    ],
+    "field": "components",
+    "kind": "spell",
+    "oracle_value": [
+      "S"
+    ],
+    "slug": "true-strike"
+  },
+  {
+    "canonical_value": "self",
+    "field": "range.units",
+    "kind": "spell",
+    "oracle_value": "ft",
+    "slug": "true-strike"
+  },
+  {
+    "canonical_value": null,
+    "field": "range.value",
+    "kind": "spell",
+    "oracle_value": 30,
+    "slug": "true-strike"
+  },
+  {
+    "canonical_value": "inst",
+    "field": "duration.units",
+    "kind": "spell",
+    "oracle_value": "round",
+    "slug": "true-strike"
+  },
+  {
+    "canonical_value": null,
+    "field": "duration.value",
+    "kind": "spell",
+    "oracle_value": 1,
+    "slug": "true-strike"
+  },
+  {
+    "canonical_value": 35,
+    "field": "walk_speed",
+    "kind": "species",
+    "oracle_value": 30,
+    "slug": "elf-wood"
+  },
+  {
+    "canonical_value": "medium",
+    "field": "size",
+    "kind": "species",
+    "oracle_value": "",
+    "slug": "tiefling-abyssal"
+  },
+  {
+    "canonical_value": "medium",
+    "field": "size",
+    "kind": "species",
+    "oracle_value": "",
+    "slug": "tiefling-chthonic"
+  },
+  {
+    "canonical_value": "medium",
+    "field": "size",
+    "kind": "species",
+    "oracle_value": "",
+    "slug": "tiefling-infernal"
+  }
+]

@@ -1,0 +1,45 @@
+{
+  "activities": [],
+  "attunement_constraint": null,
+  "cost_gp": 400.0,
+  "description": "Ring, Uncommon\n\nYou have a Swim Speed of 40 feet while wearing this ring.",
+  "item_kind": "magic_item",
+  "name": "Ring of Swimming",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.attributes.movement.swim",
+          "mode": 4,
+          "priority": null,
+          "value": "40"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "o9qVDiEL3u8S742k",
+      "name": "Swimmer",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/equipment24/equipment/rings/ring-of-swimming.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "rarity": "uncommon",
+  "requires_attunement": false,
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "ring-of-swimming",
+  "weight": 0.0
+}

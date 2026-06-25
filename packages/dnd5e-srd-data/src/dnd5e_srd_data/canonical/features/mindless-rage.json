@@ -1,0 +1,49 @@
+{
+  "activities": [],
+  "description": "You have Immunity to the &amp;Reference[Charmed] and &amp;Reference[Frightened] conditions while your Rage is active. If you're Charmed or Frightened when you enter your Rage, the condition ends on you.\n\nFoundry Note\n\nThis feature includes an Active Effect which grants the Charmed and Frightened condition immunity. It is not applied automatically when you begin your Rage though.",
+  "entry_kind": "feature",
+  "feature_type": "subclass_feature",
+  "foundry_id": "phbbrbMindlessRa",
+  "name": "Mindless Rage",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.traits.ci.value",
+          "mode": 2,
+          "priority": null,
+          "value": "charmed"
+        },
+        {
+          "key": "system.traits.ci.value",
+          "mode": 2,
+          "priority": null,
+          "value": "frightened"
+        }
+      ],
+      "description": "",
+      "disabled": true,
+      "duration": null,
+      "id": "Y9LOXK6Q4vot2cxi",
+      "name": "Mindless Rage",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/barbarian/subclass-features/path-of-the-berserker/mindless-rage.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "mindless-rage",
+  "source_slug": "path-of-the-berserker"
+}

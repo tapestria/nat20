@@ -1,0 +1,57 @@
+{
+  "activities": [],
+  "attunement_constraint": null,
+  "cost_gp": 400.0,
+  "description": "Wondrous Item, Uncommon (Requires Attunement)\n\nWhile wearing these gloves, you have a Climb Speed and a Swim Speed equal to your Speed, and you gain a +5 bonus to Strength (Athletics) checks made to climb or swim.\n\nFoundry Note\n\nThe +5 bonus to checks made to climb or swim should be added as a situational bonus when applicable.",
+  "item_kind": "magic_item",
+  "name": "Gloves of Swimming and Climbing",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.skills.ath.bonuses.check",
+          "mode": 2,
+          "priority": null,
+          "value": "5"
+        },
+        {
+          "key": "system.attributes.movement.climb",
+          "mode": 4,
+          "priority": null,
+          "value": "@attributes.movement.walk"
+        },
+        {
+          "key": "system.attributes.movement.swim",
+          "mode": 4,
+          "priority": null,
+          "value": "@attributes.movement.walk"
+        }
+      ],
+      "description": "<p>You have a Climb Speed and a Swim Speed equal to your Speed, and you gain a +5 bonus to Strength (Athletics) checks made to climb or swim.</p>",
+      "disabled": false,
+      "duration": null,
+      "id": "Nh870Ujh6Eqy0RFi",
+      "name": "Gloves On",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/equipment24/equipment/gloves-of-swimming-and-climbing.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "rarity": "uncommon",
+  "requires_attunement": true,
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "gloves-of-swimming-and-climbing",
+  "weight": 0.0
+}

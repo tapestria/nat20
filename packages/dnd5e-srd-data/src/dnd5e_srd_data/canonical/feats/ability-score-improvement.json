@@ -1,0 +1,29 @@
+{
+  "activities": [],
+  "category": "general",
+  "description": "General Feat (Prerequisite: Level 4+)\n\nIncrease one ability score of your choice by 2, or increase two ability scores of your choice by 1. This feat can't increase an ability score above 20.\n\nRepeatable. You can take this feat more than once.",
+  "entry_kind": "feat",
+  "name": "Ability Score Improvement",
+  "prerequisites": [
+    {
+      "feats": [],
+      "level": 4,
+      "requirement": ""
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/feats24/general-feats/ability-score-improvement.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "ability-score-improvement"
+}

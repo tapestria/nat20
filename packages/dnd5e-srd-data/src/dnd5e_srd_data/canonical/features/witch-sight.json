@@ -1,0 +1,43 @@
+{
+  "activities": [],
+  "description": "Prerequisite: Level 15+ Warlock\n\nYou have Truesight with a range of 30 feet.\n\nFoundry Note\n\nThis feature includes an Active Effect which automatically grants you Truesight.",
+  "entry_kind": "feature",
+  "feature_type": "class_feature",
+  "foundry_id": "phbinvWitchSight",
+  "name": "Witch Sight",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.attributes.senses.truesight",
+          "mode": 4,
+          "priority": null,
+          "value": "30"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "CkC8PmrUFz70FTwS",
+      "name": "Witch Sight",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/warlock/eldritch-invocation-options/witch-sight.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "witch-sight",
+  "source_slug": "warlock"
+}

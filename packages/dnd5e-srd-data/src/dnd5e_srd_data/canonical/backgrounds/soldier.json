@@ -1,0 +1,113 @@
+{
+  "ability_options": {
+    "cap": 2,
+    "options": [
+      "con",
+      "dex",
+      "str"
+    ],
+    "points": 3
+  },
+  "description": "Ability Scores: Strength, Dexterity, Constitution\n\nFeat: Savage Attacker\n\nSkill Proficiencies: Athletics and Intimidation\n\nTool Proficiency: Choose one kind of Gaming Set (see chapter 6)\n\nEquipment: Choose A or B: (A) Spear, Shortbow, 20 Arrows, Gaming Set (same as above), Healer's Kit, Quiver, Traveler's Clothes, 14 GP; or (B) 50 GP\n\n@Embed[Compendium.dnd5e.content24.JournalEntry.phbAppendixBackg.JournalEntryPage.phbbgSoldier0000 inline classes=\"free-rules-embed\"]",
+  "entry_kind": "background",
+  "languages": [
+    "common"
+  ],
+  "name": "Soldier",
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/origins24/backgrounds/soldier.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "skill_proficiencies": [
+    "ath",
+    "itm"
+  ],
+  "slug": "soldier",
+  "starting_equipment": [
+    {
+      "_id": "tjUkY8Vnhv56vBSI",
+      "group": "",
+      "requiresProficiency": false,
+      "sort": 100000,
+      "type": "AND"
+    },
+    {
+      "_id": "DtQbHpEADm0GisSh",
+      "count": null,
+      "group": "tjUkY8Vnhv56vBSI",
+      "key": "Compendium.dnd5e.equipment24.Item.phbwepSpear00000",
+      "requiresProficiency": false,
+      "sort": 200000,
+      "type": "linked"
+    },
+    {
+      "_id": "XNRbfyybOUcefRds",
+      "count": null,
+      "group": "tjUkY8Vnhv56vBSI",
+      "key": "Compendium.dnd5e.equipment24.Item.phbwepShortbow00",
+      "requiresProficiency": false,
+      "sort": 300000,
+      "type": "linked"
+    },
+    {
+      "_id": "eTkEm2kVE7f0O858",
+      "count": 20,
+      "group": "tjUkY8Vnhv56vBSI",
+      "key": "Compendium.dnd5e.equipment24.Item.phbamoArrows0000",
+      "requiresProficiency": false,
+      "sort": 400000,
+      "type": "linked"
+    },
+    {
+      "_id": "1BxsBihESoB1IdMl",
+      "count": null,
+      "group": "tjUkY8Vnhv56vBSI",
+      "key": "game",
+      "requiresProficiency": false,
+      "sort": 500000,
+      "type": "tool"
+    },
+    {
+      "_id": "1YAWN3EyOKg2hPrV",
+      "count": null,
+      "group": "tjUkY8Vnhv56vBSI",
+      "key": "Compendium.dnd5e.equipment24.Item.phbagHealersKit0",
+      "requiresProficiency": false,
+      "sort": 600000,
+      "type": "linked"
+    },
+    {
+      "_id": "UJMbdz4YGev9s0NK",
+      "count": null,
+      "group": "tjUkY8Vnhv56vBSI",
+      "key": "Compendium.dnd5e.equipment24.Item.phbagQuiver00000",
+      "requiresProficiency": false,
+      "sort": 700000,
+      "type": "linked"
+    },
+    {
+      "_id": "pgQLCuuBfGxbMKTl",
+      "count": null,
+      "group": "tjUkY8Vnhv56vBSI",
+      "key": "Compendium.dnd5e.items.Item.SsAmWV6YBqeOFihT",
+      "requiresProficiency": false,
+      "sort": 800000,
+      "type": "linked"
+    }
+  ],
+  "starting_feat_slug": "phbftSavageAttac",
+  "tool_proficiencies": [
+    "game:*"
+  ],
+  "wealth": "50"
+}

@@ -1,0 +1,49 @@
+# Nat20
+
+> Nat20 is an open-source, pure-Python **D&D 5e SRD 5.2 (CC-BY-4.0) rules
+> engine** and typed content dataset. It deterministically resolves combat,
+> ability/skill/saving-throw checks, ongoing effects, and 2-D grid movement.
+> The engine performs zero I/O and is host-agnostic — it returns typed events
+> and outcomes, leaving rendering, narration, transport, and persistence to
+> the host. Not affiliated with, endorsed by, or sponsored by Wizards of the
+> Coast; it uses only System Reference Document (SRD 5.2) content.
+
+Two packages in one uv workspace:
+
+- `dnd5e-engine` — the rules engine (combat loop, checks, effects, grid).
+- `dnd5e-srd-data` — the CC-BY-4.0 SRD 5.2 content corpus, a typed
+  Foundry-aligned dataset loaded via `BundledAssetLoader`.
+
+Core public API (`dnd5e_engine.__all__`):
+
+- Combat loop: `start_combat`, `submit_player_intent`, `advance_monster_turn`,
+  `end_combat`, `narration_events`, `get_actor_active_effects`.
+- One-shot checks: `resolve_check` (with `CheckSpec` / `CheckResult` /
+  `CheckKind`).
+- Character building: `make_build_spec`, `build_party_member` (with
+  `CharacterBuildSpec`, `CombatInstance`, `AbilityScores`).
+- Specs and grid: `PartyMemberSpec`, `EncounterMemberSpec`, `GridScene`,
+  `SceneTopology`, `ZoneEdge`, `cell_id`, `parse_cell`.
+- Effects: `ActiveEffect`, `ActiveEffectChange`, `ActiveEffectDuration`.
+- Results: `StartCombatResult`, `EndCombatResult`, `CombatOutcome`,
+  `DeathRecord`, `LootDrop`, `PlayerIntent`, `CombatHandle`, `IntentType`,
+  `ActionType`, `CombatEvent`.
+
+## Docs
+
+- [Home / positioning](index.md): what Nat20 is and why.
+- [Quickstart](quickstart.md): install + a ~20-line grid combat, a skill
+  check, and character building.
+- [Combat model](concepts/combat.md): the handle-driven turn loop.
+- [Activities](concepts/activities.md): typed activity corpus driving
+  resolution.
+- [Effects](concepts/effects.md): the `ActiveEffect` document model and its
+  combat-scoped lifecycle.
+- [Grid](concepts/grid.md): `GridScene`, cell ids, and movement.
+- [API reference](api.md): rendered from source docstrings via mkdocstrings, covering the public surface.
+- [Comparison](comparison.md): what it is, what it isn't, vs alternatives.
+
+## Keywords
+
+python D&D 5e engine, 5e SRD rules engine, TTRPG combat engine, deterministic
+5e combat library, SRD 5.2, grid combat, skill checks, character builder.

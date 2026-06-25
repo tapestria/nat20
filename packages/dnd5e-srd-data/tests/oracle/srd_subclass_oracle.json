@@ -1,0 +1,50 @@
+{
+  "champion": {
+    "class_slug": "fighter",
+    "name": "Champion"
+  },
+  "circle-of-the-land": {
+    "class_slug": "druid",
+    "name": "Circle of the Land"
+  },
+  "college-of-lore": {
+    "class_slug": "bard",
+    "name": "College of Lore"
+  },
+  "draconic-sorcery": {
+    "class_slug": "sorcerer",
+    "name": "Draconic Sorcery"
+  },
+  "evoker": {
+    "class_slug": "wizard",
+    "name": "Evoker"
+  },
+  "fiend-patron": {
+    "class_slug": "warlock",
+    "name": "Fiend Patron"
+  },
+  "hunter": {
+    "class_slug": "ranger",
+    "name": "Hunter"
+  },
+  "life-domain": {
+    "class_slug": "cleric",
+    "name": "Life Domain"
+  },
+  "oath-of-devotion": {
+    "class_slug": "paladin",
+    "name": "Oath of Devotion"
+  },
+  "path-of-the-berserker": {
+    "class_slug": "barbarian",
+    "name": "Path of the Berserker"
+  },
+  "thief": {
+    "class_slug": "rogue",
+    "name": "Thief"
+  },
+  "warrior-of-the-open-hand": {
+    "class_slug": "monk",
+    "name": "Warrior of the Open Hand"
+  }
+}

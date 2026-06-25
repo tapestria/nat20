@@ -1,0 +1,80 @@
+{
+  "activities": [],
+  "attunement_constraint": "by a Sorcerer, Warlock, or Wizard",
+  "cost_gp": 200000.0,
+  "description": "Wondrous Item, Legendary (Requires Attunement by a Sorcerer, Warlock, or Wizard)\n\nThis elegant garment is made from exquisite cloth and adorned with runes.\n\nYou gain these benefits while wearing the robe.\n\nArmor. If you aren't wearing armor, your base Armor Class is 15 plus your Dexterity modifier.\n\nMagic Resistance. You have Advantage on saving throws against spells and other magical effects.\n\nWar Mage. Your spell save DC and spell attack bonus each increase by 2.\n\nFoundry Note\n\nThe Archmagi Armor Active Effect sets your AC and should be disabled if you're still wearing armor.\n\nThe War Mage Active Effect automatically increases you spell save and attack bonus increases.",
+  "item_kind": "magic_item",
+  "name": "Robe of the Archmagi",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.attributes.ac.calc",
+          "mode": 5,
+          "priority": null,
+          "value": "custom"
+        },
+        {
+          "key": "system.attributes.ac.formula",
+          "mode": 5,
+          "priority": null,
+          "value": "15 + @abilities.dex.mod"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "pYCleIMCUWOJPtF9",
+      "name": "Archmagi Armor",
+      "statuses": [],
+      "transfer": true
+    },
+    {
+      "changes": [
+        {
+          "key": "system.bonuses.spell.dc",
+          "mode": 2,
+          "priority": null,
+          "value": "2"
+        },
+        {
+          "key": "system.bonuses.msak.attack",
+          "mode": 2,
+          "priority": null,
+          "value": "2"
+        },
+        {
+          "key": "system.bonuses.rsak.attack",
+          "mode": 2,
+          "priority": null,
+          "value": "2"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "pBVfmqYFHKSl662C",
+      "name": "War Mage",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/equipment24/equipment/robe-of-the-archmagi.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "rarity": "legendary",
+  "requires_attunement": true,
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "robe-of-the-archmagi",
+  "weight": 0.0
+}

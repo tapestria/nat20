@@ -1,0 +1,361 @@
+{
+  "advancement": [
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbscrDraconicRe"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbscrDraconicSp"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "L6ggzptPm0jk4nxC",
+      "level": 3,
+      "title": "Subclass Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbscrElementalA"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "3ptQZs8Z30J3e8MH",
+      "level": 6,
+      "title": "Subclass Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbscrDragonWing"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "Rr3BfHIS9JdX6c5X",
+      "level": 14,
+      "title": "Subclass Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.classes24.Item.phbscrDragonComp"
+          }
+        ],
+        "optional": false,
+        "spell": null
+      },
+      "hint": "",
+      "id": "zWNxZUTJugO6duSj",
+      "level": 18,
+      "title": "Subclass Features",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplAlterSelf0"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplChromaticO"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplCommand000"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplDragonsBre"
+          }
+        ],
+        "optional": false,
+        "spell": {
+          "ability": [],
+          "preparation": "always",
+          "uses": {
+            "max": "",
+            "per": "",
+            "requireSlot": false
+          }
+        }
+      },
+      "hint": "When you reach a Sorcerer level specified in the Draconic Spells table, you thereafter always have the listed spells prepared.",
+      "id": "EgVTydL5IkLS1uph",
+      "level": 3,
+      "title": "Draconic Spells",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplFear000000"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplFly0000000"
+          }
+        ],
+        "optional": false,
+        "spell": {
+          "ability": [],
+          "preparation": "always",
+          "uses": {
+            "max": "",
+            "per": "",
+            "requireSlot": false
+          }
+        }
+      },
+      "hint": "When you reach a Sorcerer level specified in the Draconic Spells table, you thereafter always have the listed spells prepared.",
+      "id": "VLhcXqbjyXnCbXTP",
+      "level": 5,
+      "title": "Draconic Spells",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplArcaneEye0"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplCharmMonst"
+          }
+        ],
+        "optional": false,
+        "spell": {
+          "ability": [],
+          "preparation": "always",
+          "uses": {
+            "max": "",
+            "per": "",
+            "requireSlot": false
+          }
+        }
+      },
+      "hint": "When you reach a Sorcerer level specified in the Draconic Spells table, you thereafter always have the listed spells prepared.",
+      "id": "nQwB2GYHgvg5IRhf",
+      "level": 7,
+      "title": "Draconic Spells",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "items": [
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplLegendLore"
+          },
+          {
+            "optional": false,
+            "uuid": "Compendium.dnd5e.spells24.Item.phbsplSummonDrag"
+          }
+        ],
+        "optional": false,
+        "spell": {
+          "ability": [],
+          "preparation": "always",
+          "uses": {
+            "max": "",
+            "per": "",
+            "requireSlot": false
+          }
+        }
+      },
+      "hint": "When you reach a Sorcerer level specified in the Draconic Spells table, you thereafter always have the listed spells prepared.",
+      "id": "zKCculAFWxVPXhnA",
+      "level": 9,
+      "title": "Draconic Spells",
+      "type": "ItemGrant",
+      "value": {}
+    },
+    {
+      "class_restriction": "",
+      "configuration": {
+        "allowReplacements": false,
+        "choices": [
+          {
+            "count": 1,
+            "pool": [
+              "dr:acid",
+              "dr:cold",
+              "dr:fire",
+              "dr:lightning",
+              "dr:poison"
+            ]
+          }
+        ],
+        "grants": [],
+        "mode": "default"
+      },
+      "hint": "Your draconic magic has an affinity with a damage type associated with dragons. Choose one of those types: Acid, Cold, Fire, Lightning, or Poison.\n                \n                You have Resistance to that damage type.",
+      "id": "8UnvG3X4TR3MpCGe",
+      "level": 6,
+      "title": "",
+      "type": "Trait",
+      "value": {
+        "chosen": []
+      }
+    }
+  ],
+  "class_identifier": "sorcerer",
+  "description": "Breathe the Magic of Dragons\n\nYour innate magic comes from the gift of a dragon. Perhaps an ancient dragon facing death bequeathed some of its magical power to you or your ancestor. You might have absorbed magic from a site infused with dragons' power. Or perhaps you handled a treasure taken from a dragon's hoard that was steeped in draconic power. Or you might have a dragon for an ancestor.",
+  "entry_kind": "subclass",
+  "feature_choices": [],
+  "granted_features": [
+    {
+      "level": 3,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "draconic-resilience"
+    },
+    {
+      "level": 3,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "draconic-spells"
+    },
+    {
+      "level": 6,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "elemental-affinity"
+    },
+    {
+      "level": 14,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "dragon-wings"
+    },
+    {
+      "level": 18,
+      "optional": false,
+      "ref_type": "feature",
+      "slug": "dragon-companion"
+    },
+    {
+      "level": 3,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "alter-self"
+    },
+    {
+      "level": 3,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "chromatic-orb"
+    },
+    {
+      "level": 3,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "command"
+    },
+    {
+      "level": 3,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "dragons-breath"
+    },
+    {
+      "level": 5,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "fear"
+    },
+    {
+      "level": 5,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "fly"
+    },
+    {
+      "level": 7,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "arcane-eye"
+    },
+    {
+      "level": 7,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "charm-monster"
+    },
+    {
+      "level": 9,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "legend-lore"
+    },
+    {
+      "level": 9,
+      "optional": false,
+      "ref_type": "spell",
+      "slug": "summon-dragon"
+    }
+  ],
+  "identifier": "draconic",
+  "name": "Draconic Sorcery",
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/sorcerer/draconic-sorcery.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "draconic",
+  "spellcasting": {
+    "ability": "",
+    "progression": "none"
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "activities": [],
+  "description": "You've learned how to maximize use of magic items, granting you the following benefits.\n\nAttunement. You can attune to up to four magic items at once.\n\nCharges. Whenever you use a magic item property that expends charges, roll [[/r 1d6]]. On a roll of 6, you use the property without expending the charges.\n\nScrolls. You can use any Spell Scroll, using Intelligence as your spellcasting ability for the spell. If the spell is a cantrip or a level 1 spell, you can cast it reliably. If the scroll contains a higher-level spell, you must first succeed on an [[/skill arc]] check (DC 10 plus the spell's level). On a successful check, you cast the spell from the scroll. On a failed check, the scroll disintegrates.\n\nFoundry Note\n\nThis feature includes an Active Effect that automatically increases your attunement maximum.\n\nWhen using an item property that expends charges roll the d6 and uncheck the consumption box to use it for free.",
+  "entry_kind": "feature",
+  "feature_type": "subclass_feature",
+  "foundry_id": "phbrgeUseMagicDe",
+  "name": "Use Magic Device",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.attributes.attunement.max",
+          "mode": 2,
+          "priority": null,
+          "value": "1"
+        }
+      ],
+      "description": "<p>The Use Magic Device feature allows you to attune to up to four magic items at once.</p>",
+      "disabled": false,
+      "duration": null,
+      "id": "FZWFvTtuOvMIj003",
+      "name": "Attunement Bonus",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/rogue/subclass-features/thief/use-magic-device.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "use-magic-device",
+  "source_slug": "thief"
+}

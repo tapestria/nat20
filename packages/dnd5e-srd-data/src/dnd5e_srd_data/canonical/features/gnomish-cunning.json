@@ -1,0 +1,55 @@
+{
+  "activities": [],
+  "description": "You have Advantage on Intelligence, Wisdom, and Charisma saving throws.",
+  "entry_kind": "feature",
+  "feature_type": "species_trait",
+  "foundry_id": "phbsptGnomishCun",
+  "name": "Gnomish Cunning",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "system.abilities.int.save.roll.mode",
+          "mode": 2,
+          "priority": null,
+          "value": "1"
+        },
+        {
+          "key": "system.abilities.wis.save.roll.mode",
+          "mode": 2,
+          "priority": null,
+          "value": "1"
+        },
+        {
+          "key": "system.abilities.cha.save.roll.mode",
+          "mode": 2,
+          "priority": null,
+          "value": "1"
+        }
+      ],
+      "description": "<p>You have Advantage on Intelligence, Wisdom, and Charisma saving throws.</p>",
+      "disabled": false,
+      "duration": null,
+      "id": "KNWLGPsZSHtINp6L",
+      "name": "Gnomish Cunning",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/origins24/species/traits/gnome/gnomish-cunning.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "gnomish-cunning",
+  "source_slug": "gnome"
+}

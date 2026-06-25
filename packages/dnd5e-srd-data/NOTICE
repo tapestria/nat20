@@ -1,0 +1,14 @@
+dnd5e-srd-data — D&D 5e SRD dataset bundled for the dnd5e-engine project.
+
+This dataset is distributed under the Creative Commons Attribution 4.0
+International License (CC-BY-4.0). https://creativecommons.org/licenses/by/4.0/
+
+Attribution:
+- Portions derived from the Foundry VTT dnd5e system
+  (https://github.com/foundryvtt/dnd5e), CC-BY-4.0.
+- Cross-checked against open5e (https://open5e.com), CC-BY-4.0, and the
+  5e-bits/5e-database project (https://github.com/5e-bits/5e-database), MIT.
+- Original source: System Reference Document 5.1 and 5.2 by Wizards of the
+  Coast LLC, CC-BY-4.0.
+
+See raw_sources/*/LICENSE for upstream license texts.

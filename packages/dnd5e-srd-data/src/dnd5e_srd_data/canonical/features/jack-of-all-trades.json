@@ -1,0 +1,43 @@
+{
+  "activities": [],
+  "description": "You can add half your Proficiency Bonus (round down) to any ability check you make that uses a skill proficiency you lack and that doesn't otherwise use your Proficiency Bonus.\n\nFor example, if you make a Strength (Athletics) check and lack Athletics proficiency, you can add half your Proficiency Bonus to the check.\n\nFoundry Note\n\nThis feature includes an Active Effect which will automatically grant you half proficiency for all skills which you aren't currently proficient in.",
+  "entry_kind": "feature",
+  "feature_type": "class_feature",
+  "foundry_id": "phbbrdJackOfAllT",
+  "name": "Jack of All Trades",
+  "passive_effects": [
+    {
+      "changes": [
+        {
+          "key": "flags.dnd5e.jackOfAllTrades",
+          "mode": 5,
+          "priority": null,
+          "value": "true"
+        }
+      ],
+      "description": "",
+      "disabled": false,
+      "duration": null,
+      "id": "c7gWn9MMrBQb8ygm",
+      "name": "Jack of All Trades",
+      "statuses": [],
+      "transfer": true
+    }
+  ],
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/classes24/bard/class-features/jack-of-all-trades.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "jack-of-all-trades",
+  "source_slug": "bard"
+}
