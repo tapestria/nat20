@@ -98,8 +98,10 @@ The full, verified-runnable version lives in [`examples/grid_combat.py`](example
 
 ## Documentation
 
-Full docs — concepts, the public API reference, a feature comparison, and developer
-guides — are built with MkDocs from [`docs/`](docs/). Build and browse them locally:
+📖 **[tapestria.github.io/nat20](https://tapestria.github.io/nat20/)** — concepts, the
+public API reference, a feature comparison, and developer guides.
+
+The site is built with MkDocs from [`docs/`](docs/). Build and browse it locally:
 
 ```bash
 uv run --group docs mkdocs serve
@@ -131,4 +133,4 @@ identify the SRD ruleset this project implements.
 
 ---
 
-Built by the [Tapestria](https://github.com/) team.
+Built by the [Tapestria](https://github.com/tapestria) team.

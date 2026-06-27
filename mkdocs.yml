@@ -1,8 +1,11 @@
 site_name: Nat20 — D&D 5e SRD Rules Engine
+site_url: https://tapestria.github.io/nat20/
 site_description: >-
   Nat20 is an open-source, pure-Python D&D 5e SRD 5.2 rules engine and dataset
   (CC-BY-4.0). Deterministic combat, skill checks, effects, and grid movement.
   Not affiliated with or endorsed by Wizards of the Coast.
+repo_url: https://github.com/tapestria/nat20
+repo_name: tapestria/nat20
 theme:
   name: material
   features:
