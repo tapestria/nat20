@@ -1,0 +1,53 @@
+name: Release
+
+# Publishes both workspace packages to PyPI via OIDC Trusted Publishing
+# (no stored tokens). Fires when a GitHub Release is published; tag the
+# release `v<version>` matching the packages' pyproject versions.
+#
+# srd-data publishes first so the engine's `dnd5e-srd-data>=0.1.0` runtime
+# dependency is resolvable for anyone installing the engine immediately after.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  publish-srd-data:
+    name: publish dnd5e-srd-data
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: pypi-srd-data
+      url: https://pypi.org/project/dnd5e-srd-data/
+    permissions:
+      id-token: write   # OIDC token for Trusted Publishing
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv build --package dnd5e-srd-data --out-dir dist
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+
+  publish-engine:
+    name: publish dnd5e-engine
+    needs: publish-srd-data
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: pypi-engine
+      url: https://pypi.org/project/dnd5e-engine/
+    permissions:
+      id-token: write   # OIDC token for Trusted Publishing
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv build --package dnd5e-engine --out-dir dist
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
