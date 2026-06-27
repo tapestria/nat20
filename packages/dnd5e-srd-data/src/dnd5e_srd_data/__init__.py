@@ -7,7 +7,7 @@ in the parent Tapestria repository.
 
 from __future__ import annotations
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 from dnd5e_srd_data.loader import AssetLoader, BundledAssetLoader, Category, MemoryAssetLoader
 from dnd5e_srd_data.schema import (

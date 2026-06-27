@@ -135,7 +135,7 @@ def test_resolve_check_skill_with_bless(monkeypatch):
     monkeypatch.setattr(dice_mod.random, "randint", lambda a, b: 10)
     import dnd5e_engine.rules.effects as eff_mod
 
-    monkeypatch.setattr(eff_mod, "_roll_dice_str", lambda s: 3)
+    monkeypatch.setattr(eff_mod, "roll_dice_str", lambda s: 3)
 
     from dnd5e_engine.check import resolve_check
     from dnd5e_engine.types.effects import (
@@ -267,7 +267,7 @@ def test_resolve_check_invariant_roll_total_equals_natural_plus_modifier(monkeyp
     monkeypatch.setattr(dice_mod.random, "randint", lambda a, b: 10)
     import dnd5e_engine.rules.effects as eff_mod
 
-    monkeypatch.setattr(eff_mod, "_roll_dice_str", lambda s: 3)
+    monkeypatch.setattr(eff_mod, "roll_dice_str", lambda s: 3)
 
     from dnd5e_engine.check import resolve_check
     from dnd5e_engine.types.effects import (

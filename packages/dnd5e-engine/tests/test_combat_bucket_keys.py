@@ -67,7 +67,7 @@ def _plus_one_sword(target_id: str = "char:hero") -> ActiveEffect:
 def test_saving_throw_consumes_save_bonus_changes(monkeypatch):
     """Bless / Cloak / Bane changes keyed `save.bonus` land on a saving throw."""
     monkeypatch.setattr(dice_mod.random, "randint", lambda a, b: 10)
-    monkeypatch.setattr(eff_mod, "_roll_dice_str", lambda s: 3)
+    monkeypatch.setattr(eff_mod, "roll_dice_str", lambda s: 3)
 
     result_without = saving_throw(
         ability_score=14,

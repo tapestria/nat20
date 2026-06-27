@@ -21,9 +21,9 @@ from collections.abc import Iterable
 from dnd5e_engine.types.effects import ActiveEffect, ActiveEffectChange
 
 
-def _roll_dice_str(expr: str) -> int:
-    """Roll a "NdM" / "NdM+K" expression. Pure-ish: callers monkeypatch
-    `random.randint` (or this whole symbol) for determinism in tests."""
+def roll_dice_str(expr: str) -> int:
+    """Roll a "NdM" / "NdM+K" expression. Public test seam: callers
+    monkeypatch this symbol (or `random.randint`) for determinism in tests."""
     expr = expr.strip()
     if not expr:
         return 0
@@ -85,7 +85,7 @@ def apply_changes_to_check(
                 # only when the value contains a 'd'.
                 stripped = ch.value.strip()
                 if "d" in stripped:
-                    rolled = _roll_dice_str(ch.value)
+                    rolled = roll_dice_str(ch.value)
                     total += rolled
                     breakdown.append(f"effect({ch.value}:{rolled})")
                 else:

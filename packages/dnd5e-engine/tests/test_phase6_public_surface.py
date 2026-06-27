@@ -18,3 +18,11 @@ def test_phase6_public_surface():
         assert name not in dnd5e_engine.__all__, (
             f"{name} should be retired from public surface __all__"
         )
+
+
+def test_plan4_public_surface_additions():
+    import dnd5e_engine
+
+    for name in ("get_live", "LiveCombatView", "roll_dice_str"):
+        assert hasattr(dnd5e_engine, name), f"missing export: {name}"
+        assert name in dnd5e_engine.__all__, f"missing __all__: {name}"

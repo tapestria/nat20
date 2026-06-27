@@ -7,11 +7,11 @@ TOP_LEVEL = {
     "ActiveEffectDuration", "CharacterBuildSpec", "CheckKind", "CheckResult",
     "CheckSpec", "CombatEvent", "CombatHandle", "CombatInstance", "CombatOutcome",
     "DeathRecord", "EncounterMemberSpec", "EndCombatResult", "GridScene",
-    "IntentType", "LootDrop", "PartyMemberSpec", "PlayerIntent", "SceneTopology",
-    "StartCombatResult", "ZoneEdge", "advance_monster_turn", "build_party_member",
-    "cell_id", "end_combat", "get_actor_active_effects", "make_build_spec",
-    "narration_events", "parse_cell", "resolve_check", "start_combat",
-    "submit_player_intent",
+    "IntentType", "LiveCombatView", "LootDrop", "PartyMemberSpec", "PlayerIntent",
+    "SceneTopology", "StartCombatResult", "ZoneEdge", "advance_monster_turn",
+    "build_party_member", "cell_id", "end_combat", "get_actor_active_effects",
+    "get_live", "make_build_spec", "narration_events", "parse_cell", "resolve_check",
+    "roll_dice_str", "start_combat", "submit_player_intent",
 }
 
 PUBLIC_MODULES = [

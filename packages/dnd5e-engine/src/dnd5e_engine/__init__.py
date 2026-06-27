@@ -13,7 +13,7 @@ Deferred for later phases:
 
 from __future__ import annotations
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 from dnd5e_engine.build_party import build_party_member
 from dnd5e_engine.build_spec import (
@@ -26,10 +26,12 @@ from dnd5e_engine.check import CheckKind, CheckResult, CheckSpec, resolve_check
 from dnd5e_engine.events import CombatEvent, IntentType
 from dnd5e_engine.orchestrator import (
     CombatHandle,
+    LiveCombatView,
     PlayerIntent,
     advance_monster_turn,
     end_combat,
     get_actor_active_effects,
+    get_live,
     narration_events,
     start_combat,
     submit_player_intent,
@@ -40,6 +42,7 @@ from dnd5e_engine.outcome import (
     LootDrop,
 )
 from dnd5e_engine.results import EndCombatResult, StartCombatResult
+from dnd5e_engine.rules.effects import roll_dice_str
 from dnd5e_engine.spatial import cell_id, parse_cell
 from dnd5e_engine.specs import (
     EncounterMemberSpec,
@@ -74,6 +77,7 @@ __all__ = [
     "EndCombatResult",
     "GridScene",
     "IntentType",
+    "LiveCombatView",
     "LootDrop",
     "PartyMemberSpec",
     "PlayerIntent",
@@ -85,10 +89,12 @@ __all__ = [
     "cell_id",
     "end_combat",
     "get_actor_active_effects",
+    "get_live",
     "make_build_spec",
     "narration_events",
     "parse_cell",
     "resolve_check",
+    "roll_dice_str",
     "start_combat",
     "submit_player_intent",
 ]

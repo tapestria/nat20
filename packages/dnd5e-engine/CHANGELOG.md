@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1]
+
+### Added
+- `LiveCombatView` — public read-model projection of live combat state.
+- `get_live(handle) -> LiveCombatView` is now part of the public API (`__all__`);
+  it returns a point-in-time snapshot view instead of the private `_LiveCombat`.
+- `roll_dice_str` — the dice-expression evaluator is now a public test seam
+  (renamed from the private `_roll_dice_str`).
+
 ## [0.1.0]
 
 First public release.

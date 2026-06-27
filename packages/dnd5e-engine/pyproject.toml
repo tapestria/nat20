@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "dnd5e-engine"
-version = "0.1.0"
+version = "0.1.1"
 description = "Pure-Python D&D 5e SRD rules engine — combat, checks, effects. Host-agnostic, zero I/O."
 readme = "README.md"
 requires-python = ">=3.12"

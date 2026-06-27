@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1]
+
+No content changes — version bump only, to release in lockstep with
+`dnd5e-engine` 0.1.1 (the release workflow publishes both packages).
+
 ## [0.1.0]
 
 First public release.

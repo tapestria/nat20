@@ -96,6 +96,7 @@ from dnd5e_engine.specs import (
 from dnd5e_engine.types.combat import Combatant
 from dnd5e_engine.types.conditions import ActiveCondition
 from dnd5e_engine.types.effects import ActiveEffect, ActiveEffectDuration
+from dnd5e_engine.views import LiveCombatView
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -595,8 +596,10 @@ def _get_live(handle: CombatHandle) -> _LiveCombat:
 
 
 # Public read-only live-combat accessor. Host-side resolvers that run alongside
-# the engine's dispatch need this to inspect the same live state the engine owns.
-get_live = _get_live
+# the engine's dispatch consume this snapshot view of the live state the engine
+# owns. Engine-internal callers use _get_live (the private _LiveCombat).
+def get_live(handle: CombatHandle) -> LiveCombatView:
+    return LiveCombatView.from_live(_get_live(handle))
 
 
 def get_actor_active_effects(handle: CombatHandle, entity_id: str) -> tuple[ActiveEffect, ...]:
@@ -3552,6 +3555,7 @@ __all__ = [
     "EncounterMemberSpec",
     "EndCombatResult",
     "IntentRejectedError",
+    "LiveCombatView",
     "PartyMemberSpec",
     "PlayerIntent",
     "SceneTopology",

@@ -56,7 +56,7 @@ def test_apply_changes_to_check_add_flat(monkeypatch):
 
 
 def test_apply_changes_to_check_add_dice(monkeypatch):
-    monkeypatch.setattr(eff_mod, "_roll_dice_str", lambda s: 3)
+    monkeypatch.setattr(eff_mod, "roll_dice_str", lambda s: 3)
     bless = _bless()
     total, breakdown = apply_changes_to_check(
         base_total=10, bucket="check.skill_check.bonus", effects=[bless]
@@ -67,7 +67,7 @@ def test_apply_changes_to_check_add_dice(monkeypatch):
 
 def test_apply_changes_to_check_ignores_non_matching_bucket(monkeypatch):
     bless = _bless()
-    monkeypatch.setattr(eff_mod, "_roll_dice_str", lambda s: 3)
+    monkeypatch.setattr(eff_mod, "roll_dice_str", lambda s: 3)
     total, _breakdown = apply_changes_to_check(
         base_total=10, bucket="attack.roll.bonus", effects=[bless]
     )
