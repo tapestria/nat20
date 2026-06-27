@@ -63,15 +63,15 @@ async def _run_grid_combat() -> None:
         grid_scene=GridScene(width=10, height=10),
         rng_seed=1,
     )
-    live = get_live(start.handle)
-    assert live.actor_zone["char:hero"] == "0,0"
+    assert get_live(start.handle).actor_zone["char:hero"] == "0,0"
     # One legal single-cell move proves the grid MOVE path resolves end-to-end.
     await submit_player_intent(
         start.handle,
         actor_id="char:hero",
         intent=PlayerIntent(intent_type="move", target_zone_id=cell_id(1, 1)),
     )
-    assert live.actor_zone["char:hero"] == "1,1", "grid move did not apply"
+    # get_live returns a point-in-time snapshot, so re-fetch after the move.
+    assert get_live(start.handle).actor_zone["char:hero"] == "1,1", "grid move did not apply"
     result = await end_combat(start.handle)
     assert result is not None
     print("SMOKE OK: corpus loaded + grid combat ran (hero moved 0,0 -> 1,1)")
