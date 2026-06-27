@@ -14,6 +14,7 @@ import asyncio
 
 import pytest
 
+from dnd5e_engine import PlayerIntent
 from dnd5e_engine.orchestrator import (
     CombatHandle,
     CombatSeamError,
@@ -22,7 +23,6 @@ from dnd5e_engine.orchestrator import (
     get_live,
     submit_player_intent,
 )
-from dnd5e_engine import PlayerIntent
 
 
 def test_unknown_handle_is_a_combat_seam_error() -> None:

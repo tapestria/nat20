@@ -22,7 +22,7 @@ class _FixedRng:
     def __init__(self, value: int) -> None:
         self._value = value
 
-    def randint(self, a: int, b: int) -> int:  # noqa: ARG002 — matches Random API
+    def randint(self, a: int, b: int) -> int:
         return self._value
 
 
@@ -84,7 +84,8 @@ def test_third_failure_kills() -> None:
 
     assert result.outcome == "dead"
     death_events = [e for e in result.events if e.type == "death"]
-    assert death_events and death_events[0].reason == "death_saves"
+    assert death_events
+    assert death_events[0].reason == "death_saves"
     assert result.combatant.is_alive is False
 
 
