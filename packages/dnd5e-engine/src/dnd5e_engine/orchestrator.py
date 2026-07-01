@@ -1694,8 +1694,7 @@ def _activities_target_self(activities: Sequence[Any]) -> bool:
     authoritative self-target signal (mirrors the spell self-target default).
     """
     return all(
-        getattr(getattr(a.target, "affects", None), "type", None) == "self"
-        for a in activities
+        getattr(getattr(a.target, "affects", None), "type", None) == "self" for a in activities
     )
 
 
@@ -2372,9 +2371,7 @@ class _FeatureInvocation:
     is_bonus_action: bool
 
 
-def _resolve_feature_invocation(
-    caster: Combatant, feature_id: str
-) -> _FeatureInvocation | None:
+def _resolve_feature_invocation(caster: Combatant, feature_id: str) -> _FeatureInvocation | None:
     """Resolve a USE_FEATURE intent to its single concrete activity, or ``None``.
 
     Applies the REPERTOIRE GATE (class / subclass / species ``granted_features``
@@ -2877,10 +2874,7 @@ async def submit_player_intent(
             and _activities_bear_effects(activities)
             and _spell_is_self_or_targetless(cast_spell, intent.target_id)
         ) or (
-            not targets
-            and intent.feature_id
-            and activities
-            and _activities_target_self(activities)
+            not targets and intent.feature_id and activities and _activities_target_self(activities)
         ):
             targets = [current]
 
@@ -2915,9 +2909,7 @@ async def submit_player_intent(
             level=current.character_level,
             loader=get_lib_loader(),
         )
-        class_levels = (
-            {current.class_slug: current.character_level} if current.class_slug else {}
-        )
+        class_levels = {current.class_slug: current.character_level} if current.class_slug else {}
         actx = build_activity_context(
             current,
             targets,

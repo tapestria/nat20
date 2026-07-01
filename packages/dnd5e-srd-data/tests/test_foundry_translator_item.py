@@ -1,15 +1,13 @@
 from datetime import date
 from pathlib import Path
 
-
-from tools.translators.foundry import translate_weapon_yaml, translate_armor_yaml
 from dnd5e_srd_data import (
     ArmorCategory,
     DamagePart,
     Weapon,
     WeaponProperty,
 )
-
+from tools.translators.foundry import translate_armor_yaml, translate_weapon_yaml
 
 FIXTURE = Path(__file__).parent / "fixtures" / "foundry_pack_minimal"
 

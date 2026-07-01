@@ -91,9 +91,7 @@ def test_action_type_case_insensitive_lookup():
 def test_active_effect_change_round_trip():
     from dnd5e_engine.types.effects import ActiveEffectChange
 
-    c = ActiveEffectChange(
-        key="attack.roll.bonus", mode="add", value=2, priority=20
-    )
+    c = ActiveEffectChange(key="attack.roll.bonus", mode="add", value=2, priority=20)
     assert c.value == 2
     assert c.key == "attack.roll.bonus"
     assert c.mode == "add"
@@ -113,12 +111,8 @@ def test_active_effect_round_trip():
         target_id="char:abc123def456",
         duration=ActiveEffectDuration(rounds=10),
         changes=[
-            ActiveEffectChange(
-                key="attack.roll.bonus", mode="add", value=1, priority=20
-            ),
-            ActiveEffectChange(
-                key="damage.bonus", mode="add", value="1d4", priority=20
-            ),
+            ActiveEffectChange(key="attack.roll.bonus", mode="add", value=1, priority=20),
+            ActiveEffectChange(key="damage.bonus", mode="add", value="1d4", priority=20),
         ],
     )
     assert eff.duration.rounds == 10

@@ -107,7 +107,7 @@ def _record(
         if isinstance(value, str) and len(value) > 80:
             samples.append(value[:77] + "...")
         elif isinstance(value, list) and len(value) > 6:
-            samples.append(value[:6] + ["..."])
+            samples.append([*value[:6], "..."])
         elif isinstance(value, dict):
             pass
         else:

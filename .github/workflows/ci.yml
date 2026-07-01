@@ -7,39 +7,57 @@ on:
 
 jobs:
   engine:
-    name: dnd5e-engine
+    name: dnd5e-engine (py${{ matrix.python-version }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
     defaults:
       run:
         working-directory: packages/dnd5e-engine
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: ${{ matrix.python-version }}
       - run: uv sync --extra dev
       - run: make check
       - run: bash scripts/smoke_clean_install.sh
 
   srd-data:
-    name: dnd5e-srd-data
+    name: dnd5e-srd-data (py${{ matrix.python-version }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
     defaults:
       run:
         working-directory: packages/dnd5e-srd-data
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: ${{ matrix.python-version }}
       - run: uv sync --extra dev
       - run: make check
 
   examples:
-    name: examples
+    name: examples (py${{ matrix.python-version }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: ${{ matrix.python-version }}
       - run: uv sync --all-packages
       - run: uv run python examples/grid_combat.py
       - run: uv run python examples/skill_check.py
@@ -54,3 +72,11 @@ jobs:
       - uses: astral-sh/setup-uv@v5
       - run: uv sync --group docs
       - run: uv run --group docs mkdocs build --strict
+
+  actionlint:
+    name: workflow lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: raven-actions/actionlint@v2

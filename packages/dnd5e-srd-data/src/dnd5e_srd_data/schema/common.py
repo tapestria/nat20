@@ -24,7 +24,7 @@ from __future__ import annotations
 
 from datetime import date
 from enum import StrEnum
-from typing import Annotated, Any, Literal, Union
+from typing import Annotated, Any, Literal
 
 from pydantic import (
     BaseModel,
@@ -33,7 +33,6 @@ from pydantic import (
     PositiveInt,
     field_serializer,
 )
-
 
 # ---------------------------------------------------------------------------
 # Provenance / review state
@@ -714,18 +713,16 @@ class UtilityActivity(_ActivityBaseWithEffects):
 
 
 Activity = Annotated[
-    Union[
-        AttackActivity,
-        CastActivity,
-        CheckActivity,
-        DamageActivity,
-        EnchantActivity,
-        HealActivity,
-        SaveActivity,
-        SummonActivity,
-        TransformActivity,
-        UtilityActivity,
-    ],
+    AttackActivity
+    | CastActivity
+    | CheckActivity
+    | DamageActivity
+    | EnchantActivity
+    | HealActivity
+    | SaveActivity
+    | SummonActivity
+    | TransformActivity
+    | UtilityActivity,
     Field(discriminator="kind"),
 ]
 

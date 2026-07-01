@@ -36,47 +36,31 @@ def _eff_changes(*changes: ActiveEffectChange) -> ActiveEffect:
 def test_apply_changes_to_check_flat_string_value_parses_as_int():
     """Haste-style save_bonus="1" must not crash; the int folds into total."""
     eff = _eff_changes(ActiveEffectChange(key="save.bonus", mode="add", value="1"))
-    total, breakdown = apply_changes_to_check(
-        base_total=10, bucket="save.bonus", effects=[eff]
-    )
+    total, breakdown = apply_changes_to_check(base_total=10, bucket="save.bonus", effects=[eff])
     assert total == 11
     assert any("+1" in b for b in breakdown)
 
 
 def test_apply_changes_to_check_negative_string_value_parses():
     """Resurrection-style check_bonus="-1" parses as a flat int."""
-    eff = _eff_changes(
-        ActiveEffectChange(key="check.bonus", mode="add", value="-1")
-    )
-    total, breakdown = apply_changes_to_check(
-        base_total=10, bucket="check.bonus", effects=[eff]
-    )
+    eff = _eff_changes(ActiveEffectChange(key="check.bonus", mode="add", value="-1"))
+    total, breakdown = apply_changes_to_check(base_total=10, bucket="check.bonus", effects=[eff])
     assert total == 9
     assert any("-1" in b for b in breakdown)
 
 
 def test_apply_changes_to_check_dice_formula_still_works(monkeypatch):
     """The dice-formula path is untouched: "1d4" still rolls via the parser."""
-    monkeypatch.setattr(
-        "dnd5e_engine.rules.effects.roll_dice_str", lambda s: 3
-    )
-    eff = _eff_changes(
-        ActiveEffectChange(key="attack.roll.bonus", mode="add", value="1d4")
-    )
-    total, _ = apply_changes_to_check(
-        base_total=10, bucket="attack.roll.bonus", effects=[eff]
-    )
+    monkeypatch.setattr("dnd5e_engine.rules.effects.roll_dice_str", lambda s: 3)
+    eff = _eff_changes(ActiveEffectChange(key="attack.roll.bonus", mode="add", value="1d4"))
+    total, _ = apply_changes_to_check(base_total=10, bucket="attack.roll.bonus", effects=[eff])
     assert total == 13
 
 
 def test_apply_changes_to_check_unparseable_string_skips_safely():
     """An unparseable string ("foo") doesn't crash; the breakdown notes it."""
-    eff = _eff_changes(
-        ActiveEffectChange(key="save.bonus", mode="add", value="foo")
-    )
-    total, breakdown = apply_changes_to_check(
-        base_total=10, bucket="save.bonus", effects=[eff]
-    )
+    eff = _eff_changes(ActiveEffectChange(key="save.bonus", mode="add", value="foo"))
+    total, breakdown = apply_changes_to_check(base_total=10, bucket="save.bonus", effects=[eff])
     assert total == 10
     assert any("unparsed" in b for b in breakdown)
 
@@ -156,11 +140,7 @@ def test_broad_check_dis_still_applies_to_any_skill(monkeypatch):
         name="Frightened",
         origin="cast:frightful:1",
         target_id="char:hero",
-        changes=[
-            ActiveEffectChange(
-                key="flags.disadvantage.check", mode="override", value=True
-            )
-        ],
+        changes=[ActiveEffectChange(key="flags.disadvantage.check", mode="override", value=True)],
     )
     spec = CheckSpec(
         kind="skill",

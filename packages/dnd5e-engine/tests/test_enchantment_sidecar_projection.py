@@ -96,9 +96,7 @@ def test_cloak_ac_bonus_folds_into_passive_ac_bonus():
     hero_entry = save_modifiers.get("char:hero", {})
     ac_bonus = hero_entry.get("passive_ac_bonus")
     # First fold writes the raw value; subsequent folds prepend a sign.
-    assert ac_bonus == "1", (
-        f"Cloak ac.bonus +1 must land on passive_ac_bonus; got {ac_bonus!r}"
-    )
+    assert ac_bonus == "1", f"Cloak ac.bonus +1 must land on passive_ac_bonus; got {ac_bonus!r}"
 
 
 def test_cloak_save_bonus_folds_into_passive_save_bonus():
@@ -283,9 +281,7 @@ def test_advantage_flags_do_not_fold_into_passive_bonus():
             origin="cast:custom:char:hero",
             target_id="char:hero",
             changes=[
-                ActiveEffectChange(
-                    key="flags.advantage.saving_throw", mode="override", value=True
-                )
+                ActiveEffectChange(key="flags.advantage.saving_throw", mode="override", value=True)
             ],
         )
         return await start_combat(

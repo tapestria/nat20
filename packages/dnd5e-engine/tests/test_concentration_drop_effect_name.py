@@ -84,9 +84,7 @@ def test_concentration_dropped_effect_name_is_the_effect_id() -> None:
 
     before = len(live.event_log)
     _drop_concentration(live, _CASTER)
-    emitted = [
-        ev for ev in live.event_log[before:] if isinstance(ev, ConcentrationDropped)
-    ]
+    emitted = [ev for ev in live.event_log[before:] if isinstance(ev, ConcentrationDropped)]
 
     assert len(emitted) == 1
     assert emitted[0].target_id == _CASTER

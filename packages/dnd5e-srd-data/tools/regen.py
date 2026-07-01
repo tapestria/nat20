@@ -18,8 +18,8 @@ from tools.audit.cross_check import (
     diff_class_flat_fields,
     diff_item_flat_fields,
     diff_monster_flat_fields,
-    diff_spell_flat_fields,
     diff_species_flat_fields,
+    diff_spell_flat_fields,
     diff_subclass_flat_fields,
 )
 from tools.translators.foundry import (
@@ -30,8 +30,8 @@ from tools.translators.foundry import (
     translate_feature_yaml,
     translate_generic_item_yaml,
     translate_monster_yaml,
-    translate_spell_yaml,
     translate_species_yaml,
+    translate_spell_yaml,
     translate_subclass_yaml,
     translate_weapon_yaml,
     write_canonical_with_overrides,
@@ -161,11 +161,12 @@ def _run_category(
         )
         if not isinstance(doc, dict) or doc.get("type") not in expected_types:
             quarantined += 1
+            found_type = doc.get("type") if isinstance(doc, dict) else "not_a_dict"
             excluded.append(
                 {
                     "slug": yaml_path.stem,
                     "path": str(yaml_path.relative_to(ROOT)),
-                    "reason": f"wrong_doc_type:{doc.get('type') if isinstance(doc, dict) else 'not_a_dict'}",
+                    "reason": f"wrong_doc_type:{found_type}",
                 }
             )
             continue
@@ -414,7 +415,6 @@ def main() -> int:
     # guard still verifies every RESOLVED ref exists on disk, catching any
     # index/emit drift.
     from dnd5e_srd_data.schema.refs import ChoiceLevel, FeatureChoice, GrantRef
-
     from tools.translators.foundry import build_feature_index
 
     index = build_feature_index(FOUNDRY_PACKS)

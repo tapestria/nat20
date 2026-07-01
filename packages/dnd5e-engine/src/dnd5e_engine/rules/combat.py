@@ -182,15 +182,9 @@ def saving_throw(
                 advantage = True
             elif ch.key == "flags.disadvantage.save":
                 disadvantage = True
-            elif (
-                ch.key == f"flags.advantage.save.{ability_lower}"
-                and ability_lower
-            ):
+            elif ch.key == f"flags.advantage.save.{ability_lower}" and ability_lower:
                 advantage = True
-            elif (
-                ch.key == f"flags.disadvantage.save.{ability_lower}"
-                and ability_lower
-            ):
+            elif ch.key == f"flags.disadvantage.save.{ability_lower}" and ability_lower:
                 disadvantage = True
 
     modifier = ability_modifier(ability_score) + (proficiency_bonus if is_proficient else 0)

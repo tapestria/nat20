@@ -151,9 +151,7 @@ def test_resolve_check_skill_with_bless(monkeypatch):
         target_id="char:hero",
         duration=ActiveEffectDuration(rounds=10),
         changes=[
-            ActiveEffectChange(
-                key="check.bonus", mode="add", value="1d4", priority=20
-            ),
+            ActiveEffectChange(key="check.bonus", mode="add", value="1d4", priority=20),
         ],
     )
     spec = CheckSpec(
@@ -186,9 +184,7 @@ def test_resolve_check_saving_throw_with_cloak_of_protection(monkeypatch):
         origin="item:cloak_of_protection:1",
         target_id="char:hero",
         changes=[
-            ActiveEffectChange(
-                key="save.bonus", mode="add", value=1, priority=20
-            ),
+            ActiveEffectChange(key="save.bonus", mode="add", value=1, priority=20),
         ],
     )
     spec = CheckSpec(
@@ -220,9 +216,7 @@ def test_resolve_check_ignores_non_matching_change_key(monkeypatch):
         origin="item:weapon_plus_one:1",
         target_id="char:hero",
         changes=[
-            ActiveEffectChange(
-                key="attack.roll.bonus", mode="add", value=1, priority=20
-            ),
+            ActiveEffectChange(key="attack.roll.bonus", mode="add", value=1, priority=20),
         ],
     )
     spec = CheckSpec(
@@ -283,9 +277,7 @@ def test_resolve_check_invariant_roll_total_equals_natural_plus_modifier(monkeyp
         target_id="char:hero",
         duration=ActiveEffectDuration(rounds=10),
         changes=[
-            ActiveEffectChange(
-                key="check.bonus", mode="add", value="1d4", priority=20
-            ),
+            ActiveEffectChange(key="check.bonus", mode="add", value="1d4", priority=20),
         ],
     )
     spec = CheckSpec(

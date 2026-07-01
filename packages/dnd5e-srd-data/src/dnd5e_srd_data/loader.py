@@ -17,8 +17,8 @@ from dnd5e_srd_data.schema.feat import Feat
 from dnd5e_srd_data.schema.feature import Feature
 from dnd5e_srd_data.schema.item import Armor, Item, MagicItem, Weapon
 from dnd5e_srd_data.schema.monster import Monster
-from dnd5e_srd_data.schema.spell import Spell
 from dnd5e_srd_data.schema.species import Species
+from dnd5e_srd_data.schema.spell import Spell
 
 Category = Literal[
     "items",

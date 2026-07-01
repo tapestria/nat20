@@ -99,9 +99,7 @@ def test_unresolved_granted_feature_slug_logs_warning_and_skips(caplog):
     assert expected_slugs  # guard: the case must actually grant features
 
     with caplog.at_level(logging.WARNING, logger="dnd5e_engine.build_party"):
-        spec = build_party_member(
-            build_spec, _INST, loader=_UnresolvableFeatureLoader(_LOADER)
-        )
+        spec = build_party_member(build_spec, _INST, loader=_UnresolvableFeatureLoader(_LOADER))
 
     warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
     assert len(warnings) == len(expected_slugs)

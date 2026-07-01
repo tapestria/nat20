@@ -29,7 +29,9 @@ def test_species_trait_grant_di_to_immunity():
 
 def test_senses_change_sets_darkvision_max():
     out = interpret_passive_stats(
-        changes=[PassiveEffectChange(key="system.attributes.senses.darkvision", mode=4, value="120")],
+        changes=[
+            PassiveEffectChange(key="system.attributes.senses.darkvision", mode=4, value="120")
+        ],
         trait_grants=[],
         species_senses=None,
     )
@@ -51,7 +53,9 @@ def test_senses_change_mode_add_accumulates():
 def test_species_senses_merge_max_with_change():
     # species darkvision 60 + a feature upgrade to 120 → 120 (max wins)
     out = interpret_passive_stats(
-        changes=[PassiveEffectChange(key="system.attributes.senses.darkvision", mode=4, value="120")],
+        changes=[
+            PassiveEffectChange(key="system.attributes.senses.darkvision", mode=4, value="120")
+        ],
         trait_grants=[],
         species_senses=Senses(darkvision=60),
     )

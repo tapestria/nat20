@@ -144,7 +144,7 @@ def _compare_subset(
         for k, v in oracle.items():
             if _is_excepted(path, k, activity_kind):
                 continue
-            sub_path = path + [k]
+            sub_path = [*path, k]
             if k not in actual:
                 failures.append(
                     f"{'.'.join(sub_path)}: missing in translator output (oracle value={v!r:.80})"
@@ -165,7 +165,7 @@ def _compare_subset(
             )
             return
         for i, (ov, av) in enumerate(zip(oracle, actual, strict=True)):
-            _compare_subset(ov, av, path + [str(i)], failures, activity_kind)
+            _compare_subset(ov, av, [*path, str(i)], failures, activity_kind)
         return
     # Scalar mismatch (tolerances already consulted at the top).
     if oracle != actual:
@@ -186,7 +186,7 @@ def test_every_oracle_activity_builds(oracle: dict[str, dict[str, Any]]) -> None
         system = entry["system"]
         try:
             act = _build_activity(str(system.get("_id", "")), system)
-        except Exception as e:  # noqa: BLE001  # aggregate-then-fail diagnostics
+        except Exception as e:  # aggregate-then-fail diagnostics
             failures.append(f"{key}: build raised {type(e).__name__}: {e}")
             continue
         if act is None:

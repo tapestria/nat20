@@ -13,7 +13,8 @@ check:
 	uv run ruff check src tests tools
 	uv run ruff format --check src tests tools
 	uv run mypy src
-	uv run pytest
+	uv run pytest -q --cov=dnd5e_srd_data --cov-report=term-missing --cov-fail-under=90
+	uv run bandit -r src/ -c pyproject.toml -q
 
 # Maintainer-only: verifies canonical/ still matches pinned upstream sources.
 # Requires `make refresh-upstream` first to populate raw_sources/foundry.

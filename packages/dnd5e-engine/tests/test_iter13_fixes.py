@@ -174,8 +174,7 @@ def test_seeded_concentration_existing_concentration_in_hydration():
     payload = _build_hydration_payload(live, caster=cleric)
     existing = payload.get("existing_concentration") or {}
     assert "char:cleric" in existing, (
-        "_build_hydration_payload must report the cleric as concentrating "
-        "on the seeded Bless"
+        "_build_hydration_payload must report the cleric as concentrating on the seeded Bless"
     )
 
 

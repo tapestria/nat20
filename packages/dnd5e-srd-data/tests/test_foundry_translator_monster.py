@@ -1,9 +1,8 @@
 from datetime import date
 from pathlib import Path
 
-from tools.translators.foundry import translate_monster_yaml
 from dnd5e_srd_data import CreatureSize, CreatureType, Monster
-
+from tools.translators.foundry import translate_monster_yaml
 
 FIXTURE = Path(__file__).parent / "fixtures" / "foundry_pack_minimal"
 

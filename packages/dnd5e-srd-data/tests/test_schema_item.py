@@ -1,16 +1,8 @@
-import pytest
 from datetime import date
+
+import pytest
 from pydantic import ValidationError
 
-from dnd5e_srd_data.schema.item import (
-    Armor,
-    ArmorCategory,
-    Item,
-    ItemRarity,
-    MagicItem,
-    Weapon,
-    WeaponProperty,
-)
 from dnd5e_srd_data.schema.common import (
     AttackActivity,
     AttackBlock,
@@ -21,6 +13,15 @@ from dnd5e_srd_data.schema.common import (
     Provenance,
     Range,
     ReviewState,
+)
+from dnd5e_srd_data.schema.item import (
+    Armor,
+    ArmorCategory,
+    Item,
+    ItemRarity,
+    MagicItem,
+    Weapon,
+    WeaponProperty,
 )
 
 

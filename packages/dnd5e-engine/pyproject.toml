@@ -30,8 +30,10 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=8.3.0",
+    "pytest-cov>=6.0.0",
     "ruff>=0.9.0",
     "mypy>=1.13.0",
+    "bandit>=1.8.0",
 ]
 
 [tool.uv.sources]
@@ -60,17 +62,41 @@ target-version = "py312"
 [tool.ruff.lint]
 select = [
     "E", "F", "I", "N", "UP", "B", "SIM", "T20", "BLE",
-    "ASYNC", "PT", "RUF", "TRY",
+    "C90", "ASYNC", "PT", "RUF", "TRY",
 ]
 ignore = [
     "TRY003",
     "RUF001", "RUF002", "RUF003",
 ]
 
+# Baseline-and-ratchet: set at the worst function observed today
+# (submit_player_intent=56; _emit=49; _build_hydration_payload=36;
+# start_combat=34 — all in orchestrator.py). A PR that pushes past this
+# must justify the raise; the intent is to ratchet DOWN over time.
+[tool.ruff.lint.mccabe]
+max-complexity = 56
+
 [tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = ["E501", "F841", "PT006", "PT011"]
+# Test bodies are allowed to be branchy/repetitive (C901) and print (T201).
+"tests/**/*.py" = ["E501", "F841", "PT006", "PT011", "C901"]
 # Smoke scripts print human-readable progress/result lines (T201) by design.
 "scripts/**/*.py" = ["T201"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["dnd5e_engine"]
+
+[tool.coverage.report]
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "@overload",
+    "raise NotImplementedError",
+]
+
+# Recursive scan of src/ only; tests carry asserts (B101) and the engine
+# rolls dice with the stdlib RNG (B311) — neither is a security concern.
+[tool.bandit]
+exclude_dirs = ["tests"]
+skips = ["B101", "B311"]

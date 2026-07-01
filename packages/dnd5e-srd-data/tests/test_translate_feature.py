@@ -39,7 +39,8 @@ def test_metamagic_option_is_class_feature_sourced_to_sorcerer():
     f = translate_feature_yaml(
         PACKS / "classes24/sorcerer/metamagic-options/careful-spell.yml", **INGEST
     )
-    assert f.feature_type == "class_feature" and f.source_slug == "sorcerer"
+    assert f.feature_type == "class_feature"
+    assert f.source_slug == "sorcerer"
 
 
 def test_prose_only_species_trait():

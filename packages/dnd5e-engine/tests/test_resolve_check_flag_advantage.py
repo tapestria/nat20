@@ -27,11 +27,7 @@ def _disadvantage_check_effect() -> ActiveEffect:
         name="Frightened",
         origin="cast:frightening_presence:1",
         target_id="char:hero",
-        changes=[
-            ActiveEffectChange(
-                key="flags.disadvantage.check", mode="override", value=True
-            )
-        ],
+        changes=[ActiveEffectChange(key="flags.disadvantage.check", mode="override", value=True)],
     )
 
 
@@ -41,11 +37,7 @@ def _advantage_save_effect() -> ActiveEffect:
         name="Resistance",
         origin="cast:resistance:1",
         target_id="char:hero",
-        changes=[
-            ActiveEffectChange(
-                key="flags.advantage.save", mode="override", value=True
-            )
-        ],
+        changes=[ActiveEffectChange(key="flags.advantage.save", mode="override", value=True)],
     )
 
 
@@ -182,11 +174,7 @@ def test_spec_advantage_or_flag_advantage_either_triggers(monkeypatch):
         name="Bardic Inspiration",
         origin="cast:bardic_inspiration:1",
         target_id="char:hero",
-        changes=[
-            ActiveEffectChange(
-                key="flags.advantage.check", mode="override", value=True
-            )
-        ],
+        changes=[ActiveEffectChange(key="flags.advantage.check", mode="override", value=True)],
     )
     spec = CheckSpec(
         kind="skill",

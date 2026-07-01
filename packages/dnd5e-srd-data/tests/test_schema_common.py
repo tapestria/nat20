@@ -42,7 +42,6 @@ from dnd5e_srd_data.schema.common import (
     UtilityActivity,
 )
 
-
 # Reusable TypeAdapter for round-tripping the discriminated union.
 _ACTIVITY = TypeAdapter(Activity)
 
