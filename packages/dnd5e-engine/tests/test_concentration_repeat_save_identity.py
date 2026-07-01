@@ -144,15 +144,9 @@ def test_dedupe_by_identity_drops_exact_duplicates():
     """Direct unit on rules.effects.dedupe_by_identity (Task 4)."""
     from dnd5e_engine.rules.effects import dedupe_by_identity
 
-    a = ActiveEffect(
-        id="effect:bless", name="Bless", origin="cast:bless:1", target_id="t1"
-    )
-    a_dupe = ActiveEffect(
-        id="effect:bless", name="Bless", origin="cast:bless:1", target_id="t1"
-    )
-    b = ActiveEffect(
-        id="effect:bless", name="Bless", origin="cast:bless:2", target_id="t1"
-    )
+    a = ActiveEffect(id="effect:bless", name="Bless", origin="cast:bless:1", target_id="t1")
+    a_dupe = ActiveEffect(id="effect:bless", name="Bless", origin="cast:bless:1", target_id="t1")
+    b = ActiveEffect(id="effect:bless", name="Bless", origin="cast:bless:2", target_id="t1")
 
     out = dedupe_by_identity([a, a_dupe, b])
     assert len(out) == 2

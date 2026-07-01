@@ -23,7 +23,8 @@ def test_barbarian_class_has_resolved_granted_features():
     slugs = {g["slug"] for g in refs}
     assert "rage" in slugs
     rage_ref = next(g for g in refs if g["slug"] == "rage")
-    assert rage_ref["level"] == 1 and rage_ref["ref_type"] == "feature"
+    assert rage_ref["level"] == 1
+    assert rage_ref["ref_type"] == "feature"
 
 
 def test_dwarf_species_has_resolved_features_and_trait_grants():

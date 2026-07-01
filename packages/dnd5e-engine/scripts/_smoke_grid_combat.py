@@ -30,9 +30,7 @@ _BUNDLED_MONSTER_SLUG = "goblin-warrior"
 def _check_corpus() -> None:
     loader = get_lib_loader()  # BundledAssetLoader → reads bundled canonical/
     monster = loader.get_monster(_BUNDLED_MONSTER_SLUG)
-    assert monster is not None, (
-        f"bundled corpus did not resolve monster {_BUNDLED_MONSTER_SLUG!r}"
-    )
+    assert monster is not None, f"bundled corpus did not resolve monster {_BUNDLED_MONSTER_SLUG!r}"
 
 
 async def _run_grid_combat() -> None:

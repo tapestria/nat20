@@ -36,7 +36,7 @@ def roll_dice_str(expr: str) -> int:
         flat_v = int(flat)
     elif "-" in expr[1:]:
         head = expr[0] if expr[0].isdigit() else ""
-        rest = expr[len(head):]
+        rest = expr[len(head) :]
         dice_part, _, flat = rest.partition("-")
         dice_part = head + dice_part
         flat_v = -int(flat)

@@ -901,12 +901,12 @@ def test_translator_preserves_foundry_mechanical_fields() -> None:
                 try:
                     if not check.foundry_predicate(doc):
                         continue
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     failures.append(f"{slug} ({doc_cat}): {check.name} — predicate error: {exc!r}")
                     continue
                 try:
                     ok = check.canonical_assertion(doc, canonical)
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     failures.append(f"{slug} ({doc_cat}): {check.name} — assertion error: {exc!r}")
                     continue
                 if not ok:

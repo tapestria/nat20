@@ -1,8 +1,8 @@
-import pytest
 from pathlib import Path
 
-from dnd5e_srd_data import BundledAssetLoader, Monster, Weapon
+import pytest
 
+from dnd5e_srd_data import BundledAssetLoader, Monster, Weapon
 
 FIXTURE_ROOT = Path(__file__).parent / "fixtures" / "canonical"
 

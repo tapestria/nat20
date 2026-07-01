@@ -123,9 +123,7 @@ def resolve_damage_block(
     return block.model_copy(update=updates) if updates else block
 
 
-def _resolve_token(
-    token: str, ctx: ActivityResolutionContext, ability: str | None
-) -> int | str:
+def _resolve_token(token: str, ctx: ActivityResolutionContext, ability: str | None) -> int | str:
     if token == _TOKEN_PROF:
         return ctx.caster_proficiency_bonus
     if token == _TOKEN_MOD:

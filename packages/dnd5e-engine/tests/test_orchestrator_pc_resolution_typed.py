@@ -568,6 +568,5 @@ def test_restrained_target_dex_save_rolls_two_d20s_keeps_lower():
     # The kept natural is the LOWER of the two draws (no save modifier on the
     # foe ⇒ roll_total == kept natural).
     assert saves[0].roll_total == min(d20_draws), (
-        f"disadvantage must keep the lower d20; draws={d20_draws}, "
-        f"roll_total={saves[0].roll_total}"
+        f"disadvantage must keep the lower d20; draws={d20_draws}, roll_total={saves[0].roll_total}"
     )

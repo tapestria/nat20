@@ -45,7 +45,8 @@ def test_ape_attack_activities_resolved() -> None:
         # includeBase weapon attacks resolve the parent item base damage inline.
         assert attack.damage.parts, f"{weapon_name} attack has no resolved damage"
         part = attack.damage.parts[0]
-        assert part.number and part.denomination
+        assert part.number
+        assert part.denomination
         assert part.types
 
 

@@ -3,7 +3,6 @@ from pathlib import Path
 
 from tools.translators.foundry import translate_weapon_yaml, write_canonical_with_overrides
 
-
 FIXTURE = Path(__file__).parent / "fixtures" / "foundry_pack_minimal"
 
 

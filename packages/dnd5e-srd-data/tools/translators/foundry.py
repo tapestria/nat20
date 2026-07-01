@@ -62,7 +62,10 @@ from dnd5e_srd_data import (
     SavingThrowProficiencies,
     Senses,
     SkillProficiencies,
+    Species,
     Spell,
+    Spellcasting,
+    SpellcastingProgression,
     SpellComponent,
     SpellDuration,
     SpellDurationUnits,
@@ -71,9 +74,6 @@ from dnd5e_srd_data import (
     SpellRange,
     SpellRangeUnits,
     SpellSchool,
-    Species,
-    Spellcasting,
-    SpellcastingProgression,
     Subclass,
     SummonActivity,
     TransformActivity,
@@ -81,7 +81,6 @@ from dnd5e_srd_data import (
     Weapon,
     WeaponProperty,
 )
-
 from tools.translators.prose_cleanup import cleanup_prose
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -532,7 +531,7 @@ def _price_gp(system: dict[str, Any]) -> float | None:
 def _weapon_type_code(system: dict[str, Any]) -> str:
     """Weapon category code lives at either ``system.weaponType`` (legacy/
     fixture) or ``system.type.value`` (real pack)."""
-    if "weaponType" in system and system["weaponType"]:
+    if system.get("weaponType"):
         return str(system["weaponType"])
     t = system.get("type")
     if isinstance(t, dict) and t.get("value"):
@@ -2290,7 +2289,7 @@ def translate_feature_yaml(
 T = TypeVar("T", bound=BaseModel)
 
 
-def write_canonical_with_overrides(entity: T, canonical_dir: Path) -> None:
+def write_canonical_with_overrides[T: BaseModel](entity: T, canonical_dir: Path) -> None:
     """Write canonical JSON, preserving reviewer overrides from any existing file.
 
     If a file already exists with ``review.known_divergence != null``, the

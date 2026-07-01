@@ -62,12 +62,14 @@ def test_prose_only_feature_has_empty_activities_and_effects():
 
 def test_grant_ref_defaults():
     ref = GrantRef.model_validate({"ref_type": "feature", "slug": "rage"})
-    assert ref.level == 0 and ref.optional is False
+    assert ref.level == 0
+    assert ref.optional is False
 
 
 def test_feature_is_importable_from_package_root():
     import dnd5e_srd_data as lib
-    from dnd5e_srd_data.schema import Feature as SchemaFeature, GrantRef as SchemaGrantRef
+    from dnd5e_srd_data.schema import Feature as SchemaFeature
+    from dnd5e_srd_data.schema import GrantRef as SchemaGrantRef
 
     assert lib.Feature is SchemaFeature
     assert lib.GrantRef is SchemaGrantRef

@@ -86,9 +86,7 @@ def test_apply_changes_to_check_advantage_flag():
         origin="cast:guidance:1",
         target_id="char:hero",
         changes=[
-            ActiveEffectChange(
-                key="flags.advantage.skill_check", mode="override", value=True
-            )
+            ActiveEffectChange(key="flags.advantage.skill_check", mode="override", value=True)
         ],
     )
     total, breakdown = apply_changes_to_check(

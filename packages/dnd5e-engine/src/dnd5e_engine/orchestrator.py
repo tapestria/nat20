@@ -960,149 +960,19 @@ def _emit(live: _LiveCombat, event: CombatEvent) -> None:
         listener(event)
 
     if isinstance(event, TurnStarted):
-        live.current_actor_id = event.actor_id
-        # SRD §Action Economy — refresh the actor's per-turn budgets on the
-        # start of their own turn. The reaction line ("You regain your
-        # reaction at the start of your turn") and the Action/Bonus Action
-        # budgets all reset here; consumption sites in submit_player_intent
-        # (and, for reactions, future off-turn intent paths) are the only
-        # writers that flip these False.
-        for idx, c in enumerate(live.initiative):
-            if c.entity_id == event.actor_id:
-                live.initiative[idx] = c.model_copy(
-                    update={
-                        "action_available": True,
-                        "bonus_action_available": True,
-                        "reaction_available": True,
-                        # SRD §Movement — movement budget refreshes to the
-                        # actor's full walking speed at the start of their
-                        # own turn. Per-MOVE-intent decrement is the only
-                        # writer; this is the only reset.
-                        "movement_remaining": c.base_speed,
-                    }
-                )
-                break
+        _emit_apply_turn_started(live, event)
         return
 
     if isinstance(event, DamageApplied):
-        tracked = live.tracked_hp.get(event.target_id)
-        if tracked is None:
-            return
-        # Temp HP absorbs first (SRD §Temporary Hit Points).
-        temp = live.tracked_temp_hp.get(event.target_id, 0)
-        remaining = event.amount
-        if temp > 0:
-            absorbed = min(temp, remaining)
-            live.tracked_temp_hp[event.target_id] = temp - absorbed
-            remaining -= absorbed
-        new_hp = max(0, tracked - remaining)
-        live.tracked_hp[event.target_id] = new_hp
-        # Sync hp_current / temp_hp on the initiative slot so downstream
-        # readers (monster gambit targeting, OA HP checks, hydration
-        # passive projection) observe the post-damage state instead of the
-        # opening snapshot. Combined into the same model_copy as the
-        # ``last_damaged_by`` update below.
-        new_temp_hp = live.tracked_temp_hp.get(event.target_id, 0)
-        damager = live.current_actor_id
-        update_payload: dict[str, Any] = {
-            "hp_current": new_hp,
-            "temp_hp": new_temp_hp,
-        }
-        # SRD §Hellish Rebuke — track the *creature that damaged you* on the
-        # target combatant. ``current_actor_id`` is the canonical "who is
-        # acting" (same source used for kill attribution below). Self-damage
-        # (e.g. reaction damage back at the actor) is excluded so HR's
-        # validation can't ping-pong.
-        if damager and damager != event.target_id:
-            update_payload["last_damaged_by"] = damager
-        for idx, c in enumerate(live.initiative):
-            if c.entity_id == event.target_id:
-                live.initiative[idx] = c.model_copy(update=update_payload)
-                break
-        # SRD §Concentration on Damage — *"You must make a Constitution
-        # saving throw … DC = 10 or half the damage taken, whichever is
-        # higher. On a failed save, the spell ends."* If the damaged
-        # combatant is concentrating on an effect (tracked in
-        # ``concentration_chain``), roll the CON save and cascade on
-        # failure. No CON modifier projection at the orchestrator boundary
-        # today (mirrors ``_emit_concentration_save_probe`` in
-        # ``effects/ieffect2.py``); the raw d20 vs. DC determines outcome.
-        # Done BEFORE death synthesis so a dropped-conc + slain caster
-        # still surface the cascade before the Death event.
-        caster_chain = live.concentration_chain.get(event.target_id)
-        if caster_chain:
-            dc = max(10, event.amount // 2)
-            roll_total = live.rng.randint(1, 20)
-            succeeded = roll_total >= dc
-            _emit(
-                live,
-                SaveRolled(
-                    target_id=event.target_id,
-                    ability="con",
-                    dc=dc,
-                    roll_total=roll_total,
-                    succeeded=succeeded,
-                ),
-            )
-            if not succeeded:
-                _drop_concentration(live, event.target_id)
-        if (
-            new_hp <= 0
-            and event.target_id not in live.party_ids
-            and event.target_id not in live.dead_ids
-        ):
-            # Synthesize a Death(damage) for the non-PC. Recursion guard:
-            # _emit re-enters here for the Death, but the dead_ids set blocks
-            # double-recording, and Death's only running-state effect is to
-            # record the death (no further HP arithmetic).
-            killer = live.current_actor_id
-            death_event = Death(target_id=event.target_id, reason="damage")
-            _record_death(live, death_event, killer_id=killer)
-            live.event_log.append(death_event)
-            live.event_queue.put_nowait(death_event)
+        _emit_apply_damage(live, event)
         return
 
     if isinstance(event, HealingApplied):
-        tracked = live.tracked_hp.get(event.target_id)
-        if tracked is None:
-            return
-        cap = _hp_max_for(live, event.target_id)
-        new_hp = min(cap, tracked + event.amount)
-        live.tracked_hp[event.target_id] = new_hp
-        # SRD §Death Saves — "If a creature with 0 hit points regains any
-        # hit points, it becomes conscious again." When tracked HP
-        # transitions 0 → positive, flip ``is_alive`` back True, clear the
-        # death-save counters, and drop the ``unconscious`` ActiveCondition
-        # bridged by the dying state. HP sync runs unconditionally so
-        # downstream readers (monster gambit targeting, hydration) observe
-        # the post-heal state even when the heal didn't cross the 0->1
-        # revive boundary.
-        revived = tracked == 0 and new_hp > 0
-        for idx, c in enumerate(live.initiative):
-            if c.entity_id == event.target_id:
-                heal_update: dict[str, Any] = {"hp_current": new_hp}
-                if revived:
-                    heal_update["is_alive"] = True
-                    heal_update["death_saves"] = {}
-                    heal_update["conditions"] = [
-                        cond for cond in c.conditions if cond.condition != "unconscious"
-                    ]
-                live.initiative[idx] = c.model_copy(update=heal_update)
-                break
+        _emit_apply_healing(live, event)
         return
 
     if isinstance(event, TempHpApplied):
-        # SRD §Temporary Hit Points — new amount replaces existing if higher,
-        # not additive (Avrae/Open5e canonical behavior).
-        current = live.tracked_temp_hp.get(event.target_id, 0)
-        new_temp = max(current, event.amount)
-        live.tracked_temp_hp[event.target_id] = new_temp
-        # Sync the initiative slot's temp_hp so downstream readers
-        # (hydration, passive projection) observe the post-grant state.
-        for idx, c in enumerate(live.initiative):
-            if c.entity_id == event.target_id:
-                live.initiative[idx] = c.model_copy(update={"temp_hp": new_temp})
-                break
+        _emit_apply_temp_hp(live, event)
         return
 
     if isinstance(event, ConditionApplied):
@@ -1114,95 +984,265 @@ def _emit(live: _LiveCombat, event: CombatEvent) -> None:
         return
 
     if isinstance(event, EffectApplied):
-        applied = event.effect
-        live.active_effects.setdefault(applied.target_id, []).append(applied)
-        # Union the effect's imposed statuses into the combatant.conditions
-        # list so passive projections (advantage/disadvantage on attack,
-        # save, etc.) observe the new state immediately.
-        target_combatant = _find_combatant(live, applied.target_id)
-        if target_combatant is not None and applied.statuses:
-            existing_slugs = {ac.condition for ac in target_combatant.conditions}
-            new_conditions = list(target_combatant.conditions)
-            dirty = False
-            for status in applied.statuses:
-                if status in existing_slugs:
-                    continue
-                # Derive source_entity_id from the origin tag when it
-                # encodes one (e.g. "cast:bless:char:abc12"); otherwise
-                # default to the canonical implied-source marker.
-                source_entity_id = "implied:effect"
-                new_conditions.append(
-                    ActiveCondition(
-                        condition=status,
-                        source_entity_id=source_entity_id,
-                        scope="combat",
-                        source_effect_id=applied.id,
-                    )
-                )
-                dirty = True
-            if dirty:
-                for idx, c in enumerate(live.initiative):
-                    if c.entity_id == applied.target_id:
-                        live.initiative[idx] = c.model_copy(update={"conditions": new_conditions})
-                        break
-        # SRD spell-slot consumption: spell effects with concentration imply
-        # a slot was spent. The slot level is not on the event today (follow-up
-        # in the cutover); we record under a coarse "slots" label keyed by name.
-        is_concentration = bool(applied.flags.get("concentration"))
-        if is_concentration and applied.target_id in live.party_ids:
-            bucket = live.expended_resources.setdefault(applied.target_id, {})
-            bucket[applied.name] = bucket.get(applied.name, 0) + 1
+        _emit_apply_effect_applied(live, event)
         return
 
     if isinstance(event, EffectExpired):
-        target_effects = live.active_effects.get(event.target_id, [])
-        expired_effect: ActiveEffect | None = None
-        for i, eff in enumerate(target_effects):
-            if eff.id == event.effect_id and eff.origin == event.origin:
-                expired_effect = target_effects.pop(i)
-                break
-        if expired_effect is not None and expired_effect.statuses:
-            combatant = _find_combatant(live, event.target_id)
-            remaining_effects = live.active_effects.get(event.target_id, [])
-            # Codex Phase 6 review iter-8 P1: also clear the status from
-            # live.active_conditions (orchestrator_bridge reads this when
-            # mirroring combatant conditions back to Redis). Without this,
-            # the projection re-attaches the expired status to session
-            # state on the next mirror tick.
-            active_cond_set = live.active_conditions.get(event.target_id)
-            for status in expired_effect.statuses:
-                # Only remove if no OTHER active effect still imposes the
-                # same status (multiple sources stacking case).
-                still_imposed = any(status in other.statuses for other in remaining_effects)
-                if still_imposed:
-                    continue
-                if active_cond_set is not None:
-                    active_cond_set.discard(status)
-            if combatant is not None:
-                new_conditions = list(combatant.conditions)
-                dirty = False
-                for status in expired_effect.statuses:
-                    still_imposed = any(status in other.statuses for other in remaining_effects)
-                    if still_imposed:
-                        continue
-                    for idx, ac in enumerate(new_conditions):
-                        if ac.condition == status:
-                            new_conditions.pop(idx)
-                            dirty = True
-                            break
-                if dirty:
-                    for idx, c in enumerate(live.initiative):
-                        if c.entity_id == event.target_id:
-                            live.initiative[idx] = c.model_copy(
-                                update={"conditions": new_conditions}
-                            )
-                            break
+        _emit_apply_effect_expired(live, event)
         return
 
     if isinstance(event, Death):
         if event.target_id in live.dead_ids:
             return
         _record_death(live, event, killer_id=live.current_actor_id)
+
+
+def _emit_apply_turn_started(live: _LiveCombat, event: TurnStarted) -> None:
+    """Fold a ``TurnStarted`` into running state: set the current actor and
+    refresh that actor's per-turn Action / Bonus Action / Reaction / movement
+    budgets on the initiative slot."""
+    live.current_actor_id = event.actor_id
+    # SRD §Action Economy — refresh the actor's per-turn budgets on the
+    # start of their own turn. The reaction line ("You regain your
+    # reaction at the start of your turn") and the Action/Bonus Action
+    # budgets all reset here; consumption sites in submit_player_intent
+    # (and, for reactions, future off-turn intent paths) are the only
+    # writers that flip these False.
+    for idx, c in enumerate(live.initiative):
+        if c.entity_id == event.actor_id:
+            live.initiative[idx] = c.model_copy(
+                update={
+                    "action_available": True,
+                    "bonus_action_available": True,
+                    "reaction_available": True,
+                    # SRD §Movement — movement budget refreshes to the
+                    # actor's full walking speed at the start of their
+                    # own turn. Per-MOVE-intent decrement is the only
+                    # writer; this is the only reset.
+                    "movement_remaining": c.base_speed,
+                }
+            )
+            break
+
+
+def _emit_apply_damage(live: _LiveCombat, event: DamageApplied) -> None:
+    """Fold a ``DamageApplied`` into running state: temp-HP absorption, HP
+    tracking + initiative sync, ``last_damaged_by`` attribution, the
+    concentration CON save cascade, and non-PC death synthesis."""
+    tracked = live.tracked_hp.get(event.target_id)
+    if tracked is None:
+        return
+    # Temp HP absorbs first (SRD §Temporary Hit Points).
+    temp = live.tracked_temp_hp.get(event.target_id, 0)
+    remaining = event.amount
+    if temp > 0:
+        absorbed = min(temp, remaining)
+        live.tracked_temp_hp[event.target_id] = temp - absorbed
+        remaining -= absorbed
+    new_hp = max(0, tracked - remaining)
+    live.tracked_hp[event.target_id] = new_hp
+    # Sync hp_current / temp_hp on the initiative slot so downstream
+    # readers (monster gambit targeting, OA HP checks, hydration
+    # passive projection) observe the post-damage state instead of the
+    # opening snapshot. Combined into the same model_copy as the
+    # ``last_damaged_by`` update below.
+    new_temp_hp = live.tracked_temp_hp.get(event.target_id, 0)
+    damager = live.current_actor_id
+    update_payload: dict[str, Any] = {
+        "hp_current": new_hp,
+        "temp_hp": new_temp_hp,
+    }
+    # SRD §Hellish Rebuke — track the *creature that damaged you* on the
+    # target combatant. ``current_actor_id`` is the canonical "who is
+    # acting" (same source used for kill attribution below). Self-damage
+    # (e.g. reaction damage back at the actor) is excluded so HR's
+    # validation can't ping-pong.
+    if damager and damager != event.target_id:
+        update_payload["last_damaged_by"] = damager
+    for idx, c in enumerate(live.initiative):
+        if c.entity_id == event.target_id:
+            live.initiative[idx] = c.model_copy(update=update_payload)
+            break
+    # SRD §Concentration on Damage — *"You must make a Constitution
+    # saving throw … DC = 10 or half the damage taken, whichever is
+    # higher. On a failed save, the spell ends."* If the damaged
+    # combatant is concentrating on an effect (tracked in
+    # ``concentration_chain``), roll the CON save and cascade on
+    # failure. No CON modifier projection at the orchestrator boundary
+    # today (mirrors ``_emit_concentration_save_probe`` in
+    # ``effects/ieffect2.py``); the raw d20 vs. DC determines outcome.
+    # Done BEFORE death synthesis so a dropped-conc + slain caster
+    # still surface the cascade before the Death event.
+    caster_chain = live.concentration_chain.get(event.target_id)
+    if caster_chain:
+        dc = max(10, event.amount // 2)
+        roll_total = live.rng.randint(1, 20)
+        succeeded = roll_total >= dc
+        _emit(
+            live,
+            SaveRolled(
+                target_id=event.target_id,
+                ability="con",
+                dc=dc,
+                roll_total=roll_total,
+                succeeded=succeeded,
+            ),
+        )
+        if not succeeded:
+            _drop_concentration(live, event.target_id)
+    if (
+        new_hp <= 0
+        and event.target_id not in live.party_ids
+        and event.target_id not in live.dead_ids
+    ):
+        # Synthesize a Death(damage) for the non-PC. Recursion guard:
+        # _emit re-enters here for the Death, but the dead_ids set blocks
+        # double-recording, and Death's only running-state effect is to
+        # record the death (no further HP arithmetic).
+        killer = live.current_actor_id
+        death_event = Death(target_id=event.target_id, reason="damage")
+        _record_death(live, death_event, killer_id=killer)
+        live.event_log.append(death_event)
+        live.event_queue.put_nowait(death_event)
+
+
+def _emit_apply_healing(live: _LiveCombat, event: HealingApplied) -> None:
+    """Fold a ``HealingApplied`` into running state: HP tracking (capped at
+    max), initiative sync, and the 0→positive revive (clear death saves +
+    unconscious condition)."""
+    tracked = live.tracked_hp.get(event.target_id)
+    if tracked is None:
+        return
+    cap = _hp_max_for(live, event.target_id)
+    new_hp = min(cap, tracked + event.amount)
+    live.tracked_hp[event.target_id] = new_hp
+    # SRD §Death Saves — "If a creature with 0 hit points regains any
+    # hit points, it becomes conscious again." When tracked HP
+    # transitions 0 → positive, flip ``is_alive`` back True, clear the
+    # death-save counters, and drop the ``unconscious`` ActiveCondition
+    # bridged by the dying state. HP sync runs unconditionally so
+    # downstream readers (monster gambit targeting, hydration) observe
+    # the post-heal state even when the heal didn't cross the 0->1
+    # revive boundary.
+    revived = tracked == 0 and new_hp > 0
+    for idx, c in enumerate(live.initiative):
+        if c.entity_id == event.target_id:
+            heal_update: dict[str, Any] = {"hp_current": new_hp}
+            if revived:
+                heal_update["is_alive"] = True
+                heal_update["death_saves"] = {}
+                heal_update["conditions"] = [
+                    cond for cond in c.conditions if cond.condition != "unconscious"
+                ]
+            live.initiative[idx] = c.model_copy(update=heal_update)
+            break
+
+
+def _emit_apply_temp_hp(live: _LiveCombat, event: TempHpApplied) -> None:
+    """Fold a ``TempHpApplied`` into running state: max-not-additive temp-HP
+    tracking + initiative slot sync."""
+    # SRD §Temporary Hit Points — new amount replaces existing if higher,
+    # not additive (Avrae/Open5e canonical behavior).
+    current = live.tracked_temp_hp.get(event.target_id, 0)
+    new_temp = max(current, event.amount)
+    live.tracked_temp_hp[event.target_id] = new_temp
+    # Sync the initiative slot's temp_hp so downstream readers
+    # (hydration, passive projection) observe the post-grant state.
+    for idx, c in enumerate(live.initiative):
+        if c.entity_id == event.target_id:
+            live.initiative[idx] = c.model_copy(update={"temp_hp": new_temp})
+            break
+
+
+def _emit_apply_effect_applied(live: _LiveCombat, event: EffectApplied) -> None:
+    """Fold an ``EffectApplied`` into running state: track the active effect,
+    union its imposed statuses into the target's conditions, and record
+    concentration spell-slot expenditure for PCs."""
+    applied = event.effect
+    live.active_effects.setdefault(applied.target_id, []).append(applied)
+    # Union the effect's imposed statuses into the combatant.conditions
+    # list so passive projections (advantage/disadvantage on attack,
+    # save, etc.) observe the new state immediately.
+    target_combatant = _find_combatant(live, applied.target_id)
+    if target_combatant is not None and applied.statuses:
+        existing_slugs = {ac.condition for ac in target_combatant.conditions}
+        new_conditions = list(target_combatant.conditions)
+        dirty = False
+        for status in applied.statuses:
+            if status in existing_slugs:
+                continue
+            # Derive source_entity_id from the origin tag when it
+            # encodes one (e.g. "cast:bless:char:abc12"); otherwise
+            # default to the canonical implied-source marker.
+            source_entity_id = "implied:effect"
+            new_conditions.append(
+                ActiveCondition(
+                    condition=status,
+                    source_entity_id=source_entity_id,
+                    scope="combat",
+                    source_effect_id=applied.id,
+                )
+            )
+            dirty = True
+        if dirty:
+            for idx, c in enumerate(live.initiative):
+                if c.entity_id == applied.target_id:
+                    live.initiative[idx] = c.model_copy(update={"conditions": new_conditions})
+                    break
+    # SRD spell-slot consumption: spell effects with concentration imply
+    # a slot was spent. The slot level is not on the event today (follow-up
+    # in the cutover); we record under a coarse "slots" label keyed by name.
+    is_concentration = bool(applied.flags.get("concentration"))
+    if is_concentration and applied.target_id in live.party_ids:
+        bucket = live.expended_resources.setdefault(applied.target_id, {})
+        bucket[applied.name] = bucket.get(applied.name, 0) + 1
+
+
+def _emit_apply_effect_expired(live: _LiveCombat, event: EffectExpired) -> None:
+    """Fold an ``EffectExpired`` into running state: pop the matching effect,
+    then clear each status it imposed from both ``live.active_conditions`` and
+    the target's conditions — but only if no OTHER active effect still imposes
+    that status."""
+    target_effects = live.active_effects.get(event.target_id, [])
+    expired_effect: ActiveEffect | None = None
+    for i, eff in enumerate(target_effects):
+        if eff.id == event.effect_id and eff.origin == event.origin:
+            expired_effect = target_effects.pop(i)
+            break
+    if expired_effect is not None and expired_effect.statuses:
+        combatant = _find_combatant(live, event.target_id)
+        remaining_effects = live.active_effects.get(event.target_id, [])
+        # Codex Phase 6 review iter-8 P1: also clear the status from
+        # live.active_conditions (orchestrator_bridge reads this when
+        # mirroring combatant conditions back to Redis). Without this,
+        # the projection re-attaches the expired status to session
+        # state on the next mirror tick.
+        active_cond_set = live.active_conditions.get(event.target_id)
+        for status in expired_effect.statuses:
+            # Only remove if no OTHER active effect still imposes the
+            # same status (multiple sources stacking case).
+            still_imposed = any(status in other.statuses for other in remaining_effects)
+            if still_imposed:
+                continue
+            if active_cond_set is not None:
+                active_cond_set.discard(status)
+        if combatant is not None:
+            new_conditions = list(combatant.conditions)
+            dirty = False
+            for status in expired_effect.statuses:
+                still_imposed = any(status in other.statuses for other in remaining_effects)
+                if still_imposed:
+                    continue
+                for idx, ac in enumerate(new_conditions):
+                    if ac.condition == status:
+                        new_conditions.pop(idx)
+                        dirty = True
+                        break
+            if dirty:
+                for idx, c in enumerate(live.initiative):
+                    if c.entity_id == event.target_id:
+                        live.initiative[idx] = c.model_copy(update={"conditions": new_conditions})
+                        break
 
 
 def _maybe_roll_death_save(live: _LiveCombat) -> None:
@@ -1332,6 +1372,249 @@ _FOUNDRY_ATTACK_BONUS_KEYS = frozenset(
 _FOUNDRY_MELEE_DAMAGE_KEY = "system.bonuses.mwak.damage"
 
 
+def _fold_active_effect_changes(
+    active: Sequence[ActiveEffect],
+    per_target_dmg: dict[str, Any],
+    per_target_entry: dict[str, Any],
+) -> bool:
+    """Fold each live effect's Foundry-shaped ``changes`` into the per-target
+    ``per_target_dmg`` (attack/damage sidecar) and ``per_target_entry`` (save/ac
+    sidecar) dicts in place. Returns whether ``per_target_dmg`` was mutated
+    (``dmg_dirty``) so the caller knows to re-store it.
+
+    Pure projection over the passed dicts — no ``live`` mutation.
+    """
+    dmg_dirty = False
+    for active_effect in active:
+        # Phase 6 codex iter-6 P1: equipped enchantments and other
+        # ActiveEffects carry mechanically-relevant `changes` entries
+        # (Foundry-shaped: attack.roll.bonus / damage.bonus /
+        # ac.bonus / save.bonus / save.<ability>.bonus). Fold their
+        # int-valued mode=add changes into the engine's attack and
+        # save sidecar surfaces so the resolvers see them on
+        # monster-driven turns. Dice formulas ("1d4") pass through as
+        # additive strings — the handler's existing parser already
+        # handles them.
+        #
+        # Codex iter-7 P1: when an effect carries an
+        # ``applicable_action_types`` restriction (e.g. a +1 weapon
+        # tagged ["attack"]), the attack/damage sidecar is
+        # action-type-agnostic and would silently buff spell
+        # attacks too. Filter those buckets here: a weapon-tagged
+        # enchantment's attack.roll.bonus / damage.bonus
+        # changes don't reach the engine-sidecar path. The
+        # host-side build_dispatch_context still applies them
+        # correctly for player-dispatched attack actions; this
+        # only means a monster-driven attack handler will not
+        # see them — which is the conservative outcome because
+        # the sidecar can't action-type-disambiguate.
+        applicable = active_effect.flags.get("applicable_action_types")
+        applicable_set: set[str] | None = None
+        if isinstance(applicable, list) and applicable:
+            applicable_set = {str(a).lower() for a in applicable}
+        # Foundry models a "+1d4 to attack rolls" buff (Bless) /
+        # "-1d4" debuff (Bane) as four sibling change keys —
+        # ``system.bonuses.{mwak,msak,rsak,rwak}.attack`` — one per
+        # attack category. A creature makes exactly one attack at a
+        # time (it is melee XOR ranged, weapon XOR spell), so the
+        # four siblings are mutually exclusive; folding all four into
+        # the action-agnostic ``passive_to_hit_bonus`` would quadruple
+        # the modifier. Fold the attack bonus once per effect.
+        attack_bonus_folded = False
+        for change in active_effect.changes:
+            if change.mode != "add":
+                continue
+            val = change.value
+            if isinstance(val, bool):
+                continue
+            if isinstance(val, int):
+                signed_str = f"{val:+d}"
+            elif isinstance(val, str) and val:
+                signed_str = val if val.startswith("-") else f"+{val}"
+            else:
+                continue
+            key = change.key
+            # Route attack/damage by action-type tag. Effects
+            # tagged ["attack"] (right-hand weapon enchantments)
+            # write to a weapon-only sidecar surface
+            # (passive_weapon_to_hit_bonus / passive_weapon_damage_bonus);
+            # untagged effects (Bless, Bane) write to the
+            # broadly-applicable passive_to_hit_bonus /
+            # passive_damage_bonus that buff weapon AND spell
+            # attacks alike. Defensive buckets (ac/save) ignore
+            # the tag — they apply against any attacker. Codex
+            # iter-14 P1 (corrects iter-7 over-filter).
+            weapon_only = applicable_set is not None and "attack" in applicable_set
+            # Foundry-native attack-bonus keys (Bless/Bane carry the
+            # four ``system.bonuses.{mwak,msak,rsak,rwak}.attack``
+            # siblings). Normalize them to the internal
+            # ``attack.roll.bonus`` surface, folding once per effect
+            # (see ``attack_bonus_folded`` above).
+            if key in _FOUNDRY_ATTACK_BONUS_KEYS:
+                if attack_bonus_folded:
+                    continue
+                key = "attack.roll.bonus"
+                attack_bonus_folded = True
+            elif key == _FOUNDRY_MELEE_DAMAGE_KEY:
+                # Rage's ``system.bonuses.mwak.damage`` (melee weapon
+                # attack damage). Normalize into the melee-only
+                # damage-bonus sidecar; attack.py applies it to a melee
+                # weapon swing only (NOT ranged / spell).
+                existing = per_target_dmg.get("passive_melee_damage_bonus")
+                per_target_dmg["passive_melee_damage_bonus"] = (
+                    f"{existing} {signed_str}" if existing else signed_str.lstrip("+")
+                )
+                dmg_dirty = True
+                continue
+            elif key == "system.bonuses.abilities.save":
+                key = "save.bonus"
+            if key == "attack.roll.bonus":
+                field = "passive_weapon_to_hit_bonus" if weapon_only else "passive_to_hit_bonus"
+                existing = per_target_dmg.get(field)
+                per_target_dmg[field] = (
+                    f"{existing} {signed_str}" if existing else signed_str.lstrip("+")
+                )
+                dmg_dirty = True
+            elif key == "save.bonus":
+                # Codex Phase 6 review iter-13 P2: project ONLY the
+                # generic save.bonus into the action-agnostic
+                # sidecar. Per-ability buckets (save.wisdom.bonus,
+                # save.dexterity.bonus) would silently leak into
+                # every saving throw via passive_save_bonus.
+                # combat.saving_throw and resolve_check read
+                # per-ability buckets directly from active_effects
+                # via apply_changes_to_check (iter-6), so the
+                # per-ability path is functional without the
+                # sidecar projection.
+                existing = per_target_entry.get("passive_save_bonus")
+                per_target_entry["passive_save_bonus"] = (
+                    f"{existing} {signed_str}" if existing else signed_str.lstrip("+")
+                )
+            elif key == "ac.bonus":
+                existing = per_target_entry.get("passive_ac_bonus")
+                per_target_entry["passive_ac_bonus"] = (
+                    f"{existing} {signed_str}" if existing else signed_str.lstrip("+")
+                )
+            elif key == "damage.bonus":
+                field = "passive_weapon_damage_bonus" if weapon_only else "passive_damage_bonus"
+                existing = per_target_dmg.get(field)
+                per_target_dmg[field] = (
+                    f"{existing} {signed_str}" if existing else signed_str.lstrip("+")
+                )
+                dmg_dirty = True
+    return dmg_dirty
+
+
+def _project_target_modifiers(
+    c: Combatant,
+    live: _LiveCombat,
+    passive_damage_modifiers: dict[str, dict[str, Any]],
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    """Project one combatant's per-target save/check entries, folding SRD
+    conditions, per-creature resistances/immunities, and active-effect changes.
+
+    Mutates ``passive_damage_modifiers[c.entity_id]`` in place (the damage
+    projection lands there directly). Returns ``(save_entry, check_entry)``
+    where ``check_entry`` is ``None`` when the SRD check projection is empty.
+    """
+    cond_names = [ac.condition for ac in c.conditions]
+    damage_proj = project_passive_damage_modifiers(cond_names)
+    save_proj = project_passive_save_modifiers(cond_names)
+    check_proj = project_passive_check_modifiers(cond_names)
+    # Merge per-creature damage_resistances / damage_immunities (from the
+    # monster/character stat block) into the condition-derived projection.
+    # SRD §Damage Resistance / §Damage Immunity — both sources are
+    # additive (resistance + resistance does not stack per SRD, but
+    # union-set membership reflects that correctly: the handler only
+    # checks set membership, not count).
+    if c.damage_resistances:
+        merged_res = list(damage_proj.get("resistances", []) or [])
+        for dt in c.damage_resistances:
+            if dt not in merged_res:
+                merged_res.append(dt)
+        damage_proj["resistances"] = merged_res
+    if c.damage_immunities:
+        merged_imm = list(damage_proj.get("immunities", []) or [])
+        for dt in c.damage_immunities:
+            if dt not in merged_imm:
+                merged_imm.append(dt)
+        damage_proj["immunities"] = merged_imm
+    if any(damage_proj.values()):
+        passive_damage_modifiers[c.entity_id] = dict(damage_proj)
+    # Per-target ``saves`` ability-code → modifier projection. SRD
+    # 5e: ability modifier = floor((score - 10) / 2). The combat
+    # scaffold's ``Combatant`` only carries the DEX score today
+    # (other ability scores are owned by the character sheet /
+    # monster template projection and not yet threaded into
+    # ``_LiveCombat``); we project DEX from ``c.dexterity`` and
+    # leave the other abilities at 0 until that projection lands.
+    # save.py reads ``entry["saves"][ability]`` so the per-target
+    # +4 DEX from a 18-score goblin is observable on the IR's
+    # lower-case ability key.
+    per_target_entry: dict[str, Any] = dict(save_proj)
+    per_target_entry["saves"] = {"dex": (int(c.dexterity) - 10) // 2}
+
+    # Active-effect projection: fold each live effect's Foundry-shaped
+    # ``changes`` (Bless +1d4 save, Bane −1d4 save, +1 weapon, etc.) into
+    # the per-target save_modifiers and attack-side
+    # passive_damage_modifiers. The canonical store is
+    # ``live.active_effects[entity_id]`` (event-log-derived). The typed
+    # change-fold below is the sole source of these passive modifiers;
+    # condition-derived save adv/dis comes from the SRD-condition
+    # projection (``project_passive_save_modifiers``).
+    active = live.active_effects.get(c.entity_id, [])
+    if active:
+        per_target_dmg = passive_damage_modifiers.get(c.entity_id, dict(damage_proj))
+        dmg_dirty = _fold_active_effect_changes(active, per_target_dmg, per_target_entry)
+        if dmg_dirty:
+            passive_damage_modifiers[c.entity_id] = per_target_dmg
+
+    check_entry = dict(check_proj) if any(check_proj.values()) else None
+    return per_target_entry, check_entry
+
+
+def _project_caster_pools(
+    live: _LiveCombat, caster: Combatant
+) -> tuple[dict[Any, dict[str, Any]], dict[str, dict[str, int]], dict[str, Any]]:
+    """Project the active caster's spell book, available slots, and counter
+    pool. Pure — reads ``live`` and ``caster``, mutates nothing.
+
+    Returns ``(spell_book, available_slots, counter_state)``.
+    """
+    spell_book: dict[Any, dict[str, Any]] = {}
+    available_slots: dict[str, dict[str, int]] = {}
+    counter_state: dict[str, Any] = {"custom_counters": {}, "spell_slots": {}}
+    # Slots — handler keys by str(level); CharacterSpec carries int keys.
+    slots = live.spell_slots_by_entity.get(caster.entity_id, {})
+    if slots:
+        slot_str_keyed = {str(level): int(count) for level, count in slots.items()}
+        available_slots[caster.entity_id] = slot_str_keyed
+        counter_state["spell_slots"] = dict(slot_str_keyed)
+    # Spell book — resolve slugs through the bundled lib corpus. Unknown
+    # slugs are silently dropped (the lib is the source of truth for what
+    # can be cast). Post-cutover this maps to typed ``Spell`` instances; the
+    # live ``cast``-delegation seam keys spells by Foundry uuid, so no
+    # corpus scenario consumes this projection yet (build_activity_context
+    # is called with spell_book={} today) — it is kept for the eventual
+    # uuid→Spell delegation wiring and as a per-caster known-spells view.
+    spells_known = live.spells_known_by_entity.get(caster.entity_id, [])
+    if spells_known:
+        lib_loader = get_lib_loader()
+        caster_book: dict[str, Any] = {}
+        for slug in spells_known:
+            spell = lib_loader.get_spell(slug)
+            if spell is not None:
+                caster_book[slug] = spell
+        if caster_book:
+            spell_book[caster.entity_id] = caster_book
+    # Custom counters — per-caster bag flowed into the single-caster
+    # counter_state dict (the handler reads the global accessor).
+    counters = live.custom_counters_by_entity.get(caster.entity_id, {})
+    if counters:
+        counter_state["custom_counters"] = {k: dict(v) for k, v in counters.items()}
+    return spell_book, available_slots, counter_state
+
+
 def _build_hydration_payload(live: _LiveCombat, caster: Combatant | None = None) -> dict[str, Any]:
     """Project ``EffectStore.set_sidecar_state`` kwargs from live combat state.
 
@@ -1375,182 +1658,10 @@ def _build_hydration_payload(live: _LiveCombat, caster: Combatant | None = None)
     save_modifiers: dict[str, dict[str, Any]] = {}
     check_modifiers: dict[str, dict[str, Any]] = {}
     for c in live.initiative:
-        cond_names = [ac.condition for ac in c.conditions]
-        damage_proj = project_passive_damage_modifiers(cond_names)
-        save_proj = project_passive_save_modifiers(cond_names)
-        check_proj = project_passive_check_modifiers(cond_names)
-        # Merge per-creature damage_resistances / damage_immunities (from the
-        # monster/character stat block) into the condition-derived projection.
-        # SRD §Damage Resistance / §Damage Immunity — both sources are
-        # additive (resistance + resistance does not stack per SRD, but
-        # union-set membership reflects that correctly: the handler only
-        # checks set membership, not count).
-        if c.damage_resistances:
-            merged_res = list(damage_proj.get("resistances", []) or [])
-            for dt in c.damage_resistances:
-                if dt not in merged_res:
-                    merged_res.append(dt)
-            damage_proj["resistances"] = merged_res
-        if c.damage_immunities:
-            merged_imm = list(damage_proj.get("immunities", []) or [])
-            for dt in c.damage_immunities:
-                if dt not in merged_imm:
-                    merged_imm.append(dt)
-            damage_proj["immunities"] = merged_imm
-        if any(damage_proj.values()):
-            passive_damage_modifiers[c.entity_id] = dict(damage_proj)
-        # Per-target ``saves`` ability-code → modifier projection. SRD
-        # 5e: ability modifier = floor((score - 10) / 2). The combat
-        # scaffold's ``Combatant`` only carries the DEX score today
-        # (other ability scores are owned by the character sheet /
-        # monster template projection and not yet threaded into
-        # ``_LiveCombat``); we project DEX from ``c.dexterity`` and
-        # leave the other abilities at 0 until that projection lands.
-        # save.py reads ``entry["saves"][ability]`` so the per-target
-        # +4 DEX from a 18-score goblin is observable on the IR's
-        # lower-case ability key.
-        per_target_entry: dict[str, Any] = dict(save_proj)
-        per_target_entry["saves"] = {"dex": (int(c.dexterity) - 10) // 2}
-
-        # Active-effect projection: fold each live effect's Foundry-shaped
-        # ``changes`` (Bless +1d4 save, Bane −1d4 save, +1 weapon, etc.) into
-        # the per-target save_modifiers and attack-side
-        # passive_damage_modifiers. The canonical store is
-        # ``live.active_effects[entity_id]`` (event-log-derived). The typed
-        # change-fold below is the sole source of these passive modifiers;
-        # condition-derived save adv/dis comes from the SRD-condition
-        # projection (``project_passive_save_modifiers``).
-        active = live.active_effects.get(c.entity_id, [])
-        if active:
-            per_target_dmg = passive_damage_modifiers.get(c.entity_id, dict(damage_proj))
-            dmg_dirty = False
-            for active_effect in active:
-                # Phase 6 codex iter-6 P1: equipped enchantments and other
-                # ActiveEffects carry mechanically-relevant `changes` entries
-                # (Foundry-shaped: attack.roll.bonus / damage.bonus /
-                # ac.bonus / save.bonus / save.<ability>.bonus). Fold their
-                # int-valued mode=add changes into the engine's attack and
-                # save sidecar surfaces so the resolvers see them on
-                # monster-driven turns. Dice formulas ("1d4") pass through as
-                # additive strings — the handler's existing parser already
-                # handles them.
-                #
-                # Codex iter-7 P1: when an effect carries an
-                # ``applicable_action_types`` restriction (e.g. a +1 weapon
-                # tagged ["attack"]), the attack/damage sidecar is
-                # action-type-agnostic and would silently buff spell
-                # attacks too. Filter those buckets here: a weapon-tagged
-                # enchantment's attack.roll.bonus / damage.bonus
-                # changes don't reach the engine-sidecar path. The
-                # host-side build_dispatch_context still applies them
-                # correctly for player-dispatched attack actions; this
-                # only means a monster-driven attack handler will not
-                # see them — which is the conservative outcome because
-                # the sidecar can't action-type-disambiguate.
-                applicable = active_effect.flags.get("applicable_action_types")
-                applicable_set: set[str] | None = None
-                if isinstance(applicable, list) and applicable:
-                    applicable_set = {str(a).lower() for a in applicable}
-                # Foundry models a "+1d4 to attack rolls" buff (Bless) /
-                # "-1d4" debuff (Bane) as four sibling change keys —
-                # ``system.bonuses.{mwak,msak,rsak,rwak}.attack`` — one per
-                # attack category. A creature makes exactly one attack at a
-                # time (it is melee XOR ranged, weapon XOR spell), so the
-                # four siblings are mutually exclusive; folding all four into
-                # the action-agnostic ``passive_to_hit_bonus`` would quadruple
-                # the modifier. Fold the attack bonus once per effect.
-                attack_bonus_folded = False
-                for change in active_effect.changes:
-                    if change.mode != "add":
-                        continue
-                    val = change.value
-                    if isinstance(val, bool):
-                        continue
-                    if isinstance(val, int):
-                        signed_str = f"{val:+d}"
-                    elif isinstance(val, str) and val:
-                        signed_str = val if val.startswith("-") else f"+{val}"
-                    else:
-                        continue
-                    key = change.key
-                    # Route attack/damage by action-type tag. Effects
-                    # tagged ["attack"] (right-hand weapon enchantments)
-                    # write to a weapon-only sidecar surface
-                    # (passive_weapon_to_hit_bonus / passive_weapon_damage_bonus);
-                    # untagged effects (Bless, Bane) write to the
-                    # broadly-applicable passive_to_hit_bonus /
-                    # passive_damage_bonus that buff weapon AND spell
-                    # attacks alike. Defensive buckets (ac/save) ignore
-                    # the tag — they apply against any attacker. Codex
-                    # iter-14 P1 (corrects iter-7 over-filter).
-                    weapon_only = applicable_set is not None and "attack" in applicable_set
-                    # Foundry-native attack-bonus keys (Bless/Bane carry the
-                    # four ``system.bonuses.{mwak,msak,rsak,rwak}.attack``
-                    # siblings). Normalize them to the internal
-                    # ``attack.roll.bonus`` surface, folding once per effect
-                    # (see ``attack_bonus_folded`` above).
-                    if key in _FOUNDRY_ATTACK_BONUS_KEYS:
-                        if attack_bonus_folded:
-                            continue
-                        key = "attack.roll.bonus"
-                        attack_bonus_folded = True
-                    elif key == _FOUNDRY_MELEE_DAMAGE_KEY:
-                        # Rage's ``system.bonuses.mwak.damage`` (melee weapon
-                        # attack damage). Normalize into the melee-only
-                        # damage-bonus sidecar; attack.py applies it to a melee
-                        # weapon swing only (NOT ranged / spell).
-                        existing = per_target_dmg.get("passive_melee_damage_bonus")
-                        per_target_dmg["passive_melee_damage_bonus"] = (
-                            f"{existing} {signed_str}" if existing else signed_str.lstrip("+")
-                        )
-                        dmg_dirty = True
-                        continue
-                    elif key == "system.bonuses.abilities.save":
-                        key = "save.bonus"
-                    if key == "attack.roll.bonus":
-                        field = (
-                            "passive_weapon_to_hit_bonus" if weapon_only else "passive_to_hit_bonus"
-                        )
-                        existing = per_target_dmg.get(field)
-                        per_target_dmg[field] = (
-                            f"{existing} {signed_str}" if existing else signed_str.lstrip("+")
-                        )
-                        dmg_dirty = True
-                    elif key == "save.bonus":
-                        # Codex Phase 6 review iter-13 P2: project ONLY the
-                        # generic save.bonus into the action-agnostic
-                        # sidecar. Per-ability buckets (save.wisdom.bonus,
-                        # save.dexterity.bonus) would silently leak into
-                        # every saving throw via passive_save_bonus.
-                        # combat.saving_throw and resolve_check read
-                        # per-ability buckets directly from active_effects
-                        # via apply_changes_to_check (iter-6), so the
-                        # per-ability path is functional without the
-                        # sidecar projection.
-                        existing = per_target_entry.get("passive_save_bonus")
-                        per_target_entry["passive_save_bonus"] = (
-                            f"{existing} {signed_str}" if existing else signed_str.lstrip("+")
-                        )
-                    elif key == "ac.bonus":
-                        existing = per_target_entry.get("passive_ac_bonus")
-                        per_target_entry["passive_ac_bonus"] = (
-                            f"{existing} {signed_str}" if existing else signed_str.lstrip("+")
-                        )
-                    elif key == "damage.bonus":
-                        field = (
-                            "passive_weapon_damage_bonus" if weapon_only else "passive_damage_bonus"
-                        )
-                        existing = per_target_dmg.get(field)
-                        per_target_dmg[field] = (
-                            f"{existing} {signed_str}" if existing else signed_str.lstrip("+")
-                        )
-                        dmg_dirty = True
-            if dmg_dirty:
-                passive_damage_modifiers[c.entity_id] = per_target_dmg
-
+        per_target_entry, check_entry = _project_target_modifiers(c, live, passive_damage_modifiers)
         save_modifiers[c.entity_id] = per_target_entry
-        if any(check_proj.values()):
-            check_modifiers[c.entity_id] = dict(check_proj)
+        if check_entry is not None:
+            check_modifiers[c.entity_id] = check_entry
 
     # ── Per-combatant concentration map ─────────────────────────────────────
     # SRD §Concentration — surface ``{effect_name, effect_id}`` per the
@@ -1567,38 +1678,12 @@ def _build_hydration_payload(live: _LiveCombat, caster: Combatant | None = None)
             }
 
     # ── Per-caster spell book + slots + counter pool ───────────────────────
-    spell_book: dict[Any, dict[str, Any]] = {}
-    available_slots: dict[str, dict[str, int]] = {}
-    counter_state: dict[str, Any] = {"custom_counters": {}, "spell_slots": {}}
     if caster is not None:
-        # Slots — handler keys by str(level); CharacterSpec carries int keys.
-        slots = live.spell_slots_by_entity.get(caster.entity_id, {})
-        if slots:
-            slot_str_keyed = {str(level): int(count) for level, count in slots.items()}
-            available_slots[caster.entity_id] = slot_str_keyed
-            counter_state["spell_slots"] = dict(slot_str_keyed)
-        # Spell book — resolve slugs through the bundled lib corpus. Unknown
-        # slugs are silently dropped (the lib is the source of truth for what
-        # can be cast). Post-cutover this maps to typed ``Spell`` instances; the
-        # live ``cast``-delegation seam keys spells by Foundry uuid, so no
-        # corpus scenario consumes this projection yet (build_activity_context
-        # is called with spell_book={} today) — it is kept for the eventual
-        # uuid→Spell delegation wiring and as a per-caster known-spells view.
-        spells_known = live.spells_known_by_entity.get(caster.entity_id, [])
-        if spells_known:
-            lib_loader = get_lib_loader()
-            caster_book: dict[str, Any] = {}
-            for slug in spells_known:
-                spell = lib_loader.get_spell(slug)
-                if spell is not None:
-                    caster_book[slug] = spell
-            if caster_book:
-                spell_book[caster.entity_id] = caster_book
-        # Custom counters — per-caster bag flowed into the single-caster
-        # counter_state dict (the handler reads the global accessor).
-        counters = live.custom_counters_by_entity.get(caster.entity_id, {})
-        if counters:
-            counter_state["custom_counters"] = {k: dict(v) for k, v in counters.items()}
+        spell_book, available_slots, counter_state = _project_caster_pools(live, caster)
+    else:
+        spell_book = {}
+        available_slots = {}
+        counter_state = {"custom_counters": {}, "spell_slots": {}}
 
     # IEffect parent/child graph: empty initially; the per-evaluation
     # ``triggering_ieffect`` flows through ``ctx.variables`` for now.
@@ -1694,8 +1779,7 @@ def _activities_target_self(activities: Sequence[Any]) -> bool:
     authoritative self-target signal (mirrors the spell self-target default).
     """
     return all(
-        getattr(getattr(a.target, "affects", None), "type", None) == "self"
-        for a in activities
+        getattr(getattr(a.target, "affects", None), "type", None) == "self" for a in activities
     )
 
 
@@ -2071,40 +2155,19 @@ def _run_end_of_turn_saves(live: _LiveCombat, actor_id: str) -> None:
 # ── Public seam ─────────────────────────────────────────────────────────────
 
 
-async def start_combat(
-    *,
-    session_id: str,
+def _build_pc_combatants(
     party: list[PartyMemberSpec],
-    encounter: list[EncounterMemberSpec],
-    scene_zones: SceneTopology | None = None,
-    grid_scene: GridScene | None = None,
-    rng_seed: int,
-    scene_location_id: str = "loc:unknown",
-    active_effects: Sequence[ActiveEffect] = (),
-) -> StartCombatResult:
-    """Open a combat, materialize runtime state, kick off the initiative loop.
-
-    Returns a :class:`StartCombatResult` envelope wrapping the ``CombatHandle``
-    the caller threads through subsequent seam calls and the events emitted
-    during open (round-start + first turn-start).
+    combatants: list[Combatant],
+    actor_zone: dict[str, str],
+    tracked_hp: dict[str, int],
+    spell_slots_by_entity: dict[str, dict[int, int]],
+    spells_known_by_entity: dict[str, list[str]],
+    custom_counters_by_entity: dict[str, dict[str, dict[str, int]]],
+) -> None:
+    """Append a :class:`Combatant` per party member and populate the passed
+    accumulator dicts (actor_zone, tracked_hp, spell_slots/spells_known/
+    custom_counters) in place. Mutation-only helper — returns ``None``.
     """
-    if not party:
-        raise ValueError("start_combat: party must be non-empty")
-    if not encounter:
-        raise ValueError("start_combat: encounter must be non-empty")
-
-    # Initiative order: descending by initiative, ties broken by dex then
-    # by entity_id for deterministic order. Mirrors the existing session
-    # path's deterministic-tie-break convention.
-    combatants: list[Combatant] = []
-    actor_zone: dict[str, str] = {}
-    monster_slug_by_entity: dict[str, str] = {}
-    xp_value_by_entity: dict[str, int] = {}
-    tracked_hp: dict[str, int] = {}
-    tracked_temp_hp: dict[str, int] = {}
-    spell_slots_by_entity: dict[str, dict[int, int]] = {}
-    spells_known_by_entity: dict[str, list[str]] = {}
-    custom_counters_by_entity: dict[str, dict[str, dict[str, int]]] = {}
     for pc in party:
         combatants.append(
             Combatant(
@@ -2145,6 +2208,20 @@ async def start_combat(
             custom_counters_by_entity[pc.entity_id] = {
                 k: dict(v) for k, v in pc.custom_counters.items()
             }
+
+
+def _build_foe_combatants(
+    encounter: list[EncounterMemberSpec],
+    combatants: list[Combatant],
+    actor_zone: dict[str, str],
+    tracked_hp: dict[str, int],
+    monster_slug_by_entity: dict[str, str],
+    xp_value_by_entity: dict[str, int],
+) -> None:
+    """Append a :class:`Combatant` per encounter foe and populate the passed
+    accumulator dicts (actor_zone, tracked_hp, monster_slug, xp_value) in
+    place. Mutation-only helper — returns ``None``.
+    """
     for foe in encounter:
         combatants.append(
             Combatant(
@@ -2174,10 +2251,17 @@ async def start_combat(
         if foe.xp_value > 0:
             xp_value_by_entity[foe.entity_id] = foe.xp_value
 
-    combatants.sort(
-        key=lambda c: (-c.initiative, -c.dexterity, c.entity_id),
-    )
 
+def _resolve_topology(
+    party: list[PartyMemberSpec],
+    encounter: list[EncounterMemberSpec],
+    scene_zones: SceneTopology | None,
+    grid_scene: GridScene | None,
+) -> SpatialTopology:
+    """Select the combat's :class:`SpatialTopology` (grid vs. zone graph),
+    validating grid start-cells. Raises ``ValueError`` on ambiguous/absent
+    topology or an out-of-bounds/blocked grid start cell.
+    """
     topology: SpatialTopology
     if grid_scene is not None and scene_zones is not None:
         raise ValueError("start_combat: pass exactly one of scene_zones or grid_scene")
@@ -2198,43 +2282,15 @@ async def start_combat(
         topology = _ZoneGraph(scene_zones)
     else:
         raise ValueError("start_combat: one of scene_zones or grid_scene is required")
+    return topology
 
-    handle_id = f"combat:{session_id}:{rng_seed:08x}"
-    live = _LiveCombat(
-        handle_id=handle_id,
-        session_id=session_id,
-        initiative=combatants,
-        party_ids={p.entity_id for p in party},
-        encounter_ids={e.entity_id for e in encounter},
-        topology=topology,
-        rng=random.Random(rng_seed),
-        event_queue=asyncio.Queue(),
-        scene_location_id=scene_location_id,
-        actor_zone=actor_zone,
-        monster_slug_by_entity=monster_slug_by_entity,
-        xp_value_by_entity=xp_value_by_entity,
-        tracked_hp=tracked_hp,
-        tracked_temp_hp=tracked_temp_hp,
-        spell_slots_by_entity=spell_slots_by_entity,
-        spells_known_by_entity=spells_known_by_entity,
-        custom_counters_by_entity=custom_counters_by_entity,
-    )
-    _REGISTRY[handle_id] = live
 
-    # Phase 6 — seed _LiveCombat.active_effects from the caller. The hook
-    # is live today for equipped-magic-item enchantments (Tapestria-side
-    # _project_party_equipped_enchantments) and reserved for the wider
-    # [effects-cross-combat] surface.
-    #
-    # Lifecycle bookkeeping: in addition to active_effects + combatant
-    # conditions, seeded effects must also populate the concentration_chain
-    # and conditions_by_effect indexes that runtime EffectApplied events
-    # would have set via _record_effect_lifecycle_links. Without this,
-    # a seeded concentration effect (Bless cast pre-combat, Hold Person
-    # carried over) would never trigger concentration-drop on caster damage
-    # and end-of-turn repeat saves would never fire. repeat_save_on_turn_end
-    # is NOT seeded here — it requires a failed-save record we don't have
-    # at seed time; the next runtime save will repopulate as needed.
+def _seed_active_effects(live: _LiveCombat, active_effects: Sequence[ActiveEffect]) -> None:
+    """Seed ``live`` from caller-supplied ActiveEffects, mutating ``live`` in
+    place: append to active_effects, parse the concentration chain (and write
+    the caster's concentration_effect_id), build conditions_by_effect, and
+    project active_conditions + per-combatant Combatant.conditions.
+    """
     for eff in active_effects:
         live.active_effects.setdefault(eff.target_id, []).append(eff)
 
@@ -2314,6 +2370,103 @@ async def start_combat(
                 live.initiative[idx] = c.model_copy(update={"conditions": new_conditions})
             break
 
+
+async def start_combat(
+    *,
+    session_id: str,
+    party: list[PartyMemberSpec],
+    encounter: list[EncounterMemberSpec],
+    scene_zones: SceneTopology | None = None,
+    grid_scene: GridScene | None = None,
+    rng_seed: int,
+    scene_location_id: str = "loc:unknown",
+    active_effects: Sequence[ActiveEffect] = (),
+) -> StartCombatResult:
+    """Open a combat, materialize runtime state, kick off the initiative loop.
+
+    Returns a :class:`StartCombatResult` envelope wrapping the ``CombatHandle``
+    the caller threads through subsequent seam calls and the events emitted
+    during open (round-start + first turn-start).
+    """
+    if not party:
+        raise ValueError("start_combat: party must be non-empty")
+    if not encounter:
+        raise ValueError("start_combat: encounter must be non-empty")
+
+    # Initiative order: descending by initiative, ties broken by dex then
+    # by entity_id for deterministic order. Mirrors the existing session
+    # path's deterministic-tie-break convention.
+    combatants: list[Combatant] = []
+    actor_zone: dict[str, str] = {}
+    monster_slug_by_entity: dict[str, str] = {}
+    xp_value_by_entity: dict[str, int] = {}
+    tracked_hp: dict[str, int] = {}
+    tracked_temp_hp: dict[str, int] = {}
+    spell_slots_by_entity: dict[str, dict[int, int]] = {}
+    spells_known_by_entity: dict[str, list[str]] = {}
+    custom_counters_by_entity: dict[str, dict[str, dict[str, int]]] = {}
+    _build_pc_combatants(
+        party,
+        combatants,
+        actor_zone,
+        tracked_hp,
+        spell_slots_by_entity,
+        spells_known_by_entity,
+        custom_counters_by_entity,
+    )
+    _build_foe_combatants(
+        encounter,
+        combatants,
+        actor_zone,
+        tracked_hp,
+        monster_slug_by_entity,
+        xp_value_by_entity,
+    )
+
+    combatants.sort(
+        key=lambda c: (-c.initiative, -c.dexterity, c.entity_id),
+    )
+
+    topology = _resolve_topology(party, encounter, scene_zones, grid_scene)
+
+    handle_id = f"combat:{session_id}:{rng_seed:08x}"
+    live = _LiveCombat(
+        handle_id=handle_id,
+        session_id=session_id,
+        initiative=combatants,
+        party_ids={p.entity_id for p in party},
+        encounter_ids={e.entity_id for e in encounter},
+        topology=topology,
+        rng=random.Random(rng_seed),
+        event_queue=asyncio.Queue(),
+        scene_location_id=scene_location_id,
+        actor_zone=actor_zone,
+        monster_slug_by_entity=monster_slug_by_entity,
+        xp_value_by_entity=xp_value_by_entity,
+        tracked_hp=tracked_hp,
+        tracked_temp_hp=tracked_temp_hp,
+        spell_slots_by_entity=spell_slots_by_entity,
+        spells_known_by_entity=spells_known_by_entity,
+        custom_counters_by_entity=custom_counters_by_entity,
+    )
+    _REGISTRY[handle_id] = live
+
+    # Phase 6 — seed _LiveCombat.active_effects from the caller. The hook
+    # is live today for equipped-magic-item enchantments (Tapestria-side
+    # _project_party_equipped_enchantments) and reserved for the wider
+    # [effects-cross-combat] surface.
+    #
+    # Lifecycle bookkeeping: in addition to active_effects + combatant
+    # conditions, seeded effects must also populate the concentration_chain
+    # and conditions_by_effect indexes that runtime EffectApplied events
+    # would have set via _record_effect_lifecycle_links. Without this,
+    # a seeded concentration effect (Bless cast pre-combat, Hold Person
+    # carried over) would never trigger concentration-drop on caster damage
+    # and end-of-turn repeat saves would never fire. repeat_save_on_turn_end
+    # is NOT seeded here — it requires a failed-save record we don't have
+    # at seed time; the next runtime save will repopulate as needed.
+    _seed_active_effects(live, active_effects)
+
     # Emit the round-start + first turn-start so a consumer of
     # ``narration_events`` sees combat actually open. The evaluator
     # itself is invoked only from inside ``submit_player_intent`` once
@@ -2372,9 +2525,7 @@ class _FeatureInvocation:
     is_bonus_action: bool
 
 
-def _resolve_feature_invocation(
-    caster: Combatant, feature_id: str
-) -> _FeatureInvocation | None:
+def _resolve_feature_invocation(caster: Combatant, feature_id: str) -> _FeatureInvocation | None:
     """Resolve a USE_FEATURE intent to its single concrete activity, or ``None``.
 
     Applies the REPERTOIRE GATE (class / subclass / species ``granted_features``
@@ -2427,6 +2578,370 @@ def _resolve_feature_invocation(
     )
 
 
+def _advance_turn(live: _LiveCombat, actor_id: str) -> None:
+    """SRD §Action Economy — end ``actor_id``'s turn and start the next.
+
+    Ticks effect durations at turn end, emits ``TurnEnded``, advances
+    ``current_turn_index`` (wrapping to the next round with a ``RoundStarted``
+    on wrap), emits ``TurnStarted`` for the new current actor, and rolls any
+    pending death save. This is the shared epilogue used by both spell-slot
+    reject paths and the normal post-resolution path.
+    """
+    _tick_durations_at_turn_end(live, actor_id)
+    _emit(live, TurnEnded(actor_id=actor_id))
+    live.current_turn_index += 1
+    if live.current_turn_index >= len(live.initiative):
+        live.current_turn_index = 0
+        live.round_number += 1
+        _emit(live, RoundStarted(round_number=live.round_number))
+    _emit(live, TurnStarted(actor_id=_current_actor(live).entity_id))
+    _maybe_roll_death_save(live)
+
+
+def _validate_intent_preconditions(
+    live: _LiveCombat, handle: CombatHandle, actor_id: str
+) -> Combatant:
+    """Validate that combat is live, ``actor_id`` is in initiative, and it is
+    currently ``actor_id``'s turn. Raises :class:`IntentRejectedError` on any
+    failure; returns the current actor's :class:`Combatant` on success."""
+    if live.ended:
+        raise IntentRejectedError("combat_ended", f"handle={handle.handle_id}")
+
+    in_initiative = any(c.entity_id == actor_id for c in live.initiative)
+    if not in_initiative:
+        raise IntentRejectedError(
+            "actor_not_in_initiative",
+            f"actor_id={actor_id!r} not in initiative order",
+        )
+
+    current = _current_actor(live)
+    if current.entity_id != actor_id:
+        raise IntentRejectedError(
+            "not_actor_turn",
+            f"current_turn={current.entity_id!r}, submitted={actor_id!r}",
+        )
+    return current
+
+
+def _handle_move(live: _LiveCombat, current: Combatant, intent: PlayerIntent) -> None:
+    """SRD §Movement — phase-2 zone-shift primitive. The actor steps to an
+    adjacent zone, paying the edge's distance_ft from their per-turn movement
+    budget. Movement does NOT end the turn; the actor keeps initiative.
+
+    Rejections (no target_zone_id, not adjacent, insufficient budget) emit
+    ``MoveFailed`` and return without mutating budget or position.
+    """
+    actor_id = current.entity_id
+    target_zone_id = intent.target_zone_id
+    current_zone = live.actor_zone.get(actor_id)
+    if (
+        target_zone_id is None
+        or current_zone is None
+        or not live.topology.is_adjacent(current_zone, target_zone_id)
+    ):
+        _emit(live, MoveFailed(actor_id=actor_id, reason="not_adjacent"))
+        return
+    distance_ft = live.topology.edge_distance(current_zone, target_zone_id)
+    # edge_distance returns int when is_adjacent is True; mypy needs the cast.
+    assert distance_ft is not None
+    if current.movement_remaining < distance_ft:
+        _emit(live, MoveFailed(actor_id=actor_id, reason="insufficient_movement"))
+        return
+    # Decrement budget + update position. model_copy + slot-replace
+    # mirrors the C-1 action-economy mutation pattern.
+    for idx, c in enumerate(live.initiative):
+        if c.entity_id == actor_id:
+            live.initiative[idx] = c.model_copy(
+                update={"movement_remaining": c.movement_remaining - distance_ft}
+            )
+            break
+    live.actor_zone[actor_id] = target_zone_id
+    _emit(
+        live,
+        ActorMoved(
+            actor_id=actor_id,
+            from_zone=current_zone,
+            to_zone=target_zone_id,
+            distance_ft=distance_ft,
+        ),
+    )
+    # Turn stays live — no TurnEnded, no current_turn_index advance.
+
+
+@dataclass
+class _ActionCost:
+    """Action-economy classification for an intent: which budget it consumes
+    and whether it is a reaction cast (which additionally emits
+    ``ReactionTriggered``). ``cast_spell_for_timing`` is the timing-only spell
+    fetch reused by the slot gate downstream."""
+
+    is_bonus_action: bool
+    is_reaction_cast: bool
+    cast_spell_for_timing: Spell | None
+
+
+def _classify_action_cost(
+    intent: PlayerIntent, feature_invocation: _FeatureInvocation | None
+) -> _ActionCost:
+    """SRD §Action Economy — classify an intent's action cost BEFORE emitting
+    IntentSubmitted. Cast spells consult their asset's typed
+    ``casting_time.unit``; a feature invocation reads its resolved cost; all
+    other intents are Actions."""
+    cast_spell_for_timing = (
+        get_lib_loader().get_spell(intent.spell_id)
+        if intent.intent_type == "cast_spell" and intent.spell_id
+        else None
+    )
+    casting_unit = (
+        cast_spell_for_timing.casting_time.unit if cast_spell_for_timing is not None else None
+    )
+    is_bonus_action = casting_unit == CastingTimeUnit.BONUS
+    # SRD §Action Economy — a class feature is a Bonus Action when its (single)
+    # activity's ``activation.type`` is ``"bonus"`` (Rage, Second Wind). A bonus
+    # action does NOT end the turn, so the actor may rage then swing on the same
+    # turn — the very flow Task 4 exercises. ``feature_invocation`` is already
+    # resolved (gate + single-activity validation) above; read its cost here.
+    if feature_invocation is not None and feature_invocation.is_bonus_action:
+        is_bonus_action = True
+    is_reaction_cast = casting_unit == CastingTimeUnit.REACTION
+    return _ActionCost(
+        is_bonus_action=is_bonus_action,
+        is_reaction_cast=is_reaction_cast,
+        cast_spell_for_timing=cast_spell_for_timing,
+    )
+
+
+def _spell_out_of_range(
+    live: _LiveCombat,
+    actor_id: str,
+    intent: PlayerIntent,
+    cast_spell_for_timing: Spell | None,
+) -> bool:
+    """SRD §Spell Range — return ``True`` if this is a targeted cast whose
+    target lies beyond the spell's metric range. ``self``/``special`` ranges
+    carry no metric distance and never gate."""
+    if not (
+        intent.intent_type == "cast_spell"
+        and cast_spell_for_timing is not None
+        and intent.target_id is not None
+    ):
+        return False
+    spell_range = cast_spell_for_timing.range
+    if spell_range.units == SpellRangeUnits.FEET:
+        range_ft: int | None = spell_range.value
+    elif spell_range.units == SpellRangeUnits.TOUCH:
+        range_ft = 5
+    else:
+        range_ft = None
+    if isinstance(range_ft, int) and range_ft > 0:
+        caster_zone = live.actor_zone.get(actor_id)
+        target_zone = live.actor_zone.get(intent.target_id)
+        if (
+            caster_zone is not None
+            and target_zone is not None
+            and not _in_range_with_los(live.topology, caster_zone, target_zone, range_ft)
+        ):
+            return True
+    return False
+
+
+def _hellish_rebuke_target_invalid(current: Combatant, intent: PlayerIntent) -> bool:
+    """SRD §Hellish Rebuke — return ``True`` if this is a Hellish Rebuke cast
+    whose target is not the most-recent damager tracked on the caster."""
+    return (
+        intent.intent_type == "cast_spell"
+        and intent.spell_id == "hellish-rebuke"
+        and (current.last_damaged_by is None or intent.target_id != current.last_damaged_by)
+    )
+
+
+def _consume_action_budget(live: _LiveCombat, actor_id: str, cost: _ActionCost) -> Combatant:
+    """Consume the classified action-economy budget on ``actor_id``'s
+    initiative slot and return the refreshed current actor. ``current`` is a
+    stale snapshot; mutate via slot model_copy so subsequent reads see the
+    updated state."""
+    for idx, c in enumerate(live.initiative):
+        if c.entity_id == actor_id:
+            if cost.is_bonus_action:
+                live.initiative[idx] = c.model_copy(update={"bonus_action_available": False})
+            elif cost.is_reaction_cast:
+                live.initiative[idx] = c.model_copy(update={"reaction_available": False})
+            else:
+                live.initiative[idx] = c.model_copy(update={"action_available": False})
+            break
+    return _current_actor(live)
+
+
+def _consume_spell_slot(
+    live: _LiveCombat, current: Combatant, actor_id: str, intent: PlayerIntent
+) -> bool:
+    """SRD §Spellcasting — Spell Slots: "Whenever a character casts a
+    spell, they expend a slot of that spell's level or higher." The
+    slot gate lives on the orchestrator: the typed resolver walks the
+    spell's own activities directly (no wrapping ``CastActivity``), so it
+    never reaches a slot-consuming handler — the orchestrator owns the
+    gate + decrement for this PC seam. The decrement is final here; the
+    typed resolver does not mutate any per-evaluation slot sidecar, so there
+    is no post-resolution slot writeback to reconcile with.
+
+    Returns ``True`` if the cast was REJECTED (a ``CastFailed`` was emitted
+    and the turn advanced — the caller must return); ``False`` otherwise.
+    """
+    if not (intent.intent_type == "cast_spell" and intent.spell_id):
+        return False
+    slot_gate_spell = get_lib_loader().get_spell(intent.spell_id)
+    if slot_gate_spell is None:
+        return False
+    base_level = slot_gate_spell.level
+    slot_level = intent.slot_level if intent.slot_level is not None else base_level
+    # SRD §Cantrips — "A cantrip is a spell that can be cast at
+    # will, without using a spell slot." Cantrips cannot be cast
+    # at higher slot levels; the engine's only correct response
+    # to an intent that requests a slot on a base_level=0 spell
+    # is to reject the cast (caller bug, not a silent demotion to
+    # base level — silent demotion would let a "buggy" intent
+    # surface as a successful cast with unintended scaling).
+    if base_level == 0 and intent.slot_level not in (None, 0):
+        _emit(
+            live,
+            CastFailed(
+                actor_id=current.entity_id,
+                spell_id=intent.spell_id,
+                reason="no_slot",
+            ),
+        )
+        _advance_turn(live, actor_id)
+        return True
+    if base_level > 0:
+        slots = live.spell_slots_by_entity.get(current.entity_id, {})
+        available = int(slots.get(slot_level, 0))
+        if available <= 0:
+            _emit(
+                live,
+                CastFailed(
+                    actor_id=current.entity_id,
+                    spell_id=intent.spell_id,
+                    reason="no_slot",
+                ),
+            )
+            _advance_turn(live, actor_id)
+            return True
+        # Consume the slot. The typed PC resolver does not touch
+        # ``_counter_state``, so this subtract is the authoritative
+        # decrement — no post-evaluation writeback overwrites it.
+        slots[slot_level] = available - 1
+    return False
+
+
+@dataclass
+class _ResolvedActivities:
+    """The typed-entity fetch result for an intent: the activities the resolver
+    will walk, plus the ancillary carriers (cast spell, weapon, spellcasting
+    ability, feature passive effects) the context builder needs."""
+
+    activities: list[Any]
+    cast_spell: Spell | None
+    fetched_weapon: Weapon | None
+    spellcasting_ability: str | None
+    feature_passive_effects: list[Any]
+
+
+def _resolve_intent_activities(
+    intent: PlayerIntent, feature_invocation: _FeatureInvocation | None
+) -> _ResolvedActivities:
+    """Fetch the typed entity for the intent's kind from the lib loader and
+    collect the activities the resolver will walk. This is the sole PC
+    resolution path; the old Avrae IR path was retired in Phase 7b."""
+    cast_spell: Spell | None = None
+    fetched_weapon: Weapon | None = None
+    activities: list[Any] = []
+    spellcasting_ability: str | None = None
+    # The owner entity's PassiveEffect definitions, threaded into the context so
+    # an activity's effect riders (``activity.effects[].id``) resolve to a runtime
+    # ActiveEffect. A spell carries them on ``Spell.passive_effects``; a feature
+    # (Rage) on ``Feature.passive_effects``. Empty for kinds with no rider source.
+    feature_passive_effects: list[Any] = []
+    if intent.intent_type == "attack" and intent.weapon_id:
+        fetched_weapon = get_lib_loader().get_weapon(intent.weapon_id)
+        if fetched_weapon is not None:
+            activities = list(fetched_weapon.activities)
+            # SRD §Weapon Attacks — most mundane weapons ship the AttackActivity
+            # on ``Weapon.activities``; a handful of magic weapons whose attack
+            # rides their base weapon ship empty activities. Synthesize one from
+            # the weapon's ``damage_parts`` so a swing still resolves (parity
+            # with the OLD ``_synthesize_weapon_attack``).
+            if not activities:
+                activities = [_synthesize_attack_from_weapon(fetched_weapon)]
+    elif intent.intent_type == "cast_spell" and intent.spell_id:
+        cast_spell = get_lib_loader().get_spell(intent.spell_id)
+        if cast_spell is not None:
+            activities = list(cast_spell.activities)
+            # The OLD path used a uniform caster ``mod`` regardless of the
+            # spell's real spellcasting ability; ``build_activity_context``
+            # makes every ability yield that same mod, so the ability name
+            # here only selects which (equal) mod the resolver reads.
+            spellcasting_ability = "int"
+    elif intent.intent_type == "use_item" and intent.item_id:
+        # Parity with the OLD resolver's ``use_item`` branch: an item (potion,
+        # scroll, wand) may carry its own activities — most often a
+        # ``CastActivity`` that delegates to a referenced spell. Fetch the
+        # typed item and resolve its activities directly. ``get_item`` spans
+        # Item/Weapon/Armor/MagicItem, all of which inherit ``activities``.
+        fetched_item = get_lib_loader().get_item(intent.item_id)
+        if fetched_item is not None:
+            activities = list(fetched_item.activities)
+    elif intent.feature_id:
+        # USE_FEATURE — the feature was already resolved to its single concrete
+        # activity (repertoire gate + single-activity validation) above, BEFORE
+        # any action-economy budget was consumed. A rejected / no-op feature
+        # returned early there; reaching here means ``feature_invocation`` holds
+        # the resolved activity + its PassiveEffect riders.
+        assert feature_invocation is not None
+        activities = feature_invocation.activities
+        feature_passive_effects = feature_invocation.passive_effects
+    return _ResolvedActivities(
+        activities=activities,
+        cast_spell=cast_spell,
+        fetched_weapon=fetched_weapon,
+        spellcasting_ability=spellcasting_ability,
+        feature_passive_effects=feature_passive_effects,
+    )
+
+
+def _resolve_targets(
+    live: _LiveCombat,
+    current: Combatant,
+    intent: PlayerIntent,
+    activities: list[Any],
+    cast_spell: Spell | None,
+) -> list[Combatant]:
+    """SRD §Areas of Effect / §Range: Self — resolve the target list. An AoE
+    cast broadcasts to every creature in the targeted zone; otherwise the named
+    target is used, defaulting to the caster for an effect-bearing self/
+    targetless buff or a self-targeting feature."""
+    targets: list[Combatant]
+    if intent.intent_type == "cast_spell" and _typed_spell_broadcasts(activities):
+        targets = _expand_aoe_target_list(live, current, intent.target_id)
+    else:
+        targets = [c for c in live.initiative if c.entity_id == intent.target_id]
+        # SRD §Range: Self — an effect-bearing self/targetless buff (Shield,
+        # Mirror Image, Disguise Self) names no foe, so the named-target filter
+        # above yields []. Its riders would then apply to nobody and the buff
+        # would silently do nothing. Default the target to the caster. AoE
+        # (handled above) and single-target casts (target_id present) are
+        # untouched.
+        if (
+            not targets
+            and intent.intent_type == "cast_spell"
+            and _activities_bear_effects(activities)
+            and _spell_is_self_or_targetless(cast_spell, intent.target_id)
+        ) or (
+            not targets and intent.feature_id and activities and _activities_target_self(activities)
+        ):
+            targets = [current]
+    return targets
+
+
 async def submit_player_intent(
     handle: CombatHandle,
     actor_id: str,
@@ -2445,22 +2960,7 @@ async def submit_player_intent(
     ``CombatEvent`` stream.
     """
     live = _get_live(handle)
-    if live.ended:
-        raise IntentRejectedError("combat_ended", f"handle={handle.handle_id}")
-
-    in_initiative = any(c.entity_id == actor_id for c in live.initiative)
-    if not in_initiative:
-        raise IntentRejectedError(
-            "actor_not_in_initiative",
-            f"actor_id={actor_id!r} not in initiative order",
-        )
-
-    current = _current_actor(live)
-    if current.entity_id != actor_id:
-        raise IntentRejectedError(
-            "not_actor_turn",
-            f"current_turn={current.entity_id!r}, submitted={actor_id!r}",
-        )
+    current = _validate_intent_preconditions(live, handle, actor_id)
 
     # SRD §Hunter's Mark — *"If the target drops to 0 Hit Points before
     # this spell ends, you can take a Bonus Action to move the mark to
@@ -2487,40 +2987,7 @@ async def submit_player_intent(
     # Rejections (no target_zone_id, not adjacent, insufficient budget)
     # emit ``MoveFailed`` and return without mutating budget or position.
     if intent.intent_type == "move":
-        target_zone_id = intent.target_zone_id
-        current_zone = live.actor_zone.get(actor_id)
-        if (
-            target_zone_id is None
-            or current_zone is None
-            or not live.topology.is_adjacent(current_zone, target_zone_id)
-        ):
-            _emit(live, MoveFailed(actor_id=actor_id, reason="not_adjacent"))
-            return
-        distance_ft = live.topology.edge_distance(current_zone, target_zone_id)
-        # edge_distance returns int when is_adjacent is True; mypy needs the cast.
-        assert distance_ft is not None
-        if current.movement_remaining < distance_ft:
-            _emit(live, MoveFailed(actor_id=actor_id, reason="insufficient_movement"))
-            return
-        # Decrement budget + update position. model_copy + slot-replace
-        # mirrors the C-1 action-economy mutation pattern.
-        for idx, c in enumerate(live.initiative):
-            if c.entity_id == actor_id:
-                live.initiative[idx] = c.model_copy(
-                    update={"movement_remaining": c.movement_remaining - distance_ft}
-                )
-                break
-        live.actor_zone[actor_id] = target_zone_id
-        _emit(
-            live,
-            ActorMoved(
-                actor_id=actor_id,
-                from_zone=current_zone,
-                to_zone=target_zone_id,
-                distance_ft=distance_ft,
-            ),
-        )
-        # Turn stays live — no TurnEnded, no current_turn_index advance.
+        _handle_move(live, current, intent)
         return
 
     # SRD §Combat — Dash. Spend the Action (default) or, for Rogues with the
@@ -2556,29 +3023,17 @@ async def submit_player_intent(
     # path. Reactions never come through here — they arrive via a future
     # off-turn intent path; treat REACTION as a routing error and surface
     # it as CastFailed.
-    cast_spell_for_timing = (
-        get_lib_loader().get_spell(intent.spell_id)
-        if intent.intent_type == "cast_spell" and intent.spell_id
-        else None
-    )
-    casting_unit = (
-        cast_spell_for_timing.casting_time.unit if cast_spell_for_timing is not None else None
-    )
-    is_bonus_action = casting_unit == CastingTimeUnit.BONUS
-    # SRD §Action Economy — a class feature is a Bonus Action when its (single)
-    # activity's ``activation.type`` is ``"bonus"`` (Rage, Second Wind). A bonus
-    # action does NOT end the turn, so the actor may rage then swing on the same
-    # turn — the very flow Task 4 exercises. ``feature_invocation`` is already
-    # resolved (gate + single-activity validation) above; read its cost here.
-    if feature_invocation is not None and feature_invocation.is_bonus_action:
-        is_bonus_action = True
-    is_reaction_cast = casting_unit == CastingTimeUnit.REACTION
+    #
     # Reactions don't have a dedicated off-turn intent path yet (deferred
     # to the reaction-flow piece). Until then submit_player_intent is the
     # only ingress; consume ``reaction_available`` and otherwise advance
     # the turn like an Action so existing reaction-spell scenarios keep
     # working. The proper off-turn path will reject reactions through
     # this entrypoint.
+    action_cost = _classify_action_cost(intent, feature_invocation)
+    cast_spell_for_timing = action_cost.cast_spell_for_timing
+    is_bonus_action = action_cost.is_bonus_action
+    is_reaction_cast = action_cost.is_reaction_cast
 
     # SRD §Spell Range — out-of-range casts are a no-op: they consume
     # neither budget nor slot. Validate BEFORE budget consumption. The
@@ -2587,35 +3042,16 @@ async def submit_player_intent(
     # old wrapper carried ``range_ft=5`` for touch spells). ``self``/``special``
     # carry no metric distance and skip the gate. ``_ZoneGraph.within_range`` is
     # the canonical distance oracle keyed off ``live.actor_zone``.
-    if (
-        intent.intent_type == "cast_spell"
-        and cast_spell_for_timing is not None
-        and intent.target_id is not None
-    ):
-        spell_range = cast_spell_for_timing.range
-        if spell_range.units == SpellRangeUnits.FEET:
-            range_ft = spell_range.value
-        elif spell_range.units == SpellRangeUnits.TOUCH:
-            range_ft = 5
-        else:
-            range_ft = None
-        if isinstance(range_ft, int) and range_ft > 0:
-            caster_zone = live.actor_zone.get(actor_id)
-            target_zone = live.actor_zone.get(intent.target_id)
-            if (
-                caster_zone is not None
-                and target_zone is not None
-                and not _in_range_with_los(live.topology, caster_zone, target_zone, range_ft)
-            ):
-                _emit(
-                    live,
-                    CastFailed(
-                        actor_id=actor_id,
-                        spell_id=intent.spell_id or "",
-                        reason="out_of_range",
-                    ),
-                )
-                return
+    if _spell_out_of_range(live, actor_id, intent, cast_spell_for_timing):
+        _emit(
+            live,
+            CastFailed(
+                actor_id=actor_id,
+                spell_id=intent.spell_id or "",
+                reason="out_of_range",
+            ),
+        )
+        return
 
     # SRD §Weapon Reach / Range — out-of-reach melee attacks (and beyond-
     # normal-range ranged attacks) reject pre-resolution: no action budget
@@ -2639,11 +3075,7 @@ async def submit_player_intent(
     # target is the most-recent damager tracked on the caster as
     # ``last_damaged_by``. Hard-coded for HR until a general trigger
     # system lands. Reject BEFORE budget/slot consumption.
-    if (
-        intent.intent_type == "cast_spell"
-        and intent.spell_id == "hellish-rebuke"
-        and (current.last_damaged_by is None or intent.target_id != current.last_damaged_by)
-    ):
+    if _hellish_rebuke_target_invalid(current, intent):
         _emit(
             live,
             CastFailed(
@@ -2696,16 +3128,7 @@ async def submit_player_intent(
     # Consume the budget now. ``current`` is a stale snapshot; mutate via
     # initiative-list model_copy so subsequent reads (and the post-resolve
     # turn-advance branch below) see the updated state.
-    for idx, c in enumerate(live.initiative):
-        if c.entity_id == actor_id:
-            if is_bonus_action:
-                live.initiative[idx] = c.model_copy(update={"bonus_action_available": False})
-            elif is_reaction_cast:
-                live.initiative[idx] = c.model_copy(update={"reaction_available": False})
-            else:
-                live.initiative[idx] = c.model_copy(update={"action_available": False})
-            break
-    current = _current_actor(live)
+    current = _consume_action_budget(live, actor_id, action_cost)
 
     _emit(
         live,
@@ -2733,124 +3156,23 @@ async def submit_player_intent(
             ),
         )
 
-    # SRD §Spellcasting — Spell Slots: "Whenever a character casts a
-    # spell, they expend a slot of that spell's level or higher." The
-    # slot gate lives on the orchestrator: the typed resolver walks the
-    # spell's own activities directly (no wrapping ``CastActivity``), so it
-    # never reaches a slot-consuming handler — the orchestrator owns the
-    # gate + decrement for this PC seam. The decrement is final here; the
-    # typed resolver does not mutate any per-evaluation slot sidecar, so there
-    # is no post-resolution slot writeback to reconcile with.
-    if intent.intent_type == "cast_spell" and intent.spell_id:
-        slot_gate_spell = get_lib_loader().get_spell(intent.spell_id)
-        if slot_gate_spell is not None:
-            base_level = slot_gate_spell.level
-            slot_level = intent.slot_level if intent.slot_level is not None else base_level
-            # SRD §Cantrips — "A cantrip is a spell that can be cast at
-            # will, without using a spell slot." Cantrips cannot be cast
-            # at higher slot levels; the engine's only correct response
-            # to an intent that requests a slot on a base_level=0 spell
-            # is to reject the cast (caller bug, not a silent demotion to
-            # base level — silent demotion would let a "buggy" intent
-            # surface as a successful cast with unintended scaling).
-            if base_level == 0 and intent.slot_level not in (None, 0):
-                _emit(
-                    live,
-                    CastFailed(
-                        actor_id=current.entity_id,
-                        spell_id=intent.spell_id,
-                        reason="no_slot",
-                    ),
-                )
-                _tick_durations_at_turn_end(live, actor_id)
-                _emit(live, TurnEnded(actor_id=actor_id))
-                live.current_turn_index += 1
-                if live.current_turn_index >= len(live.initiative):
-                    live.current_turn_index = 0
-                    live.round_number += 1
-                    _emit(live, RoundStarted(round_number=live.round_number))
-                _emit(live, TurnStarted(actor_id=_current_actor(live).entity_id))
-                _maybe_roll_death_save(live)
-                return
-            if base_level > 0:
-                slots = live.spell_slots_by_entity.get(current.entity_id, {})
-                available = int(slots.get(slot_level, 0))
-                if available <= 0:
-                    _emit(
-                        live,
-                        CastFailed(
-                            actor_id=current.entity_id,
-                            spell_id=intent.spell_id,
-                            reason="no_slot",
-                        ),
-                    )
-                    _tick_durations_at_turn_end(live, actor_id)
-                    _emit(live, TurnEnded(actor_id=actor_id))
-                    live.current_turn_index += 1
-                    if live.current_turn_index >= len(live.initiative):
-                        live.current_turn_index = 0
-                        live.round_number += 1
-                        _emit(live, RoundStarted(round_number=live.round_number))
-                    _emit(live, TurnStarted(actor_id=_current_actor(live).entity_id))
-                    _maybe_roll_death_save(live)
-                    return
-                # Consume the slot. The typed PC resolver does not touch
-                # ``_counter_state``, so this subtract is the authoritative
-                # decrement — no post-evaluation writeback overwrites it.
-                slots[slot_level] = available - 1
+    # SRD §Spellcasting — Spell Slots. Gate + decrement live on the
+    # orchestrator; a rejected cast emits ``CastFailed`` + advances the turn
+    # and signals the caller to return.
+    if _consume_spell_slot(live, current, actor_id, intent):
+        return
 
     # ── Typed-Activity resolution (Foundry cutover, Task 5) ─────────────
     #
     # Fetch the typed entity for the intent's kind from the lib loader and
     # collect the activities the resolver will walk. This is the sole PC
     # resolution path; the old Avrae IR path was retired in Phase 7b.
-    cast_spell: Spell | None = None
-    fetched_weapon: Weapon | None = None
-    activities: list[Any] = []
-    spellcasting_ability: str | None = None
-    # The owner entity's PassiveEffect definitions, threaded into the context so
-    # an activity's effect riders (``activity.effects[].id``) resolve to a runtime
-    # ActiveEffect. A spell carries them on ``Spell.passive_effects``; a feature
-    # (Rage) on ``Feature.passive_effects``. Empty for kinds with no rider source.
-    feature_passive_effects: list[Any] = []
-    if intent.intent_type == "attack" and intent.weapon_id:
-        fetched_weapon = get_lib_loader().get_weapon(intent.weapon_id)
-        if fetched_weapon is not None:
-            activities = list(fetched_weapon.activities)
-            # SRD §Weapon Attacks — most mundane weapons ship the AttackActivity
-            # on ``Weapon.activities``; a handful of magic weapons whose attack
-            # rides their base weapon ship empty activities. Synthesize one from
-            # the weapon's ``damage_parts`` so a swing still resolves (parity
-            # with the OLD ``_synthesize_weapon_attack``).
-            if not activities:
-                activities = [_synthesize_attack_from_weapon(fetched_weapon)]
-    elif intent.intent_type == "cast_spell" and intent.spell_id:
-        cast_spell = get_lib_loader().get_spell(intent.spell_id)
-        if cast_spell is not None:
-            activities = list(cast_spell.activities)
-            # The OLD path used a uniform caster ``mod`` regardless of the
-            # spell's real spellcasting ability; ``build_activity_context``
-            # makes every ability yield that same mod, so the ability name
-            # here only selects which (equal) mod the resolver reads.
-            spellcasting_ability = "int"
-    elif intent.intent_type == "use_item" and intent.item_id:
-        # Parity with the OLD resolver's ``use_item`` branch: an item (potion,
-        # scroll, wand) may carry its own activities — most often a
-        # ``CastActivity`` that delegates to a referenced spell. Fetch the
-        # typed item and resolve its activities directly. ``get_item`` spans
-        # Item/Weapon/Armor/MagicItem, all of which inherit ``activities``.
-        fetched_item = get_lib_loader().get_item(intent.item_id)
-        if fetched_item is not None:
-            activities = list(fetched_item.activities)
-    elif intent.feature_id:
-        # USE_FEATURE — the feature was already resolved to its single concrete
-        # activity (repertoire gate + single-activity validation) above, BEFORE
-        # any action-economy budget was consumed. A rejected / no-op feature
-        # returned early there; reaching here means ``feature_invocation`` holds
-        # the resolved activity + its PassiveEffect riders.
-        assert feature_invocation is not None
-        activities = feature_invocation.activities
-        feature_passive_effects = feature_invocation.passive_effects
+    resolved = _resolve_intent_activities(intent, feature_invocation)
+    activities = resolved.activities
+    cast_spell = resolved.cast_spell
+    fetched_weapon = resolved.fetched_weapon
+    spellcasting_ability = resolved.spellcasting_ability
+    feature_passive_effects = resolved.feature_passive_effects
 
     # SRD §Areas of Effect — fireball / burning-hands hit every creature in
     # the targeted zone. The AoE discriminator is the typed activity's measured
@@ -2860,29 +3182,7 @@ async def submit_player_intent(
     # Burning Hands cone/15) broadcasts to the zone, while a template-less spell
     # (Sacred Flame, Cure Wounds, Magic Missile, Detect Thoughts' single save)
     # stays single-target. No Avrae-wrapper read.
-    targets: list[Combatant]
-    if intent.intent_type == "cast_spell" and _typed_spell_broadcasts(activities):
-        targets = _expand_aoe_target_list(live, current, intent.target_id)
-    else:
-        targets = [c for c in live.initiative if c.entity_id == intent.target_id]
-        # SRD §Range: Self — an effect-bearing self/targetless buff (Shield,
-        # Mirror Image, Disguise Self) names no foe, so the named-target filter
-        # above yields []. Its riders would then apply to nobody and the buff
-        # would silently do nothing. Default the target to the caster. AoE
-        # (handled above) and single-target casts (target_id present) are
-        # untouched.
-        if (
-            not targets
-            and intent.intent_type == "cast_spell"
-            and _activities_bear_effects(activities)
-            and _spell_is_self_or_targetless(cast_spell, intent.target_id)
-        ) or (
-            not targets
-            and intent.feature_id
-            and activities
-            and _activities_target_self(activities)
-        ):
-            targets = [current]
+    targets = _resolve_targets(live, current, intent, activities, cast_spell)
 
     # The orchestrator already owns the per-entity passive sidecars; project
     # them once and hand the two dicts ``build_activity_context`` needs in
@@ -2915,9 +3215,7 @@ async def submit_player_intent(
             level=current.character_level,
             loader=get_lib_loader(),
         )
-        class_levels = (
-            {current.class_slug: current.character_level} if current.class_slug else {}
-        )
+        class_levels = {current.class_slug: current.character_level} if current.class_slug else {}
         actx = build_activity_context(
             current,
             targets,
@@ -2984,15 +3282,7 @@ async def submit_player_intent(
     if is_bonus_action:
         _maybe_roll_death_save(live)
         return
-    _tick_durations_at_turn_end(live, actor_id)
-    _emit(live, TurnEnded(actor_id=actor_id))
-    live.current_turn_index += 1
-    if live.current_turn_index >= len(live.initiative):
-        live.current_turn_index = 0
-        live.round_number += 1
-        _emit(live, RoundStarted(round_number=live.round_number))
-    _emit(live, TurnStarted(actor_id=_current_actor(live).entity_id))
-    _maybe_roll_death_save(live)
+    _advance_turn(live, actor_id)
 
 
 def _fire_pc_opportunity_attacks_on_move(

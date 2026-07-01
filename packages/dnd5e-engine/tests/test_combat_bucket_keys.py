@@ -89,8 +89,7 @@ def test_saving_throw_consumes_save_bonus_changes(monkeypatch):
     # would not (10 + WIS +2 = 12 vs DC 15, then +3 from Bless = 15 ≥ 15).
     assert result_without.success is False
     assert result_with_bless.success is True, (
-        "Bless save.bonus change must fold into the saving throw total via "
-        "the `save.bonus` bucket"
+        "Bless save.bonus change must fold into the saving throw total via the `save.bonus` bucket"
     )
 
 

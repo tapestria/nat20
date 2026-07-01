@@ -13,8 +13,10 @@ dev = [
     "pyyaml>=6.0",
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
+    "pytest-cov>=6.0.0",
     "mypy>=1.10",
     "ruff>=0.5",
+    "bandit>=1.8.0",
 ]
 
 [build-system]
@@ -37,6 +39,33 @@ include = ["src/**", "tools/**", "tests/**", "README.md", "NOTICE", "Makefile"]
 line-length = 100
 target-version = "py312"
 
+# Unified with dnd5e-engine's ruleset (was ruff defaults / E+F only).
+[tool.ruff.lint]
+select = [
+    "E", "F", "I", "N", "UP", "B", "SIM", "T20", "BLE",
+    "C90", "ASYNC", "PT", "RUF", "TRY",
+]
+ignore = [
+    "TRY003",
+    "RUF001", "RUF002", "RUF003",
+]
+
+# Baseline-and-ratchet: worst function today is list_slugs (10) in loader.py.
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.per-file-ignores]
+# Test idioms: composite asserts (PT018), function-local constants (N806),
+# broad except in fixtures (BLE001), long lines, unused binds, nested-if.
+"tests/**/*.py" = [
+    "E501", "F841", "PT006", "PT011", "C901",
+    "PT018", "N806", "BLE001", "SIM102",
+]
+# Regen / audit tooling prints human-readable progress (T201); the Foundry
+# translator has inherently branchy per-field mapping functions (C901) that
+# are maintainer-only (never shipped to PyPI) — not worth refactoring for a bar.
+"tools/**/*.py" = ["T201", "C901", "N806"]
+
 [tool.mypy]
 strict = true
 python_version = "3.12"
@@ -45,3 +74,17 @@ python_version = "3.12"
 testpaths = ["tests"]
 pythonpath = [".", "src"]
 asyncio_mode = "auto"
+
+[tool.coverage.run]
+source = ["dnd5e_srd_data"]
+
+[tool.coverage.report]
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "@overload",
+    "raise NotImplementedError",
+]
+
+[tool.bandit]
+exclude_dirs = ["tests"]
+skips = ["B101"]

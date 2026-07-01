@@ -46,21 +46,21 @@ def _topology() -> SceneTopology:
     )
 
 
-
 def test_start_combat_default_active_effects_empty():
     """No active_effects parameter ⇒ engine starts with empty registry."""
     from dnd5e_engine.orchestrator import _get_live, start_combat
 
-    result = asyncio.run(start_combat(
-        session_id="sess1",
-        party=_party(),
-        encounter=_encounter(),
-        scene_zones=_topology(),
-        rng_seed=1,
-    ))
+    result = asyncio.run(
+        start_combat(
+            session_id="sess1",
+            party=_party(),
+            encounter=_encounter(),
+            scene_zones=_topology(),
+            rng_seed=1,
+        )
+    )
     live = _get_live(result.handle)
     assert live.active_effects == {}
-
 
 
 def test_start_combat_seeds_active_effects():
@@ -81,18 +81,19 @@ def test_start_combat_seeds_active_effects():
         changes=[ActiveEffectChange(key="attack.roll.bonus", mode="add", value="1d4")],
         flags={"concentration": True},
     )
-    result = asyncio.run(start_combat(
-        session_id="sess2",
-        party=_party(),
-        encounter=_encounter(),
-        scene_zones=_topology(),
-        rng_seed=1,
-        active_effects=(bless,),
-    ))
+    result = asyncio.run(
+        start_combat(
+            session_id="sess2",
+            party=_party(),
+            encounter=_encounter(),
+            scene_zones=_topology(),
+            rng_seed=1,
+            active_effects=(bless,),
+        )
+    )
     live = _get_live(result.handle)
     assert "char:aaaaaaaaaaaa" in live.active_effects
     assert live.active_effects["char:aaaaaaaaaaaa"][0].id == "effect:bless00000001"
-
 
 
 def test_start_combat_unions_statuses_into_combatant_conditions():
@@ -107,14 +108,16 @@ def test_start_combat_unions_statuses_into_combatant_conditions():
         target_id="char:aaaaaaaaaaaa",
         statuses={"paralyzed"},
     )
-    result = asyncio.run(start_combat(
-        session_id="sess3",
-        party=_party(),
-        encounter=_encounter(),
-        scene_zones=_topology(),
-        rng_seed=1,
-        active_effects=(hold,),
-    ))
+    result = asyncio.run(
+        start_combat(
+            session_id="sess3",
+            party=_party(),
+            encounter=_encounter(),
+            scene_zones=_topology(),
+            rng_seed=1,
+            active_effects=(hold,),
+        )
+    )
     live = _get_live(result.handle)
     pc = next(c for c in live.initiative if c.entity_id == "char:aaaaaaaaaaaa")
     condition_slugs = {ac.condition for ac in pc.conditions}
@@ -123,7 +126,6 @@ def test_start_combat_unions_statuses_into_combatant_conditions():
     para = next(ac for ac in pc.conditions if ac.condition == "paralyzed")
     assert para.source_effect_id == "effect:hold0000person"
     assert para.scope == "combat"
-
 
 
 def test_start_combat_skips_effect_targeting_unknown_entity():
@@ -139,14 +141,16 @@ def test_start_combat_skips_effect_targeting_unknown_entity():
         target_id="char:zzzzzzzzzzzz",
         statuses={"paralyzed"},
     )
-    result = asyncio.run(start_combat(
-        session_id="sess4",
-        party=_party(),
-        encounter=_encounter(),
-        scene_zones=_topology(),
-        rng_seed=1,
-        active_effects=(stray,),
-    ))
+    result = asyncio.run(
+        start_combat(
+            session_id="sess4",
+            party=_party(),
+            encounter=_encounter(),
+            scene_zones=_topology(),
+            rng_seed=1,
+            active_effects=(stray,),
+        )
+    )
     live = _get_live(result.handle)
     # Registry still partitions by the (unknown) target_id.
     assert "char:zzzzzzzzzzzz" in live.active_effects

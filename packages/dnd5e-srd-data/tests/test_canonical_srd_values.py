@@ -19,7 +19,8 @@ def test_armored_monster_ac_populated_when_foundry_provides_flat():
     assert goblin.ac == 15, f"goblin-warrior AC must be 15 (2024 SRD), got {goblin.ac}"
     # Unarmored creatures DO ship flat AC and must populate:
     aboleth = loader.get_monster("aboleth")
-    assert aboleth is not None and aboleth.ac == 17
+    assert aboleth is not None
+    assert aboleth.ac == 17
 
 
 def test_proficiency_bonus_derived_from_cr():
@@ -33,7 +34,9 @@ def test_proficiency_bonus_derived_from_cr():
     )
     # Spot-check several CR tiers:
     goblin = loader.get_monster("goblin-warrior")
-    assert goblin is not None and goblin.cr == 0.25 and goblin.proficiency_bonus == 2
+    assert goblin is not None
+    assert goblin.cr == 0.25
+    assert goblin.proficiency_bonus == 2
 
 
 def test_imp_damage_immunities_have_actual_types_not_dict_keys():
@@ -150,7 +153,8 @@ def test_attunement_constraint_extracted_from_prose():
     attunement_constraint = None."""
     loader = BundledAssetLoader()
     holy = loader.get_weapon("holy-avenger")
-    assert holy is not None and holy.attunement_constraint == "by a Paladin"
+    assert holy is not None
+    assert holy.attunement_constraint == "by a Paladin"
 
 
 def test_ingest_date_matches_pins():
@@ -230,7 +234,8 @@ def test_rarity_bearing_item_is_magic_item():
     assert isinstance(bag, MagicItem), f"got {type(bag).__name__}"
     potion = loader.get_item("potion-of-healing")
     assert potion is not None
-    assert isinstance(potion, Item) and not isinstance(potion, MagicItem)
+    assert isinstance(potion, Item)
+    assert not isinstance(potion, MagicItem)
 
 
 def test_mundane_gear_is_plain_item():
@@ -239,7 +244,8 @@ def test_mundane_gear_is_plain_item():
     loader = BundledAssetLoader()
     bedroll = loader.get_item("bedroll")
     assert bedroll is not None
-    assert isinstance(bedroll, Item) and not isinstance(bedroll, MagicItem)
+    assert isinstance(bedroll, Item)
+    assert not isinstance(bedroll, MagicItem)
 
 
 def test_longsword_is_weapon():
@@ -291,7 +297,8 @@ def test_backpack_landed_in_canonical():
     loader = BundledAssetLoader()
     backpack = loader.get_item("backpack")
     assert backpack is not None
-    assert isinstance(backpack, Item) and not isinstance(backpack, MagicItem)
+    assert isinstance(backpack, Item)
+    assert not isinstance(backpack, MagicItem)
 
 
 def test_pouch_landed_in_canonical():
@@ -299,7 +306,8 @@ def test_pouch_landed_in_canonical():
     loader = BundledAssetLoader()
     pouch = loader.get_item("pouch")
     assert pouch is not None
-    assert isinstance(pouch, Item) and not isinstance(pouch, MagicItem)
+    assert isinstance(pouch, Item)
+    assert not isinstance(pouch, MagicItem)
 
 
 def test_staff_is_weapon():
@@ -346,8 +354,10 @@ def test_fireball_surface_fields():
     assert set(fb.components) == {"V", "S", "M"}
     assert fb.ritual is False
     assert fb.concentration is False
-    assert fb.casting_time.unit == "action" and fb.casting_time.value == 1
-    assert fb.range.units == "ft" and fb.range.value == 150
+    assert fb.casting_time.unit == "action"
+    assert fb.casting_time.value == 1
+    assert fb.range.units == "ft"
+    assert fb.range.value == 150
     assert fb.duration.units == "inst"
     assert "guano" in fb.materials.value.lower()
     assert fb.materials.cost == 0

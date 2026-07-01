@@ -99,8 +99,7 @@ def test_seeded_concentration_effect_enters_concentration_chain():
     assert "char:caster" in live.concentration_chain
     chain = live.concentration_chain["char:caster"]
     assert any(
-        identity == ("char:fighter", "effect:bless", "cast:bless:char:caster")
-        for identity in chain
+        identity == ("char:fighter", "effect:bless", "cast:bless:char:caster") for identity in chain
     )
 
 

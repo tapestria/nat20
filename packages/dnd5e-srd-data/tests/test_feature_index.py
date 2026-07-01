@@ -11,7 +11,8 @@ pytestmark = pytest.mark.skipif(not PACKS.is_dir(), reason="raw_sources/foundry 
 def test_index_maps_full_uuid_to_feature_slug_via_id():
     idx = build_feature_index(PACKS)
     ref = idx["Compendium.dnd5e.classes24.Item.phbbrbRage000000"]
-    assert ref.ref_type == "feature" and ref.slug == "rage"
+    assert ref.ref_type == "feature"
+    assert ref.slug == "rage"
 
 
 def test_index_resolves_equipment_spell_and_feat_targets():

@@ -137,9 +137,7 @@ def _run_melee(*, with_rage: bool, weapon_slug: str, seed: int):
         await submit_player_intent(
             start.handle,
             actor_id="char:hero",
-            intent=PlayerIntent(
-                intent_type="attack", weapon_id=weapon_slug, target_id="mon:foe"
-            ),
+            intent=PlayerIntent(intent_type="attack", weapon_id=weapon_slug, target_id="mon:foe"),
         )
         return live, effects
 

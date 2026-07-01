@@ -102,8 +102,7 @@ def test_status_clears_from_active_conditions_when_effect_expires():
     live = asyncio.run(_run())
     # The active_effects list is empty for mon:foe.
     assert not live.active_effects.get("mon:foe"), (
-        "EffectExpired should have removed the Hold Person effect from "
-        "active_effects"
+        "EffectExpired should have removed the Hold Person effect from active_effects"
     )
     # And — the load-bearing assertion — active_conditions no longer
     # contains 'paralyzed'.
@@ -163,6 +162,5 @@ def test_status_stays_when_another_active_effect_still_imposes_it():
     # paralyzed STAYS in active_conditions because the second effect still imposes it.
     remaining_cond = live.active_conditions.get("mon:foe", set())
     assert "paralyzed" in remaining_cond, (
-        "paralyzed must persist while at least one other active effect "
-        "still imposes it"
+        "paralyzed must persist while at least one other active effect still imposes it"
     )
