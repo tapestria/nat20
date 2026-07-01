@@ -1,0 +1,52 @@
+name: SRD Provenance
+
+# Heavy job (clones ~700MB of pinned upstreams + re-runs regen), so it is
+# gated to only run when something that could affect the canonical dataset's
+# provenance or reproducibility changes. Verifies (1) raw_sources/foundry
+# still matches the pinned content digest and (2) `make regen` reproduces the
+# committed canonical/ tree byte-for-byte from the pinned upstream sources.
+#
+# Path filters cover the direct behavioral inputs (translator/schema/canonical,
+# PINS, the srd-data Makefile + pyproject, and this workflow). The workspace
+# uv.lock is intentionally NOT a trigger — it churns on every unrelated dep
+# bump across the workspace and would defeat the gating that keeps this heavy
+# job off unrelated PRs. Use workflow_dispatch to run the gate manually if a
+# transitive-dependency change is suspected of affecting regen determinism.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "packages/dnd5e-srd-data/tools/**"
+      - "packages/dnd5e-srd-data/src/dnd5e_srd_data/schema/**"
+      - "packages/dnd5e-srd-data/src/dnd5e_srd_data/canonical/**"
+      - "packages/dnd5e-srd-data/raw_sources/PINS.json"
+      - "packages/dnd5e-srd-data/Makefile"
+      - "packages/dnd5e-srd-data/pyproject.toml"
+      - ".github/workflows/provenance.yml"
+  pull_request:
+    paths:
+      - "packages/dnd5e-srd-data/tools/**"
+      - "packages/dnd5e-srd-data/src/dnd5e_srd_data/schema/**"
+      - "packages/dnd5e-srd-data/src/dnd5e_srd_data/canonical/**"
+      - "packages/dnd5e-srd-data/raw_sources/PINS.json"
+      - "packages/dnd5e-srd-data/Makefile"
+      - "packages/dnd5e-srd-data/pyproject.toml"
+      - ".github/workflows/provenance.yml"
+
+jobs:
+  provenance:
+    name: canonical provenance & regen determinism
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: packages/dnd5e-srd-data
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --extra dev
+      # Shallow-clones each pinned upstream into raw_sources/ (see PINS.json).
+      - run: make refresh-upstream
+      # check_foundry_pin (digest match) + check-regen-clean (regen reproduces canonical/).
+      - run: make check-provenance

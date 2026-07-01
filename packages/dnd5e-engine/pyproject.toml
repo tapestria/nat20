@@ -70,11 +70,12 @@ ignore = [
 ]
 
 # Baseline-and-ratchet: set at the worst function observed today
-# (submit_player_intent=56; _emit=49; _build_hydration_payload=36;
-# start_combat=34 — all in orchestrator.py). A PR that pushes past this
-# must justify the raise; the intent is to ratchet DOWN over time.
+# (submit_player_intent=23, in orchestrator.py). Ratcheted down from 56
+# after extracting the orchestrator hotspots (_emit 49→12, start_combat
+# 34→3, _build_hydration_payload 36→6). A PR past this must justify it;
+# keep ratcheting DOWN.
 [tool.ruff.lint.mccabe]
-max-complexity = 56
+max-complexity = 23
 
 [tool.ruff.lint.per-file-ignores]
 # Test bodies are allowed to be branchy/repetitive (C901) and print (T201).
