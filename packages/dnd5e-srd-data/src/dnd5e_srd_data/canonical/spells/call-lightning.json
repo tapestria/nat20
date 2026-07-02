@@ -139,7 +139,9 @@
               "mode": "whole",
               "number": 1
             },
-            "types": []
+            "types": [
+              "lightning"
+            ]
           }
         ]
       },

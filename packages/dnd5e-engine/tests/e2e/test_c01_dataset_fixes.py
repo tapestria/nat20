@@ -9,10 +9,9 @@ from dnd5e_engine import PlayerIntent
 from dnd5e_engine.events import DamageApplied
 from dnd5e_engine.orchestrator import _get_live, start_combat, submit_player_intent
 from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec, SceneTopology, ZoneEdge
-from tests.e2e.harness import events_of, run_async, xfail_cluster
+from tests.e2e.harness import events_of, run_async
 
 
-@xfail_cluster(1, "Dataset fixes")
 def test_c01_s01_call_lightning_repeat_bolt_applies_lightning_damage(caplog):
     """C01-S01: Call Lightning's repeat-bolt activity applies lightning-typed damage.
 
@@ -83,7 +82,6 @@ def test_c01_s01_call_lightning_repeat_bolt_applies_lightning_damage(caplog):
     assert 4 <= repeat_bolt <= 40
 
 
-@xfail_cluster(1, "Dataset fixes")
 def test_c01_s02_freezing_sphere_damage_parts_apply_cold_damage(caplog):
     """C01-S02: Freezing Sphere's damage parts apply cold-typed damage.
 

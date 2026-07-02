@@ -133,7 +133,9 @@
               "mode": "",
               "number": null
             },
-            "types": []
+            "types": [
+              "force"
+            ]
           }
         ]
       },

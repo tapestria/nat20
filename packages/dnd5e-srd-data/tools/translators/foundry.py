@@ -150,14 +150,6 @@ _SRD_VERSATILE_DICE: dict[str, str] = {
 # any future Foundry-side new camelCase field must be added here AND surface
 # in the activity oracle so the fidelity test catches the drift.
 #
-# A small set of Foundry-side legacy fields are not (yet) representable in
-# the A3 schema and are deliberately dropped at translation time:
-# - ``appliedEffects``: a legacy flat list[str] of effect ids that duplicates
-#   the structured ``effects[]._id`` slice. Empty in most YAML; non-empty in
-#   four entries (hunters-mark, ring-of-invisibility, shillelagh,
-#   wand-of-paralysis) where it still mostly aliases ``effects[]._id``.
-#   Tracked as an A3 follow-up; see ``known_activity_fidelity_exceptions``
-#   in ``tests/test_activity_translator_fidelity.py``.
 # ---------------------------------------------------------------------------
 
 
@@ -178,8 +170,8 @@ _ACTIVITY_CAMEL_TO_SNAKE: dict[str, str] = {
 }
 
 # Foundry-side fields we deliberately drop because the A3 schema cannot
-# represent them losslessly. See module docstring above. Recorded here so
-# `_normalize_activity_dict` can drop them with intent (vs accidentally).
+# represent them losslessly. Recorded here so `_normalize_activity_dict` can
+# drop them with intent (vs accidentally).
 _ACTIVITY_DROP_KEYS: frozenset[str] = frozenset({"appliedEffects"})
 
 
@@ -1638,6 +1630,52 @@ def _spell_preparation(preparation_doc: dict[str, Any]) -> SpellPreparation:
     )
 
 
+# SRD 5.2 damage-type corrections. The pinned Foundry raw sources ship
+# ``types: []`` for these spell damage parts even though each spell's own SRD
+# 5.2 description names the type — the description text is the rules ground
+# truth, so canonical deliberately diverges from the raw activity block here.
+# Keyed by ``(spell slug, activity _id, damage.parts index)`` → damage type.
+# Each entry cites its grounding description text; the pins live in
+# ``tests/test_spell_damage_type_corrections.py``. A correction only fills an
+# EMPTY ``types`` list — if a future Foundry pin ships a real type, upstream
+# wins and the entry goes inert (delete it at that pin bump).
+_SPELL_DAMAGE_TYPE_CORRECTIONS: dict[tuple[str, str, int], str] = {
+    # "taking 3d10 Lightning damage on a failed save ... you can take a Magic
+    # action to call down lightning in that way again" — the repeat bolt.
+    ("call-lightning", "dnd5eactivity200", 0): "lightning",
+    # "taking 10d6 Cold damage on failed save" — "Cast and Fire"; the thrown
+    # globe "shatters on impact, with the same effect as a normal casting".
+    ("freezing-sphere", "adCBWrctRmLQmb8M", 0): "cold",
+    ("freezing-sphere", "NKBsnjBBIgsaOPaY", 0): "cold",
+    # "The stone's complete destruction ... deals [[/damage 50 type=force]]
+    # damage to you" — SRD 5.2 changed this from 5.1's bludgeoning.
+    ("meld-into-stone", "dnd5eactivity200", 0): "force",
+}
+
+
+def _apply_spell_damage_type_corrections(slug: str, activities: list[Activity]) -> list[Activity]:
+    """Fill SRD-corrected damage types per ``_SPELL_DAMAGE_TYPE_CORRECTIONS``.
+
+    Copy-on-write: activities without a mapped, still-untyped part pass
+    through unchanged (blocks are frozen models, so corrected parts are
+    rebuilt via ``model_copy``)."""
+    out: list[Activity] = []
+    for act in activities:
+        damage = getattr(act, "damage", None)
+        parts = getattr(damage, "parts", None) or []
+        new_parts = list(parts)
+        changed = False
+        for idx, part in enumerate(parts):
+            damage_type = _SPELL_DAMAGE_TYPE_CORRECTIONS.get((slug, act.id, idx))
+            if damage_type is not None and not part.types:
+                new_parts[idx] = part.model_copy(update={"types": [damage_type]})
+                changed = True
+        if changed:
+            act = act.model_copy(update={"damage": damage.model_copy(update={"parts": new_parts})})
+        out.append(act)
+    return out
+
+
 def translate_spell_yaml(
     yaml_path: Path,
     *,
@@ -1659,8 +1697,9 @@ def translate_spell_yaml(
         level = int(level_raw) if level_raw is not None else 0
     except (TypeError, ValueError):
         level = 0
+    slug = _slug(doc, yaml_path)
     return Spell(
-        slug=_slug(doc, yaml_path),
+        slug=slug,
         name=_name(doc),
         description=_description(doc),
         level=max(0, level),
@@ -1673,7 +1712,7 @@ def translate_spell_yaml(
         duration=_spell_duration(system.get("duration") or {}),
         materials=_spell_materials(system.get("materials") or {}),
         preparation=_spell_preparation(system.get("preparation") or {}),
-        activities=_translate_activities(system),
+        activities=_apply_spell_damage_type_corrections(slug, _translate_activities(system)),
         passive_effects=_passive_effects(doc),
         provenance=_provenance(yaml_path, ingest_date, ingest_version),
         review=ReviewState(),

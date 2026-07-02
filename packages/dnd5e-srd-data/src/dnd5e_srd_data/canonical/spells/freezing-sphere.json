@@ -31,7 +31,9 @@
               "mode": "whole",
               "number": 1
             },
-            "types": []
+            "types": [
+              "cold"
+            ]
           }
         ]
       },
@@ -324,7 +326,9 @@
               "mode": "whole",
               "number": 1
             },
-            "types": []
+            "types": [
+              "cold"
+            ]
           }
         ]
       },
