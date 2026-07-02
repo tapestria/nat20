@@ -348,6 +348,19 @@ def _apply_on_hit_damage(
             if melee_bonus_expr:
                 by_type[first_type] += roll_expr(melee_bonus_expr, ctx.rng)
 
+        # SRD §Making an Attack / §Magic Items — a magic weapon's bonus
+        # applies to BOTH the attack roll and the damage roll made with it.
+        # Folded into the ``passive_weapon_damage_bonus`` sidecar by the
+        # orchestrator (action-type-tagged so it never leaks into spell
+        # attacks). Applies to ANY weapon swing (melee or ranged), unlike the
+        # Rage-only melee bonus above. Add it once to the first damage type,
+        # rolled through ``ctx.rng`` so a dice-valued bonus lands in the same
+        # seed stream.
+        if first_type is not None and weapon is not None:
+            weapon_bonus_expr = ctx.passive_weapon_damage_bonus.get(ctx.caster.entity_id)
+            if weapon_bonus_expr:
+                by_type[first_type] += roll_expr(weapon_bonus_expr, ctx.rng)
+
         apply_damage(target, dict(by_type), ctx)
     finally:
         if is_crit:

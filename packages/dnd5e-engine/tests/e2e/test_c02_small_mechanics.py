@@ -19,7 +19,6 @@ from dnd5e_engine.types.effects import ActiveEffect, ActiveEffectChange
 from tests.e2e.harness import events_of, run_async, xfail_cluster
 
 
-@xfail_cluster(2, "Small mechanics")
 def test_c02_s01_weapon_tagged_damage_bonus_reaches_swing_damage():
     """C02-S01: A weapon-tagged `damage.bonus` active effect reaches the
     swing's damage, not just its to-hit.
@@ -143,7 +142,6 @@ def test_c02_s02_expertise_doubles_proficiency_bonus_on_skill_check():
     assert expert.roll_total - base.roll_total == base_spec.proficiency_bonus
 
 
-@xfail_cluster(2, "Small mechanics")
 def test_c02_s03_reach_ft_threads_onto_live_combatant():
     """C02-S03: `PartyMemberSpec.reach_ft` threads an equipped reach weapon's
     reach onto the live `Combatant`.
@@ -193,7 +191,6 @@ def test_c02_s03_reach_ft_threads_onto_live_combatant():
     assert hero.melee_reach_ft == 10
 
 
-@xfail_cluster(2, "Small mechanics")
 def test_c02_s04_monster_can_dash_to_double_movement_budget():
     """C02-S04: A monster can Dash to double its movement budget within one
     `advance_monster_turn`.

@@ -159,6 +159,14 @@ def build_activity_context(
     # (a signed numeric/dice string); lift it into its own typed sidecar so
     # attack.py adds it to a melee weapon swing only.
     passive_melee_damage_bonus: dict[str, str] = {}
+    # Per-attacker WEAPON-ONLY damage bonus (a +N weapon / weapon-tagged
+    # ``damage.bonus`` change). The orchestrator fold lands it on
+    # ``passive_damage_modifiers[id]["passive_weapon_damage_bonus"]`` (a
+    # signed numeric/dice string, action-type-tagged so it does not leak into
+    # spell attacks); lift it into its own typed sidecar so attack.py can add
+    # it to any weapon swing (melee or ranged), symmetric with
+    # ``passive_melee_damage_bonus``.
+    passive_weapon_damage_bonus: dict[str, str] = {}
     for entity_id, dmg_entry in passive_damage_modifiers.items():
         # ``passive_damage_modifiers`` is a WIDE dict: resistance/immunity/
         # vulnerability lists PLUS the signed-dice ``passive_to_hit_bonus`` STRING
@@ -169,6 +177,9 @@ def build_activity_context(
         melee_dmg: object = dmg_entry.get("passive_melee_damage_bonus")
         if isinstance(melee_dmg, str) and melee_dmg:
             passive_melee_damage_bonus[entity_id] = melee_dmg
+        weapon_dmg: object = dmg_entry.get("passive_weapon_damage_bonus")
+        if isinstance(weapon_dmg, str) and weapon_dmg:
+            passive_weapon_damage_bonus[entity_id] = weapon_dmg
     passive_save_adv: dict[str, list[str]] = {}
     passive_save_dis: dict[str, list[str]] = {}
     passive_save_auto_fail: dict[str, list[str]] = {}
@@ -208,6 +219,7 @@ def build_activity_context(
         passive_save_bonus=passive_save_bonus,
         passive_attack_bonus=passive_attack_bonus,
         passive_melee_damage_bonus=passive_melee_damage_bonus,
+        passive_weapon_damage_bonus=passive_weapon_damage_bonus,
         passive_save_adv=passive_save_adv,
         passive_save_dis=passive_save_dis,
         passive_save_auto_fail=passive_save_auto_fail,

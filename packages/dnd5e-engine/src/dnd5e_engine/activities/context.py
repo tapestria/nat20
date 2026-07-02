@@ -103,6 +103,19 @@ class ActivityResolutionContext:
     # and consumed in ``attack.py:_apply_on_hit_damage`` gated to a melee weapon.
     # Absent attacker → +0. Empty default keeps the golden corpus identical.
     passive_melee_damage_bonus: dict[str, str] = field(default_factory=dict)
+    # Per-ATTACKER additive WEAPON damage bonus, keyed entity_id -> a signed
+    # numeric/dice STRING (a +N weapon / weapon-tagged buff's ``damage.bonus``
+    # change; stacked sources pre-joined). SRD §Making an Attack / §Magic
+    # Items: a magic weapon's bonus applies to BOTH the attack roll and the
+    # damage roll made with it. Applies to ANY weapon swing (melee or ranged) —
+    # unlike ``passive_melee_damage_bonus`` (Rage), which is melee-only.
+    # Sourced from the orchestrator's action-type-tagged
+    # ``passive_damage_modifiers[id]["passive_weapon_damage_bonus"]``
+    # projection (``_fold_active_effect_changes``'s ``weapon_only`` branch);
+    # consumed in ``attack.py:_apply_on_hit_damage`` gated on a weapon being
+    # present. Absent attacker → +0. Empty default keeps the golden corpus
+    # identical.
+    passive_weapon_damage_bonus: dict[str, str] = field(default_factory=dict)
     # Per-target save-advantage / -disadvantage ability-code lists (UPPER-case:
     # ``"STR"``, ``"DEX"``, ...), keyed entity_id -> list[ability]. Mirrors the
     # OLD path's ``passive_save_adv`` / ``passive_save_dis`` (Faerie Fire,

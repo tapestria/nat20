@@ -111,6 +111,18 @@ def test_passive_damage_modifiers_passed_through():
     assert "poison" in mods["immunities"]
 
 
+def test_passive_weapon_damage_bonus_reshaped_into_typed_field():
+    """C02-S01: a weapon-tagged ``damage.bonus`` change folds into
+    ``passive_damage_modifiers[id]["passive_weapon_damage_bonus"]``
+    (``orchestrator._fold_active_effect_changes``); the builder must lift it
+    into its own typed sidecar, mirroring ``passive_melee_damage_bonus``.
+    """
+    c = _caster()
+    payload = {c.entity_id: {"passive_weapon_damage_bonus": "+3"}}
+    ctx = _build(c, [c], passive_damage_modifiers=payload)
+    assert ctx.passive_weapon_damage_bonus[c.entity_id] == "+3"
+
+
 def test_save_sidecar_reshaped_into_typed_fields():
     target = _monster()
     save_modifiers = {
