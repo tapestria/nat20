@@ -51,8 +51,14 @@ trigger machinery and should be designed together, not piecemeal.
   `packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`.)
 - **Off-turn reaction submission.** Every `submit_player_intent` path advances
   the active turn; there is no path for an off-turn actor to spend a reaction.
-- **Counterspell** — ability-check branch (DC 10 + target spell level when
-  countering a higher-level slot).
+- **Counterspell** — SRD 5.2 mechanic: the interrupted caster makes a CON
+  saving throw against the counterspeller's spell save DC; on failure the spell
+  dissipates, the action is wasted, and a slot-cast spell's slot is NOT
+  expended. (Entry corrected 2026-07-02 — the previous "ability check DC 10 +
+  spell level" text was the retired SRD 5.1/2014 rule; the canonical
+  `counterspell.json` save-activity data is already correct.) Two blockers
+  discovered while pinning this behavior are tracked below: slot consumption at
+  submission, and the flat spell-save-DC approximation.
 - **Shield** — the +5 AC reaction does not persist onto the incoming attack roll
   (no per-target AC-bonus rider from an active effect into the attack resolver).
 - **Magic Missile force-immunity hook** — with Shield active, the damage path
@@ -82,10 +88,41 @@ trigger machinery and should be designed together, not piecemeal.
   read `passive_weapon_damage_bonus`
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/damage.py`), so a passive
   weapon damage bonus tagged for attacks never reaches the swing's damage.
-- **`CheckSpec` has no expertise.** `CheckSpec` carries `proficient_skills` /
-  `proficiency_bonus` but no expertise (double-proficiency) input, so
-  `resolve_check` cannot apply Expertise
-  (`packages/dnd5e-engine/src/dnd5e_engine/check.py`).
+## Discovered during e2e catalog research (2026-07-02)
+
+- **Spell save DC ignores caster ability scores.** `_save_dc` / `_caster_mod`
+  compute `8 + 2 + max(0, attack_bonus - 2)` for every PC spell cast — never
+  reading ability scores, `character_level`, or proficiency — and the override
+  applies unconditionally for non-feature casts
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/build_context.py` lines
+  58–77, 204; consumed verbatim by `activities/save.py::_resolve_dc`). Every
+  PC save-DC spell is affected, not just Counterspell.
+- **Spell slots consumed at submission, before resolution.**
+  `_consume_spell_slot` decrements unconditionally when the intent is
+  submitted, before activities resolve, with no refund path — incompatible
+  with SRD 5.2 Counterspell's "slot isn't expended" clause and with any future
+  cast-interruption
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`, `_consume_spell_slot`).
+- **One-round buffs expire on the caster's own turn end.** Casting Shield (or
+  any 1-round self-buff) emits `effect_applied` then `effect_expired(reason=
+  duration)` in the same tail — `_tick_durations_at_turn_end` collapses the
+  duration before the effect could ever matter
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`,
+  `_tick_durations_at_turn_end`).
+- **Disengage falls through to the generic Action pipeline and ends the
+  turn.** A same-turn Disengage→Move sequence raises
+  `IntentRejectedError(reason="not_actor_turn")` because the disengage intent
+  calls `_advance_turn` (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`);
+  subsumed by the Disengage handler item above but the turn-ending fall-through
+  is a distinct defect.
+- **Second, dead `condition_immunities` surface.** `dispatch.py` carries a
+  host-owned condition-immunities path unused by live combat; a future
+  `Combatant.condition_immunities` fix must not collide with it
+  (`packages/dnd5e-engine/src/dnd5e_engine/dispatch.py`).
+- **Dead code: `rules/gambits.py::select_action`** (the legacy per-profile
+  gambit picker) has no callers in `src/`; `ActionType.SHORT_REST`
+  (`types/intent.py`) is an orphaned member of the legacy dispatch enum —
+  decide disposition when the rest seam and monster-behavior clusters land.
 
 ## Active-effect change modes
 
