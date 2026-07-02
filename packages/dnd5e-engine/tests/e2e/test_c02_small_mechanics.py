@@ -16,7 +16,7 @@ from dnd5e_engine.orchestrator import (
 )
 from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec, SceneTopology, ZoneEdge
 from dnd5e_engine.types.effects import ActiveEffect, ActiveEffectChange
-from tests.e2e.harness import events_of, run_async, xfail_cluster
+from tests.e2e.harness import events_of, run_async
 
 
 def test_c02_s01_weapon_tagged_damage_bonus_reaches_swing_damage():
