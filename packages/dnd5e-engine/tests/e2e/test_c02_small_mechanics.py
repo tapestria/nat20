@@ -166,7 +166,7 @@ def test_c02_s03_reach_ft_threads_onto_live_combatant():
                     hp_current=20,
                     hp_max=20,
                     equipment=("glaive",),
-                    reach_ft=10,  # type: ignore[call-arg]
+                    reach_ft=10,
                     zone_id="zone:a",
                 )
             ],

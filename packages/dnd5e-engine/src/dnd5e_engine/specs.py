@@ -109,6 +109,12 @@ class PartyMemberSpec(BaseModel):
     # reaches the spec. Empty for graph PCs (their mechanical equipment crosses
     # via the session-side enchantment projection, not this slug list).
     equipment: tuple[str, ...] = ()
+    # SRD Weapons table, Reach property — melee reach in feet (e.g. a Glaive's
+    # Reach property adds 5 ft to the SRD baseline, landing at 10). Defaults to
+    # 5 (mirrors ``Combatant.melee_reach_ft``'s own default — the SRD baseline
+    # for a Medium creature's unarmed/short-weapon reach). Projected onto
+    # ``Combatant.melee_reach_ft`` at start_combat by ``_build_pc_combatants``.
+    reach_ft: int = 5
 
 
 class EncounterMemberSpec(BaseModel):

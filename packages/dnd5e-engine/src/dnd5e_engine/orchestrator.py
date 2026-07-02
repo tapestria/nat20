@@ -2193,6 +2193,7 @@ def _build_pc_combatants(
                 character_level=pc.character_level,
                 base_speed=pc.base_speed,
                 movement_remaining=pc.base_speed,
+                melee_reach_ft=pc.reach_ft,
                 class_slug=pc.class_slug,
                 subclass_slug=pc.subclass_slug,
                 species_slug=pc.species_slug,
