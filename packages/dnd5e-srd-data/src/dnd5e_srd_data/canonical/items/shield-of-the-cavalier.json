@@ -7,6 +7,9 @@
         "type": "action",
         "value": null
       },
+      "applied_effects": [
+        "TNWNbk14uUGiJGvv"
+      ],
       "attack": {
         "ability": "",
         "bonus": "",
@@ -128,6 +131,7 @@
         "type": "reaction",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,

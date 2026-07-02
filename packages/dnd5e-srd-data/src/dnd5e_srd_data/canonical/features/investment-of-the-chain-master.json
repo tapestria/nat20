@@ -7,6 +7,7 @@
         "type": "hour",
         "value": 1
       },
+      "applied_effects": [],
       "bonuses": {
         "ac": "",
         "attack_damage": "",
@@ -144,6 +145,7 @@
         "type": "hour",
         "value": 1
       },
+      "applied_effects": [],
       "bonuses": {
         "ac": "",
         "attack_damage": "",
@@ -281,6 +283,7 @@
         "type": "reaction",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,

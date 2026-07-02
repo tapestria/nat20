@@ -7,6 +7,9 @@
         "type": "minute",
         "value": 1
       },
+      "applied_effects": [
+        "qwUNBZRXUAvDcqDw"
+      ],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -118,6 +121,9 @@
         "type": "minute",
         "value": 1
       },
+      "applied_effects": [
+        "qwUNBZRXUAvDcqDw"
+      ],
       "consumption": {
         "scaling": {
           "allowed": false,

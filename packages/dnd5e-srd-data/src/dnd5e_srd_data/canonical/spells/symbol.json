@@ -7,6 +7,7 @@
         "type": "action",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -87,6 +88,7 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -192,6 +194,9 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [
+        "YAwLt85sPQpUCIBI"
+      ],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -289,6 +294,9 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [
+        "C5k5nGmPclTf9tZn"
+      ],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -386,6 +394,9 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [
+        "D8tOj85XIpMRp3Yl"
+      ],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -483,6 +494,9 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [
+        "A1VA7t5gB7ODNsr6"
+      ],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -580,6 +594,9 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [
+        "zZerWADc4a5rGJ9r"
+      ],
       "consumption": {
         "scaling": {
           "allowed": false,

@@ -601,6 +601,7 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -691,6 +692,7 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -979,6 +981,7 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -1069,6 +1072,9 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [
+        "jSv9Ref3gLDObysC"
+      ],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -1275,6 +1281,7 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,

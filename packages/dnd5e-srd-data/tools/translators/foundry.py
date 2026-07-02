@@ -154,6 +154,7 @@ _SRD_VERSATILE_DICE: dict[str, str] = {
 
 
 _ACTIVITY_CAMEL_TO_SNAKE: dict[str, str] = {
+    "appliedEffects": "applied_effects",
     "spellSlot": "spell_slot",
     "chatFlavor": "chat_flavor",
     "includeBase": "include_base",
@@ -171,8 +172,10 @@ _ACTIVITY_CAMEL_TO_SNAKE: dict[str, str] = {
 
 # Foundry-side fields we deliberately drop because the A3 schema cannot
 # represent them losslessly. Recorded here so `_normalize_activity_dict` can
-# drop them with intent (vs accidentally).
-_ACTIVITY_DROP_KEYS: frozenset[str] = frozenset({"appliedEffects"})
+# drop them with intent (vs accidentally). Currently empty — ``appliedEffects``
+# (the last occupant) is now modeled as ``applied_effects`` for round-trip
+# fidelity.
+_ACTIVITY_DROP_KEYS: frozenset[str] = frozenset()
 
 
 _ACTIVITY_KIND_TO_CLASS: dict[str, type[BaseModel]] = {

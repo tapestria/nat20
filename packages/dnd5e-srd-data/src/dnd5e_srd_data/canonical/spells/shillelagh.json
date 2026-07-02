@@ -7,6 +7,12 @@
         "type": "action",
         "value": null
       },
+      "applied_effects": [
+        "QPsqj6jfS0iXSrTs",
+        "Oy8fnNNzPmehxXio",
+        "advnpQaBnsbuv02y",
+        "X9xoN8qHUiCc4SZR"
+      ],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -146,6 +152,7 @@
         "type": "action",
         "value": null
       },
+      "applied_effects": [],
       "attack": {
         "ability": "spellcasting",
         "bonus": "",

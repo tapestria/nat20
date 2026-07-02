@@ -7,6 +7,7 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -112,6 +113,22 @@
         "type": "action",
         "value": null
       },
+      "applied_effects": [
+        "4GIkMFeZQHZnfjvq",
+        "70bFeuTndNorjLBe",
+        "o4aDyFCK0ekd9w8j",
+        "AvExH8PizzJN0jSM",
+        "VRMET3XgPTjBG91L",
+        "ku2JX8rDga8GUBul",
+        "ZssaQ07jWS7jFiej",
+        "3JnW3nSByOVKu1LW",
+        "ulADMO3yope7gn5R",
+        "MKSR9zEe2s3qVILa",
+        "cFNisqoGRSTHYDI4",
+        "3mSYXVx987sezjuS",
+        "BsXM9mDyGJ1R754S",
+        "4NXhqKrNtDQjBcc8"
+      ],
       "consumption": {
         "scaling": {
           "allowed": false,

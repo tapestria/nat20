@@ -7,6 +7,9 @@
         "type": "action",
         "value": null
       },
+      "applied_effects": [
+        "IgRS1gR2uBlWZnIK"
+      ],
       "attack": {
         "ability": "",
         "bonus": "",
@@ -110,6 +113,7 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [],
       "check": {
         "ability": "",
         "associated": [

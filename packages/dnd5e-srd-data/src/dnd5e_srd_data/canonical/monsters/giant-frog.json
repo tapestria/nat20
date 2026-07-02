@@ -18,6 +18,7 @@
             "type": "action",
             "value": null
           },
+          "applied_effects": [],
           "attack": {
             "ability": "str",
             "bonus": "",
@@ -139,6 +140,7 @@
             "type": "special",
             "value": null
           },
+          "applied_effects": [],
           "check": {
             "ability": "",
             "associated": [
@@ -331,6 +333,7 @@
             "type": "turnEnd",
             "value": null
           },
+          "applied_effects": [],
           "consumption": {
             "scaling": {
               "allowed": false,
@@ -440,6 +443,7 @@
             "type": "action",
             "value": null
           },
+          "applied_effects": [],
           "consumption": {
             "scaling": {
               "allowed": false,

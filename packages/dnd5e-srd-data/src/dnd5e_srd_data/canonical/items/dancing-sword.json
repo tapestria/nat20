@@ -7,6 +7,7 @@
         "type": "bonus",
         "value": null
       },
+      "applied_effects": [],
       "bonuses": {
         "ac": "",
         "attack_damage": "@mod",
@@ -118,6 +119,9 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [
+        "WJSS4dAA3wvYZpRx"
+      ],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -219,6 +223,7 @@
         "type": "bonus",
         "value": null
       },
+      "applied_effects": [],
       "bonuses": {
         "ac": "",
         "attack_damage": "@mod",

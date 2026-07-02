@@ -7,6 +7,10 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [
+        "RSpASIW4HbToM7yC",
+        "NpHh40FxvJqKojsI"
+      ],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -124,6 +128,9 @@
         "type": "action",
         "value": null
       },
+      "applied_effects": [
+        "4awBYMh85YMXFJDS"
+      ],
       "attack": {
         "ability": "",
         "bonus": "",
@@ -243,6 +250,7 @@
         "type": "action",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,

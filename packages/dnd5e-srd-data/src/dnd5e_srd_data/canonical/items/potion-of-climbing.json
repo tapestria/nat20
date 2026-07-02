@@ -7,6 +7,9 @@
         "type": "bonus",
         "value": null
       },
+      "applied_effects": [
+        "D6fYii3nkDC4Tsbi"
+      ],
       "consumption": {
         "scaling": {
           "allowed": false,

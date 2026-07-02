@@ -7,6 +7,7 @@
         "type": "action",
         "value": 1
       },
+      "applied_effects": [],
       "check": {
         "ability": "",
         "associated": [
@@ -91,6 +92,7 @@
         "type": "action",
         "value": 1
       },
+      "applied_effects": [],
       "check": {
         "ability": "",
         "associated": [
@@ -175,6 +177,7 @@
         "type": "action",
         "value": 1
       },
+      "applied_effects": [],
       "check": {
         "ability": "",
         "associated": [
