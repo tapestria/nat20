@@ -72,24 +72,24 @@ trigger machinery and should be designed together, not piecemeal.
 
 ## Other combat mechanics
 
-- **Monster Dash.** `_handle_dash` (`orchestrator.py`) only services the PC
-  bonus-action (Cunning Action) path; a monster cannot double its movement
-  budget.
 - **Behavior-aware monster action selection.** `select_monster_action`
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/monster_actions.py`)
   returns the first attack by dict order and leaves behavior/flee gating to the
   caller; the monster's authored `BehaviorProfile` does not influence its choice
   inside the engine.
-- **Polearm reach > 5 ft.** `Combatant.melee_reach_ft` exists
-  (`types/combat.py`) but `PartyMemberSpec` (`specs.py`) has no `reach_ft` field
-  to thread an equipped weapon's reach in; the effective reach is always 5 ft.
-- **Weapon-damage sidecar asymmetry.** The attack handler reads
-  `passive_weapon_to_hit_bonus`, but the damage handler does not symmetrically
-  read `passive_weapon_damage_bonus`
-  (`packages/dnd5e-engine/src/dnd5e_engine/activities/damage.py`), so a passive
-  weapon damage bonus tagged for attacks never reaches the swing's damage.
 ## Discovered during e2e catalog research (2026-07-02)
 
+- **Weapon-tagged to-hit bonus sidecar never consumed.** The orchestrator's
+  `_fold_active_effect_changes` folds a weapon-tagged (`applicable_action_types
+  == ["attack"]`) `attack.roll.bonus` change into the
+  `passive_weapon_to_hit_bonus` sidecar key, but nothing downstream reads it —
+  `build_activity_context` only lifts the untagged `passive_to_hit_bonus` into
+  `ActivityResolutionContext.passive_attack_bonus`. A +N weapon's to-hit bonus
+  therefore never reaches the attack roll via this sidecar (the sibling
+  damage-side gap, `passive_weapon_damage_bonus`, was closed in Cluster 2 —
+  see `docs/migration/v0.1-to-v0.2.md`)
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/build_context.py`,
+  `packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py`).
 - **Spell save DC ignores caster ability scores.** `_save_dc` / `_caster_mod`
   compute `8 + 2 + max(0, attack_bonus - 2)` for every PC spell cast — never
   reading ability scores, `character_level`, or proficiency — and the override
