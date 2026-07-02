@@ -9,10 +9,8 @@ import random
 
 from dnd5e_engine.check import CheckSpec, resolve_check
 from dnd5e_engine.types.effects import ActiveEffect, ActiveEffectChange
-from tests.e2e.harness import xfail_cluster
 
 
-@xfail_cluster(3, "Active-effect change modes")
 def test_c03_s01_multiply_mode_multiplies_accumulated_bucket_bonus():
     """C03-S01: `multiply` mode change multiplies the accumulated bucket
     bonus on a check.
@@ -68,7 +66,6 @@ def test_c03_s01_multiply_mode_multiplies_accumulated_bucket_bonus():
     assert multiplied.roll_total - baseline.roll_total == 3
 
 
-@xfail_cluster(3, "Active-effect change modes")
 def test_c03_s02_upgrade_mode_only_raises_never_lowers_bucket_bonus():
     """C03-S02: `upgrade` mode only raises a check's bucket bonus, never
     lowers it (A/B pair).
