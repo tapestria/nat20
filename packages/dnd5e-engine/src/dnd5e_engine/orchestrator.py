@@ -27,6 +27,7 @@ projections) before resolving the intent's activities.
 from __future__ import annotations
 
 import asyncio
+import itertools
 import logging
 import random
 from collections.abc import AsyncIterator, Sequence
@@ -438,6 +439,47 @@ def _in_range_with_los(topology: SpatialTopology, a: str, b: str, range_ft: int)
     always True ⇒ this is behaviour-identical to a bare ``within_range`` today.
     """
     return topology.within_range(a, b, range_ft) and topology.has_line_of_sight(a, b)
+
+
+def _path_total_distance(topology: SpatialTopology, path: Sequence[str]) -> int | None:
+    """Sum a shortest-path's edge distances; ``None`` if any step is missing.
+
+    ``path`` is the zone/cell sequence ``shortest_path`` returns (``path[0]``
+    is the start). A one-element or empty path costs ``0``.
+    """
+    if len(path) < 2:
+        return 0
+    total = 0
+    for a, b in itertools.pairwise(path):
+        step = topology.edge_distance(a, b)
+        if step is None:
+            return None
+        total += step
+    return total
+
+
+def _monster_dash_movement_budget(
+    total_path_distance: int | None,
+    movement_remaining: int,
+    base_speed: int,
+) -> int | None:
+    """SRD §Actions in Combat, Dash — decide whether a monster gambit should
+    Dash to close a gap it cannot otherwise cross this turn.
+
+    Returns the doubled movement budget (``movement_remaining + base_speed``,
+    mirroring ``_handle_dash``'s additive convention) when the path to the
+    target exceeds the current budget but fits within a single Dash; ``None``
+    when no Dash is needed (already in reach) or a Dash still wouldn't be
+    enough (the monster gives up on closing the gap, same as today).
+    """
+    if total_path_distance is None or base_speed <= 0:
+        return None
+    if total_path_distance <= movement_remaining:
+        return None  # already affordable — no Dash needed
+    dashed_budget = movement_remaining + base_speed
+    if total_path_distance > dashed_budget:
+        return None  # even a Dash can't close this gap
+    return dashed_budget
 
 
 def _pc_attack_out_of_range(live: _LiveCombat, actor_id: str, intent: PlayerIntent) -> bool:
@@ -3532,6 +3574,14 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
     # ``"attack"`` when it ends in range, ``"pass"`` when it spent the
     # turn closing the gap.
     attack_skipped_due_to_range = False
+    # SRD §Actions in Combat, Dash — set when the gambit below spends the
+    # monster's Action on a Dash to close a gap it couldn't otherwise
+    # cross. Dash IS the Action this turn (SRD action economy: one Action
+    # per turn), so no Attack fires in the same turn a Dash was taken —
+    # mirrors ``_handle_dash``'s Action-consuming default (the PC path also
+    # supports a Rogue Cunning-Action Dash; monsters have no such
+    # bonus-action gambit today, so this is always the base Action).
+    dashed_this_turn = False
     if has_action and chosen_target is not None:
         monster_range_ft = _monster_attack_range_ft(monster_activities, current.melee_reach_ft)
         attacker_zone = live.actor_zone.get(current.entity_id)
@@ -3545,6 +3595,30 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
         ):
             # Plan the path and walk it greedily within budget.
             path = live.topology.shortest_path(attacker_zone, target_zone)
+            dashed_budget = _monster_dash_movement_budget(
+                _path_total_distance(live.topology, path),
+                current.movement_remaining,
+                current.base_speed,
+            )
+            if dashed_budget is not None and current.action_available:
+                dashed_this_turn = True
+                for idx, c in enumerate(live.initiative):
+                    if c.entity_id == current.entity_id:
+                        live.initiative[idx] = c.model_copy(
+                            update={
+                                "action_available": False,
+                                "movement_remaining": dashed_budget,
+                            }
+                        )
+                        break
+                _emit(
+                    live,
+                    DashTaken(
+                        actor_id=current.entity_id,
+                        doubled_movement_remaining=dashed_budget,
+                        budget_consumed="action",
+                    ),
+                )
             # path[0] is attacker_zone; skip it. Walk forward step by step
             # until either (a) we exhaust the budget, (b) the next edge
             # doesn't fit, or (c) we end up within attack range.
@@ -3611,8 +3685,9 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
         and chosen_target is not None
         and not attack_skipped_due_to_range
         and not mover_dead_post_aoo
+        and not dashed_this_turn
     )
-    intent_type: IntentType = "attack" if will_attack else "pass"
+    intent_type: IntentType = "dash" if dashed_this_turn else ("attack" if will_attack else "pass")
     _emit(
         live,
         IntentSubmitted(
