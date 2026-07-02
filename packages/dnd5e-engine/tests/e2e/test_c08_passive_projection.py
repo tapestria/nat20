@@ -275,9 +275,12 @@ def test_c08_s03_damage_vulnerability_never_doubles_matching_hit():
         return live
 
     live = run_async(_run())
-    base_total = sum(e.amount for e in events_of(live, DamageApplied) if e.target_id == "mon:skel")
-    vuln_total = base_total
-    assert vuln_total == 2 * base_total
+    vuln_total = sum(e.amount for e in events_of(live, DamageApplied) if e.target_id == "mon:skel")
+    # Catalog C08-S03: the undoubled seeded hit is amount=8 at rng_seed=1 (verified
+    # by direct execution); with the skeleton's dataset-sourced bludgeoning
+    # vulnerability threaded through, the same seed must yield the doubled total.
+    undoubled_seeded_amount = 8
+    assert vuln_total == 2 * undoubled_seeded_amount
 
 
 @xfail_cluster(8, "Passive-stat projection")
