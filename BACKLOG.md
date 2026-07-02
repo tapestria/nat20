@@ -124,15 +124,6 @@ trigger machinery and should be designed together, not piecemeal.
   (`types/intent.py`) is an orphaned member of the legacy dispatch enum —
   decide disposition when the rest seam and monster-behavior clusters land.
 
-## Active-effect change modes
-
-- **Only `add` and `override` modes implemented.**
-  `apply_changes_to_check` handles Foundry's `add` and `override`
-  `ActiveEffectChange` modes; `multiply` / `downgrade` / `upgrade` / `custom`
-  are accepted by the schema but ignored
-  (`packages/dnd5e-engine/src/dnd5e_engine/rules/effects.py`). Implement as
-  product need surfaces.
-
 ## Class / species feature mechanics
 
 - **Sneak Attack & conditional damage riders.** Needs (1) per-target advantage
@@ -183,6 +174,20 @@ but routed to `skipped_keys` (deferred) for lack of a `Combatant` landing zone:
   (`types/intent.py`) but the orchestrator has no handler — no hit-dice spend,
   class-feature recovery, or Second Wind.
 - **No Long Rest.** No HP/slot recovery or daily-feature reset.
+
+## Blocked
+
+- **`custom` `ActiveEffectChange` mode — needs a product decision** (2026-07-02).
+  No Foundry-core semantics to port: Foundry itself delegates `custom` to
+  host-registered `applyChangeCustom` callbacks, so there is no SRD or
+  in-repo ground truth for what it should do in this engine
+  (`packages/dnd5e-engine/src/dnd5e_engine/rules/effects.py`,
+  `apply_changes_to_check` — `multiply`/`upgrade`/`downgrade` are
+  implemented; `custom` is left a documented no-op). Downstream data
+  carries none today — verified: `grep -rn '"mode": "custom"'
+  packages/dnd5e-srd-data/src/dnd5e_srd_data/canonical/` returns zero
+  matches. Blocked on a maintainer decision for what (if anything) `custom`
+  should mean in a host-agnostic engine with no callback registry.
 
 ---
 
