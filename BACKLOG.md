@@ -188,20 +188,7 @@ but routed to `skipped_keys` (deferred) for lack of a `Combatant` landing zone:
 
 # dnd5e-srd-data
 
-- **Typeless damage parts in 3 canonical spells.** A `DamagePartBlock` with
-  non-empty dice but `types: []` carries no SRD damage type, so the resolver
-  logs `damage_part_untyped` and skips the part (the spell under-applies). The
-  data must carry the SRD-correct type:
-  - `call-lightning` — 4d10 → **lightning**
-  - `freezing-sphere` — 10d6 → **cold**
-  - `meld-into-stone` — custom "50" → **bludgeoning**
-
-  `packages/dnd5e-srd-data/src/dnd5e_srd_data/canonical/spells/`.
-- **`applied_effects` not modeled.** Foundry persists a legacy flat
-  `appliedEffects` id list alongside the structured `effects[]` slice; the
-  per-kind Activity models in `packages/dnd5e-srd-data/src/dnd5e_srd_data/schema/common.py`
-  don't carry it (the translator drops it). Add the field for round-trip
-  fidelity; resolver impact is currently nil (behavior comes from `effects[]`).
+No open entries.
 
 ---
 
