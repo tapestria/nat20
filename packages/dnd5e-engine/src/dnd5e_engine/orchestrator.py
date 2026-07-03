@@ -1408,10 +1408,24 @@ _FOUNDRY_ATTACK_BONUS_KEYS = frozenset(
     }
 )
 
-# Foundry-native melee-weapon damage-bonus change key (Rage's Rage Damage rides
-# here). Melee-weapon-scoped: folded into the ``passive_melee_damage_bonus``
-# sidecar and consumed only on a melee weapon swing.
-_FOUNDRY_MELEE_DAMAGE_KEY = "system.bonuses.mwak.damage"
+# Foundry-native attack-CATEGORY damage-bonus change keys (Rage's Rage Damage
+# rides ``mwak``; C04-S03's ranged analog rides ``rwak``; melee/ranged SPELL
+# attack damage bonuses ride ``msak``/``rsak``). A creature attacks in exactly
+# one category at a time (mirrors the to-hit fold above), so each key folds
+# into its OWN category-scoped sidecar (never a shared bucket) — the consumer
+# (``attack.py``) gates each on the swing's own melee/ranged + weapon/spell
+# shape.
+_FOUNDRY_DAMAGE_BONUS_KEY_TO_SIDECAR = {
+    "system.bonuses.mwak.damage": "passive_melee_damage_bonus",
+    "system.bonuses.rwak.damage": "passive_ranged_damage_bonus",
+    "system.bonuses.msak.damage": "passive_melee_spell_damage_bonus",
+    "system.bonuses.rsak.damage": "passive_ranged_spell_damage_bonus",
+}
+
+# Foundry-native flat/dice bonus to the CASTER's own spell save DC (e.g. a Rod
+# of the Pact Keeper). Folds into the save-DC path (item 1's real
+# spellcasting-ability formula) via ``build_context.py::_spell_dc_bonus``.
+_FOUNDRY_SPELL_DC_BONUS_KEY = "system.bonuses.spell.dc"
 
 
 def _fold_active_effect_changes(
@@ -1497,13 +1511,27 @@ def _fold_active_effect_changes(
                     continue
                 key = "attack.roll.bonus"
                 attack_bonus_folded = True
-            elif key == _FOUNDRY_MELEE_DAMAGE_KEY:
-                # Rage's ``system.bonuses.mwak.damage`` (melee weapon
-                # attack damage). Normalize into the melee-only
-                # damage-bonus sidecar; attack.py applies it to a melee
-                # weapon swing only (NOT ranged / spell).
-                existing = per_target_dmg.get("passive_melee_damage_bonus")
-                per_target_dmg["passive_melee_damage_bonus"] = (
+            elif key in _FOUNDRY_DAMAGE_BONUS_KEY_TO_SIDECAR:
+                # Rage's ``system.bonuses.mwak.damage`` (melee weapon attack
+                # damage) and its ``rwak``/``msak``/``rsak`` siblings
+                # (C04-S03's ranged-weapon analog + melee/ranged spell-attack
+                # damage). Each normalizes into its OWN category-scoped
+                # damage-bonus sidecar; attack.py gates each on the swing's
+                # own melee/ranged + weapon/spell shape.
+                sidecar_field = _FOUNDRY_DAMAGE_BONUS_KEY_TO_SIDECAR[key]
+                existing = per_target_dmg.get(sidecar_field)
+                per_target_dmg[sidecar_field] = (
+                    f"{existing} {signed_str}" if existing else signed_str.lstrip("+")
+                )
+                dmg_dirty = True
+                continue
+            elif key == _FOUNDRY_SPELL_DC_BONUS_KEY:
+                # A flat/dice bonus to the CASTER's own spell save DC (e.g. a
+                # Rod of the Pact Keeper). Folds into the save-DC path
+                # (build_context.py::_spell_dc_bonus) on top of the real
+                # spellcasting-ability formula from item 1.
+                existing = per_target_dmg.get("passive_spell_dc_bonus")
+                per_target_dmg["passive_spell_dc_bonus"] = (
                     f"{existing} {signed_str}" if existing else signed_str.lstrip("+")
                 )
                 dmg_dirty = True
@@ -2889,8 +2917,24 @@ class _ResolvedActivities:
     feature_passive_effects: list[Any]
 
 
+def _resolve_caster_spellcasting_ability(caster: Combatant) -> str | None:
+    """SRD 5.2 §Spellcasting — the ability that governs a caster's spell
+    attacks and save DCs is a per-CLASS mapping (cleric -> wis, wizard -> int,
+    druid -> wis, ...), read from the caster's class doc's
+    ``spellcasting.ability``. Returns ``None`` when the caster has no
+    ``class_slug``, the class is unknown to the lib, or the class carries no
+    spellcasting ability (a non-caster class) — callers fall back to the
+    legacy flat approximation in that case."""
+    if not caster.class_slug:
+        return None
+    cls = get_lib_loader().get_class(caster.class_slug)
+    if cls is None or not cls.spellcasting.ability:
+        return None
+    return cls.spellcasting.ability
+
+
 def _resolve_intent_activities(
-    intent: PlayerIntent, feature_invocation: _FeatureInvocation | None
+    intent: PlayerIntent, feature_invocation: _FeatureInvocation | None, caster: Combatant
 ) -> _ResolvedActivities:
     """Fetch the typed entity for the intent's kind from the lib loader and
     collect the activities the resolver will walk. This is the sole PC
@@ -2919,11 +2963,11 @@ def _resolve_intent_activities(
         cast_spell = get_lib_loader().get_spell(intent.spell_id)
         if cast_spell is not None:
             activities = list(cast_spell.activities)
-            # The OLD path used a uniform caster ``mod`` regardless of the
-            # spell's real spellcasting ability; ``build_activity_context``
-            # makes every ability yield that same mod, so the ability name
-            # here only selects which (equal) mod the resolver reads.
-            spellcasting_ability = "int"
+            # SRD 5.2 §Spellcasting — the real class->ability mapping
+            # (cleric -> wis, wizard -> int, ...), read off the caster's own
+            # class doc. ``None`` (unknown class / non-caster class) falls
+            # back to the legacy flat approximation in ``build_context.py``.
+            spellcasting_ability = _resolve_caster_spellcasting_ability(caster)
     elif intent.intent_type == "use_item" and intent.item_id:
         # Parity with the OLD resolver's ``use_item`` branch: an item (potion,
         # scroll, wand) may carry its own activities — most often a
@@ -3210,7 +3254,7 @@ async def submit_player_intent(
     # Fetch the typed entity for the intent's kind from the lib loader and
     # collect the activities the resolver will walk. This is the sole PC
     # resolution path; the old Avrae IR path was retired in Phase 7b.
-    resolved = _resolve_intent_activities(intent, feature_invocation)
+    resolved = _resolve_intent_activities(intent, feature_invocation, current)
     activities = resolved.activities
     cast_spell = resolved.cast_spell
     fetched_weapon = resolved.fetched_weapon

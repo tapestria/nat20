@@ -175,6 +175,27 @@ def _is_melee_weapon(weapon: Weapon | None) -> bool:
     return weapon is not None and weapon.weapon_category not in _RANGED_CATEGORIES
 
 
+def _is_ranged_weapon(weapon: Weapon | None) -> bool:
+    """True iff ``weapon`` is a ranged weapon (Foundry rwak scope).
+
+    The ranged analog of ``_is_melee_weapon`` — the scope of
+    ``system.bonuses.rwak.damage`` (C04-S03).
+    """
+    return weapon is not None and weapon.weapon_category in _RANGED_CATEGORIES
+
+
+def _is_melee_spell_attack(activity: AttackActivity, weapon: Weapon | None) -> bool:
+    """True iff this is a melee SPELL attack (Foundry msak scope: no weapon,
+    ``attack.type.value == "melee"`` — e.g. Shocking Grasp)."""
+    return weapon is None and activity.attack.type.value == "melee"
+
+
+def _is_ranged_spell_attack(activity: AttackActivity, weapon: Weapon | None) -> bool:
+    """True iff this is a ranged SPELL attack (Foundry rsak scope: no weapon,
+    ``attack.type.value == "ranged"`` — e.g. Fire Bolt)."""
+    return weapon is None and activity.attack.type.value == "ranged"
+
+
 def _weapon_default_ability(weapon: Weapon, ctx: ActivityResolutionContext) -> str:
     """SRD default attack/damage ability for a weapon with no explicit ability.
 
@@ -347,6 +368,29 @@ def _apply_on_hit_damage(
             melee_bonus_expr = ctx.passive_melee_damage_bonus.get(ctx.caster.entity_id)
             if melee_bonus_expr:
                 by_type[first_type] += roll_expr(melee_bonus_expr, ctx.rng)
+
+        # C04-S03 / Foundry ``system.bonuses.rwak.damage`` — a ranged weapon
+        # attack damage bonus, the ranged analog of the melee-only bonus just
+        # above. Add it once to the first damage type, RANGED WEAPON only.
+        if first_type is not None and _is_ranged_weapon(weapon):
+            ranged_bonus_expr = ctx.passive_ranged_damage_bonus.get(ctx.caster.entity_id)
+            if ranged_bonus_expr:
+                by_type[first_type] += roll_expr(ranged_bonus_expr, ctx.rng)
+
+        # Foundry ``system.bonuses.msak.damage`` / ``system.bonuses.rsak.damage``
+        # — melee / ranged SPELL-attack damage bonuses (e.g. Shocking Grasp /
+        # Fire Bolt). No weapon is present for a spell attack; gate on the
+        # activity's own melee/ranged classification instead.
+        if first_type is not None and _is_melee_spell_attack(activity, weapon):
+            melee_spell_bonus_expr = ctx.passive_melee_spell_damage_bonus.get(ctx.caster.entity_id)
+            if melee_spell_bonus_expr:
+                by_type[first_type] += roll_expr(melee_spell_bonus_expr, ctx.rng)
+        if first_type is not None and _is_ranged_spell_attack(activity, weapon):
+            ranged_spell_bonus_expr = ctx.passive_ranged_spell_damage_bonus.get(
+                ctx.caster.entity_id
+            )
+            if ranged_spell_bonus_expr:
+                by_type[first_type] += roll_expr(ranged_spell_bonus_expr, ctx.rng)
 
         # SRD §Making an Attack / §Magic Items — a magic weapon's bonus
         # applies to BOTH the attack roll and the damage roll made with it.

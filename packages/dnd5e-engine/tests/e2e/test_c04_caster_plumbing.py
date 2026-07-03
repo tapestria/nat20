@@ -13,10 +13,9 @@ from dnd5e_engine.events import DamageApplied, SaveRolled
 from dnd5e_engine.orchestrator import _get_live, start_combat, submit_player_intent
 from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec, SceneTopology
 from dnd5e_engine.types.effects import ActiveEffect, ActiveEffectChange
-from tests.e2e.harness import events_of, run_async, xfail_cluster
+from tests.e2e.harness import events_of, run_async
 
 
-@xfail_cluster(4, "Caster plumbing")
 def test_c04_s01_cleric_spell_save_dc_uses_real_wis_formula():
     """C04-S01: A cleric's spell save DC is computed from the real WIS-based
     spellcasting formula, not a hardcoded flat approximation.
@@ -137,7 +136,6 @@ def test_c04_s02_feature_owned_scale_id_resolves_against_granting_feature():
     assert scale_values.get("channel-divinity-cleric.spark") == 3
 
 
-@xfail_cluster(4, "Caster plumbing")
 def test_c04_s03_rwak_damage_bucket_reaches_ranged_swing_damage():
     """C04-S03: A `system.bonuses.rwak.damage` active-effect bucket reaches
     a ranged weapon swing's damage (ranged analog of Rage's `mwak` fold).

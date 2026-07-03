@@ -116,6 +116,27 @@ class ActivityResolutionContext:
     # present. Absent attacker → +0. Empty default keeps the golden corpus
     # identical.
     passive_weapon_damage_bonus: dict[str, str] = field(default_factory=dict)
+    # Per-ATTACKER additive RANGED-WEAPON damage bonus, keyed entity_id -> a
+    # signed numeric/dice STRING. Foundry's ``system.bonuses.rwak.damage``
+    # (ranged weapon attack damage) — the ranged analog of
+    # ``passive_melee_damage_bonus`` (Rage's melee-only ``mwak.damage``).
+    # Folded from the caster's active effects in the orchestrator's
+    # ``_build_hydration_payload`` and consumed in
+    # ``attack.py:_apply_on_hit_damage`` gated to a ranged weapon. Absent
+    # attacker -> +0. Empty default keeps the golden corpus identical.
+    passive_ranged_damage_bonus: dict[str, str] = field(default_factory=dict)
+    # Per-ATTACKER additive MELEE-SPELL-ATTACK damage bonus, keyed entity_id ->
+    # a signed numeric/dice STRING. Foundry's ``system.bonuses.msak.damage``
+    # (melee spell attack damage — e.g. Shocking Grasp). Consumed in
+    # ``attack.py`` gated on a no-weapon melee-classified attack activity.
+    # Absent attacker -> +0.
+    passive_melee_spell_damage_bonus: dict[str, str] = field(default_factory=dict)
+    # Per-ATTACKER additive RANGED-SPELL-ATTACK damage bonus, keyed entity_id ->
+    # a signed numeric/dice STRING. Foundry's ``system.bonuses.rsak.damage``
+    # (ranged spell attack damage — e.g. Fire Bolt). Consumed in ``attack.py``
+    # gated on a no-weapon ranged-classified attack activity. Absent
+    # attacker -> +0.
+    passive_ranged_spell_damage_bonus: dict[str, str] = field(default_factory=dict)
     # Per-target save-advantage / -disadvantage ability-code lists (UPPER-case:
     # ``"STR"``, ``"DEX"``, ...), keyed entity_id -> list[ability]. Mirrors the
     # OLD path's ``passive_save_adv`` / ``passive_save_dis`` (Faerie Fire,

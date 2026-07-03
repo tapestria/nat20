@@ -76,7 +76,12 @@ def test_pc_reads_real_abilities_and_level_pb():
     ctx = _build(caster, [caster])
     assert ctx.attack_bonus_override == 5  # caster.attack_bonus verbatim
     assert ctx.caster_proficiency_bonus == 2  # PB at level 3
-    assert ctx.save_dc_override == 8 + 5  # deferred spell-DC seam: untouched
+    # C04-S01 (Cluster 4): save_dc_override now runs the REAL SRD 5.2 formula
+    # (8 + PB + spellcasting-ability mod) instead of the OLD flat
+    # `8 + 2 + max(0, attack_bonus-2)` approximation. `_build`'s default
+    # `spellcasting_ability="int"` + `_caster()`'s default intelligence=10
+    # (mod 0) -> 8 + 2 + 0.
+    assert ctx.save_dc_override == 8 + 2 + 0
     assert ctx.ability_mod("dex") == 2
     for ability in ("str", "con", "int", "wis", "cha"):
         assert ctx.ability_mod(ability) == 0
@@ -87,8 +92,8 @@ def test_pc_level5_pb_is_three():
     caster = _caster(character_level=5)
     ctx = _build(caster, [caster])
     assert ctx.caster_proficiency_bonus == 3
-    # The deferred spell-DC override path still uses the Avrae mod, untouched.
-    assert ctx.save_dc_override == 8 + 2 + max(0, 5 - 2)
+    # C04-S01: the real formula, same INT-10/mod-0 caster as above -> 8 + 3 + 0.
+    assert ctx.save_dc_override == 8 + 3 + 0
 
 
 def test_monster_caster_magnitudes_uniform_mod_and_flat_dc():
