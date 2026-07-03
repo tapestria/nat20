@@ -3018,16 +3018,20 @@ def _feature_uses_exhausted(
 def _record_capped_feature_use(
     live: _LiveCombat,
     actor_id: str,
-    feature_id: str,
+    feature_id: str | None,
     feature_invocation: _FeatureInvocation | None,
 ) -> None:
     """Increment the per-rest use counter for a committed capped-feature invocation.
 
-    No-op for a non-feature intent (``feature_invocation is None``) or an uncapped
-    feature (``use_cap is None``) — only a within-cap invocation reaches here past
-    the early exhaustion gate.
+    No-op for a non-feature intent (``feature_id`` / ``feature_invocation`` is
+    ``None``) or an uncapped feature (``use_cap is None``) — only a within-cap
+    invocation reaches here past the early exhaustion gate.
     """
-    if feature_invocation is not None and feature_invocation.use_cap is not None:
+    if (
+        feature_id is not None
+        and feature_invocation is not None
+        and feature_invocation.use_cap is not None
+    ):
         _increment_feature_use(live, actor_id, feature_id)
 
 
