@@ -12,7 +12,7 @@ from dnd5e_srd_data.loader import BundledAssetLoader
 from dnd5e_engine import PlayerIntent
 from dnd5e_engine.activities.context import ActivityResolutionContext
 from dnd5e_engine.activities.resolver import resolve_activity
-from dnd5e_engine.events import DamageApplied, HealingApplied
+from dnd5e_engine.events import AttackRolled, DamageApplied, HealingApplied
 from dnd5e_engine.orchestrator import _get_live, start_combat, submit_player_intent
 from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec, SceneTopology
 from dnd5e_engine.types.combat import Combatant
@@ -102,7 +102,15 @@ def test_c07_s01_sneak_attack_adds_bounded_extra_damage_on_advantage():
     live_b = run_async(_run((adv_effect,)))
     adv_total = sum(e.amount for e in events_of(live_b, DamageApplied) if e.target_id == "mon:foe")
 
-    assert 3 <= adv_total - no_adv_total <= 18
+    # Catalog amendment 2026-07-03 (user-approved, NOT a weakening): the bound
+    # is crit-aware. SRD 5.2 §Critical Hit ("Roll all of the attack's damage
+    # dice twice and add them together", 09_rules_glossary.md:310) doubles the
+    # Sneak Attack rider on a crit — and under rng_seed=5 this attack IS a
+    # natural-20 crit, so the rider is 6d6 in [6, 36]; a non-crit hit stays 3d6
+    # in [3, 18]. The original [3, 18] was derived assuming a non-crit path.
+    is_crit = next(e.is_crit for e in events_of(live_b, AttackRolled))
+    lo, hi = (6, 36) if is_crit else (3, 18)
+    assert lo <= adv_total - no_adv_total <= hi
 
 
 def test_c07_s02_sneak_attack_ally_adjacent_alternative_trigger():
@@ -184,7 +192,13 @@ def test_c07_s02_sneak_attack_ally_adjacent_alternative_trigger():
         e.amount for e in events_of(live_allied, DamageApplied) if e.target_id == "mon:foe"
     )
 
-    assert 3 <= allied_total - solo_total <= 18
+    # Catalog amendment 2026-07-03 (user-approved, NOT a weakening): crit-aware
+    # bound — SRD 5.2 §Critical Hit doubles the rider on a crit (6d6 in
+    # [6, 36]); non-crit stays 3d6 in [3, 18]. Same rng_seed=5 natural-20 crit
+    # as C07-S01. See that test's comment for the full citation.
+    is_crit = next(e.is_crit for e in events_of(live_allied, AttackRolled))
+    lo, hi = (6, 36) if is_crit else (3, 18)
+    assert lo <= allied_total - solo_total <= hi
 
 
 def test_c07_s03_channel_divinity_repertoire_needs_activity_selection():

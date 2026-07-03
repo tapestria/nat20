@@ -524,6 +524,11 @@ def _apply_on_hit_damage(
         # FIRST damage type ("the extra damage's type is the same as the
         # weapon's"). Rolled through ``ctx.rng`` (via ``roll_expr``, matching the
         # passive-bonus fold pattern) so the dice land in the same seed stream.
+        # On a crit the rider dice DOUBLE — SRD 5.2 §Critical Hit ("Roll all of
+        # the attack's damage dice twice and add them together",
+        # 09_rules_glossary.md; the rider is part of the attack's damage dice) —
+        # via the SAME ``_double_dice`` count-doubling idiom the base-weapon
+        # crit path (``roll_damage_part(crit=...)``) uses.
         # The once-per-turn cap gates the FOLD itself (``sneak_attack_spent``);
         # recording "spent" is an orchestrator-side concern (a per-turn
         # ``Combatant`` flag cleared at ``TurnStarted``).
@@ -541,7 +546,7 @@ def _apply_on_hit_damage(
         ):
             sneak_dice = sneak_attack_dice(ctx)
             if sneak_dice:
-                by_type[first_type] += roll_expr(sneak_dice, ctx.rng)
+                by_type[first_type] += roll_expr(sneak_dice, ctx.rng, crit=is_crit)
 
         apply_damage(target, dict(by_type), ctx)
     finally:
