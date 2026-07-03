@@ -228,6 +228,20 @@ def apply_activity_effects(
         # gated on the mapping.
         for status in sorted(pe.statuses):
             if status in _CONDITION_VALUES:
+                # C08-S02: condition-immunity gate. A target immune to this
+                # condition (Nature's Ward → "poisoned") never has it attach —
+                # the ConditionApplied is SUPPRESSED outright (the EffectApplied
+                # rider above still fired narratively). Suppress, not
+                # emit-and-neutralize: a condition is binary present/absent with
+                # no amount to zero, so a ConditionApplied the engine treats as
+                # not-applied would mislead every condition-tick reader.
+                if status in target.condition_immunities:
+                    _LOGGER.info(
+                        "condition_immune_suppressed status=%s target_id=%s",
+                        status,
+                        target.entity_id,
+                    )
+                    continue
                 ctx.event_emitter(
                     ConditionApplied(
                         target_id=target.entity_id,

@@ -68,6 +68,16 @@ class PartyMemberSpec(BaseModel):
     # default; populated from the character sheet projection when wired.
     damage_resistances: list[str] = Field(default_factory=list)
     damage_immunities: list[str] = Field(default_factory=list)
+    # SRD §Damage Vulnerability — per-PC type list ("applying twice the normal
+    # damage"). Empty by default; threaded onto ``Combatant.damage_vulnerabilities``
+    # → the damage sidecar. Symmetric with the monster path (C08-S03).
+    damage_vulnerabilities: list[str] = Field(default_factory=list)
+    # SRD §Condition Immunity — condition slugs the PC can't suffer (Nature's
+    # Ward → ``"poisoned"``). Populated by ``build_party_member`` from always-on
+    # granted-feature ``system.traits.ci.value`` changes; copied onto the live
+    # ``Combatant`` at start_combat, where the condition-application path
+    # (``activities/effects.py``) suppresses a matching ``ConditionApplied``.
+    condition_immunities: list[str] = Field(default_factory=list)
     # SRD §Senses — special senses in feet. Populated by ``build_party_member``
     # from the PC's species senses + always-on feature passive_effects, and
     # copied onto the live ``Combatant`` at start_combat. Empty (all ``None``)
@@ -157,6 +167,16 @@ class EncounterMemberSpec(BaseModel):
     # by default for fixtures that don't specify.
     damage_resistances: list[str] = Field(default_factory=list)
     damage_immunities: list[str] = Field(default_factory=list)
+    # SRD §Damage Vulnerability — per-monster type list ("applying twice the
+    # normal damage"). Empty by default; when a ``monster_template_slug`` is set
+    # and this list is empty, ``_build_foe_combatants`` hydrates it from
+    # ``Monster.damage_vulnerabilities`` (the Skeleton's ``["bludgeoning"]``).
+    # Threaded onto ``Combatant.damage_vulnerabilities`` → the damage sidecar.
+    damage_vulnerabilities: list[str] = Field(default_factory=list)
+    # SRD §Condition Immunity — condition slugs this creature can't suffer.
+    # Empty by default; populated from MonsterTemplate at the session layer.
+    # Copied onto the live ``Combatant`` at start_combat.
+    condition_immunities: list[str] = Field(default_factory=list)
     # SRD §Movement — walking speed in feet. See PartyMemberSpec.base_speed.
     # Defaults to 30; monster speed lookup at the session layer threads
     # MonsterTemplate.speed["walk"] in here.

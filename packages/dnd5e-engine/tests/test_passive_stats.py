@@ -118,16 +118,29 @@ def test_dr_change_key_projects_resistance():
     assert "slashing" in out.resistances
 
 
-def test_ci_change_key_skipped_with_quote_escaping_stripped():
-    # ci is deferred (no condition_immunities field); the quote-escaped value
-    # must not crash and the key lands in skipped_keys (not resistances).
+def test_ci_change_key_projects_condition_immunity_with_quote_stripped():
+    # C08-S02: ci is now projected. The quote-escaped Foundry token "poison" is
+    # stripped AND normalized to the condition slug "poisoned" (the sole
+    # irregular ci token); it lands in condition_immunities, not resistances,
+    # and does not go to skipped_keys.
     out = interpret_passive_stats(
         changes=[PassiveEffectChange(key="system.traits.ci.value", mode=2, value='"poison"')],
         trait_grants=[],
         species_senses=None,
     )
-    assert "system.traits.ci.value" in out.skipped_keys
+    assert out.condition_immunities == ("poisoned",)
     assert out.resistances == ()
+    assert "system.traits.ci.value" not in out.skipped_keys
+
+
+def test_ci_change_key_non_poison_token_passes_through_unmapped():
+    # A ci token that already equals its condition slug is stored verbatim.
+    out = interpret_passive_stats(
+        changes=[PassiveEffectChange(key="system.traits.ci.value", mode=2, value="frightened")],
+        trait_grants=[],
+        species_senses=None,
+    )
+    assert out.condition_immunities == ("frightened",)
 
 
 def test_di_change_key_projects_immunity():

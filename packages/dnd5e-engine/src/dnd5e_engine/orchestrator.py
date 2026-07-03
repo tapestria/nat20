@@ -50,6 +50,7 @@ from dnd5e_engine.activities.monster_actions import (
     expand_action_to_activities,
     select_typed_monster_action,
 )
+from dnd5e_engine.activities.passive_stats import interpret_passive_stats
 from dnd5e_engine.activities.resolver import resolve_activity
 from dnd5e_engine.activities.scale import build_scale_values
 from dnd5e_engine.build_party import granted_feature_slugs
@@ -1892,6 +1893,16 @@ def _project_target_modifiers(
             if dt not in merged_imm:
                 merged_imm.append(dt)
         damage_proj["immunities"] = merged_imm
+    # C08-S03: fold the creature's static damage vulnerabilities into the same
+    # sidecar (the ONLY producer — vulnerability has no condition-derived
+    # source). ``apply.py`` reads ``sidecar["vulnerabilities"]`` and doubles a
+    # matching hit. Mirrors the resistances/immunities merge above exactly.
+    if c.damage_vulnerabilities:
+        merged_vuln = list(damage_proj.get("vulnerabilities", []) or [])
+        for dt in c.damage_vulnerabilities:
+            if dt not in merged_vuln:
+                merged_vuln.append(dt)
+        damage_proj["vulnerabilities"] = merged_vuln
     if any(damage_proj.values()):
         passive_damage_modifiers[c.entity_id] = dict(damage_proj)
     # Per-target ``saves`` ability-code → modifier projection. SRD
@@ -2508,6 +2519,47 @@ def _run_end_of_turn_saves(live: _LiveCombat, actor_id: str) -> None:
 # ── Public seam ─────────────────────────────────────────────────────────────
 
 
+def _pc_condition_immunities(pc: PartyMemberSpec) -> list[str]:
+    """Union the PC spec's ``condition_immunities`` with those projected from
+    its always-on granted-feature ``system.traits.ci.value`` changes (C08-S02).
+
+    A PC built via ``build_party_member`` already carries its projected
+    condition immunities on the spec; a host that constructs a raw
+    ``PartyMemberSpec`` (as the S02 druid does) still gets its always-on
+    subclass/class condition immunities projected here at combat-build time —
+    Nature's Ward on a level-10 Circle-of-Land druid. Idempotent: the union
+    dedupes, so re-projecting a ``build_party_member`` PC is a no-op. Scoped to
+    condition immunities only — a brand-new field, so this cannot change any
+    existing combat's damage/senses behavior; resistances/senses/movement stay
+    owned by ``build_party_member`` (re-projecting them here would double-count
+    the walk-speed bonus).
+    """
+    immunities = list(pc.condition_immunities)
+    if not (pc.class_slug or pc.subclass_slug or pc.species_slug):
+        return immunities
+    loader = get_lib_loader()
+    sources: list[Class | Subclass | Species | None] = []
+    if pc.class_slug:
+        sources.append(loader.get_class(pc.class_slug))
+    if pc.subclass_slug:
+        sources.append(loader.get_subclass(pc.subclass_slug))
+    if pc.species_slug:
+        sources.append(loader.get_species(pc.species_slug))
+    changes: list[Any] = []
+    for slug in granted_feature_slugs(sources, level=pc.character_level):
+        feature = loader.get_feature(slug)
+        if feature is None:
+            continue
+        for passive in feature.passive_effects:
+            if passive.transfer and not passive.disabled:
+                changes.extend(passive.changes)
+    derived = interpret_passive_stats(changes=changes, trait_grants=(), species_senses=None)
+    for ci in derived.condition_immunities:
+        if ci not in immunities:
+            immunities.append(ci)
+    return immunities
+
+
 def _build_pc_combatants(
     party: list[PartyMemberSpec],
     combatants: list[Combatant],
@@ -2542,6 +2594,8 @@ def _build_pc_combatants(
                 creature_type=pc.creature_type,
                 damage_resistances=list(pc.damage_resistances),
                 damage_immunities=list(pc.damage_immunities),
+                damage_vulnerabilities=list(pc.damage_vulnerabilities),
+                condition_immunities=_pc_condition_immunities(pc),
                 senses=pc.senses,
                 character_level=pc.character_level,
                 base_speed=pc.base_speed,
@@ -2577,6 +2631,16 @@ def _build_foe_combatants(
     place. Mutation-only helper — returns ``None``.
     """
     for foe in encounter:
+        # C08-S03: hydrate the monster's SRD-canonical damage vulnerabilities
+        # from its template when the spec leaves the field empty (the Skeleton's
+        # ``["bludgeoning"]``). Scoped to vulnerabilities — the field is new, so
+        # this cannot change any existing combat's behavior; resistances/
+        # immunities stay host-populated by the existing convention.
+        vulnerabilities = list(foe.damage_vulnerabilities)
+        if not vulnerabilities and foe.monster_template_slug:
+            monster = get_lib_loader().get_monster(foe.monster_template_slug)
+            if monster is not None:
+                vulnerabilities = list(monster.damage_vulnerabilities)
         combatants.append(
             Combatant(
                 entity_id=foe.entity_id,
@@ -2594,6 +2658,8 @@ def _build_foe_combatants(
                 creature_type=foe.creature_type,
                 damage_resistances=list(foe.damage_resistances),
                 damage_immunities=list(foe.damage_immunities),
+                damage_vulnerabilities=vulnerabilities,
+                condition_immunities=list(foe.condition_immunities),
                 base_speed=foe.base_speed,
                 movement_remaining=foe.base_speed,
             )

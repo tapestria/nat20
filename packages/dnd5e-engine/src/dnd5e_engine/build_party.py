@@ -123,6 +123,7 @@ def build_party_member(
         equipment=build_spec.equipment,
         damage_resistances=list(derived.resistances),
         damage_immunities=list(derived.immunities),
+        condition_immunities=list(derived.condition_immunities),
         senses=derived.senses,
     )
 

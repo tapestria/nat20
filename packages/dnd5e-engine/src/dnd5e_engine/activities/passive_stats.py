@@ -7,12 +7,14 @@ Maps the **allowlisted** Foundry dotted change-keys (``system.traits.dr.value``,
 with the PC's always-on feature changes + species data and projects the result
 onto the spec.
 
+Also projects ``condition_immunities`` (``system.traits.ci.value``, C08-S02)
+and movement (``system.attributes.movement.*``, C08-S04 — a flat
+``walk_speed_bonus`` plus a typed :class:`CombatantMovementModes` carrier).
+
 PURITY CONTRACT: zero I/O, zero logging, never raises. Allowlist misses,
-deferred keys (movement, ci, languages), and non-literal values are collected
-into ``skipped_keys`` so the calling seam can log them — the interpreter itself
-has no side effects. Movement (``system.attributes.movement.*``) and
-``condition_immunities`` (``ci``) are DEFERRED: recognized as deferred and
-routed to ``skipped_keys``, never projected.
+deferred keys (languages, ``ac.calc``, ability/proficiency grants), and
+non-literal values are collected into ``skipped_keys`` so the calling seam can
+log them — the interpreter itself has no side effects.
 """
 
 from __future__ import annotations
@@ -35,6 +37,15 @@ _SENSE_KEYS = {
 }
 _DR_KEY = "system.traits.dr.value"
 _DI_KEY = "system.traits.di.value"
+_CI_KEY = "system.traits.ci.value"
+
+# Foundry's condition-immunity (``ci``) trait uses the damage-type-style token
+# ``"poison"`` for the Poisoned condition; every other SRD condition's ``ci``
+# token already equals its condition slug. Normalize the sole irregular token
+# so the projected ``condition_immunities`` holds condition slugs the
+# ConditionApplied emit-gate compares directly (C08-S02). A single-entry alias,
+# deliberately not a general trait-vocabulary engine.
+_CI_TOKEN_TO_CONDITION = {"poison": "poisoned"}
 
 
 class CombatantSenses(BaseModel):
@@ -58,6 +69,10 @@ class DerivedPassiveStats(BaseModel):
 
     resistances: tuple[str, ...] = ()
     immunities: tuple[str, ...] = ()
+    # SRD §Condition Immunity — condition slugs the creature can't suffer
+    # (Nature's Ward → ``"poisoned"``). ci trait tokens are normalized to
+    # condition slugs before landing here (see ``_CI_TOKEN_TO_CONDITION``).
+    condition_immunities: tuple[str, ...] = ()
     senses: CombatantSenses = CombatantSenses()
     skipped_keys: tuple[str, ...] = ()
 
@@ -88,6 +103,7 @@ def interpret_passive_stats(
     """
     resistances: list[str] = []
     immunities: list[str] = []
+    condition_immunities: list[str] = []
     skipped: list[str] = []
     sense_values: dict[str, int] = {}
 
@@ -108,6 +124,10 @@ def interpret_passive_stats(
             resistances.append(change.value.strip().strip('"').strip())
         elif key == _DI_KEY:
             immunities.append(change.value.strip().strip('"').strip())
+        elif key == _CI_KEY:
+            token = change.value.strip().strip('"').strip()
+            if token:
+                condition_immunities.append(_CI_TOKEN_TO_CONDITION.get(token, token))
         elif key in _SENSE_KEYS:
             literal = _parse_literal_int(change.value)
             if literal is None:
@@ -138,6 +158,7 @@ def interpret_passive_stats(
     return DerivedPassiveStats(
         resistances=tuple(resistances),
         immunities=tuple(immunities),
+        condition_immunities=tuple(condition_immunities),
         senses=CombatantSenses(**sense_values),
         skipped_keys=tuple(skipped),
     )

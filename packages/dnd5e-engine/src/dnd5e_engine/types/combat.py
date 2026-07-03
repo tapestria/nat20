@@ -86,6 +86,23 @@ class Combatant(BaseModel):
     # lands.
     damage_resistances: list[str] = Field(default_factory=list)
     damage_immunities: list[str] = Field(default_factory=list)
+    # SRD §Damage Vulnerability — per-creature type list ("applying twice the
+    # normal damage"). Unlike resistances/immunities this has NO
+    # condition-derived source; it is hydrated from the monster template
+    # (skeleton → ``["bludgeoning"]``) or a PC spec and folded into the
+    # orchestrator's ``passive_damage_modifiers[...]["vulnerabilities"]`` sidecar
+    # by ``_project_target_modifiers`` (C08-S03). Empty by default.
+    damage_vulnerabilities: list[str] = Field(default_factory=list)
+    # SRD §Condition Immunity — condition slugs this creature can't suffer
+    # (Nature's Ward → ``"poisoned"``). Projected from PC always-on feature
+    # ``system.traits.ci.value`` changes via ``build_party_member`` →
+    # ``PartyMemberSpec.condition_immunities`` and copied here at start_combat;
+    # monster/NPC templates thread theirs through the spec. The condition-
+    # application path (``activities/effects.py::apply_activity_effects``)
+    # suppresses a ``ConditionApplied`` whose condition is in this list
+    # (C08-S02). Empty by default. NOTE: distinct from the dead, host-supplied
+    # ``dispatch.py::DispatchContext.condition_immunities`` legacy surface.
+    condition_immunities: list[str] = Field(default_factory=list)
     # SRD §Senses — special senses in feet (darkvision/blindsight/tremorsense/
     # truesight). Projected from PC species + always-on feature passive_effects
     # via ``build_party_member`` → ``PartyMemberSpec.senses`` and copied here at
