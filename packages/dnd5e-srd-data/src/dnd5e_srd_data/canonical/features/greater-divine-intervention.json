@@ -114,5 +114,6 @@
     "requires_user_decision": false
   },
   "slug": "greater-divine-intervention",
-  "source_slug": "cleric"
+  "source_slug": "cleric",
+  "uses": null
 }

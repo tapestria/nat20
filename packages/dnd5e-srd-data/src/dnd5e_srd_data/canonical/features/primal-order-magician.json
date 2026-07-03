@@ -52,5 +52,6 @@
     "requires_user_decision": false
   },
   "slug": "primal-order-magician",
-  "source_slug": "druid"
+  "source_slug": "druid",
+  "uses": null
 }

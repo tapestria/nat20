@@ -125,5 +125,16 @@
     "requires_user_decision": false
   },
   "slug": "wholeness-of-body",
-  "source_slug": "warrior-of-the-open-hand"
+  "source_slug": "warrior-of-the-open-hand",
+  "uses": {
+    "max": "max(1,@abilities.wis.mod)",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "lr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  }
 }

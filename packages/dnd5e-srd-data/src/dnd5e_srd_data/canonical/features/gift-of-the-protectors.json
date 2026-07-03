@@ -302,5 +302,10 @@
     "requires_user_decision": false
   },
   "slug": "gift-of-the-protectors",
-  "source_slug": "warlock"
+  "source_slug": "warlock",
+  "uses": {
+    "max": "(max(1,@abilities.cha.mod))",
+    "recovery": [],
+    "spent": 0
+  }
 }

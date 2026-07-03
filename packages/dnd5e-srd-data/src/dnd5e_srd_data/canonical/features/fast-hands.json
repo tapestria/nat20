@@ -274,5 +274,6 @@
     "requires_user_decision": false
   },
   "slug": "fast-hands",
-  "source_slug": "thief"
+  "source_slug": "thief",
+  "uses": null
 }

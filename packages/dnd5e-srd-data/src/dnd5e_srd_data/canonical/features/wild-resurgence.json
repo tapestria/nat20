@@ -232,5 +232,16 @@
     "requires_user_decision": false
   },
   "slug": "wild-resurgence",
-  "source_slug": "druid"
+  "source_slug": "druid",
+  "uses": {
+    "max": "1",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "lr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  }
 }

@@ -123,5 +123,6 @@
     "requires_user_decision": false
   },
   "slug": "foe-slayer",
-  "source_slug": "ranger"
+  "source_slug": "ranger",
+  "uses": null
 }

@@ -104,5 +104,6 @@
     "requires_user_decision": false
   },
   "slug": "whispers-of-the-grave",
-  "source_slug": "warlock"
+  "source_slug": "warlock",
+  "uses": null
 }

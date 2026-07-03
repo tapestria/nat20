@@ -41,6 +41,7 @@ from dnd5e_srd_data import (
     FeatCategory,
     FeatPrerequisite,
     Feature,
+    FeatureUses,
     GrantRef,
     HealActivity,
     HitDie,
@@ -57,6 +58,7 @@ from dnd5e_srd_data import (
     Provenance,
     Range,
     RangeUnits,
+    RecoveryRule,
     ReviewState,
     SaveActivity,
     SavingThrowProficiencies,
@@ -1769,6 +1771,49 @@ def _advancement(system: dict[str, Any]) -> list[AdvancementEntry]:
     return out
 
 
+_RECOVERY_PERIOD_VALUES = {"sr", "lr", "day", "recharge", "initiative"}
+_RECOVERY_TYPE_VALUES = {"recoverAll", "formula"}
+
+
+def _feature_uses(system: dict[str, Any]) -> FeatureUses | None:
+    """Parse Foundry's top-level ``system.uses`` into a typed :class:`FeatureUses`.
+
+    Returns ``None`` when the feature has no meaningful cap — i.e. no ``max``
+    expression AND no ``recovery`` entries — so features without a limited-use pool
+    serialize ``"uses": null`` rather than an empty, engine-inert block. Recovery
+    entries whose ``period`` / ``type`` fall outside the known vocab are skipped
+    (mirrors ``_advancement``'s unknown-variant tolerance) so a future Foundry bump
+    never crashes canonical regen.
+    """
+    raw = system.get("uses")
+    if not isinstance(raw, dict):
+        return None
+    max_expr = str(raw.get("max") or "")
+    recovery: list[RecoveryRule] = []
+    for entry in raw.get("recovery") or []:
+        if not isinstance(entry, dict):
+            continue
+        period = str(entry.get("period") or "")
+        rtype = str(entry.get("type") or "")
+        if period not in _RECOVERY_PERIOD_VALUES or rtype not in _RECOVERY_TYPE_VALUES:
+            continue
+        recovery.append(
+            RecoveryRule(
+                period=period,  # type: ignore[arg-type]
+                type=rtype,  # type: ignore[arg-type]
+                formula=str(entry.get("formula") or ""),
+            )
+        )
+    if not max_expr and not recovery:
+        return None
+    spent_raw = raw.get("spent")
+    try:
+        spent = int(spent_raw) if spent_raw is not None else 0
+    except (TypeError, ValueError):
+        spent = 0
+    return FeatureUses(max=max_expr, spent=max(0, spent), recovery=recovery)
+
+
 # --- Species / Class derived fields from advancement ---
 
 
@@ -2324,6 +2369,7 @@ def translate_feature_yaml(
         activities=_translate_activities(system),
         passive_effects=_passive_effects(doc),
         advancement=_advancement(system),
+        uses=_feature_uses(system),
         provenance=_provenance(yaml_path, ingest_date, ingest_version),
         review=ReviewState(),
     )

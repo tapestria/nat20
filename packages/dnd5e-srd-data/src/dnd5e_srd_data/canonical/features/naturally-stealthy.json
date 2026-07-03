@@ -22,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "naturally-stealthy",
-  "source_slug": "halfling"
+  "source_slug": "halfling",
+  "uses": null
 }

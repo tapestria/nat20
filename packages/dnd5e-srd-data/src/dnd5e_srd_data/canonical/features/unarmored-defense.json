@@ -40,5 +40,6 @@
     "requires_user_decision": false
   },
   "slug": "unarmored-defense",
-  "source_slug": "monk"
+  "source_slug": "monk",
+  "uses": null
 }

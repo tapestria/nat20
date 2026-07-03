@@ -114,5 +114,16 @@
     "requires_user_decision": false
   },
   "slug": "action-surge",
-  "source_slug": "fighter"
+  "source_slug": "fighter",
+  "uses": {
+    "max": "@scale.fighter.action-surge",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "sr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  }
 }

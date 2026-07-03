@@ -146,5 +146,6 @@
     "requires_user_decision": false
   },
   "slug": "eldritch-spear",
-  "source_slug": "warlock"
+  "source_slug": "warlock",
+  "uses": null
 }

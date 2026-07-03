@@ -104,5 +104,16 @@
     "requires_user_decision": false
   },
   "slug": "indomitable",
-  "source_slug": "fighter"
+  "source_slug": "fighter",
+  "uses": {
+    "max": "@scale.fighter.indomitable",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "lr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  }
 }

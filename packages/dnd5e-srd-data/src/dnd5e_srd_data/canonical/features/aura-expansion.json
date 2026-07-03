@@ -22,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "aura-expansion",
-  "source_slug": "paladin"
+  "source_slug": "paladin",
+  "uses": null
 }

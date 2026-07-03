@@ -46,5 +46,6 @@
     "requires_user_decision": false
   },
   "slug": "mindless-rage",
-  "source_slug": "path-of-the-berserker"
+  "source_slug": "path-of-the-berserker",
+  "uses": null
 }

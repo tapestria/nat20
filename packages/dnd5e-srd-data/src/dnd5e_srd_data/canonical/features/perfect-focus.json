@@ -22,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "perfect-focus",
-  "source_slug": "monk"
+  "source_slug": "monk",
+  "uses": null
 }

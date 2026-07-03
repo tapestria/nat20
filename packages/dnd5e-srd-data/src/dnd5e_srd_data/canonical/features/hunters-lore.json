@@ -22,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "hunters-lore",
-  "source_slug": "hunter"
+  "source_slug": "hunter",
+  "uses": null
 }

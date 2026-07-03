@@ -275,5 +275,6 @@
     "requires_user_decision": false
   },
   "slug": "wild-companion",
-  "source_slug": "druid"
+  "source_slug": "druid",
+  "uses": null
 }

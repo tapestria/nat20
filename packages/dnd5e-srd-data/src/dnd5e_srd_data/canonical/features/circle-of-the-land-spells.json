@@ -22,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "circle-of-the-land-spells",
-  "source_slug": "circle-of-land"
+  "source_slug": "circle-of-land",
+  "uses": null
 }

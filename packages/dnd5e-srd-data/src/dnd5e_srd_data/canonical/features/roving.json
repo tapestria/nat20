@@ -52,5 +52,6 @@
     "requires_user_decision": false
   },
   "slug": "roving",
-  "source_slug": "ranger"
+  "source_slug": "ranger",
+  "uses": null
 }

@@ -358,5 +358,6 @@
     "requires_user_decision": false
   },
   "slug": "devious-strikes",
-  "source_slug": "rogue"
+  "source_slug": "rogue",
+  "uses": null
 }

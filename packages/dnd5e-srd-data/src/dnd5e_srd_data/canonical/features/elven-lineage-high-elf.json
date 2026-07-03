@@ -22,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "elven-lineage-high-elf",
-  "source_slug": "elf"
+  "source_slug": "elf",
+  "uses": null
 }

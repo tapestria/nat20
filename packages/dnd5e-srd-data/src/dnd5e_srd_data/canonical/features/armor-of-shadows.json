@@ -134,5 +134,6 @@
     "requires_user_decision": false
   },
   "slug": "armor-of-shadows",
-  "source_slug": "warlock"
+  "source_slug": "warlock",
+  "uses": null
 }

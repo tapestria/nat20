@@ -263,5 +263,16 @@
     "requires_user_decision": false
   },
   "slug": "breath-weapon",
-  "source_slug": "dragonborn"
+  "source_slug": "dragonborn",
+  "uses": {
+    "max": "@prof",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "lr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  }
 }

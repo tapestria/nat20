@@ -147,5 +147,16 @@
     "requires_user_decision": false
   },
   "slug": "favored-enemy",
-  "source_slug": "ranger"
+  "source_slug": "ranger",
+  "uses": {
+    "max": "@scale.ranger.favored-enemy",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "lr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  }
 }

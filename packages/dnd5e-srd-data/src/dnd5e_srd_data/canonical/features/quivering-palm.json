@@ -241,5 +241,6 @@
     "requires_user_decision": false
   },
   "slug": "quivering-palm",
-  "source_slug": "warrior-of-the-open-hand"
+  "source_slug": "warrior-of-the-open-hand",
+  "uses": null
 }

@@ -129,5 +129,16 @@
     "requires_user_decision": false
   },
   "slug": "persistent-rage",
-  "source_slug": "barbarian"
+  "source_slug": "barbarian",
+  "uses": {
+    "max": "1",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "lr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  }
 }

@@ -22,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "improved-brutal-strike-2",
-  "source_slug": "barbarian"
+  "source_slug": "barbarian",
+  "uses": null
 }

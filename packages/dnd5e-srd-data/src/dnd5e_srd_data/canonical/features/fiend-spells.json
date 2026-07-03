@@ -22,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "fiend-spells",
-  "source_slug": "fiend-patron"
+  "source_slug": "fiend-patron",
+  "uses": null
 }

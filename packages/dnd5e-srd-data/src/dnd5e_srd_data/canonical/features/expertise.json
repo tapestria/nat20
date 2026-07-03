@@ -22,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "expertise",
-  "source_slug": "rogue"
+  "source_slug": "rogue",
+  "uses": null
 }

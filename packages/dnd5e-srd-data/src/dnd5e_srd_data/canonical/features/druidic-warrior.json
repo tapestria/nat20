@@ -64,5 +64,6 @@
     "requires_user_decision": false
   },
   "slug": "druidic-warrior",
-  "source_slug": "ranger"
+  "source_slug": "ranger",
+  "uses": null
 }

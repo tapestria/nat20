@@ -114,5 +114,16 @@
     "requires_user_decision": false
   },
   "slug": "divine-intervention",
-  "source_slug": "cleric"
+  "source_slug": "cleric",
+  "uses": {
+    "max": "1",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "lr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  }
 }

@@ -148,5 +148,6 @@
     "requires_user_decision": false
   },
   "slug": "abjure-foes",
-  "source_slug": "paladin"
+  "source_slug": "paladin",
+  "uses": null
 }

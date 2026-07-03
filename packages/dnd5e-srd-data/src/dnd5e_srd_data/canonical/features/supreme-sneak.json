@@ -22,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "supreme-sneak",
-  "source_slug": "thief"
+  "source_slug": "thief",
+  "uses": null
 }

@@ -167,5 +167,6 @@
     "requires_user_decision": false
   },
   "slug": "sear-undead",
-  "source_slug": "cleric"
+  "source_slug": "cleric",
+  "uses": null
 }

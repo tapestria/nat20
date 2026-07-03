@@ -114,5 +114,16 @@
     "requires_user_decision": false
   },
   "slug": "stroke-of-luck",
-  "source_slug": "rogue"
+  "source_slug": "rogue",
+  "uses": {
+    "max": "1",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "sr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  }
 }

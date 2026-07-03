@@ -22,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "fiendish-legacy-abyssal",
-  "source_slug": "tiefling"
+  "source_slug": "tiefling",
+  "uses": null
 }

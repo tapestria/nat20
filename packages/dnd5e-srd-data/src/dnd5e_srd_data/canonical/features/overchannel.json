@@ -241,5 +241,16 @@
     "requires_user_decision": false
   },
   "slug": "overchannel",
-  "source_slug": "evoker"
+  "source_slug": "evoker",
+  "uses": {
+    "max": "20",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "lr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  }
 }

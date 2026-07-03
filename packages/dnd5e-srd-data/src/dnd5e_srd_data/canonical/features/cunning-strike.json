@@ -439,5 +439,6 @@
     "requires_user_decision": false
   },
   "slug": "cunning-strike",
-  "source_slug": "rogue"
+  "source_slug": "rogue",
+  "uses": null
 }

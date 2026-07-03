@@ -123,5 +123,6 @@
     "requires_user_decision": false
   },
   "slug": "eldritch-master",
-  "source_slug": "warlock"
+  "source_slug": "warlock",
+  "uses": null
 }

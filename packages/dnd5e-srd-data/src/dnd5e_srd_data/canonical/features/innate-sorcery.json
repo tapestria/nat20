@@ -144,5 +144,16 @@
     "requires_user_decision": false
   },
   "slug": "innate-sorcery",
-  "source_slug": "sorcerer"
+  "source_slug": "sorcerer",
+  "uses": {
+    "max": "2",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "lr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  }
 }

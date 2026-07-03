@@ -22,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "dwarven-resilience",
-  "source_slug": "dwarf"
+  "source_slug": "dwarf",
+  "uses": null
 }

@@ -52,5 +52,6 @@
     "requires_user_decision": false
   },
   "slug": "gnomish-cunning",
-  "source_slug": "gnome"
+  "source_slug": "gnome",
+  "uses": null
 }

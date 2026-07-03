@@ -114,5 +114,16 @@
     "requires_user_decision": false
   },
   "slug": "arcane-recovery",
-  "source_slug": "wizard"
+  "source_slug": "wizard",
+  "uses": {
+    "max": "1",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "lr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  }
 }

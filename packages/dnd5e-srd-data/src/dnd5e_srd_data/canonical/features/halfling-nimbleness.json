@@ -40,5 +40,6 @@
     "requires_user_decision": false
   },
   "slug": "halfling-nimbleness",
-  "source_slug": "halfling"
+  "source_slug": "halfling",
+  "uses": null
 }

@@ -40,5 +40,6 @@
     "requires_user_decision": false
   },
   "slug": "reliable-talent",
-  "source_slug": "rogue"
+  "source_slug": "rogue",
+  "uses": null
 }

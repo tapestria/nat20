@@ -126,5 +126,6 @@
     "requires_user_decision": false
   },
   "slug": "elemental-fury-primal-strike",
-  "source_slug": "druid"
+  "source_slug": "druid",
+  "uses": null
 }

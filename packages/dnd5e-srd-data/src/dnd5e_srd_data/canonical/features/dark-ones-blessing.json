@@ -115,5 +115,6 @@
     "requires_user_decision": false
   },
   "slug": "dark-ones-blessing",
-  "source_slug": "fiend-patron"
+  "source_slug": "fiend-patron",
+  "uses": null
 }

@@ -223,5 +223,6 @@
     "requires_user_decision": false
   },
   "slug": "blessed-strikes-divine-strike",
-  "source_slug": "cleric"
+  "source_slug": "cleric",
+  "uses": null
 }

@@ -137,5 +137,16 @@
     "requires_user_decision": false
   },
   "slug": "bardic-inspiration",
-  "source_slug": "bard"
+  "source_slug": "bard",
+  "uses": {
+    "max": "max(1, @abilities.cha.mod)",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "lr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  }
 }

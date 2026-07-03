@@ -434,5 +434,16 @@
     "requires_user_decision": false
   },
   "slug": "monks-focus",
-  "source_slug": "monk"
+  "source_slug": "monk",
+  "uses": {
+    "max": "@scale.monk.focus",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "sr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  }
 }

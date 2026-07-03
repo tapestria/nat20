@@ -216,5 +216,16 @@
     "requires_user_decision": false
   },
   "slug": "lay-on-hands",
-  "source_slug": "paladin"
+  "source_slug": "paladin",
+  "uses": {
+    "max": "5 * @classes.paladin.levels",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "lr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  }
 }

@@ -22,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "heroic-warrior",
-  "source_slug": "champion"
+  "source_slug": "champion",
+  "uses": null
 }

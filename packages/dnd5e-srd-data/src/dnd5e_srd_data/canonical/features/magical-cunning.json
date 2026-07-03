@@ -123,5 +123,16 @@
     "requires_user_decision": false
   },
   "slug": "magical-cunning",
-  "source_slug": "warlock"
+  "source_slug": "warlock",
+  "uses": {
+    "max": "1",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "lr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  }
 }

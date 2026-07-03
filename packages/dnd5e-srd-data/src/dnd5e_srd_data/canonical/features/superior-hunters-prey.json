@@ -123,5 +123,6 @@
     "requires_user_decision": false
   },
   "slug": "superior-hunters-prey",
-  "source_slug": "hunter"
+  "source_slug": "hunter",
+  "uses": null
 }

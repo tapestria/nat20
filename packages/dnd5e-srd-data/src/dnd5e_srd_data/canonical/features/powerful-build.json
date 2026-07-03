@@ -40,5 +40,6 @@
     "requires_user_decision": false
   },
   "slug": "powerful-build",
-  "source_slug": "goliath"
+  "source_slug": "goliath",
+  "uses": null
 }

@@ -187,5 +187,16 @@
     "requires_user_decision": false
   },
   "slug": "frosts-chill",
-  "source_slug": "goliath"
+  "source_slug": "goliath",
+  "uses": {
+    "max": "@prof",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "lr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  }
 }

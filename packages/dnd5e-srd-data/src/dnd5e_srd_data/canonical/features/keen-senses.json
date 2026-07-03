@@ -22,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "keen-senses",
-  "source_slug": "elf"
+  "source_slug": "elf",
+  "uses": null
 }

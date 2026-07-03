@@ -223,5 +223,16 @@
     "requires_user_decision": false
   },
   "slug": "font-of-magic",
-  "source_slug": "sorcerer"
+  "source_slug": "sorcerer",
+  "uses": {
+    "max": "@scale.sorcerer.points",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "lr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  }
 }

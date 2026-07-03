@@ -325,5 +325,6 @@
     "requires_user_decision": false
   },
   "slug": "open-hand-technique",
-  "source_slug": "warrior-of-the-open-hand"
+  "source_slug": "warrior-of-the-open-hand",
+  "uses": null
 }

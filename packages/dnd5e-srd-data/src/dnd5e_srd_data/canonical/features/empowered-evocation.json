@@ -135,5 +135,6 @@
     "requires_user_decision": false
   },
   "slug": "empowered-evocation",
-  "source_slug": "evoker"
+  "source_slug": "evoker",
+  "uses": null
 }

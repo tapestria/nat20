@@ -165,5 +165,6 @@
     "requires_user_decision": false
   },
   "slug": "brutal-strike",
-  "source_slug": "barbarian"
+  "source_slug": "barbarian",
+  "uses": null
 }

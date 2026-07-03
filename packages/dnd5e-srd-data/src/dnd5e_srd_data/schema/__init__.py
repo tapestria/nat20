@@ -83,7 +83,12 @@ from dnd5e_srd_data.schema.common import (
     VisibilityLevelBlock,
 )
 from dnd5e_srd_data.schema.feat import Feat, FeatCategory, FeatPrerequisite
-from dnd5e_srd_data.schema.feature import Feature, FeatureType
+from dnd5e_srd_data.schema.feature import (
+    Feature,
+    FeatureType,
+    FeatureUses,
+    RecoveryRule,
+)
 from dnd5e_srd_data.schema.item import (
     Armor,
     ArmorCategory,
@@ -172,6 +177,7 @@ __all__ = [
     "Feature",
     "FeatureChoice",
     "FeatureType",
+    "FeatureUses",
     "GrantRef",
     "GrantRefType",
     "HealActivity",
@@ -190,6 +196,7 @@ __all__ = [
     "Range",
     "RangeBlock",
     "RangeUnits",
+    "RecoveryRule",
     "ReviewState",
     "RollBlock",
     "SaveActivity",

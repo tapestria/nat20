@@ -227,5 +227,6 @@
     "requires_user_decision": false
   },
   "slug": "fiendish-resilience",
-  "source_slug": "fiend-patron"
+  "source_slug": "fiend-patron",
+  "uses": null
 }

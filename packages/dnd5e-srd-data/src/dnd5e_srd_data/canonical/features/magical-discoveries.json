@@ -22,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "magical-discoveries",
-  "source_slug": "lore"
+  "source_slug": "lore",
+  "uses": null
 }

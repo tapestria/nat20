@@ -22,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "giant-ancestry",
-  "source_slug": "goliath"
+  "source_slug": "goliath",
+  "uses": null
 }

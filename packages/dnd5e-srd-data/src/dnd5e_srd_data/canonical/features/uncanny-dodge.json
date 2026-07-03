@@ -104,5 +104,6 @@
     "requires_user_decision": false
   },
   "slug": "uncanny-dodge",
-  "source_slug": "rogue"
+  "source_slug": "rogue",
+  "uses": null
 }

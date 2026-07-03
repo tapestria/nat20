@@ -123,5 +123,6 @@
     "requires_user_decision": false
   },
   "slug": "sorcery-incarnate",
-  "source_slug": "sorcerer"
+  "source_slug": "sorcerer",
+  "uses": null
 }

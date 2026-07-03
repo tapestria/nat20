@@ -104,5 +104,6 @@
     "requires_user_decision": false
   },
   "slug": "countercharm",
-  "source_slug": "bard"
+  "source_slug": "bard",
+  "uses": null
 }

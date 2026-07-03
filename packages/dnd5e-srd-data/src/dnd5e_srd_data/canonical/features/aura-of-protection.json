@@ -122,5 +122,6 @@
     "requires_user_decision": false
   },
   "slug": "aura-of-protection",
-  "source_slug": "paladin"
+  "source_slug": "paladin",
+  "uses": null
 }

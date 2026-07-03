@@ -222,5 +222,6 @@
     "requires_user_decision": false
   },
   "slug": "tireless",
-  "source_slug": "ranger"
+  "source_slug": "ranger",
+  "uses": null
 }

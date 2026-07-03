@@ -246,5 +246,16 @@
     "requires_user_decision": false
   },
   "slug": "holy-nimbus",
-  "source_slug": "oath-of-devotion"
+  "source_slug": "oath-of-devotion",
+  "uses": {
+    "max": "1",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "lr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  }
 }

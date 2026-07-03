@@ -52,5 +52,6 @@
     "requires_user_decision": false
   },
   "slug": "tactical-master",
-  "source_slug": "fighter"
+  "source_slug": "fighter",
+  "uses": null
 }

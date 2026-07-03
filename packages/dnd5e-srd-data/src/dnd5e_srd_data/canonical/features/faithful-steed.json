@@ -22,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "faithful-steed",
-  "source_slug": "paladin"
+  "source_slug": "paladin",
+  "uses": null
 }

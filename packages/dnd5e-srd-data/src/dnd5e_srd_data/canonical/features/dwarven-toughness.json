@@ -40,5 +40,6 @@
     "requires_user_decision": false
   },
   "slug": "dwarven-toughness",
-  "source_slug": "dwarf"
+  "source_slug": "dwarf",
+  "uses": null
 }

@@ -169,5 +169,6 @@
     "requires_user_decision": false
   },
   "slug": "sacred-weapon",
-  "source_slug": "oath-of-devotion"
+  "source_slug": "oath-of-devotion",
+  "uses": null
 }

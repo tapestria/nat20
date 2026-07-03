@@ -22,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "draconic-spells",
-  "source_slug": "draconic-sorcery"
+  "source_slug": "draconic-sorcery",
+  "uses": null
 }

@@ -135,5 +135,6 @@
     "requires_user_decision": false
   },
   "slug": "blessed-strikes-potent-spellcasting",
-  "source_slug": "cleric"
+  "source_slug": "cleric",
+  "uses": null
 }

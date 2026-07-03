@@ -108,5 +108,6 @@
     "requires_user_decision": false
   },
   "slug": "natures-ward",
-  "source_slug": "circle-of-land"
+  "source_slug": "circle-of-land",
+  "uses": null
 }

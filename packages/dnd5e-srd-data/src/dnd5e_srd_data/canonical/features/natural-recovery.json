@@ -217,5 +217,16 @@
     "requires_user_decision": false
   },
   "slug": "natural-recovery",
-  "source_slug": "circle-of-land"
+  "source_slug": "circle-of-land",
+  "uses": {
+    "max": "",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "lr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  }
 }

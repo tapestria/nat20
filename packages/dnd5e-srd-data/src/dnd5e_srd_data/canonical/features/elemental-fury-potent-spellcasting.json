@@ -22,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "elemental-fury-potent-spellcasting",
-  "source_slug": "druid"
+  "source_slug": "druid",
+  "uses": null
 }

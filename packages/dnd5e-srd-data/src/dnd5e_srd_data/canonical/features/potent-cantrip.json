@@ -22,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "potent-cantrip",
-  "source_slug": "evoker"
+  "source_slug": "evoker",
+  "uses": null
 }

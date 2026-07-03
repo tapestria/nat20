@@ -125,5 +125,16 @@
     "requires_user_decision": false
   },
   "slug": "adrenaline-rush",
-  "source_slug": "orc"
+  "source_slug": "orc",
+  "uses": {
+    "max": "@prof",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "sr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  }
 }

@@ -114,5 +114,16 @@
     "requires_user_decision": false
   },
   "slug": "dark-ones-own-luck",
-  "source_slug": "fiend-patron"
+  "source_slug": "fiend-patron",
+  "uses": {
+    "max": "(max(1,@abilities.cha.mod))",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "lr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  }
 }

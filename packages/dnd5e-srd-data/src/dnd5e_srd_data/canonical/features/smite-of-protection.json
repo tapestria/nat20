@@ -35,5 +35,6 @@
     "requires_user_decision": false
   },
   "slug": "smite-of-protection",
-  "source_slug": "oath-of-devotion"
+  "source_slug": "oath-of-devotion",
+  "uses": null
 }

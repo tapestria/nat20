@@ -287,5 +287,6 @@
     "requires_user_decision": false
   },
   "slug": "pact-of-the-blade",
-  "source_slug": "warlock"
+  "source_slug": "warlock",
+  "uses": null
 }

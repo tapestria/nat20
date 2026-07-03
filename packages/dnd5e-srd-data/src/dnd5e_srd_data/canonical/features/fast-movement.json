@@ -40,5 +40,6 @@
     "requires_user_decision": false
   },
   "slug": "fast-movement",
-  "source_slug": "barbarian"
+  "source_slug": "barbarian",
+  "uses": null
 }

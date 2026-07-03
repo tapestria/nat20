@@ -167,5 +167,6 @@
     "requires_user_decision": false
   },
   "slug": "stunning-strike",
-  "source_slug": "monk"
+  "source_slug": "monk",
+  "uses": null
 }

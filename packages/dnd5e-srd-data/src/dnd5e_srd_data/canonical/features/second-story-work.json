@@ -40,5 +40,6 @@
     "requires_user_decision": false
   },
   "slug": "second-story-work",
-  "source_slug": "thief"
+  "source_slug": "thief",
+  "uses": null
 }

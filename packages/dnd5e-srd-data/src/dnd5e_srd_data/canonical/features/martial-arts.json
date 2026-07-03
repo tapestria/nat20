@@ -271,5 +271,6 @@
     "requires_user_decision": false
   },
   "slug": "martial-arts",
-  "source_slug": "monk"
+  "source_slug": "monk",
+  "uses": null
 }

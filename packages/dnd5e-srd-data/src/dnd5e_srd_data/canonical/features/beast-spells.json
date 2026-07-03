@@ -22,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "beast-spells",
-  "source_slug": "druid"
+  "source_slug": "druid",
+  "uses": null
 }

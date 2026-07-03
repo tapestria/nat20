@@ -46,5 +46,6 @@
     "requires_user_decision": false
   },
   "slug": "primal-order-warden",
-  "source_slug": "druid"
+  "source_slug": "druid",
+  "uses": null
 }

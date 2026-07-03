@@ -22,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "fleet-step",
-  "source_slug": "warrior-of-the-open-hand"
+  "source_slug": "warrior-of-the-open-hand",
+  "uses": null
 }

@@ -289,5 +289,6 @@
     "requires_user_decision": false
   },
   "slug": "cunning-action",
-  "source_slug": "rogue"
+  "source_slug": "rogue",
+  "uses": null
 }

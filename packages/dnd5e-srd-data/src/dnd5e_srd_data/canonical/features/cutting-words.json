@@ -114,5 +114,6 @@
     "requires_user_decision": false
   },
   "slug": "cutting-words",
-  "source_slug": "lore"
+  "source_slug": "lore",
+  "uses": null
 }

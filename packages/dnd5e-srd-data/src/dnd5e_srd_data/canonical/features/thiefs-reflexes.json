@@ -22,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "thiefs-reflexes",
-  "source_slug": "thief"
+  "source_slug": "thief",
+  "uses": null
 }

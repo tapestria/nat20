@@ -470,5 +470,6 @@
     "requires_user_decision": false
   },
   "slug": "superior-hunters-defense",
-  "source_slug": "hunter"
+  "source_slug": "hunter",
+  "uses": null
 }

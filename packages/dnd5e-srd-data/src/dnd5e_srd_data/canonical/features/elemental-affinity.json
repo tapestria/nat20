@@ -523,5 +523,6 @@
     "requires_user_decision": false
   },
   "slug": "elemental-affinity",
-  "source_slug": "draconic-sorcery"
+  "source_slug": "draconic-sorcery",
+  "uses": null
 }

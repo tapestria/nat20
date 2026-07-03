@@ -275,5 +275,6 @@
     "requires_user_decision": false
   },
   "slug": "mystic-arcanum",
-  "source_slug": "warlock"
+  "source_slug": "warlock",
+  "uses": null
 }

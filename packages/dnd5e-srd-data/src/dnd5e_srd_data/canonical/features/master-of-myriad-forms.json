@@ -676,5 +676,6 @@
     "requires_user_decision": false
   },
   "slug": "master-of-myriad-forms",
-  "source_slug": "warlock"
+  "source_slug": "warlock",
+  "uses": null
 }

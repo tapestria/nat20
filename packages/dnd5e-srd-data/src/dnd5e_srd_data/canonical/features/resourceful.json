@@ -22,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "resourceful",
-  "source_slug": "human"
+  "source_slug": "human",
+  "uses": null
 }

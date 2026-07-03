@@ -22,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "spellcasting",
-  "source_slug": "wizard"
+  "source_slug": "wizard",
+  "uses": null
 }

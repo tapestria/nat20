@@ -40,5 +40,6 @@
     "requires_user_decision": false
   },
   "slug": "witch-sight",
-  "source_slug": "warlock"
+  "source_slug": "warlock",
+  "uses": null
 }

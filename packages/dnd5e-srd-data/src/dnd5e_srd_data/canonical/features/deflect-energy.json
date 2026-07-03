@@ -243,5 +243,6 @@
     "requires_user_decision": false
   },
   "slug": "deflect-energy",
-  "source_slug": "monk"
+  "source_slug": "monk",
+  "uses": null
 }

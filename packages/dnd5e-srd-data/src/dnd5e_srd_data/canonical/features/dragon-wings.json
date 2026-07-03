@@ -244,5 +244,16 @@
     "requires_user_decision": false
   },
   "slug": "dragon-wings",
-  "source_slug": "draconic-sorcery"
+  "source_slug": "draconic-sorcery",
+  "uses": {
+    "max": "1",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "lr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  }
 }

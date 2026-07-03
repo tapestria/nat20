@@ -114,5 +114,6 @@
     "requires_user_decision": false
   },
   "slug": "distant-spell",
-  "source_slug": "sorcerer"
+  "source_slug": "sorcerer",
+  "uses": null
 }

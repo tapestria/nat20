@@ -40,5 +40,6 @@
     "requires_user_decision": false
   },
   "slug": "danger-sense",
-  "source_slug": "barbarian"
+  "source_slug": "barbarian",
+  "uses": null
 }

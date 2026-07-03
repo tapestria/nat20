@@ -52,5 +52,6 @@
     "requires_user_decision": false
   },
   "slug": "divine-order-thaumaturge",
-  "source_slug": "cleric"
+  "source_slug": "cleric",
+  "uses": null
 }

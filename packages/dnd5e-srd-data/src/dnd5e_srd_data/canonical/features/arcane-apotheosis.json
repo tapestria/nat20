@@ -22,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "arcane-apotheosis",
-  "source_slug": "sorcerer"
+  "source_slug": "sorcerer",
+  "uses": null
 }

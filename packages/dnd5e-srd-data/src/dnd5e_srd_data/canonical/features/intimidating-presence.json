@@ -246,5 +246,16 @@
     "requires_user_decision": false
   },
   "slug": "intimidating-presence",
-  "source_slug": "path-of-the-berserker"
+  "source_slug": "path-of-the-berserker",
+  "uses": {
+    "max": "1",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "lr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  }
 }

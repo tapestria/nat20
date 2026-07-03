@@ -22,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "blessed-strikes",
-  "source_slug": "cleric"
+  "source_slug": "cleric",
+  "uses": null
 }

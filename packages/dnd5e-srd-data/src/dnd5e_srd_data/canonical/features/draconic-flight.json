@@ -137,5 +137,16 @@
     "requires_user_decision": false
   },
   "slug": "draconic-flight",
-  "source_slug": "dragonborn"
+  "source_slug": "dragonborn",
+  "uses": {
+    "max": "1",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "lr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  }
 }

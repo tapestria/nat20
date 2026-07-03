@@ -340,5 +340,6 @@
     "requires_user_decision": false
   },
   "slug": "signature-spells",
-  "source_slug": "wizard"
+  "source_slug": "wizard",
+  "uses": null
 }

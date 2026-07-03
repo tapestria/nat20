@@ -104,5 +104,6 @@
     "requires_user_decision": false
   },
   "slug": "retaliation",
-  "source_slug": "path-of-the-berserker"
+  "source_slug": "path-of-the-berserker",
+  "uses": null
 }

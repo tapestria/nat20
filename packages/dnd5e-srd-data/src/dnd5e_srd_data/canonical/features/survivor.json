@@ -115,5 +115,6 @@
     "requires_user_decision": false
   },
   "slug": "survivor",
-  "source_slug": "champion"
+  "source_slug": "champion",
+  "uses": null
 }

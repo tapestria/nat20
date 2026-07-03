@@ -64,5 +64,6 @@
     "requires_user_decision": false
   },
   "slug": "blessed-warrior",
-  "source_slug": "paladin"
+  "source_slug": "paladin",
+  "uses": null
 }

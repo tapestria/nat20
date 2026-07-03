@@ -213,5 +213,16 @@
     "requires_user_decision": false
   },
   "slug": "relentless-rage",
-  "source_slug": "barbarian"
+  "source_slug": "barbarian",
+  "uses": {
+    "max": "20",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "sr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  }
 }

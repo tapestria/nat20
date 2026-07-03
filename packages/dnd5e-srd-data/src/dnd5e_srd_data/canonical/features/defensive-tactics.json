@@ -127,5 +127,6 @@
     "requires_user_decision": false
   },
   "slug": "defensive-tactics",
-  "source_slug": "hunter"
+  "source_slug": "hunter",
+  "uses": null
 }

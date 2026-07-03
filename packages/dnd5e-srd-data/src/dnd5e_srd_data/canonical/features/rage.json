@@ -175,5 +175,21 @@
     "requires_user_decision": false
   },
   "slug": "rage",
-  "source_slug": "barbarian"
+  "source_slug": "barbarian",
+  "uses": {
+    "max": "@scale.barbarian.rages",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "lr",
+        "type": "recoverAll"
+      },
+      {
+        "formula": "1",
+        "period": "sr",
+        "type": "formula"
+      }
+    ],
+    "spent": 0
+  }
 }

@@ -22,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "oath-of-devotion-spells",
-  "source_slug": "oath-of-devotion"
+  "source_slug": "oath-of-devotion",
+  "uses": null
 }

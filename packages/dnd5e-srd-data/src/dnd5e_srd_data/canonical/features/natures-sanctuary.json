@@ -309,5 +309,6 @@
     "requires_user_decision": false
   },
   "slug": "natures-sanctuary",
-  "source_slug": "circle-of-land"
+  "source_slug": "circle-of-land",
+  "uses": null
 }

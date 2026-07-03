@@ -22,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "two-extra-attacks",
-  "source_slug": "fighter"
+  "source_slug": "fighter",
+  "uses": null
 }

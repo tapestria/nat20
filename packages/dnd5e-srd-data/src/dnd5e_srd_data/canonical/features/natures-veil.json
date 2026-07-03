@@ -139,5 +139,16 @@
     "requires_user_decision": false
   },
   "slug": "natures-veil",
-  "source_slug": "ranger"
+  "source_slug": "ranger",
+  "uses": {
+    "max": "(max(1,@abilities.wis.mod))",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "lr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  }
 }

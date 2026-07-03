@@ -239,5 +239,16 @@
     "requires_user_decision": false
   },
   "slug": "hurl-through-hell",
-  "source_slug": "fiend-patron"
+  "source_slug": "fiend-patron",
+  "uses": {
+    "max": "1",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "lr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  }
 }

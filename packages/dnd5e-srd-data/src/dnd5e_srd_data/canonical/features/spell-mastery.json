@@ -146,5 +146,6 @@
     "requires_user_decision": false
   },
   "slug": "spell-mastery",
-  "source_slug": "wizard"
+  "source_slug": "wizard",
+  "uses": null
 }

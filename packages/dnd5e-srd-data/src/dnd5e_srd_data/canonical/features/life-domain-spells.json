@@ -22,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "life-domain-spells",
-  "source_slug": "life-domain"
+  "source_slug": "life-domain",
+  "uses": null
 }
