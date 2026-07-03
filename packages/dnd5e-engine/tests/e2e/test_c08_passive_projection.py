@@ -16,10 +16,9 @@ from dnd5e_engine.orchestrator import (
     submit_player_intent,
 )
 from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec, SceneTopology, ZoneEdge
-from tests.e2e.harness import events_of, run_async, xfail_cluster
+from tests.e2e.harness import events_of, run_async
 
 
-@xfail_cluster(8, "Passive-stat projection")
 def test_c08_s01_rage_resistance_never_halves_matching_damage_taken():
     """C08-S01: Rage's activation-gated `dr` resistance never halves matching
     damage taken while raging (same-seed A/B).
@@ -118,7 +117,6 @@ def test_c08_s01_rage_resistance_never_halves_matching_damage_taken():
     assert raged_total == base_total // 2
 
 
-@xfail_cluster(8, "Passive-stat projection")
 def test_c08_s02_natures_ward_condition_immunity_does_not_block_poisoned():
     """C08-S02: Nature's Ward's condition-immunity (`ci:poison`) does not
     block Poisoned condition application on a failed save.
@@ -217,7 +215,6 @@ def test_c08_s02_natures_ward_condition_immunity_does_not_block_poisoned():
     assert not poisoned, "Nature's Ward should prevent Poisoned from ever attaching"
 
 
-@xfail_cluster(8, "Passive-stat projection")
 def test_c08_s03_damage_vulnerability_never_doubles_matching_hit():
     """C08-S03: Damage vulnerability never doubles a matching-type hit — the
     sidecar consumer has no producer anywhere in the engine.
@@ -283,7 +280,6 @@ def test_c08_s03_damage_vulnerability_never_doubles_matching_hit():
     assert vuln_total == 2 * undoubled_seeded_amount
 
 
-@xfail_cluster(8, "Passive-stat projection")
 def test_c08_s04_granted_feature_movement_mode_never_lands_on_combatant():
     """C08-S04: A granted feature's non-walk movement mode (and its own flat
     walk-speed bonus) never lands on the live `Combatant`.

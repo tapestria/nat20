@@ -1679,6 +1679,15 @@ _FOUNDRY_DAMAGE_BONUS_KEY_TO_SIDECAR = {
 # spellcasting-ability formula) via ``build_context.py::_spell_dc_bonus``.
 _FOUNDRY_SPELL_DC_BONUS_KEY = "system.bonuses.spell.dc"
 
+# Foundry-native damage-RESISTANCE trait key on an ACTIVE effect (Rage's
+# activation-gated ``dr``: bludgeoning/piercing/slashing while raging). Foundry
+# ``mode=2`` here means "add this damage-type to the resistance SET", NOT "add to
+# a numeric bucket" — so the value is a damage-type STRING, not a signed number.
+# Handled at the very top of the change loop, BEFORE the numeric mode guard and
+# the signed-string coercion, appending into the ``resistances`` sidecar list
+# ``apply.py`` already reads (C08-S01; see docs/dev/passive-projection.md).
+_FOUNDRY_RESISTANCE_KEY = "system.traits.dr.value"
+
 
 def _fold_active_effect_changes(
     active: Sequence[ActiveEffect],
@@ -1730,6 +1739,23 @@ def _fold_active_effect_changes(
         # the modifier. Fold the attack bonus once per effect.
         attack_bonus_folded = False
         for change in active_effect.changes:
+            # C08-S01: Rage's ``system.traits.dr.value`` resistance change.
+            # Foundry ``mode=2`` on this key means "add to the resistance SET"
+            # (value is a damage-type string like ``"bludgeoning"``), not a
+            # numeric bonus — so it must bypass BOTH the ``mode != "add"`` guard
+            # and the signed-string coercion below. Append the cleaned type into
+            # the ``resistances`` sidecar list ``apply.py`` unions with the
+            # target's static resistances. Producer-only fix.
+            if change.key == _FOUNDRY_RESISTANCE_KEY:
+                dmg_type = str(change.value).strip().strip('"').strip()
+                if dmg_type:
+                    existing = per_target_dmg.get("resistances")
+                    resist_list = list(existing) if existing else []
+                    if dmg_type not in resist_list:
+                        resist_list.append(dmg_type)
+                    per_target_dmg["resistances"] = resist_list
+                    dmg_dirty = True
+                continue
             if change.mode != "add":
                 continue
             val = change.value
