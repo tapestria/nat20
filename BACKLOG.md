@@ -90,13 +90,6 @@ trigger machinery and should be designed together, not piecemeal.
   see `docs/migration/v0.1-to-v0.2.md`)
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/build_context.py`,
   `packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py`).
-- **Spell save DC ignores caster ability scores.** `_save_dc` / `_caster_mod`
-  compute `8 + 2 + max(0, attack_bonus - 2)` for every PC spell cast — never
-  reading ability scores, `character_level`, or proficiency — and the override
-  applies unconditionally for non-feature casts
-  (`packages/dnd5e-engine/src/dnd5e_engine/activities/build_context.py` lines
-  58–77, 204; consumed verbatim by `activities/save.py::_resolve_dc`). Every
-  PC save-DC spell is affected, not just Counterspell.
 - **Spell slots consumed at submission, before resolution.**
   `_consume_spell_slot` decrements unconditionally when the intent is
   submitted, before activities resolve, with no refund path — incompatible
@@ -133,18 +126,18 @@ trigger machinery and should be designed together, not piecemeal.
 - **Multi-activity features (e.g. Channel Divinity).** A feature that is a
   *repertoire of alternatives* needs an activity-selection seam (choose Turn
   Undead vs Divine Spark); the engine cannot select among a feature's activities.
-- **Real spellcasting-ability mapping.** Caster `@mod` / save-DC resolves
-  against a hardcoded `spellcasting_ability="int"`
-  (`activities/build_context.py` + the cast path in `orchestrator.py`); the
-  class→ability mapping (cleric→WIS, wizard→INT, …) is not read.
-- **Feature/subclass-owned `@scale` ids.** `build_scale_values`
-  (`activities/scale.py`) resolves `@scale.<owner>.<key>` only when `<owner>` is
-  a class/subclass/species slug on a loader owner doc; feature-owned scales
-  (e.g. `@scale.channel-divinity-cleric.spark`) are unresolved.
-- **Unconsumed `system.bonuses.*` buckets.** The hydration payload folds only
-  `system.bonuses.mwak.damage`; the sibling buckets (`rwak`/`msak`/`rsak`
-  attack+damage, `spell.dc`, `heal.*`, `abilities.*`) are not normalized, so
-  features riding them are inert (`orchestrator.py` `_build_hydration_payload`).
+- **Unconsumed `system.bonuses.*` buckets (partial — Cluster 4 closed the
+  attack/damage + spell.dc families).** `heal.*` and `abilities.check` /
+  `abilities.skill` remain inert: no per-actor sidecar consumer exists for
+  them today. `activities/heal.py::resolve_heal` never reads any bonus
+  sidecar off `ActivityResolutionContext` (unlike `attack.py`'s
+  `passive_*_damage_bonus` fields). `activities/check.py::resolve_check`
+  reads a `ctx.check_modifiers[actor_id]["ability_mods"/"skills"]` sidecar,
+  but `build_activity_context` always passes `check_modifiers={}` —
+  `_fold_active_effect_changes` (`orchestrator.py`) has no branch that
+  populates it from active-effect changes (only condition-derived
+  projections land there). (`mwak`/`rwak`/`msak`/`rsak` attack+damage and
+  `spell.dc` are now folded — see `docs/migration/v0.1-to-v0.2.md`.)
 
 ### Passive-stat projection (`activities/passive_stats.py`)
 
