@@ -880,6 +880,34 @@ def _handle_dash(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
     )
 
 
+def _handle_disengage(live: _LiveCombat, current: Combatant, intent: PlayerIntent) -> None:
+    """SRD §Actions in Combat, Disengage — *"Your movement doesn't provoke
+    Opportunity Attacks for the rest of the turn."*
+
+    Consumes the Action (Disengage IS the Action — distinct from Dash's
+    Action/Bonus-Action dual economy) and sets ``disengaging_this_turn`` so
+    the monster-reactor opportunity-attack scan
+    (``_fire_monster_opportunity_attacks_on_move``) suppresses AoOs for the
+    rest of the turn. Does NOT advance the turn (mirrors Dash) so a
+    same-turn Disengage→Move sequence works. Rejects with
+    ``IntentRejectedError("no_action_economy")`` when the Action is already
+    spent.
+    """
+    actor_id = current.entity_id
+    if not current.action_available:
+        raise IntentRejectedError(
+            "no_action_economy",
+            f"actor_id={actor_id!r} has no Action remaining for Disengage",
+        )
+    for idx, c in enumerate(live.initiative):
+        if c.entity_id == actor_id:
+            live.initiative[idx] = c.model_copy(
+                update={"action_available": False, "disengaging_this_turn": True}
+            )
+            break
+    _emit(live, IntentSubmitted(actor_id=actor_id, intent_type="disengage"))
+
+
 # The move_mark seam must align with the effect the typed cast emits. The typed
 # Hunter's Mark PassiveEffect is named "Hunter's Mark", so the resolver
 # synthesizes ``ActiveEffect.id = effect:hunter's_mark`` (via
@@ -1145,6 +1173,9 @@ def _emit_apply_turn_started(live: _LiveCombat, event: TurnStarted) -> None:
                     # own turn. Per-MOVE-intent decrement is the only
                     # writer; this is the only reset.
                     "movement_remaining": c.base_speed,
+                    # SRD §Disengage — "for the rest of the turn"; this is
+                    # the start of a NEW turn, so the suppression lapses.
+                    "disengaging_this_turn": False,
                 }
             )
             break
@@ -2829,6 +2860,15 @@ def _handle_move(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
     if current.movement_remaining < distance_ft:
         _emit(live, MoveFailed(actor_id=actor_id, reason="insufficient_movement"))
         return
+    # SRD §Opportunity Attacks — monster-reactor / PC-mover direction
+    # (C06-S05, the mirror of the shipped PC-reactor / monster-mover path).
+    # Fires BEFORE the mover leaves reach; a mover that drops to 0 HP here
+    # cancels the move entirely (mirrors the shipped direction's
+    # mid-path-loop cancellation).
+    if _fire_monster_opportunity_attacks_on_move(
+        live, mover_id=actor_id, from_zone=current_zone, to_zone=target_zone_id
+    ):
+        return
     # Decrement budget + update position. model_copy + slot-replace
     # mirrors the C-1 action-economy mutation pattern.
     for idx, c in enumerate(live.initiative):
@@ -3471,6 +3511,12 @@ async def _dispatch_turn_nonending_intent(
     * ``dash`` — SRD §Dash: spend the Action (or, for Rogues with Cunning
       Action, the Bonus Action) to add ``base_speed`` to the movement
       budget. Rejections raise ``IntentRejectedError("no_action_economy")``.
+    * ``disengage`` — SRD §Disengage: spend the Action; movement provokes
+      no Opportunity Attacks for the rest of the turn. Like Dash, keeps
+      the actor on turn so a same-turn Disengage→Move sequence works
+      (C06-S06; closes the discovered turn-ending fall-through where
+      "disengage" fell through to the generic Action tail that
+      unconditionally calls ``_advance_turn``).
     """
     if intent.intent_type == "move_mark":
         await _handle_move_mark(live, current, intent)
@@ -3480,6 +3526,9 @@ async def _dispatch_turn_nonending_intent(
         return True
     if intent.intent_type == "dash":
         _handle_dash(live, current, intent)
+        return True
+    if intent.intent_type == "disengage":
+        _handle_disengage(live, current, intent)
         return True
     return False
 
@@ -3937,6 +3986,104 @@ def _fire_pc_opportunity_attacks_on_move(
                 )
                 # _emit synthesizes Death + records dead_ids when tracked HP
                 # hits 0 — check that here to cancel the rest of the move.
+                if mover_id in live.dead_ids:
+                    mover_died = True
+                    break
+    return mover_died
+
+
+def _fire_monster_opportunity_attacks_on_move(
+    live: _LiveCombat,
+    *,
+    mover_id: str,
+    from_zone: str,
+    to_zone: str,
+) -> bool:
+    """SRD §Opportunity Attacks — fire monster AoOs when a PC leaves reach.
+
+    The monster-reactor / PC-mover mirror of
+    ``_fire_pc_opportunity_attacks_on_move`` (C06-S05): same hit/crit rules,
+    same reaction-consumed-on-use semantics, same
+    ``AttackRolled(is_opportunity_attack=True)`` event shape, same same-zone
+    reach approximation (see the shipped direction's docstring — extending
+    to adjacent-zone ``melee_reach_ft`` reach is a follow-up on BOTH
+    directions). An opportunity attack is an always-available reaction gated
+    only on ``reaction_available`` — it does NOT go through the pre-armed
+    ``pending_reactions`` queue (docs/dev/reaction-queue.md, "Why AoO is not
+    a queued reaction").
+
+    One guard the shipped direction does not need: a mover who took the
+    Disengage action this turn (``disengaging_this_turn``) never provokes —
+    the trigger is suppressed entirely, no reactor spends a Reaction
+    (C06-S06).
+
+    Returns ``True`` if the mover dropped to 0 HP from any AoO — the caller
+    cancels the move (SRD: *"The attack occurs right before it leaves your
+    reach"*; a dead mover stops in place).
+    """
+    mover = next((c for c in live.initiative if c.entity_id == mover_id), None)
+    if mover is None or mover.disengaging_this_turn:
+        return False
+    mover_died = False
+    for idx, reactor in enumerate(live.initiative):
+        if reactor.entity_id not in live.encounter_ids:
+            continue
+        if not reactor.is_alive or reactor.hp_current <= 0:
+            continue
+        if not reactor.reaction_available:
+            continue
+        if live.actor_zone.get(reactor.entity_id) != from_zone:
+            continue
+        # Same-zone reach approximation: a 5ft melee reach covers same-zone
+        # adjacency; an out-of-zone move always provokes (the mover leaves
+        # the reactor's reach band).
+        if to_zone == from_zone:
+            continue
+        natural = live.rng.randint(1, 20)
+        total = natural + reactor.attack_bonus
+        if natural == 20:
+            is_crit, is_hit = True, True
+        elif natural == 1:
+            is_crit, is_hit = False, False
+        else:
+            is_crit = False
+            is_hit = total >= mover.ac
+        _emit(
+            live,
+            IntentSubmitted(
+                actor_id=reactor.entity_id,
+                intent_type="reaction",
+                target_id=mover_id,
+            ),
+        )
+        _emit(
+            live,
+            AttackRolled(
+                attacker_id=reactor.entity_id,
+                target_id=mover_id,
+                roll_total=total,
+                advantage="normal",
+                is_crit=is_crit,
+                is_hit=is_hit,
+                is_opportunity_attack=True,
+            ),
+        )
+        # Consume the reaction regardless of hit/miss (SRD: reactions are
+        # spent on use, not on success).
+        live.initiative[idx] = reactor.model_copy(update={"reaction_available": False})
+        if is_hit:
+            damage = _roll_damage_expression(live, reactor.damage_dice, crit=is_crit)
+            if damage > 0:
+                tracked_before = live.tracked_hp.get(mover_id, mover.hp_current)
+                _emit(
+                    live,
+                    DamageApplied(
+                        target_id=mover_id,
+                        amount=damage,
+                        damage_type=reactor.damage_type,
+                        is_overkill=damage > tracked_before,
+                    ),
+                )
                 if mover_id in live.dead_ids:
                     mover_died = True
                     break

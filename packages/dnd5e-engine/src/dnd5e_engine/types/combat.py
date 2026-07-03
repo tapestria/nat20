@@ -150,6 +150,14 @@ class Combatant(BaseModel):
     # across turns lets HR validate against the last damager regardless of
     # round boundaries until a more complete trigger model lands).
     last_damaged_by: str | None = None
+    # SRD §Actions in Combat, Disengage — "Your movement doesn't provoke
+    # Opportunity Attacks for the rest of the turn." Set True by
+    # ``_handle_disengage`` (orchestrator.py, Cluster 6); consulted by the
+    # monster-reactor opportunity-attack scan
+    # (``_fire_monster_opportunity_attacks_on_move``) to suppress AoOs for the
+    # remainder of the turn. Reset to False at the actor's own TurnStarted,
+    # alongside action_available/bonus_action_available/reaction_available.
+    disengaging_this_turn: bool = False
 
     @model_validator(mode="before")
     @classmethod

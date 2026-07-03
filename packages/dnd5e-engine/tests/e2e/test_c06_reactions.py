@@ -53,7 +53,7 @@ from dnd5e_engine.orchestrator import (
     submit_player_intent,
 )
 from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec, SceneTopology, ZoneEdge
-from tests.e2e.harness import events_of, run_async, xfail_cluster
+from tests.e2e.harness import events_of, run_async
 
 
 def test_c06_s01_prearmed_counterspell_forces_con_save_two_seeds():
@@ -579,7 +579,6 @@ def test_c06_s04_shield_vs_magic_missile_zero_force_damage():
         assert live_b.event_log.index(reactions_b[0]) < live_b.event_log.index(force_events_b[0])
 
 
-@xfail_cluster(6, "Reactions & off-turn intents")
 def test_c06_s05_monster_reactor_opportunity_attack_on_pc_move():
     """C06-S05: A monster reactor makes an opportunity attack when a PC
     leaves its reach without Disengage (mirror of the shipped PC-reactor
@@ -675,7 +674,6 @@ def test_c06_s05_monster_reactor_opportunity_attack_on_pc_move():
     assert goblin.reaction_available is False
 
 
-@xfail_cluster(6, "Reactions & off-turn intents")
 def test_c06_s06_disengage_suppresses_opportunity_attack():
     """C06-S06: Disengage lets a PC leave a monster's reach with identical
     movement and provokes no opportunity attack.
