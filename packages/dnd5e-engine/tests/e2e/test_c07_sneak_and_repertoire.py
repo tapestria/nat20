@@ -17,7 +17,7 @@ from dnd5e_engine.orchestrator import _get_live, start_combat, submit_player_int
 from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec, SceneTopology
 from dnd5e_engine.types.combat import Combatant
 from dnd5e_engine.types.effects import ActiveEffect, ActiveEffectChange
-from tests.e2e.harness import events_of, run_async, xfail_cluster
+from tests.e2e.harness import events_of, run_async
 
 
 def test_c07_s01_sneak_attack_adds_bounded_extra_damage_on_advantage():
@@ -187,7 +187,6 @@ def test_c07_s02_sneak_attack_ally_adjacent_alternative_trigger():
     assert 3 <= allied_total - solo_total <= 18
 
 
-@xfail_cluster(7, "Sneak Attack & feature repertoires")
 def test_c07_s03_channel_divinity_repertoire_needs_activity_selection():
     """C07-S03: Channel Divinity (Cleric) is a repertoire of 3 alternative
     activities; `USE_FEATURE` needs an activity-selection input.

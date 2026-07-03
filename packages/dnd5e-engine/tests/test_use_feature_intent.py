@@ -83,7 +83,9 @@ def _encounter() -> list[EncounterMemberSpec]:
     ]
 
 
-def _run_use_feature(party: list[PartyMemberSpec], feature_id: str, monkeypatch=None):
+def _run_use_feature(
+    party: list[PartyMemberSpec], feature_id: str, monkeypatch=None, activity_id=None
+):
     """Drive a USE_FEATURE intent. When ``monkeypatch`` is supplied, the
     activities the orchestrator routes into ``resolve_activity`` are captured
     so a test can assert exactly which (and how many) were invoked."""
@@ -112,7 +114,9 @@ def _run_use_feature(party: list[PartyMemberSpec], feature_id: str, monkeypatch=
         await submit_player_intent(
             start.handle,
             actor_id="char:hero",
-            intent=PlayerIntent(intent_type="use_feature", feature_id=feature_id),
+            intent=PlayerIntent(
+                intent_type="use_feature", feature_id=feature_id, activity_id=activity_id
+            ),
         )
         return live, pre
 
@@ -193,6 +197,43 @@ def test_multi_activity_feature_without_selection_defers(caplog, monkeypatch):
 
     assert "feature_multi_activity_selection_deferred" in caplog.text
     assert not routed, "a multi-activity feature must not fire any activity without a selection"
+
+
+# ── (c2) multi-activity feature WITH a valid selection resolves exactly it ──
+
+
+def test_multi_activity_feature_with_selection_resolves_that_activity(caplog, monkeypatch):
+    """C07-S03: a cleric selecting ``activity_id="UdbUwbvrWwgDuNy9"`` (Divine
+    Spark: Heal) on channel-divinity-cleric routes EXACTLY that one activity —
+    not all three, not a defer."""
+    party = _party(class_slug="cleric", strength=10, constitution=12, character_level=5)
+    with caplog.at_level(logging.WARNING):
+        _live, _pre, routed = _run_use_feature(
+            party,
+            "channel-divinity-cleric",
+            monkeypatch=monkeypatch,
+            activity_id="UdbUwbvrWwgDuNy9",
+        )
+
+    assert len(routed) == 1, f"a selected activity must route exactly itself, got {routed!r}"
+    assert routed[0].id == "UdbUwbvrWwgDuNy9"
+    assert "feature_multi_activity_selection_deferred" not in caplog.text
+
+
+def test_multi_activity_feature_with_unknown_selection_defers(caplog, monkeypatch):
+    """An ``activity_id`` naming none of the feature's activities is not a guess
+    target — it defers (loud tracked no-op), never fires a fallback."""
+    party = _party(class_slug="cleric", strength=10, constitution=12, character_level=5)
+    with caplog.at_level(logging.WARNING):
+        _live, _pre, routed = _run_use_feature(
+            party,
+            "channel-divinity-cleric",
+            monkeypatch=monkeypatch,
+            activity_id="not-a-real-activity-id",
+        )
+
+    assert "feature_multi_activity_selection_deferred" in caplog.text
+    assert not routed, "an unknown activity_id must resolve nothing (never guess)"
 
 
 # ── (d) bonus-action economy consumed ONLY after gate + selection pass ──────

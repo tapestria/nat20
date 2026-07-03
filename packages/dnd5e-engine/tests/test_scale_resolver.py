@@ -158,6 +158,22 @@ def test_build_scale_values_includes_dice_suffix_variants() -> None:
     assert sv["rogue.sneak-attack.number"] == 3
 
 
+def test_paren_wrapped_scale_dice_count_normalizes_to_parseable() -> None:
+    # C07-S03: Divine Spark's ``(@scale.channel-divinity-cleric.spark)d8`` idiom
+    # wraps the dice COUNT in parens. After the scale token resolves to the int
+    # ``1`` the naive substitution is ``(1)d8``, which ``d20.parse`` rejects.
+    # ``resolve_roll_data`` must collapse it back to a plain ``1d8``.
+    ctx = _ctx(scale_values={"channel-divinity-cleric.spark": 1})
+    resolved = resolve_roll_data("(@scale.channel-divinity-cleric.spark)d8 + 3", ctx)
+    assert resolved == "1d8 + 3"
+
+
+def test_paren_normalization_leaves_real_grouping_untouched() -> None:
+    # A genuine arithmetic grouping (not a dice count) must be preserved.
+    ctx = _ctx()
+    assert resolve_roll_data("(2 + 3) * 2", ctx) == "(2 + 3) * 2"
+
+
 def test_build_scale_values_omits_unresolvable_owner() -> None:
     # an absent class/subclass/species slug contributes nothing (no crash)
     sv = build_scale_values(
@@ -187,9 +203,12 @@ def test_formula_dice_scale_substitutes_expr_string() -> None:
 
 
 def test_formula_dice_scale_number_suffix_substitutes_count() -> None:
-    # frenzy-style "(@scale.rogue.sneak-attack.number)d6" -> "(3)d6"
+    # frenzy-style "(@scale.rogue.sneak-attack.number)d6": the count substitutes
+    # to 3, and the Foundry paren-around-the-dice-count idiom collapses to the
+    # d20-parseable "3d6" (C07-S03: the earlier "(3)d6" output could not actually
+    # be rolled — d20.parse rejects a parenthesized dice count).
     ctx = _ctx(scale_values={"rogue.sneak-attack.number": 3})
-    assert resolve_roll_data("(@scale.rogue.sneak-attack.number)d6", ctx) == "(3)d6"
+    assert resolve_roll_data("(@scale.rogue.sneak-attack.number)d6", ctx) == "3d6"
 
 
 def test_formula_classes_levels_substitutes_int() -> None:

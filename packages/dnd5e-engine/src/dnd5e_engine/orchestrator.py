@@ -149,6 +149,13 @@ class PlayerIntent(BaseModel):
     item_id: str | None = None
     weapon_id: str | None = None
     feature_id: str | None = None
+    # SRD §Channel Divinity — the specific activity to resolve when a
+    # USE_FEATURE names a multi-activity feature that is a repertoire of
+    # ALTERNATIVES (Channel Divinity: Divine Spark Heal vs Save vs Turn Undead;
+    # Cunning Strike's four options). Names one of the feature's activity ids.
+    # ``None`` (the common case) leaves single-activity features unchanged and
+    # keeps the safe no-op reject for a multi-activity feature (never guess).
+    activity_id: str | None = None
     slot_level: int | None = None
     # SRD §Reactions — the trigger condition a ``"ready"`` intent pre-arms
     # (Cluster 6's pending-reaction queue). Consumed by
@@ -2846,16 +2853,21 @@ class _FeatureInvocation:
     is_bonus_action: bool
 
 
-def _resolve_feature_invocation(caster: Combatant, feature_id: str) -> _FeatureInvocation | None:
+def _resolve_feature_invocation(
+    caster: Combatant, feature_id: str, activity_id: str | None = None
+) -> _FeatureInvocation | None:
     """Resolve a USE_FEATURE intent to its single concrete activity, or ``None``.
 
     Applies the REPERTOIRE GATE (class / subclass / species ``granted_features``
     at/below the caster's level) and the SINGLE-ACTIVITY contract. Returns
     ``None`` — after a loud, tracked warning — when the feature is out of
-    repertoire, absent from the lib, has no typed activities, or is a
-    multi-activity repertoire-of-alternatives needing an ``activity_id`` the
-    parser does not yet supply. Returning ``None`` lets the caller reject the
-    invocation BEFORE any action-economy budget is consumed.
+    repertoire, absent from the lib, or has no typed activities.
+
+    A multi-activity feature is a repertoire of ALTERNATIVES (Channel Divinity:
+    Divine Spark Heal vs Save vs Turn Undead). When ``activity_id`` names one of
+    them, resolve EXACTLY that activity; when it is absent or names none of them,
+    keep the safe no-op reject (never guess). Returning ``None`` lets the caller
+    reject the invocation BEFORE any action-economy budget is consumed.
 
     Rage / Second Wind activate as a Bonus Action (``activation.type ==
     "bonus"``); that does NOT end the turn, so the actor may rage then swing on
@@ -2878,16 +2890,19 @@ def _resolve_feature_invocation(caster: Combatant, feature_id: str) -> _FeatureI
         _LOGGER.warning("class_feature_no_typed_activities feature_id=%s", feature_id)
         return None
     if len(feature_activities) > 1:
-        # SINGLE-ACTIVITY contract — a multi-activity feature is a repertoire of
-        # ALTERNATIVES (Channel Divinity: Turn Undead vs Divine Spark). Firing
-        # all of them is wrong; selecting one needs an ``activity_id`` the parser
-        # does not yet supply. Defer with a loud, tracked no-op.
-        _LOGGER.warning(
-            "feature_multi_activity_selection_deferred feature_id=%s count=%d",
-            feature_id,
-            len(feature_activities),
-        )
-        return None
+        # Repertoire of ALTERNATIVES — resolve the caller-selected activity, or
+        # defer with a loud, tracked no-op when no valid selection is supplied
+        # (firing all of them is wrong; guessing one is worse).
+        selected = next((a for a in feature_activities if a.id == activity_id), None)
+        if selected is None:
+            _LOGGER.warning(
+                "feature_multi_activity_selection_deferred feature_id=%s count=%d activity_id=%s",
+                feature_id,
+                len(feature_activities),
+                activity_id,
+            )
+            return None
+        feature_activities = [selected]
     is_bonus = getattr(feature_activities[0].activation, "type", None) == "bonus"
     # Rage's mwak buff + resistances ride a PassiveEffect on the feature; thread
     # them so its UtilityActivity's effect rider (``effects[].id``) resolves to a
@@ -3277,12 +3292,30 @@ def _resolve_targets(
         # (handled above) and single-target casts (target_id present) are
         # untouched.
         if (
-            not targets
-            and intent.intent_type == "cast_spell"
-            and _activities_bear_effects(activities)
-            and _spell_is_self_or_targetless(cast_spell, intent.target_id)
-        ) or (
-            not targets and intent.feature_id and activities and _activities_target_self(activities)
+            (
+                not targets
+                and intent.intent_type == "cast_spell"
+                and _activities_bear_effects(activities)
+                and _spell_is_self_or_targetless(cast_spell, intent.target_id)
+            )
+            or (
+                not targets
+                and intent.feature_id
+                and activities
+                and _activities_target_self(activities)
+            )
+            or (
+                # SRD §Channel Divinity, Divine Spark (Heal) — a feature heal that
+                # names no target defaults to the caster (you use the healing option
+                # on yourself). Scoped to feature invocations with no named target
+                # and only heal-kind activities, so an offensive feature activity
+                # (Divine Spark: Save) with no target still resolves to nobody.
+                not targets
+                and intent.feature_id
+                and intent.target_id is None
+                and bool(activities)
+                and all(getattr(a, "kind", None) == "heal" for a in activities)
+            )
         ):
             targets = [current]
     return targets
@@ -3676,7 +3709,9 @@ async def submit_player_intent(
     # rejected feature still spent the Bonus Action.
     feature_invocation: _FeatureInvocation | None = None
     if intent.feature_id:
-        feature_invocation = _resolve_feature_invocation(current, intent.feature_id)
+        feature_invocation = _resolve_feature_invocation(
+            current, intent.feature_id, intent.activity_id
+        )
         if feature_invocation is None:
             return
 
