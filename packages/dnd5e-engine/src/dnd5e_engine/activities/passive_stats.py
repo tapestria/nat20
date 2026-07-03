@@ -52,7 +52,7 @@ _MOVE_MODE_KEYS = {
     "system.attributes.movement.fly": "fly",
     "system.attributes.movement.burrow": "burrow",
 }
-_MOVE_WALK_TOKEN = "@attributes.movement.walk"
+_MOVE_WALK_REF = "@attributes.movement.walk"
 
 # Foundry's condition-immunity (``ci``) trait uses the damage-type-style token
 # ``"poison"`` for the Poisoned condition; every other SRD condition's ``ci``
@@ -138,7 +138,7 @@ def _resolve_movement_modes(
     """
     move_values: dict[str, int] = {}
     for field, raw_value, mode in mode_changes:
-        if raw_value.strip() == _MOVE_WALK_TOKEN:
+        if raw_value.strip() == _MOVE_WALK_REF:
             literal: int | None = resolved_walk
         else:
             literal = _parse_literal_int(raw_value)
