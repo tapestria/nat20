@@ -36,6 +36,36 @@ def test_dwarf_gets_poison_resistance_and_darkvision():
     assert spec.senses.darkvision == 120  # from Species.senses
 
 
+def test_roving_folds_walk_bonus_and_projects_climb_swim_carrier():
+    # C08-S04: an L6 human ranger's always-on Roving feature adds +10 walk
+    # (30 → 40) AND grants climb/swim speeds equal to the boosted walk (40).
+    # The typed multi-mode carrier must land on the spec (not collapse to a
+    # scalar); the e2e only pins the base_speed half.
+    from dnd5e_engine.activities.passive_stats import CombatantMovementModes
+
+    spec = build_party_member(
+        make_build_spec(species_slug="human", class_slug="ranger", level=6),
+        _INST,
+        loader=_LOADER,
+    )
+    assert spec.base_speed == 40
+    assert spec.movement_modes == CombatantMovementModes(climb=40, swim=40)
+
+
+def test_ranger_below_level_6_has_no_roving_movement_modes():
+    # Roving is granted at level 6; an L1 ranger carries the plain species speed
+    # and an empty movement-modes carrier.
+    from dnd5e_engine.activities.passive_stats import CombatantMovementModes
+
+    spec = build_party_member(
+        make_build_spec(species_slug="human", class_slug="ranger", level=1),
+        _INST,
+        loader=_LOADER,
+    )
+    assert spec.base_speed == 30
+    assert spec.movement_modes == CombatantMovementModes()
+
+
 def test_rage_resistances_not_projected_at_rest():
     # an L5 barbarian's Rage dr changes are disabled:true (activation-gated);
     # they must not appear on the resting spec.

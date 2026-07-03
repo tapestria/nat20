@@ -11,7 +11,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from dnd5e_engine.activities.passive_stats import CombatantSenses
+from dnd5e_engine.activities.passive_stats import CombatantMovementModes, CombatantSenses
 
 
 class PartyMemberSpec(BaseModel):
@@ -96,6 +96,13 @@ class PartyMemberSpec(BaseModel):
     # at start_combat; resets ``movement_remaining`` on each of the actor's
     # turns. Character race / monster speed projection threads through here.
     base_speed: int = 30
+    # SRD §Movement — a creature's non-walk movement modes (climb/swim/fly/
+    # burrow speeds in feet; ``None`` = mode unavailable). Populated by
+    # ``build_party_member`` from always-on granted-feature
+    # ``system.attributes.movement.*`` changes (Roving → climb/swim = walk
+    # speed) and copied onto the live ``Combatant`` at start_combat. Kept
+    # multi-mode (collapsing to a single scalar is lossy). Empty by default.
+    movement_modes: CombatantMovementModes = Field(default_factory=CombatantMovementModes)
     # SRD §Classes — character class slug (e.g. ``"rogue"``, ``"barbarian"``).
     # Drives class-feature gating on the orchestrator seam — today only Cunning
     # Action (Rogue) Dash uses it (``class_slug == "rogue"`` ⇒ the

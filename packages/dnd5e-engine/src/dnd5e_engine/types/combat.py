@@ -11,7 +11,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
 
-from dnd5e_engine.activities.passive_stats import CombatantSenses
+from dnd5e_engine.activities.passive_stats import CombatantMovementModes, CombatantSenses
 from dnd5e_engine.types.conditions import ActiveCondition
 
 
@@ -134,6 +134,13 @@ class Combatant(BaseModel):
     # TurnStarted and decremented by each successful MOVE intent.
     base_speed: int = 30
     movement_remaining: int = 30
+    # SRD §Movement — non-walk movement modes (climb/swim/fly/burrow speeds in
+    # feet; ``None`` = mode unavailable). Projected from a PC's always-on
+    # granted-feature ``system.attributes.movement.*`` changes via
+    # ``build_party_member`` → ``PartyMemberSpec.movement_modes`` and copied here
+    # at start_combat (Roving → climb/swim = walk speed). Kept multi-mode
+    # (collapsing to a scalar is lossy). Empty by default for monsters/fixtures.
+    movement_modes: CombatantMovementModes = Field(default_factory=CombatantMovementModes)
     # SRD §Opportunity Attacks — the actor's melee reach in feet (the
     # distance at which an opponent leaving "reach" triggers an AoO).
     # Defaults to 5ft (standard unarmed / 1-handed melee weapon). Polearms

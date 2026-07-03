@@ -10,6 +10,7 @@ non-literal values land in ``skipped_keys`` for the seam to log.
 from dnd5e_srd_data.schema.common import PassiveEffectChange, Senses
 
 from dnd5e_engine.activities.passive_stats import (
+    CombatantMovementModes,
     CombatantSenses,
     DerivedPassiveStats,
     interpret_passive_stats,
@@ -68,18 +69,16 @@ def test_species_senses_alone_project():
     assert out.senses.blindsight is None
 
 
-def test_unknown_and_movement_keys_go_to_skipped_not_raised():
+def test_unknown_bonus_key_goes_to_skipped_not_raised():
     out = interpret_passive_stats(
         changes=[
             PassiveEffectChange(key="system.bonuses.mwak.damage", mode=2, value="+2"),
-            PassiveEffectChange(key="system.attributes.movement.walk", mode=2, value="10"),
         ],
         trait_grants=[],
         species_senses=None,
     )
     assert out.resistances == ()
     assert out.senses.darkvision is None
-    assert "system.attributes.movement.walk" in out.skipped_keys
     assert "system.bonuses.mwak.damage" in out.skipped_keys
 
 
@@ -158,3 +157,79 @@ def test_combatant_senses_default_all_none():
     assert s.blindsight is None
     assert s.tremorsense is None
     assert s.truesight is None
+
+
+# --- C08-S04: movement modes -------------------------------------------------
+
+
+def test_movement_modes_default_all_none():
+    m = CombatantMovementModes()
+    assert m.climb is None
+    assert m.swim is None
+    assert m.fly is None
+    assert m.burrow is None
+
+
+def test_walk_speed_bonus_folds_additively_from_literal_change():
+    # Roving's flat +10 walk change lands on walk_speed_bonus, not skipped.
+    out = interpret_passive_stats(
+        changes=[
+            PassiveEffectChange(key="system.attributes.movement.walk", mode=2, value="10"),
+        ],
+        trait_grants=[],
+        species_senses=None,
+    )
+    assert out.walk_speed_bonus == 10
+    assert "system.attributes.movement.walk" not in out.skipped_keys
+
+
+def test_roving_climb_swim_resolve_symbolic_token_to_boosted_walk():
+    # Roving: climb/swim (mode=4, value "@attributes.movement.walk") resolve to
+    # the BOOSTED walk speed (species 30 + the +10 bonus = 40), not the base.
+    out = interpret_passive_stats(
+        changes=[
+            PassiveEffectChange(key="system.attributes.movement.walk", mode=2, value="10"),
+            PassiveEffectChange(
+                key="system.attributes.movement.climb",
+                mode=4,
+                value="@attributes.movement.walk",
+            ),
+            PassiveEffectChange(
+                key="system.attributes.movement.swim",
+                mode=4,
+                value="@attributes.movement.walk",
+            ),
+        ],
+        trait_grants=[],
+        species_senses=None,
+        species_base_speed=30,
+    )
+    assert out.walk_speed_bonus == 10
+    assert out.movement_modes == CombatantMovementModes(climb=40, swim=40)
+    assert out.skipped_keys == ()
+
+
+def test_literal_int_movement_mode_projects_directly():
+    out = interpret_passive_stats(
+        changes=[
+            PassiveEffectChange(key="system.attributes.movement.fly", mode=4, value="60"),
+        ],
+        trait_grants=[],
+        species_senses=None,
+    )
+    assert out.movement_modes.fly == 60
+
+
+def test_unresolvable_symbolic_movement_mode_goes_to_skipped():
+    # A symbolic token other than @attributes.movement.walk is not resolved.
+    out = interpret_passive_stats(
+        changes=[
+            PassiveEffectChange(
+                key="system.attributes.movement.burrow", mode=4, value="@scale.foo.bar"
+            ),
+        ],
+        trait_grants=[],
+        species_senses=None,
+    )
+    assert out.movement_modes.burrow is None
+    assert "system.attributes.movement.burrow" in out.skipped_keys
