@@ -282,3 +282,40 @@ def test_valid_bonus_action_feature_consumes_bonus_action():
     actor = _actor(live)
     assert actor.bonus_action_available is False
     assert actor.action_available is True
+
+
+# ── (e) per-rest use cap (Cluster 9) ────────────────────────────────────────
+
+
+class _StubUses:
+    def __init__(self, max_expr: str) -> None:
+        self.max = max_expr
+
+
+class _StubFeature:
+    def __init__(self, uses) -> None:
+        self.uses = uses
+
+
+def test_feature_use_cap_parses_literal_integer_max():
+    from dnd5e_engine.orchestrator import _feature_use_cap
+
+    assert _feature_use_cap(_StubFeature(_StubUses("1"))) == 1
+    assert _feature_use_cap(_StubFeature(_StubUses("3"))) == 3
+
+
+def test_feature_use_cap_falls_back_to_one_for_roll_data_expressions():
+    """A ``@scale`` / ``@prof`` / ``max(...)`` max is not resolved in the cap path;
+    a conservative floor of 1 applies (Second Wind's ``@scale.fighter.second-wind``)."""
+    from dnd5e_engine.orchestrator import _feature_use_cap
+
+    assert _feature_use_cap(_StubFeature(_StubUses("@scale.fighter.second-wind"))) == 1
+    assert _feature_use_cap(_StubFeature(_StubUses("@prof"))) == 1
+    assert _feature_use_cap(_StubFeature(_StubUses("max(1, @abilities.cha.mod)"))) == 1
+    assert _feature_use_cap(_StubFeature(_StubUses(""))) == 1
+
+
+def test_feature_use_cap_is_none_for_uncapped_feature():
+    from dnd5e_engine.orchestrator import _feature_use_cap
+
+    assert _feature_use_cap(_StubFeature(None)) is None

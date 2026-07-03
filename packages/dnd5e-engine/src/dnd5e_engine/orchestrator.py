@@ -87,6 +87,7 @@ from dnd5e_engine.outcome import (
     DeathRecord,
     LootDrop,
 )
+from dnd5e_engine.rest import FEATURE_USE_COUNTER_PREFIX
 from dnd5e_engine.rules.conditions import (
     Condition,
     active_condition_names,
@@ -2944,6 +2945,90 @@ class _FeatureInvocation:
     activities: list[Any]
     passive_effects: list[Any]
     is_bonus_action: bool
+    # SRD 5.2 §Limited-Use Features (Cluster 9) — the per-rest use cap resolved
+    # from the feature's typed ``uses`` block, or ``None`` when the feature is
+    # uncapped (no ``uses`` block). See :func:`_feature_use_cap`.
+    use_cap: int | None = None
+
+
+def _feature_use_cap(feature: Any) -> int | None:
+    """Resolve a feature's per-rest use cap from its typed ``uses`` block.
+
+    Returns ``None`` for an uncapped feature (no ``uses`` block) — the invocation
+    is never gated. For a capped feature, parses ``uses.max`` as a literal integer
+    where possible; when ``max`` is a Foundry roll-data expression (``@scale.*`` /
+    ``@prof`` / ``max(1, @abilities.cha.mod)``) it is NOT resolved here (that would
+    require threading the caster's scale/roll data into the cap path), so a
+    conservative floor of 1 applies — a limited-use resource always caps at least
+    once per rest. Formula-based caps resolving to their true value is a recorded
+    follow-up (see BACKLOG).
+    """
+    uses = getattr(feature, "uses", None)
+    if uses is None:
+        return None
+    max_raw = getattr(uses, "max", "")
+    try:
+        parsed = int(str(max_raw).strip())
+    except (TypeError, ValueError):
+        return 1
+    return parsed if parsed > 0 else 1
+
+
+def _feature_use_counter_key(feature_id: str) -> str:
+    """The ``custom_counters`` sidecar key namespacing a feature's use tally."""
+    return f"{FEATURE_USE_COUNTER_PREFIX}{feature_id}"
+
+
+def _feature_use_spent(live: _LiveCombat, entity_id: str, feature_id: str) -> int:
+    """Uses of ``feature_id`` already spent by ``entity_id`` this rest cycle."""
+    return (
+        live.custom_counters_by_entity.get(entity_id, {})
+        .get(_feature_use_counter_key(feature_id), {})
+        .get("spent", 0)
+    )
+
+
+def _increment_feature_use(live: _LiveCombat, entity_id: str, feature_id: str) -> None:
+    """Record one spent use of ``feature_id`` on the caster's sidecar counter."""
+    counters = live.custom_counters_by_entity.setdefault(entity_id, {})
+    counter = counters.setdefault(_feature_use_counter_key(feature_id), {"spent": 0})
+    counter["spent"] = counter.get("spent", 0) + 1
+
+
+def _feature_uses_exhausted(
+    live: _LiveCombat,
+    actor_id: str,
+    feature_id: str,
+    feature_invocation: _FeatureInvocation,
+) -> bool:
+    """SRD §Limited-Use Features — True (after emitting ``CastFailed``) when a
+    capped feature's per-rest uses are spent with no intervening rest.
+
+    Emits ``CastFailed(reason="no_uses_remaining")`` — the ``no_action_economy``
+    reject shape, extended from a per-turn budget to a per-rest one. Uncapped
+    features (``use_cap is None``) never gate.
+    """
+    cap = feature_invocation.use_cap
+    if cap is None or _feature_use_spent(live, actor_id, feature_id) < cap:
+        return False
+    _emit(live, CastFailed(actor_id=actor_id, spell_id="", reason="no_uses_remaining"))
+    return True
+
+
+def _record_capped_feature_use(
+    live: _LiveCombat,
+    actor_id: str,
+    feature_id: str,
+    feature_invocation: _FeatureInvocation | None,
+) -> None:
+    """Increment the per-rest use counter for a committed capped-feature invocation.
+
+    No-op for a non-feature intent (``feature_invocation is None``) or an uncapped
+    feature (``use_cap is None``) — only a within-cap invocation reaches here past
+    the early exhaustion gate.
+    """
+    if feature_invocation is not None and feature_invocation.use_cap is not None:
+        _increment_feature_use(live, actor_id, feature_id)
 
 
 def _resolve_feature_invocation(
@@ -3004,6 +3089,7 @@ def _resolve_feature_invocation(
         activities=feature_activities,
         passive_effects=list(feature.passive_effects) if feature else [],
         is_bonus_action=is_bonus,
+        use_cap=_feature_use_cap(feature),
     )
 
 
@@ -3808,6 +3894,14 @@ async def submit_player_intent(
         if feature_invocation is None:
             return
 
+        # SRD §Limited-Use Features (Cluster 9) — a capped feature (Second Wind)
+        # rejects when its per-rest uses are exhausted with no intervening rest.
+        # Checked BEFORE any budget consumption (mirroring the bonus-action gate):
+        # a rejected invocation spends no Bonus Action. The matching spend is
+        # recorded only once the invocation is committed to resolving (below).
+        if _feature_uses_exhausted(live, actor_id, intent.feature_id, feature_invocation):
+            return
+
     # SRD §Action Economy — classify the action cost BEFORE emitting
     # IntentSubmitted so a budget-exhausted intent doesn't pollute the
     # event log with a half-completed cast. Cast spells consult their
@@ -3971,6 +4065,13 @@ async def submit_player_intent(
     # and signals the caller to return.
     if _consume_spell_slot(live, current, actor_id, intent):
         return
+
+    # SRD §Limited-Use Features (Cluster 9) — every action-economy / slot gate has
+    # passed and the invocation is now committed to resolving; record the spend on
+    # the caster's per-rest use counter so a later same-rest invocation rejects
+    # above. The early gate rejects an over-cap invocation before reaching here, so
+    # this only increments a within-cap use (no-op for uncapped / non-feature intents).
+    _record_capped_feature_use(live, actor_id, intent.feature_id, feature_invocation)
 
     # ── Typed-Activity resolution (Foundry cutover, Task 5) ─────────────
     #
