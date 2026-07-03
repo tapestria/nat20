@@ -161,6 +161,16 @@ class ActivityResolutionContext:
     # to AC and Dexterity saving throws"). Absent target -> "none" (+0).
     # Empty default keeps the golden corpus identical (no cover geometry).
     target_cover: dict[str, str] = field(default_factory=dict)
+    # Per-TARGET flat AC bonus from an active effect (Shield's +5, keyed
+    # ``"system.attributes.ac.bonus"`` in the Foundry source data, aliased to
+    # the engine's ``"ac.bonus"`` fold key). Mirrors ``passive_save_modifiers``'s
+    # per-target int shape. Computed once per activity resolution by the
+    # orchestrator (folded from ``live.active_effects`` via
+    # ``_fold_active_effect_changes`` + extracted in ``build_activity_context``);
+    # consumed in ``attack.py`` alongside the cover-AC fold, before the
+    # ``total >= target_ac`` comparison. Absent target -> +0. Empty default
+    # keeps the golden corpus identical (C06-S03).
+    passive_ac_bonus: dict[str, int] = field(default_factory=dict)
     # Per-actor ability/skill-check modifier sidecar, mirroring
     # ``effects/check.py:_read_check_modifiers``'s shape
     # ``{entity_id: {"skills": {code: mod}, "ability_mods": {ability: mod}}}``.

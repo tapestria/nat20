@@ -74,6 +74,11 @@ CastFailedReason = Literal[
     "concentration_blocked",
     "components_missing",
     "no_action_economy",
+    # SRD 5.2 Counterspell — "On a failed save, the spell dissipates with no
+    # effect, and the action, Bonus Action, or Reaction used to cast it is
+    # wasted." Emitted by the pre-armed reaction queue (orchestrator.py,
+    # Cluster 6) when a queued Counterspell's Constitution save fails.
+    "countered",
 ]
 
 IntentType = Literal[

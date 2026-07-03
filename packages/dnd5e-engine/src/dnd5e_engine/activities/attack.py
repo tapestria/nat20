@@ -115,7 +115,15 @@ def resolve_attack(
         # SRD 5.2 §Cover — half (+2) / three-quarters (+5) cover raises the
         # target's EFFECTIVE AC for this attack only; total cover is filtered
         # upstream (the target is never reachable as a resolver target at all).
-        effective_ac = target.ac + cover_bonus(ctx.target_cover.get(target.entity_id, "none"))
+        # SRD Shield — "+5 bonus to AC, including against the triggering
+        # attack" (C06-S03): a pre-armed reaction can land an AC-bonus active
+        # effect on the target between the trigger and this comparison; the
+        # natural roll itself is never touched, only this comparison.
+        effective_ac = (
+            target.ac
+            + cover_bonus(ctx.target_cover.get(target.entity_id, "none"))
+            + ctx.passive_ac_bonus.get(target.entity_id, 0)
+        )
         is_crit, is_hit = _resolve_hit_outcome(natural, total, effective_ac, activity)
 
         ctx.event_emitter(

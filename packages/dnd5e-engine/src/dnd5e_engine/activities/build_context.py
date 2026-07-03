@@ -261,6 +261,14 @@ def build_activity_context(
     passive_save_adv: dict[str, list[str]] = {}
     passive_save_dis: dict[str, list[str]] = {}
     passive_save_auto_fail: dict[str, list[str]] = {}
+    # Per-target flat AC bonus (Shield's +5). The orchestrator fold lands it on
+    # ``save_modifiers[id]["passive_ac_bonus"]`` as a signed numeric/dice
+    # STRING (mirroring the other passive_* sidecar keys on this same wide
+    # dict); resolve it to a concrete int here via the same seeded ``roll_expr``
+    # every other sidecar bonus uses (a plain literal like Shield's "5" draws
+    # no dice, so this never perturbs the seed stream for the one reaction
+    # this cluster needs it for).
+    passive_ac_bonus: dict[str, int] = {}
     for entity_id, entry in save_modifiers.items():
         saves = entry.get("saves")
         if isinstance(saves, dict):
@@ -268,6 +276,9 @@ def build_activity_context(
         bonus = entry.get("passive_save_bonus")
         if isinstance(bonus, str) and bonus:
             passive_save_bonus[entity_id] = bonus
+        ac_bonus = entry.get("passive_ac_bonus")
+        if isinstance(ac_bonus, str) and ac_bonus:
+            passive_ac_bonus[entity_id] = roll_expr(ac_bonus, rng)
         for src_key, dest in (
             ("passive_save_adv", passive_save_adv),
             ("passive_save_dis", passive_save_dis),
@@ -315,6 +326,7 @@ def build_activity_context(
         passive_save_adv=passive_save_adv,
         passive_save_dis=passive_save_dis,
         passive_save_auto_fail=passive_save_auto_fail,
+        passive_ac_bonus=passive_ac_bonus,
         target_cover=target_cover or {},
         check_modifiers={},
         source_passive_effects=source_passive_effects,

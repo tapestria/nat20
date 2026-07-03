@@ -56,7 +56,6 @@ from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec, SceneTopolo
 from tests.e2e.harness import events_of, run_async, xfail_cluster
 
 
-@xfail_cluster(6, "Reactions & off-turn intents")
 def test_c06_s01_prearmed_counterspell_forces_con_save_two_seeds():
     """C06-S01: A pre-armed Counterspell forces the enemy caster's
     Constitution saving throw against the counterspeller's own spell save
@@ -211,7 +210,6 @@ def test_c06_s01_prearmed_counterspell_forces_con_save_two_seeds():
     assert not events_of(live_b, DamageApplied)
 
 
-@xfail_cluster(6, "Reactions & off-turn intents")
 def test_c06_s02_countered_cast_preserves_slot_and_wastes_action():
     """C06-S02: A countered, slot-cast Counterspell target does not expend
     its spell slot; the interrupted caster's action is wasted (turn
@@ -336,7 +334,6 @@ def test_c06_s02_countered_cast_preserves_slot_and_wastes_action():
     assert any(isinstance(e, TurnStarted) for e in tail[1:])
 
 
-@xfail_cluster(6, "Reactions & off-turn intents")
 def test_c06_s03_prearmed_shield_raises_ac_by_5_expires_next_turn():
     """C06-S03: A pre-armed Shield raises effective AC by 5 against the
     triggering attack (same-seed A/B: identical roll hits base AC, misses
@@ -461,7 +458,6 @@ def test_c06_s03_prearmed_shield_raises_ac_by_5_expires_next_turn():
     assert live_b.event_log.index(expired_b[0]) >= round2_start_idx
 
 
-@xfail_cluster(6, "Reactions & off-turn intents")
 def test_c06_s04_shield_vs_magic_missile_zero_force_damage():
     """C06-S04: Shield vs Magic Missile: the reactor takes zero force
     damage from the triggering cast.
