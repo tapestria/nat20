@@ -39,7 +39,13 @@ from dnd5e_srd_data.schema.item import Weapon, WeaponProperty
 from dnd5e_srd_data.schema.spell import CastingTimeUnit, Spell, SpellRangeUnits
 from pydantic import BaseModel, ConfigDict
 
+from dnd5e_engine.activities.attack import (
+    attacker_advantage_flags,
+    sneak_attack_dice,
+    sneak_attack_triggers,
+)
 from dnd5e_engine.activities.build_context import build_activity_context
+from dnd5e_engine.activities.context import ActivityResolutionContext
 from dnd5e_engine.activities.monster_actions import (
     expand_action_to_activities,
     select_typed_monster_action,
@@ -81,6 +87,9 @@ from dnd5e_engine.outcome import (
     LootDrop,
 )
 from dnd5e_engine.rules.conditions import (
+    Condition,
+    active_condition_names,
+    is_condition_active,
     project_passive_check_modifiers,
     project_passive_damage_modifiers,
     project_passive_save_modifiers,
@@ -490,6 +499,101 @@ def _target_cover_map(
             continue
         out[target.entity_id] = live.topology.cover_between(caster_zone, target_zone)
     return out
+
+
+def _sneak_ally_adjacent_map(
+    live: _LiveCombat, caster: Combatant, targets: Sequence[Combatant]
+) -> dict[str, bool]:
+    """SRD §Sneak Attack (Rogue), ally-adjacent alternative — per target, is at
+    least one of the caster's allies within 5 ft of that target and NOT
+    Incapacitated?
+
+    A new CONSUMER of the ``spatial.py`` distance seam (``within_range`` at 5
+    ft), NOT a new spatial primitive. "Ally" = a living combatant on the
+    caster's own side (party vs encounter) other than the caster. The
+    Incapacitated read uses the SRD condition-implication chain (Paralyzed /
+    Stunned / Petrified / Unconscious all imply Incapacitated). Threaded into
+    ``ActivityResolutionContext.sneak_attack_ally_adjacent`` so the pure
+    resolver never touches the spatial seam. Absent zone data for the caster's
+    side, a target, or every ally contributes no entry (⇒ no adjacent ally).
+    """
+    if caster.entity_id in live.party_ids:
+        side = live.party_ids
+    elif caster.entity_id in live.encounter_ids:
+        side = live.encounter_ids
+    else:
+        return {}
+    allies = [
+        c
+        for c in live.initiative
+        if c.entity_id in side
+        and c.entity_id != caster.entity_id
+        and c.is_alive
+        and not is_condition_active(Condition.INCAPACITATED, active_condition_names(c.conditions))
+    ]
+    if not allies:
+        return {}
+    out: dict[str, bool] = {}
+    for target in targets:
+        target_zone = live.actor_zone.get(target.entity_id)
+        if target_zone is None:
+            continue
+        for ally in allies:
+            ally_zone = live.actor_zone.get(ally.entity_id)
+            if ally_zone is not None and live.topology.within_range(ally_zone, target_zone, 5):
+                out[target.entity_id] = True
+                break
+    return out
+
+
+def _record_sneak_attack_spent(
+    live: _LiveCombat,
+    caster: Combatant,
+    intent: PlayerIntent,
+    weapon: Weapon | None,
+    targets: Sequence[Combatant],
+    actx: ActivityResolutionContext,
+    pre_event_count: int,
+) -> None:
+    """SRD §Sneak Attack, "Once per turn" — flip the caster's per-turn
+    ``sneak_attack_spent_this_turn`` flag once a rider has actually fired.
+
+    The rider folds inside the pure resolver; recording the actor-state is the
+    orchestrator's job. A rider fired iff this was a weapon attack, the caster
+    has Sneak Attack dice, was not already spent, and at least one damaged
+    target satisfied the trigger (``sneak_attack_triggers`` — the SAME predicate
+    the resolver gated the fold on, reused here so the two never diverge).
+
+    Today no PC multi-attack-per-turn intent path exists, so the flag it sets is
+    never re-read within the same turn (the cap is exercised only at the resolver
+    seam, C07-S04). Recording it anyway keeps the actor-state honest for the day
+    a second-attack path lands.
+    """
+    if intent.intent_type != "attack" or weapon is None:
+        return
+    if caster.sneak_attack_spent_this_turn or sneak_attack_dice(actx) is None:
+        return
+    has_advantage, has_disadvantage = attacker_advantage_flags(actx)
+    damaged_ids = {
+        e.target_id for e in live.event_log[pre_event_count:] if isinstance(e, DamageApplied)
+    }
+    fired = any(
+        target.entity_id in damaged_ids
+        and sneak_attack_triggers(
+            actx,
+            weapon,
+            target,
+            attacker_has_advantage=has_advantage,
+            attacker_has_disadvantage=has_disadvantage,
+        )
+        for target in targets
+    )
+    if not fired:
+        return
+    for idx, c in enumerate(live.initiative):
+        if c.entity_id == caster.entity_id:
+            live.initiative[idx] = c.model_copy(update={"sneak_attack_spent_this_turn": True})
+            break
 
 
 def _path_total_distance(topology: SpatialTopology, path: Sequence[str]) -> int | None:
@@ -1176,6 +1280,10 @@ def _emit_apply_turn_started(live: _LiveCombat, event: TurnStarted) -> None:
                     # SRD §Disengage — "for the rest of the turn"; this is
                     # the start of a NEW turn, so the suppression lapses.
                     "disengaging_this_turn": False,
+                    # SRD §Sneak Attack, "Once per turn" — the per-turn cap
+                    # clears at the start of the actor's own turn (symmetric
+                    # with the action-economy resets above).
+                    "sneak_attack_spent_this_turn": False,
                 }
             )
             break
@@ -3831,9 +3939,27 @@ async def submit_player_intent(
             # A FEATURE invocation must not inherit the blanket spell
             # save_dc_override; its save activity computes its own ability+PB DC.
             is_feature_invocation=bool(intent.feature_id),
+            # SRD §Advantage / §Sneak Attack — the caster's own active effects
+            # (attacker-side advantage flags) plus the two Sneak Attack
+            # sidecars: the per-turn "spent" gate rebuilt from the live
+            # Combatant flag, and the per-target ally-adjacent predicate (a
+            # spatial read owned here, not in the pure resolver).
+            active_effects=tuple(live.active_effects.get(current.entity_id, [])),
+            sneak_attack_spent={current.entity_id: current.sneak_attack_spent_this_turn},
+            sneak_attack_ally_adjacent=_sneak_ally_adjacent_map(live, current, targets),
         )
         for activity in activities:
             resolve_activity(activity, actx, weapon=fetched_weapon)
+
+        # SRD §Sneak Attack, "Once per turn" — record that the rider fired so a
+        # (future) second qualifying attack this turn is capped. The rider folds
+        # inside the pure resolver; the orchestrator owns the actor-state write.
+        # A rider fired iff the caster was sneak-eligible for a hit target this
+        # resolution (finesse/ranged weapon + Advantage or an adjacent ally),
+        # was not already spent, and at least one target took damage.
+        _record_sneak_attack_spent(
+            live, current, intent, fetched_weapon, targets, actx, pre_event_count
+        )
 
     # SRD §Concentration — fold any emitted ``EffectApplied(is_concentration=True)``
     # back onto the caster's ``Combatant.concentration_effect_id`` so the

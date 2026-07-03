@@ -20,7 +20,6 @@ from dnd5e_engine.types.effects import ActiveEffect, ActiveEffectChange
 from tests.e2e.harness import events_of, run_async, xfail_cluster
 
 
-@xfail_cluster(7, "Sneak Attack & feature repertoires")
 def test_c07_s01_sneak_attack_adds_bounded_extra_damage_on_advantage():
     """C07-S01: Sneak Attack adds bounded extra damage on an attack made
     with Advantage using a finesse weapon.
@@ -106,7 +105,6 @@ def test_c07_s01_sneak_attack_adds_bounded_extra_damage_on_advantage():
     assert 3 <= adv_total - no_adv_total <= 18
 
 
-@xfail_cluster(7, "Sneak Attack & feature repertoires")
 def test_c07_s02_sneak_attack_ally_adjacent_alternative_trigger():
     """C07-S02: Sneak Attack's ally-adjacent alternative trigger (no
     Advantage required) adds the same bounded extra damage.
@@ -266,7 +264,6 @@ def test_c07_s03_channel_divinity_repertoire_needs_activity_selection():
     assert 4 <= heals[0].amount <= 11
 
 
-@xfail_cluster(7, "Sneak Attack & feature repertoires")
 def test_c07_s04_sneak_attack_once_per_turn_cap_resets_next_turn():
     """C07-S04: Sneak Attack's once-per-turn cap: a second qualifying hit in
     the same turn state gains no rider; the cap resets next turn.

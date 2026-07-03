@@ -158,6 +158,14 @@ class Combatant(BaseModel):
     # remainder of the turn. Reset to False at the actor's own TurnStarted,
     # alongside action_available/bonus_action_available/reaction_available.
     disengaging_this_turn: bool = False
+    # SRD §Sneak Attack (Rogue), "Once per turn" — True once this combatant has
+    # already dealt Sneak Attack damage during the current turn. Gates the
+    # rider fold in ``activities/attack.py`` (projected per intent into
+    # ``ActivityResolutionContext.sneak_attack_spent``). Reset to False at the
+    # actor's own TurnStarted, alongside action_available / bonus_action_available
+    # / reaction_available / disengaging_this_turn. Defaults False (rider may
+    # fire) for every combatant.
+    sneak_attack_spent_this_turn: bool = False
 
     @model_validator(mode="before")
     @classmethod

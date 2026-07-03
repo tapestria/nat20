@@ -49,7 +49,7 @@ path did. Empty / absent sidecar fields reproduce the prior behavior exactly.
 from __future__ import annotations
 
 import random
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING, Any
 
 from dnd5e_engine.activities.context import ActivityResolutionContext
@@ -61,6 +61,8 @@ from dnd5e_engine.types.combat import Combatant
 if TYPE_CHECKING:
     from dnd5e_srd_data.schema.common import PassiveEffect
     from dnd5e_srd_data.schema.spell import Spell
+
+    from dnd5e_engine.types.effects import ActiveEffect
 
 _ABILITIES = ("str", "dex", "con", "int", "wis", "cha")
 
@@ -146,6 +148,9 @@ def build_activity_context(
     scale_values: dict[str, int | str] | None = None,
     class_levels: dict[str, int] | None = None,
     is_feature_invocation: bool = False,
+    active_effects: Sequence[ActiveEffect] = (),
+    sneak_attack_spent: dict[str, bool] | None = None,
+    sneak_attack_ally_adjacent: dict[str, bool] | None = None,
 ) -> ActivityResolutionContext:
     """Adapt the caster + the pre-computed hydration sidecars into the typed
     :class:`ActivityResolutionContext` the new resolver consumes.
@@ -328,6 +333,14 @@ def build_activity_context(
         passive_save_auto_fail=passive_save_auto_fail,
         passive_ac_bonus=passive_ac_bonus,
         target_cover=target_cover or {},
+        # SRD §Advantage / §Sneak Attack — the caster's own active effects
+        # (attacker-side ``flags.advantage.attack`` / ``flags.disadvantage.attack``
+        # read by ``attack.py``) plus the two Sneak Attack sidecars. The
+        # orchestrator projects these from live state; empty defaults keep the
+        # golden corpus identical (no advantage producer, no rider).
+        active_effects=active_effects,
+        sneak_attack_spent=sneak_attack_spent or {},
+        sneak_attack_ally_adjacent=sneak_attack_ally_adjacent or {},
         check_modifiers={},
         source_passive_effects=source_passive_effects,
         spell_book=spell_book,

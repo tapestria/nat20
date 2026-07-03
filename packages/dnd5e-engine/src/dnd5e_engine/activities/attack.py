@@ -12,11 +12,13 @@ MIRRORS, does not import from, ``effects/attack.py`` + ``effects/damage.py``:
 
 * The natural-d20 roll honors ``ctx.variables["force_d20"]`` (the test seam),
   else draws from ``ctx.rng`` — ``max`` of two for advantage, ``min`` of two for
-  disadvantage, one otherwise (SRD §Advantage and Disadvantage). The mode is
-  always ``"normal"`` today: the typed Outlined-effect layer does not yet encode
-  an attack-advantage change, so no producer feeds a per-target adv/dis flag.
-  Re-add a per-target reconciliation (consumer + producer together) when the
-  data layer encodes Faerie-Fire-style ``flags.advantage.attack``.
+  disadvantage, one otherwise (SRD §Advantage and Disadvantage). The d20 ``mode``
+  itself stays ``"normal"`` on this live path: ``ctx.active_effects`` IS now read
+  for the attacker's ``flags.advantage.attack`` / ``flags.disadvantage.attack``
+  (``attacker_advantage_flags``), but only to GATE the SRD §Sneak Attack trigger
+  below — not to reroll the base attack. Rolling the base d20 with advantage/
+  disadvantage would shift the seeded stream and crit outcome; that separate
+  delta is deferred (see ``docs/migration/v0.1-to-v0.2.md`` / ``BACKLOG.md``).
 * Hit / crit / miss mirrors ``effects/attack.py:_resolve_hit_outcome``: natural
   20 → auto crit+hit, natural 1 → auto miss, else ``total >= AC`` (SRD §Rolling
   1 or 20 / §Making an Attack). The crit threshold is ``attack.critical.threshold
@@ -102,11 +104,20 @@ def resolve_attack(
     # fresh d4 in the seeded stream — mirrors save_primitive's passive_save_bonus.
     attack_bonus_expr = ctx.passive_attack_bonus.get(ctx.caster.entity_id)
 
+    # SRD §Advantage and Disadvantage — read the attacker's own
+    # ``flags.advantage.attack`` / ``flags.disadvantage.attack`` override
+    # changes (both present cancel to normal, Avrae ``reconcile_adv``). These
+    # gate the SRD §Sneak Attack trigger below; they deliberately do NOT change
+    # the natural-d20 ``mode`` on this live path. Doing so would shift the
+    # seeded dice stream and the crit outcome of the base attack, perturbing
+    # the very damage magnitudes the once-per-turn / ally-adjacent scenarios
+    # isolate (a Sneak Attack rider must be the ONLY damage delta a qualifying
+    # trigger introduces). Rolling the base attack itself with advantage/
+    # disadvantage on the live path is a separate, deferred delta — see
+    # ``docs/migration/v0.1-to-v0.2.md`` and ``BACKLOG.md``.
+    attacker_has_advantage, attacker_has_disadvantage = attacker_advantage_flags(ctx)
+
     for index, target in enumerate(ctx.targets):
-        # No producer feeds per-target attack adv/dis today (the typed Outlined
-        # effect layer does not yet encode an attack-advantage change), so the
-        # mode is always normal. Re-add a per-target reconciliation when the data
-        # layer encodes Faerie-Fire-style ``flags.advantage.attack``.
         mode: AdvantageMode = "normal"
         natural = _roll_natural_d20(ctx, mode, target_index=index)
         total = natural + attack_bonus
@@ -139,13 +150,100 @@ def resolve_attack(
         )
 
         if is_hit:
-            _apply_on_hit_damage(activity, ctx, target, weapon, governing_ability, is_crit=is_crit)
+            _apply_on_hit_damage(
+                activity,
+                ctx,
+                target,
+                weapon,
+                governing_ability,
+                is_crit=is_crit,
+                attacker_has_advantage=attacker_has_advantage,
+                attacker_has_disadvantage=attacker_has_disadvantage,
+            )
             apply_mastery_on_hit(weapon, ctx, target, governing_ability)
             apply_activity_effects(
                 activity, ctx, target, save_succeeded=None, cast_level=cast_level
             )
         else:
             apply_mastery_on_miss(weapon, ctx, target, governing_ability)
+
+
+# ── attacker advantage / Sneak Attack production ─────────────────────────────
+
+
+def attacker_advantage_flags(ctx: ActivityResolutionContext) -> tuple[bool, bool]:
+    """Read the attacker's ``flags.advantage/disadvantage.attack`` override changes.
+
+    SRD §Advantage and Disadvantage. Mirrors the attacker-flag half of
+    ``rules/combat.py``'s reconciliation: an ``override``-mode change with value
+    ``True`` on an effect the CASTER carries flips the corresponding flag. Only
+    the caster's own effects count here (target-side Faerie-Fire production is
+    deferred — see the migration note); an absent/empty ``active_effects`` yields
+    ``(False, False)`` (``normal``), byte-identical to the prior hardcode.
+    """
+    has_advantage = False
+    has_disadvantage = False
+    for eff in ctx.active_effects:
+        if eff.target_id != ctx.caster.entity_id:
+            continue
+        for ch in eff.changes:
+            if ch.mode != "override" or ch.value is not True:
+                continue
+            if ch.key == "flags.advantage.attack":
+                has_advantage = True
+            elif ch.key == "flags.disadvantage.attack":
+                has_disadvantage = True
+    # Both present cancel to normal (Avrae ``reconcile_adv``).
+    if has_advantage and has_disadvantage:
+        return False, False
+    return has_advantage, has_disadvantage
+
+
+def sneak_attack_dice(ctx: ActivityResolutionContext) -> str | None:
+    """The caster's Sneak Attack extra-damage dice expression, if granted.
+
+    SRD §Sneak Attack (Rogue): the feature's ``damage.parts[0]`` formula is
+    ``@scale.<class>.sneak-attack`` (``"3d6"`` at Rogue level 5). The
+    orchestrator pre-resolves that ``@scale`` token into ``ctx.scale_values``
+    at the build-party seam (loader access there); this pure resolver reads the
+    already-resolved dice STRING keyed ``"<class>.sneak-attack"``. Absent ⇒ the
+    caster has no Sneak Attack (``None``, no rider).
+    """
+    for key, value in ctx.scale_values.items():
+        if key.endswith(".sneak-attack") and isinstance(value, str) and value:
+            return value
+    return None
+
+
+def sneak_attack_triggers(
+    ctx: ActivityResolutionContext,
+    weapon: Weapon | None,
+    target: Combatant,
+    *,
+    attacker_has_advantage: bool,
+    attacker_has_disadvantage: bool,
+) -> bool:
+    """SRD §Sneak Attack trigger: a Finesse-or-Ranged weapon hit made with
+    Advantage, OR (the ally-adjacent alternative) an ally within 5 ft of the
+    target who is not Incapacitated while the attacker is not at Disadvantage.
+
+    The ally-adjacent spatial predicate is evaluated orchestrator-side (a new
+    consumer of ``spatial.py``) and delivered as the per-target
+    ``ctx.sneak_attack_ally_adjacent`` flag; this pure resolver only reads it.
+    A spell attack (no weapon) never qualifies.
+    """
+    if weapon is None:
+        return False
+    is_finesse = WeaponProperty.FINESSE in weapon.properties
+    is_ranged = weapon.weapon_category in _RANGED_CATEGORIES
+    if not (is_finesse or is_ranged):
+        return False
+    if attacker_has_advantage:
+        return True
+    # Ally-adjacent alternative: an adjacent, non-Incapacitated ally (computed
+    # orchestrator-side) while the attacker is not at Disadvantage.
+    ally_adjacent = bool(ctx.sneak_attack_ally_adjacent.get(target.entity_id))
+    return ally_adjacent and not attacker_has_disadvantage
 
 
 # ── attack-bonus resolution ──────────────────────────────────────────────────
@@ -329,6 +427,8 @@ def _apply_on_hit_damage(
     governing_ability: str | None,
     *,
     is_crit: bool,
+    attacker_has_advantage: bool = False,
+    attacker_has_disadvantage: bool = False,
 ) -> None:
     """Roll base weapon damage + activity parts for one hit target and apply.
 
@@ -417,6 +517,31 @@ def _apply_on_hit_damage(
             weapon_bonus_expr = ctx.passive_weapon_damage_bonus.get(ctx.caster.entity_id)
             if weapon_bonus_expr:
                 by_type[first_type] += roll_expr(weapon_bonus_expr, ctx.rng)
+
+        # SRD §Sneak Attack (Rogue) — once per turn, on a qualifying hit (Finesse
+        # or Ranged weapon, made with Advantage OR the ally-adjacent alternative,
+        # rider unspent this turn), add the feature's extra dice. Folded into the
+        # FIRST damage type ("the extra damage's type is the same as the
+        # weapon's"). Rolled through ``ctx.rng`` (via ``roll_expr``, matching the
+        # passive-bonus fold pattern) so the dice land in the same seed stream.
+        # The once-per-turn cap gates the FOLD itself (``sneak_attack_spent``);
+        # recording "spent" is an orchestrator-side concern (a per-turn
+        # ``Combatant`` flag cleared at ``TurnStarted``).
+        if (
+            first_type is not None
+            and weapon is not None
+            and not ctx.sneak_attack_spent.get(ctx.caster.entity_id)
+            and sneak_attack_triggers(
+                ctx,
+                weapon,
+                target,
+                attacker_has_advantage=attacker_has_advantage,
+                attacker_has_disadvantage=attacker_has_disadvantage,
+            )
+        ):
+            sneak_dice = sneak_attack_dice(ctx)
+            if sneak_dice:
+                by_type[first_type] += roll_expr(sneak_dice, ctx.rng)
 
         apply_damage(target, dict(by_type), ctx)
     finally:

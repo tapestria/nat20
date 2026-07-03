@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import random
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -11,6 +11,8 @@ from dnd5e_engine.types.combat import Combatant
 if TYPE_CHECKING:
     from dnd5e_srd_data.schema.common import PassiveEffect
     from dnd5e_srd_data.schema.spell import Spell
+
+    from dnd5e_engine.types.effects import ActiveEffect
 
 
 @dataclass(frozen=True)
@@ -211,6 +213,34 @@ class ActivityResolutionContext:
     # level). Resolved at the same seam from the caster's class/level. Empty
     # default keeps the golden corpus identical.
     class_levels: dict[str, int] = field(default_factory=dict)
+    # The CASTER's own active effects, consulted by ``attack.py`` for the
+    # attacker-side ``flags.advantage.attack`` / ``flags.disadvantage.attack``
+    # override changes (SRD §Advantage and Disadvantage). Mirrors the
+    # attacker-flag half of ``rules/combat.py``'s already-implemented (but live-
+    # path-orphaned) reconciliation. Supplied by the orchestrator (projected
+    # from ``live.active_effects[caster_id]``) at cutover; by golden/e2e
+    # fixtures now. Empty default keeps the golden corpus identical (no
+    # advantage producer ⇒ every attack rolls ``normal``, as before).
+    active_effects: Sequence[ActiveEffect] = ()
+    # SRD §Sneak Attack (Rogue), "Once per turn" — per-ATTACKER gate keyed by
+    # ``entity_id`` (mirrors ``passive_melee_damage_bonus``'s per-caster shape).
+    # ``True`` means the caster has ALREADY landed a Sneak Attack rider this
+    # turn, so the injection point in ``attack.py:_apply_on_hit_damage`` skips
+    # the fold. The orchestrator populates it per intent from the live
+    # ``Combatant.sneak_attack_spent_this_turn`` flag and clears that flag at
+    # ``TurnStarted``. Absent caster ⇒ not spent (rider may fire). Empty default
+    # keeps the golden corpus identical.
+    sneak_attack_spent: dict[str, bool] = field(default_factory=dict)
+    # SRD §Sneak Attack (Rogue), ally-adjacent alternative — per-TARGET flag
+    # keyed by the target's ``entity_id``. ``True`` means at least one of the
+    # caster's allies is within 5 ft of THAT target and is not Incapacitated,
+    # so a Sneak Attack rider may fire without Advantage (provided the attacker
+    # is not at Disadvantage). Computed once per resolution by the orchestrator
+    # (a new consumer of the ``spatial.py`` distance seam, over the caster's
+    # party allies) and passed in as plain data — the pure resolver never
+    # touches the spatial seam. Absent target ⇒ no adjacent ally. Empty default
+    # keeps the golden corpus identical.
+    sneak_attack_ally_adjacent: dict[str, bool] = field(default_factory=dict)
     # Test-determinism seams (our own code): variables["force_d20"],
     # variables["force_save_d20"], variables["in_crit"].
     variables: dict[str, int] = field(default_factory=dict)
