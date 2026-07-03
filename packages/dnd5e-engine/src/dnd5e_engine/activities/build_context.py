@@ -142,6 +142,7 @@ def build_activity_context(
     spell_book: dict[str, Spell],
     passive_damage_modifiers: dict[str, dict[str, list[str]]],
     save_modifiers: dict[str, dict[str, Any]],
+    target_cover: dict[str, str] | None = None,
     scale_values: dict[str, int | str] | None = None,
     class_levels: dict[str, int] | None = None,
     is_feature_invocation: bool = False,
@@ -162,6 +163,13 @@ def build_activity_context(
     build-party seam (loader access there — ``activities/scale.build_scale_values``)
     and passed IN as plain data; this pure builder never touches a loader. Absent
     (``None``) → empty, leaving the golden corpus identical.
+
+    ``target_cover`` is the PRE-RESOLVED per-target SRD 5.2 §Cover degree
+    (``"none"``/``"half"``/``"three_quarters"``/``"total"``), computed by the
+    orchestrator (``_target_cover_map``, spatial-seam access there) from the
+    caster's and each target's live zone via ``topology.cover_between``. This
+    pure builder never touches the spatial seam; absent (``None``) → empty,
+    leaving the golden corpus identical (no cover geometry ⇒ no bonus).
 
     ``is_feature_invocation`` distinguishes a USE_FEATURE context from a spell /
     item cast. The blanket ``save_dc_override`` carries the real spell save DC
@@ -307,6 +315,7 @@ def build_activity_context(
         passive_save_adv=passive_save_adv,
         passive_save_dis=passive_save_dis,
         passive_save_auto_fail=passive_save_auto_fail,
+        target_cover=target_cover or {},
         check_modifiers={},
         source_passive_effects=source_passive_effects,
         spell_book=spell_book,

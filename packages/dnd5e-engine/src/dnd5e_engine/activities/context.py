@@ -151,6 +151,16 @@ class ActivityResolutionContext:
     # draw (matching ``effects/save.py`` + ``conditions.py`` semantics), so the
     # deterministic rng stream is not perturbed. Empty default = no auto-fail.
     passive_save_auto_fail: dict[str, list[str]] = field(default_factory=dict)
+    # Per-TARGET SRD 5.2 §Cover degree ("none"/"half"/"three_quarters"/
+    # "total"), keyed entity_id -> degree. Computed once per activity
+    # resolution by the orchestrator (``_target_cover_map``) from the
+    # caster's and target's live zone via ``SpatialTopology.cover_between``.
+    # Consumed in ``attack.py`` (folds +2/+5 onto the target's AC before the
+    # hit comparison) and ``save.py``/``save_primitive.py`` (folds the SAME
+    # +2/+5 onto a DEXTERITY save's total only — SRD: cover grants "a bonus
+    # to AC and Dexterity saving throws"). Absent target -> "none" (+0).
+    # Empty default keeps the golden corpus identical (no cover geometry).
+    target_cover: dict[str, str] = field(default_factory=dict)
     # Per-actor ability/skill-check modifier sidecar, mirroring
     # ``effects/check.py:_read_check_modifiers``'s shape
     # ``{entity_id: {"skills": {code: mod}, "ability_mods": {ability: mod}}}``.

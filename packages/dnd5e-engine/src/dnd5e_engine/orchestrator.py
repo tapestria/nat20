@@ -305,9 +305,17 @@ class _ZoneGraph:
 
     def has_line_of_sight(self, a: str, b: str) -> bool:
         # Zone graph has no occultation model; sight follows reachability of
-        # the graph itself. Both endpoints known ⇒ line of sight. (Wall/cover
-        # modelling is a grid-only follow-up — see BACKLOG.md.)
+        # the graph itself. Both endpoints known ⇒ line of sight. (Wall
+        # geometry is a grid-only capability — see docs/dev/spatial-geometry.md.)
         return a in self._zones and b in self._zones
+
+    def cover_between(self, a: str, b: str) -> Literal["none", "half", "three_quarters", "total"]:
+        # Zone graph has no positional cover model — an abstract graph of
+        # named locations has no coordinate system to hang obstruction
+        # geometry off of. Always "none" preserves current zone-combat
+        # behavior; documented, permanent backend split (not a gap) — see
+        # docs/dev/spatial-geometry.md "Zone-backend decision".
+        return "none"
 
 
 def _weapon_attack_range_ft(weapon: Weapon | None) -> int | None:
@@ -432,13 +440,49 @@ def _monster_is_fleeing(monster: Combatant) -> bool:
 
 
 def _in_range_with_los(topology: SpatialTopology, a: str, b: str, range_ft: int) -> bool:
-    """True iff ``b`` is within ``range_ft`` of ``a`` AND ``a`` has line of sight to ``b``.
+    """True iff ``b`` is within ``range_ft`` of ``a``, ``a`` has line of sight to
+    ``b``, AND ``b`` does not have total cover from ``a``.
 
-    The single range+LoS predicate every attack/cast gate routes through, so a
-    future LoS model gates them all consistently. v1 ``has_line_of_sight`` is
-    always True ⇒ this is behaviour-identical to a bare ``within_range`` today.
+    The single range+LoS+cover predicate every attack/cast gate routes
+    through. SRD 5.2 §Cover: a target with total cover "can't be targeted
+    directly" — reuses the same rejection surface (``AttackFailed(reason=
+    "out_of_range")``) every other range/LoS rejection already uses. On a
+    backend/scene with no wall or cover geometry, ``has_line_of_sight`` is
+    always True and ``cover_between`` is always ``"none"``, so this is
+    behaviour-identical to a bare ``within_range`` (byte-for-byte preserved).
     """
-    return topology.within_range(a, b, range_ft) and topology.has_line_of_sight(a, b)
+    return (
+        topology.within_range(a, b, range_ft)
+        and topology.has_line_of_sight(a, b)
+        and topology.cover_between(a, b) != "total"
+    )
+
+
+def _target_cover_map(
+    live: _LiveCombat, caster_id: str, targets: Sequence[Combatant]
+) -> dict[str, str]:
+    """SRD 5.2 §Cover — per-target cover degree between ``caster_id`` and each
+    target, computed once per activity resolution (cover doesn't vary
+    target-to-target for a fixed caster position).
+
+    Threaded into ``ActivityResolutionContext.target_cover`` so
+    ``activities/attack.py`` (AC) and ``activities/save.py`` (Dexterity
+    saves) can fold the SRD +2/+5 bonus without either resolver importing the
+    spatial seam directly. Absent zone tracking for the caster or a target
+    (e.g. a zone-graph combat with no positional data at all) contributes
+    ``"none"`` — mirrors ``_ZoneGraph.cover_between``'s permanent no-cover
+    behavior.
+    """
+    caster_zone = live.actor_zone.get(caster_id)
+    if caster_zone is None:
+        return {}
+    out: dict[str, str] = {}
+    for target in targets:
+        target_zone = live.actor_zone.get(target.entity_id)
+        if target_zone is None:
+            continue
+        out[target.entity_id] = live.topology.cover_between(caster_zone, target_zone)
+    return out
 
 
 def _path_total_distance(topology: SpatialTopology, path: Sequence[str]) -> int | None:
@@ -3325,6 +3369,7 @@ async def submit_player_intent(
             spell_book={},
             passive_damage_modifiers=payload["passive_damage_modifiers"],
             save_modifiers=payload["save_modifiers"],
+            target_cover=_target_cover_map(live, current.entity_id, targets),
             scale_values=scale_values,
             class_levels=class_levels,
             # A FEATURE invocation must not inherit the blanket spell
@@ -3772,6 +3817,7 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
             spell_book={},
             passive_damage_modifiers=payload["passive_damage_modifiers"],
             save_modifiers=payload["save_modifiers"],
+            target_cover=_target_cover_map(live, current.entity_id, target_list),
         )
         for activity in monster_activities:
             # Monster attacks carry their damage on the AttackActivity itself,

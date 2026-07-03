@@ -62,6 +62,7 @@ from dnd5e_engine.activities.effects import apply_activity_effects
 from dnd5e_engine.activities.formula import resolve_damage_block, resolve_roll_data
 from dnd5e_engine.activities.mastery import apply_mastery_on_hit, apply_mastery_on_miss
 from dnd5e_engine.events import AdvantageMode, AttackRolled
+from dnd5e_engine.spatial import cover_bonus
 
 if TYPE_CHECKING:
     from dnd5e_srd_data.schema.common import AttackActivity, DamagePartBlock
@@ -111,7 +112,11 @@ def resolve_attack(
         total = natural + attack_bonus
         if attack_bonus_expr:
             total += roll_expr(attack_bonus_expr, ctx.rng)
-        is_crit, is_hit = _resolve_hit_outcome(natural, total, target.ac, activity)
+        # SRD 5.2 §Cover — half (+2) / three-quarters (+5) cover raises the
+        # target's EFFECTIVE AC for this attack only; total cover is filtered
+        # upstream (the target is never reachable as a resolver target at all).
+        effective_ac = target.ac + cover_bonus(ctx.target_cover.get(target.entity_id, "none"))
+        is_crit, is_hit = _resolve_hit_outcome(natural, total, effective_ac, activity)
 
         ctx.event_emitter(
             AttackRolled(

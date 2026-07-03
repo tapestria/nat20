@@ -36,6 +36,8 @@ from typing import TYPE_CHECKING, Final
 
 import d20
 
+from dnd5e_engine.spatial import cover_bonus
+
 if TYPE_CHECKING:
     from dnd5e_engine.types.combat import Combatant
 
@@ -71,6 +73,10 @@ def roll_save(
       integer modifier (absent → +0).
     * ``ctx.passive_save_bonus[id]`` — a signed dice-expression string (Bless
       ``"+1d4"`` / Bane ``"-1d4"``), rolled through ``ctx.rng`` (absent → +0).
+    * ``ctx.target_cover[id]`` — SRD 5.2 §Cover: half (+2) / three-quarters
+      (+5) cover adds directly to a **Dexterity** save's total (a bonus to
+      the covered creature's OWN roll, not a DC adjustment — "a bonus to AC
+      AND Dexterity saving throws"). Inert for any other ability.
 
     The natural d20 honors ``ctx.variables["force_save_d20"]`` for the first
     target (``target_index == 0``) only. Success is ``total >= dc``. The caller
@@ -81,6 +87,8 @@ def roll_save(
         return 0, False
     natural = _roll_save_d20(ctx, target, ability, target_index=target_index)
     total = natural + _target_save_modifier(ctx, target, ability) + _passive_save_bonus(ctx, target)
+    if ability == "dex":
+        total += cover_bonus(ctx.target_cover.get(target.entity_id, "none"))
     return total, total >= dc
 
 
