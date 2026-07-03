@@ -49,6 +49,7 @@ from dnd5e_engine.specs import (
     GridScene,
     PartyMemberSpec,
     SceneTopology,
+    WallSegment,
     ZoneEdge,
 )
 from dnd5e_engine.types.effects import (
@@ -83,6 +84,7 @@ __all__ = [
     "PlayerIntent",
     "SceneTopology",
     "StartCombatResult",
+    "WallSegment",
     "ZoneEdge",
     "advance_monster_turn",
     "build_party_member",

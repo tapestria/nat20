@@ -27,6 +27,7 @@ TOP_LEVEL = {
     "PlayerIntent",
     "SceneTopology",
     "StartCombatResult",
+    "WallSegment",
     "ZoneEdge",
     "advance_monster_turn",
     "build_party_member",

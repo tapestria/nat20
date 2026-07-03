@@ -17,24 +17,24 @@ Anchors are current as of `dnd5e-engine` / `dnd5e-srd-data` **v0.1.1**.
 
 ## Spatial mechanics (grid backend is in place; these are additive)
 
-- **Real line-of-sight over wall geometry.** `GridTopology.has_line_of_sight`
-  returns `True` for any in-bounds pair — it is wired at the range gates but has
-  no real model. Needs wall-segment geometry on `GridScene` (today it carries
-  only `blocked_cells`, impassable squares) plus a segment-intersection test.
-  `packages/dnd5e-engine/src/dnd5e_engine/spatial.py` (`has_line_of_sight`),
-  `…/specs.py` (`GridScene`).
-- **Cover model** (half / three-quarters / total → AC and DEX-save bonus). No
-  `cover_between(a, b)` seam exists; combatants are zone/cell-scoped with no
-  positional cover. Surfaces needed: a cover query on the spatial seam, a
-  consumer in the attack/save resolvers, and a per-activity "ignores cover for
-  save" flag (Sacred Flame / Magic-Missile-style targeting).
-- **Grid AoE templates** (cone / sphere / line over cells). No
-  `cells_in_template(origin, shape, size)` for AoE target selection.
+- **Per-activity "ignores cover for save" flag.** SRD 5.2's Sacred Flame text
+  ("The target gains no benefit from Half Cover or Three-Quarters Cover for
+  this save") names a per-activity override that no canonical field backs
+  today: `dnd5e_srd_data.schema.common.SaveBlock` carries only `ability`/`dc`,
+  no boolean. Closed-2026-07-02 shrink of the former "Cover model" entry —
+  `cover_between`, the AC fold, and the Dexterity-save fold all landed (see
+  `packages/dnd5e-engine/src/dnd5e_engine/spatial.py::cover_between`,
+  `activities/attack.py::resolve_attack`, `activities/save_primitive.py::roll_save`);
+  only this per-activity carve-out remains, and it is a DATA-schema addition
+  (`schema/feature.py`-style `advancement` field precedent — add a
+  `SaveBlock.ignore_cover: bool` + translator support), not an engine gap.
+  `packages/dnd5e-srd-data/src/dnd5e_srd_data/schema/common.py` (`SaveBlock`).
 - **Richer pathfinding.** `GridTopology.shortest_path` is uniform-cost BFS
-  (`spatial.py`) — no difficult-terrain cost, threat-aware routing, or
-  multi-tile creatures. `GridScene` models only `blocked_cells`; a first-class
-  floor-cell set + wall-segment geometry lands together with the LoS model that
-  consumes it.
+  (`spatial.py`) — no threat-aware routing or multi-tile creatures. (Terrain
+  COST is closed: `edge_distance` doubles entering a `difficult_terrain_cells`
+  cell, consumed by `_handle_move`'s single-step budget check; `shortest_path`
+  itself is not yet a cost-aware search over that cost, which is what
+  "richer" now refers to.)
 
 ## Reactions & off-turn intents (one epic — build as a unit)
 

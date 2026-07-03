@@ -13,11 +13,10 @@ from dnd5e_engine.lib_loader import set_lib_loader_for_tests
 from dnd5e_engine.orchestrator import _get_live, start_combat, submit_player_intent
 from dnd5e_engine.spatial import GridTopology, cell_id
 from dnd5e_engine.specs import EncounterMemberSpec, GridScene, PartyMemberSpec
-from tests.e2e.harness import events_of, run_async, xfail_cluster
+from tests.e2e.harness import events_of, run_async
 from tests.test_orchestrator_gating_typed import _ranged_weapon
 
 
-@xfail_cluster(5, "Spatial")
 def test_c05_s01_wall_segment_blocks_line_of_sight_gating_ranged_attack():
     """C05-S01: A wall segment between attacker and target blocks line of
     sight, gating an in-range ranged attack.
@@ -93,7 +92,6 @@ def test_c05_s01_wall_segment_blocks_line_of_sight_gating_ranged_attack():
     assert not events_of(live, DamageApplied)
 
 
-@xfail_cluster(5, "Spatial")
 def test_c05_s02_half_cover_adds_plus2_ac_flips_hit_to_miss_same_seed():
     """C05-S02: Half cover adds +2 to a target's effective AC for a ranged
     attack (same-seed A/B: the identical natural roll hits base AC but
@@ -171,7 +169,6 @@ def test_c05_s02_half_cover_adds_plus2_ac_flips_hit_to_miss_same_seed():
     assert rolled_b.is_hit is False
 
 
-@xfail_cluster(5, "Spatial")
 def test_c05_s03_total_cover_makes_target_untargetable():
     """C05-S03: Total cover makes a target untargetable, rejecting an
     otherwise in-range ranged attack.
@@ -242,7 +239,6 @@ def test_c05_s03_total_cover_makes_target_untargetable():
     assert not events_of(live, DamageApplied)
 
 
-@xfail_cluster(5, "Spatial")
 def test_c05_s04_cells_in_template_sphere_returns_81_cell_chebyshev_set():
     """C05-S04: `cells_in_template` returns the exact 81-cell set for a
     20 ft sphere on a 5 ft grid.
@@ -281,7 +277,6 @@ def test_c05_s04_cells_in_template_sphere_returns_81_cell_chebyshev_set():
     assert "15,15" not in cells  # dx=5, dy=5 — OUT
 
 
-@xfail_cluster(5, "Spatial")
 def test_c05_s05_difficult_terrain_doubles_movement_cost_refusing_move():
     """C05-S05: Difficult terrain doubles the movement cost of entering a
     cell, refusing a move a normal-terrain budget would afford (same-seed
