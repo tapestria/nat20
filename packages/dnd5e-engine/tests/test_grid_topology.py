@@ -3,8 +3,8 @@ from itertools import pairwise
 import pytest
 from pydantic import ValidationError
 
-from dnd5e_engine.spatial import GridTopology, cell_id, parse_cell
-from dnd5e_engine.specs import GridScene
+from dnd5e_engine.spatial import GridTopology, cell_id, cover_bonus, parse_cell
+from dnd5e_engine.specs import GridScene, WallSegment
 
 
 def test_grid_scene_defaults_to_no_blocked_cells():
@@ -13,6 +13,9 @@ def test_grid_scene_defaults_to_no_blocked_cells():
     assert scene.height == 10
     assert scene.cell_size_ft == 5
     assert scene.blocked_cells == []
+    assert scene.wall_segments == []
+    assert scene.cover_cells == {}
+    assert scene.difficult_terrain_cells == []
 
 
 def test_grid_scene_rejects_extra_fields():
@@ -64,9 +67,149 @@ def test_within_range_uses_chebyshev_feet():
     assert g.within_range("0,0", "4,0", 15) is False  # 4 cells = 20ft > 15
 
 
-def test_has_line_of_sight_true_v1():
+def test_has_line_of_sight_ignores_blocked_cells_not_walls():
+    # blocked_cells gates MOVEMENT only, not sight — a wall (wall_segments) is
+    # the only thing that blocks LoS. See docs/dev/spatial-geometry.md.
     g = _grid(blocked=["1,0"])
-    assert g.has_line_of_sight("0,0", "2,0") is True  # walls don't block sight in v1
+    assert g.has_line_of_sight("0,0", "2,0") is True
+
+
+def test_has_line_of_sight_false_when_wall_crosses_the_sightline():
+    scene = GridScene(width=10, height=10, wall_segments=[WallSegment(x1=2, y1=0, x2=2, y2=10)])
+    g = GridTopology(scene)
+    assert g.has_line_of_sight("0,0", "4,0") is False  # crosses the x=2 wall
+
+
+def test_has_line_of_sight_true_when_wall_does_not_cross():
+    # Same wall, but both cells are on the SAME side of it — no crossing.
+    scene = GridScene(width=10, height=10, wall_segments=[WallSegment(x1=2, y1=0, x2=2, y2=10)])
+    g = GridTopology(scene)
+    assert g.has_line_of_sight("0,0", "1,0") is True
+
+
+def test_has_line_of_sight_accepts_wall_segments_as_plain_dicts():
+    # The e2e catalog constructs wall_segments as dicts — pydantic must coerce.
+    scene = GridScene(width=10, height=10, wall_segments=[{"x1": 2, "y1": 0, "x2": 2, "y2": 10}])
+    g = GridTopology(scene)
+    assert g.has_line_of_sight("0,0", "4,0") is False
+
+
+def test_has_line_of_sight_false_out_of_bounds():
+    g = _grid()
+    assert g.has_line_of_sight("0,0", "99,99") is False
+
+
+def test_wall_segment_rejects_extra_fields():
+    with pytest.raises(ValidationError):
+        WallSegment(x1=0, y1=0, x2=1, y2=1, z1=0)  # type: ignore[call-arg]
+
+
+def test_cover_between_defaults_to_none():
+    g = _grid()
+    assert g.cover_between("0,0", "2,0") == "none"
+
+
+def test_cover_between_returns_highest_degree_on_the_line():
+    scene = GridScene(width=10, height=10, cover_cells={"1,0": "half"})
+    g = GridTopology(scene)
+    assert g.cover_between("0,0", "2,0") == "half"
+    # No cover cell on this line at all.
+    assert g.cover_between("0,5", "2,5") == "none"
+
+
+def test_cover_between_ignores_cover_on_the_endpoints_themselves():
+    # A cover tag on the attacker's OR the target's own cell doesn't count —
+    # only an obstruction BETWEEN the two grants cover.
+    scene = GridScene(width=10, height=10, cover_cells={"0,0": "total", "2,0": "total"})
+    g = GridTopology(scene)
+    assert g.cover_between("0,0", "2,0") == "none"
+
+
+def test_cover_between_total_beats_half_when_both_lie_on_the_line():
+    scene = GridScene(
+        width=10, height=10, cover_cells={"1,0": "half", "2,0": "total", "3,0": "half"}
+    )
+    g = GridTopology(scene)
+    assert g.cover_between("0,0", "4,0") == "total"
+
+
+def test_cover_bonus_mapping():
+    assert cover_bonus("none") == 0
+    assert cover_bonus("half") == 2
+    assert cover_bonus("three_quarters") == 5
+    assert cover_bonus("total") == 0
+
+
+def test_edge_distance_doubles_for_difficult_terrain_destination():
+    scene = GridScene(width=10, height=10, difficult_terrain_cells=["1,0"])
+    g = GridTopology(scene)
+    assert g.edge_distance("0,0", "1,0") == 10  # doubled entering difficult terrain
+    assert g.edge_distance("1,0", "0,0") == 5  # normal cost leaving it
+
+
+def test_edge_distance_flat_when_no_difficult_terrain():
+    g = _grid()
+    assert g.edge_distance("0,0", "1,0") == 5
+
+
+def test_cells_in_template_sphere_trims_at_grid_boundary():
+    # A 3x3 grid with a 20 ft (4-cell) radius sphere centered at the corner —
+    # every cell in the tiny grid is included, none out of bounds.
+    g = GridTopology(GridScene(width=3, height=3, cell_size_ft=5))
+    cells = g.cells_in_template(origin="0,0", shape="sphere", size_ft=20)
+    assert set(cells) == {f"{c},{r}" for c in range(3) for r in range(3)}
+
+
+def test_cells_in_template_line_cardinal_direction():
+    g = GridTopology(GridScene(width=21, height=21, cell_size_ft=5))
+    cells = g.cells_in_template(origin="10,10", shape="line", size_ft=15, direction=(1, 0))
+    assert cells == ["10,10", "11,10", "12,10", "13,10"]  # origin + 3 steps east
+
+
+def test_cells_in_template_line_diagonal_direction():
+    g = GridTopology(GridScene(width=21, height=21, cell_size_ft=5))
+    cells = g.cells_in_template(origin="10,10", shape="line", size_ft=10, direction=(-1, -1))
+    assert cells == ["10,10", "9,9", "8,8"]
+
+
+def test_cells_in_template_cone_widens_with_distance():
+    g = GridTopology(GridScene(width=21, height=21, cell_size_ft=5))
+    cells = set(g.cells_in_template(origin="10,10", shape="cone", size_ft=15, direction=(1, 0)))
+    assert "10,10" in cells  # origin included
+    assert "11,10" in cells  # 1 cell forward, on-axis
+    assert "13,10" in cells  # 3 cells forward (radius), on-axis
+    assert "13,13" in cells  # 3 forward, 3 lateral — right at the 45 deg edge
+    assert "13,7" in cells  # symmetric on the other side
+    assert "14,10" not in cells  # beyond the radius
+    assert "5,10" not in cells  # behind the origin (wrong direction)
+    assert "10,13" not in cells  # off-axis relative to an EAST-facing cone
+
+
+def test_cells_in_template_cone_or_line_requires_direction():
+    g = GridTopology(GridScene(width=21, height=21, cell_size_ft=5))
+    with pytest.raises(ValueError):
+        g.cells_in_template(origin="10,10", shape="cone", size_ft=15)
+    with pytest.raises(ValueError):
+        g.cells_in_template(origin="10,10", shape="line", size_ft=15)
+
+
+def test_cells_in_template_rejects_zero_direction():
+    g = GridTopology(GridScene(width=21, height=21, cell_size_ft=5))
+    with pytest.raises(ValueError):
+        g.cells_in_template(origin="10,10", shape="line", size_ft=15, direction=(0, 0))
+
+
+def test_cells_in_template_out_of_bounds_origin_returns_empty():
+    g = _grid()
+    assert g.cells_in_template(origin="99,99", shape="sphere", size_ft=5) == []
+
+
+def test_zone_graph_cover_between_always_none():
+    from dnd5e_engine.orchestrator import _ZoneGraph
+    from dnd5e_engine.specs import SceneTopology
+
+    zg = _ZoneGraph(SceneTopology(zones=["a", "b"], edges=[]))
+    assert zg.cover_between("a", "b") == "none"
 
 
 def test_is_valid_cell():

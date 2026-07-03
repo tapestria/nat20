@@ -188,6 +188,27 @@ class SceneTopology(BaseModel):
     edges: list[ZoneEdge] = Field(default_factory=list)
 
 
+class WallSegment(BaseModel):
+    """One wall edge, grid-CORNER endpoints (mirrors Foundry's ``Wall.c``
+    four-coordinate convention).
+
+    Coordinates are grid-corner units, not cell-center units: a wall running
+    along the boundary between column 2 and column 3 (spanning the full grid
+    height) is ``WallSegment(x1=2, y1=0, x2=2, y2=<height>)``, not
+    ``x1=2.5``. ``GridTopology.has_line_of_sight`` tests the straight segment
+    between two cells' CENTER points (``col+0.5, row+0.5``) against every
+    wall segment for a proper intersection — see
+    ``docs/dev/spatial-geometry.md``.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    x1: float
+    y1: float
+    x2: float
+    y2: float
+
+
 class GridScene(BaseModel):
     """Wire-level shape for a 2-D grid battlefield.
 
@@ -195,8 +216,11 @@ class GridScene(BaseModel):
     ``cell_size_ft``) distance. Combatant positions reuse the existing
     ``zone_id`` string on the party/encounter specs, encoded as ``"col,row"``
     (see ``dnd5e_engine.spatial.cell_id``). ``blocked_cells`` are impassable
-    squares (movement may not enter them); line-of-sight / cover / AoE
-    templates over wall geometry are deferred (see ``BACKLOG.md``).
+    squares (movement may not enter them). ``wall_segments`` block line of
+    sight (SRD 5.2 §Areas of Effect); ``cover_cells`` grant half / three-
+    quarters / total cover (SRD 5.2 §Cover); ``difficult_terrain_cells``
+    double the movement cost of entering them (SRD 5.2 §Difficult Terrain).
+    See ``docs/dev/spatial-geometry.md`` for the full geometry design note.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -205,6 +229,19 @@ class GridScene(BaseModel):
     height: int = Field(ge=1)
     cell_size_ft: int = Field(default=5, ge=1)
     blocked_cells: list[str] = Field(default_factory=list)
+    # SRD 5.2 §Areas of Effect — wall geometry blocking line of sight.
+    # Additive; empty preserves ``has_line_of_sight``'s prior always-True
+    # behavior byte-for-byte.
+    wall_segments: list[WallSegment] = Field(default_factory=list)
+    # SRD 5.2 §Cover — obstruction cells tagged with the cover degree they
+    # grant a creature standing behind them, keyed by cell id (``"col,row"``).
+    # Distinct from ``blocked_cells`` (blocks movement) and ``wall_segments``
+    # (blocks LoS outright). Additive; empty preserves today's no-cover
+    # behavior.
+    cover_cells: dict[str, Literal["half", "three_quarters", "total"]] = Field(default_factory=dict)
+    # SRD 5.2 §Difficult Terrain — floor cells that cost double to enter.
+    # Additive; empty preserves ``edge_distance``'s prior flat-cost behavior.
+    difficult_terrain_cells: list[str] = Field(default_factory=list)
 
 
 __all__ = [
@@ -212,5 +249,6 @@ __all__ = [
     "GridScene",
     "PartyMemberSpec",
     "SceneTopology",
+    "WallSegment",
     "ZoneEdge",
 ]
