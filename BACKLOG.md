@@ -36,40 +36,6 @@ Anchors are current as of `dnd5e-engine` / `dnd5e-srd-data` **v0.1.1**.
   itself is not yet a cost-aware search over that cost, which is what
   "richer" now refers to.)
 
-## Reactions & off-turn intents (one epic — build as a unit)
-
-The largest missing piece. Every item below depends on the same off-turn
-trigger machinery and should be designed together, not piecemeal.
-
-- **Pre-armed reaction queue.** A combatant readies a reaction (e.g.
-  "Counterspell vs that caster") on its own turn; the engine holds the intent
-  until the trigger fires. No such queue exists in the orchestrator.
-- **Cross-actor trigger detection.** When any combatant submits a triggering
-  intent (e.g. `CAST_SPELL`), the engine must scan pending reactions and surface
-  the match before the triggering action resolves. (`ReactionTriggered` exists
-  but is emitted only in a narrow path —
-  `packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`.)
-- **Off-turn reaction submission.** Every `submit_player_intent` path advances
-  the active turn; there is no path for an off-turn actor to spend a reaction.
-- **Counterspell** — SRD 5.2 mechanic: the interrupted caster makes a CON
-  saving throw against the counterspeller's spell save DC; on failure the spell
-  dissipates, the action is wasted, and a slot-cast spell's slot is NOT
-  expended. (Entry corrected 2026-07-02 — the previous "ability check DC 10 +
-  spell level" text was the retired SRD 5.1/2014 rule; the canonical
-  `counterspell.json` save-activity data is already correct.) Two blockers
-  discovered while pinning this behavior are tracked below: slot consumption at
-  submission, and the flat spell-save-DC approximation.
-- **Shield** — the +5 AC reaction does not persist onto the incoming attack roll
-  (no per-target AC-bonus rider from an active effect into the attack resolver).
-- **Magic Missile force-immunity hook** — with Shield active, the damage path
-  must drop the pending force damage.
-- **Monster reactions** and **symmetric monster opportunity attacks.** Only the
-  PC-reactor / monster-mover direction ships; the monster-reactor / PC-mover
-  mirror is deferred pending the reaction queue (`orchestrator.py` notes this at
-  the AoO site).
-- **Disengage.** The action is named in the intent/event enums
-  (`packages/dnd5e-engine/src/dnd5e_engine/events.py`) but has no handler.
-
 ## Other combat mechanics
 
 - **Behavior-aware monster action selection.** `select_monster_action`
@@ -77,6 +43,21 @@ trigger machinery and should be designed together, not piecemeal.
   returns the first attack by dict order and leaves behavior/flee gating to the
   caller; the monster's authored `BehaviorProfile` does not influence its choice
   inside the engine.
+## Discovered during Cluster 6 review (2026-07-03)
+
+- **No-slot readied reactions fire for free.** `_resolve_readied_spell_cast`
+  and `_drain_counterspell_reaction` decrement the reactor's spell slot only
+  when one is available, but fire the reaction (spending the Reaction and
+  applying the full effect) regardless — a reactor armed with an empty slot
+  pool gets a free Shield/Counterspell. Host-gated today (the host chooses to
+  arm), unpinned by any catalog scenario; the fix is a slot-availability gate
+  at drain time (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`).
+- **Counterspell range ungated at drain time.** SRD 5.2 Counterspell has a
+  60-foot range, but `_drain_counterspell_reaction` fires for any armed
+  reactor regardless of reactor↔caster distance. Unpinned — every catalog
+  scenario co-locates them; needs a topology distance check at drain
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`).
+
 ## Discovered during e2e catalog research (2026-07-02)
 
 - **Weapon-tagged to-hit bonus sidecar never consumed.** The orchestrator's
@@ -90,24 +71,6 @@ trigger machinery and should be designed together, not piecemeal.
   see `docs/migration/v0.1-to-v0.2.md`)
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/build_context.py`,
   `packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py`).
-- **Spell slots consumed at submission, before resolution.**
-  `_consume_spell_slot` decrements unconditionally when the intent is
-  submitted, before activities resolve, with no refund path — incompatible
-  with SRD 5.2 Counterspell's "slot isn't expended" clause and with any future
-  cast-interruption
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`, `_consume_spell_slot`).
-- **One-round buffs expire on the caster's own turn end.** Casting Shield (or
-  any 1-round self-buff) emits `effect_applied` then `effect_expired(reason=
-  duration)` in the same tail — `_tick_durations_at_turn_end` collapses the
-  duration before the effect could ever matter
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`,
-  `_tick_durations_at_turn_end`).
-- **Disengage falls through to the generic Action pipeline and ends the
-  turn.** A same-turn Disengage→Move sequence raises
-  `IntentRejectedError(reason="not_actor_turn")` because the disengage intent
-  calls `_advance_turn` (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`);
-  subsumed by the Disengage handler item above but the turn-ending fall-through
-  is a distinct defect.
 - **Second, dead `condition_immunities` surface.** `dispatch.py` carries a
   host-owned condition-immunities path unused by live combat; a future
   `Combatant.condition_immunities` fix must not collide with it
