@@ -164,13 +164,14 @@ def build_activity_context(
     (``None``) → empty, leaving the golden corpus identical.
 
     ``is_feature_invocation`` distinguishes a USE_FEATURE context from a spell /
-    item cast. The blanket ``save_dc_override`` reproduces the Avrae-era flat
-    SPELL DC (``8 + PB + caster_mod``); applying it to a FEATURE save activity is
-    wrong — a feature must compute its own DC from its save's ability + PB. So
-    for a feature invocation the override is omitted (``None``), letting the save
-    resolver fall through to ``save.dc.calculation``. The spell / item path keeps
-    the blanket override unchanged (the full spellcasting-ability/DC seam stays
-    deferred).
+    item cast. The blanket ``save_dc_override`` carries the real spell save DC
+    (``_save_dc``: ``8 + PB + spellcasting-ability mod``, class→ability from
+    canonical class data, with the documented flat fallback for unknown /
+    non-caster classes and item casts); applying it to a FEATURE save activity
+    is wrong — a feature must compute its own DC from its save's ability + PB.
+    So for a feature invocation the override is omitted (``None``), letting the
+    save resolver fall through to ``save.dc.calculation``. The spell / item
+    path keeps the blanket override.
     """
     mod = _caster_mod(caster)
     if caster.entity_type == "Character":
