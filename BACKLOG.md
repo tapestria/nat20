@@ -58,6 +58,17 @@ Anchors are current as of `dnd5e-engine` / `dnd5e-srd-data` **v0.1.1**.
   scenario co-locates them; needs a topology distance check at drain
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`).
 
+## Discovered during Cluster 8 review (2026-07-03)
+
+- **Weapon-mastery Topple bypasses `condition_immunities`.** C08's
+  condition-immunity gate lives in `activities/effects.py::apply_activity_effects`,
+  but `activities/mastery.py` (~line 199) is a second `ConditionApplied` emit
+  site with no gate — a Topple-mastery hit still knocks a prone-immune target
+  prone. Fix: factor the immunity check into a shared helper both emit sites
+  call (grep-verified: exactly two emit sites today)
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/mastery.py`,
+  `packages/dnd5e-engine/src/dnd5e_engine/activities/effects.py`).
+
 ## Discovered during e2e catalog research (2026-07-02)
 
 - **Weapon-tagged to-hit bonus sidecar never consumed.** The orchestrator's
