@@ -82,13 +82,17 @@ Anchors are current as of `dnd5e-engine` / `dnd5e-srd-data` **v0.1.1**.
 
 ## Class / species feature mechanics
 
-- **Sneak Attack & conditional damage riders.** Needs (1) per-target advantage
-  *production* — `activities/attack.py` resolves `mode="normal"`, so nothing can
-  satisfy an "if you have advantage" precondition; (2) once-per-turn actor state;
-  (3) crit-window injection of the conditional extra-damage part. None exist yet.
-- **Multi-activity features (e.g. Channel Divinity).** A feature that is a
-  *repertoire of alternatives* needs an activity-selection seam (choose Turn
-  Undead vs Divine Spark); the engine cannot select among a feature's activities.
+- **Attack-roll advantage/disadvantage on the live path (`activities/attack.py`).**
+  Cluster 7 added attacker-side `flags.advantage.attack` / `flags.disadvantage.attack`
+  *detection* (`attacker_advantage_flags`), but it currently only GATES the Sneak
+  Attack trigger — the natural d20 still rolls `mode="normal"`. Rolling the base
+  attack itself with advantage/disadvantage would shift the seeded dice stream and
+  crit outcome (the C07-S01/S04 pinned per-scenario damage deltas isolate the
+  Sneak Attack rider as the only delta, so they require the base roll to stay
+  stream-invariant to the advantage flag). Wire the flag into `_roll_natural_d20`'s
+  `mode`, plus the target-side producer (Faerie Fire granting attackers advantage —
+  `rules/combat.py:459-471` already models it off-path), once a scenario exercises
+  the base-roll delta directly. See `docs/migration/v0.1-to-v0.2.md`.
 - **Unconsumed `system.bonuses.*` buckets (partial — Cluster 4 closed the
   attack/damage + spell.dc families).** `heal.*` and `abilities.check` /
   `abilities.skill` remain inert: no per-actor sidecar consumer exists for
