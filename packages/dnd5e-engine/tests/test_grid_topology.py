@@ -269,3 +269,14 @@ def test_grid_types_exported_from_package_root():
     assert hasattr(dnd5e_engine, "GridScene")
     assert hasattr(dnd5e_engine, "cell_id")
     assert hasattr(dnd5e_engine, "parse_cell")
+
+
+def test_has_line_of_sight_blocked_when_wall_endpoint_grazes_the_sightline():
+    # Regression pin for the endpoint-touch convention: a sightline that
+    # passes exactly through a wall's ENDPOINT (T-touch, not a through-
+    # crossing) counts as blocked — the intersection test's conservative
+    # on-segment fallback. The diagonal "0,0" -> "2,2" sightline runs along
+    # y = x and grazes the (1, 1) endpoint of a wall dropping to (1, 0).
+    scene = GridScene(width=10, height=10, wall_segments=[WallSegment(x1=1, y1=1, x2=1, y2=0)])
+    g = GridTopology(scene)
+    assert g.has_line_of_sight("0,0", "2,2") is False
