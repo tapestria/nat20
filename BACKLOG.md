@@ -108,25 +108,17 @@ Anchors are current as of `dnd5e-engine` / `dnd5e-srd-data` **v0.1.1**.
 
 ### Passive-stat projection (`activities/passive_stats.py`)
 
-The interpreter projects always-on `dr` (damage resistance), `di` (immunity),
-and `senses` at combat start. The rest of the spec-§D allowlist is recognized
-but routed to `skipped_keys` (deferred) for lack of a `Combatant` landing zone:
+The interpreter now projects always-on `dr` (damage resistance), `di`
+(immunity), `dv` (vulnerability), `ci` (condition immunity), `senses`, and
+`movement` (walk-speed bonus + typed non-walk modes) at combat start, plus the
+activation-gated Rage `dr` fold on the active-effect path (Cluster 8). One entry
+of the spec-§D allowlist remains recognized-but-deferred for lack of a landing
+zone + apply logic:
 
-- **Activation-gated resistances** (e.g. Rage's slashing/piercing/bludgeoning
-  resistance while raging). Honored as `disabled`/`transfer` and deliberately
-  not projected at rest; closing this means reading `system.traits.dr.value` off
-  *active* effects in the damage path.
-- **Movement changes** (`system.attributes.movement.*`) — typed non-walk modes
-  (climb/swim/fly/burrow) and symbolic `@scale` values; needs a typed movement-
-  modes field on `Combatant` + formula resolution (collapsing to scalar is lossy).
-- **`condition_immunities`** (`system.traits.ci.value`) — needs a new
-  `Combatant.condition_immunities` field *and* a consumer in the condition-
-  application path (Nature's Ward `ci:poison` is the first real case).
-- **`di` / `dv`** (damage immunity / vulnerability) from features/species — `di`
-  is handled defensively but untested; vulnerability has no `Combatant` field.
 - **Ability scores, proficiency grants, `ac.calc`, languages** — each needs its
   own landing zone + apply logic (ability-modifier path, proficiency sets +
-  roll-path consumer, AC recomputation, languages field).
+  roll-path consumer, AC recomputation, languages field). No Cluster 8 catalog
+  scenario pins these; they stay deferred (routed to `skipped_keys`).
 
 ## Rest & recovery
 
