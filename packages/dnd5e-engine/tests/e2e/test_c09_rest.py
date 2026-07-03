@@ -20,10 +20,9 @@ from dnd5e_engine.orchestrator import (
     submit_player_intent,
 )
 from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec, SceneTopology, ZoneEdge
-from tests.e2e.harness import events_of, run_async, xfail_cluster
+from tests.e2e.harness import events_of, run_async
 
 
-@xfail_cluster(9, "Rest & recovery")
 def test_c09_s01_short_rest_hit_dice_healing():
     """C09-S01: Short Rest has no resolvable seam at all — SRD hit-dice
     healing (`1dHD + CON`, floored at 1 per die) cannot be exercised
@@ -59,7 +58,6 @@ def test_c09_s01_short_rest_hit_dice_healing():
     assert len(outcome.rolls) == 3
 
 
-@xfail_cluster(9, "Rest & recovery")
 def test_c09_s02_long_rest_full_hp_and_hit_dice_recovery():
     """C09-S02: Long Rest has no seam at all — SRD 2024 full recovery (ALL
     HP + ALL Hit Dice), not the stale 2014 half-Hit-Dice rule.
@@ -87,7 +85,6 @@ def test_c09_s02_long_rest_full_hp_and_hit_dice_recovery():
     assert outcome.dice_remaining == outcome.pool.dice_total == 5
 
 
-@xfail_cluster(9, "Rest & recovery")
 def test_c09_s03_second_wind_has_no_per_rest_usage_cap():
     """C09-S03: Second Wind has no per-rest usage cap — it fires unlimited
     times per combat with nothing to recharge.

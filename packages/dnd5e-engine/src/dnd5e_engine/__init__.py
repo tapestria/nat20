@@ -41,6 +41,14 @@ from dnd5e_engine.outcome import (
     DeathRecord,
     LootDrop,
 )
+from dnd5e_engine.rest import (
+    HitDicePool,
+    RecoveryPeriod,
+    RestOutcome,
+    recover_feature_uses,
+    resolve_long_rest,
+    resolve_short_rest,
+)
 from dnd5e_engine.results import EndCombatResult, StartCombatResult
 from dnd5e_engine.rules.effects import roll_dice_str
 from dnd5e_engine.spatial import cell_id, parse_cell
@@ -77,11 +85,14 @@ __all__ = [
     "EncounterMemberSpec",
     "EndCombatResult",
     "GridScene",
+    "HitDicePool",
     "IntentType",
     "LiveCombatView",
     "LootDrop",
     "PartyMemberSpec",
     "PlayerIntent",
+    "RecoveryPeriod",
+    "RestOutcome",
     "SceneTopology",
     "StartCombatResult",
     "WallSegment",
@@ -95,7 +106,10 @@ __all__ = [
     "make_build_spec",
     "narration_events",
     "parse_cell",
+    "recover_feature_uses",
     "resolve_check",
+    "resolve_long_rest",
+    "resolve_short_rest",
     "roll_dice_str",
     "start_combat",
     "submit_player_intent",

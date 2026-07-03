@@ -1,0 +1,115 @@
+"""Unit tests for the standalone rest resolvers (``dnd5e_engine.rest``).
+
+Cluster 9 (Rest & recovery). Ground truth: SRD 5.2 (2024 ruleset) §Short Rest /
+§Long Rest / feature recovery. Every dice draw flows through a seeded ``rng`` so the
+resolver is deterministic.
+"""
+
+from __future__ import annotations
+
+import random
+
+import pytest
+
+from dnd5e_engine.rest import (
+    FEATURE_USE_COUNTER_PREFIX,
+    HitDicePool,
+    recover_feature_uses,
+    resolve_long_rest,
+    resolve_short_rest,
+)
+
+
+def test_short_rest_spends_dice_and_heals_within_per_die_bounds():
+    """Each spent die heals ``max(1, 1d10 + CON)``; three dice at CON +2 fall in
+    ``[9, 36]`` (each die ``[3, 12]``), and the pool loses exactly the spent dice."""
+    pool = HitDicePool(hit_die_size=10, dice_remaining=5, dice_total=5)
+    outcome = resolve_short_rest(pool, dice_to_spend=3, con_modifier=2, rng=random.Random(7))
+
+    assert outcome.dice_spent == 3
+    assert outcome.dice_remaining == 2
+    assert len(outcome.rolls) == 3
+    assert 9 <= outcome.healed <= 36
+    assert outcome.healed == sum(outcome.rolls)
+    # Pool mirror reflects the spend but keeps the full total intact.
+    assert outcome.pool is not None
+    assert outcome.pool.dice_remaining == 2
+    assert outcome.pool.dice_total == 5
+
+
+def test_short_rest_per_die_floor_applies_to_each_die_not_the_sum():
+    """A large negative CON modifier can never drive an individual die below 1 — the
+    floor is per die, so N dice heal AT LEAST N total (never a floored-once sum)."""
+    pool = HitDicePool(hit_die_size=6, dice_remaining=4, dice_total=4)
+    outcome = resolve_short_rest(pool, dice_to_spend=4, con_modifier=-10, rng=random.Random(1))
+
+    assert all(r == 1 for r in outcome.rolls)  # every die floored to 1 individually
+    assert outcome.healed == 4  # 4 × 1, NOT max(1, sum) == 1
+
+
+def test_short_rest_is_deterministic_under_same_seed():
+    pool = HitDicePool(hit_die_size=10, dice_remaining=5, dice_total=5)
+    a = resolve_short_rest(pool, dice_to_spend=3, con_modifier=2, rng=random.Random(7))
+    b = resolve_short_rest(pool, dice_to_spend=3, con_modifier=2, rng=random.Random(7))
+    assert a.rolls == b.rolls
+    assert a.healed == b.healed
+
+
+def test_short_rest_rejects_overspend():
+    pool = HitDicePool(hit_die_size=10, dice_remaining=2, dice_total=5)
+    with pytest.raises(ValueError, match="only 2 remaining"):
+        resolve_short_rest(pool, dice_to_spend=3, con_modifier=2, rng=random.Random(7))
+
+
+def test_short_rest_rejects_negative_spend():
+    pool = HitDicePool(hit_die_size=10, dice_remaining=5, dice_total=5)
+    with pytest.raises(ValueError, match="non-negative"):
+        resolve_short_rest(pool, dice_to_spend=-1, con_modifier=2, rng=random.Random(7))
+
+
+def test_short_rest_zero_dice_is_a_noop_heal():
+    pool = HitDicePool(hit_die_size=10, dice_remaining=5, dice_total=5)
+    outcome = resolve_short_rest(pool, dice_to_spend=0, con_modifier=2, rng=random.Random(7))
+    assert outcome.healed == 0
+    assert outcome.rolls == ()
+    assert outcome.dice_remaining == 5
+
+
+def test_long_rest_restores_all_hp_and_all_hit_dice():
+    """SRD 2024 full recovery — NOT the stale 2014 half-hit-dice rule (which would
+    leave ``1 + max(1, 5 // 2) == 3`` dice)."""
+    pool = HitDicePool(hit_die_size=10, dice_remaining=1, dice_total=5)
+    outcome = resolve_long_rest(pool, hp_current=10, hp_max=50)
+
+    assert outcome.hp_current == 50
+    assert outcome.dice_remaining == 5
+    assert outcome.pool is not None
+    assert outcome.pool.dice_remaining == outcome.pool.dice_total == 5
+    assert outcome.healed == 40
+    assert outcome.rolls == ()
+
+
+def test_long_rest_at_full_health_heals_nothing():
+    pool = HitDicePool(hit_die_size=8, dice_remaining=3, dice_total=3)
+    outcome = resolve_long_rest(pool, hp_current=30, hp_max=30)
+    assert outcome.hp_current == 30
+    assert outcome.healed == 0
+    assert outcome.dice_remaining == 3
+
+
+def test_recover_feature_uses_resets_spent_counters():
+    counters = {
+        f"{FEATURE_USE_COUNTER_PREFIX}second-wind": {"spent": 1},
+        f"{FEATURE_USE_COUNTER_PREFIX}action-surge": {"spent": 2},
+        "some-host-counter": {"value": 3, "max": 3},  # untouched
+    }
+    for period in ("sr", "lr"):
+        recovered = recover_feature_uses(counters, period)
+        assert recovered == {"second-wind": 0, "action-surge": 0}
+    # Pure: the input mapping is not mutated.
+    assert counters[f"{FEATURE_USE_COUNTER_PREFIX}second-wind"]["spent"] == 1
+
+
+def test_recover_feature_uses_ignores_non_feature_counters():
+    counters = {"charges": {"value": 0, "max": 5}}
+    assert recover_feature_uses(counters, "lr") == {}
