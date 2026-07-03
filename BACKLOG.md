@@ -87,9 +87,15 @@ Anchors are current as of `dnd5e-engine` / `dnd5e-srd-data` **v0.1.1**.
   `Combatant.condition_immunities` fix must not collide with it
   (`packages/dnd5e-engine/src/dnd5e_engine/dispatch.py`).
 - **Dead code: `rules/gambits.py::select_action`** (the legacy per-profile
-  gambit picker) has no callers in `src/`; `ActionType.SHORT_REST`
-  (`types/intent.py`) is an orphaned member of the legacy dispatch enum —
-  decide disposition when the rest seam and monster-behavior clusters land.
+  gambit picker) has no callers in `src/`. `ActionType.SHORT_REST`
+  (`types/intent.py`) is an orphaned member of the legacy dispatch enum:
+  Cluster 9 resolved the rest-seam half of its disposition question — the
+  rest seam landed as the standalone `dnd5e_engine.rest` module (a rest is
+  NOT a live-combat intent; `events.py::IntentType` has no `short_rest`), so
+  `ActionType.SHORT_REST` is confirmed dead with no handler and no future
+  one. It is now docstring-deprecated in place; final removal (non-additive,
+  breaks any host constructing it) is deferred to the C11 dead-code closeout,
+  to be decided alongside `select_action` and the monster-behavior cluster.
 
 ## Class / species feature mechanics
 
@@ -133,10 +139,26 @@ zone + apply logic:
 
 ## Rest & recovery
 
-- **No Short Rest handler.** `SHORT_REST` is in the intent enum
-  (`types/intent.py`) but the orchestrator has no handler — no hit-dice spend,
-  class-feature recovery, or Second Wind.
-- **No Long Rest.** No HP/slot recovery or daily-feature reset.
+- **Formula-based feature-use caps resolve to a conservative 1** (2026-07-03,
+  Cluster 9). `orchestrator.py::_feature_use_cap` parses a feature's
+  `uses.max` as a literal integer; a Foundry roll-data expression
+  (`@scale.fighter.second-wind`, `@prof`, `max(1, @abilities.cha.mod)`) is
+  NOT resolved in the cap path and floors to 1 use per rest. Correct for
+  Second Wind at the tested level and conservative everywhere, but a
+  higher-level Fighter's true Second Wind cap (2–4 uses via the scale table)
+  and Bardic Inspiration's CHA-scaled cap are under-counted. Thread the
+  caster's scale/roll data into the cap resolver (the orchestrator already
+  builds `scale_values` for activity resolution — reuse it) to lift the
+  floor (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`).
+- **`recover_feature_uses` does not differentiate recovery period** (2026-07-03,
+  Cluster 9). The `custom_counters` sidecar is typed `dict[str, dict[str, int]]`,
+  which cannot encode which rest period (`sr`/`lr`) a given feature recharges
+  on, so `rest.recover_feature_uses` resets every tracked feature-use counter
+  on any rest. Correct for Second Wind (recovers on both) and every capped
+  feature exercised today; a resource that recharges only on a Long Rest would
+  over-recover on a Short Rest. Thread each feature's typed `uses.recovery`
+  rules (now carried on `Feature.uses`) through the companion to honour the
+  period (`packages/dnd5e-engine/src/dnd5e_engine/rest.py`).
 
 ## Blocked
 

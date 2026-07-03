@@ -42,6 +42,14 @@ class ActionType(StrEnum):
     EXAMINE_LOCATION = "examine_location"
     QUEST_ACCEPT = "quest_accept"
     SKILL_CHECK = "skill_check"
+    # DEPRECATED (Cluster 9) — orphaned member of this legacy dispatch enum,
+    # NOT the live-combat intent surface (that is ``events.py::IntentType``,
+    # which has no ``short_rest``). The rest seam landed as the standalone,
+    # zero-I/O ``dnd5e_engine.rest`` module (a rest cannot resolve inside a
+    # live combat — Rolling Initiative interrupts it per SRD 5.2), so this
+    # member has no handler and never will. Removal is non-additive (breaks
+    # any host constructing ``ActionType.SHORT_REST``); final disposition is
+    # deferred to the C11 dead-code closeout. See BACKLOG "Dead code".
     SHORT_REST = "short_rest"
     FREE_ROLEPLAY = "free_roleplay"
     OTHER = "other"
