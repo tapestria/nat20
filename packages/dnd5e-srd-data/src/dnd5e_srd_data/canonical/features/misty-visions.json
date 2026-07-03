@@ -143,6 +143,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "Prerequisite: Level 2+ Warlock\n\nYou can cast Silent Image without expending a spell slot.\n\nFoundry Note\n\nThis feature includes Silent Image's activities and can be used in its place.",
   "entry_kind": "feature",
   "feature_type": "class_feature",

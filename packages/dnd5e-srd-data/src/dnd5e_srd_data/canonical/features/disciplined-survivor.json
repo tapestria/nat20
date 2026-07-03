@@ -92,6 +92,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "Your physical and mental discipline grant you proficiency in all saving throws.\n\nAdditionally, whenever you make a saving throw and fail, you can expend 1 Focus Point to reroll it, and you must use the new roll.\n\nFoundry Note\n\nYou will automatically be granted the additional Saving Throw proficiencies as you level up.\n\nUse this feature to expend 1 Focus Point.",
   "entry_kind": "feature",
   "feature_type": "class_feature",

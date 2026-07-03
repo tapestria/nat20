@@ -93,6 +93,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "You can take a Reaction when you fall to reduce any damage you take from the fall by an amount equal to five times your Monk level.\n\nFoundry Note\n\nThis feature includes a Reduce activity which can be used to restore lost Hit Points equal to five times your Monk level.",
   "entry_kind": "feature",
   "feature_type": "class_feature",

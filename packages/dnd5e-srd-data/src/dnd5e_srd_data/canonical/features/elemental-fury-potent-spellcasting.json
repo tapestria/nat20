@@ -1,5 +1,6 @@
 {
   "activities": [],
+  "advancement": [],
   "description": "Add your Wisdom modifier to the damage you deal with any Druid cantrip (currently, [[lookup @abilities.wis.mod]]).\n\nFoundry Note\n\nThis feature does not automate the addition of the Wisdom modifier to Druid cantrips.",
   "entry_kind": "feature",
   "feature_type": "class_feature",

@@ -1,5 +1,6 @@
 {
   "activities": [],
+  "advancement": [],
   "description": "Your Hit Point maximum increases by 1, and it increases by 1 again whenever you gain a level.\n\nFoundry Note\n\nThe Hit Point maximum increase is handled automatically each level.",
   "entry_kind": "feature",
   "feature_type": "species_trait",

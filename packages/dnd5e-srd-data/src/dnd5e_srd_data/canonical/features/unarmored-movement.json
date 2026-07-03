@@ -1,5 +1,6 @@
 {
   "activities": [],
+  "advancement": [],
   "description": "Your speed increases by 10 feet while you aren't wearing armor or wielding a Shield. This bonus increases when you reach certain Monk levels, as shown on the Monk Features table.\n\nCurrent Increase: [[lookup @scale.monk.unarmored-movement]]",
   "entry_kind": "feature",
   "feature_type": "class_feature",

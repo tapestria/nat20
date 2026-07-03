@@ -113,6 +113,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "Whenever you cast a Wizard spell from the Evocation school, you can add your Intelligence modifier to one damage roll of that spell.\n\nFoundry Note\n\nYou can add your Intelligence modifier to the spell's Situational Bonus in the damage dialog or use this feature's Damage activity which allows you to select the type in the damage dialog.",
   "entry_kind": "feature",
   "feature_type": "subclass_feature",

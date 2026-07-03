@@ -101,6 +101,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "Hunter's Mark is a d10 rather than a d6.\n\nFoundry Note\n\nYou may use this feature in place of the Bonus Mark Damage activity on the Hunter's Mark spell.",
   "entry_kind": "feature",
   "feature_type": "class_feature",

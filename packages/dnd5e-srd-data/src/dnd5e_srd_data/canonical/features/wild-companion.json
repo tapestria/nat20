@@ -253,6 +253,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "You can summon a nature spirit that assumes an animal form to aid you. As a Magic action, you can expend a spell slot or a use of Wild Shape to cast the Find Familiar spell without Material components.\n\nWhen you cast the spell in this way, the familiar is Fey and disappears when you finish a Long Rest.\n\nFoundry Note\n\nThis feature includes a Summon activity which can be used to summon your wild companion. You can choose whether to expend a use of wild shape or a spell slot when activating it.\n\nThe summon does not automatically disappear when you finish a Long Rest.",
   "entry_kind": "feature",
   "feature_type": "class_feature",

@@ -1,5 +1,6 @@
 {
   "activities": [],
+  "advancement": [],
   "description": "You have proficiency in the Insight, Perception, or Survival skill.\n\nFoundry Note\n\nYou will be prompted for your choice after selecting this species.",
   "entry_kind": "feature",
   "feature_type": "species_trait",

@@ -92,6 +92,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "Cost: 1 Sorcery Point\n\nWhen you roll damage for a spell, you can spend 1 Sorcery Point to reroll a number of the damage dice up to your Charisma modifier (minimum of one, currently [[lookup @abilities.cha.mod]]), and you must use the new rolls.\n\nYou can use Empowered Spell even if you've already used a different Metamagic option during the casting of the spell.",
   "entry_kind": "feature",
   "feature_type": "class_feature",

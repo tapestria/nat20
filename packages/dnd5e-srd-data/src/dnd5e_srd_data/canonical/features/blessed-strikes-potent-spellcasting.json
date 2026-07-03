@@ -113,6 +113,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "Add your Wisdom modifier to the damage you deal with any Cleric cantrip.\n\nFoundry Note\n\nThis bonus damage is not automatically included in your cantrips.\n\nYou can add [[lookup @abilities.wis.mod]] to the Situational Bonus field of your cantrip's damage rolls or you can permanently add it to your cantrips by adding \"@abilities.wis.mod\" (minus the quotes) in the Bonus field.\n\nAlternatively, the Damage activity on this feature includes your Wisdom modifier and allows you to choose the damage type in the roll's dialog box.",
   "entry_kind": "feature",
   "feature_type": "class_feature",

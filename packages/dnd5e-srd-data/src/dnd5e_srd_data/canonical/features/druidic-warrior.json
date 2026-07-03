@@ -1,5 +1,48 @@
 {
   "activities": [],
+  "advancement": [
+    {
+      "class_restriction": "",
+      "configuration": {
+        "allowDrops": true,
+        "choices": {
+          "0": {
+            "count": 2,
+            "replacement": false
+          }
+        },
+        "pool": [],
+        "restriction": {
+          "level": "0",
+          "list": [
+            "class:druid"
+          ]
+        },
+        "spell": {
+          "ability": [
+            "cha"
+          ],
+          "method": "spell",
+          "prepared": 2,
+          "uses": {
+            "max": "",
+            "per": "",
+            "requireSlot": false
+          }
+        },
+        "type": "spell"
+      },
+      "hint": "You learn two Druid cantrips of your choice. Guidance and Starry Wisp are recommended. The chosen cantrips count as Ranger spells for you, and Wisdom is your spellcasting ability for them. Whenever you gain a Ranger level, you can replace one of these cantrips with another Druid cantrip.",
+      "id": "6dwyqBA13Ui6p4Bf",
+      "level": 0,
+      "title": "Choose Cantrips",
+      "type": "ItemChoice",
+      "value": {
+        "added": {},
+        "replaced": {}
+      }
+    }
+  ],
   "description": "You learn two Druid cantrips of your choice. Guidance and Starry Wisp are recommended. The chosen cantrips count as Ranger spells for you, and Wisdom is your spellcasting ability for them. Whenever you gain a Ranger level, you can replace one of these cantrips with another Druid cantrip.",
   "entry_kind": "feature",
   "feature_type": "class_feature",

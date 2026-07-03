@@ -113,6 +113,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "Prerequisite: Level 9+ Warlock\n\nYou can cast Arcane Eye without expending a spell slot.\n\nFoundry Note\n\nThis feature can be used in place of Arcane Eye and includes a Summon activity.",
   "entry_kind": "feature",
   "feature_type": "class_feature",

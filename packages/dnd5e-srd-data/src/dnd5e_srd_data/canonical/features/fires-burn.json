@@ -111,6 +111,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "When you hit a target with an attack roll and deal damage to it, you can also deal 1d10 Fire damage to that target.",
   "entry_kind": "feature",
   "feature_type": "species_trait",

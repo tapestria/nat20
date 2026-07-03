@@ -1,5 +1,6 @@
 {
   "activities": [],
+  "advancement": [],
   "description": "Prerequisite: Level 2+ Warlock\n\nYou can see normally in Dim Light and Darkness\u2014both magical and nonmagical\u2014within 120 feet of yourself.\n\nFoundry Note\n\nThis feature includes an Active Effect that grants you darkvision to 120 feet.",
   "entry_kind": "feature",
   "feature_type": "class_feature",

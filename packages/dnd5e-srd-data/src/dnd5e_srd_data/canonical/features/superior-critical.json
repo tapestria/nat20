@@ -1,5 +1,6 @@
 {
   "activities": [],
+  "advancement": [],
   "description": "Your attack rolls with weapons and Unarmed Strikes can now score a Critical Hit on a roll of 18\u201320 on the d20.\n\nFoundry Note\n\nThis feature automatically increases the Critical Hit threshold to 18.",
   "entry_kind": "feature",
   "feature_type": "subclass_feature",

@@ -2323,6 +2323,7 @@ def translate_feature_yaml(
         source_slug=source_slug,
         activities=_translate_activities(system),
         passive_effects=_passive_effects(doc),
+        advancement=_advancement(system),
         provenance=_provenance(yaml_path, ingest_date, ingest_version),
         review=ReviewState(),
     )

@@ -1,5 +1,6 @@
 {
   "activities": [],
+  "advancement": [],
   "description": "Prerequisite: Level 2+ Warlock, a Warlock Cantrip That Deals Damage\n\nChoose one of your known Warlock cantrips that deals damage. You can add your Charisma modifier to that spell's damage rolls.\n\nRepeatable. You can gain this invocation more than once. Each time you do so, choose a different eligible cantrip.\n\nFoundry Note\n\nThe change to your cantrip will have to be made manually by adding \"@abilities.cha.mod\" to the \"Bonus\" field of your spell's damage.",
   "entry_kind": "feature",
   "feature_type": "class_feature",

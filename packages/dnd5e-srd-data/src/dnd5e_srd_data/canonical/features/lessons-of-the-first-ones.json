@@ -1,5 +1,6 @@
 {
   "activities": [],
+  "advancement": [],
   "description": "Prerequisite: Level 2+ Warlock\n\nYou have received knowledge from an elder entity of the multiverse, allowing you to gain one Origin feat of your choice.\n\nRepeatable. You can gain this invocation more than once. Each time you do so, choose a different Origin feat.",
   "entry_kind": "feature",
   "feature_type": "class_feature",

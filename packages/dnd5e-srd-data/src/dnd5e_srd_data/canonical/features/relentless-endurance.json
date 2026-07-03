@@ -103,6 +103,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "When you are reduced to 0 Hit Points but not killed outright, you can drop to 1 Hit Point instead. Once you use this trait, you can't do so again until you finish a Long Rest.",
   "entry_kind": "feature",
   "feature_type": "species_trait",

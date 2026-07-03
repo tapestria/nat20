@@ -1,5 +1,6 @@
 {
   "activities": [],
+  "advancement": [],
   "description": "You have mastered two of the Words of Creation: the words of life and death. You therefore always have the Power Word Heal and Power Word Kill spells prepared. When you cast either spell, you can target a second creature with it if that creature is within 10 feet of the first target.\n\nFoundry Note\n\nYou are automatically granted these spells as you level up.",
   "entry_kind": "feature",
   "feature_type": "class_feature",

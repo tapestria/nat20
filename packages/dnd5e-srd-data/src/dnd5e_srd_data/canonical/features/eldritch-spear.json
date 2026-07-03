@@ -100,6 +100,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "Prerequisite: Level 2+ Warlock, a Warlock Cantrip That Deals Damage\n\nChoose one of your known Warlock cantrips that deals damage and has a range of 10+ feet. When you cast that spell, its range increases by a number of feet equal to 30 times your Warlock level.\n\nRepeatable. You can gain this invocation more than once. Each time you do so, choose a different eligible cantrip.\n\nFoundry Note\n\nUse the Increase Range enchantment activity and drag your chosen cantrip to the chat card to increase its range and append \", Eldritch Spear\" for easier identification.",
   "entry_kind": "feature",
   "feature_type": "class_feature",

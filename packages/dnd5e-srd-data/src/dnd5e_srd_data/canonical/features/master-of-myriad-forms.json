@@ -610,6 +610,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "Prerequisite: Level 5+ Warlock\n\nYou can cast Alter Self without expending a spell slot.\n\nFoundry Note\n\nThis feature includes Alter Self's activities.\n\nThe Aquatic Adaptation, Change Appearance, and Natural Weapons activities include Active Effects for tracking your choice and require Concentration.\n\nThe Attack activities can be used for your attack/damage rolls when you choose the Natural Weapons option.",
   "entry_kind": "feature",
   "feature_type": "class_feature",

@@ -101,6 +101,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "You now regain all your expended uses of Bardic Inspiration when you finish a Short or Long Rest.\n\nIn addition, you can expend a spell slot (no action required) to regain one expended use of Bardic Inspiration.\n\nFoundry Note\n\nYou must update the Bardic Inspiration feature on your sheet to refresh on Short Rest as it defaults to Long rest.\n\nThe Recharge with Spell Slot activity will expend a spell slot and grant another use of Bardic Inspiration.",
   "entry_kind": "feature",
   "feature_type": "class_feature",

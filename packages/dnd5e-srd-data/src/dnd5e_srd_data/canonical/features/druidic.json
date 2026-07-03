@@ -1,5 +1,6 @@
 {
   "activities": [],
+  "advancement": [],
   "description": "You know Druidic, the secret language of Druids. While learning this ancient tongue, you also unlocked the magic of communicating with animals; you always have the Speak with Animals spell prepared.\n\nYou can use Druidic to leave hidden messages. You and others who know Druidic automatically spot such a message. Others spot the message's presence with a successful [[/check inv 15]] check but can't decipher it without magic.\n\nFoundry Note\n\nDruidic and Speak with Animals are automatically added during advancement.",
   "entry_kind": "feature",
   "feature_type": "class_feature",

@@ -1,5 +1,6 @@
 {
   "activities": [],
+  "advancement": [],
   "description": "You can take the &amp;Reference[Hide] action even when you are obscured only by a creature that is at least one size larger than you.",
   "entry_kind": "feature",
   "feature_type": "species_trait",

@@ -1,5 +1,6 @@
 {
   "activities": [],
+  "advancement": [],
   "description": "You have Advantage on saving throws you make to avoid or end the &amp;Reference[Frightened] condition.",
   "entry_kind": "feature",
   "feature_type": "species_trait",

@@ -1,5 +1,6 @@
 {
   "activities": [],
+  "advancement": [],
   "description": "Your cunning mind is exceptionally difficult to control. You gain proficiency in Wisdom and Charisma saving throws.\n\nFoundry Note\n\nThese proficiencies are granted automatically as you level up.",
   "entry_kind": "feature",
   "feature_type": "class_feature",

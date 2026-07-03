@@ -295,6 +295,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "You've practiced new ways to use your Sneak Attack deviously. The following effects are now among your Cunning Strike options.\n\nDaze (Cost: 2d6). The target must succeed on a Constitution saving throw, or on its next turn, it can do only one of the following: move or take an action or a Bonus Action.\n\nKnock Out (Cost: 6d6). The target must succeed on a Constitution saving throw, or it has the &amp;Reference[Unconscious] condition for 1 minute or until it takes any damage. The Unconscious target repeats the save at the end of each of its turns, ending the effect on itself on a success.\n\nObscure (Cost: 3d6). The target must succeed on a Dexterity saving throw, or it has the &amp;Reference[Blinded] condition until the end of its next turn.\n\nFoundry Note\n\nAfter using Cunning Strike effects use the [[/item Cunning Strike activity=Cunning Sneak Attack]]{Cunning Sneak Attack} activity. It will prompt you to select how many dice you expended on effects and deduct them from your Sneak Attack roll automatically.\n\nYou can control the damage type in the damage roll dialog box.\n\nThe Daze activity includes an Active Effect for tracking the dazed target but it does not automate the effect.\n\nThe Knock Out activity includes an Active Effect which applies the Unconscious condition.\n\nThe Obscure activity includes an Active Effect which applies the Blinded condition.",
   "entry_kind": "feature",
   "feature_type": "class_feature",

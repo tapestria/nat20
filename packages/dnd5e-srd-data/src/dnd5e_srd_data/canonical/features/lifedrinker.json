@@ -307,6 +307,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "Prerequisite: Level 9+ Warlock, Pact of the Blade Invocation\n\nOnce per turn when you hit a creature with your pact weapon, you can deal an extra 1d6 Necrotic, Psychic, or Radiant damage (your choice) to the creature, and you can expend one of your Hit Point Dice to roll it and regain a number of Hit Points equal to the roll plus your Constitution modifier (minimum of 1 Hit Point).\n\nFoundry Note\n\nThe Damage activity allows you to choose the type of damage in the roll's dialog. It will remember your choice going forward.\n\nThe Heal (Largest Hit Die) and Smallest Hit Die activities expends the relevant Hit Die and provides a healing roll with your Constitution modifier included. Which you choose only matters if you are multi-classed with multiple hit die types.",
   "entry_kind": "feature",
   "feature_type": "class_feature",

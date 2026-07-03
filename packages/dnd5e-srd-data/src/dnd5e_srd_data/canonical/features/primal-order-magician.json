@@ -1,5 +1,6 @@
 {
   "activities": [],
+  "advancement": [],
   "description": "You know one extra cantrip from the Druid spell list. In addition, your mystical connection to nature gives you a bonus to your Intelligence (Arcana or Nature) checks. The bonus equals your Wisdom modifier (minimum bonus of +1, currently [[lookup @abilities.wis.mod]]).\n\nFoundry Note\n\nThis feature includes an Active Effect which automates the increase to your known cantrips and the bonus to your Arcane and Nature checks.",
   "entry_kind": "feature",
   "feature_type": "class_feature",

@@ -82,6 +82,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "Prerequisite: Level 7+ Warlock\n\nYou can cast Speak with Dead without expending a spell slot.",
   "entry_kind": "feature",
   "feature_type": "class_feature",

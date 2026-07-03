@@ -280,6 +280,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "Prerequisite: Level 9+ Warlock, Pact of the Tome Invocation\n\nA new page appears in your Book of Shadows when you conjure it. With your permission, a creature can take an action to write its name on that page, which can contain a number of names equal to your Charisma modifier (minimum of one name).\n\nWhen any creature whose name is on the page is reduced to 0 Hit Points but not killed outright, the creature magically drops to 1 Hit Point instead. Once this magic is triggered, no creature can benefit from it until you finish a Long Rest.\n\nAs a Magic action, you can erase a name on the page by touching it.\n\nFoundry Note\n\nThe Protect activity consumes a use of its activity which refreshes every Long Rest.\n\nThe Write Name activity consumes a use of the item which can be used for tracking how many names you've written down.\n\nThe Erase Name activity will restore a use of the item and allows you to add another name.",
   "entry_kind": "feature",
   "feature_type": "class_feature",

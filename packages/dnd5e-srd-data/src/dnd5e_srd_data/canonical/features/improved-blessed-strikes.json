@@ -93,6 +93,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "The option you chose for Blessed Strikes grows more powerful.\n\nDivine Strike. The extra damage of your Divine Strike increases to 2d8.\n\nPotent Spellcasting. When you cast a Cleric cantrip and deal damage to a creature with it, you can give vitality to yourself or another creature within 60 feet of yourself, granting a number of Temporary Hit Points equal to twice your Wisdom modifier.\n\nFoundry Note\n\nIf you chose Divine Strike the damage is automatically increased. If you chose Potent Spellcasting you can use the Potent Spellcasting activity on this feature.",
   "entry_kind": "feature",
   "feature_type": "class_feature",

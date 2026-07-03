@@ -1,5 +1,6 @@
 {
   "activities": [],
+  "advancement": [],
   "description": "When you roll Initiative, you regain expended uses of Bardic Inspiration until you have two if you have fewer than that.",
   "entry_kind": "feature",
   "feature_type": "class_feature",

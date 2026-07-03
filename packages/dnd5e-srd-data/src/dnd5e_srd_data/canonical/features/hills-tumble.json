@@ -92,6 +92,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "When you hit a Large or smaller creature with an attack roll and deal damage to it, you can give that target the &amp;Reference[Prone] condition.",
   "entry_kind": "feature",
   "feature_type": "species_trait",

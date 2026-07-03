@@ -92,6 +92,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "Prerequisite: Level 2+ Warlock\n\nYou can cast Jump on yourself without expending a spell slot.\n\nFoundry Note\n\nThis feature can be used in place of the Jump spell and includes an Active Effect for tracking.",
   "entry_kind": "feature",
   "feature_type": "class_feature",

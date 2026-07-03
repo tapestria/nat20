@@ -92,6 +92,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "Cost: 1 Sorcery Point\n\nWhen you cast a spell, you can spend 1 Sorcery Point to cast it without any Verbal, Somatic, or Material components, except Material components that are consumed by the spell or that have a cost specified in the spell.",
   "entry_kind": "feature",
   "feature_type": "class_feature",

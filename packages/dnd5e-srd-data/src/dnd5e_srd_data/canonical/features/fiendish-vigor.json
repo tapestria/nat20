@@ -93,6 +93,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "Prerequisite: Level 2+ Warlock\n\nYou can cast False Life on yourself without expending a spell slot. When you cast the spell with this feature, you don't roll the die for the Temporary Hit Points; you automatically get the highest number on the die.\n\nFoundry Note\n\nThe False Life activity includes the maximum amount of healing.",
   "entry_kind": "feature",
   "feature_type": "class_feature",

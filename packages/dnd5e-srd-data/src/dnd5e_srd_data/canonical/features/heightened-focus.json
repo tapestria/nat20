@@ -184,6 +184,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "Your Flurry of Blows, Patient Defense, and Step of the Wind gain the following benefits.\n\nFlurry of Blows. You can expend 1 Focus Point to use Flurry of Blows and make three Unarmed Strikes with it instead of two.\n\nPatient Defense. When you expend a Focus Point to use Patient Defense, you gain a number of Temporary Hit Points equal to two rolls of your Martial Arts die.\n\nStep of the Wind. When you expend a Focus Point to use Step of the Wind, you can choose a willing creature within 5 feet of yourself that is Large or smaller. You move the creature with you until the end of your turn. The creature's movement doesn't provoke Opportunity Attacks.\n\nFoundry Note\n\nThe Flurry of Blows activity will expend 1 Focus Point and you can then make three Unarmed Strikes.\n\nThe Patient Defense activity will roll the Temporary Hit Points for you.",
   "entry_kind": "feature",
   "feature_type": "class_feature",

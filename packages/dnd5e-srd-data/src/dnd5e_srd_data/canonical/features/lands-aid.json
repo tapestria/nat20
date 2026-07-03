@@ -209,6 +209,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "As a Magic action, you can expend a use of your Wild Shape and choose a point within 60 feet of yourself. Vitality-giving flowers and life-draining thorns appear for a moment in a 10-foot-radius Sphere centered on that point. Each creature of your choice in the Sphere must make a Constitution saving throw against your spell save DC, taking 2d6 Necrotic damage on a failed save or half as much damage on a successful one. One creature of your choice in that area regains [[/healing @scale.land.lands-aid]]{[[lookup @scale.land.lands-aid]] Hit Points}.\n\nThe damage and healing increase by 1d6 when you reach Druid levels 10 (3d6) and 14 (4d6).\n\nFoundry Note\n\nThis feature includes an activity for the saving throw and the healing.\n\nThe healing/damage values automatically scale as you level up.",
   "entry_kind": "feature",
   "feature_type": "subclass_feature",

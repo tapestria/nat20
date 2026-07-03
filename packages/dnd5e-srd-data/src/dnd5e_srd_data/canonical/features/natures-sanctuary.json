@@ -210,6 +210,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "As a Magic action, you can expend a use of your Wild Shape and cause spectral trees and vines to appear in a 15-foot Cube on the ground within 120 feet of yourself. They last there for 1 minute or until you have the Incapacitated condition or die. You and your allies have Half Cover while in that area, and your allies gain the current Resistance of your Nature's Ward while there.\n\nAs a Bonus Action, you can move the Cube up to 60 feet to ground within 120 feet of yourself.\n\nFoundry Note\n\nThis feature includes Active Effects for each Nature's Ward land type and adds the Half Cover status effect which automatically applies the relevant bonuses. Apply the relevant effect to your allies.\n\nThese Active Effects are not automatically added/removed to/from Actors in the designated area however.\n\nIt also includes an activity which can be used for tracking your Bonus Action usage when moving the spectral trees and vines.",
   "entry_kind": "feature",
   "feature_type": "subclass_feature",

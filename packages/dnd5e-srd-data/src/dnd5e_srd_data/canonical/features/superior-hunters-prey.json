@@ -101,6 +101,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "Once per turn when you deal damage to a creature marked by your Hunter's Mark, you can also deal that spell's extra damage to a different creature that you can see within 30 feet of the first creature.\n\nFoundry Note\n\nYou can apply the damage from Hunter's Mark or use the Damage activity on this feature.",
   "entry_kind": "feature",
   "feature_type": "subclass_feature",

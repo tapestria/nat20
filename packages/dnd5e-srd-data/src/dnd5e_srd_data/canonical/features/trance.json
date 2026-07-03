@@ -1,5 +1,6 @@
 {
   "activities": [],
+  "advancement": [],
   "description": "You don't need to sleep, and magic can't put you to sleep. You can finish a Long Rest in 4 hours if you spend those hours in a trancelike meditation, during which you retain consciousness.",
   "entry_kind": "feature",
   "feature_type": "species_trait",

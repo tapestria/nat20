@@ -1,5 +1,6 @@
 {
   "activities": [],
+  "advancement": [],
   "description": "You're so evasive that attackers rarely gain the upper hand against you. No attack roll can have Advantage against you unless you have the Incapacitated condition.",
   "entry_kind": "feature",
   "feature_type": "class_feature",

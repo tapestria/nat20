@@ -92,6 +92,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "You can cast Mage Armor on yourself without expending a spell slot.\n\nFoundry Note\n\nThe Mage Armor activity is configured with the spell's effect and duration, including an Active Effect to set the spell's provided AC formula.",
   "entry_kind": "feature",
   "feature_type": "class_feature",

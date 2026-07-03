@@ -1,5 +1,38 @@
 {
   "activities": [],
+  "advancement": [
+    {
+      "class_restriction": "",
+      "configuration": {
+        "cap": null,
+        "fixed": {
+          "cha": 0,
+          "con": 4,
+          "dex": 0,
+          "int": 0,
+          "str": 4,
+          "wis": 0
+        },
+        "locked": [
+          "str",
+          "dex",
+          "con",
+          "int",
+          "wis",
+          "cha"
+        ],
+        "max": 25,
+        "points": 0,
+        "recommendation": null
+      },
+      "hint": "You embody primal power. Your Strength and Constitution scores increase by 4, to a maximum of 25.",
+      "id": "apkonPAaBjVFh5eF",
+      "level": 20,
+      "title": "Primal Champion",
+      "type": "AbilityScoreImprovement",
+      "value": {}
+    }
+  ],
   "description": "You embody primal power. Your Strength and Constitution scores increase by 4, to a maximum of 25.",
   "entry_kind": "feature",
   "feature_type": "class_feature",

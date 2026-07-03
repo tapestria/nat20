@@ -1,5 +1,6 @@
 {
   "activities": [],
+  "advancement": [],
   "description": "The might of the elements flows through you. You gain one of the following options of your choice.\n\nPotent Spellcasting. Add your Wisdom modifier to the damage you deal with any Druid cantrip.\n\nPrimal Strike. Once on each of your turns when you hit a creature with an attack roll using a weapon or a Beast form's attack in Wild Shape, you can cause the target to take an extra 1d8 [[/damage 1d8 type=cold]]{cold}, [[/damage 1d8 type=fire]]{fire}, [[/damage 1d8 type=lightning]]{lightning}, or [[/damage 1d8 type=thunder]]{thunder} damage (choose when you hit).\n\nFoundry Note\n\nYou will be prompted to choose during advancement.",
   "entry_kind": "feature",
   "feature_type": "class_feature",

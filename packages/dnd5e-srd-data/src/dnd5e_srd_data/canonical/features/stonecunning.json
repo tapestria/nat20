@@ -102,6 +102,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "As a Bonus Action, you gain &amp;Reference[Tremorsense] with a range of 60 feet for 10 minutes. You must be on a stone surface or touching a stone surface to use this Tremorsense. The stone can be natural or worked. You can use this Bonus Action a number of times equal to your Proficiency Bonus, and you regain all expended uses when you finish a Long Rest.\n\nFoundry Note\n\nThis feature includes the limited uses and an Active Effect that grants you the 60 feet of Tremorsense. It does not automatically update your Token's vision settings.",
   "entry_kind": "feature",
   "feature_type": "species_trait",

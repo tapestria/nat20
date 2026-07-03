@@ -92,6 +92,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "Cost: 2 Sorcery Points\n\nWhen you cast a spell that forces a creature to make a saving throw, you can spend 2 Sorcery Points to give one target of the spell Disadvantage on saves against the spell.",
   "entry_kind": "feature",
   "feature_type": "class_feature",

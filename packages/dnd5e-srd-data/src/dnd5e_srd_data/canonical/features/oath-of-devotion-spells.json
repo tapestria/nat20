@@ -1,5 +1,6 @@
 {
   "activities": [],
+  "advancement": [],
   "description": "The magic of your oath ensures you always have certain spells ready; when you reach a Paladin level specified in the Oath of Devotion Spells table, you thereafter always have the listed spells prepared.\n\nOath of Devotion Spells\n\nPaladin Level\n\nSpells\n\n3\n\nProtection from Evil and Good, Shield of Faith\n\n5\n\nAid, Zone of Truth\n\n9\n\nBeacon of Hope, Dispel Magic\n\n13\n\nFreedom of Movement, Guardian of Faith\n\n17\n\nCommune, Flame Strike\n\nFoundry Note\n\nThe spells will be automatically granted as you level up.",
   "entry_kind": "feature",
   "feature_type": "subclass_feature",

@@ -92,6 +92,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "Prerequisite: Level 5+ Warlock\n\nWhile you're in an area of &amp;Reference[Dim Light] or &amp;Reference[Darkness], you can cast Invisibility on yourself without expending a spell slot.\n\nFoundry Note\n\nThe Cast activity can be used in place of the Invisibility spell and includes an Active Effect that sets the Invisible status effect.",
   "entry_kind": "feature",
   "feature_type": "class_feature",

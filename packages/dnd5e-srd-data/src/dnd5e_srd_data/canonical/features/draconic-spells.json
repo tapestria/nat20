@@ -1,5 +1,6 @@
 {
   "activities": [],
+  "advancement": [],
   "description": "When you reach a Sorcerer level specified in the Draconic Spells table, you thereafter always have the listed spells prepared.\n\nDraconic Spells\n\nSorcerer Level\n\nSpells\n\n3\n\nAlter Self, Chromatic Orb, Command, Dragon's Breath\n\n5\n\nFear, Fly\n\n7\n\nArcane Eye, Charm Monster\n\n9\n\nLegend Lore, Summon Dragon\n\nFoundry Note\n\nThe spells will be automatically granted as you level up.",
   "entry_kind": "feature",
   "feature_type": "subclass_feature",

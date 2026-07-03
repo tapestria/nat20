@@ -1,5 +1,6 @@
 {
   "activities": [],
+  "advancement": [],
   "description": "You study your opponents and learn from each attack you make. If you make an attack roll against a creature and miss, you have Advantage on your next attack roll against that creature before the end of your next turn.\n\nFoundry Note\n\nThis feature does not automate the Advantage on your next attack roll.",
   "entry_kind": "feature",
   "feature_type": "class_feature",

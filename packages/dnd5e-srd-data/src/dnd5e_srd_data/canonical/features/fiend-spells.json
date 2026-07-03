@@ -1,5 +1,6 @@
 {
   "activities": [],
+  "advancement": [],
   "description": "The magic of your patron ensures you always have certain spells ready; when you reach a Warlock level specified in the Fiend Spells table, you thereafter always have the listed spells prepared.\n\nFiend Spells\n\nWarlock Level\n\nSpells\n\n3\n\nBurning Hands, Command, Scorching Ray, Suggestion\n\n5\n\nFireball, Stinking Cloud\n\n7\n\nFire Shield, Wall of Fire\n\n9\n\nGeas, Insect Plague\n\nFoundry Note\n\nAs you level up these spells will be granted to you automatically.",
   "entry_kind": "feature",
   "feature_type": "subclass_feature",

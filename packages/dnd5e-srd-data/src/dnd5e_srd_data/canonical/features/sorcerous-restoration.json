@@ -101,6 +101,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "When you finish a Short Rest, you can regain expended Sorcery Points, but no more than a number equal to half your Sorcerer level (round down). Once you use this feature, you can't do so again until you finish a Long Rest.\n\nFoundry Note\n\nThis feature includes 1 free user per Long Rest. Use it to automatically regain the correct number of Sorcery Points.",
   "entry_kind": "feature",
   "feature_type": "class_feature",

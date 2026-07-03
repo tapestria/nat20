@@ -1,5 +1,6 @@
 {
   "activities": [],
+  "advancement": [],
   "description": "You have Advantage on attack rolls against the creature currently marked by your Hunter's Mark.",
   "entry_kind": "feature",
   "feature_type": "class_feature",

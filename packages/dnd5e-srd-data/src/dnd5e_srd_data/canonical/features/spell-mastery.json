@@ -100,6 +100,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "You have achieved such mastery over certain spells that you can cast them at will. Choose a level 1 and a level 2 spell in your spellbook that have a casting time of an action. You always have those spells prepared, and you can cast them at their lowest level without expending a spell slot. To cast either spell at a higher level, you must expend a spell slot.\n\nWhenever you finish a Long Rest, you can study your spellbook and replace one of those spells with an eligible spell of the same level from the book.\n\nFoundry Note\n\nThe Master activity includes an enchantment that marks the spells as \"Always Prepared\" and adds \", Mastered\" to their name for easy identification.\n\nUncheck the \"Consumption\" box when casting at the lowest level. You can drag multiple spells to the same chat card.",
   "entry_kind": "feature",
   "feature_type": "class_feature",

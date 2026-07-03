@@ -210,6 +210,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "Once on each of your turns, if you have no uses of Wild Shape left, you can give yourself one use by expending a spell slot (no action required).\n\nIn addition, you can expend one use of Wild Shape (no action required) to give yourself a level 1 spell slot, but you can't do so again until you finish a Long Rest.\n\nFoundry Note\n\nThe Regain Wild Shape activity consumes a spell slot and grants you another use of Wild Shape.\n\nThe Regain Spell Slot activity will consume a use of Wild Shape and grant you a level 1 spell slot.",
   "entry_kind": "feature",
   "feature_type": "class_feature",
