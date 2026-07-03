@@ -95,7 +95,6 @@ def test_c04_s01_cleric_spell_save_dc_uses_real_wis_formula():
     assert dc_low_wis == 11
 
 
-@xfail_cluster(4, "Caster plumbing")
 def test_c04_s02_feature_owned_scale_id_resolves_against_granting_feature():
     """C04-S02: Feature-owned `@scale` ids (Channel Divinity's Divine Spark
     die count) resolve against the granting feature's own advancement table.

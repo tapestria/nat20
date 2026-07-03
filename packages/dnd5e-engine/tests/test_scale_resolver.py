@@ -4,9 +4,11 @@ SPIKE findings (real tokens from canonical/features/*.json, owner docs via
 BundledAssetLoader):
 
 Match rule for ``@scale.<owner>.<key>[.<suffix>]``:
-  * ``<owner>`` resolves against get_class | get_subclass | get_species (in that
-    order). The owner space includes subclasses (Land druid) + species
-    (Dragonborn), not just classes.
+  * ``<owner>`` resolves against get_class | get_subclass | get_species |
+    get_feature (in that order; the ``get_feature`` fallback closed C04-S02,
+    Cluster 4). The owner space includes subclasses (Land druid), species
+    (Dragonborn), AND feature-owned scales (Channel Divinity's Divine Spark),
+    not just classes.
   * Walk the owner doc's ``advancement[]`` for entries with
     ``type == AdvancementType.SCALE_VALUE`` carrying ``configuration.scale``.
   * ``<key>`` matches when ``configuration.identifier == key`` OR
@@ -22,9 +24,6 @@ Scale value / suffix semantics (``configuration.type``):
     None, e.g. Monk Martial Arts Die); ``.number`` -> int dice count;
     ``.die``    -> die string ``f"d{faces}"``.
   * ``distance`` -> entry ``{value}``; bare -> int value (Paladin aura).
-
-UNRESOLVED set (owner not on any class/subclass/species doc -> None, logged):
-  * ``@scale.channel-divinity-cleric.spark`` (feature-specific scale).
 """
 
 from __future__ import annotations
@@ -118,9 +117,13 @@ def test_below_first_scale_level_returns_none() -> None:
     assert resolve_scale_value("barbarian", "rage-damage", level=0, loader=L) is None
 
 
-def test_unresolved_owner_returns_none() -> None:
-    # channel-divinity-cleric is a feature-specific scale, not on any owner doc
-    assert resolve_scale_value("channel-divinity-cleric", "spark", level=5, loader=L) is None
+def test_feature_owned_scale_resolves_via_get_feature_fallback() -> None:
+    # C04-S02 (Cluster 4): channel-divinity-cleric is a feature-specific scale
+    # (Divine Spark die count), not a class/subclass/species doc. `_owner_doc`
+    # now falls back to `loader.get_feature(identifier)`, so it resolves like
+    # any other owner. Scale table {2:1, 7:2, 13:3, 18:4}; level 5's highest
+    # entry <= 5 is the level-2 tier (value 1).
+    assert resolve_scale_value("channel-divinity-cleric", "spark", level=5, loader=L) == 1
 
 
 def test_unresolved_key_returns_none() -> None:
