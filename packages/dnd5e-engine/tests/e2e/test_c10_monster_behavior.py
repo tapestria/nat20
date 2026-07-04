@@ -11,7 +11,6 @@ from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec, SceneTopolo
 from tests.e2e.harness import events_of, run_async, xfail_cluster
 
 
-@xfail_cluster(10, "Monster behavior")
 def test_c10_s01_fleeing_monster_never_actually_retreats():
     """C10-S01: A low-HP AGGRESSIVE monster stops attacking below the SRD
     flee threshold but never actually retreats — zero movement, it simply

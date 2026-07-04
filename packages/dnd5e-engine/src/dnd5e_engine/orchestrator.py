@@ -646,6 +646,125 @@ def _monster_dash_movement_budget(
     return dashed_budget
 
 
+def _plan_flee_destination(
+    topology: SpatialTopology,
+    start_zone: str,
+    threat_zone: str,
+    movement_remaining: int,
+) -> str | None:
+    """Pick the reachable zone that MAXIMIZES topology distance from a threat.
+
+    The inverse of ``advance_monster_turn``'s greedy CLOSING walk: rather than
+    stepping along ``shortest_path`` *toward* the target, enumerate every zone
+    reachable within ``movement_remaining`` and choose the one whose distance to
+    ``threat_zone`` is greatest (ties broken toward the cheapest to reach, then
+    zone id for determinism). Returns ``None`` when no reachable zone strictly
+    increases the distance to the threat — the monster then holds its ground.
+
+    Zone-graph only: a grid backend exposes no finite named-zone set to rank, so
+    a fleeing monster on a grid stays put (not a pinned behaviour — grid retreat
+    pathing is a surviving BACKLOG item). Composed entirely from the existing
+    ``shortest_path`` / ``edge_distance`` primitives (via ``_path_total_distance``);
+    no new :class:`SpatialTopology` capability is introduced.
+    """
+    if not isinstance(topology, _ZoneGraph):
+        return None
+    baseline = _path_total_distance(topology, topology.shortest_path(start_zone, threat_zone))
+    if baseline is None:
+        return None
+    # (dist_to_threat, cost_to_reach, zone) for each zone that (a) is reachable
+    # within budget and (b) strictly increases distance from the threat.
+    candidates: list[tuple[int, int, str]] = []
+    for zone in sorted(topology._zones):
+        if zone == start_zone:
+            continue
+        cost = _path_total_distance(topology, topology.shortest_path(start_zone, zone))
+        if cost is None or cost > movement_remaining:
+            continue
+        dist = _path_total_distance(topology, topology.shortest_path(zone, threat_zone))
+        if dist is None or dist <= baseline:
+            continue
+        candidates.append((dist, cost, zone))
+    if not candidates:
+        return None
+    # Farthest from the threat wins; ties → cheapest to reach → stable zone id.
+    candidates.sort(key=lambda c: (-c[0], c[1], c[2]))
+    return candidates[0][2]
+
+
+def _walk_zone_path(live: _LiveCombat, mover_id: str, path: Sequence[str]) -> None:
+    """Step ``mover_id`` along ``path`` (a ``shortest_path`` result), paying each
+    edge out of ``movement_remaining`` and emitting one ``ActorMoved`` per step.
+
+    The fleeing-retreat counterpart to ``advance_monster_turn``'s inline CLOSING
+    walk (kept separate: the closing loop early-outs once the target is in attack
+    range, which a retreat has no analogue for). Fires PC opportunity attacks
+    before the mover leaves each zone and stops if an AoO drops the mover, or once
+    the next edge no longer fits the remaining budget.
+    """
+    for next_zone in path[1:]:
+        snapshot = next(c for c in live.initiative if c.entity_id == mover_id)
+        from_zone = live.actor_zone[mover_id]
+        step_distance = live.topology.edge_distance(from_zone, next_zone)
+        if step_distance is None or snapshot.movement_remaining < step_distance:
+            break
+        if _fire_pc_opportunity_attacks_on_move(
+            live, mover_id=mover_id, from_zone=from_zone, to_zone=next_zone
+        ):
+            break
+        for idx, c in enumerate(live.initiative):
+            if c.entity_id == mover_id:
+                live.initiative[idx] = c.model_copy(
+                    update={"movement_remaining": c.movement_remaining - step_distance}
+                )
+                break
+        live.actor_zone[mover_id] = next_zone
+        _emit(
+            live,
+            ActorMoved(
+                actor_id=mover_id,
+                from_zone=from_zone,
+                to_zone=next_zone,
+                distance_ft=step_distance,
+            ),
+        )
+
+
+def _execute_flee_retreat(
+    live: _LiveCombat, monster: Combatant, alive_pcs: Sequence[Combatant]
+) -> None:
+    """A fleeing monster spends movement increasing distance from its threat.
+
+    Monster-AI plumbing (DM-adjudicated, not codified SRD text): the flee gate
+    ``_monster_is_fleeing`` decides the monster *wants* to disengage; this gives
+    that decision teeth. The threat is the nearest alive PC by topology distance;
+    the destination is ``_plan_flee_destination``'s farthest-reachable zone. When
+    no such zone exists (already cornered, no budget, or grid backend) the monster
+    simply holds — the same no-move it did before, now via a real evaluation.
+    """
+    start_zone = live.actor_zone.get(monster.entity_id)
+    if start_zone is None or not alive_pcs:
+        return
+    threats: list[tuple[int, str, str]] = []
+    for pc in alive_pcs:
+        pc_zone = live.actor_zone.get(pc.entity_id)
+        if pc_zone is None:
+            continue
+        dist = _path_total_distance(live.topology, live.topology.shortest_path(start_zone, pc_zone))
+        if dist is not None:
+            threats.append((dist, pc.entity_id, pc_zone))
+    if not threats:
+        return
+    threats.sort(key=lambda t: (t[0], t[1]))
+    _, _, threat_zone = threats[0]
+    destination = _plan_flee_destination(
+        live.topology, start_zone, threat_zone, monster.movement_remaining
+    )
+    if destination is None:
+        return
+    _walk_zone_path(live, monster.entity_id, live.topology.shortest_path(start_zone, destination))
+
+
 def _pc_attack_out_of_range(live: _LiveCombat, actor_id: str, intent: PlayerIntent) -> bool:
     """True iff the PC attack would be rejected by the weapon-reach gate.
 
@@ -4581,6 +4700,18 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
     chosen_target: Combatant | None = (
         min(alive_pcs, key=lambda c: c.hp_current) if alive_pcs else None
     )
+
+    # ── Fleeing retreat (C10-S01) ──────────────────────────────────────────
+    # A live monster over the flee threshold spends its movement putting
+    # distance between itself and the nearest threat BEFORE the pass is
+    # recorded. Selection/attack stay gated off (``skip_to_record_pass`` is
+    # already True for a fleeing monster), so the turn still collapses to
+    # ``IntentSubmitted(intent_type="pass")`` — but now with real
+    # ``ActorMoved`` events preceding it (reusing ``"pass"`` per the catalog;
+    # no new IntentType is minted). Dead/unconscious monsters never retreat.
+    if current.is_alive and current.hp_current > 0 and _monster_is_fleeing(current):
+        _execute_flee_retreat(live, current, alive_pcs)
+        current = next(c for c in live.initiative if c.entity_id == current.entity_id)
 
     # ── Typed-Activity monster resolution (Foundry cutover, Task 6) ─────────
     #
