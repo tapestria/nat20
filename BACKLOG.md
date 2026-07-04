@@ -9,7 +9,7 @@ application concerns (narrators, persistence, world state, UI) are out of scope.
 closes it. When you discover one, add it under the right section with a date and
 a `packages/…` file anchor. Keep entries engine/data-centric — no host-app paths.
 
-Anchors are current as of `dnd5e-engine` / `dnd5e-srd-data` **v0.1.1**.
+Anchors are current as of `dnd5e-engine` / `dnd5e-srd-data` **v0.2.0**.
 
 ---
 
@@ -79,30 +79,6 @@ Anchors are current as of `dnd5e-engine` / `dnd5e-srd-data` **v0.1.1**.
   host-owned condition-immunities path unused by live combat; a future
   `Combatant.condition_immunities` fix must not collide with it
   (`packages/dnd5e-engine/src/dnd5e_engine/dispatch.py`).
-- **Dead code: `rules/gambits.py::select_action`** (the legacy per-profile
-  gambit picker) has no callers in `src/`. `ActionType.SHORT_REST`
-  (`types/intent.py`) is an orphaned member of the legacy dispatch enum:
-  Cluster 9 resolved the rest-seam half of its disposition question — the
-  rest seam landed as the standalone `dnd5e_engine.rest` module (a rest is
-  NOT a live-combat intent; `events.py::IntentType` has no `short_rest`), so
-  `ActionType.SHORT_REST` is confirmed dead with no handler and no future
-  one. It is now docstring-deprecated in place; final removal (non-additive,
-  breaks any host constructing it) is deferred to the C11 dead-code closeout.
-  **C10 disposition (recommend REMOVE at C11):** Cluster 10 landed every
-  behaviour `select_action` offered into the LIVE `advance_monster_turn` path —
-  flee (`_monster_is_fleeing` + `_execute_flee_retreat`, its `action_type="flee"`
-  arm), profile/range-aware attack choice (`_select_fallback_sibling`, its
-  `RANGED → ranged_attack` arm), and target priority (lowest-HP). `select_action`
-  is now definitively superseded, not merely uncalled; remove it (and its
-  `__all__` export) at the C11 non-additive closeout alongside
-  `ActionType.SHORT_REST`. `rules/gambits.py::assign_behavior_profile`'s
-  `has_ranged_attack → RANGED` **assignment** heuristic stays dead by a
-  different reason: the live path now CONSUMES `behavior_profile` (flee
-  threshold + multiattack tiebreak) but sources it from
-  `EncounterMemberSpec.behavior_profile`, never from `assign_behavior_profile` —
-  so that assignment helper's unused halves are also C11-removal candidates.
-  (Removal itself is non-additive → C11, not this cluster.)
-
 ## Class / species feature mechanics
 
 - **Attack-roll advantage/disadvantage on the live path (`activities/attack.py`).**
