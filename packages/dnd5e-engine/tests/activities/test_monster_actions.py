@@ -101,6 +101,69 @@ def test_precise_multiattack_repeats_matched_sibling_per_prose_count() -> None:
     assert all(isinstance(a, AttackActivity) and a.name == "Claw" for a in activities)
 
 
+def test_scout_multiattack_fallback_defaults_to_first_sibling() -> None:
+    """With no live distance supplied, the fallback keeps the historical order.
+
+    The Scout's labelless multiattack repeats ``siblings[0]`` — the shortsword,
+    first in ``Monster.actions`` — exactly as before C10-S02 when no
+    ``target_distance_ft`` is passed.
+    """
+    scout = BundledAssetLoader().get_monster("scout")
+    assert scout is not None
+    action = select_typed_monster_action(scout)
+    assert action is not None and action.slug == "multiattack"
+    activities = expand_action_to_activities(scout, action)
+    assert len(activities) == 2
+    assert all(isinstance(a, AttackActivity) for a in activities)
+    # shortsword is melee (5 ft) — the first-listed sibling.
+    assert all(a.range.units == "ft" and a.range.value == "5" for a in activities)
+
+
+def test_scout_multiattack_fallback_prefers_in_range_longbow() -> None:
+    """At 100 ft only the longbow (150 ft) covers the target, so it is chosen.
+
+    The shortsword's 5 ft reach cannot reach 100 ft; the range-aware fallback
+    fires the longbow instead of the first-listed melee weapon (C10-S02).
+    """
+    scout = BundledAssetLoader().get_monster("scout")
+    assert scout is not None
+    action = select_typed_monster_action(scout)
+    assert action is not None
+    activities = expand_action_to_activities(
+        scout, action, target_distance_ft=100, behavior_profile="RANGED", melee_reach_ft=5
+    )
+    assert len(activities) == 2
+    assert all(isinstance(a, AttackActivity) and a.range.value == "150" for a in activities)
+
+
+def test_scout_multiattack_fallback_ranged_profile_breaks_tie_to_longbow() -> None:
+    """When both siblings are in range, RANGED tie-breaks toward the longbow.
+
+    At 5 ft both the shortsword (5) and the longbow (150) cover the target; a
+    RANGED monster prefers the longer-reach ranged sibling.
+    """
+    scout = BundledAssetLoader().get_monster("scout")
+    assert scout is not None
+    action = select_typed_monster_action(scout)
+    assert action is not None
+    activities = expand_action_to_activities(
+        scout, action, target_distance_ft=5, behavior_profile="RANGED", melee_reach_ft=5
+    )
+    assert all(isinstance(a, AttackActivity) and a.range.value == "150" for a in activities)
+
+
+def test_scout_multiattack_fallback_non_ranged_keeps_list_order_on_tie() -> None:
+    """Both in range but no RANGED profile ⇒ preserve dict order (shortsword)."""
+    scout = BundledAssetLoader().get_monster("scout")
+    assert scout is not None
+    action = select_typed_monster_action(scout)
+    assert action is not None
+    activities = expand_action_to_activities(
+        scout, action, target_distance_ft=5, behavior_profile="AGGRESSIVE", melee_reach_ft=5
+    )
+    assert all(isinstance(a, AttackActivity) and a.range.value == "5" for a in activities)
+
+
 def test_multiattack_with_no_attack_sibling_logs_and_returns_empty(
     caplog: pytest.LogCaptureFixture,
 ) -> None:

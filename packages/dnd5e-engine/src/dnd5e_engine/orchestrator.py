@@ -4729,7 +4729,26 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
         else:
             monster_action = select_typed_monster_action(monster)
             if monster_action is not None:
-                monster_activities = expand_action_to_activities(monster, monster_action)
+                # C10-S02: hand the labelless-multiattack fallback the live
+                # distance + profile so it can prefer a sibling whose own range
+                # already covers the target (scout → longbow at 100 ft) instead
+                # of the first-listed melee weapon. Distance is the same zone-path
+                # cost the movement gate below reads, so the two agree.
+                target_distance_ft: int | None = None
+                if chosen_target is not None:
+                    az = live.actor_zone.get(current.entity_id)
+                    tz = live.actor_zone.get(chosen_target.entity_id)
+                    if az is not None and tz is not None:
+                        target_distance_ft = _path_total_distance(
+                            live.topology, live.topology.shortest_path(az, tz)
+                        )
+                monster_activities = expand_action_to_activities(
+                    monster,
+                    monster_action,
+                    target_distance_ft=target_distance_ft,
+                    behavior_profile=current.behavior_profile,
+                    melee_reach_ft=current.melee_reach_ft,
+                )
     has_action = bool(monster_activities)
 
     # Phase-5: monster gambit zone awareness. When the chosen attack is

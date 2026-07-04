@@ -8,7 +8,7 @@ from __future__ import annotations
 from dnd5e_engine.events import ActorMoved, AttackRolled
 from dnd5e_engine.orchestrator import _get_live, advance_monster_turn, start_combat
 from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec, SceneTopology, ZoneEdge
-from tests.e2e.harness import events_of, run_async, xfail_cluster
+from tests.e2e.harness import events_of, run_async
 
 
 def test_c10_s01_fleeing_monster_never_actually_retreats():
@@ -84,7 +84,6 @@ def test_c10_s01_fleeing_monster_never_actually_retreats():
     assert live.actor_zone["mon:goblin"] == "zone:retreat"
 
 
-@xfail_cluster(10, "Monster behavior")
 def test_c10_s02_ranged_profile_multiattack_fallback_ignores_own_longbow():
     """C10-S02: A RANGED-profile monster's multiattack fallback always
     picks the first-listed (melee) sibling by dict order, ignoring its own
