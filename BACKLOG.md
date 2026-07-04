@@ -139,26 +139,18 @@ zone + apply logic:
 
 ## Rest & recovery
 
-- **Formula-based feature-use caps resolve to a conservative 1** (2026-07-03,
-  Cluster 9). `orchestrator.py::_feature_use_cap` parses a feature's
-  `uses.max` as a literal integer; a Foundry roll-data expression
-  (`@scale.fighter.second-wind`, `@prof`, `max(1, @abilities.cha.mod)`) is
-  NOT resolved in the cap path and floors to 1 use per rest. Correct for
-  Second Wind at the tested level and conservative everywhere, but a
-  higher-level Fighter's true Second Wind cap (2–4 uses via the scale table)
-  and Bardic Inspiration's CHA-scaled cap are under-counted. Thread the
-  caster's scale/roll data into the cap resolver (the orchestrator already
-  builds `scale_values` for activity resolution — reuse it) to lift the
-  floor (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`).
-- **`recover_feature_uses` does not differentiate recovery period** (2026-07-03,
-  Cluster 9). The `custom_counters` sidecar is typed `dict[str, dict[str, int]]`,
-  which cannot encode which rest period (`sr`/`lr`) a given feature recharges
-  on, so `rest.recover_feature_uses` resets every tracked feature-use counter
-  on any rest. Correct for Second Wind (recovers on both) and every capped
-  feature exercised today; a resource that recharges only on a Long Rest would
-  over-recover on a Short Rest. Thread each feature's typed `uses.recovery`
-  rules (now carried on `Feature.uses`) through the companion to honour the
-  period (`packages/dnd5e-engine/src/dnd5e_engine/rest.py`).
+- **Non-`@scale` symbolic feature-use caps fall back to uncapped** (2026-07-03,
+  narrowed 2026-07-04, Cluster 9). `orchestrator.py::_feature_use_cap` now
+  resolves a literal-integer `uses.max` exactly AND a `@scale.<owner>.<key>`
+  max against the caster's real ScaleValue map (`build_scale_values`), so
+  Second Wind caps at its true level-scaled value (3 at Fighter L5 via the
+  `{1: 2, 4: 3, 10: 4}` table). The residual gap: a NON-`@scale` symbolic max
+  — `@prof` (9 features), `max(1, @abilities.cha.mod)` / `5 * @classes.paladin.levels`
+  (~6 more) — is not resolved and falls back to UNCAPPED rather than a wrong
+  floor (a capped resource is never wrongly rejected; this preserves pre-C09
+  behaviour for those features). Thread the caster's proficiency bonus / ability
+  modifiers into the cap resolver to close it
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`).
 
 ## Blocked
 
