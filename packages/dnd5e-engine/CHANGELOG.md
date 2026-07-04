@@ -34,6 +34,9 @@ full, host-facing migration guide. The engine now depends on
 - **Intent field** `PlayerIntent.activity_id` (default `None`) — disambiguates a
   `USE_FEATURE` invocation of a multi-activity feature (Channel Divinity,
   Cunning Strike).
+- `PartyMemberSpec.reach_ft` (default `5`) — threads onto the live
+  `Combatant.melee_reach_ft`, making a reach weapon's opportunity-attack reach
+  reachable from the boundary spec.
 - **Reaction surface** — `"ready"` intents now register a pre-armed reaction;
   `PlayerIntent.reaction_trigger` narrows to the `ReactionTrigger` literal.
 - `CastFailedReason` gained the values `"countered"` (Counterspell) and
