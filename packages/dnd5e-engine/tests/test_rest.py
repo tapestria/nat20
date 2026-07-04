@@ -153,9 +153,19 @@ def test_recover_feature_uses_unhandled_formula_leaves_counter_unchanged():
     assert recover_feature_uses(counters, "sr", recovery) == {"odd": 2}
 
 
-def test_recover_feature_uses_no_rule_for_period_defaults_to_full_recovery():
-    """When the feature has no recovery entry for this period, the conservative
-    full-recovery default applies (spent → 0)."""
+def test_recover_feature_uses_no_rule_for_period_preserves_spent():
+    """With recovery data SUPPLIED and no entry for this rest's period, the
+    feature does not recharge — ``spent`` is preserved, never over-recovered."""
     counters = {f"{FEATURE_USE_COUNTER_PREFIX}day-only": {"spent": 2}}
     recovery = {"day-only": [_Recovery("day", "recoverAll")]}
-    assert recover_feature_uses(counters, "sr", recovery) == {"day-only": 0}
+    assert recover_feature_uses(counters, "sr", recovery) == {"day-only": 2}
+
+
+def test_recover_feature_uses_lr_only_feature_does_not_recharge_on_short_rest():
+    """SRD: an lr-only feature (Arcane Recovery / Divine Intervention — the
+    corpus majority, 41 lr vs 10 sr recovery entries) does NOT recharge on a
+    Short Rest; a Long Rest recovers it in full."""
+    counters = {f"{FEATURE_USE_COUNTER_PREFIX}arcane-recovery": {"spent": 1}}
+    recovery = {"arcane-recovery": [_Recovery("lr", "recoverAll")]}
+    assert recover_feature_uses(counters, "sr", recovery) == {"arcane-recovery": 1}
+    assert recover_feature_uses(counters, "lr", recovery) == {"arcane-recovery": 0}

@@ -2987,6 +2987,9 @@ def _feature_use_cap(feature: Any, scale_values: Mapping[str, int | str]) -> int
     except ValueError:
         parsed = None
     if parsed is not None:
+        # A literal max of "0" (or negative) maps to UNCAPPED today. No corpus
+        # feature carries max="0", and "0 uses" arguably means UNUSABLE rather
+        # than unlimited — revisit if such data ever appears.
         return parsed if parsed > 0 else None
     if max_raw.startswith("@scale."):
         resolved = scale_values.get(max_raw[len("@scale.") :])

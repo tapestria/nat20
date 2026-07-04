@@ -183,10 +183,16 @@ def recover_feature_uses(
       confirms every recovery formula is ``"1"``); an UNHANDLED non-literal formula
       leaves the counter unchanged (``spent`` preserved) rather than guessing.
 
-    When no ``recovery`` rule matches (no ``recovery`` supplied, or none for this
-    ``period``), the counter fully recharges (``spent = 0``) — the conservative,
-    backward-compatible default (a caller that threads no recovery data gets the
-    pre-existing full-recovery-on-any-rest behaviour).
+    Period-miss semantics differ by whether recovery data was supplied:
+
+    * ``recovery=None`` (the no-data, backward-compatible path) → every tracked
+      counter fully recharges (``spent = 0``) on any rest, matching the original
+      signature's behaviour.
+    * ``recovery`` supplied but a feature's rules carry NO entry for this rest's
+      ``period`` → the counter is UNCHANGED (``spent`` preserved). This is the
+      SRD-correct reading: an lr-only feature (Arcane Recovery, Divine
+      Intervention — the corpus majority, 41 ``lr`` vs 10 ``sr`` entries) does
+      NOT recharge on a Short Rest.
     """
     recovered: dict[str, int] = {}
     for key, counter in counters.items():
@@ -194,9 +200,18 @@ def recover_feature_uses(
             continue
         slug = key[len(FEATURE_USE_COUNTER_PREFIX) :]
         spent = counter.get("spent", 0)
-        rules = (recovery or {}).get(slug) or ()
+        if recovery is None:
+            # No recovery data threaded — pre-existing full-recovery default.
+            recovered[slug] = 0
+            continue
+        rules = recovery.get(slug) or ()
         rule = next((r for r in rules if r.period == period), None)
-        if rule is None or rule.type == "recoverAll":
+        if rule is None:
+            # Data supplied, no rule for THIS period: the feature does not
+            # recharge on this rest (lr-only feature + Short Rest) — preserve.
+            recovered[slug] = spent
+            continue
+        if rule.type == "recoverAll":
             recovered[slug] = 0
             continue
         if rule.type == "formula":

@@ -151,6 +151,17 @@ zone + apply logic:
   behaviour for those features). Thread the caster's proficiency bonus / ability
   modifiers into the cap resolver to close it
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`).
+- **Non-literal feature-recovery formulas are unhandled** (2026-07-04,
+  Cluster 9 fix round). `rest.recover_feature_uses` honours each feature's
+  typed `uses.recovery` rules: `recoverAll` fully recharges, a literal-integer
+  `formula` regains that many uses, and a period-miss (with recovery data
+  supplied) correctly preserves `spent` (lr-only features do not recharge on a
+  Short Rest). The residual: a NON-literal recovery formula (e.g. an
+  `@abilities.*` expression) is not evaluated — the counter is left unchanged
+  rather than guessed. Zero corpus occurrences today (a structural scan of
+  `canonical/features` shows all 5 `formula` recovery entries are the literal
+  `"1"`); thread roll-data evaluation through if such data ever lands
+  (`packages/dnd5e-engine/src/dnd5e_engine/rest.py`).
 
 ## Blocked
 
