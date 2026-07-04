@@ -111,7 +111,8 @@ def test_scout_multiattack_fallback_defaults_to_first_sibling() -> None:
     scout = BundledAssetLoader().get_monster("scout")
     assert scout is not None
     action = select_typed_monster_action(scout)
-    assert action is not None and action.slug == "multiattack"
+    assert action is not None
+    assert action.slug == "multiattack"
     activities = expand_action_to_activities(scout, action)
     assert len(activities) == 2
     assert all(isinstance(a, AttackActivity) for a in activities)

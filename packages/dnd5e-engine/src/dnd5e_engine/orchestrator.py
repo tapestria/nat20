@@ -765,6 +765,26 @@ def _execute_flee_retreat(
     _walk_zone_path(live, monster.entity_id, live.topology.shortest_path(start_zone, destination))
 
 
+def _monster_target_distance_ft(
+    live: _LiveCombat, monster_id: str, target: Combatant | None
+) -> int | None:
+    """Zone-path distance (ft) from a monster to its chosen target, or ``None``.
+
+    The same shortest-path cost the movement gate reads — handed to
+    ``expand_action_to_activities`` so its range-aware multiattack fallback and
+    the gate agree on the live distance (C10-S02). ``None`` when either actor
+    has no known zone or no path connects them.
+    """
+    if target is None:
+        return None
+    monster_zone = live.actor_zone.get(monster_id)
+    target_zone = live.actor_zone.get(target.entity_id)
+    if monster_zone is None or target_zone is None:
+        return None
+    path = live.topology.shortest_path(monster_zone, target_zone)
+    return _path_total_distance(live.topology, path)
+
+
 def _pc_attack_out_of_range(live: _LiveCombat, actor_id: str, intent: PlayerIntent) -> bool:
     """True iff the PC attack would be rejected by the weapon-reach gate.
 
@@ -4734,18 +4754,12 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
                 # already covers the target (scout → longbow at 100 ft) instead
                 # of the first-listed melee weapon. Distance is the same zone-path
                 # cost the movement gate below reads, so the two agree.
-                target_distance_ft: int | None = None
-                if chosen_target is not None:
-                    az = live.actor_zone.get(current.entity_id)
-                    tz = live.actor_zone.get(chosen_target.entity_id)
-                    if az is not None and tz is not None:
-                        target_distance_ft = _path_total_distance(
-                            live.topology, live.topology.shortest_path(az, tz)
-                        )
                 monster_activities = expand_action_to_activities(
                     monster,
                     monster_action,
-                    target_distance_ft=target_distance_ft,
+                    target_distance_ft=_monster_target_distance_ft(
+                        live, current.entity_id, chosen_target
+                    ),
                     behavior_profile=current.behavior_profile,
                     melee_reach_ft=current.melee_reach_ft,
                 )

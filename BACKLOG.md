@@ -36,13 +36,6 @@ Anchors are current as of `dnd5e-engine` / `dnd5e-srd-data` **v0.1.1**.
   itself is not yet a cost-aware search over that cost, which is what
   "richer" now refers to.)
 
-## Other combat mechanics
-
-- **Behavior-aware monster action selection.** `select_monster_action`
-  (`packages/dnd5e-engine/src/dnd5e_engine/activities/monster_actions.py`)
-  returns the first attack by dict order and leaves behavior/flee gating to the
-  caller; the monster's authored `BehaviorProfile` does not influence its choice
-  inside the engine.
 ## Discovered during Cluster 6 review (2026-07-03)
 
 - **No-slot readied reactions fire for free.** `_resolve_readied_spell_cast`
@@ -94,8 +87,21 @@ Anchors are current as of `dnd5e-engine` / `dnd5e-srd-data` **v0.1.1**.
   NOT a live-combat intent; `events.py::IntentType` has no `short_rest`), so
   `ActionType.SHORT_REST` is confirmed dead with no handler and no future
   one. It is now docstring-deprecated in place; final removal (non-additive,
-  breaks any host constructing it) is deferred to the C11 dead-code closeout,
-  to be decided alongside `select_action` and the monster-behavior cluster.
+  breaks any host constructing it) is deferred to the C11 dead-code closeout.
+  **C10 disposition (recommend REMOVE at C11):** Cluster 10 landed every
+  behaviour `select_action` offered into the LIVE `advance_monster_turn` path —
+  flee (`_monster_is_fleeing` + `_execute_flee_retreat`, its `action_type="flee"`
+  arm), profile/range-aware attack choice (`_select_fallback_sibling`, its
+  `RANGED → ranged_attack` arm), and target priority (lowest-HP). `select_action`
+  is now definitively superseded, not merely uncalled; remove it (and its
+  `__all__` export) at the C11 non-additive closeout alongside
+  `ActionType.SHORT_REST`. `rules/gambits.py::assign_behavior_profile`'s
+  `has_ranged_attack → RANGED` **assignment** heuristic stays dead by a
+  different reason: the live path now CONSUMES `behavior_profile` (flee
+  threshold + multiattack tiebreak) but sources it from
+  `EncounterMemberSpec.behavior_profile`, never from `assign_behavior_profile` —
+  so that assignment helper's unused halves are also C11-removal candidates.
+  (Removal itself is non-additive → C11, not this cluster.)
 
 ## Class / species feature mechanics
 
