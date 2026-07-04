@@ -74,76 +74,6 @@ def parse_damage_dice(expr: str) -> tuple[int, int, int]:
 
 
 # ---------------------------------------------------------------------------
-# Action selection
-# ---------------------------------------------------------------------------
-
-_PASS_ACTION = GambitAction(
-    action_type="pass",
-    target_priority="random",
-    description="No valid targets.",
-)
-
-
-def _get_alive_targets(targets: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    return [t for t in targets if t.get("is_alive", False) or t.get("hp_current", 0) > 0]
-
-
-def select_action(
-    profile: BehaviorProfile,
-    monster_hp_current: int,
-    monster_hp_max: int,
-    targets: list[dict[str, Any]],
-) -> GambitAction:
-    """Select the next action for a monster given its profile and situation.
-
-    Returns a GambitAction. If no alive targets remain, returns pass.
-
-    Priority lists:
-    - AGGRESSIVE: [hp < 10% -> flee], [else -> melee_attack(lowest_hp)]
-    - RANGED:     [hp < 25% -> flee], [else -> ranged_attack(lowest_hp)]
-    - DEFENSIVE:  [else -> melee_attack(lowest_hp)]  (no heal in v1)
-    """
-    alive = _get_alive_targets(targets)
-    if not alive:
-        return _PASS_ACTION
-
-    hp_ratio = monster_hp_current / monster_hp_max if monster_hp_max > 0 else 0.0
-
-    if profile == BehaviorProfile.AGGRESSIVE:
-        if hp_ratio < 0.10:
-            return GambitAction(
-                action_type="flee",
-                target_priority="random",
-                description="Flees in panic!",
-            )
-        return GambitAction(
-            action_type="melee_attack",
-            target_priority="lowest_hp",
-            description="Attacks the weakest foe.",
-        )
-
-    if profile == BehaviorProfile.RANGED:
-        if hp_ratio < 0.25:
-            return GambitAction(
-                action_type="flee",
-                target_priority="random",
-                description="Retreats to a safe distance!",
-            )
-        return GambitAction(
-            action_type="ranged_attack",
-            target_priority="lowest_hp",
-            description="Fires at the weakest foe.",
-        )
-
-    # DEFENSIVE (v1: no heal ability, always melee attack)
-    return GambitAction(
-        action_type="melee_attack",
-        target_priority="lowest_hp",
-        description="Defends and strikes.",
-    )
-
-
-# ---------------------------------------------------------------------------
 # Action resolution
 # ---------------------------------------------------------------------------
 
@@ -224,30 +154,10 @@ def resolve_monster_action(
     )
 
 
-# ---------------------------------------------------------------------------
-# Behavior profile assignment
-# ---------------------------------------------------------------------------
-
-
-def assign_behavior_profile(monster_stats: dict[str, Any]) -> BehaviorProfile:
-    """Assign a behavior profile to a monster based on its stats.
-
-    Heuristic:
-    - has_ranged_attack=True -> RANGED
-    - Otherwise             -> AGGRESSIVE (DEFENSIVE reserved for future healers)
-    """
-    has_ranged = bool(monster_stats.get("has_ranged_attack", False))
-    if has_ranged:
-        return BehaviorProfile.RANGED
-    return BehaviorProfile.AGGRESSIVE
-
-
 __all__ = [
     "BehaviorProfile",
     "GambitAction",
     "MonsterActionResult",
-    "assign_behavior_profile",
     "parse_damage_dice",
     "resolve_monster_action",
-    "select_action",
 ]
