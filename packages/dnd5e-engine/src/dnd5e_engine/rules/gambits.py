@@ -154,10 +154,33 @@ def resolve_monster_action(
     )
 
 
+# ---------------------------------------------------------------------------
+# Behavior profile assignment
+# ---------------------------------------------------------------------------
+
+
+def assign_behavior_profile(monster_stats: dict[str, Any]) -> BehaviorProfile:
+    """Assign a behavior profile to a monster based on its stats.
+
+    HOST-FACING utility for constructing ``EncounterMemberSpec.behavior_profile``
+    from raw monster stats — deliberately NOT called by nat20's own live
+    monster-turn path, which reads the ``behavior_profile`` spec field directly.
+
+    Heuristic:
+    - has_ranged_attack=True -> RANGED
+    - Otherwise             -> AGGRESSIVE (DEFENSIVE reserved for future healers)
+    """
+    has_ranged = bool(monster_stats.get("has_ranged_attack", False))
+    if has_ranged:
+        return BehaviorProfile.RANGED
+    return BehaviorProfile.AGGRESSIVE
+
+
 __all__ = [
     "BehaviorProfile",
     "GambitAction",
     "MonsterActionResult",
+    "assign_behavior_profile",
     "parse_damage_dice",
     "resolve_monster_action",
 ]

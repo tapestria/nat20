@@ -75,11 +75,14 @@ full, host-facing migration guide. The engine now depends on
   member of the legacy dispatch enum with no handler. It was never the
   live-combat intent surface (`events.py::IntentType` has no `"short_rest"`).
   Hosts wanting rest resolution use the new `dnd5e_engine.rest` module.
-- `rules/gambits.select_action` and `rules/gambits.assign_behavior_profile`
-  (with the private helpers only `select_action` used) — the legacy per-profile
-  gambit AI the live monster-turn path never called. Every behaviour they
-  offered now lives in `advance_monster_turn` / `activities/monster_actions.py`.
-  Both were verified caller-free; neither was a top-level `__all__` export.
+- `rules/gambits.select_action` (with the private helpers `_PASS_ACTION` /
+  `_get_alive_targets` only it used) — the legacy per-profile gambit AI the live
+  monster-turn path never called. Every behaviour it offered now lives in
+  `advance_monster_turn` / `activities/monster_actions.py`. Verified caller-free;
+  it was not a top-level `__all__` export.
+  (`rules/gambits.assign_behavior_profile` was reviewed and **retained** — it is
+  a host-facing utility for constructing `EncounterMemberSpec.behavior_profile`
+  from raw monster stats, not dead code.)
 
 ## [0.1.1]
 
