@@ -300,22 +300,42 @@ class _StubFeature:
 def test_feature_use_cap_parses_literal_integer_max():
     from dnd5e_engine.orchestrator import _feature_use_cap
 
-    assert _feature_use_cap(_StubFeature(_StubUses("1"))) == 1
-    assert _feature_use_cap(_StubFeature(_StubUses("3"))) == 3
+    assert _feature_use_cap(_StubFeature(_StubUses("1")), {}) == 1
+    assert _feature_use_cap(_StubFeature(_StubUses("3")), {}) == 3
 
 
-def test_feature_use_cap_falls_back_to_one_for_roll_data_expressions():
-    """A ``@scale`` / ``@prof`` / ``max(...)`` max is not resolved in the cap path;
-    a conservative floor of 1 applies (Second Wind's ``@scale.fighter.second-wind``)."""
+def test_feature_use_cap_resolves_scale_max_against_scale_values():
+    """A ``@scale.<owner>.<key>`` max resolves to its real, level-scaled value via
+    the caster's ScaleValue map — Second Wind at Fighter L5 → 3 (table {1:2,4:3,10:4})."""
     from dnd5e_engine.orchestrator import _feature_use_cap
 
-    assert _feature_use_cap(_StubFeature(_StubUses("@scale.fighter.second-wind"))) == 1
-    assert _feature_use_cap(_StubFeature(_StubUses("@prof"))) == 1
-    assert _feature_use_cap(_StubFeature(_StubUses("max(1, @abilities.cha.mod)"))) == 1
-    assert _feature_use_cap(_StubFeature(_StubUses(""))) == 1
+    scale_values = {"fighter.second-wind": 3}
+    assert (
+        _feature_use_cap(_StubFeature(_StubUses("@scale.fighter.second-wind")), scale_values) == 3
+    )
+    # Level 1 fighter (cap 2) via a different projected map.
+    assert (
+        _feature_use_cap(
+            _StubFeature(_StubUses("@scale.fighter.second-wind")), {"fighter.second-wind": 2}
+        )
+        == 2
+    )
+
+
+def test_feature_use_cap_uncapped_for_unresolvable_symbolic_max():
+    """A non-``@scale`` symbolic max (``@prof`` / ``max(...)``), an empty max, or a
+    ``@scale`` token absent from the caster's map falls back to UNCAPPED (``None``)
+    — never wrongly gated to a floor of 1 (pre-Cluster-9 behaviour preserved)."""
+    from dnd5e_engine.orchestrator import _feature_use_cap
+
+    assert _feature_use_cap(_StubFeature(_StubUses("@prof")), {}) is None
+    assert _feature_use_cap(_StubFeature(_StubUses("max(1, @abilities.cha.mod)")), {}) is None
+    assert _feature_use_cap(_StubFeature(_StubUses("")), {}) is None
+    # @scale token whose owner/key the caster's map does not carry → uncapped.
+    assert _feature_use_cap(_StubFeature(_StubUses("@scale.fighter.second-wind")), {}) is None
 
 
 def test_feature_use_cap_is_none_for_uncapped_feature():
     from dnd5e_engine.orchestrator import _feature_use_cap
 
-    assert _feature_use_cap(_StubFeature(None)) is None
+    assert _feature_use_cap(_StubFeature(None), {}) is None

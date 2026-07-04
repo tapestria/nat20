@@ -12,7 +12,7 @@ from __future__ import annotations
 import random
 
 from dnd5e_engine import PlayerIntent
-from dnd5e_engine.events import HealingApplied
+from dnd5e_engine.events import CastFailed, HealingApplied
 from dnd5e_engine.orchestrator import (
     _get_live,
     advance_monster_turn,
@@ -86,25 +86,25 @@ def test_c09_s02_long_rest_full_hp_and_hit_dice_recovery():
 
 
 def test_c09_s03_second_wind_has_no_per_rest_usage_cap():
-    """C09-S03: Second Wind has no per-rest usage cap — it fires unlimited
-    times per combat with nothing to recharge.
+    """C09-S03: Second Wind is a per-rest-capped resource, not an unlimited one.
 
-    SRD 5.2 §Fighter Class Features, Second Wind ("you can use a Bonus
-    Action to regain...", a limited-use feature that recharges on a Short
-    or Long Rest); foundry:
-    packages/dnd5e-srd-data/raw_sources/foundry/packs/_source/classes24/fighter/class-features/second-wind.yml
-    (top-level `uses: {max: "@scale.fighter.second-wind", spent: 0,
-    recovery: [{period: "lr", type: "recoverAll"}, {period: "sr", type:
-    "formula", formula: "1"}]}` — a capped, rest-recharged resource) versus
-    canonical
-    packages/dnd5e-srd-data/src/dnd5e_srd_data/canonical/features/second-wind.json
-    (no top-level `"uses"` key at all;
-    packages/dnd5e-srd-data/src/dnd5e_srd_data/schema/feature.py::Feature
-    has no `uses` field); engine: exhaustive grep for `"consumption"` /
-    `"itemUses"` across
-    packages/dnd5e-engine/src/dnd5e_engine/activities/*.py returns ZERO
-    hits — no per-feature-use tracking of any kind in the live-combat
-    resolver.
+    AMENDED 2026-07-04 (user-approved — SRD-correct cap, NOT a weakening).
+    SRD 5.2 §Fighter Class Features, Second Wind
+    (``classes24/fighter/class-features/second-wind.yml:10-14`` — "You can use
+    this feature twice. You regain one expended use when you finish a Short
+    Rest, and you regain all expended uses when you finish a Long Rest") plus the
+    Fighter Second Wind scale table (``classes24/fighter/fighter.yml:365-373`` —
+    ``{1: 2, 4: 3, 10: 4}``) put an L5 fighter's cap at 3 uses per rest (minimum
+    2 at ANY level). The original pin (``len(heals) == 1`` for two same-combat
+    invocations) was therefore IMPOSSIBLE under SRD-correct behaviour, and its
+    "1 use at low Fighter levels" prose was factually wrong (the campaign's 6th
+    SRD catch). The scenario now invokes Second Wind on FOUR successive fighter
+    turns with no rest between: the first THREE heal (cap 3), the FOURTH is
+    rejected loudly (``CastFailed(reason="no_uses_remaining")``, no heal).
+
+    ``@scale.fighter.second-wind`` resolves to 3 via ``build_scale_values`` in
+    the cap path; ``recovery: [{lr, recoverAll}, {sr, formula, "1"}]`` is carried
+    on ``Feature.uses`` and honoured by ``rest.recover_feature_uses``.
     """
 
     async def _run():
@@ -142,31 +142,34 @@ def test_c09_s03_second_wind_has_no_per_rest_usage_cap():
         )
         live = _get_live(start.handle)
 
-        # Round 1.
-        await submit_player_intent(
-            start.handle,
-            actor_id="char:hero",
-            intent=PlayerIntent(intent_type="use_feature", feature_id="second-wind"),
-        )
-        await submit_player_intent(
-            start.handle, actor_id="char:hero", intent=PlayerIntent(intent_type="dodge")
-        )
-        await advance_monster_turn(start.handle)
-
-        # Round 2 — no rest occurred in between; the second invocation should
-        # be rejected.
-        await submit_player_intent(
-            start.handle,
-            actor_id="char:hero",
-            intent=PlayerIntent(intent_type="use_feature", feature_id="second-wind"),
-        )
-        await submit_player_intent(
-            start.handle, actor_id="char:hero", intent=PlayerIntent(intent_type="dodge")
-        )
-        await advance_monster_turn(start.handle)
+        # FOUR successive fighter turns, no rest between any of them. The L5
+        # fighter's cap is 3: turns 1-3 heal, turn 4 is rejected (no uses left,
+        # no intervening rest to recharge on).
+        for _round in range(4):
+            await submit_player_intent(
+                start.handle,
+                actor_id="char:hero",
+                intent=PlayerIntent(intent_type="use_feature", feature_id="second-wind"),
+            )
+            await submit_player_intent(
+                start.handle, actor_id="char:hero", intent=PlayerIntent(intent_type="dodge")
+            )
+            await advance_monster_turn(start.handle)
 
         return live
 
     live = run_async(_run())
     heals = [e for e in events_of(live, HealingApplied) if e.target_id == "char:hero"]
-    assert len(heals) == 1
+    # Exactly THREE heals (cap 3 at L5); each individually bounded [6, 15]
+    # (1d10 + fighter level 5).
+    assert len(heals) == 3
+    for heal in heals:
+        assert 6 <= heal.amount <= 15
+    # The FOURTH invocation is rejected loudly — no heal, a CastFailed with the
+    # per-rest-exhaustion reason (mirrors the per-turn no_action_economy shape).
+    rejections = [
+        e
+        for e in events_of(live, CastFailed)
+        if e.actor_id == "char:hero" and e.reason == "no_uses_remaining"
+    ]
+    assert len(rejections) == 1

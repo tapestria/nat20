@@ -103,6 +103,7 @@ def test_recover_feature_uses_resets_spent_counters():
         f"{FEATURE_USE_COUNTER_PREFIX}action-surge": {"spent": 2},
         "some-host-counter": {"value": 3, "max": 3},  # untouched
     }
+    # No recovery rules supplied → conservative full recovery (spent → 0) on any rest.
     for period in ("sr", "lr"):
         recovered = recover_feature_uses(counters, period)
         assert recovered == {"second-wind": 0, "action-surge": 0}
@@ -113,3 +114,48 @@ def test_recover_feature_uses_resets_spent_counters():
 def test_recover_feature_uses_ignores_non_feature_counters():
     counters = {"charges": {"value": 0, "max": 5}}
     assert recover_feature_uses(counters, "lr") == {}
+
+
+class _Recovery:
+    """Structural stand-in for a ``uses.recovery[]`` rule."""
+
+    def __init__(self, period: str, type_: str, formula: str = "") -> None:
+        self.period = period
+        self.type = type_
+        self.formula = formula
+
+
+# Second Wind's real recovery: one use back on a Short Rest, all on a Long Rest.
+_SECOND_WIND_RECOVERY = [_Recovery("lr", "recoverAll"), _Recovery("sr", "formula", "1")]
+
+
+def test_recover_feature_uses_short_rest_formula_regains_one_use():
+    """SRD Second Wind Short Rest recovery (``formula: "1"``): regain exactly one
+    expended use → ``spent`` decreases by 1, floored at 0, not reset to 0."""
+    counters = {f"{FEATURE_USE_COUNTER_PREFIX}second-wind": {"spent": 3}}
+    recovery = {"second-wind": _SECOND_WIND_RECOVERY}
+    assert recover_feature_uses(counters, "sr", recovery) == {"second-wind": 2}
+    counters = {f"{FEATURE_USE_COUNTER_PREFIX}second-wind": {"spent": 1}}
+    assert recover_feature_uses(counters, "sr", recovery) == {"second-wind": 0}
+
+
+def test_recover_feature_uses_long_rest_recovers_all():
+    """Second Wind Long Rest recovery (``recoverAll``): the whole pool refills."""
+    counters = {f"{FEATURE_USE_COUNTER_PREFIX}second-wind": {"spent": 3}}
+    recovery = {"second-wind": _SECOND_WIND_RECOVERY}
+    assert recover_feature_uses(counters, "lr", recovery) == {"second-wind": 0}
+
+
+def test_recover_feature_uses_unhandled_formula_leaves_counter_unchanged():
+    """A non-literal recovery formula is not guessed at — the counter is preserved."""
+    counters = {f"{FEATURE_USE_COUNTER_PREFIX}odd": {"spent": 2}}
+    recovery = {"odd": [_Recovery("sr", "formula", "@abilities.cha.mod")]}
+    assert recover_feature_uses(counters, "sr", recovery) == {"odd": 2}
+
+
+def test_recover_feature_uses_no_rule_for_period_defaults_to_full_recovery():
+    """When the feature has no recovery entry for this period, the conservative
+    full-recovery default applies (spent → 0)."""
+    counters = {f"{FEATURE_USE_COUNTER_PREFIX}day-only": {"spent": 2}}
+    recovery = {"day-only": [_Recovery("day", "recoverAll")]}
+    assert recover_feature_uses(counters, "sr", recovery) == {"day-only": 0}

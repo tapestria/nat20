@@ -29,8 +29,9 @@ SRD 5.2 ground truth (2024 ruleset, ``content24/``):
 from __future__ import annotations
 
 import random
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, Protocol
 
 # SRD 5.2 rest periods a limited-use resource recharges on. Typed (closed set)
 # per the engine's typed-semantics rule.
@@ -140,31 +141,75 @@ def resolve_long_rest(pool: HitDicePool, hp_current: int, hp_max: int) -> RestOu
     )
 
 
+class _RecoveryRuleView(Protocol):
+    """Structural view of a feature's ``uses.recovery[]`` entry.
+
+    The data package's ``dnd5e_srd_data.schema.feature.RecoveryRule`` matches it
+    structurally, so a host threads a feature's typed recovery rules straight
+    through without this pure module importing the dataset schema.
+    """
+
+    @property
+    def period(self) -> str: ...
+    @property
+    def type(self) -> str: ...
+    @property
+    def formula(self) -> str: ...
+
+
 def recover_feature_uses(
     counters: dict[str, dict[str, int]],
     period: RecoveryPeriod,
+    recovery: Mapping[str, Sequence[_RecoveryRuleView]] | None = None,
 ) -> dict[str, int]:
     """Apply a rest's feature-use recovery to a caster's ``custom_counters`` sidecar.
 
     ``counters`` is a single caster's ``custom_counters`` mapping (as carried on
     ``_LiveCombat.custom_counters_by_entity[entity_id]``); the per-feature use cap
     the orchestrator maintains lives under ``feature_use:<slug>`` keys with a
-    ``{"spent": n}`` shape. On any rest of the given ``period`` this resets each such
-    counter's ``spent`` to 0, returning ``{"<slug>": 0, ...}`` for the host to write
-    back (pure — it does not mutate ``counters``).
+    ``{"spent": n}`` shape. Returns ``{"<slug>": <new spent count>, ...}`` for the
+    host to write back — pure, it does not mutate ``counters``.
 
-    The ``dict[str, int]`` sidecar shape cannot itself encode which period a given
-    feature recharges on, so this treats every tracked feature-use counter as
-    recharging on any (Short **or** Long) rest — correct for Second Wind (recovers on
-    both) and every capped feature exercised today. A resource that recharges only on
-    a Long Rest would need its recovery data threaded by the caller; ``period`` is
-    kept typed and load-bearing for that future differentiation.
+    ``recovery`` maps a feature slug to its typed ``uses.recovery`` rules (e.g.
+    ``feature.uses.recovery``, loaded by the caller — loader access stays outside
+    this pure module). For each tracked counter, the rule whose ``period`` matches
+    the rest's ``period`` decides the refill:
+
+    * ``recoverAll`` → the pool fully recharges → ``spent`` returns to ``0``;
+    * ``formula`` → regain the formula-many uses → ``spent`` = ``max(0, spent - n)``
+      where ``n`` is the formula parsed as a literal integer (Second Wind's
+      Short-Rest ``formula: "1"`` → regain one use). Only literal-integer formulas
+      exist in the SRD corpus today (a structural scan of ``canonical/features``
+      confirms every recovery formula is ``"1"``); an UNHANDLED non-literal formula
+      leaves the counter unchanged (``spent`` preserved) rather than guessing.
+
+    When no ``recovery`` rule matches (no ``recovery`` supplied, or none for this
+    ``period``), the counter fully recharges (``spent = 0``) — the conservative,
+    backward-compatible default (a caller that threads no recovery data gets the
+    pre-existing full-recovery-on-any-rest behaviour).
     """
     recovered: dict[str, int] = {}
-    for key in counters:
-        if key.startswith(FEATURE_USE_COUNTER_PREFIX):
-            slug = key[len(FEATURE_USE_COUNTER_PREFIX) :]
+    for key, counter in counters.items():
+        if not key.startswith(FEATURE_USE_COUNTER_PREFIX):
+            continue
+        slug = key[len(FEATURE_USE_COUNTER_PREFIX) :]
+        spent = counter.get("spent", 0)
+        rules = (recovery or {}).get(slug) or ()
+        rule = next((r for r in rules if r.period == period), None)
+        if rule is None or rule.type == "recoverAll":
             recovered[slug] = 0
+            continue
+        if rule.type == "formula":
+            try:
+                regained = int(str(rule.formula).strip())
+            except ValueError:
+                # Unhandled non-literal formula — leave the counter unchanged.
+                recovered[slug] = spent
+            else:
+                recovered[slug] = max(0, spent - regained)
+            continue
+        # Unknown recovery type — leave the counter unchanged rather than guess.
+        recovered[slug] = spent
     return recovered
 
 

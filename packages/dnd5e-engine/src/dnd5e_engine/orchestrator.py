@@ -30,7 +30,7 @@ import asyncio
 import itertools
 import logging
 import random
-from collections.abc import AsyncIterator, Sequence
+from collections.abc import AsyncIterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -2946,32 +2946,56 @@ class _FeatureInvocation:
     passive_effects: list[Any]
     is_bonus_action: bool
     # SRD 5.2 §Limited-Use Features (Cluster 9) — the per-rest use cap resolved
-    # from the feature's typed ``uses`` block, or ``None`` when the feature is
-    # uncapped (no ``uses`` block). See :func:`_feature_use_cap`.
+    # from the feature's typed ``uses`` block (a literal or a ``@scale.*`` max
+    # resolved against the caster's ScaleValue map), or ``None`` when the feature
+    # is uncapped: no ``uses`` block, empty ``max``, or a symbolic ``max`` that
+    # cannot be resolved. See :func:`_feature_use_cap`.
     use_cap: int | None = None
 
 
-def _feature_use_cap(feature: Any) -> int | None:
+def _feature_use_cap(feature: Any, scale_values: Mapping[str, int | str]) -> int | None:
     """Resolve a feature's per-rest use cap from its typed ``uses`` block.
 
-    Returns ``None`` for an uncapped feature (no ``uses`` block) — the invocation
-    is never gated. For a capped feature, parses ``uses.max`` as a literal integer
-    where possible; when ``max`` is a Foundry roll-data expression (``@scale.*`` /
-    ``@prof`` / ``max(1, @abilities.cha.mod)``) it is NOT resolved here (that would
-    require threading the caster's scale/roll data into the cap path), so a
-    conservative floor of 1 applies — a limited-use resource always caps at least
-    once per rest. Formula-based caps resolving to their true value is a recorded
-    follow-up (see BACKLOG).
+    Returns ``None`` — meaning UNCAPPED, never gated — for a feature with no
+    ``uses`` block, an empty ``uses.max``, or a ``max`` this cannot resolve. The
+    resolvable cases:
+
+    * a literal integer ``max`` (``"1"``, ``"3"``) is honoured exactly;
+    * a Foundry ``@scale.<owner>.<key>`` roll-data token is resolved against
+      ``scale_values`` — the SAME per-caster ScaleValue map the orchestrator
+      already builds for activity resolution (``build_scale_values``). Second
+      Wind's ``@scale.fighter.second-wind`` resolves to 3 at Fighter level 5,
+      per the class scale table ``{1: 2, 4: 3, 10: 4}``.
+
+    Any OTHER symbolic ``max`` — ``@prof``, ``max(1, @abilities.cha.mod)``,
+    ``5 * @classes.paladin.levels`` — is NOT resolved here (it would need the
+    caster's proficiency bonus / ability modifiers threaded through, and no
+    scenario exercises it). Rather than guess or wrongly floor such a feature to
+    a single use per rest (which would REGRESS the pre-Cluster-9 behaviour, where
+    every feature was uncapped), it falls back to ``None`` / uncapped — a capped
+    resource is never wrongly rejected. Lifting that residual (non-``@scale``
+    symbolic maxes) is a recorded follow-up (see BACKLOG "Rest & recovery").
     """
     uses = getattr(feature, "uses", None)
     if uses is None:
         return None
-    max_raw = getattr(uses, "max", "")
+    max_raw = str(getattr(uses, "max", "") or "").strip()
+    if not max_raw:
+        return None
     try:
-        parsed = int(str(max_raw).strip())
-    except (TypeError, ValueError):
-        return 1
-    return parsed if parsed > 0 else 1
+        parsed = int(max_raw)
+    except ValueError:
+        parsed = None
+    if parsed is not None:
+        return parsed if parsed > 0 else None
+    if max_raw.startswith("@scale."):
+        resolved = scale_values.get(max_raw[len("@scale.") :])
+        if isinstance(resolved, int) and resolved > 0:
+            return resolved
+    # Unresolvable symbolic max (``@prof``, ``max(1, ...)``, an absent @scale
+    # owner/key): fall back to UNCAPPED rather than wrongly gating (pre-C09
+    # behaviour). See BACKLOG.
+    return None
 
 
 def _feature_use_counter_key(feature_id: str) -> str:
@@ -3086,6 +3110,17 @@ def _resolve_feature_invocation(
             return None
         feature_activities = [selected]
     is_bonus = getattr(feature_activities[0].activation, "type", None) == "bonus"
+    # Resolve the per-rest use cap against the caster's real ScaleValue map — the
+    # same ``build_scale_values`` machinery activity resolution uses — so a
+    # ``@scale.*`` max (Second Wind's ``@scale.fighter.second-wind`` → 3 at L5)
+    # yields its true, level-scaled cap rather than a conservative floor.
+    scale_values = build_scale_values(
+        class_slug=caster.class_slug,
+        subclass_slug=caster.subclass_slug,
+        species_slug=caster.species_slug,
+        level=caster.character_level,
+        loader=get_lib_loader(),
+    )
     # Rage's mwak buff + resistances ride a PassiveEffect on the feature; thread
     # them so its UtilityActivity's effect rider (``effects[].id``) resolves to a
     # runtime ActiveEffect.
@@ -3093,7 +3128,7 @@ def _resolve_feature_invocation(
         activities=feature_activities,
         passive_effects=list(feature.passive_effects) if feature else [],
         is_bonus_action=is_bonus,
-        use_cap=_feature_use_cap(feature),
+        use_cap=_feature_use_cap(feature, scale_values),
     )
 
 
