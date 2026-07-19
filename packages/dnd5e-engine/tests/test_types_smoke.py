@@ -77,6 +77,8 @@ def test_action_type_string_values():
 
     assert ActionType.ATTACK.value == "attack"
     assert ActionType("cast_spell") == ActionType.CAST_SPELL
+    assert ActionType.USE_ITEM == "use_item"
+    assert ActionType("use_item") is ActionType.USE_ITEM
 
 
 def test_action_type_case_insensitive_lookup():
