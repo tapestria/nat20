@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2]
+
+Lockstep version bump; no content change.
+
 ## [0.1.1]
 
 No content changes — version bump only, to release in lockstep with

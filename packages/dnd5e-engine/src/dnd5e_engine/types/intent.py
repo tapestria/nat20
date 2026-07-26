@@ -46,6 +46,11 @@ class ActionType(StrEnum):
     FREE_ROLEPLAY = "free_roleplay"
     OTHER = "other"
     EQUIP_ITEM = "equip_item"
+    # Consume/invoke a carried item's activity (e.g. drink a Potion of Healing,
+    # throw a net). Carries ``item_id`` (the item slug); the orchestrator's
+    # in-combat ``use_item`` branch resolves the item's typed Activity against
+    # live combat state.
+    USE_ITEM = "use_item"
     PREPARE_SPELL = "prepare_spell"
     # Invoke a single granted class/species feature activity (e.g. Rage,
     # Second Wind). Carries ``feature_id`` (the feature slug); the

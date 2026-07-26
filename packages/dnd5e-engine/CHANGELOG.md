@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2]
+
+### Added
+- `ActionType.USE_ITEM` parser-facing action member.
+
 ## [0.1.1]
 
 ### Added
