@@ -44,6 +44,7 @@ from dnd5e_engine.events import (
     ConditionApplied,
     DamageApplied,
     EffectApplied,
+    HealingApplied,
     SaveRolled,
 )
 from dnd5e_engine.lib_loader import set_lib_loader_for_tests
@@ -473,6 +474,48 @@ def test_use_item_resolves_item_activities():
     saved = _events_of(live, SaveRolled)
     assert saved, "use_item with a save-activity item must emit a SaveRolled"
     assert {e.target_id for e in saved} == {"mon:foe"}
+
+
+def test_use_item_potion_of_healing_heals_drinker():
+    """A ``use_item`` intent on ``potion-of-healing`` (a single ``heal``
+    activity, 2d4+2) resolves its heal activity against the drinker's live HP.
+
+    ``use_item`` does not auto-target the caster, so the intent names the
+    hero's own entity id. Regression: the potion path emits a ``HealingApplied``
+    and the drinker's live HP rises (capped at max)."""
+    potion = BundledAssetLoader().get_item("potion-of-healing")
+    assert potion is not None
+    set_lib_loader_for_tests(MemoryAssetLoader(items=[potion]))
+
+    async def _run():
+        start = await start_combat(
+            session_id="sess-potion",
+            party=_party(hp_current=8, hp_max=20),
+            encounter=_encounter(),
+            scene_zones=_topology(),
+            rng_seed=1,
+        )
+        live = _get_live(start.handle)
+        await submit_player_intent(
+            start.handle,
+            actor_id="char:hero",
+            intent=PlayerIntent(
+                intent_type="use_item",
+                item_id="potion-of-healing",
+                target_id="char:hero",
+            ),
+        )
+        return live
+
+    live = asyncio.run(_run())
+    healed = _events_of(live, HealingApplied)
+    assert healed, "potion-of-healing must emit a HealingApplied"
+    assert {e.target_id for e in healed} == {"char:hero"}
+    # 2d4+2 heals at least +4; the drinker (started at 8/20) must rise, capped.
+    assert live.tracked_hp["char:hero"] > 8
+    slot = next(c for c in live.initiative if c.entity_id == "char:hero")
+    assert slot.hp_current > 8
+    assert live.tracked_hp["char:hero"] <= 20
 
 
 def test_detect_thoughts_stays_single_target_despite_large_aoe():

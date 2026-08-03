@@ -19,8 +19,9 @@ full, host-facing migration guide. The engine now depends on
 - **Rest & recovery** — new public, zero-I/O module `dnd5e_engine.rest`, called
   *between* combats: `resolve_short_rest`, `resolve_long_rest`,
   `recover_feature_uses`, the `HitDicePool` / `RestOutcome` value types, the
-  `RecoveryPeriod` literal, and `FEATURE_USE_COUNTER_PREFIX`. All added to the
-  top-level `__all__`.
+  `RecoveryPeriod` literal — all added to the top-level `__all__`.
+  `FEATURE_USE_COUNTER_PREFIX` is also public, but is exported from the
+  submodule only: `from dnd5e_engine.rest import FEATURE_USE_COUNTER_PREFIX`.
 - **Spatial (grid) surface** — `WallSegment` value type (also a top-level
   export); `GridScene.wall_segments`, `GridScene.cover_cells`, and
   `GridScene.difficult_terrain_cells` fields (all default empty/off);
@@ -86,6 +87,10 @@ full, host-facing migration guide. The engine now depends on
   (`rules/gambits.assign_behavior_profile` was reviewed and **retained** — it is
   a host-facing utility for constructing `EncounterMemberSpec.behavior_profile`
   from raw monster stats, not dead code.)
+## [0.1.2]
+
+### Added
+- `ActionType.USE_ITEM` parser-facing action member.
 
 ## [0.1.1]
 

@@ -34,6 +34,9 @@ output stays byte-deterministic (`make check-regen-clean`).
   types for spells whose upstream source left them typeless/mislabeled, so
   canonical spell JSON now reflects the SRD 5.2 text. Affected `canonical/spells/*.json`
   regenerated deterministically.
+## [0.1.2]
+
+Lockstep version bump; no content change.
 
 ## [0.1.1]
 
