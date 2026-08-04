@@ -7,6 +7,7 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -100,6 +101,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "When you use your Magical Cunning feature, you regain all your expended Pact Magic spell slots.\n\nFoundry Note\n\nUse this feature to restore all expended Pact Magic spell slots. It will consume the free use from your Magical Cunning feature.",
   "entry_kind": "feature",
   "feature_type": "class_feature",
@@ -121,5 +123,6 @@
     "requires_user_decision": false
   },
   "slug": "eldritch-master",
-  "source_slug": "warlock"
+  "source_slug": "warlock",
+  "uses": null
 }

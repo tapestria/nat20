@@ -7,6 +7,7 @@
         "type": "action",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -114,6 +115,7 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -198,6 +200,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "Primal forces now help fuel you on your journeys, granting you the following benefits.\n\nTemporary Hit Points. As a Magic action, you can give yourself a number of Temporary Hit Points equal to 1d8 plus your Wisdom modifier (minimum of 1). You can use this action a number of times equal to your Wisdom modifier (minimum of once), and you regain all expended uses when you finish a Long Rest.\n\nDecrease Exhaustion. Whenever you finish a Short Rest, your Exhaustion level, if any, decreases by 1.\n\nFoundry Note\n\nThe Temporary Hit Points activity can apply the Temporary Hit Points to you.\n\nThe Decrease Exhaustion activity will decrease your Exhaustion.",
   "entry_kind": "feature",
   "feature_type": "class_feature",
@@ -219,5 +222,6 @@
     "requires_user_decision": false
   },
   "slug": "tireless",
-  "source_slug": "ranger"
+  "source_slug": "ranger",
+  "uses": null
 }

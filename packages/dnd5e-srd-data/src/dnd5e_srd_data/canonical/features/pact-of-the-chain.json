@@ -7,6 +7,7 @@
         "type": "action",
         "value": 1
       },
+      "applied_effects": [],
       "bonuses": {
         "ac": "",
         "attack_damage": "",
@@ -134,6 +135,7 @@
         "type": "action",
         "value": 1
       },
+      "applied_effects": [],
       "bonuses": {
         "ac": "",
         "attack_damage": "",
@@ -337,6 +339,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "You learn the Find Familiar spell and can cast it as a Magic action without expending a spell slot.\n\nWhen you cast the spell, you choose one of the normal forms for your familiar or one of the following special forms: Imp, Pseudodragon, Quasit, Skeleton, Slaad Tadpole, Sphinx of Wonder, Sprite, or Venomous Snake.\n\nAdditionally, when you take the Attack action, you can forgo one of your own attacks to allow your familiar to make one attack of its own with its Reaction.\n\nFoundry Note\n\nThe Summon Familiar activity includes the normal summoning options and the Summon Familiar (Expanded Options) activity includes the additional options.",
   "entry_kind": "feature",
   "feature_type": "class_feature",
@@ -358,5 +361,6 @@
     "requires_user_decision": false
   },
   "slug": "pact-of-the-chain",
-  "source_slug": "warlock"
+  "source_slug": "warlock",
+  "uses": null
 }

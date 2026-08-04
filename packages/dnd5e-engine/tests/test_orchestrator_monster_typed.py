@@ -479,13 +479,17 @@ def test_ranged_save_monster_out_of_range_closes_distance():
 
 
 def test_wounded_aggressive_monster_below_flee_threshold_passes():
-    """A wounded AGGRESSIVE monster under 10% HP passes — the flee gate fires.
+    """A wounded AGGRESSIVE monster under 10% HP flees — the flee gate fires.
 
     Pre-cutover ``select_monster_action`` refused to act below the
     behavior-based HP threshold (``hp_ratio < 0.10`` for AGGRESSIVE). The typed
     selector lost that gate; the fix reapplies it in ``advance_monster_turn``
     against the live ``Combatant``. At 4/50 HP (8%) the monster takes no attack
-    action exactly as pre-cutover.
+    action. Post-C10-S01 the fleeing branch also RETREATS: sharing ``zone:start``
+    with the hero, the monster steps to ``zone:mid`` (5 ft) to increase distance,
+    which provokes the hero's opportunity attack (SRD §Opportunity Attacks — the
+    monster leaves the hero's reach) — so the only ``AttackRolled`` this turn is
+    the hero's AoO, never the monster's own. The turn still records ``pass``.
     """
     monster = _monster("wounded", [_melee_attack("Bite")])
     set_lib_loader_for_tests(MemoryAssetLoader(monsters=[monster]))
@@ -509,10 +513,14 @@ def test_wounded_aggressive_monster_below_flee_threshold_passes():
         return live
 
     live = asyncio.run(_run())
-    attacks = [e for e in live.event_log if isinstance(e, AttackRolled)]
+    monster_attacks = [
+        e for e in live.event_log if isinstance(e, AttackRolled) and e.attacker_id == "mon:foe"
+    ]
+    moves = [e for e in live.event_log if isinstance(e, ActorMoved) and e.actor_id == "mon:foe"]
     intents = [
         e for e in live.event_log if isinstance(e, IntentSubmitted) and e.actor_id == "mon:foe"
     ]
-    assert not attacks, "wounded monster below flee threshold should not attack"
+    assert not monster_attacks, "wounded monster below flee threshold should not attack"
+    assert moves, "the fleeing monster should retreat away from the co-located hero"
     assert intents, "the monster's turn should still record an IntentSubmitted"
     assert intents[-1].intent_type == "pass", "fleeing monster records a pass"

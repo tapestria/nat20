@@ -7,6 +7,7 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -106,6 +107,7 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -199,6 +201,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "Once on each of your turns when you hit a creature with an attack roll using a weapon, you can cause the target to take an extra 1d8 Necrotic or Radiant damage (your choice).\n\nFoundry Note\n\nThis feature's damage will automatically increase when you gain Improved Blessed Strikes.",
   "entry_kind": "feature",
   "feature_type": "class_feature",
@@ -220,5 +223,6 @@
     "requires_user_decision": false
   },
   "slug": "blessed-strikes-divine-strike",
-  "source_slug": "cleric"
+  "source_slug": "cleric",
+  "uses": null
 }

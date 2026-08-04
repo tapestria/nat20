@@ -1,5 +1,6 @@
 {
   "activities": [],
+  "advancement": [],
   "description": "You can create pockets of relative safety within the effects of your evocations. When you cast an Evocation spell that affects other creatures that you can see, you can choose a number of them equal to 1 plus the spell's level. The chosen creatures automatically succeed on their saving throws against the spell, and they take no damage if they would normally take half damage on a successful save.",
   "entry_kind": "feature",
   "feature_type": "subclass_feature",
@@ -21,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "sculpt-spells",
-  "source_slug": "evoker"
+  "source_slug": "evoker",
+  "uses": null
 }

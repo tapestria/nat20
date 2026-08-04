@@ -7,6 +7,7 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -105,6 +106,7 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -201,6 +203,7 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -291,6 +294,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "Choose two level 3 spells in your spellbook as your signature spells. You always have these spells prepared, and you can cast each of them once at level 3 without expending a spell slot. When you do so, you can't cast them in this way again until you finish a Short or Long Rest. To cast either spell at a higher level, you must expend a spell slot.\n\nFoundry Note\n\nThe Make Signature activity can be used to enchant two spells which marks them as \"Always Prepared\" and adds \", Signature\" to their title for easy identification.\n\nThe Expend First Spell and Expend Second Spell activities can be used for tracking your free use of each spell and refresh on a Short and Long Rest.",
   "entry_kind": "feature",
   "feature_type": "class_feature",
@@ -336,5 +340,6 @@
     "requires_user_decision": false
   },
   "slug": "signature-spells",
-  "source_slug": "wizard"
+  "source_slug": "wizard",
+  "uses": null
 }

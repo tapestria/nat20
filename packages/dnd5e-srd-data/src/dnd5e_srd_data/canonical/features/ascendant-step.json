@@ -7,6 +7,7 @@
         "type": "action",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -91,6 +92,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "Prerequisite: Level 5+ Warlock\n\nYou can cast Levitate on yourself without expending a spell slot.",
   "entry_kind": "feature",
   "feature_type": "class_feature",
@@ -125,5 +127,6 @@
     "requires_user_decision": false
   },
   "slug": "ascendant-step",
-  "source_slug": "warlock"
+  "source_slug": "warlock",
+  "uses": null
 }

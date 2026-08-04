@@ -7,6 +7,7 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": true,
@@ -92,6 +93,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "When a spell you cast with a spell slot restores Hit Points to a creature, that creature regains additional Hit Points on the turn you cast the spell. The additional Hit Points equal 2 plus the spell slot's level.\n\nFoundry Note\n\nThis feature includes a healing activity. Set the scale to the spell slot level you cast and it will provide a healing roll for you.",
   "entry_kind": "feature",
   "feature_type": "subclass_feature",
@@ -113,5 +115,6 @@
     "requires_user_decision": false
   },
   "slug": "disciple-of-life",
-  "source_slug": "life-domain"
+  "source_slug": "life-domain",
+  "uses": null
 }

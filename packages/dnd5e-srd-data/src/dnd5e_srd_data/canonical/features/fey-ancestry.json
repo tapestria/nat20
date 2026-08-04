@@ -1,5 +1,6 @@
 {
   "activities": [],
+  "advancement": [],
   "description": "You have Advantage on saving throws you make to avoid or end the &amp;Reference[Charmed] condition.",
   "entry_kind": "feature",
   "feature_type": "species_trait",
@@ -21,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "fey-ancestry",
-  "source_slug": "elf"
+  "source_slug": "elf",
+  "uses": null
 }

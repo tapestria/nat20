@@ -7,6 +7,7 @@
         "type": "minute",
         "value": 1
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -100,6 +101,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "You can perform an esoteric rite for 1 minute. At the end of it, you regain expended Pact Magic spell slots but no more than a number equal to half your maximum (round up). Once you use this feature, you can't do so again until you finish a Long Rest.\n\nFoundry Note\n\nThis feature includes one free use and will restore the correct number of Pact Magic spell slots.",
   "entry_kind": "feature",
   "feature_type": "class_feature",
@@ -121,5 +123,16 @@
     "requires_user_decision": false
   },
   "slug": "magical-cunning",
-  "source_slug": "warlock"
+  "source_slug": "warlock",
+  "uses": {
+    "max": "1",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "lr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  }
 }

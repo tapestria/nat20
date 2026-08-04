@@ -7,6 +7,7 @@
         "type": "action",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -91,6 +92,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "You can call on even more powerful divine intervention. When you use your Divine Intervention feature, you can choose Wish when you select a spell. If you do so, you can't use Divine Intervention again until you finish [[/r 2d4]] Long Rests.\n\nFoundry Note\n\nThis feature will consume a use of your Divine Intervention but it can not automatically recharge the usage after the rolled number of Long Rests.",
   "entry_kind": "feature",
   "feature_type": "class_feature",
@@ -112,5 +114,6 @@
     "requires_user_decision": false
   },
   "slug": "greater-divine-intervention",
-  "source_slug": "cleric"
+  "source_slug": "cleric",
+  "uses": null
 }

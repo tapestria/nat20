@@ -7,6 +7,7 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -91,6 +92,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "You have a marvelous knack for succeeding when you need to. If you fail a D20 Test, you can turn the roll into a 20.\n\nOnce you use this feature, you can't use it again until you finish a Short or Long Rest.",
   "entry_kind": "feature",
   "feature_type": "class_feature",
@@ -112,5 +114,16 @@
     "requires_user_decision": false
   },
   "slug": "stroke-of-luck",
-  "source_slug": "rogue"
+  "source_slug": "rogue",
+  "uses": {
+    "max": "1",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "sr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  }
 }

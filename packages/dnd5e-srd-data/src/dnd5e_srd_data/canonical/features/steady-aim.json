@@ -7,6 +7,7 @@
         "type": "bonus",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -81,6 +82,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "As a Bonus Action, you give yourself Advantage on your next attack roll on the current turn. You can use this feature only if you haven't moved during this turn, and after you use it, your Speed is 0 until the end of the current turn.",
   "entry_kind": "feature",
   "feature_type": "class_feature",
@@ -102,5 +104,6 @@
     "requires_user_decision": false
   },
   "slug": "steady-aim",
-  "source_slug": "rogue"
+  "source_slug": "rogue",
+  "uses": null
 }

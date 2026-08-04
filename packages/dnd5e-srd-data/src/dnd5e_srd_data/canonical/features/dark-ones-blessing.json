@@ -7,6 +7,7 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -92,6 +93,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "When you reduce an enemy to 0 Hit Points, you gain Temporary Hit Points equal to your Charisma modifier plus your Warlock level (minimum of 1 Temporary Hit Point). You also gain this benefit if someone else reduces an enemy within 10 feet of you to 0 Hit Points.",
   "entry_kind": "feature",
   "feature_type": "subclass_feature",
@@ -113,5 +115,6 @@
     "requires_user_decision": false
   },
   "slug": "dark-ones-blessing",
-  "source_slug": "fiend-patron"
+  "source_slug": "fiend-patron",
+  "uses": null
 }

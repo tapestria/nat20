@@ -74,6 +74,16 @@ CastFailedReason = Literal[
     "concentration_blocked",
     "components_missing",
     "no_action_economy",
+    # SRD 5.2 Counterspell — "On a failed save, the spell dissipates with no
+    # effect, and the action, Bonus Action, or Reaction used to cast it is
+    # wasted." Emitted by the pre-armed reaction queue (orchestrator.py,
+    # Cluster 6) when a queued Counterspell's Constitution save fails.
+    "countered",
+    # SRD 5.2 §Limited-Use Features (Cluster 9) — a capped, rest-recharged
+    # feature (Second Wind) invoked again with no uses left and no intervening
+    # rest. Mirrors the ``no_action_economy`` reject shape, extended from a
+    # per-turn budget to a per-encounter / per-rest one.
+    "no_uses_remaining",
 ]
 
 IntentType = Literal[

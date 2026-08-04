@@ -1,5 +1,6 @@
 {
   "activities": [],
+  "advancement": [],
   "description": "You picked up various languages in the communities where you plied your roguish talents. You know Thieves' Cant and one other language of your choice, which you choose from the language tables in Character Creation.\n\nFoundry Note\n\nThieves' Cant will be added to your sheet automatically and you will be prompted to choose the additional language.",
   "entry_kind": "feature",
   "feature_type": "class_feature",
@@ -21,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "thieves-cant",
-  "source_slug": "rogue"
+  "source_slug": "rogue",
+  "uses": null
 }

@@ -7,6 +7,7 @@
         "type": "bonus",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -87,6 +88,7 @@
         "type": "bonus",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -167,6 +169,7 @@
         "type": "bonus",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -251,6 +254,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "Your quick thinking and agility allow you to move and act quickly. On your turn, you can take one of the following actions as a Bonus Action: &amp;Reference[Dash], &amp;Reference[Disengage], or &amp;Reference[Hide].",
   "entry_kind": "feature",
   "feature_type": "class_feature",
@@ -285,5 +289,6 @@
     "requires_user_decision": false
   },
   "slug": "cunning-action",
-  "source_slug": "rogue"
+  "source_slug": "rogue",
+  "uses": null
 }

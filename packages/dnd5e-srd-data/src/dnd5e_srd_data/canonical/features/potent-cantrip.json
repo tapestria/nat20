@@ -1,5 +1,6 @@
 {
   "activities": [],
+  "advancement": [],
   "description": "Your damaging cantrips affect even creatures that avoid the brunt of the effect. When you cast a cantrip at a creature and you miss with the attack roll or the target succeeds on a saving throw against the cantrip, the target takes half the cantrip's damage (if any) but suffers no additional effect from the cantrip.\n\nFoundry Note\n\nWith their token selected you can either right click on the damage roll's chat card and select \u00a0Apply Half Damage or click the \"1/2\" button and then the \u00a0Apply button.",
   "entry_kind": "feature",
   "feature_type": "subclass_feature",
@@ -21,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "potent-cantrip",
-  "source_slug": "evoker"
+  "source_slug": "evoker",
+  "uses": null
 }

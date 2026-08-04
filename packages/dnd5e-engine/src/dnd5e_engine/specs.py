@@ -11,7 +11,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from dnd5e_engine.activities.passive_stats import CombatantSenses
+from dnd5e_engine.activities.passive_stats import CombatantMovementModes, CombatantSenses
 
 
 class PartyMemberSpec(BaseModel):
@@ -68,6 +68,16 @@ class PartyMemberSpec(BaseModel):
     # default; populated from the character sheet projection when wired.
     damage_resistances: list[str] = Field(default_factory=list)
     damage_immunities: list[str] = Field(default_factory=list)
+    # SRD §Damage Vulnerability — per-PC type list ("applying twice the normal
+    # damage"). Empty by default; threaded onto ``Combatant.damage_vulnerabilities``
+    # → the damage sidecar. Symmetric with the monster path (C08-S03).
+    damage_vulnerabilities: list[str] = Field(default_factory=list)
+    # SRD §Condition Immunity — condition slugs the PC can't suffer (Nature's
+    # Ward → ``"poisoned"``). Populated by ``build_party_member`` from always-on
+    # granted-feature ``system.traits.ci.value`` changes; copied onto the live
+    # ``Combatant`` at start_combat, where the condition-application path
+    # (``activities/effects.py``) suppresses a matching ``ConditionApplied``.
+    condition_immunities: list[str] = Field(default_factory=list)
     # SRD §Senses — special senses in feet. Populated by ``build_party_member``
     # from the PC's species senses + always-on feature passive_effects, and
     # copied onto the live ``Combatant`` at start_combat. Empty (all ``None``)
@@ -86,6 +96,13 @@ class PartyMemberSpec(BaseModel):
     # at start_combat; resets ``movement_remaining`` on each of the actor's
     # turns. Character race / monster speed projection threads through here.
     base_speed: int = 30
+    # SRD §Movement — a creature's non-walk movement modes (climb/swim/fly/
+    # burrow speeds in feet; ``None`` = mode unavailable). Populated by
+    # ``build_party_member`` from always-on granted-feature
+    # ``system.attributes.movement.*`` changes (Roving → climb/swim = walk
+    # speed) and copied onto the live ``Combatant`` at start_combat. Kept
+    # multi-mode (collapsing to a single scalar is lossy). Empty by default.
+    movement_modes: CombatantMovementModes = Field(default_factory=CombatantMovementModes)
     # SRD §Classes — character class slug (e.g. ``"rogue"``, ``"barbarian"``).
     # Drives class-feature gating on the orchestrator seam — today only Cunning
     # Action (Rogue) Dash uses it (``class_slug == "rogue"`` ⇒ the
@@ -109,6 +126,12 @@ class PartyMemberSpec(BaseModel):
     # reaches the spec. Empty for graph PCs (their mechanical equipment crosses
     # via the session-side enchantment projection, not this slug list).
     equipment: tuple[str, ...] = ()
+    # SRD Weapons table, Reach property — melee reach in feet (e.g. a Glaive's
+    # Reach property adds 5 ft to the SRD baseline, landing at 10). Defaults to
+    # 5 (mirrors ``Combatant.melee_reach_ft``'s own default — the SRD baseline
+    # for a Medium creature's unarmed/short-weapon reach). Projected onto
+    # ``Combatant.melee_reach_ft`` at start_combat by ``_build_pc_combatants``.
+    reach_ft: int = 5
 
 
 class EncounterMemberSpec(BaseModel):
@@ -151,6 +174,16 @@ class EncounterMemberSpec(BaseModel):
     # by default for fixtures that don't specify.
     damage_resistances: list[str] = Field(default_factory=list)
     damage_immunities: list[str] = Field(default_factory=list)
+    # SRD §Damage Vulnerability — per-monster type list ("applying twice the
+    # normal damage"). Empty by default; when a ``monster_template_slug`` is set
+    # and this list is empty, ``_build_foe_combatants`` hydrates it from
+    # ``Monster.damage_vulnerabilities`` (the Skeleton's ``["bludgeoning"]``).
+    # Threaded onto ``Combatant.damage_vulnerabilities`` → the damage sidecar.
+    damage_vulnerabilities: list[str] = Field(default_factory=list)
+    # SRD §Condition Immunity — condition slugs this creature can't suffer.
+    # Empty by default; populated from MonsterTemplate at the session layer.
+    # Copied onto the live ``Combatant`` at start_combat.
+    condition_immunities: list[str] = Field(default_factory=list)
     # SRD §Movement — walking speed in feet. See PartyMemberSpec.base_speed.
     # Defaults to 30; monster speed lookup at the session layer threads
     # MonsterTemplate.speed["walk"] in here.
@@ -182,6 +215,27 @@ class SceneTopology(BaseModel):
     edges: list[ZoneEdge] = Field(default_factory=list)
 
 
+class WallSegment(BaseModel):
+    """One wall edge, grid-CORNER endpoints (mirrors Foundry's ``Wall.c``
+    four-coordinate convention).
+
+    Coordinates are grid-corner units, not cell-center units: a wall running
+    along the boundary between column 2 and column 3 (spanning the full grid
+    height) is ``WallSegment(x1=2, y1=0, x2=2, y2=<height>)``, not
+    ``x1=2.5``. ``GridTopology.has_line_of_sight`` tests the straight segment
+    between two cells' CENTER points (``col+0.5, row+0.5``) against every
+    wall segment for a proper intersection — see
+    ``docs/dev/spatial-geometry.md``.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    x1: float
+    y1: float
+    x2: float
+    y2: float
+
+
 class GridScene(BaseModel):
     """Wire-level shape for a 2-D grid battlefield.
 
@@ -189,8 +243,11 @@ class GridScene(BaseModel):
     ``cell_size_ft``) distance. Combatant positions reuse the existing
     ``zone_id`` string on the party/encounter specs, encoded as ``"col,row"``
     (see ``dnd5e_engine.spatial.cell_id``). ``blocked_cells`` are impassable
-    squares (movement may not enter them); line-of-sight / cover / AoE
-    templates over wall geometry are deferred (see ``BACKLOG.md``).
+    squares (movement may not enter them). ``wall_segments`` block line of
+    sight (SRD 5.2 §Areas of Effect); ``cover_cells`` grant half / three-
+    quarters / total cover (SRD 5.2 §Cover); ``difficult_terrain_cells``
+    double the movement cost of entering them (SRD 5.2 §Difficult Terrain).
+    See ``docs/dev/spatial-geometry.md`` for the full geometry design note.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -199,6 +256,19 @@ class GridScene(BaseModel):
     height: int = Field(ge=1)
     cell_size_ft: int = Field(default=5, ge=1)
     blocked_cells: list[str] = Field(default_factory=list)
+    # SRD 5.2 §Areas of Effect — wall geometry blocking line of sight.
+    # Additive; empty preserves ``has_line_of_sight``'s prior always-True
+    # behavior byte-for-byte.
+    wall_segments: list[WallSegment] = Field(default_factory=list)
+    # SRD 5.2 §Cover — obstruction cells tagged with the cover degree they
+    # grant a creature standing behind them, keyed by cell id (``"col,row"``).
+    # Distinct from ``blocked_cells`` (blocks movement) and ``wall_segments``
+    # (blocks LoS outright). Additive; empty preserves today's no-cover
+    # behavior.
+    cover_cells: dict[str, Literal["half", "three_quarters", "total"]] = Field(default_factory=dict)
+    # SRD 5.2 §Difficult Terrain — floor cells that cost double to enter.
+    # Additive; empty preserves ``edge_distance``'s prior flat-cost behavior.
+    difficult_terrain_cells: list[str] = Field(default_factory=list)
 
 
 __all__ = [
@@ -206,5 +276,6 @@ __all__ = [
     "GridScene",
     "PartyMemberSpec",
     "SceneTopology",
+    "WallSegment",
     "ZoneEdge",
 ]

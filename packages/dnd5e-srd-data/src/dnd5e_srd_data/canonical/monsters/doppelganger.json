@@ -18,6 +18,7 @@
             "type": "action",
             "value": null
           },
+          "applied_effects": [],
           "consumption": {
             "scaling": {
               "allowed": false,
@@ -109,6 +110,7 @@
             "type": "action",
             "value": null
           },
+          "applied_effects": [],
           "attack": {
             "ability": "dex",
             "bonus": "",
@@ -331,6 +333,7 @@
             "type": "action",
             "value": null
           },
+          "applied_effects": [],
           "consumption": {
             "scaling": {
               "allowed": false,
@@ -449,6 +452,7 @@
             "type": "bonus",
             "value": null
           },
+          "applied_effects": [],
           "consumption": {
             "scaling": {
               "allowed": false,

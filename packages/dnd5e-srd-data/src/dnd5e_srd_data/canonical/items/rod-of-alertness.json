@@ -363,6 +363,9 @@
         "type": "action",
         "value": null
       },
+      "applied_effects": [
+        "fHNlrUKZ6KWRNTmy"
+      ],
       "consumption": {
         "scaling": {
           "allowed": false,

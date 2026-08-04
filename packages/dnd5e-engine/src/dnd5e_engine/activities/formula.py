@@ -87,7 +87,20 @@ def resolve_roll_data(
     is present. The returned string is ``d20``-parseable; negative modifiers
     render as e.g. ``"2d8 + -1"``, which ``d20.parse`` accepts.
     """
-    return _TOKEN_RE.sub(lambda m: str(_resolve_token(m.group(0), ctx, ability)), expr)
+    resolved = _TOKEN_RE.sub(lambda m: str(_resolve_token(m.group(0), ctx, ability)), expr)
+    return _normalize_paren_dice_count(resolved)
+
+
+# Foundry wraps a scale-valued dice COUNT in parens — ``(@scale.x)d8`` (Divine
+# Spark's ``(@scale.channel-divinity-cleric.spark)d8``). After token
+# substitution that leaves ``(1)d8``, which ``d20.parse`` rejects (a
+# parenthesized group may not be a dice count). Collapse a paren-wrapped bare
+# integer immediately preceding ``d<size>`` back to a plain ``NdM``.
+_PAREN_DICE_COUNT_RE: Final = re.compile(r"\((\d+)\)(d\d)")
+
+
+def _normalize_paren_dice_count(expr: str) -> str:
+    return _PAREN_DICE_COUNT_RE.sub(r"\1\2", expr)
 
 
 def resolve_damage_block(

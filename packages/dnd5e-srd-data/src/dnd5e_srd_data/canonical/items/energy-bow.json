@@ -7,6 +7,7 @@
         "type": "action",
         "value": null
       },
+      "applied_effects": [],
       "attack": {
         "ability": "",
         "bonus": "",
@@ -100,6 +101,7 @@
         "type": "action",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -180,6 +182,7 @@
         "type": "action",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -260,6 +263,9 @@
         "type": "action",
         "value": null
       },
+      "applied_effects": [
+        "jQnQ2ghbt7j3nWke"
+      ],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -364,6 +370,9 @@
         "type": "special",
         "value": null
       },
+      "applied_effects": [
+        "Yw1oocFffwM4cePn"
+      ],
       "consumption": {
         "scaling": {
           "allowed": false,

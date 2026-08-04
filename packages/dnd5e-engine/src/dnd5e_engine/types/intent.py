@@ -42,7 +42,6 @@ class ActionType(StrEnum):
     EXAMINE_LOCATION = "examine_location"
     QUEST_ACCEPT = "quest_accept"
     SKILL_CHECK = "skill_check"
-    SHORT_REST = "short_rest"
     FREE_ROLEPLAY = "free_roleplay"
     OTHER = "other"
     EQUIP_ITEM = "equip_item"

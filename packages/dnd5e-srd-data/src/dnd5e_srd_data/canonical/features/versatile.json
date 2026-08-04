@@ -1,5 +1,6 @@
 {
   "activities": [],
+  "advancement": [],
   "description": "You gain an Origin feat of your choice. Skilled is recommended.\n\nFoundry Note\n\nYou will be prompted for your choice when you select this Species.",
   "entry_kind": "feature",
   "feature_type": "species_trait",
@@ -21,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "versatile",
-  "source_slug": "human"
+  "source_slug": "human",
+  "uses": null
 }

@@ -4,9 +4,11 @@ SPIKE findings (real tokens from canonical/features/*.json, owner docs via
 BundledAssetLoader):
 
 Match rule for ``@scale.<owner>.<key>[.<suffix>]``:
-  * ``<owner>`` resolves against get_class | get_subclass | get_species (in that
-    order). The owner space includes subclasses (Land druid) + species
-    (Dragonborn), not just classes.
+  * ``<owner>`` resolves against get_class | get_subclass | get_species |
+    get_feature (in that order; the ``get_feature`` fallback closed C04-S02,
+    Cluster 4). The owner space includes subclasses (Land druid), species
+    (Dragonborn), AND feature-owned scales (Channel Divinity's Divine Spark),
+    not just classes.
   * Walk the owner doc's ``advancement[]`` for entries with
     ``type == AdvancementType.SCALE_VALUE`` carrying ``configuration.scale``.
   * ``<key>`` matches when ``configuration.identifier == key`` OR
@@ -22,9 +24,6 @@ Scale value / suffix semantics (``configuration.type``):
     None, e.g. Monk Martial Arts Die); ``.number`` -> int dice count;
     ``.die``    -> die string ``f"d{faces}"``.
   * ``distance`` -> entry ``{value}``; bare -> int value (Paladin aura).
-
-UNRESOLVED set (owner not on any class/subclass/species doc -> None, logged):
-  * ``@scale.channel-divinity-cleric.spark`` (feature-specific scale).
 """
 
 from __future__ import annotations
@@ -118,9 +117,13 @@ def test_below_first_scale_level_returns_none() -> None:
     assert resolve_scale_value("barbarian", "rage-damage", level=0, loader=L) is None
 
 
-def test_unresolved_owner_returns_none() -> None:
-    # channel-divinity-cleric is a feature-specific scale, not on any owner doc
-    assert resolve_scale_value("channel-divinity-cleric", "spark", level=5, loader=L) is None
+def test_feature_owned_scale_resolves_via_get_feature_fallback() -> None:
+    # C04-S02 (Cluster 4): channel-divinity-cleric is a feature-specific scale
+    # (Divine Spark die count), not a class/subclass/species doc. `_owner_doc`
+    # now falls back to `loader.get_feature(identifier)`, so it resolves like
+    # any other owner. Scale table {2:1, 7:2, 13:3, 18:4}; level 5's highest
+    # entry <= 5 is the level-2 tier (value 1).
+    assert resolve_scale_value("channel-divinity-cleric", "spark", level=5, loader=L) == 1
 
 
 def test_unresolved_key_returns_none() -> None:
@@ -155,6 +158,22 @@ def test_build_scale_values_includes_dice_suffix_variants() -> None:
     assert sv["rogue.sneak-attack.number"] == 3
 
 
+def test_paren_wrapped_scale_dice_count_normalizes_to_parseable() -> None:
+    # C07-S03: Divine Spark's ``(@scale.channel-divinity-cleric.spark)d8`` idiom
+    # wraps the dice COUNT in parens. After the scale token resolves to the int
+    # ``1`` the naive substitution is ``(1)d8``, which ``d20.parse`` rejects.
+    # ``resolve_roll_data`` must collapse it back to a plain ``1d8``.
+    ctx = _ctx(scale_values={"channel-divinity-cleric.spark": 1})
+    resolved = resolve_roll_data("(@scale.channel-divinity-cleric.spark)d8 + 3", ctx)
+    assert resolved == "1d8 + 3"
+
+
+def test_paren_normalization_leaves_real_grouping_untouched() -> None:
+    # A genuine arithmetic grouping (not a dice count) must be preserved.
+    ctx = _ctx()
+    assert resolve_roll_data("(2 + 3) * 2", ctx) == "(2 + 3) * 2"
+
+
 def test_build_scale_values_omits_unresolvable_owner() -> None:
     # an absent class/subclass/species slug contributes nothing (no crash)
     sv = build_scale_values(
@@ -184,9 +203,12 @@ def test_formula_dice_scale_substitutes_expr_string() -> None:
 
 
 def test_formula_dice_scale_number_suffix_substitutes_count() -> None:
-    # frenzy-style "(@scale.rogue.sneak-attack.number)d6" -> "(3)d6"
+    # frenzy-style "(@scale.rogue.sneak-attack.number)d6": the count substitutes
+    # to 3, and the Foundry paren-around-the-dice-count idiom collapses to the
+    # d20-parseable "3d6" (C07-S03: the earlier "(3)d6" output could not actually
+    # be rolled — d20.parse rejects a parenthesized dice count).
     ctx = _ctx(scale_values={"rogue.sneak-attack.number": 3})
-    assert resolve_roll_data("(@scale.rogue.sneak-attack.number)d6", ctx) == "(3)d6"
+    assert resolve_roll_data("(@scale.rogue.sneak-attack.number)d6", ctx) == "3d6"
 
 
 def test_formula_classes_levels_substitutes_int() -> None:

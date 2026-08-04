@@ -7,6 +7,7 @@
         "type": "action",
         "value": null
       },
+      "applied_effects": [],
       "bonuses": {
         "ac": "",
         "attack_damage": "",
@@ -112,6 +113,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "Prerequisite: Level 9+ Warlock\n\nYou can cast Arcane Eye without expending a spell slot.\n\nFoundry Note\n\nThis feature can be used in place of Arcane Eye and includes a Summon activity.",
   "entry_kind": "feature",
   "feature_type": "class_feature",
@@ -133,5 +135,6 @@
     "requires_user_decision": false
   },
   "slug": "visions-of-distant-realms",
-  "source_slug": "warlock"
+  "source_slug": "warlock",
+  "uses": null
 }

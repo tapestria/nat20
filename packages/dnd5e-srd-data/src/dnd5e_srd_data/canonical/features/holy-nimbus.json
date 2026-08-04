@@ -7,6 +7,7 @@
         "type": "bonus",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -116,6 +117,7 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -209,6 +211,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "As a Bonus Action, you can imbue your Aura of Protection with holy power, granting the benefits below for 10 minutes or until you end them (no action required). Once you use this feature, you can't use it again until you finish a Long Rest. You can also restore your use of it by expending a level 5 spell slot (no action required).\n\nHoly Ward. You have Advantage on any saving throw you are forced to make by a Fiend or an Undead.\n\nRadiant Damage. Whenever an enemy starts its turn in the aura, that creature takes Radiant damage equal to your Charisma modifier plus your Proficiency Bonus.\n\nSunlight. The aura is filled with Bright Light that is sunlight.\n\nFoundry Note\n\nThis feature includes an Active Effect for tracking your Holy Nimbus but it does not automate the Advantage on Saving Throws.\n\nThe Holy Nimbus activity includes a damage roll.\n\nThe Regain Use activity will consume a 5th level spell slot and restore a use of this feature.",
   "entry_kind": "feature",
   "feature_type": "subclass_feature",
@@ -243,5 +246,16 @@
     "requires_user_decision": false
   },
   "slug": "holy-nimbus",
-  "source_slug": "oath-of-devotion"
+  "source_slug": "oath-of-devotion",
+  "uses": {
+    "max": "1",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "lr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  }
 }

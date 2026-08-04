@@ -7,6 +7,7 @@
         "type": "action",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -101,6 +102,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "Prerequisite: Level 5+ Warlock\n\nYou can breathe underwater, and you gain a Swim Speed equal to your Speed.\n\nYou can also cast Water Breathing once without expending a spell slot. You regain the ability to cast it in this way again when you finish a Long Rest.\n\nFoundry Note\n\nThe Gift Water Breathing activity consumes a limited use and includes an Active Effect for tracking the chosen creatures.",
   "entry_kind": "feature",
   "feature_type": "class_feature",
@@ -135,5 +137,16 @@
     "requires_user_decision": false
   },
   "slug": "gift-of-the-depths",
-  "source_slug": "warlock"
+  "source_slug": "warlock",
+  "uses": {
+    "max": "1",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "lr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  }
 }

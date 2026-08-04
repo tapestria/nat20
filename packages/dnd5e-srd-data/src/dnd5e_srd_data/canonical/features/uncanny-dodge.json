@@ -7,6 +7,7 @@
         "type": "reaction",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -81,6 +82,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "When an attacker that you can see hits you with an attack roll, you can take a Reaction to halve the attack's damage against you (round down).\n\nFoundry Note\n\nWith your token selected you can either right click on the damage roll's chat card and select \u00a0Apply Half Damage or click the \"1/2\" button and then the \u00a0Apply button.",
   "entry_kind": "feature",
   "feature_type": "class_feature",
@@ -102,5 +104,6 @@
     "requires_user_decision": false
   },
   "slug": "uncanny-dodge",
-  "source_slug": "rogue"
+  "source_slug": "rogue",
+  "uses": null
 }

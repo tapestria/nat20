@@ -1,5 +1,6 @@
 {
   "activities": [],
+  "advancement": [],
   "description": "You know the Thaumaturgy cantrip. When you cast it with this trait, the spell uses the same spellcasting ability you use for your Fiendish legacy trait.\n\nFoundry Note\n\nWhen you're granted this spell it will allow you to choose your spellcasting ability.",
   "entry_kind": "feature",
   "feature_type": "species_trait",
@@ -21,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "otherworldly-presence",
-  "source_slug": "tiefling"
+  "source_slug": "tiefling",
+  "uses": null
 }

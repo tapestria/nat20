@@ -1,5 +1,6 @@
 {
   "activities": [],
+  "advancement": [],
   "description": "You gain Expertise in two of your skill proficiencies of your choice. Sleight of Hand and Stealth are recommended if you have proficiency in them.\n\nAt Rogue level 6, you gain Expertise in two more of your skill proficiencies of your choice.\n\nFoundry Note\n\nYou will be prompted for your expertise choices as you level up.",
   "entry_kind": "feature",
   "feature_type": "class_feature",
@@ -21,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "expertise",
-  "source_slug": "rogue"
+  "source_slug": "rogue",
+  "uses": null
 }

@@ -41,13 +41,6 @@ ORACLE_PATH = ROOT / "tests" / "oracle" / "activity_oracle.json"
 # widen these sets to mask real translator bugs. Values are top-level oracle
 # ``system`` keys.
 #
-#   appliedEffects  — legacy flat list[str] of effect ids that mostly
-#                     duplicates the structured ``effects[]._id`` slice.
-#                     Present in 282 oracle entries (274 empty + 8 with
-#                     content); the 4 non-empty cases (hunters-mark,
-#                     ring-of-invisibility, shillelagh, wand-of-paralysis)
-#                     are tracked for the A3 follow-up that introduces an
-#                     ``applied_effects`` field on the per-kind models.
 #   roll (save only) — Foundry's ``save-data.mjs`` schema has no ``roll``
 #                     field (it lives only on utility/transform); a single
 #                     2024 source doc (cleric channel-divinity / Turn Undead)
@@ -56,7 +49,6 @@ ORACLE_PATH = ROOT / "tests" / "oracle" / "activity_oracle.json"
 #                     only so a real ``roll`` mismatch on utility/transform
 #                     still fails.
 KNOWN_ACTIVITY_FIDELITY_EXCEPTIONS: dict[str, set[str]] = {
-    "*": {"appliedEffects"},
     "save": {"roll"},
 }
 
@@ -220,9 +212,9 @@ def test_every_oracle_field_round_trips(oracle: dict[str, dict[str, Any]]) -> No
         # Apply the same camelCase→snake_case rewrite the translator does,
         # but WITHOUT _ACTIVITY_DROP_KEYS — the drop is what the
         # KNOWN_ACTIVITY_FIDELITY_EXCEPTIONS contract is supposed to
-        # track. Passing drop_keys=frozenset() keeps `appliedEffects` (and
-        # any future deferred field) in the expected dict so it can be
-        # explicitly excepted, not silently absorbed.
+        # track. Passing drop_keys=frozenset() keeps any future deferred
+        # field in the expected dict so it can be explicitly excepted,
+        # not silently absorbed.
         expected = _normalize_activity_dict(system, drop_keys=frozenset())
         # Strip the oracle's ``type`` discriminator from the expected dict;
         # the translator routes on it but does not re-emit it (the per-kind

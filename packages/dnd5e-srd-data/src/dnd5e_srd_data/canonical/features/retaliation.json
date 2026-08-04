@@ -7,6 +7,7 @@
         "type": "reaction",
         "value": 1
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -81,6 +82,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "When you take damage from a creature that is within 5 feet of you, you can take a Reaction to make one melee attack against that creature, using a weapon or an Unarmed Strike.",
   "entry_kind": "feature",
   "feature_type": "subclass_feature",
@@ -102,5 +104,6 @@
     "requires_user_decision": false
   },
   "slug": "retaliation",
-  "source_slug": "path-of-the-berserker"
+  "source_slug": "path-of-the-berserker",
+  "uses": null
 }

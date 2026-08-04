@@ -1,5 +1,6 @@
 {
   "activities": [],
+  "advancement": [],
   "description": "You have Advantage on Constitution saving throws that you make to maintain Concentration.",
   "entry_kind": "feature",
   "feature_type": "class_feature",
@@ -39,5 +40,6 @@
     "requires_user_decision": false
   },
   "slug": "eldritch-mind",
-  "source_slug": "warlock"
+  "source_slug": "warlock",
+  "uses": null
 }

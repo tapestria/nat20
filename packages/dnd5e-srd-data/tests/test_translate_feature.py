@@ -51,3 +51,24 @@ def test_prose_only_species_trait():
     assert f.source_slug == "dwarf"
     assert f.activities == []
     assert f.passive_effects == []
+
+
+def test_second_wind_carries_top_level_uses_cap_and_recovery():
+    """Second Wind's top-level ``system.uses`` (a capped, rest-recharged pool)
+    survives translation into a typed ``FeatureUses``."""
+    f = translate_feature_yaml(PACKS / "classes24/fighter/class-features/second-wind.yml", **INGEST)
+    assert f.uses is not None
+    assert f.uses.max == "@scale.fighter.second-wind"
+    assert f.uses.spent == 0
+    periods = {(r.period, r.type, r.formula) for r in f.uses.recovery}
+    assert ("lr", "recoverAll", "") in periods
+    assert ("sr", "formula", "1") in periods
+
+
+def test_feature_without_uses_block_has_none_uses():
+    """A prose-only trait with no ``system.uses`` serializes ``uses = None`` — not an
+    empty, engine-inert block."""
+    f = translate_feature_yaml(
+        PACKS / "origins24/species/traits/dwarf/dwarven-resilience.yml", **INGEST
+    )
+    assert f.uses is None

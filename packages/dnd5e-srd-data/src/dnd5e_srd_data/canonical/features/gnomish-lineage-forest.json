@@ -1,5 +1,6 @@
 {
   "activities": [],
+  "advancement": [],
   "description": "You know the Minor Illusion cantrip. You also always have the Speak with Animals spell prepared. You can cast it without a spell slot a number of times equal to your Proficiency Bonus, and you regain all expended uses when you finish a Long Rest. You can also use any spell slots you have to cast the spell.\n\nFoundry Note\n\nThe free castings are included in the spell.",
   "entry_kind": "feature",
   "feature_type": "species_trait",
@@ -21,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "gnomish-lineage-forest",
-  "source_slug": "gnome"
+  "source_slug": "gnome",
+  "uses": null
 }

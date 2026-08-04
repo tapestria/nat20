@@ -1,5 +1,6 @@
 {
   "activities": [],
+  "advancement": [],
   "description": "You've trained to get into especially hard-to-reach places, granting you these benefits.\n\nClimber. You gain a Climb Speed equal to your Speed.\n\nJumper. You can determine your &amp;Reference[Jumping]{jump} distance using your Dexterity rather than your Strength.\n\nFoundry Note\n\nThis feature does not automatically add the Climb Speed and will have to be added manually.",
   "entry_kind": "feature",
   "feature_type": "subclass_feature",
@@ -39,5 +40,6 @@
     "requires_user_decision": false
   },
   "slug": "second-story-work",
-  "source_slug": "thief"
+  "source_slug": "thief",
+  "uses": null
 }

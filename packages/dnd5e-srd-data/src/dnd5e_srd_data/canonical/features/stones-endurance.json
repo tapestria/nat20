@@ -7,6 +7,7 @@
         "type": "reaction",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -102,6 +103,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "When you take damage, you can take a Reaction to roll 1d12. Add your Constitution modifier to the number rolled and reduce the damage by that total.",
   "entry_kind": "feature",
   "feature_type": "species_trait",
@@ -123,5 +125,16 @@
     "requires_user_decision": false
   },
   "slug": "stones-endurance",
-  "source_slug": "goliath"
+  "source_slug": "goliath",
+  "uses": {
+    "max": "@prof",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "lr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  }
 }

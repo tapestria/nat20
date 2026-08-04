@@ -7,6 +7,7 @@
         "type": "reaction",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -110,6 +111,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "When you take damage from a creature within 60 feet of you, you can take a Reaction to deal 1d8 Thunder damage to that creature.",
   "entry_kind": "feature",
   "feature_type": "species_trait",
@@ -131,5 +133,16 @@
     "requires_user_decision": false
   },
   "slug": "storms-thunder",
-  "source_slug": "goliath"
+  "source_slug": "goliath",
+  "uses": {
+    "max": "@prof",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "lr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  }
 }

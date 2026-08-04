@@ -1,5 +1,6 @@
 {
   "activities": [],
+  "advancement": [],
   "description": "Thanks to your athleticism, you have Advantage on Initiative rolls and Strength (Athletics) checks.\n\nIn addition, immediately after you score a Critical Hit, you can move up to half your Speed without provoking Opportunity Attacks.\n\nFoundry Note\n\nThis feature automatically grants Advantage on Initiative rolls.",
   "entry_kind": "feature",
   "feature_type": "subclass_feature",
@@ -39,5 +40,6 @@
     "requires_user_decision": false
   },
   "slug": "remarkable-athlete",
-  "source_slug": "champion"
+  "source_slug": "champion",
+  "uses": null
 }

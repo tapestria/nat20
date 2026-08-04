@@ -7,6 +7,7 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -91,6 +92,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "When you make an ability check or attack roll and fail, you can expend one use of Bardic Inspiration; roll the Bardic Inspiration die, and add the number rolled to the d20, potentially turning a failure into a success. On a failure, the Bardic Inspiration isn't expended.",
   "entry_kind": "feature",
   "feature_type": "subclass_feature",
@@ -112,5 +114,6 @@
     "requires_user_decision": false
   },
   "slug": "peerless-skill",
-  "source_slug": "lore"
+  "source_slug": "lore",
+  "uses": null
 }

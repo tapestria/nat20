@@ -7,6 +7,7 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -111,6 +112,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "When you roll Initiative, you can regain all expended Focus Points. When you do so, roll your Martial Arts die, and regain a number of Hit Points equal to your Monk level plus the number rolled.\n\nOnce you use this feature, you can't use it again until you finish a Long Rest.\n\nFoundry Note\n\nUsing this feature will restore all expended Focus Points and offers a Healing roll for restoring your Hit Points. It includes a single free use per Long Rest.",
   "entry_kind": "feature",
   "feature_type": "class_feature",
@@ -132,5 +134,16 @@
     "requires_user_decision": false
   },
   "slug": "uncanny-metabolism",
-  "source_slug": "monk"
+  "source_slug": "monk",
+  "uses": {
+    "max": "1",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "lr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  }
 }

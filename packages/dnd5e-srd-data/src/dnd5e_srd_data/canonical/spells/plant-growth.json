@@ -7,6 +7,7 @@
         "type": "action",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -87,6 +88,7 @@
         "type": "hour",
         "value": 8
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,

@@ -1,5 +1,6 @@
 {
   "activities": [],
+  "advancement": [],
   "description": "Your connection to this divine domain ensures you always have certain spells ready. When you reach a Cleric level specified in the Life Domain Spells table, you thereafter always have the listed spells prepared.\n\nLife Domain Spells\n\nCleric Level\n\nPrepared Spells\n\n3\n\nAid, Bless, Cure Wounds, Lesser Restoration\n\n5\n\nMass Healing Word, Revivify\n\n7\n\nAura of Life, Death Ward\n\n9\n\nGreater Restoration, Mass Cure Wounds\n\nFoundry Note\n\nThese spells are granted automatically as you advance.",
   "entry_kind": "feature",
   "feature_type": "subclass_feature",
@@ -21,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "life-domain-spells",
-  "source_slug": "life-domain"
+  "source_slug": "life-domain",
+  "uses": null
 }

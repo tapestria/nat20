@@ -7,6 +7,7 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -110,6 +111,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "When you hit a target with an attack roll and deal damage to it, you can also deal 1d10 Fire damage to that target.",
   "entry_kind": "feature",
   "feature_type": "species_trait",
@@ -131,5 +133,16 @@
     "requires_user_decision": false
   },
   "slug": "fires-burn",
-  "source_slug": "goliath"
+  "source_slug": "goliath",
+  "uses": {
+    "max": "@prof",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "lr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  }
 }

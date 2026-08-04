@@ -7,6 +7,7 @@
         "type": "action",
         "value": null
       },
+      "applied_effects": [],
       "attack": {
         "ability": "dex",
         "bonus": "",
@@ -113,6 +114,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "Whenever you deal damage with your Unarmed Strike, it can deal your choice of Force damage or its normal damage type.\n\nFoundry Note\n\nThe Empowered Strike activity on this feature can allows you to choose between Force and Bludgeoning damage in the roll dialog. It will remember your choice going forward.\n\nIt uses your Martial Arts Die (currently [[lookup @scale.monk.die]] for damage and will automatically update as you level up.",
   "entry_kind": "feature",
   "feature_type": "class_feature",
@@ -134,5 +136,6 @@
     "requires_user_decision": false
   },
   "slug": "empowered-strikes",
-  "source_slug": "monk"
+  "source_slug": "monk",
+  "uses": null
 }

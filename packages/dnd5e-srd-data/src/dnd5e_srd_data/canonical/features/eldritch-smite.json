@@ -7,6 +7,7 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -110,6 +111,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "Prerequisite: Level 5+ Warlock, Pact of the Blade Invocation\n\nOnce per turn when you hit a creature with your pact weapon, you can expend a Pact Magic spell slot to deal an extra 1d8 Force damage to the target, plus another 1d8 per level of the spell slot, and you can give the target the &amp;Reference[Prone] condition if it is Huge or smaller.\n\nFoundry Note\n\nThe Smite activity consumes a Pact Magic spell slot and increases the damage based on your pact spell level.",
   "entry_kind": "feature",
   "feature_type": "class_feature",
@@ -131,5 +133,6 @@
     "requires_user_decision": false
   },
   "slug": "eldritch-smite",
-  "source_slug": "warlock"
+  "source_slug": "warlock",
+  "uses": null
 }

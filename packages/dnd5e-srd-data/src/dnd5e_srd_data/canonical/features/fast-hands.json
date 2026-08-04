@@ -7,6 +7,7 @@
         "type": "bonus",
         "value": null
       },
+      "applied_effects": [],
       "check": {
         "ability": "",
         "associated": [
@@ -91,6 +92,7 @@
         "type": "bonus",
         "value": null
       },
+      "applied_effects": [],
       "check": {
         "ability": "dex",
         "associated": [
@@ -175,6 +177,7 @@
         "type": "bonus",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -249,6 +252,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "As a Bonus Action, you can do one of the following.\n\nSleight of Hand. Make a Dexterity (Sleight of Hand) check to pick a lock or disarm a trap with Thieves' Tools or to pick a pocket.\n\nUse an Object. Take the Utilize action, or take the Magic action to use a magic item that requires that action.\n\nFoundry Note\n\nThe Sleight of Hand and Thieves' Tools activities include the relevant checks.\n\nThe Use an Object activity can be used for tracking Bonus Action use.",
   "entry_kind": "feature",
   "feature_type": "subclass_feature",
@@ -270,5 +274,6 @@
     "requires_user_decision": false
   },
   "slug": "fast-hands",
-  "source_slug": "thief"
+  "source_slug": "thief",
+  "uses": null
 }

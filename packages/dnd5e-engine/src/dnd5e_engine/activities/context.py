@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import random
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -11,6 +11,8 @@ from dnd5e_engine.types.combat import Combatant
 if TYPE_CHECKING:
     from dnd5e_srd_data.schema.common import PassiveEffect
     from dnd5e_srd_data.schema.spell import Spell
+
+    from dnd5e_engine.types.effects import ActiveEffect
 
 
 @dataclass(frozen=True)
@@ -103,6 +105,40 @@ class ActivityResolutionContext:
     # and consumed in ``attack.py:_apply_on_hit_damage`` gated to a melee weapon.
     # Absent attacker → +0. Empty default keeps the golden corpus identical.
     passive_melee_damage_bonus: dict[str, str] = field(default_factory=dict)
+    # Per-ATTACKER additive WEAPON damage bonus, keyed entity_id -> a signed
+    # numeric/dice STRING (a +N weapon / weapon-tagged buff's ``damage.bonus``
+    # change; stacked sources pre-joined). SRD §Making an Attack / §Magic
+    # Items: a magic weapon's bonus applies to BOTH the attack roll and the
+    # damage roll made with it. Applies to ANY weapon swing (melee or ranged) —
+    # unlike ``passive_melee_damage_bonus`` (Rage), which is melee-only.
+    # Sourced from the orchestrator's action-type-tagged
+    # ``passive_damage_modifiers[id]["passive_weapon_damage_bonus"]``
+    # projection (``_fold_active_effect_changes``'s ``weapon_only`` branch);
+    # consumed in ``attack.py:_apply_on_hit_damage`` gated on a weapon being
+    # present. Absent attacker → +0. Empty default keeps the golden corpus
+    # identical.
+    passive_weapon_damage_bonus: dict[str, str] = field(default_factory=dict)
+    # Per-ATTACKER additive RANGED-WEAPON damage bonus, keyed entity_id -> a
+    # signed numeric/dice STRING. Foundry's ``system.bonuses.rwak.damage``
+    # (ranged weapon attack damage) — the ranged analog of
+    # ``passive_melee_damage_bonus`` (Rage's melee-only ``mwak.damage``).
+    # Folded from the caster's active effects in the orchestrator's
+    # ``_build_hydration_payload`` and consumed in
+    # ``attack.py:_apply_on_hit_damage`` gated to a ranged weapon. Absent
+    # attacker -> +0. Empty default keeps the golden corpus identical.
+    passive_ranged_damage_bonus: dict[str, str] = field(default_factory=dict)
+    # Per-ATTACKER additive MELEE-SPELL-ATTACK damage bonus, keyed entity_id ->
+    # a signed numeric/dice STRING. Foundry's ``system.bonuses.msak.damage``
+    # (melee spell attack damage — e.g. Shocking Grasp). Consumed in
+    # ``attack.py`` gated on a no-weapon melee-classified attack activity.
+    # Absent attacker -> +0.
+    passive_melee_spell_damage_bonus: dict[str, str] = field(default_factory=dict)
+    # Per-ATTACKER additive RANGED-SPELL-ATTACK damage bonus, keyed entity_id ->
+    # a signed numeric/dice STRING. Foundry's ``system.bonuses.rsak.damage``
+    # (ranged spell attack damage — e.g. Fire Bolt). Consumed in ``attack.py``
+    # gated on a no-weapon ranged-classified attack activity. Absent
+    # attacker -> +0.
+    passive_ranged_spell_damage_bonus: dict[str, str] = field(default_factory=dict)
     # Per-target save-advantage / -disadvantage ability-code lists (UPPER-case:
     # ``"STR"``, ``"DEX"``, ...), keyed entity_id -> list[ability]. Mirrors the
     # OLD path's ``passive_save_adv`` / ``passive_save_dis`` (Faerie Fire,
@@ -117,6 +153,26 @@ class ActivityResolutionContext:
     # draw (matching ``effects/save.py`` + ``conditions.py`` semantics), so the
     # deterministic rng stream is not perturbed. Empty default = no auto-fail.
     passive_save_auto_fail: dict[str, list[str]] = field(default_factory=dict)
+    # Per-TARGET SRD 5.2 §Cover degree ("none"/"half"/"three_quarters"/
+    # "total"), keyed entity_id -> degree. Computed once per activity
+    # resolution by the orchestrator (``_target_cover_map``) from the
+    # caster's and target's live zone via ``SpatialTopology.cover_between``.
+    # Consumed in ``attack.py`` (folds +2/+5 onto the target's AC before the
+    # hit comparison) and ``save.py``/``save_primitive.py`` (folds the SAME
+    # +2/+5 onto a DEXTERITY save's total only — SRD: cover grants "a bonus
+    # to AC and Dexterity saving throws"). Absent target -> "none" (+0).
+    # Empty default keeps the golden corpus identical (no cover geometry).
+    target_cover: dict[str, str] = field(default_factory=dict)
+    # Per-TARGET flat AC bonus from an active effect (Shield's +5, keyed
+    # ``"system.attributes.ac.bonus"`` in the Foundry source data, aliased to
+    # the engine's ``"ac.bonus"`` fold key). Mirrors ``passive_save_modifiers``'s
+    # per-target int shape. Computed once per activity resolution by the
+    # orchestrator (folded from ``live.active_effects`` via
+    # ``_fold_active_effect_changes`` + extracted in ``build_activity_context``);
+    # consumed in ``attack.py`` alongside the cover-AC fold, before the
+    # ``total >= target_ac`` comparison. Absent target -> +0. Empty default
+    # keeps the golden corpus identical (C06-S03).
+    passive_ac_bonus: dict[str, int] = field(default_factory=dict)
     # Per-actor ability/skill-check modifier sidecar, mirroring
     # ``effects/check.py:_read_check_modifiers``'s shape
     # ``{entity_id: {"skills": {code: mod}, "ability_mods": {ability: mod}}}``.
@@ -157,6 +213,34 @@ class ActivityResolutionContext:
     # level). Resolved at the same seam from the caster's class/level. Empty
     # default keeps the golden corpus identical.
     class_levels: dict[str, int] = field(default_factory=dict)
+    # The CASTER's own active effects, consulted by ``attack.py`` for the
+    # attacker-side ``flags.advantage.attack`` / ``flags.disadvantage.attack``
+    # override changes (SRD §Advantage and Disadvantage). Mirrors the
+    # attacker-flag half of ``rules/combat.py``'s already-implemented (but live-
+    # path-orphaned) reconciliation. Supplied by the orchestrator (projected
+    # from ``live.active_effects[caster_id]``) at cutover; by golden/e2e
+    # fixtures now. Empty default keeps the golden corpus identical (no
+    # advantage producer ⇒ every attack rolls ``normal``, as before).
+    active_effects: Sequence[ActiveEffect] = ()
+    # SRD §Sneak Attack (Rogue), "Once per turn" — per-ATTACKER gate keyed by
+    # ``entity_id`` (mirrors ``passive_melee_damage_bonus``'s per-caster shape).
+    # ``True`` means the caster has ALREADY landed a Sneak Attack rider this
+    # turn, so the injection point in ``attack.py:_apply_on_hit_damage`` skips
+    # the fold. The orchestrator populates it per intent from the live
+    # ``Combatant.sneak_attack_spent_this_turn`` flag and clears that flag at
+    # ``TurnStarted``. Absent caster ⇒ not spent (rider may fire). Empty default
+    # keeps the golden corpus identical.
+    sneak_attack_spent: dict[str, bool] = field(default_factory=dict)
+    # SRD §Sneak Attack (Rogue), ally-adjacent alternative — per-TARGET flag
+    # keyed by the target's ``entity_id``. ``True`` means at least one of the
+    # caster's allies is within 5 ft of THAT target and is not Incapacitated,
+    # so a Sneak Attack rider may fire without Advantage (provided the attacker
+    # is not at Disadvantage). Computed once per resolution by the orchestrator
+    # (a new consumer of the ``spatial.py`` distance seam, over the caster's
+    # party allies) and passed in as plain data — the pure resolver never
+    # touches the spatial seam. Absent target ⇒ no adjacent ally. Empty default
+    # keeps the golden corpus identical.
+    sneak_attack_ally_adjacent: dict[str, bool] = field(default_factory=dict)
     # Test-determinism seams (our own code): variables["force_d20"],
     # variables["force_save_d20"], variables["in_crit"].
     variables: dict[str, int] = field(default_factory=dict)

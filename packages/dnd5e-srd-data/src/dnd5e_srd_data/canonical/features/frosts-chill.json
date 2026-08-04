@@ -7,6 +7,7 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -120,6 +121,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "When you hit a target with an attack roll and deal damage to it, you can also deal 1d6 Cold damage to that target and reduce its Speed by 10 feet until the start of your next turn.\n\nFoundry Note\n\nThis feature includes an Active Effect which can be used for tracking and reduces their Speed by 10.",
   "entry_kind": "feature",
   "feature_type": "species_trait",
@@ -185,5 +187,16 @@
     "requires_user_decision": false
   },
   "slug": "frosts-chill",
-  "source_slug": "goliath"
+  "source_slug": "goliath",
+  "uses": {
+    "max": "@prof",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "lr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  }
 }

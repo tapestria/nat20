@@ -7,6 +7,7 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -91,6 +92,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "You gain one of the following feature options of your choice. Whenever you finish a Short or Long Rest, you can replace the chosen option with the other one.\n\nEscape the Horde. Opportunity Attacks have Disadvantage against you.\n\nMultiattack Defense. When a creature hits you with an attack roll, that creature has Disadvantage on all other attack rolls against you this turn.\n\nFoundry Note\n\nThis feature includes a Multiattack Defense activity with an Active Effect which can be used to track a creature that has Disadvantage against you but it does not automate the effect.",
   "entry_kind": "feature",
   "feature_type": "subclass_feature",
@@ -125,5 +127,6 @@
     "requires_user_decision": false
   },
   "slug": "defensive-tactics",
-  "source_slug": "hunter"
+  "source_slug": "hunter",
+  "uses": null
 }

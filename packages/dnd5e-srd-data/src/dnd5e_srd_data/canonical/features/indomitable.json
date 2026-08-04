@@ -7,6 +7,7 @@
         "type": "action",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -81,6 +82,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "If you fail a saving throw, you can reroll it with a bonus equal to your Fighter level (currently, [[lookup @classes.fighter.levels]]). You must use the new roll, and you can't use this feature again until you finish a Long Rest.\n\nYou can use this feature twice before a Long Rest starting at level 13 and three times before a Long Rest starting at level 17.\n\nFoundry Note\n\nThis feature's maximum usages scale automatically as you level up.",
   "entry_kind": "feature",
   "feature_type": "class_feature",
@@ -102,5 +104,16 @@
     "requires_user_decision": false
   },
   "slug": "indomitable",
-  "source_slug": "fighter"
+  "source_slug": "fighter",
+  "uses": {
+    "max": "@scale.fighter.indomitable",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "lr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  }
 }

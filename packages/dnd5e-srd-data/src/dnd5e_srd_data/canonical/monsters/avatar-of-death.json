@@ -18,6 +18,7 @@
             "type": "action",
             "value": null
           },
+          "applied_effects": [],
           "consumption": {
             "scaling": {
               "allowed": false,
@@ -109,6 +110,7 @@
             "type": "action",
             "value": null
           },
+          "applied_effects": [],
           "consumption": {
             "scaling": {
               "allowed": false,
@@ -325,6 +327,7 @@
             "type": "",
             "value": null
           },
+          "applied_effects": [],
           "consumption": {
             "scaling": {
               "allowed": false,

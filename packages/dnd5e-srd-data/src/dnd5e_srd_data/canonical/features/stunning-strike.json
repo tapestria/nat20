@@ -7,6 +7,7 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -117,6 +118,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "Once per turn when you hit a creature with a Monk weapon or an Unarmed Strike, you can expend 1 Focus Point to attempt a stunning strike. The target must make a Constitution saving throw. On a failed save, the target has the Stunned condition until the start of your next turn. On a successful save, the target's Speed is halved until the start of your next turn, and the next attack roll made against the target before then has Advantage.\n\nFoundry Note\n\nThis feature includes the Saving Throw and a Stunned Active Effect which applies the Stunned status if they fail and a Slowed Active Effect for tracking that their Speed is halved and that the next attack roll made against them has Advantage if they succeed.",
   "entry_kind": "feature",
   "feature_type": "class_feature",
@@ -165,5 +167,6 @@
     "requires_user_decision": false
   },
   "slug": "stunning-strike",
-  "source_slug": "monk"
+  "source_slug": "monk",
+  "uses": null
 }

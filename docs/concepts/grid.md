@@ -15,7 +15,17 @@ encoded as `"col,row"`. Two helpers handle the encoding:
 - `parse_cell(zone_id)` — decode it back into coordinates.
 
 A `GridScene` declares `width`, `height`, an optional `cell_size_ft`, and a
-list of `blocked_cells` — impassable squares movement may not enter.
+list of `blocked_cells` — impassable squares movement may not enter. Four
+more fields are additive (each defaults empty, preserving prior behavior):
+
+- `wall_segments` — a list of `WallSegment(x1, y1, x2, y2)` grid-corner
+  endpoints (mirroring Foundry's `Wall.c` convention) that block line of
+  sight between two cells.
+- `cover_cells` — a `{cell_id: "half" | "three_quarters" | "total"}` map of
+  obstruction cells granting cover (SRD 5.2 §Cover): half/three-quarters add
+  +2/+5 to a target's AC and Dexterity saves; total makes it untargetable.
+- `difficult_terrain_cells` — a list of cell ids that cost double to enter
+  (SRD 5.2 §Difficult Terrain).
 
 ## Movement
 
@@ -23,14 +33,25 @@ To move, submit a `PlayerIntent` with `intent_type="move"` and a
 `target_zone_id` (built with `cell_id`). The engine validates the path
 against the grid — range, blocked cells, and reachability — and emits the
 movement events. Distance for range and reach checks is measured in
-Chebyshev cells scaled to feet.
+Chebyshev cells scaled to feet; entering a `difficult_terrain_cells` cell
+costs double.
+
+## Line of sight, cover, and AoE templates
+
+`GridTopology.has_line_of_sight` blocks sight when the straight line between
+two cells' centers crosses a `wall_segments` entry; a blocked ranged
+attack/cast is rejected the same way an out-of-range one is. `cover_cells`
+raises the covered target's effective AC (and Dexterity saves) for an
+attack, or makes it untargetable at the `"total"` tier. `GridTopology.
+cells_in_template(origin, shape, size_ft)` returns the Chebyshev cell set for
+a `"sphere"`/`"cone"`/`"line"` area of effect (a `direction` vector is
+required for cone/line).
 
 ## Zones vs grid
 
 If you don't need a tactical map, pass `scene_zones` (a `SceneTopology` of
 named `zones` connected by `ZoneEdge`s) instead of a `GridScene` — combat
 then resolves over an abstract graph of locations. The two are mutually
-exclusive inputs to the same combat loop.
-
-Line-of-sight, cover, and AoE templates over wall geometry are deferred; the
-current grid backend handles movement, range, and blocked cells.
+exclusive inputs to the same combat loop. The zone backend has no positional
+LoS/cover model — sight is always clear and cover is always `"none"` between
+any two known zones.

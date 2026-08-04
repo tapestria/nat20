@@ -7,6 +7,7 @@
         "type": "bonus",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -101,6 +102,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "You invoke spirits of nature to magically hide yourself. As a Bonus Action, you can give yourself the Invisible condition until the end of your next turn.\n\nYou can use this feature a number of times equal to your Wisdom modifier (minimum of once), and you regain all expended uses when you finish a Long Rest.\n\nFoundry Note\n\nThis feature includes an Active Effect which applies the Invisible condition.",
   "entry_kind": "feature",
   "feature_type": "class_feature",
@@ -137,5 +139,16 @@
     "requires_user_decision": false
   },
   "slug": "natures-veil",
-  "source_slug": "ranger"
+  "source_slug": "ranger",
+  "uses": {
+    "max": "(max(1,@abilities.wis.mod))",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "lr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  }
 }

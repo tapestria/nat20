@@ -7,6 +7,7 @@
         "type": "bonus",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -102,6 +103,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "You have a limited well of physical and mental stamina that you can draw on. As a Bonus Action, you can use it to regain Hit Points equal to 1d10 plus your Fighter level.\n\nYou can use this feature twice. You regain one expended use when you finish a Short Rest, and you regain all expended uses when you finish a Long Rest.\n\nWhen you reach certain Fighter levels, you gain more uses of this feature, as shown in the Second Wind column of the Fighter Features table.\n\nFoundry Note\n\nThis feature automatically scales in usage and recovers the correct number of uses on a Short and Long Rest.",
   "entry_kind": "feature",
   "feature_type": "class_feature",
@@ -123,5 +125,21 @@
     "requires_user_decision": false
   },
   "slug": "second-wind",
-  "source_slug": "fighter"
+  "source_slug": "fighter",
+  "uses": {
+    "max": "@scale.fighter.second-wind",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "lr",
+        "type": "recoverAll"
+      },
+      {
+        "formula": "1",
+        "period": "sr",
+        "type": "formula"
+      }
+    ],
+    "spent": 0
+  }
 }

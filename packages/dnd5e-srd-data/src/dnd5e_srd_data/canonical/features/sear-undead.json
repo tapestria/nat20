@@ -7,6 +7,9 @@
         "type": "action",
         "value": null
       },
+      "applied_effects": [
+        "OftTd0Eiwnls76cX"
+      ],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -126,6 +129,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "Whenever you use Turn Undead, you can roll a number of d8s equal to your Wisdom modifier (minimum of 1d8, currently [[lookup @abilities.wis.mod]]) and add the rolls together. Each Undead that fails its saving throw against that use of Turn Undead takes Radiant damage equal to the roll's total. This damage doesn't end the turn effect.\n\nFoundry Note\n\nThis feature can be used in place of Turn Undead. It consumes a use of Channel Divinity, includes the Save, Active Effects for the conditions, and this feature's damage roll.",
   "entry_kind": "feature",
   "feature_type": "class_feature",
@@ -163,5 +167,6 @@
     "requires_user_decision": false
   },
   "slug": "sear-undead",
-  "source_slug": "cleric"
+  "source_slug": "cleric",
+  "uses": null
 }

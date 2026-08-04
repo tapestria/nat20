@@ -7,6 +7,9 @@
         "type": "action",
         "value": null
       },
+      "applied_effects": [
+        "ZveR6kPKafjcwQdY"
+      ],
       "consumption": {
         "scaling": {
           "allowed": false,

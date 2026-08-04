@@ -7,6 +7,7 @@
         "type": "action",
         "value": null
       },
+      "applied_effects": [],
       "attack": {
         "ability": "",
         "bonus": "",
@@ -100,6 +101,7 @@
         "type": "action",
         "value": null
       },
+      "applied_effects": [],
       "attack": {
         "ability": "",
         "bonus": "2",

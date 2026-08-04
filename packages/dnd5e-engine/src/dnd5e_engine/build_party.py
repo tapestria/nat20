@@ -91,7 +91,11 @@ def build_party_member(
         changes=feature_changes,
         trait_grants=species.trait_grants,
         species_senses=species.senses,
+        species_base_speed=base_speed,
     )
+    # C08-S04: a flat walk-speed change (Roving's +10) composes additively with
+    # the species base walk speed; the non-walk modes ride the typed carrier.
+    base_speed = base_speed + derived.walk_speed_bonus
     if derived.skipped_keys:
         _log.debug(
             "build_party_member: skipped non-allowlisted passive keys",
@@ -123,7 +127,9 @@ def build_party_member(
         equipment=build_spec.equipment,
         damage_resistances=list(derived.resistances),
         damage_immunities=list(derived.immunities),
+        condition_immunities=list(derived.condition_immunities),
         senses=derived.senses,
+        movement_modes=derived.movement_modes,
     )
 
 

@@ -11,7 +11,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
 
-from dnd5e_engine.activities.passive_stats import CombatantSenses
+from dnd5e_engine.activities.passive_stats import CombatantMovementModes, CombatantSenses
 from dnd5e_engine.types.conditions import ActiveCondition
 
 
@@ -86,6 +86,23 @@ class Combatant(BaseModel):
     # lands.
     damage_resistances: list[str] = Field(default_factory=list)
     damage_immunities: list[str] = Field(default_factory=list)
+    # SRD §Damage Vulnerability — per-creature type list ("applying twice the
+    # normal damage"). Unlike resistances/immunities this has NO
+    # condition-derived source; it is hydrated from the monster template
+    # (skeleton → ``["bludgeoning"]``) or a PC spec and folded into the
+    # orchestrator's ``passive_damage_modifiers[...]["vulnerabilities"]`` sidecar
+    # by ``_project_target_modifiers`` (C08-S03). Empty by default.
+    damage_vulnerabilities: list[str] = Field(default_factory=list)
+    # SRD §Condition Immunity — condition slugs this creature can't suffer
+    # (Nature's Ward → ``"poisoned"``). Projected from PC always-on feature
+    # ``system.traits.ci.value`` changes via ``build_party_member`` →
+    # ``PartyMemberSpec.condition_immunities`` and copied here at start_combat;
+    # monster/NPC templates thread theirs through the spec. The condition-
+    # application path (``activities/effects.py::apply_activity_effects``)
+    # suppresses a ``ConditionApplied`` whose condition is in this list
+    # (C08-S02). Empty by default. NOTE: distinct from the dead, host-supplied
+    # ``dispatch.py::DispatchContext.condition_immunities`` legacy surface.
+    condition_immunities: list[str] = Field(default_factory=list)
     # SRD §Senses — special senses in feet (darkvision/blindsight/tremorsense/
     # truesight). Projected from PC species + always-on feature passive_effects
     # via ``build_party_member`` → ``PartyMemberSpec.senses`` and copied here at
@@ -117,6 +134,13 @@ class Combatant(BaseModel):
     # TurnStarted and decremented by each successful MOVE intent.
     base_speed: int = 30
     movement_remaining: int = 30
+    # SRD §Movement — non-walk movement modes (climb/swim/fly/burrow speeds in
+    # feet; ``None`` = mode unavailable). Projected from a PC's always-on
+    # granted-feature ``system.attributes.movement.*`` changes via
+    # ``build_party_member`` → ``PartyMemberSpec.movement_modes`` and copied here
+    # at start_combat (Roving → climb/swim = walk speed). Kept multi-mode
+    # (collapsing to a scalar is lossy). Empty by default for monsters/fixtures.
+    movement_modes: CombatantMovementModes = Field(default_factory=CombatantMovementModes)
     # SRD §Opportunity Attacks — the actor's melee reach in feet (the
     # distance at which an opponent leaving "reach" triggers an AoO).
     # Defaults to 5ft (standard unarmed / 1-handed melee weapon). Polearms
@@ -150,6 +174,22 @@ class Combatant(BaseModel):
     # across turns lets HR validate against the last damager regardless of
     # round boundaries until a more complete trigger model lands).
     last_damaged_by: str | None = None
+    # SRD §Actions in Combat, Disengage — "Your movement doesn't provoke
+    # Opportunity Attacks for the rest of the turn." Set True by
+    # ``_handle_disengage`` (orchestrator.py, Cluster 6); consulted by the
+    # monster-reactor opportunity-attack scan
+    # (``_fire_monster_opportunity_attacks_on_move``) to suppress AoOs for the
+    # remainder of the turn. Reset to False at the actor's own TurnStarted,
+    # alongside action_available/bonus_action_available/reaction_available.
+    disengaging_this_turn: bool = False
+    # SRD §Sneak Attack (Rogue), "Once per turn" — True once this combatant has
+    # already dealt Sneak Attack damage during the current turn. Gates the
+    # rider fold in ``activities/attack.py`` (projected per intent into
+    # ``ActivityResolutionContext.sneak_attack_spent``). Reset to False at the
+    # actor's own TurnStarted, alongside action_available / bonus_action_available
+    # / reaction_available / disengaging_this_turn. Defaults False (rider may
+    # fire) for every combatant.
+    sneak_attack_spent_this_turn: bool = False
 
     @model_validator(mode="before")
     @classmethod

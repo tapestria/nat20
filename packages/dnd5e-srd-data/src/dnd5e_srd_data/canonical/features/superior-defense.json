@@ -7,6 +7,7 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -101,6 +102,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "At the start of your turn, you can expend 3 Focus Points to bolster yourself against harm for 1 minute or until you have the Incapacitated condition. During that time, you have Resistance to all damage except Force damage.\n\nFoundry Note\n\nThis feature will expend 3 Focus Points and includes an Active Effect which will apply the relevant Resistances.",
   "entry_kind": "feature",
   "feature_type": "class_feature",
@@ -208,5 +210,6 @@
     "requires_user_decision": false
   },
   "slug": "superior-defense",
-  "source_slug": "monk"
+  "source_slug": "monk",
+  "uses": null
 }

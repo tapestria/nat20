@@ -7,6 +7,7 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -106,6 +107,7 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -205,6 +207,7 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -304,6 +307,7 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -403,6 +407,7 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -496,6 +501,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "Your draconic magic has an affinity with a damage type associated with dragons. Choose one of those types: Acid, Cold, Fire, Lightning, or Poison.\n\nYou have Resistance to that damage type, and when you cast a spell that deals damage of that type, you can add your Charisma modifier to one damage roll of that spell.\n\nFoundry Note\n\nYou will be prompted to choose the damage type as you level up. The additional damage is not automatically added but this feature includes an activity for each type of damage.\n\nYou can speed up use of this feature by moving your chosen damage type to the top and it will be used automatically when using this feature.",
   "entry_kind": "feature",
   "feature_type": "subclass_feature",
@@ -517,5 +523,6 @@
     "requires_user_decision": false
   },
   "slug": "elemental-affinity",
-  "source_slug": "draconic-sorcery"
+  "source_slug": "draconic-sorcery",
+  "uses": null
 }

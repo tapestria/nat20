@@ -7,6 +7,7 @@
         "type": "action",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -108,6 +109,7 @@
         "type": "action",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -224,6 +226,9 @@
         "type": "action",
         "value": null
       },
+      "applied_effects": [
+        "iUeSbfduM7K8XrCF"
+      ],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -325,6 +330,38 @@
       }
     }
   ],
+  "advancement": [
+    {
+      "class_restriction": "",
+      "configuration": {
+        "distance": {
+          "units": ""
+        },
+        "identifier": "spark",
+        "scale": {
+          "13": {
+            "value": 3
+          },
+          "18": {
+            "value": 4
+          },
+          "2": {
+            "value": 1
+          },
+          "7": {
+            "value": 2
+          }
+        },
+        "type": "number"
+      },
+      "hint": "",
+      "id": "uFauTQi3ls40bO1J",
+      "level": 0,
+      "title": "Divine Spark Die Count",
+      "type": "ScaleValue",
+      "value": {}
+    }
+  ],
   "description": "You can channel divine energy directly from the Outer Planes to fuel magical effects. You start with two such effects: Divine Spark and Turn Undead, each of which is described below. Each time you use this class's Channel Divinity, choose which Channel Divinity effect from this class to create. You gain additional effect options at higher Cleric levels.\n\nYou can use this class's Channel Divinity twice. You regain one of its expended uses when you finish a Short Rest, and you regain all expended uses when you finish a Long Rest. You gain additional uses when you reach certain Cleric levels, as shown in the Channel Divinity column of the Cleric Features table.\n\nIf a Channel Divinity effect requires a saving throw, the DC equals the spell save DC from this class's Spellcasting feature.\n\nDivine Spark. As a Magic action, you point your Holy Symbol at another creature you can see within 30 feet of yourself and focus divine energy at it. Roll 1d8 and add your Wisdom modifier. You either restore Hit Points to the creature equal to that total or force the creature to make a Constitution saving throw. On a failed save, the creature takes Necrotic or Radiant damage (your choice) equal to that total. On a successful save, the creature takes half as much damage (round down).\n\nYou roll an additional d8 when you reach Cleric levels 7 (2d8), 13 (3d8), and 18 (4d8).\n\nTurn Undead. As a Magic action, you present your Holy Symbol and censure Undead creatures. Each Undead of your choice within 30 feet of you must make a Wisdom saving throw. If the creature fails its save, it has the Frightened and Incapacitated conditions for 1 minute. For that duration, it tries to move as far from you as it can on its turns. This effect ends early on the creature if it takes any damage, if you have the Incapacitated condition, or if you die.\n\nFoundry Note\n\nThis feature will automatically restore 1 use on a Short Rest and all on a Long Rest. The uses scale automatically as you level up.\n\nThe Divine Spark: Heal activity includes the healing effect.\n\nThe Divine Spark: Save activity includes the saving throw.\n\nThe Turn Undead activity includes an Active Effect that applies the Frightened and Incapacitated conditions.",
   "entry_kind": "feature",
   "feature_type": "class_feature",
@@ -362,5 +399,21 @@
     "requires_user_decision": false
   },
   "slug": "channel-divinity-cleric",
-  "source_slug": "cleric"
+  "source_slug": "cleric",
+  "uses": {
+    "max": "@scale.cleric.channel-divinity",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "lr",
+        "type": "recoverAll"
+      },
+      {
+        "formula": "1",
+        "period": "sr",
+        "type": "formula"
+      }
+    ],
+    "spent": 0
+  }
 }

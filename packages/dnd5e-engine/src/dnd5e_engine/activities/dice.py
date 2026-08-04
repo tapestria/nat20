@@ -92,14 +92,23 @@ def _parse(expr: str) -> d20.Expression:
         raise ValueError(f"Unparseable dice expression: {expr!r}") from exc
 
 
-def roll_expr(expr: str, rng: random.Random) -> int:
+def roll_expr(expr: str, rng: random.Random, *, crit: bool = False) -> int:
     """Parse ``expr`` and evaluate it against ``rng`` for deterministic dice.
 
     Mirrors ``effects/attack.py:_eval_node_via_rng`` — each ``Dice`` node draws
     ``num`` faces via ``rng.randint(1, size)``; literals and +/- operators fold
     as written. Deterministic for a fixed seed.
+
+    ``crit=True`` applies SRD §Critical Hits doubling through the SAME
+    ``_double_dice`` idiom ``roll_damage_part`` uses (each ``Dice.num`` doubles —
+    ``3d6`` rolls as six sequential d6 draws; literal modifiers untouched), so a
+    crit-doubled sidecar expression (the Sneak Attack rider) lands in the seeded
+    stream exactly like a crit-doubled damage part.
     """
-    return _eval_node(_parse(expr).roll, rng)
+    ast = _parse(expr)
+    if crit:
+        ast = _double_dice(ast)
+    return _eval_node(ast.roll, rng)
 
 
 def _eval_node(node: d20.ast.Node, rng: random.Random) -> int:

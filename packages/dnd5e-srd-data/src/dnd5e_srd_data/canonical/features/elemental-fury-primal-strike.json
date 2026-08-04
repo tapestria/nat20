@@ -7,6 +7,7 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -103,6 +104,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "Once on each of your turns when you hit a creature with an attack roll using a weapon or a Beast form's attack in Wild Shape, you can cause the target to take an extra 1d8 [[/damage 1d8 type=cold]]{cold}, [[/damage 1d8 type=fire]]{fire}, [[/damage 1d8 type=lightning]]{lightning}, or [[/damage 1d8 type=thunder]]{thunder} damage (choose when you hit).\n\nFoundry Note\n\nThis feature's damage will automatically increase when you gain Improved Elemental Fury. If using the activity you will be able to select the damage type when rolling. It will default to your previously chosen damage type.",
   "entry_kind": "feature",
   "feature_type": "class_feature",
@@ -124,5 +126,6 @@
     "requires_user_decision": false
   },
   "slug": "elemental-fury-primal-strike",
-  "source_slug": "druid"
+  "source_slug": "druid",
+  "uses": null
 }

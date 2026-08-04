@@ -242,7 +242,9 @@ def test_build_party_member_produces_complete_spec():
     assert spec.strength == 16
     assert spec.constitution == 14
     assert spec.dexterity == 12
-    assert spec.base_speed == _LOADER.get_species("dwarf").movement.walk  # real value
+    # base_speed = species walk (30) + the barbarian's always-on level-5 Fast
+    # Movement +10 walk change (C08-S04 folds it, exactly like Roving).
+    assert spec.base_speed == _LOADER.get_species("dwarf").movement.walk + 10
     assert spec.hp_max == 45
     assert spec.ac == 15
     assert spec.attack_bonus == 7

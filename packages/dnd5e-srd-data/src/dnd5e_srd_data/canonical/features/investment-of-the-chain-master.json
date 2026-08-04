@@ -7,6 +7,7 @@
         "type": "hour",
         "value": 1
       },
+      "applied_effects": [],
       "bonuses": {
         "ac": "",
         "attack_damage": "",
@@ -144,6 +145,7 @@
         "type": "hour",
         "value": 1
       },
+      "applied_effects": [],
       "bonuses": {
         "ac": "",
         "attack_damage": "",
@@ -281,6 +283,7 @@
         "type": "reaction",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -473,6 +476,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "Prerequisite: Level 5+ Warlock, Pact of the Chain Invocation\n\nWhen you cast Find Familiar, you infuse the summoned familiar with a measure of your eldritch power, granting the creature the following benefits.\n\nAerial or Aquatic. The familiar gains either a Fly Speed or a Swim Speed (your choice) of 40 feet.\n\nQuick Attack. As a Bonus Action, you can command the familiar to take the\u00a0Attack\u00a0action.\n\nNecrotic or Radiant Damage. Whenever the familiar deals Bludgeoning, Piercing, or Slashing damage, you can make it deal Necrotic or Radiant damage instead.\n\nYour Save DC. If the familiar forces a creature to make a saving throw, it uses your spell save DC.\n\nResistance. When the familiar takes damage, you can take a Reaction to grant it Resistance against that damage.\n\nFoundry Note\n\nThe Find Familiar with Flight and with Swimming activities both allow you to summon a familiar with the relevant movement bonus. Both activities consume a Pact Magic spell slot.\n\nThe Invest with Resistance activity includes an Active Effect for resisting each type of damage which can be applied to get the relevant resistance. Be sure you disable/delete the previous Active Effect in the \"Effects\" tab of your sheet when you change Resistances.\n\nThe familiar automatically uses your Save DC.",
   "entry_kind": "feature",
   "feature_type": "class_feature",
@@ -776,5 +780,6 @@
     "requires_user_decision": false
   },
   "slug": "investment-of-the-chain-master",
-  "source_slug": "warlock"
+  "source_slug": "warlock",
+  "uses": null
 }

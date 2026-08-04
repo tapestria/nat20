@@ -7,7 +7,7 @@ in the parent Tapestria repository.
 
 from __future__ import annotations
 
-__version__ = "0.1.1"
+__version__ = "0.2.0"
 
 from dnd5e_srd_data.loader import AssetLoader, BundledAssetLoader, Category, MemoryAssetLoader
 from dnd5e_srd_data.schema import (
@@ -63,6 +63,7 @@ from dnd5e_srd_data.schema import (
     Feature,
     FeatureChoice,
     FeatureType,
+    FeatureUses,
     GrantRef,
     GrantRefType,
     HealActivity,
@@ -81,6 +82,7 @@ from dnd5e_srd_data.schema import (
     Range,
     RangeBlock,
     RangeUnits,
+    RecoveryRule,
     ReviewState,
     RollBlock,
     SaveActivity,
@@ -184,6 +186,7 @@ __all__ = [
     "Feature",
     "FeatureChoice",
     "FeatureType",
+    "FeatureUses",
     "GrantRef",
     "GrantRefType",
     "HealActivity",
@@ -203,6 +206,7 @@ __all__ = [
     "Range",
     "RangeBlock",
     "RangeUnits",
+    "RecoveryRule",
     "ReviewState",
     "RollBlock",
     "SaveActivity",

@@ -7,6 +7,7 @@
         "type": "bonus",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": true,
@@ -91,6 +92,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "When you use Lay On Hands on a creature, you can also remove one or more of the following conditions from the creature: Blinded, Charmed, Deafened, Frightened, Paralyzed, or Stunned. You must expend 5 Hit Points from the healing pool of Lay On Hands for each of these conditions you remove; those points don't also restore Hit Points to the creature.\n\nFoundry Note\n\nThis feature includes a Scale prompt for selecting how many conditions you would like to remove that will automatically consume the correct number from your Lay on Hands pool.",
   "entry_kind": "feature",
   "feature_type": "class_feature",
@@ -112,5 +114,6 @@
     "requires_user_decision": false
   },
   "slug": "restoring-touch",
-  "source_slug": "paladin"
+  "source_slug": "paladin",
+  "uses": null
 }

@@ -13,7 +13,7 @@ Deferred for later phases:
 
 from __future__ import annotations
 
-__version__ = "0.1.1"
+__version__ = "0.2.0"
 
 from dnd5e_engine.build_party import build_party_member
 from dnd5e_engine.build_spec import (
@@ -41,6 +41,14 @@ from dnd5e_engine.outcome import (
     DeathRecord,
     LootDrop,
 )
+from dnd5e_engine.rest import (
+    HitDicePool,
+    RecoveryPeriod,
+    RestOutcome,
+    recover_feature_uses,
+    resolve_long_rest,
+    resolve_short_rest,
+)
 from dnd5e_engine.results import EndCombatResult, StartCombatResult
 from dnd5e_engine.rules.effects import roll_dice_str
 from dnd5e_engine.spatial import cell_id, parse_cell
@@ -49,6 +57,7 @@ from dnd5e_engine.specs import (
     GridScene,
     PartyMemberSpec,
     SceneTopology,
+    WallSegment,
     ZoneEdge,
 )
 from dnd5e_engine.types.effects import (
@@ -76,13 +85,17 @@ __all__ = [
     "EncounterMemberSpec",
     "EndCombatResult",
     "GridScene",
+    "HitDicePool",
     "IntentType",
     "LiveCombatView",
     "LootDrop",
     "PartyMemberSpec",
     "PlayerIntent",
+    "RecoveryPeriod",
+    "RestOutcome",
     "SceneTopology",
     "StartCombatResult",
+    "WallSegment",
     "ZoneEdge",
     "advance_monster_turn",
     "build_party_member",
@@ -93,7 +106,10 @@ __all__ = [
     "make_build_spec",
     "narration_events",
     "parse_cell",
+    "recover_feature_uses",
     "resolve_check",
+    "resolve_long_rest",
+    "resolve_short_rest",
     "roll_dice_str",
     "start_combat",
     "submit_player_intent",

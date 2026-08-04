@@ -1,5 +1,6 @@
 {
   "activities": [],
+  "advancement": [],
   "description": "You have Advantage on any ability check you make to end the &amp;Reference[Grappled apply=false] condition. You also count as one size larger when determining your carrying capacity.\n\nFoundry Note\n\nThis feature includes an Active Effect which automatically upgrades your size when determining carrying capacity.",
   "entry_kind": "feature",
   "feature_type": "species_trait",
@@ -39,5 +40,6 @@
     "requires_user_decision": false
   },
   "slug": "powerful-build",
-  "source_slug": "goliath"
+  "source_slug": "goliath",
+  "uses": null
 }

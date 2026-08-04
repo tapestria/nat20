@@ -7,6 +7,7 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -92,6 +93,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "You attain the pinnacle of resilience in battle, giving you these benefits.\n\nDefy Death. You have Advantage on Death Saving Throws. Moreover, when you roll 18\u201320 on a Death Saving Throw, you gain the benefit of rolling a 20 on it.\n\nHeroic Rally. At the start of each of your turns, you regain Hit Points equal to 5 plus your Constitution modifier if you are Bloodied and have at least 1 Hit Point.\n\nFoundry Note\n\nThis feature does not automate the Death Saving Throw changes. It includes an activity for healing but does not automatically add it when you are Bloodied.",
   "entry_kind": "feature",
   "feature_type": "subclass_feature",
@@ -113,5 +115,6 @@
     "requires_user_decision": false
   },
   "slug": "survivor",
-  "source_slug": "champion"
+  "source_slug": "champion",
+  "uses": null
 }

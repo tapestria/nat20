@@ -1,5 +1,6 @@
 {
   "activities": [],
+  "advancement": [],
   "description": "You are immune to the Poisoned condition, and you have Resistance to a damage type associated with your current land choice in the Circle Spells feature, as shown in the Nature's Ward table.\n\nNature's Ward\n\nLand Type\n\nResistance\n\nArid\n\nFire\n\nPolar\n\nCold\n\nTemperate\n\nLightning\n\nTropical\n\nPoison\n\nFoundry Note\n\nThis feature includes an Active Effect for the Poison condition immunity and an Active Effect for each land type. You can activate the Active Effect for your chosen land type.",
   "entry_kind": "feature",
   "feature_type": "subclass_feature",
@@ -107,5 +108,6 @@
     "requires_user_decision": false
   },
   "slug": "natures-ward",
-  "source_slug": "circle-of-land"
+  "source_slug": "circle-of-land",
+  "uses": null
 }

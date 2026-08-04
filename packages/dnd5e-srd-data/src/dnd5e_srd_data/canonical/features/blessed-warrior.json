@@ -1,5 +1,48 @@
 {
   "activities": [],
+  "advancement": [
+    {
+      "class_restriction": "",
+      "configuration": {
+        "allowDrops": true,
+        "choices": {
+          "0": {
+            "count": 2,
+            "replacement": false
+          }
+        },
+        "pool": [],
+        "restriction": {
+          "level": "0",
+          "list": [
+            "class:cleric"
+          ]
+        },
+        "spell": {
+          "ability": [
+            "cha"
+          ],
+          "method": "spell",
+          "prepared": 2,
+          "uses": {
+            "max": "",
+            "per": "",
+            "requireSlot": false
+          }
+        },
+        "type": "spell"
+      },
+      "hint": "You learn two Cleric cantrips of your choice. Guidance and Sacred Flame are recommended. The chosen cantrips count as Paladin spells for you, and Charisma is your spellcasting ability for them. Whenever you gain a Paladin level, you can replace one of these cantrips with another Cleric cantrip.",
+      "id": "6dwyqBA13Ui6p4Bf",
+      "level": 0,
+      "title": "Choose Cantrips",
+      "type": "ItemChoice",
+      "value": {
+        "added": {},
+        "replaced": {}
+      }
+    }
+  ],
   "description": "You learn two Cleric cantrips of your choice. Guidance and Sacred Flame are recommended. The chosen cantrips count as Paladin spells for you, and Charisma is your spellcasting ability for them. Whenever you gain a Paladin level, you can replace one of these cantrips with another Cleric cantrip.",
   "entry_kind": "feature",
   "feature_type": "class_feature",
@@ -21,5 +64,6 @@
     "requires_user_decision": false
   },
   "slug": "blessed-warrior",
-  "source_slug": "paladin"
+  "source_slug": "paladin",
+  "uses": null
 }

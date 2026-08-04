@@ -7,6 +7,7 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -97,6 +98,7 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -184,6 +186,7 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -275,6 +278,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "Whenever you hit a creature with an attack granted by your Flurry of Blows, you can impose one of the following effects on that target.\n\nAddle. The target can't make Opportunity Attacks until the start of its next turn.\n\nPush. The target must succeed on a Strength saving throw or be pushed up to 15 feet away from you.\n\nTopple. The target must succeed on a Dexterity saving throw or have the Prone condition.\n\nFoundry Note\n\nThe Addle activity includes an Active Effect for tracking the addled target.\n\nThe Topple activity includes an Active Effect that applies the Prone status.",
   "entry_kind": "feature",
   "feature_type": "subclass_feature",
@@ -321,5 +325,6 @@
     "requires_user_decision": false
   },
   "slug": "open-hand-technique",
-  "source_slug": "warrior-of-the-open-hand"
+  "source_slug": "warrior-of-the-open-hand",
+  "uses": null
 }

@@ -1,5 +1,6 @@
 {
   "activities": [],
+  "advancement": [],
   "description": "You are the recipient of a legacy that grants you supernatural abilities.\n\nWhen you reach character levels 3 and 5, you learn a higher-level spell, as shown on the table. You always have that spell prepared. You can cast it once without a spell slot, and you regain the ability to cast it in that way when you finish a Long Rest. You can also cast the spell using any spell slots you have of the appropriate level. Intelligence, Wisdom, or Charisma is your spellcasting ability for the spells you cast with this trait (choose the ability when you select the legacy).\n\nInfernal\n\nThe infernal legacy connects tieflings not only to Gehenna but also the Nine Hells and the raging battlefields of Acheron. Horns, spines, tails, golden eyes, and a faint odor of sulfur or smoke are common physical features of such tieflings, most of whom trace their ancestry to devils.\n\nInfernal Legacy Traits\n\nLevel 1\n\nLevel 3\n\nLevel 5\n\nYou have Resistance to Fire damage. You also know the Fire Bolt cantrip.\n\nHellish Rebuke\n\nDarkness\n\nFoundry Note\n\nThe Resistance and spells are granted to you automatically and you will be prompted to choose the spellcasting ability during advancement.",
   "entry_kind": "feature",
   "feature_type": "species_trait",
@@ -21,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "fiendish-legacy-infernal",
-  "source_slug": "tiefling"
+  "source_slug": "tiefling",
+  "uses": null
 }

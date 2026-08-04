@@ -112,6 +112,9 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [
+        "Y44mAwCmfNroVwOJ"
+      ],
       "consumption": {
         "scaling": {
           "allowed": false,

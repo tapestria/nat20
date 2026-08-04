@@ -7,6 +7,7 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -122,6 +123,7 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -215,6 +217,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "Once per turn when you hit a creature with an attack roll, you can try to instantly transport the target through the Lower Planes. The target must succeed on a Charisma saving throw against your spell save DC, or the target disappears and hurtles through a nightmare landscape. The target takes 8d10 Psychic damage if it isn't a Fiend, and it has the &amp;Reference[Incapacitated] condition until the end of your next turn, when it returns to the space it previously occupied or the nearest unoccupied space.\n\nOnce you use this feature, you can't use it again until you finish a Long Rest unless you expend a Pact Magic spell slot (no action required) to restore your use of it.\n\nFoundry Note\n\nThis feature includes one limited use.\n\nThe Regain Use activity will expend a Pact Magic spell slot and restore a use of this feature.",
   "entry_kind": "feature",
   "feature_type": "subclass_feature",
@@ -236,5 +239,16 @@
     "requires_user_decision": false
   },
   "slug": "hurl-through-hell",
-  "source_slug": "fiend-patron"
+  "source_slug": "fiend-patron",
+  "uses": {
+    "max": "1",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "lr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  }
 }

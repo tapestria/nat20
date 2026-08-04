@@ -18,6 +18,7 @@
             "type": "action",
             "value": 1
           },
+          "applied_effects": [],
           "attack": {
             "ability": "",
             "bonus": "",
@@ -140,6 +141,7 @@
             "type": "bonus",
             "value": null
           },
+          "applied_effects": [],
           "consumption": {
             "scaling": {
               "allowed": false,

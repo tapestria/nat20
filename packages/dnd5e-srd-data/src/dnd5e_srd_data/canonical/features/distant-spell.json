@@ -7,6 +7,7 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -91,6 +92,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "Cost: 1 Sorcery Point\n\nWhen you cast a spell that has a range of at least 5 feet, you can spend 1 Sorcery Point to double the spell's range. Or when you cast a spell that has a range of Touch, you can spend 1 Sorcery Point to make the spell's range 30 feet.",
   "entry_kind": "feature",
   "feature_type": "class_feature",
@@ -112,5 +114,6 @@
     "requires_user_decision": false
   },
   "slug": "distant-spell",
-  "source_slug": "sorcerer"
+  "source_slug": "sorcerer",
+  "uses": null
 }

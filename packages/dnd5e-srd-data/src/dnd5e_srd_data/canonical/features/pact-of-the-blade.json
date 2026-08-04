@@ -7,6 +7,7 @@
         "type": "bonus",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -110,6 +111,7 @@
         "type": "action",
         "value": null
       },
+      "applied_effects": [],
       "attack": {
         "ability": "spellcasting",
         "bonus": "",
@@ -197,6 +199,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "As a Bonus Action, you can conjure a pact weapon in your hand\u2014a Simple or Martial Melee weapon of your choice with which you bond\u2014or create a bond with a magic weapon you touch; you can't bond with a magic weapon if someone else is attuned to it or another Warlock is bonded with it. Until the bond ends, you have proficiency with the weapon, and you can use it as a Spellcasting Focus.\n\nWhenever you attack with the bonded weapon, you can use your Charisma modifier for the attack and damage rolls instead of using Strength or Dexterity; and you can cause the weapon to deal Necrotic, Psychic, or Radiant damage or its normal damage type.\n\nYour bond with the weapon ends if you use this feature's Bonus Action again, if the weapon is more than 5 feet away from you for 1 minute or more, or if you die. A conjured weapon disappears when the bond ends.",
   "entry_kind": "feature",
   "feature_type": "class_feature",
@@ -284,5 +287,6 @@
     "requires_user_decision": false
   },
   "slug": "pact-of-the-blade",
-  "source_slug": "warlock"
+  "source_slug": "warlock",
+  "uses": null
 }

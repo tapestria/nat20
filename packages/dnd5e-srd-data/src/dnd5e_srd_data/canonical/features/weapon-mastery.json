@@ -1,5 +1,6 @@
 {
   "activities": [],
+  "advancement": [],
   "description": "Your training with weapons allows you to use the mastery properties of two kinds of weapons of your choice with which you have proficiency, such as Daggers and Shortbows.\n\nWhenever you finish a Long Rest, you can change the kinds of weapons you chose. For example, you could switch to using the mastery properties of Scimitars and Shortswords.",
   "entry_kind": "feature",
   "feature_type": "class_feature",
@@ -21,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "weapon-mastery",
-  "source_slug": "rogue"
+  "source_slug": "rogue",
+  "uses": null
 }

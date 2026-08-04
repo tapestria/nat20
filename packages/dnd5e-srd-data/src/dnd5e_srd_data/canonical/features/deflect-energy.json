@@ -7,6 +7,7 @@
         "type": "reaction",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -98,6 +99,7 @@
         "type": "",
         "value": null
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -219,6 +221,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "You can now use your Deflect Attacks feature against attacks that deal any damage type, not just Bludgeoning, Piercing, or Slashing.\n\nThe Reduce activity can be used to heal yourself to reduce the total damage if it's not enough to reduce it to 0.\n\nThe Redirect activity can be used to roll damage and consume a use of your Focus Points if you can reduce it to 0. You can select the type of damage in the roll dialog. The dice increase automatically as you level up.",
   "entry_kind": "feature",
   "feature_type": "class_feature",
@@ -240,5 +243,6 @@
     "requires_user_decision": false
   },
   "slug": "deflect-energy",
-  "source_slug": "monk"
+  "source_slug": "monk",
+  "uses": null
 }

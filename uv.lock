@@ -295,7 +295,7 @@ wheels = [
 
 [[package]]
 name = "dnd5e-engine"
-version = "0.1.2"
+version = "0.2.0"
 source = { editable = "packages/dnd5e-engine" }
 dependencies = [
     { name = "d20" },
@@ -327,7 +327,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "dnd5e-srd-data"
-version = "0.1.2"
+version = "0.2.0"
 source = { editable = "packages/dnd5e-srd-data" }
 dependencies = [
     { name = "pydantic" },

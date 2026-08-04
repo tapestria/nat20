@@ -7,6 +7,7 @@
         "type": "action",
         "value": null
       },
+      "applied_effects": [],
       "bonuses": {
         "ac": "",
         "attack_damage": "",
@@ -142,6 +143,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "Prerequisite: Level 2+ Warlock\n\nYou can cast Silent Image without expending a spell slot.\n\nFoundry Note\n\nThis feature includes Silent Image's activities and can be used in its place.",
   "entry_kind": "feature",
   "feature_type": "class_feature",
@@ -163,5 +165,6 @@
     "requires_user_decision": false
   },
   "slug": "misty-visions",
-  "source_slug": "warlock"
+  "source_slug": "warlock",
+  "uses": null
 }

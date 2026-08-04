@@ -7,6 +7,7 @@
         "type": "action",
         "value": 1
       },
+      "applied_effects": [],
       "consumption": {
         "scaling": {
           "allowed": false,
@@ -91,6 +92,7 @@
       }
     }
   ],
+  "advancement": [],
   "description": "You can call on your deity or pantheon to intervene on your behalf. As a Magic action, choose any Cleric spell of level 5 or lower that doesn't require a Reaction to cast. As part of the same action, you cast that spell without expending a spell slot or needing Material components. You can't use this feature again until you finish a Long Rest.\n\nFoundry Note\n\nUncheck the \"Consumption\" box when casting the spell for the free use. This feature can be used to track available uses.",
   "entry_kind": "feature",
   "feature_type": "class_feature",
@@ -112,5 +114,16 @@
     "requires_user_decision": false
   },
   "slug": "divine-intervention",
-  "source_slug": "cleric"
+  "source_slug": "cleric",
+  "uses": {
+    "max": "1",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "lr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  }
 }

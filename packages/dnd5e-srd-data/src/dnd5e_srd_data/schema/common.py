@@ -606,9 +606,15 @@ class _ActivityBase(BaseModel):
 
 class _ActivityBaseWithEffects(_ActivityBase):
     """Adds the ``effects[]`` list every Foundry activity except CastActivity
-    carries. CastActivity inherits from :class:`_ActivityBase` directly."""
+    carries. CastActivity inherits from :class:`_ActivityBase` directly.
+
+    ``applied_effects`` is Foundry's legacy flat ``appliedEffects`` id list,
+    persisted alongside the structured ``effects[]`` slice (it mostly aliases
+    ``effects[]._id``). Carried for round-trip fidelity only — resolver
+    behavior comes from ``effects[]``."""
 
     effects: list[AppliedEffectRef] = Field(default_factory=list)
+    applied_effects: list[str] = Field(default_factory=list)
 
 
 class AttackActivity(_ActivityBaseWithEffects):

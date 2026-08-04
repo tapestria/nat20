@@ -1,5 +1,6 @@
 {
   "activities": [],
+  "advancement": [],
   "description": "While your Innate Sorcery feature is active, you can use one Metamagic option on each of your turns without spending Sorcery Points on it.\n\nFoundry Note\n\nUncheck the Consumption option when using the Metamagic option you would like to use for free.",
   "entry_kind": "feature",
   "feature_type": "class_feature",
@@ -21,5 +22,6 @@
     "requires_user_decision": false
   },
   "slug": "arcane-apotheosis",
-  "source_slug": "sorcerer"
+  "source_slug": "sorcerer",
+  "uses": null
 }
