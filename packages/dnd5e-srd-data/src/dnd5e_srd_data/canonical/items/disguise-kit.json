@@ -107,5 +107,6 @@
     "requires_user_decision": false
   },
   "slug": "disguise-kit",
+  "uses": null,
   "weight": 3.0
 }

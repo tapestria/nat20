@@ -478,6 +478,7 @@
     "value": 1
   },
   "entry_kind": "spell",
+  "foundry_uuid": "Compendium.dnd5e.spells24.Item.phbsplBestowCurs",
   "level": 3,
   "materials": {
     "consumed": false,

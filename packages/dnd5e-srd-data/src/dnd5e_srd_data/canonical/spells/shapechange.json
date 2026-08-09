@@ -99,6 +99,7 @@
     "value": 1
   },
   "entry_kind": "spell",
+  "foundry_uuid": "Compendium.dnd5e.spells24.Item.phbsplShapechang",
   "level": 9,
   "materials": {
     "consumed": false,

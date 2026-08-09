@@ -208,6 +208,7 @@
     "requires_user_decision": false
   },
   "slug": "frost-brand",
+  "uses": null,
   "versatile_damage": null,
   "weapon_category": "martial_melee",
   "weight": 0.0

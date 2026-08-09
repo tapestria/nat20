@@ -418,5 +418,17 @@
     "requires_user_decision": false
   },
   "slug": "ring-of-shooting-stars",
+  "uses": {
+    "auto_destroy": false,
+    "max": "6",
+    "recovery": [
+      {
+        "formula": "1d6",
+        "period": "dawn",
+        "type": "formula"
+      }
+    ],
+    "spent": 0
+  },
   "weight": 0.0
 }

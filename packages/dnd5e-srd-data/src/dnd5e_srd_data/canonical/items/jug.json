@@ -23,5 +23,6 @@
     "requires_user_decision": false
   },
   "slug": "jug",
+  "uses": null,
   "weight": 4.0
 }

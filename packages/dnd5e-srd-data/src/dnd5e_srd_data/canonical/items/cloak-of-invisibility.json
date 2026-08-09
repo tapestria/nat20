@@ -142,5 +142,17 @@
     "requires_user_decision": false
   },
   "slug": "cloak-of-invisibility",
+  "uses": {
+    "auto_destroy": false,
+    "max": "3",
+    "recovery": [
+      {
+        "formula": "1d3",
+        "period": "dawn",
+        "type": "formula"
+      }
+    ],
+    "spent": 0
+  },
   "weight": 2.0
 }

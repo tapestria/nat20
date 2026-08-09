@@ -273,5 +273,6 @@
     "requires_user_decision": false
   },
   "slug": "ammunition-1-2-or-3",
+  "uses": null,
   "weight": 0.0
 }

@@ -109,6 +109,7 @@
     "value": 1
   },
   "entry_kind": "spell",
+  "foundry_uuid": "Compendium.dnd5e.spells24.Item.phbsplRarysTelep",
   "level": 5,
   "materials": {
     "consumed": false,

@@ -292,5 +292,6 @@
   "slug": "plate-armor-of-etherealness",
   "stealth_disadvantage": false,
   "strength_min": null,
+  "uses": null,
   "weight": 0.0
 }

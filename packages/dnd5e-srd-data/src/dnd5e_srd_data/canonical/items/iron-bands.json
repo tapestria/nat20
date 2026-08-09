@@ -228,5 +228,6 @@
     "requires_user_decision": false
   },
   "slug": "iron-bands",
+  "uses": null,
   "weight": 0.0
 }

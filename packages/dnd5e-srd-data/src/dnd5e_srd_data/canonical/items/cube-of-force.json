@@ -594,5 +594,17 @@
     "requires_user_decision": false
   },
   "slug": "cube-of-force",
+  "uses": {
+    "auto_destroy": false,
+    "max": "10",
+    "recovery": [
+      {
+        "formula": "1d6",
+        "period": "dawn",
+        "type": "formula"
+      }
+    ],
+    "spent": 0
+  },
   "weight": 0.0
 }

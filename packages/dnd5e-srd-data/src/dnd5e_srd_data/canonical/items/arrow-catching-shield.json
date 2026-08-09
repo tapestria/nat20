@@ -129,5 +129,6 @@
   "slug": "arrow-catching-shield",
   "stealth_disadvantage": false,
   "strength_min": null,
+  "uses": null,
   "weight": 6.0
 }

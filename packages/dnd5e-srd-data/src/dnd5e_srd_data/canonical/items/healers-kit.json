@@ -115,5 +115,11 @@
     "requires_user_decision": false
   },
   "slug": "healers-kit",
+  "uses": {
+    "auto_destroy": true,
+    "max": "10",
+    "recovery": [],
+    "spent": 0
+  },
   "weight": 3.0
 }

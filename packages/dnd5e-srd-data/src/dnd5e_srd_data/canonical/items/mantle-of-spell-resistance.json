@@ -23,5 +23,6 @@
     "requires_user_decision": false
   },
   "slug": "mantle-of-spell-resistance",
+  "uses": null,
   "weight": 0.0
 }

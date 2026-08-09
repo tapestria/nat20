@@ -620,5 +620,6 @@
   "slug": "dragon-scale-mail",
   "stealth_disadvantage": true,
   "strength_min": null,
+  "uses": null,
   "weight": 45.0
 }

@@ -41,5 +41,6 @@
     "requires_user_decision": false
   },
   "slug": "ring-of-free-action",
+  "uses": null,
   "weight": 0.0
 }

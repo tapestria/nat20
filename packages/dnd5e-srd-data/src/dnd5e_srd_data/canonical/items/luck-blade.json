@@ -428,6 +428,12 @@
     "requires_user_decision": false
   },
   "slug": "luck-blade",
+  "uses": {
+    "auto_destroy": false,
+    "max": "3",
+    "recovery": [],
+    "spent": 0
+  },
   "versatile_damage": null,
   "weapon_category": "simple_melee",
   "weight": 0.0

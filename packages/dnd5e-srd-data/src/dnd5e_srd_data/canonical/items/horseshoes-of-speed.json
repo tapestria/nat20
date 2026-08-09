@@ -133,5 +133,6 @@
     "requires_user_decision": false
   },
   "slug": "horseshoes-of-speed",
+  "uses": null,
   "weight": 0.0
 }

@@ -472,5 +472,6 @@
     "requires_user_decision": false
   },
   "slug": "carpet-of-flying",
+  "uses": null,
   "weight": 5.0
 }

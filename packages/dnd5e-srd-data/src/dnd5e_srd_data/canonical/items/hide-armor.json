@@ -29,5 +29,6 @@
   "slug": "hide-armor",
   "stealth_disadvantage": false,
   "strength_min": null,
+  "uses": null,
   "weight": 12.0
 }

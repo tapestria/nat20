@@ -146,5 +146,17 @@
     "requires_user_decision": false
   },
   "slug": "serpentine-owl-rare",
+  "uses": {
+    "auto_destroy": false,
+    "max": "2",
+    "recovery": [
+      {
+        "formula": "1",
+        "period": "day",
+        "type": "formula"
+      }
+    ],
+    "spent": 0
+  },
   "weight": 0.0
 }

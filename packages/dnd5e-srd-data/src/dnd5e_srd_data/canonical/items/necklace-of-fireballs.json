@@ -223,5 +223,11 @@
     "requires_user_decision": false
   },
   "slug": "necklace-of-fireballs",
+  "uses": {
+    "auto_destroy": false,
+    "max": "9",
+    "recovery": [],
+    "spent": 9
+  },
   "weight": 0.0
 }

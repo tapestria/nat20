@@ -206,5 +206,11 @@
     "requires_user_decision": false
   },
   "slug": "rod-of-absorption",
+  "uses": {
+    "auto_destroy": false,
+    "max": "50",
+    "recovery": [],
+    "spent": 0
+  },
   "weight": 3.0
 }

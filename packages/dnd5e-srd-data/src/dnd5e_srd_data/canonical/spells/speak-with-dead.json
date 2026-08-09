@@ -99,6 +99,7 @@
     "value": 10
   },
   "entry_kind": "spell",
+  "foundry_uuid": "Compendium.dnd5e.spells24.Item.phbsplSpeakwithD",
   "level": 3,
   "materials": {
     "consumed": false,

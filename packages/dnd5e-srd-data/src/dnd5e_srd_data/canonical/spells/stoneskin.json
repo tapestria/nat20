@@ -109,6 +109,7 @@
     "value": 1
   },
   "entry_kind": "spell",
+  "foundry_uuid": "Compendium.dnd5e.spells24.Item.phbsplStoneskin0",
   "level": 4,
   "materials": {
     "consumed": true,

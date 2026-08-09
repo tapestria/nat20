@@ -705,6 +705,7 @@
     "value": null
   },
   "entry_kind": "spell",
+  "foundry_uuid": "Compendium.dnd5e.spells24.Item.phbsplSymbol0000",
   "level": 7,
   "materials": {
     "consumed": true,

@@ -472,5 +472,6 @@
     "requires_user_decision": false
   },
   "slug": "manual-of-golems",
+  "uses": null,
   "weight": 5.0
 }

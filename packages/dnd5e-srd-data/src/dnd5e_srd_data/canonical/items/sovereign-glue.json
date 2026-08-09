@@ -206,5 +206,11 @@
     "requires_user_decision": false
   },
   "slug": "sovereign-glue",
+  "uses": {
+    "auto_destroy": true,
+    "max": "7",
+    "recovery": [],
+    "spent": 0
+  },
   "weight": 0.0
 }

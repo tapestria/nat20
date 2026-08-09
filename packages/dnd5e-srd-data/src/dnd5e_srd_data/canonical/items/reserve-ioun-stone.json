@@ -115,5 +115,11 @@
     "requires_user_decision": false
   },
   "slug": "reserve-ioun-stone",
+  "uses": {
+    "auto_destroy": false,
+    "max": "4",
+    "recovery": [],
+    "spent": 4
+  },
   "weight": 0.0
 }

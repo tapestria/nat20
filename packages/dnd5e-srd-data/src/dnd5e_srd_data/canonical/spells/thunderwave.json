@@ -123,6 +123,7 @@
     "value": null
   },
   "entry_kind": "spell",
+  "foundry_uuid": "Compendium.dnd5e.spells24.Item.phbsplThunderwav",
   "level": 1,
   "materials": {
     "consumed": false,

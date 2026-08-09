@@ -182,5 +182,17 @@
     "requires_user_decision": false
   },
   "slug": "bronze-horn-of-valhalla",
+  "uses": {
+    "auto_destroy": false,
+    "max": "7",
+    "recovery": [
+      {
+        "formula": "1",
+        "period": "day",
+        "type": "formula"
+      }
+    ],
+    "spent": 0
+  },
   "weight": 2.0
 }

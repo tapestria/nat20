@@ -209,6 +209,7 @@
     "requires_user_decision": false
   },
   "slug": "vorpal-sword",
+  "uses": null,
   "versatile_damage": null,
   "weapon_category": "simple_melee",
   "weight": 0.0

@@ -242,5 +242,11 @@
     "requires_user_decision": false
   },
   "slug": "tome-of-leadership-and-influence",
+  "uses": {
+    "auto_destroy": false,
+    "max": "48",
+    "recovery": [],
+    "spent": 0
+  },
   "weight": 0.0
 }

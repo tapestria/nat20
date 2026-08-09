@@ -196,6 +196,7 @@
     "value": 8
   },
   "entry_kind": "spell",
+  "foundry_uuid": "Compendium.dnd5e.spells24.Item.phbsplSeeming000",
   "level": 5,
   "materials": {
     "consumed": false,

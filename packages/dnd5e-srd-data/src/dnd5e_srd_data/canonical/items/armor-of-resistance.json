@@ -978,5 +978,6 @@
   "slug": "armor-of-resistance",
   "stealth_disadvantage": false,
   "strength_min": null,
+  "uses": null,
   "weight": 0.0
 }

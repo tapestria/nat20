@@ -47,5 +47,6 @@
     "requires_user_decision": false
   },
   "slug": "periapt-of-proof-against-poison",
+  "uses": null,
   "weight": 0.0
 }

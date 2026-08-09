@@ -41,5 +41,6 @@
     "requires_user_decision": false
   },
   "slug": "brooch-of-shielding",
+  "uses": null,
   "weight": 0.2
 }

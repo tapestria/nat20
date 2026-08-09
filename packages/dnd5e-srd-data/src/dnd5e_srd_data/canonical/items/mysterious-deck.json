@@ -215,5 +215,11 @@
     "requires_user_decision": false
   },
   "slug": "mysterious-deck",
+  "uses": {
+    "auto_destroy": false,
+    "max": "22",
+    "recovery": [],
+    "spent": 0
+  },
   "weight": 0.0
 }

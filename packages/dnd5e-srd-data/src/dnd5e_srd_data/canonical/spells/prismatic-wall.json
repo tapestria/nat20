@@ -408,6 +408,7 @@
     "value": 10
   },
   "entry_kind": "spell",
+  "foundry_uuid": "Compendium.dnd5e.spells24.Item.phbsplPrismaticW",
   "level": 9,
   "materials": {
     "consumed": false,

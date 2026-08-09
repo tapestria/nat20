@@ -190,5 +190,6 @@
     "requires_user_decision": false
   },
   "slug": "three-dragon-ante",
+  "uses": null,
   "weight": 0.0
 }

@@ -123,5 +123,11 @@
     "requires_user_decision": false
   },
   "slug": "moon",
+  "uses": {
+    "auto_destroy": true,
+    "max": "3",
+    "recovery": [],
+    "spent": 0
+  },
   "weight": 0.0
 }

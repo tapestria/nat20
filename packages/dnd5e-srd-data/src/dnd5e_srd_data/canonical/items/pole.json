@@ -23,5 +23,6 @@
     "requires_user_decision": false
   },
   "slug": "pole",
+  "uses": null,
   "weight": 7.0
 }

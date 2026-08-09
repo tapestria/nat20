@@ -108,6 +108,7 @@
     "value": 8
   },
   "entry_kind": "spell",
+  "foundry_uuid": "Compendium.dnd5e.spells24.Item.phbsplDeathWard0",
   "level": 4,
   "materials": {
     "consumed": false,

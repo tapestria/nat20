@@ -34,5 +34,6 @@
     "requires_user_decision": false
   },
   "slug": "cloak-of-elvenkind",
+  "uses": null,
   "weight": 2.0
 }

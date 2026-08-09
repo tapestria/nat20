@@ -8,11 +8,16 @@ from dnd5e_srd_data import BundledAssetLoader
 CANONICAL = Path(__file__).resolve().parent.parent / "src" / "dnd5e_srd_data" / "canonical"
 
 
-@pytest.mark.parametrize("category", ["items", "monsters"])
+@pytest.mark.parametrize("category", ["items", "monsters", "spells"])
 def test_every_canonical_entry_round_trips(category: str):
     loader = BundledAssetLoader()
     for slug in loader.list_slugs(category):  # type: ignore[arg-type]
-        entry = loader.get_item(slug) if category == "items" else loader.get_monster(slug)
+        if category == "items":
+            entry = loader.get_item(slug)
+        elif category == "monsters":
+            entry = loader.get_monster(slug)
+        else:
+            entry = loader.get_spell(slug)
         assert entry is not None, f"loader couldn't read {category}/{slug}"
 
         path = CANONICAL / category / f"{slug}.json"

@@ -41,5 +41,6 @@
     "requires_user_decision": false
   },
   "slug": "amulet-of-health",
+  "uses": null,
   "weight": 0.0
 }

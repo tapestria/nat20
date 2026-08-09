@@ -107,5 +107,6 @@
     "requires_user_decision": false
   },
   "slug": "tinkers-tools",
+  "uses": null,
   "weight": 10.0
 }

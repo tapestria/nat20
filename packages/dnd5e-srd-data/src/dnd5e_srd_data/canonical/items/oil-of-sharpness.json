@@ -326,5 +326,11 @@
     "requires_user_decision": false
   },
   "slug": "oil-of-sharpness",
+  "uses": {
+    "auto_destroy": true,
+    "max": "1",
+    "recovery": [],
+    "spent": 0
+  },
   "weight": 0.0
 }

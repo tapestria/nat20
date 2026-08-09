@@ -98,6 +98,7 @@
     "value": 10
   },
   "entry_kind": "spell",
+  "foundry_uuid": "Compendium.dnd5e.spells24.Item.phbsplExpeditiou",
   "level": 1,
   "materials": {
     "consumed": false,

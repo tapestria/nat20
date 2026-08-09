@@ -342,6 +342,7 @@
     "value": 1
   },
   "entry_kind": "spell",
+  "foundry_uuid": "Compendium.dnd5e.spells24.Item.phbsplGate000000",
   "level": 9,
   "materials": {
     "consumed": false,

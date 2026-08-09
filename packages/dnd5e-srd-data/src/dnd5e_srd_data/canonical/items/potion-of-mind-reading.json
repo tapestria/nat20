@@ -124,5 +124,6 @@
     "requires_user_decision": false
   },
   "slug": "potion-of-mind-reading",
+  "uses": null,
   "weight": 0.5
 }

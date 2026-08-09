@@ -29,5 +29,6 @@
   "slug": "studded-leather-armor",
   "stealth_disadvantage": false,
   "strength_min": null,
+  "uses": null,
   "weight": 13.0
 }

@@ -133,6 +133,7 @@
     "requires_user_decision": false
   },
   "slug": "morningstar",
+  "uses": null,
   "versatile_damage": null,
   "weapon_category": "martial_melee",
   "weight": 4.0

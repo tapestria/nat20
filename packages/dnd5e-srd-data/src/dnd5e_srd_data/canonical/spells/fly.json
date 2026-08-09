@@ -109,6 +109,7 @@
     "value": 10
   },
   "entry_kind": "spell",
+  "foundry_uuid": "Compendium.dnd5e.spells24.Item.phbsplFly0000000",
   "level": 3,
   "materials": {
     "consumed": false,

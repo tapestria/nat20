@@ -186,5 +186,6 @@
     "requires_user_decision": false
   },
   "slug": "instant-fortress",
+  "uses": null,
   "weight": 0.1
 }

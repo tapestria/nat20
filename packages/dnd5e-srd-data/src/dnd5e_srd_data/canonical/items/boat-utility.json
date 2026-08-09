@@ -229,5 +229,6 @@
     "requires_user_decision": false
   },
   "slug": "boat-utility",
+  "uses": null,
   "weight": 0.0
 }

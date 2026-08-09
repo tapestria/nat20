@@ -220,5 +220,6 @@
     "requires_user_decision": false
   },
   "slug": "helm-of-telepathy",
+  "uses": null,
   "weight": 0.0
 }

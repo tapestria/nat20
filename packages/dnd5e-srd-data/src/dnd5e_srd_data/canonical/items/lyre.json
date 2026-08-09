@@ -190,5 +190,6 @@
     "requires_user_decision": false
   },
   "slug": "lyre",
+  "uses": null,
   "weight": 2.0
 }

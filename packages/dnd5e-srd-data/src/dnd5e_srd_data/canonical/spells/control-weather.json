@@ -180,6 +180,7 @@
     "value": 8
   },
   "entry_kind": "spell",
+  "foundry_uuid": "Compendium.dnd5e.spells24.Item.phbsplControlWea",
   "level": 8,
   "materials": {
     "consumed": false,

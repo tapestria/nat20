@@ -29,5 +29,6 @@
   "slug": "splint-armor",
   "stealth_disadvantage": true,
   "strength_min": 15,
+  "uses": null,
   "weight": 60.0
 }

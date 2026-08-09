@@ -23,5 +23,6 @@
     "requires_user_decision": false
   },
   "slug": "case-map-or-scroll",
+  "uses": null,
   "weight": 1.0
 }

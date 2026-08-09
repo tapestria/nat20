@@ -23,5 +23,6 @@
     "requires_user_decision": false
   },
   "slug": "ram-portable",
+  "uses": null,
   "weight": 35.0
 }

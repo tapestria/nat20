@@ -153,5 +153,11 @@
     "requires_user_decision": false
   },
   "slug": "potion-of-flying",
+  "uses": {
+    "auto_destroy": true,
+    "max": "1",
+    "recovery": [],
+    "spent": 0
+  },
   "weight": 0.5
 }

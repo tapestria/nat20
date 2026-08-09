@@ -29,5 +29,6 @@
   "slug": "chain-mail",
   "stealth_disadvantage": true,
   "strength_min": 13,
+  "uses": null,
   "weight": 55.0
 }

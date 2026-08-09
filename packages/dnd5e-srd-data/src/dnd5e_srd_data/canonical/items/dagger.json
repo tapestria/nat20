@@ -137,6 +137,7 @@
     "requires_user_decision": false
   },
   "slug": "dagger",
+  "uses": null,
   "versatile_damage": null,
   "weapon_category": "simple_melee",
   "weight": 1.0

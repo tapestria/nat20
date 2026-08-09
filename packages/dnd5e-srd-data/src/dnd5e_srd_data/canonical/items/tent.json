@@ -23,5 +23,6 @@
     "requires_user_decision": false
   },
   "slug": "tent",
+  "uses": null,
   "weight": 20.0
 }

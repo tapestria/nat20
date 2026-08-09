@@ -23,5 +23,6 @@
     "requires_user_decision": false
   },
   "slug": "climbers-kit",
+  "uses": null,
   "weight": 12.0
 }

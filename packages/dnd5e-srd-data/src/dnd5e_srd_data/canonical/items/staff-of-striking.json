@@ -245,6 +245,18 @@
     "requires_user_decision": false
   },
   "slug": "staff-of-striking",
+  "uses": {
+    "auto_destroy": false,
+    "max": "10",
+    "recovery": [
+      {
+        "formula": "1d6 + 4",
+        "period": "dawn",
+        "type": "formula"
+      }
+    ],
+    "spent": 0
+  },
   "versatile_damage": {
     "damage_type": "bludgeoning",
     "dice": "1d8"

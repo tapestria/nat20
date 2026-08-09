@@ -310,6 +310,7 @@
     "value": 10
   },
   "entry_kind": "spell",
+  "foundry_uuid": "Compendium.dnd5e.spells24.Item.phbsplConjureWoo",
   "level": 4,
   "materials": {
     "consumed": false,

@@ -136,6 +136,7 @@
     "requires_user_decision": false
   },
   "slug": "trident",
+  "uses": null,
   "versatile_damage": {
     "damage_type": "piercing",
     "dice": "1d8"

@@ -119,5 +119,11 @@
     "requires_user_decision": false
   },
   "slug": "chime-of-opening",
+  "uses": {
+    "auto_destroy": false,
+    "max": "10",
+    "recovery": [],
+    "spent": 0
+  },
   "weight": 1.0
 }

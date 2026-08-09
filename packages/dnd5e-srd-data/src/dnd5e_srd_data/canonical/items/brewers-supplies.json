@@ -190,5 +190,6 @@
     "requires_user_decision": false
   },
   "slug": "brewers-supplies",
+  "uses": null,
   "weight": 9.0
 }

@@ -292,5 +292,6 @@
     "requires_user_decision": false
   },
   "slug": "decanter-of-endless-water",
+  "uses": null,
   "weight": 2.0
 }

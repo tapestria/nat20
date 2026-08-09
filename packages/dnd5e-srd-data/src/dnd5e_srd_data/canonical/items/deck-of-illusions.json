@@ -242,5 +242,11 @@
     "requires_user_decision": false
   },
   "slug": "deck-of-illusions",
+  "uses": {
+    "auto_destroy": false,
+    "max": "34",
+    "recovery": [],
+    "spent": 0
+  },
   "weight": 0.0
 }

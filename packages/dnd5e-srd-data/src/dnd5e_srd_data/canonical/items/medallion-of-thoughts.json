@@ -123,5 +123,17 @@
     "requires_user_decision": false
   },
   "slug": "medallion-of-thoughts",
+  "uses": {
+    "auto_destroy": false,
+    "max": "5",
+    "recovery": [
+      {
+        "formula": "1d4",
+        "period": "dawn",
+        "type": "formula"
+      }
+    ],
+    "spent": 0
+  },
   "weight": 0.0
 }

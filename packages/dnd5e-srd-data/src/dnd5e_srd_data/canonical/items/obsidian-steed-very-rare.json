@@ -146,5 +146,17 @@
     "requires_user_decision": false
   },
   "slug": "obsidian-steed-very-rare",
+  "uses": {
+    "auto_destroy": false,
+    "max": "5",
+    "recovery": [
+      {
+        "formula": "1",
+        "period": "day",
+        "type": "formula"
+      }
+    ],
+    "spent": 0
+  },
   "weight": 0.0
 }

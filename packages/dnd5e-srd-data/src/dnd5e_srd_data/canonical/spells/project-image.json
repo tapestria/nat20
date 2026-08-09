@@ -130,6 +130,7 @@
     "value": 1
   },
   "entry_kind": "spell",
+  "foundry_uuid": "Compendium.dnd5e.spells24.Item.phbsplProjectIma",
   "level": 7,
   "materials": {
     "consumed": false,

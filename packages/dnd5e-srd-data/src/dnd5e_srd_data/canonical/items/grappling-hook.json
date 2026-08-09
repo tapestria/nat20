@@ -109,5 +109,6 @@
     "requires_user_decision": false
   },
   "slug": "grappling-hook",
+  "uses": null,
   "weight": 4.0
 }
