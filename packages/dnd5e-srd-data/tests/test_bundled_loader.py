@@ -31,3 +31,14 @@ def test_bundled_loader_finds_weapon(loader: BundledAssetLoader):
 def test_bundled_loader_lists_slugs(loader: BundledAssetLoader):
     assert "test-goblin" in loader.list_slugs("monsters")
     assert "test-longsword" in loader.list_slugs("items")
+
+
+def test_bundled_get_spell_by_uuid_after_regen():
+    loader = BundledAssetLoader()
+    spell = loader.get_spell("lightning-bolt")
+    assert spell is not None
+    if not spell.foundry_uuid:
+        pytest.skip("canonical corpus not yet regenerated with foundry_uuid")
+    assert loader.get_spell_by_uuid(spell.foundry_uuid) is not None
+    assert loader.get_spell_by_uuid(spell.foundry_uuid).slug == "lightning-bolt"
+    assert loader.get_spell_by_uuid("Compendium.dnd5e.spells24.Item.missing") is None

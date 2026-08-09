@@ -5,6 +5,7 @@ from dnd5e_srd_data import (
     AssetLoader,
     Background,
     BackgroundAbilityChoice,
+    BundledAssetLoader,
     CreatureSize,
     CreatureType,
     Feat,
@@ -129,3 +130,14 @@ def test_memory_loader_serves_feats():
     assert loader.list_slugs("feats") == ["alert"]
     assert ("feats", "alert") in loader
     assert ("feats", "grappler") not in loader
+
+
+def test_get_spell_by_uuid_resolves_and_misses():
+    spell = BundledAssetLoader().get_spell("fireball")
+    assert spell is not None
+    tagged = spell.model_copy(
+        update={"foundry_uuid": "Compendium.dnd5e.spells24.Item.phbsplFireball00"}
+    )
+    loader = MemoryAssetLoader(spells=[tagged])
+    assert loader.get_spell_by_uuid("Compendium.dnd5e.spells24.Item.phbsplFireball00") is not None
+    assert loader.get_spell_by_uuid("Compendium.dnd5e.spells24.Item.nope") is None

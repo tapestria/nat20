@@ -52,6 +52,7 @@ class AssetLoader(Protocol):
     def get_armor(self, slug: str) -> Armor | None: ...
     def get_monster(self, slug: str) -> Monster | None: ...
     def get_spell(self, slug: str) -> Spell | None: ...
+    def get_spell_by_uuid(self, uuid: str) -> Spell | None: ...
     def get_species(self, slug: str) -> Species | None: ...
     def get_class(self, slug: str) -> Class | None: ...
     def get_subclass(self, slug: str) -> Subclass | None: ...
@@ -104,6 +105,15 @@ class MemoryAssetLoader:
 
     def get_spell(self, slug: str) -> Spell | None:
         return self._spells.get(slug)
+
+    def get_spell_by_uuid(self, uuid: str) -> Spell | None:
+        if not uuid:
+            return None
+        for slug in self.list_slugs("spells"):
+            spell = self.get_spell(slug)
+            if spell is not None and spell.foundry_uuid == uuid:
+                return spell
+        return None
 
     def get_species(self, slug: str) -> Species | None:
         return self._species.get(slug)
@@ -162,6 +172,7 @@ class BundledAssetLoader:
 
     def __init__(self, *, root: Path | None = None) -> None:
         self._root: Path | None = root
+        self._spell_uuid_index: dict[str, str] | None = None
 
     def _category_dir(self, category: Category) -> Path:
         if self._root is not None:
@@ -213,6 +224,19 @@ class BundledAssetLoader:
         if raw is None:
             return None
         return Spell.model_validate(raw)
+
+    def get_spell_by_uuid(self, uuid: str) -> Spell | None:
+        if not uuid:
+            return None
+        if self._spell_uuid_index is None:
+            index: dict[str, str] = {}
+            for candidate_slug in self.list_slugs("spells"):
+                spell = self.get_spell(candidate_slug)
+                if spell is not None and spell.foundry_uuid:
+                    index[spell.foundry_uuid] = candidate_slug
+            self._spell_uuid_index = index
+        resolved_slug = self._spell_uuid_index.get(uuid)
+        return self.get_spell(resolved_slug) if resolved_slug is not None else None
 
     def get_species(self, slug: str) -> Species | None:
         raw = self._load_json("species", slug)
