@@ -7,7 +7,11 @@ from dnd5e_srd_data import (
     Weapon,
     WeaponProperty,
 )
-from tools.translators.foundry import translate_armor_yaml, translate_weapon_yaml
+from tools.translators.foundry import (
+    translate_armor_yaml,
+    translate_generic_item_yaml,
+    translate_weapon_yaml,
+)
 
 FIXTURE = Path(__file__).parent / "fixtures" / "foundry_pack_minimal"
 
@@ -48,3 +52,28 @@ def test_translates_chain_shirt():
     assert a.armor_category == ArmorCategory.MEDIUM
     assert a.base_ac == 13
     assert a.dex_bonus_max == 2
+
+
+def test_translates_wand_charges():
+    item = translate_generic_item_yaml(
+        yaml_path=FIXTURE / "wands" / "wand-of-lightning-bolts.yml",
+        ingest_date=date(2026, 5, 30),
+        ingest_version="foundry-translator-v1",
+    )
+    assert item.uses is not None
+    assert item.uses.max == "7"
+    assert item.uses.spent == 0
+    assert item.uses.auto_destroy is False
+    assert len(item.uses.recovery) == 1
+    assert item.uses.recovery[0].period == "dawn"
+    assert item.uses.recovery[0].type == "formula"
+    assert item.uses.recovery[0].formula == "1d6 + 1"
+
+
+def test_longsword_has_no_uses():
+    w = translate_weapon_yaml(
+        yaml_path=FIXTURE / "weapons" / "longsword.yml",
+        ingest_date=date(2026, 5, 30),
+        ingest_version="foundry-translator-v1",
+    )
+    assert w.uses is None

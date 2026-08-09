@@ -47,6 +47,7 @@ from dnd5e_srd_data import (
     HitDie,
     Item,
     ItemRarity,
+    ItemUses,
     MagicItem,
     Monster,
     MonsterAction,
@@ -855,6 +856,7 @@ def translate_weapon_yaml(
         range=rng,
         magical_bonus=max(0, magical_bonus),
         mastery=mastery,
+        uses=_item_uses(system),
         activities=_translate_activities(system),
         passive_effects=_passive_effects(doc),
         provenance=_provenance(yaml_path, ingest_date, ingest_version),
@@ -898,6 +900,7 @@ def translate_armor_yaml(
         ),
         strength_min=system.get("strength"),
         magical_bonus=max(0, armor_magical_bonus),
+        uses=_item_uses(system),
         activities=_translate_activities(system),
         passive_effects=_passive_effects(doc),
         provenance=_provenance(yaml_path, ingest_date, ingest_version),
@@ -1486,6 +1489,7 @@ def translate_generic_item_yaml(
         passive_effects=_passive_effects(doc),
         requires_attunement=requires_attunement,
         attunement_constraint=attunement_constraint,
+        uses=_item_uses(system),
     )
 
     subdir = _pack_subdir(yaml_path)
@@ -1721,6 +1725,7 @@ def translate_spell_yaml(
         passive_effects=_passive_effects(doc),
         provenance=_provenance(yaml_path, ingest_date, ingest_version),
         review=ReviewState(),
+        foundry_uuid=_spell_foundry_uuid(yaml_path, doc),
     )
 
 
@@ -1812,6 +1817,67 @@ def _feature_uses(system: dict[str, Any]) -> FeatureUses | None:
     except (TypeError, ValueError):
         spent = 0
     return FeatureUses(max=max_expr, spent=max(0, spent), recovery=recovery)
+
+
+_ITEM_RECOVERY_PERIODS = {"sr", "lr", "day", "dawn", "dusk"}
+
+
+def _item_uses(system: dict[str, Any]) -> ItemUses | None:
+    """Foundry ``system.uses`` on an equipment doc → typed charge pool.
+
+    Mirrors ``_feature_uses`` but accepts the item-corpus recovery periods
+    (dawn/dusk dominate) and carries Foundry's consumable ``autoDestroy``.
+    """
+    raw = system.get("uses")
+    if not isinstance(raw, dict):
+        return None
+    max_expr = str(raw.get("max") or "")
+    recovery: list[RecoveryRule] = []
+    for entry in raw.get("recovery") or []:
+        if not isinstance(entry, dict):
+            continue
+        period = str(entry.get("period") or "")
+        rtype = str(entry.get("type") or "")
+        if period not in _ITEM_RECOVERY_PERIODS or rtype not in _RECOVERY_TYPE_VALUES:
+            continue
+        recovery.append(
+            RecoveryRule(
+                period=period,  # type: ignore[arg-type]
+                type=rtype,  # type: ignore[arg-type]
+                formula=str(entry.get("formula") or ""),
+            )
+        )
+    if not max_expr and not recovery:
+        return None
+    spent_raw = raw.get("spent")
+    try:
+        spent = int(spent_raw) if spent_raw is not None else 0
+    except (TypeError, ValueError):
+        spent = 0
+    return ItemUses(
+        max=max_expr,
+        spent=max(0, spent),
+        auto_destroy=bool(raw.get("autoDestroy", False)),
+        recovery=recovery,
+    )
+
+
+def _spell_foundry_uuid(yaml_path: Path, doc: dict[str, Any]) -> str:
+    """Compose the full compendium uuid for a spell doc.
+
+    Pack name comes from the path component after ``_source`` (matching
+    ``build_feature_index``); the fixture corpus lacks that ancestry, so we
+    fall back to ``spells24`` -- the only spell pack in the pinned Foundry
+    snapshot.
+    """
+    doc_id = str(doc.get("_id") or "")
+    if not doc_id:
+        return ""
+    parts = yaml_path.resolve().parts
+    pack = "spells24"
+    if "_source" in parts:
+        pack = parts[parts.index("_source") + 1]
+    return f"Compendium.dnd5e.{pack}.Item.{doc_id}"
 
 
 # --- Species / Class derived fields from advancement ---
