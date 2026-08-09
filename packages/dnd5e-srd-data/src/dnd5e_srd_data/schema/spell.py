@@ -130,6 +130,9 @@ class Spell(BaseModel):
     """
 
     slug: str
+    # Full Foundry compendium uuid ("Compendium.dnd5e.spells24.Item.<_id>") —
+    # the join key CastActivity.spell.uuid delegates through (wands/scrolls).
+    foundry_uuid: str = ""
     name: str
     description: str
     level: NonNegativeInt  # 0 = cantrip
