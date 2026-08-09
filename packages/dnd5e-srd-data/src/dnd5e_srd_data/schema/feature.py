@@ -14,7 +14,7 @@ FeatureType = Literal["class_feature", "subclass_feature", "species_trait"]
 # SRD 5.2 rest / recharge periods a limited-use feature recovers on. Foundry's
 # ``uses.recovery[].period`` vocabulary observed across the SRD feature corpus;
 # typed (closed set) per the typed-semantics rule.
-RecoveryPeriod = Literal["sr", "lr", "day", "recharge", "initiative"]
+RecoveryPeriod = Literal["sr", "lr", "day", "dawn", "dusk", "recharge", "initiative"]
 # ``uses.recovery[].type`` — how a recovery entry refills the pool.
 RecoveryType = Literal["recoverAll", "formula"]
 
