@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Item charges** — `use_item` now validates and spends `consumption.targets[type=itemUses]`
+  costs against the item's `uses.max` pool, tracked in the `custom_counters` sidecar under
+  `item_use:<slug>` (`{"spent": n}`). Exhausted pools reject with
+  `CastFailed(reason="no_charges_remaining")` before the action budget is touched. Items
+  without a pool are unaffected. `CastFailedReason` also gains `invalid_charge_spend`,
+  reserved for the upcoming variable-charge (scaling) validation — not yet emitted on this
+  branch.
+- **Item recharge** — `dnd5e_engine.rest.recover_item_uses` (+ `ITEM_USE_COUNTER_PREFIX`,
+  submodule-only export): pure recharge over `item_use:` pools. `RecoveryPeriod` gains
+  `"dawn"`/`"day"`/`"dusk"`; formula recovery now rolls dice ("1d6 + 1") through an
+  optional `rng` (also available on `recover_feature_uses`).
+
 ## [0.2.0]
 
 Lockstep release with `dnd5e-srd-data` 0.2.0 — the outcome of the gap-closing
