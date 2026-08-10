@@ -84,6 +84,13 @@ CastFailedReason = Literal[
     # rest. Mirrors the ``no_action_economy`` reject shape, extended from a
     # per-turn budget to a per-encounter / per-rest one.
     "no_uses_remaining",
+    # SRD 5.2 §Charges — a charged item invoked with fewer charges remaining
+    # than the activity's cost (``consumption.targets[type=itemUses]``).
+    "no_charges_remaining",
+    # A variable-charge invocation that violates the activity's
+    # ``consumption.scaling`` contract (not allowed, below base cost, or
+    # above the evaluated max). Emitted by the use_item charge gate.
+    "invalid_charge_spend",
 ]
 
 IntentType = Literal[

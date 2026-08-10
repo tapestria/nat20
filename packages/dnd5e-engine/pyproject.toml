@@ -24,6 +24,8 @@ dependencies = [
     # lib_loader imports BundledAssetLoader at runtime; the typed-Activity
     # resolver reads the canonical corpus through it. The data lib's >=3.12
     # floor is why this package now also requires >=3.12 (see requires-python).
+    # Floor moves to >=0.3.0 in the lockstep release commit (the charge gate
+    # reads Item.uses, which srd-data carries from that release on).
     "dnd5e-srd-data>=0.2.0",
 ]
 

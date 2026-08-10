@@ -33,15 +33,22 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Literal, Protocol
 
+from dnd5e_engine.activities.dice import roll_expr
+
 # SRD 5.2 rest periods a limited-use resource recharges on. Typed (closed set)
 # per the engine's typed-semantics rule.
-RecoveryPeriod = Literal["sr", "lr"]
+RecoveryPeriod = Literal["sr", "lr", "dawn", "day", "dusk"]
 
 # Prefix under which the orchestrator namespaces a per-feature "uses spent"
 # counter inside the ``custom_counters`` sidecar (``feature_use:<slug>`` →
 # ``{"spent": n}``). Kept here so the standalone recovery companion and the
 # engine-side cap wiring agree on one key convention.
 FEATURE_USE_COUNTER_PREFIX = "feature_use:"
+
+# Prefix under which item charge pools are namespaced inside the same
+# ``custom_counters`` sidecar (``item_use:<item-slug>`` → ``{"spent": n}``),
+# mirroring ``FEATURE_USE_COUNTER_PREFIX`` for ``Item.uses`` charge tracking.
+ITEM_USE_COUNTER_PREFIX = "item_use:"
 
 
 @dataclass(frozen=True)
@@ -157,38 +164,44 @@ class _RecoveryRuleView(Protocol):
     def formula(self) -> str: ...
 
 
-def recover_feature_uses(
+def _recover_uses(
     counters: dict[str, dict[str, int]],
+    prefix: str,
     period: RecoveryPeriod,
-    recovery: Mapping[str, Sequence[_RecoveryRuleView]] | None = None,
+    recovery: Mapping[str, Sequence[_RecoveryRuleView]] | None,
+    rng: random.Random | None,
 ) -> dict[str, int]:
-    """Apply a rest's feature-use recovery to a caster's ``custom_counters`` sidecar.
+    """Shared core behind :func:`recover_feature_uses` and :func:`recover_item_uses`.
 
-    ``counters`` is a single caster's ``custom_counters`` mapping (as carried on
-    ``_LiveCombat.custom_counters_by_entity[entity_id]``); the per-feature use cap
-    the orchestrator maintains lives under ``feature_use:<slug>`` keys with a
+    ``period`` is caller-defined: feature callers pass rest periods (``"sr"``/
+    ``"lr"``); item callers may also pass time-of-day periods (``"dawn"``/
+    ``"day"``/``"dusk"``), matching Foundry's item ``uses.recovery`` rules.
+
+    ``counters`` is a single entity's ``custom_counters`` mapping (as carried on
+    ``_LiveCombat.custom_counters_by_entity[entity_id]``); only keys under
+    ``prefix`` (``feature_use:`` or ``item_use:``) are tracked, each with a
     ``{"spent": n}`` shape. Returns ``{"<slug>": <new spent count>, ...}`` for the
     host to write back — pure, it does not mutate ``counters``.
 
-    ``recovery`` maps a feature slug to its typed ``uses.recovery`` rules (e.g.
-    ``feature.uses.recovery``, loaded by the caller — loader access stays outside
-    this pure module). For each tracked counter, the rule whose ``period`` matches
-    the rest's ``period`` decides the refill:
+    ``recovery`` maps a slug to its typed ``uses.recovery`` rules (loaded by the
+    caller — loader access stays outside this pure module). For each tracked
+    counter, the rule whose ``period`` matches the rest's ``period`` decides the
+    refill:
 
     * ``recoverAll`` → the pool fully recharges → ``spent`` returns to ``0``;
     * ``formula`` → regain the formula-many uses → ``spent`` = ``max(0, spent - n)``
-      where ``n`` is the formula parsed as a literal integer (Second Wind's
-      Short-Rest ``formula: "1"`` → regain one use). Only literal-integer formulas
-      exist in the SRD corpus today (a structural scan of ``canonical/features``
-      confirms every recovery formula is ``"1"``); an UNHANDLED non-literal formula
-      leaves the counter unchanged (``spent`` preserved) rather than guessing.
+      where ``n`` is either the formula parsed as a literal integer (Second
+      Wind's Short-Rest ``formula: "1"`` → regain one use) or, when ``rng`` is
+      supplied, a dice expression rolled through it (e.g. a wand's ``"1d6 + 1"``
+      recharge). Without an ``rng``, a non-literal formula leaves the counter
+      unchanged (``spent`` preserved) rather than guessing.
 
     Period-miss semantics differ by whether recovery data was supplied:
 
     * ``recovery=None`` (the no-data, backward-compatible path) → every tracked
       counter fully recharges (``spent = 0``) on any rest, matching the original
       signature's behaviour.
-    * ``recovery`` supplied but a feature's rules carry NO entry for this rest's
+    * ``recovery`` supplied but a slug's rules carry NO entry for this rest's
       ``period`` → the counter is UNCHANGED (``spent`` preserved). This is the
       SRD-correct reading: an lr-only feature (Arcane Recovery, Divine
       Intervention — the corpus majority, 41 ``lr`` vs 10 ``sr`` entries) does
@@ -196,9 +209,9 @@ def recover_feature_uses(
     """
     recovered: dict[str, int] = {}
     for key, counter in counters.items():
-        if not key.startswith(FEATURE_USE_COUNTER_PREFIX):
+        if not key.startswith(prefix):
             continue
-        slug = key[len(FEATURE_USE_COUNTER_PREFIX) :]
+        slug = key[len(prefix) :]
         spent = counter.get("spent", 0)
         if recovery is None:
             # No recovery data threaded — pre-existing full-recovery default.
@@ -207,7 +220,7 @@ def recover_feature_uses(
         rules = recovery.get(slug) or ()
         rule = next((r for r in rules if r.period == period), None)
         if rule is None:
-            # Data supplied, no rule for THIS period: the feature does not
+            # Data supplied, no rule for THIS period: the pool does not
             # recharge on this rest (lr-only feature + Short Rest) — preserve.
             recovered[slug] = spent
             continue
@@ -215,25 +228,75 @@ def recover_feature_uses(
             recovered[slug] = 0
             continue
         if rule.type == "formula":
-            try:
-                regained = int(str(rule.formula).strip())
-            except ValueError:
-                # Unhandled non-literal formula — leave the counter unchanged.
-                recovered[slug] = spent
-            else:
-                recovered[slug] = max(0, spent - regained)
+            recovered[slug] = _apply_formula(spent, str(rule.formula), rng)
             continue
         # Unknown recovery type — leave the counter unchanged rather than guess.
         recovered[slug] = spent
     return recovered
 
 
+def _apply_formula(spent: int, formula: str, rng: random.Random | None) -> int:
+    """Regain ``spent`` uses per a ``formula`` recovery rule, floored at zero.
+
+    A literal integer (the SRD feature corpus's only formula shape today) parses
+    directly. A non-literal formula rolls as dice through ``rng`` when one is
+    supplied (item charge recharges, e.g. ``"1d6 + 1"``); without an ``rng``, or
+    if the formula parses as neither a literal nor valid dice, the counter is
+    preserved rather than guessed at.
+    """
+    try:
+        regained = int(formula.strip())
+    except ValueError:
+        if rng is None:
+            return spent  # non-literal formula, no dice seam threaded — preserve
+        try:
+            regained = roll_expr(formula, rng)
+        except ValueError:
+            return spent  # unparseable even as dice — preserve rather than guess
+    return max(0, spent - regained)
+
+
+def recover_feature_uses(
+    counters: dict[str, dict[str, int]],
+    period: RecoveryPeriod,
+    recovery: Mapping[str, Sequence[_RecoveryRuleView]] | None = None,
+    *,
+    rng: random.Random | None = None,
+) -> dict[str, int]:
+    """Apply a rest's feature-use recovery to a caster's ``custom_counters`` sidecar.
+
+    Tracks ``feature_use:<slug>`` keys; see :func:`_recover_uses` for the shared
+    recovery-rule contract. ``rng``, when supplied, lets a non-literal ``formula``
+    rule roll as dice instead of being preserved unchanged.
+    """
+    return _recover_uses(counters, FEATURE_USE_COUNTER_PREFIX, period, recovery, rng)
+
+
+def recover_item_uses(
+    counters: dict[str, dict[str, int]],
+    period: RecoveryPeriod,
+    recovery: Mapping[str, Sequence[_RecoveryRuleView]] | None = None,
+    *,
+    rng: random.Random | None = None,
+) -> dict[str, int]:
+    """Apply a recharge period to ``item_use:<slug>`` charge pools.
+
+    Same contract as :func:`recover_feature_uses`; ``recovery`` maps item slug
+    → its ``Item.uses.recovery`` rules. Dice formulas ("1d6 + 1", the dominant
+    wand recharge) roll through ``rng``; without an rng they preserve the
+    counter unchanged.
+    """
+    return _recover_uses(counters, ITEM_USE_COUNTER_PREFIX, period, recovery, rng)
+
+
 __all__ = [
     "FEATURE_USE_COUNTER_PREFIX",
+    "ITEM_USE_COUNTER_PREFIX",
     "HitDicePool",
     "RecoveryPeriod",
     "RestOutcome",
     "recover_feature_uses",
+    "recover_item_uses",
     "resolve_long_rest",
     "resolve_short_rest",
 ]
