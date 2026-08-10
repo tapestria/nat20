@@ -26,8 +26,15 @@ honored: 42 canonical cast activities (Dragon Orb DC 18, Circlet of Blasting +5,
 …) carry a FIXED save DC or attack bonus. The handler threads the fixed value
 into the child context (``save_dc_override`` / ``attack_bonus_override``); the
 delegated save/attack handler uses it verbatim instead of the wielder's stats.
-Both fields are set unconditionally so a non-override cast clears any inherited
-stale value (a grandchild never inherits a parent scroll's DC).
+A non-override cast still CLEARS the field for a NESTED cast (a grandchild
+never inherits a parent scroll's DC) — but a TOP-LEVEL item wrapper (nothing
+above it in ``ctx.parent_chain``) has no ``spellcasting_ability`` of its own,
+so clearing unconditionally would strip the blanket flat DC / attack bonus
+``build_activity_context`` computed for the item path, and the delegated
+save/attack handler would either raise (``save.py``, ``calculation ==
+"spellcasting"`` with no ability) or silently drop the ability-mod term
+(``attack.py``). A top-level wrapper without its own override therefore
+FALLS BACK to the inherited ``ctx`` value instead of clearing.
 """
 
 from __future__ import annotations
@@ -61,7 +68,12 @@ def resolve_cast(activity: CastActivity, ctx: ActivityResolutionContext) -> None
     #    A cantrip's base level is 0 (``0 <= 0 <= 9`` passes). An out-of-range
     #    cast (e.g. a scroll forged at level 10, or below the spell's base) is a
     #    LOUD no-op — never an absurd upcast (cure-wounds at level 10 → 20d8).
-    cast_level = activity.spell.level if activity.spell.level is not None else spell.level
+    if ctx.cast_level_override is not None:
+        cast_level = ctx.cast_level_override
+    elif activity.spell.level is not None:
+        cast_level = activity.spell.level
+    else:
+        cast_level = spell.level
     if not (spell.level <= cast_level <= 9):
         _LOGGER.warning(
             "cast_invalid_level uuid=%s cast_level=%s base_level=%s",
@@ -78,9 +90,13 @@ def resolve_cast(activity: CastActivity, ctx: ActivityResolutionContext) -> None
     #    A fixed item challenge (``spell.challenge.override``) threads a verbatim
     #    save DC / attack bonus into the child so the delegated save/attack handler
     #    uses the item's number, not the wielder's stats (Dragon Orb DC 18, Circlet
-    #    of Blasting +5). Both are set UNCONDITIONALLY: an override is honored for
-    #    THIS wrapper, and a non-override cast CLEARS any inherited stale value so a
-    #    grandchild never inherits a parent scroll's DC.
+    #    of Blasting +5). An override is honored for THIS wrapper. Absent an
+    #    override: a NESTED cast (``ctx.parent_chain`` non-empty — this wrapper is
+    #    itself inside another cast's delegation) CLEARS the field so a grandchild
+    #    never inherits a parent scroll's DC; a TOP-LEVEL wrapper (nothing above us
+    #    in the chain) has no ``spellcasting_ability`` to fall through to, so it
+    #    INHERITS ``ctx``'s value — the item-path blanket DC / attack bonus
+    #    ``build_activity_context`` already computed for it.
     from .resolver import resolve_activity  # function-local: breaks the resolver↔cast import cycle
 
     challenge = activity.spell.challenge
@@ -91,8 +107,21 @@ def resolve_cast(activity: CastActivity, ctx: ActivityResolutionContext) -> None
         base_spell_level=spell.level,
         concentration=spell.concentration,
         source_passive_effects=spell.passive_effects,
-        save_dc_override=(challenge.save if challenge.override else None),
-        attack_bonus_override=(challenge.attack if challenge.override else None),
+        save_dc_override=(
+            challenge.save
+            if challenge.override
+            else (ctx.save_dc_override if not ctx.parent_chain else None)
+        ),
+        attack_bonus_override=(
+            challenge.attack
+            if challenge.override
+            else (ctx.attack_bonus_override if not ctx.parent_chain else None)
+        ),
+        # M1: a nested cast must never inherit the item wrapper's forced cast
+        # level (``use_item`` charges_to_spend upcast) — only the wrapper's own
+        # ``CastActivity`` consumes it; the referenced spell's own activities
+        # cast at ``cast_level`` computed above, not the raw override again.
+        cast_level_override=None,
         parent_chain=(*ctx.parent_chain, uuid),
     )
     for child_activity in spell.activities:

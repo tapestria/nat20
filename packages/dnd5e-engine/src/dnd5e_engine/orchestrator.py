@@ -30,6 +30,7 @@ import asyncio
 import itertools
 import logging
 import random
+import re
 from collections.abc import AsyncIterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal
@@ -37,7 +38,7 @@ from typing import TYPE_CHECKING, Any, Literal
 from dnd5e_srd_data.schema.common import ActivationBlock, AttackActivity, SaveActivity
 from dnd5e_srd_data.schema.item import Weapon, WeaponProperty
 from dnd5e_srd_data.schema.spell import CastingTimeUnit, Spell, SpellRangeUnits
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from dnd5e_engine.activities.attack import (
     attacker_advantage_flags,
@@ -159,6 +160,9 @@ class PlayerIntent(BaseModel):
     # keeps the safe no-op reject for a multi-activity feature (never guess).
     activity_id: str | None = None
     slot_level: int | None = None
+    # Charges to spend on a variable-cost item invocation (wand upcast).
+    # Validated by the use_item charge gate against consumption.scaling.
+    charges_to_spend: int | None = Field(default=None, ge=1)
     # SRD §Reactions — the trigger condition a ``"ready"`` intent pre-arms
     # (Cluster 6's pending-reaction queue). Consumed by
     # ``_pop_pending_reaction`` / ``_drain_targeted_reactions`` when a
@@ -2097,10 +2101,10 @@ def _project_caster_pools(
     # Spell book — resolve slugs through the bundled lib corpus. Unknown
     # slugs are silently dropped (the lib is the source of truth for what
     # can be cast). Post-cutover this maps to typed ``Spell`` instances; the
-    # live ``cast``-delegation seam keys spells by Foundry uuid, so no
-    # corpus scenario consumes this projection yet (build_activity_context
-    # is called with spell_book={} today) — it is kept for the eventual
-    # uuid→Spell delegation wiring and as a per-caster known-spells view.
+    # live ``cast``-delegation seam (``_build_cast_spell_book``) keys spells
+    # by Foundry uuid off the resolved intent's own activities instead, so
+    # this projection is not that seam's source — it is kept as a per-caster
+    # known-spells view (narration/UI), separate from delegation.
     spells_known = live.spells_known_by_entity.get(caster.entity_id, [])
     if spells_known:
         lib_loader = get_lib_loader()
@@ -3227,28 +3231,72 @@ def _activity_item_use_cost(item_slug: str, activity: Any) -> int:
     return cost
 
 
-def _item_charge_cost(item: Any, activity_id: str | None) -> int:
-    """Cost of ONE invocation: the selected activity's cost, else the first
-    consuming activity's (Foundry activities are alternative invocations,
-    never a batch)."""
+def _item_charge_activity(item: Any, activity_id: str | None) -> Any | None:
+    """The activity ``_item_charge_cost`` prices for this intent: the
+    explicitly selected activity, else the first consuming activity
+    (Foundry activities are alternative invocations, never a batch).
+
+    Shared with charge-scaling validation so the cost and the scaling
+    ceiling are always evaluated against the SAME activity.
+    """
     if activity_id:
         for activity in item.activities:
             if activity.id == activity_id:
-                return _activity_item_use_cost(item.slug, activity)
-        return 0
+                return activity
+        return None
     consuming = [
-        (activity, _activity_item_use_cost(item.slug, activity)) for activity in item.activities
+        activity for activity in item.activities if _activity_item_use_cost(item.slug, activity) > 0
     ]
-    consuming = [(a, c) for a, c in consuming if c > 0]
-    if not consuming:
-        return 0
     if len(consuming) > 1:
         _LOGGER.warning(
             "item_charge_ambiguous_activity slug=%s charging_first_of=%d",
             item.slug,
             len(consuming),
         )
-    return consuming[0][1]
+    return consuming[0] if consuming else None
+
+
+def _item_charge_cost(item: Any, activity_id: str | None) -> int:
+    """Cost of ONE invocation: the selected activity's cost, else the first
+    consuming activity's (Foundry activities are alternative invocations,
+    never a batch)."""
+    activity = _item_charge_activity(item, activity_id)
+    if activity is None:
+        return 0
+    return _activity_item_use_cost(item.slug, activity)
+
+
+_CONSUMPTION_MAX_MIN_RE = re.compile(r"^min\(\s*([^,]+?)\s*,\s*([^)]+?)\s*\)$")
+
+
+def _eval_consumption_max(expr: str, *, remaining: int, cap: int | None) -> int | None:
+    """Evaluate the closed ``consumption.scaling.max`` grammar of the SRD item corpus."""
+    text = expr.strip()
+    if not text:
+        return None
+
+    def _term(tok: str) -> int | None:
+        tok = tok.strip()
+        if tok == "@item.uses.value":
+            return remaining
+        if tok == "@item.uses.max":
+            return cap
+        try:
+            return int(tok)
+        except ValueError:
+            return None
+
+    match = _CONSUMPTION_MAX_MIN_RE.match(text)
+    if match:
+        left, right = _term(match.group(1)), _term(match.group(2))
+        if left is None or right is None:
+            _LOGGER.warning("consumption_max_unparseable expr=%r", expr)
+            return None
+        return min(left, right)
+    value = _term(text)
+    if value is None:
+        _LOGGER.warning("consumption_max_unparseable expr=%r", expr)
+    return value
 
 
 def _item_charge_cap(item: Any) -> int | None:
@@ -3277,11 +3325,63 @@ def _item_charges_spent(live: _LiveCombat, entity_id: str, item_id: str) -> int:
     )
 
 
+def _resolve_charge_request(
+    live: _LiveCombat,
+    actor_id: str,
+    item_id: str,
+    item: Any,
+    intent: PlayerIntent,
+    base_cost: int,
+    cap: int,
+) -> int | None:
+    """Validate ``intent.charges_to_spend`` against the SAME activity
+    ``_item_charge_cost`` priced. Returns the effective (requested) cost, or
+    ``None`` after emitting ``CastFailed(reason="invalid_charge_spend")``
+    when the activity doesn't allow scaling or the request is out of the
+    evaluated bounds.
+
+    I1: scaling is only honored on a ``kind == "cast"`` activity. Charge
+    scaling on a non-cast activity (staff-of-striking's damage, ring-of-
+    the-ram's attack) would need "extra dice per charge" semantics the
+    resolver doesn't implement — honest reject rather than silently
+    charging N and delivering the base effect.
+
+    I3: also rejected when ``base_cost <= 0`` — an activity whose only
+    ``itemUses`` targets are negative/symbolic (recharge, not spend; see
+    ``_activity_item_use_cost``) has nothing for ``charges_to_spend`` to
+    scale against (rope-of-climbing's scaling utility activity), so a
+    request there would deduct charges for no effect. Already implied for
+    most cases by the cast-only rule above (those are ``kind == "utility"``),
+    but kept as an explicit guard — cheap, and a belt for host content packs
+    whose "cast" activities might ship a zero/negative cost.
+    """
+    requested = intent.charges_to_spend
+    activity = _item_charge_activity(item, intent.activity_id)
+    scaling = activity.consumption.scaling if activity is not None else None
+    if (
+        scaling is None
+        or not scaling.allowed
+        or getattr(activity, "kind", "") != "cast"
+        or base_cost <= 0
+    ):
+        _emit(live, CastFailed(actor_id=actor_id, spell_id="", reason="invalid_charge_spend"))
+        return None
+    remaining = cap - _item_charges_spent(live, actor_id, item_id)
+    ceiling = _eval_consumption_max(scaling.max, remaining=remaining, cap=cap)
+    upper_bound = min(ceiling, remaining) if ceiling is not None else remaining
+    if requested is None or requested < base_cost or requested > upper_bound:
+        _emit(live, CastFailed(actor_id=actor_id, spell_id="", reason="invalid_charge_spend"))
+        return None
+    return requested
+
+
 def _item_charge_gate(live: _LiveCombat, actor_id: str, intent: PlayerIntent) -> bool:
     """True (after emitting ``CastFailed``) when a capped item's remaining
     charges cannot cover this invocation's cost — reject before any budget
     is consumed. Items with no ``uses`` pool (``cap is None``) never gate,
-    preserving today's fully ungated ``use_item`` behavior.
+    preserving today's fully ungated ``use_item`` behavior — UNLESS the
+    intent carries ``charges_to_spend``, which has nothing to scale against
+    on a pool-less item and rejects ``invalid_charge_spend``.
     """
     if intent.intent_type != "use_item" or not intent.item_id:
         return False
@@ -3289,10 +3389,19 @@ def _item_charge_gate(live: _LiveCombat, actor_id: str, intent: PlayerIntent) ->
     if item is None:
         return False  # unknown slug falls through to the existing empty-resolution path
     cap = _item_charge_cap(item)
+    requested = intent.charges_to_spend
     if cap is None:
+        if requested is not None:
+            _emit(live, CastFailed(actor_id=actor_id, spell_id="", reason="invalid_charge_spend"))
+            return True
         return False
     cost = _item_charge_cost(item, intent.activity_id)
-    if cost <= 0:
+    if requested is not None:
+        resolved = _resolve_charge_request(live, actor_id, intent.item_id, item, intent, cost, cap)
+        if resolved is None:
+            return True
+        cost = resolved
+    elif cost <= 0:
         return False
     if _item_charges_spent(live, actor_id, intent.item_id) + cost > cap:
         _emit(live, CastFailed(actor_id=actor_id, spell_id="", reason="no_charges_remaining"))
@@ -3332,7 +3441,11 @@ def _record_item_charge_spend(live: _LiveCombat, actor_id: str, intent: PlayerIn
     item = get_lib_loader().get_item(intent.item_id)
     if item is None or _item_charge_cap(item) is None:
         return
-    cost = _item_charge_cost(item, intent.activity_id)
+    cost = (
+        intent.charges_to_spend
+        if intent.charges_to_spend is not None
+        else _item_charge_cost(item, intent.activity_id)
+    )
     if cost <= 0:
         return
     counters = live.custom_counters_by_entity.setdefault(actor_id, {})
@@ -3749,9 +3862,20 @@ def _resolve_intent_activities(
         # Item/Weapon/Armor/MagicItem, all of which inherit ``activities``.
         fetched_item = get_lib_loader().get_item(intent.item_id)
         if fetched_item is not None:
-            activities = list(fetched_item.activities)
             if intent.activity_id:
-                activities = [a for a in activities if a.id == intent.activity_id]
+                activities = [a for a in fetched_item.activities if a.id == intent.activity_id]
+            else:
+                # C2: an unselected use_item must resolve the SAME single
+                # activity ``_item_charge_activity`` will charge — resolving
+                # every activity on the item (the old behavior) emits events
+                # for activities that were never paid for (wand-of-binding:
+                # both Hold Monster AND Hold Person fired while only Hold
+                # Monster's 5 charges were spent). An item with no consuming
+                # activity (nothing prices > 0 itemUses) has nothing for
+                # ``_item_charge_activity`` to select — keep the pre-existing
+                # resolve-all behavior for that case.
+                charged = _item_charge_activity(fetched_item, None)
+                activities = [charged] if charged is not None else list(fetched_item.activities)
     elif intent.feature_id:
         # USE_FEATURE — the feature was already resolved to its single concrete
         # activity (repertoire gate + single-activity validation) above, BEFORE
@@ -3768,6 +3892,62 @@ def _resolve_intent_activities(
         spellcasting_ability=spellcasting_ability,
         feature_passive_effects=feature_passive_effects,
     )
+
+
+def _build_cast_spell_book(activities: Sequence[Any]) -> dict[str, Spell]:
+    """uuid -> Spell map for the ``cast`` activities among the resolved
+    intent's activities — the delegation seam a scroll/wand's ``CastActivity``
+    (``activities/cast.py``) looks its referenced spell up in. A miss (an
+    absent uuid, or one the lib can't resolve) stays out of the book; it is
+    never silent — ``resolve_cast`` logs ``cast_spell_unresolved`` on a
+    lookup failure."""
+    book: dict[str, Spell] = {}
+    loader = get_lib_loader()
+    for activity in activities:
+        uuid = getattr(getattr(activity, "spell", None), "uuid", "")
+        if not uuid or uuid in book:
+            continue
+        spell = loader.get_spell_by_uuid(uuid)
+        if spell is not None:
+            book[uuid] = spell
+    return book
+
+
+def _item_cast_level_override(intent: PlayerIntent) -> int | None:
+    """The forced cast level a ``use_item`` charges_to_spend request implies
+    for the ``cast`` activity being charged, or ``None`` when no override
+    applies (no charges_to_spend, or the charged activity doesn't delegate a
+    cast).
+
+    SRD §Casting a Spell at a Higher Level — the extra charges spent above
+    the wrapper's own base cost fund a level bump: ``base_level + (requested
+    - base_cost)``. ``base_level`` is the wrapper's own ``spell.level``
+    override (never the referenced spell's base level — a scroll/wand casts
+    AT its own printed level by default); ``base_cost`` is the SAME
+    itemUses cost ``_item_charge_gate`` priced this invocation against.
+
+    C2/M2: reuses ``_item_charge_activity`` directly (via a fresh
+    ``get_lib_loader().get_item`` lookup) instead of a private
+    re-implementation of its selection rule, so the level override and the
+    charge gate can never disagree on which activity is being charged.
+    """
+    if intent.intent_type != "use_item" or intent.charges_to_spend is None or not intent.item_id:
+        return None
+    item = get_lib_loader().get_item(intent.item_id)
+    if item is None:
+        return None
+    activity = _item_charge_activity(item, intent.activity_id)
+    if activity is None or getattr(activity, "kind", "") != "cast":
+        return None
+    base_level = activity.spell.level
+    if base_level is None:
+        return None
+    # M2: no ``or 1`` fallback — after I1/I3 this path only ever reaches a
+    # "cast" kind activity with a positive itemUses cost, so
+    # ``_activity_item_use_cost``'s value is used as-is and can never
+    # disagree with what ``_resolve_charge_request`` priced.
+    base_cost = _activity_item_use_cost(item.slug, activity)
+    return int(base_level) + (intent.charges_to_spend - base_cost)
 
 
 def _resolve_targets(
@@ -3995,6 +4175,9 @@ def _resolve_readied_spell_cast(
         spellcasting_ability=spellcasting_ability,
         concentration=spell.concentration,
         source_passive_effects=list(spell.passive_effects),
+        # Monster/reaction paths don't delegate casts yet — PC-path
+        # delegation lives in _build_cast_spell_book; extending it here is a
+        # recorded follow-up.
         spell_book={},
         passive_damage_modifiers=payload["passive_damage_modifiers"],
         save_modifiers=payload["save_modifiers"],
@@ -4107,6 +4290,9 @@ def _drain_counterspell_reaction(
         spellcasting_ability=reactor_spellcasting_ability,
         concentration=False,
         source_passive_effects=list(counterspell.passive_effects),
+        # Monster/reaction paths don't delegate casts yet — PC-path
+        # delegation lives in _build_cast_spell_book; extending it here is a
+        # recorded follow-up.
         spell_book={},
         passive_damage_modifiers=payload["passive_damage_modifiers"],
         save_modifiers=payload["save_modifiers"],
@@ -4481,14 +4667,18 @@ async def submit_player_intent(
             source_passive_effects=(
                 list(cast_spell.passive_effects) if cast_spell else feature_passive_effects
             ),
-            # Empty: ``spell_book`` is the Foundry-uuid → Spell map a
-            # ``CastActivity`` delegates through (scroll/wand casting a
-            # referenced spell). No uuid flows through live combat state today,
-            # and no live scenario exercises cast delegation, so the
-            # uuid→Spell plumbing is a recorded deferred follow-up — NOT built
-            # here. A miss is not silent: ``resolve_cast`` (activities/cast.py)
-            # logs ``cast_spell_unresolved uuid=...`` at WARNING and returns.
-            spell_book={},
+            # ``spell_book`` is the Foundry-uuid → Spell map a ``CastActivity``
+            # delegates through (scroll/wand casting a referenced spell) — the
+            # real uuid→Spell resolution over THIS invocation's own resolved
+            # activities. A miss is not silent: ``resolve_cast``
+            # (activities/cast.py) logs ``cast_spell_unresolved uuid=...`` at
+            # WARNING and returns.
+            spell_book=_build_cast_spell_book(activities),
+            # SRD §Casting a Spell at a Higher Level — a charges_to_spend
+            # ``use_item`` upcast forces the delegated cast to the level the
+            # extra charges paid for; ``None`` (the common case) lets
+            # ``resolve_cast`` fall through to the wrapper's own/base level.
+            cast_level_override=_item_cast_level_override(intent),
             passive_damage_modifiers=payload["passive_damage_modifiers"],
             save_modifiers=payload["save_modifiers"],
             target_cover=_target_cover_map(live, current.entity_id, targets),
@@ -5090,6 +5280,9 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
             spellcasting_ability=None,
             concentration=False,
             source_passive_effects=[],
+            # Monster/reaction paths don't delegate casts yet — PC-path
+            # delegation lives in _build_cast_spell_book; extending it here
+            # is a recorded follow-up.
             spell_book={},
             passive_damage_modifiers=payload["passive_damage_modifiers"],
             save_modifiers=payload["save_modifiers"],

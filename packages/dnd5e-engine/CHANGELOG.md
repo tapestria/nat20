@@ -13,13 +13,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   costs against the item's `uses.max` pool, tracked in the `custom_counters` sidecar under
   `item_use:<slug>` (`{"spent": n}`). Exhausted pools reject with
   `CastFailed(reason="no_charges_remaining")` before the action budget is touched. Items
-  without a pool are unaffected. `CastFailedReason` also gains `invalid_charge_spend`,
-  reserved for the upcoming variable-charge (scaling) validation — not yet emitted on this
-  branch.
+  without a pool are unaffected. `CastFailedReason` also gains `invalid_charge_spend`, emitted
+  when a `charges_to_spend` request violates the activity's `consumption.scaling` (see
+  "Charge upcasting" below).
 - **Item recharge** — `dnd5e_engine.rest.recover_item_uses` (+ `ITEM_USE_COUNTER_PREFIX`,
   submodule-only export): pure recharge over `item_use:` pools. `RecoveryPeriod` gains
   `"dawn"`/`"day"`/`"dusk"`; formula recovery now rolls dice ("1d6 + 1") through an
   optional `rng` (also available on `recover_feature_uses`).
+- **Cast delegation** — a used item's `CastActivity` now resolves its referenced spell
+  (uuid→Spell via `dnd5e-srd-data`'s `get_spell_by_uuid`) on the PC-intent path, honoring
+  the item's flat DC / attack / level overrides. `cast_spell_unresolved` now signals a
+  genuinely missing uuid, not missing plumbing.
+- **Charge upcasting** — `PlayerIntent.charges_to_spend` casts at
+  `base level + extra charges`, validated against `consumption.scaling`
+  (`invalid_charge_spend` on violation). New `ActivityResolutionContext.cast_level_override`.
 
 ## [0.2.0]
 
