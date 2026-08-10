@@ -339,3 +339,11 @@ def test_passive_effect_carries_id_and_statuses():
     assert pe.id == "abc123"
     assert pe.statuses == ["paralyzed"]
     assert pe.model_dump(by_alias=True)["_id"] == "abc123"
+
+
+def test_spell_foundry_uuid_defaults_empty():
+    from dnd5e_srd_data.schema.spell import Spell
+
+    fields = Spell.model_fields
+    assert "foundry_uuid" in fields
+    assert fields["foundry_uuid"].default == ""

@@ -23,5 +23,6 @@
     "requires_user_decision": false
   },
   "slug": "ring-of-mind-shielding",
+  "uses": null,
   "weight": 0.0
 }

@@ -448,5 +448,6 @@
     "requires_user_decision": false
   },
   "slug": "poisoned-darts",
+  "uses": null,
   "weight": 0.0
 }

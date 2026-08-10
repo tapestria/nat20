@@ -23,5 +23,6 @@
     "requires_user_decision": false
   },
   "slug": "case-crossbow-bolt",
+  "uses": null,
   "weight": 1.0
 }

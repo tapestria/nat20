@@ -222,5 +222,17 @@
     "requires_user_decision": false
   },
   "slug": "rod-of-resurrection",
+  "uses": {
+    "auto_destroy": false,
+    "max": "5",
+    "recovery": [
+      {
+        "formula": "1",
+        "period": "dawn",
+        "type": "formula"
+      }
+    ],
+    "spent": 0
+  },
   "weight": 3.0
 }

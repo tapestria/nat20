@@ -177,5 +177,6 @@
   "slug": "elven-chain",
   "stealth_disadvantage": false,
   "strength_min": 13,
+  "uses": null,
   "weight": 0.0
 }

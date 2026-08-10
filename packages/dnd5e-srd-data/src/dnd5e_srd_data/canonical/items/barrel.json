@@ -23,5 +23,6 @@
     "requires_user_decision": false
   },
   "slug": "barrel",
+  "uses": null,
   "weight": 70.0
 }

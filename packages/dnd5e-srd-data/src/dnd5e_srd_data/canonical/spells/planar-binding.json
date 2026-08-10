@@ -116,6 +116,7 @@
     "value": 24
   },
   "entry_kind": "spell",
+  "foundry_uuid": "Compendium.dnd5e.spells24.Item.phbsplPlanarBind",
   "level": 5,
   "materials": {
     "consumed": true,

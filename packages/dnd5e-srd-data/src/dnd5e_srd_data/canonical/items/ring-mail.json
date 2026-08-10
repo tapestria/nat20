@@ -29,5 +29,6 @@
   "slug": "ring-mail",
   "stealth_disadvantage": true,
   "strength_min": null,
+  "uses": null,
   "weight": 40.0
 }

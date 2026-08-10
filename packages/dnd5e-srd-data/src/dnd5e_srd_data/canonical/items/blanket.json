@@ -23,5 +23,6 @@
     "requires_user_decision": false
   },
   "slug": "blanket",
+  "uses": null,
   "weight": 3.0
 }

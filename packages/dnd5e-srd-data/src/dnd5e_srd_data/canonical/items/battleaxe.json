@@ -135,6 +135,7 @@
     "requires_user_decision": false
   },
   "slug": "battleaxe",
+  "uses": null,
   "versatile_damage": {
     "damage_type": "slashing",
     "dice": "1d10"

@@ -47,5 +47,6 @@
     "requires_user_decision": false
   },
   "slug": "stone-of-good-luck-luckstone",
+  "uses": null,
   "weight": 0.0
 }

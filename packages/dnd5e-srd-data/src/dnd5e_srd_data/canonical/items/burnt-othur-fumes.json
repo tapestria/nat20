@@ -240,5 +240,11 @@
     "requires_user_decision": false
   },
   "slug": "burnt-othur-fumes",
+  "uses": {
+    "auto_destroy": true,
+    "max": "1",
+    "recovery": [],
+    "spent": 0
+  },
   "weight": 0.0
 }

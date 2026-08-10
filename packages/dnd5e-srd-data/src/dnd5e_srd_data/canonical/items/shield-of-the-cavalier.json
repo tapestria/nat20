@@ -258,5 +258,17 @@
   "slug": "shield-of-the-cavalier",
   "stealth_disadvantage": false,
   "strength_min": null,
+  "uses": {
+    "auto_destroy": false,
+    "max": "1",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "dawn",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  },
   "weight": 6.0
 }

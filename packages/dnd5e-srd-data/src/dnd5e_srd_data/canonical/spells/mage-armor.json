@@ -111,6 +111,7 @@
     "value": 8
   },
   "entry_kind": "spell",
+  "foundry_uuid": "Compendium.dnd5e.spells24.Item.phbsplMageArmor0",
   "level": 1,
   "materials": {
     "consumed": false,

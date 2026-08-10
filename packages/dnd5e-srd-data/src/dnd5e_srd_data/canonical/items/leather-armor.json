@@ -29,5 +29,6 @@
   "slug": "leather-armor",
   "stealth_disadvantage": false,
   "strength_min": null,
+  "uses": null,
   "weight": 10.0
 }

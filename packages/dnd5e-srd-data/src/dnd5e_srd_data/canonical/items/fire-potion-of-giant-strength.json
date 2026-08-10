@@ -147,5 +147,11 @@
     "requires_user_decision": false
   },
   "slug": "fire-potion-of-giant-strength",
+  "uses": {
+    "auto_destroy": true,
+    "max": "1",
+    "recovery": [],
+    "spent": 0
+  },
   "weight": 0.5
 }

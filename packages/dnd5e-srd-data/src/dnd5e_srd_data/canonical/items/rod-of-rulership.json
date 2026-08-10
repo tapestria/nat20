@@ -149,5 +149,17 @@
     "requires_user_decision": false
   },
   "slug": "rod-of-rulership",
+  "uses": {
+    "auto_destroy": false,
+    "max": "1",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "dawn",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  },
   "weight": 3.0
 }

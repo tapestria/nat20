@@ -123,5 +123,11 @@
     "requires_user_decision": false
   },
   "slug": "ring-of-three-wishes",
+  "uses": {
+    "auto_destroy": false,
+    "max": "3",
+    "recovery": [],
+    "spent": 0
+  },
   "weight": 0.0
 }

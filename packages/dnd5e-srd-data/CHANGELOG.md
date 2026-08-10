@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Item charge pools** — `Item.uses: ItemUses | None` (Foundry `system.uses`: `max`,
+  `spent`, `auto_destroy`, `recovery[]`). Regen populated 225 of 546 canonical items;
+  the rest carry `"uses": null`. `RecoveryPeriod` gains `"dawn"` and `"dusk"`.
+- **Spell uuid join key** — `Spell.foundry_uuid` (full `Compendium.dnd5e.<pack>.Item.<_id>`)
+  on all 339 canonical spells, plus `AssetLoader.get_spell_by_uuid` (lazy index on
+  `BundledAssetLoader`). Enables `CastActivity` uuid→Spell delegation in the engine.
+
+### Changed
+- `AssetLoader` protocol gained a required member (`get_spell_by_uuid`) — third-party
+  implementers must add it. Both bundled implementations already carry it.
+
 ## [0.2.0]
 
 Lockstep release with `dnd5e-engine` 0.2.0 (the release workflow publishes both

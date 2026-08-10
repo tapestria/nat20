@@ -792,5 +792,6 @@
     "requires_user_decision": false
   },
   "slug": "dragon-orb",
+  "uses": null,
   "weight": 0.0
 }

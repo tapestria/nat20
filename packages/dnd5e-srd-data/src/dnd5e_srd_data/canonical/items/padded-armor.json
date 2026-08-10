@@ -29,5 +29,6 @@
   "slug": "padded-armor",
   "stealth_disadvantage": true,
   "strength_min": null,
+  "uses": null,
   "weight": 8.0
 }

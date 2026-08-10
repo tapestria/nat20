@@ -113,5 +113,6 @@
     "requires_user_decision": false
   },
   "slug": "hat-of-disguise",
+  "uses": null,
   "weight": 0.0
 }

@@ -23,5 +23,6 @@
     "requires_user_decision": false
   },
   "slug": "burglars-pack",
+  "uses": null,
   "weight": 5.0
 }

@@ -113,5 +113,6 @@
     "requires_user_decision": false
   },
   "slug": "boots-of-levitation",
+  "uses": null,
   "weight": 0.0
 }

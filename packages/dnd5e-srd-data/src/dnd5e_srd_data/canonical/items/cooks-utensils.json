@@ -190,5 +190,6 @@
     "requires_user_decision": false
   },
   "slug": "cooks-utensils",
+  "uses": null,
   "weight": 8.0
 }

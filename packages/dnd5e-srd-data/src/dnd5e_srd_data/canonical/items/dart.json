@@ -136,6 +136,7 @@
     "requires_user_decision": false
   },
   "slug": "dart",
+  "uses": null,
   "versatile_damage": null,
   "weapon_category": "simple_ranged",
   "weight": 0.25

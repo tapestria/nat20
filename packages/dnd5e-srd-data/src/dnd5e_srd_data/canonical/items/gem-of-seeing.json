@@ -147,5 +147,17 @@
     "requires_user_decision": false
   },
   "slug": "gem-of-seeing",
+  "uses": {
+    "auto_destroy": false,
+    "max": "3",
+    "recovery": [
+      {
+        "formula": "1d3",
+        "period": "dawn",
+        "type": "formula"
+      }
+    ],
+    "spent": 0
+  },
   "weight": 0.0
 }

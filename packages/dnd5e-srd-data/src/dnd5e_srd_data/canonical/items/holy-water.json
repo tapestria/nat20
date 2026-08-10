@@ -140,5 +140,11 @@
     "requires_user_decision": false
   },
   "slug": "holy-water",
+  "uses": {
+    "auto_destroy": true,
+    "max": "1",
+    "recovery": [],
+    "spent": 0
+  },
   "weight": 1.0
 }

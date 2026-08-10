@@ -854,5 +854,6 @@
     "requires_user_decision": false
   },
   "slug": "ammunition-of-slaying",
+  "uses": null,
   "weight": 0.02
 }

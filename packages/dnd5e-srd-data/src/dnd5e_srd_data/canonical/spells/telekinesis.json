@@ -105,6 +105,7 @@
     "value": 10
   },
   "entry_kind": "spell",
+  "foundry_uuid": "Compendium.dnd5e.spells24.Item.phbsplTelekinesi",
   "level": 5,
   "materials": {
     "consumed": false,

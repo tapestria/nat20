@@ -34,5 +34,6 @@
     "requires_user_decision": false
   },
   "slug": "sustenance-ioun-stone",
+  "uses": null,
   "weight": 0.0
 }

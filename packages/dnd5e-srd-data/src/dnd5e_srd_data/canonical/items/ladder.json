@@ -23,5 +23,6 @@
     "requires_user_decision": false
   },
   "slug": "ladder",
+  "uses": null,
   "weight": 25.0
 }

@@ -115,6 +115,7 @@
     "value": 1
   },
   "entry_kind": "spell",
+  "foundry_uuid": "Compendium.dnd5e.spells24.Item.phbsplDominateBe",
   "level": 4,
   "materials": {
     "consumed": false,

@@ -105,5 +105,6 @@
     "requires_user_decision": false
   },
   "slug": "fine-clothes",
+  "uses": null,
   "weight": 6.0
 }

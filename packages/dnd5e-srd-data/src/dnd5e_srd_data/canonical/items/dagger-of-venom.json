@@ -415,6 +415,18 @@
     "requires_user_decision": false
   },
   "slug": "dagger-of-venom",
+  "uses": {
+    "auto_destroy": false,
+    "max": "1",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "dawn",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  },
   "versatile_damage": null,
   "weapon_category": "simple_melee",
   "weight": 1.0

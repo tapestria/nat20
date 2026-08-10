@@ -107,5 +107,6 @@
     "requires_user_decision": false
   },
   "slug": "potters-tools",
+  "uses": null,
   "weight": 3.0
 }

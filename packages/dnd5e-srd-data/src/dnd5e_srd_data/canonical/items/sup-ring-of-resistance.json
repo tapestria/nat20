@@ -23,5 +23,6 @@
     "requires_user_decision": false
   },
   "slug": "sup-ring-of-resistance",
+  "uses": null,
   "weight": 0.0
 }

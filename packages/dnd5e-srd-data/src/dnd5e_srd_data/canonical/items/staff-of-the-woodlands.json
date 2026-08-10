@@ -1042,6 +1042,18 @@
     "requires_user_decision": false
   },
   "slug": "staff-of-the-woodlands",
+  "uses": {
+    "auto_destroy": false,
+    "max": "6",
+    "recovery": [
+      {
+        "formula": "1d6",
+        "period": "dawn",
+        "type": "formula"
+      }
+    ],
+    "spent": 0
+  },
   "versatile_damage": {
     "damage_type": "bludgeoning",
     "dice": "1d8"

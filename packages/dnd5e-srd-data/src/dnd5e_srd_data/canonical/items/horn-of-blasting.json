@@ -438,5 +438,6 @@
     "requires_user_decision": false
   },
   "slug": "horn-of-blasting",
+  "uses": null,
   "weight": 0.0
 }

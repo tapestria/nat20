@@ -340,5 +340,11 @@
     "requires_user_decision": false
   },
   "slug": "gem-of-brightness",
+  "uses": {
+    "auto_destroy": false,
+    "max": "50",
+    "recovery": [],
+    "spent": 0
+  },
   "weight": 0.0
 }

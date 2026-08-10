@@ -2277,6 +2277,18 @@
     "requires_user_decision": false
   },
   "slug": "staff-of-the-magi",
+  "uses": {
+    "auto_destroy": false,
+    "max": "50",
+    "recovery": [
+      {
+        "formula": "4d6 + 2",
+        "period": "dawn",
+        "type": "formula"
+      }
+    ],
+    "spent": 0
+  },
   "versatile_damage": {
     "damage_type": "bludgeoning",
     "dice": "1d8"

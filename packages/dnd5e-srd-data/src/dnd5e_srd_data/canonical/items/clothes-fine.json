@@ -23,5 +23,6 @@
     "requires_user_decision": false
   },
   "slug": "clothes-fine",
+  "uses": null,
   "weight": 6.0
 }

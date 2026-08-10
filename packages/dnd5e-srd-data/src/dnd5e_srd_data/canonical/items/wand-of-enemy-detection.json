@@ -115,5 +115,17 @@
     "requires_user_decision": false
   },
   "slug": "wand-of-enemy-detection",
+  "uses": {
+    "auto_destroy": false,
+    "max": "7",
+    "recovery": [
+      {
+        "formula": "1d6 + 1",
+        "period": "dawn",
+        "type": "formula"
+      }
+    ],
+    "spent": 0
+  },
   "weight": 0.0
 }

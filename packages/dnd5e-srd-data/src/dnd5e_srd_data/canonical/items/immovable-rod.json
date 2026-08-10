@@ -190,5 +190,6 @@
     "requires_user_decision": false
   },
   "slug": "immovable-rod",
+  "uses": null,
   "weight": 0.0
 }

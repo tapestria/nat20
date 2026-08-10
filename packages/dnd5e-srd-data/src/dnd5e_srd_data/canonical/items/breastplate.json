@@ -29,5 +29,6 @@
   "slug": "breastplate",
   "stealth_disadvantage": false,
   "strength_min": null,
+  "uses": null,
   "weight": 20.0
 }

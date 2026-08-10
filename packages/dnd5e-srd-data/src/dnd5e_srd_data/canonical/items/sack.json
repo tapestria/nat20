@@ -23,5 +23,6 @@
     "requires_user_decision": false
   },
   "slug": "sack",
+  "uses": null,
   "weight": 0.5
 }

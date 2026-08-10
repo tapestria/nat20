@@ -318,6 +318,7 @@
     "value": 10
   },
   "entry_kind": "spell",
+  "foundry_uuid": "Compendium.dnd5e.spells24.Item.phbsplAntipathyS",
   "level": 8,
   "materials": {
     "consumed": false,

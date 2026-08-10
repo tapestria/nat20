@@ -105,5 +105,6 @@
     "requires_user_decision": false
   },
   "slug": "apparatus-of-the-crab",
+  "uses": null,
   "weight": 500.0
 }

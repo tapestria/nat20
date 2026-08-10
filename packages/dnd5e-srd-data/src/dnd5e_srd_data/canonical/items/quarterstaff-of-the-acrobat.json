@@ -227,6 +227,18 @@
     "requires_user_decision": false
   },
   "slug": "quarterstaff-of-the-acrobat",
+  "uses": {
+    "auto_destroy": false,
+    "max": "1",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "sr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  },
   "versatile_damage": {
     "damage_type": "bludgeoning",
     "dice": "1d8"

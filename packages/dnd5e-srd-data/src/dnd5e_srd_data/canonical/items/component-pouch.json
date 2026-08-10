@@ -23,5 +23,6 @@
     "requires_user_decision": false
   },
   "slug": "component-pouch",
+  "uses": null,
   "weight": 2.0
 }

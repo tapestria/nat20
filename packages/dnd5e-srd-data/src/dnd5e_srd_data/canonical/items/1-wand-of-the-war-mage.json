@@ -406,5 +406,6 @@
     "requires_user_decision": false
   },
   "slug": "1-wand-of-the-war-mage",
+  "uses": null,
   "weight": 0.0
 }

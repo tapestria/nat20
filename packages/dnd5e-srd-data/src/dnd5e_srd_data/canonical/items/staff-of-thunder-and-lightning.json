@@ -801,6 +801,18 @@
     "requires_user_decision": false
   },
   "slug": "staff-of-thunder-and-lightning",
+  "uses": {
+    "auto_destroy": false,
+    "max": "1",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "dawn",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  },
   "versatile_damage": {
     "damage_type": "bludgeoning",
     "dice": "1d8"

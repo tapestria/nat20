@@ -119,5 +119,17 @@
     "requires_user_decision": false
   },
   "slug": "wind-fan",
+  "uses": {
+    "auto_destroy": false,
+    "max": "5",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "dawn",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  },
   "weight": 0.0
 }

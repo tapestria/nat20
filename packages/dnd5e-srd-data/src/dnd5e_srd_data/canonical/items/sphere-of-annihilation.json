@@ -313,5 +313,6 @@
     "requires_user_decision": false
   },
   "slug": "sphere-of-annihilation",
+  "uses": null,
   "weight": 0.0
 }

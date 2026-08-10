@@ -23,5 +23,6 @@
     "requires_user_decision": false
   },
   "slug": "talisman-of-the-sphere",
+  "uses": null,
   "weight": 0.0
 }

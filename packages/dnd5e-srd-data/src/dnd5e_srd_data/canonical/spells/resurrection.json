@@ -273,6 +273,7 @@
     "value": null
   },
   "entry_kind": "spell",
+  "foundry_uuid": "Compendium.dnd5e.spells24.Item.phbsplResurrecti",
   "level": 7,
   "materials": {
     "consumed": true,

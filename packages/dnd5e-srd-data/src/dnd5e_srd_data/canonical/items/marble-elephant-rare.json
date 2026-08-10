@@ -146,5 +146,17 @@
     "requires_user_decision": false
   },
   "slug": "marble-elephant-rare",
+  "uses": {
+    "auto_destroy": false,
+    "max": "7",
+    "recovery": [
+      {
+        "formula": "1",
+        "period": "day",
+        "type": "formula"
+      }
+    ],
+    "spent": 0
+  },
   "weight": 0.0
 }

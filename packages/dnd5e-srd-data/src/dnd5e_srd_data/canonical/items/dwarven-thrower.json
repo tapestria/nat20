@@ -266,6 +266,7 @@
     "requires_user_decision": false
   },
   "slug": "dwarven-thrower",
+  "uses": null,
   "versatile_damage": {
     "damage_type": "bludgeoning",
     "dice": "1d10"

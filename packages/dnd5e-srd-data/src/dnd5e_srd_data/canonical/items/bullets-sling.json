@@ -23,5 +23,6 @@
     "requires_user_decision": false
   },
   "slug": "bullets-sling",
+  "uses": null,
   "weight": 0.075
 }

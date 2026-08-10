@@ -161,5 +161,17 @@
     "requires_user_decision": false
   },
   "slug": "boots-of-speed",
+  "uses": {
+    "auto_destroy": false,
+    "max": "600",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "lr",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  },
   "weight": 0.0
 }

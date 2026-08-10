@@ -295,5 +295,6 @@
     "requires_user_decision": false
   },
   "slug": "broom-of-flying",
+  "uses": null,
   "weight": 2.0
 }

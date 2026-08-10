@@ -116,5 +116,6 @@
     "requires_user_decision": false
   },
   "slug": "regeneration-ioun-stone",
+  "uses": null,
   "weight": 0.0
 }

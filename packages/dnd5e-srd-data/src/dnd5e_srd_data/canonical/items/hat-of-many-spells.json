@@ -821,5 +821,6 @@
     "requires_user_decision": false
   },
   "slug": "hat-of-many-spells",
+  "uses": null,
   "weight": 0.0
 }

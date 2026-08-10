@@ -256,5 +256,6 @@
   "slug": "dwarven-plate",
   "stealth_disadvantage": false,
   "strength_min": 15,
+  "uses": null,
   "weight": 65.0
 }

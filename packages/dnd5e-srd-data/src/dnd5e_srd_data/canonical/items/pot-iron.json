@@ -23,5 +23,6 @@
     "requires_user_decision": false
   },
   "slug": "pot-iron",
+  "uses": null,
   "weight": 10.0
 }

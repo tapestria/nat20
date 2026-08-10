@@ -501,5 +501,6 @@
     "requires_user_decision": false
   },
   "slug": "poisoned-needle",
+  "uses": null,
   "weight": 0.0
 }

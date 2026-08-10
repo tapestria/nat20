@@ -107,5 +107,6 @@
     "requires_user_decision": false
   },
   "slug": "alchemists-supplies",
+  "uses": null,
   "weight": 8.0
 }

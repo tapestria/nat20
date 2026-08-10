@@ -196,5 +196,6 @@
     "requires_user_decision": false
   },
   "slug": "mind-reading-crystal-ball-of",
+  "uses": null,
   "weight": 1.0
 }

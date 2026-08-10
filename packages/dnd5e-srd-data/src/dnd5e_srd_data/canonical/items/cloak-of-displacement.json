@@ -36,5 +36,6 @@
     "requires_user_decision": false
   },
   "slug": "cloak-of-displacement",
+  "uses": null,
   "weight": 2.0
 }

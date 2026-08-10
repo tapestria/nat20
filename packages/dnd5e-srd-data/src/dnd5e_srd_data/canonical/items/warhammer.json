@@ -135,6 +135,7 @@
     "requires_user_decision": false
   },
   "slug": "warhammer",
+  "uses": null,
   "versatile_damage": {
     "damage_type": "bludgeoning",
     "dice": "1d10"

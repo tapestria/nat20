@@ -23,5 +23,6 @@
     "requires_user_decision": false
   },
   "slug": "diplomats-pack",
+  "uses": null,
   "weight": 25.0
 }

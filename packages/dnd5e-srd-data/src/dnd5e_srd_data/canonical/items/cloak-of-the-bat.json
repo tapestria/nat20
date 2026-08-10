@@ -225,5 +225,17 @@
     "requires_user_decision": false
   },
   "slug": "cloak-of-the-bat",
+  "uses": {
+    "auto_destroy": false,
+    "max": "1",
+    "recovery": [
+      {
+        "formula": "",
+        "period": "dawn",
+        "type": "recoverAll"
+      }
+    ],
+    "spent": 0
+  },
   "weight": 2.0
 }

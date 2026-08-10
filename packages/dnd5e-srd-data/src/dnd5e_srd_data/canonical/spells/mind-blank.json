@@ -108,6 +108,7 @@
     "value": 24
   },
   "entry_kind": "spell",
+  "foundry_uuid": "Compendium.dnd5e.spells24.Item.phbsplMindBlank0",
   "level": 8,
   "materials": {
     "consumed": false,

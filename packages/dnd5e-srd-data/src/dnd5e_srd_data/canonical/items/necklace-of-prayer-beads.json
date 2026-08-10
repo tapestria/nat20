@@ -654,5 +654,6 @@
     "requires_user_decision": false
   },
   "slug": "necklace-of-prayer-beads",
+  "uses": null,
   "weight": 0.0
 }

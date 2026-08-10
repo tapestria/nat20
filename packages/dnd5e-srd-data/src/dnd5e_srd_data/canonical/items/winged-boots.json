@@ -147,5 +147,17 @@
     "requires_user_decision": false
   },
   "slug": "winged-boots",
+  "uses": {
+    "auto_destroy": false,
+    "max": "4",
+    "recovery": [
+      {
+        "formula": "1d4",
+        "period": "dawn",
+        "type": "formula"
+      }
+    ],
+    "spent": 0
+  },
   "weight": 0.0
 }

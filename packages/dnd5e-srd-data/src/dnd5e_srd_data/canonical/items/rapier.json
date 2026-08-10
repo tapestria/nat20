@@ -135,6 +135,7 @@
     "requires_user_decision": false
   },
   "slug": "rapier",
+  "uses": null,
   "versatile_damage": null,
   "weapon_category": "martial_melee",
   "weight": 2.0

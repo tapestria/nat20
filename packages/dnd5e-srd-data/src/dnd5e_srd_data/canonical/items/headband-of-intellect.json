@@ -41,5 +41,6 @@
     "requires_user_decision": false
   },
   "slug": "headband-of-intellect",
+  "uses": null,
   "weight": 0.0
 }

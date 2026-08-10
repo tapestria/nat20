@@ -23,5 +23,6 @@
     "requires_user_decision": false
   },
   "slug": "wand",
+  "uses": null,
   "weight": 1.0
 }

@@ -22,6 +22,7 @@ from dnd5e_srd_data.schema.common import (
     Range,
     ReviewState,
 )
+from dnd5e_srd_data.schema.feature import RecoveryRule
 
 
 class ItemRarity(StrEnum):
@@ -54,6 +55,20 @@ class ArmorCategory(StrEnum):
     SHIELD = "shield"
 
 
+class ItemUses(BaseModel, frozen=True):
+    """Item-level charge pool (Foundry ``system.uses`` on an equipment doc).
+
+    ``max`` is kept as the raw Foundry string (a literal int for the whole
+    SRD item corpus); consumers parse. ``auto_destroy`` is Foundry's
+    consumable flag (the item is destroyed when the pool empties).
+    """
+
+    max: str = ""
+    spent: NonNegativeInt = 0
+    auto_destroy: bool = False
+    recovery: list[RecoveryRule] = Field(default_factory=list)
+
+
 class Item(BaseModel):
     """Base item shape. Concrete kinds (Weapon, Armor, MagicItem) extend this."""
 
@@ -75,6 +90,7 @@ class Item(BaseModel):
     attunement_constraint: str | None = (
         None  # "by a paladin", "by a creature of evil alignment", etc.
     )
+    uses: ItemUses | None = None
     provenance: Provenance
     review: ReviewState
     activities: list[Activity] = Field(default_factory=list)

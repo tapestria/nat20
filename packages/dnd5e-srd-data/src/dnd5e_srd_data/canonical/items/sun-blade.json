@@ -136,6 +136,7 @@
     "requires_user_decision": false
   },
   "slug": "sun-blade",
+  "uses": null,
   "versatile_damage": {
     "damage_type": "radiant",
     "dice": "1d10"

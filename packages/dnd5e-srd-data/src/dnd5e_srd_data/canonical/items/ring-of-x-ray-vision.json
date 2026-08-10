@@ -218,5 +218,6 @@
     "requires_user_decision": false
   },
   "slug": "ring-of-x-ray-vision",
+  "uses": null,
   "weight": 0.0
 }

@@ -47,5 +47,6 @@
     "requires_user_decision": false
   },
   "slug": "intellect-ioun-stone",
+  "uses": null,
   "weight": 0.0
 }

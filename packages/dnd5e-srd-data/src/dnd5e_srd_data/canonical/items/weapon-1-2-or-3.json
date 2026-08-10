@@ -323,6 +323,7 @@
     "requires_user_decision": false
   },
   "slug": "weapon-1-2-or-3",
+  "uses": null,
   "versatile_damage": null,
   "weapon_category": "simple_melee",
   "weight": 0.0

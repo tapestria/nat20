@@ -41,5 +41,6 @@
     "requires_user_decision": false
   },
   "slug": "cloak-of-the-manta-ray",
+  "uses": null,
   "weight": 2.0
 }

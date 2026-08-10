@@ -227,6 +227,7 @@
     "requires_user_decision": false
   },
   "slug": "mace-of-smiting",
+  "uses": null,
   "versatile_damage": null,
   "weapon_category": "simple_melee",
   "weight": 4.0

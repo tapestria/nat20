@@ -715,5 +715,6 @@
     "requires_user_decision": false
   },
   "slug": "helm-of-brilliance",
+  "uses": null,
   "weight": 0.0
 }

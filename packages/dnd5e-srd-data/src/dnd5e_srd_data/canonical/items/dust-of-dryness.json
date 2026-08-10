@@ -331,5 +331,11 @@
     "requires_user_decision": false
   },
   "slug": "dust-of-dryness",
+  "uses": {
+    "auto_destroy": true,
+    "max": "10",
+    "recovery": [],
+    "spent": 0
+  },
   "weight": 0.0
 }

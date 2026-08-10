@@ -280,5 +280,6 @@
     "requires_user_decision": false
   },
   "slug": "golden-lions-rare",
+  "uses": null,
   "weight": 0.0
 }

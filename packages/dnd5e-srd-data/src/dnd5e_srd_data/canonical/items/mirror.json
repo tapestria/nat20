@@ -23,5 +23,6 @@
     "requires_user_decision": false
   },
   "slug": "mirror",
+  "uses": null,
   "weight": 0.5
 }

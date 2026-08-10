@@ -236,5 +236,11 @@
     "requires_user_decision": false
   },
   "slug": "ball-bearings",
+  "uses": {
+    "auto_destroy": false,
+    "max": "1",
+    "recovery": [],
+    "spent": 0
+  },
   "weight": 2.0
 }

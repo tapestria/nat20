@@ -1268,6 +1268,18 @@
     "requires_user_decision": false
   },
   "slug": "staff-of-power",
+  "uses": {
+    "auto_destroy": false,
+    "max": "20",
+    "recovery": [
+      {
+        "formula": "2d8 + 4",
+        "period": "dawn",
+        "type": "formula"
+      }
+    ],
+    "spent": 0
+  },
   "versatile_damage": {
     "damage_type": "bludgeoning",
     "dice": "1d8"

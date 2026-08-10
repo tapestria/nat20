@@ -23,5 +23,6 @@
     "requires_user_decision": false
   },
   "slug": "crowbar",
+  "uses": null,
   "weight": 5.0
 }

@@ -651,5 +651,17 @@
     "requires_user_decision": false
   },
   "slug": "ring-of-elemental-command",
+  "uses": {
+    "auto_destroy": false,
+    "max": "5",
+    "recovery": [
+      {
+        "formula": "1d4 + 1",
+        "period": "dawn",
+        "type": "formula"
+      }
+    ],
+    "spent": 0
+  },
   "weight": 0.0
 }

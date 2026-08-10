@@ -23,5 +23,6 @@
     "requires_user_decision": false
   },
   "slug": "handy-haversack",
+  "uses": null,
   "weight": 5.0
 }

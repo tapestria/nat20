@@ -115,5 +115,11 @@
     "requires_user_decision": false
   },
   "slug": "throne",
+  "uses": {
+    "auto_destroy": false,
+    "max": "1",
+    "recovery": [],
+    "spent": 0
+  },
   "weight": 0.0
 }

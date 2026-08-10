@@ -154,6 +154,48 @@ def test_weapon_mastery_defaults_none():
     assert w.model_dump(mode="json")["mastery"] is None
 
 
+def test_item_uses_carries_charges_and_recovery():
+    from dnd5e_srd_data.schema.feature import RecoveryRule
+    from dnd5e_srd_data.schema.item import ItemUses
+
+    uses = ItemUses(
+        max="7",
+        recovery=[RecoveryRule(period="dawn", type="formula", formula="1d6 + 1")],
+    )
+    item = Item(
+        slug="wand-of-lightning-bolts",
+        name="Wand of Lightning Bolts",
+        description="d",
+        weight=0.0,
+        cost_gp=None,
+        rarity="rare",
+        provenance=_provenance(),
+        review=ReviewState(),
+        uses=uses,
+    )
+    assert item.uses is not None
+    assert item.uses.max == "7"
+    assert item.uses.spent == 0
+    assert item.uses.auto_destroy is False
+    assert item.uses.recovery[0].period == "dawn"
+    assert item.uses.recovery[0].formula == "1d6 + 1"
+
+
+def test_item_uses_defaults_none_and_serializes():
+    item = Item(
+        slug="rope",
+        name="Rope",
+        description="d",
+        weight=5.0,
+        cost_gp=1.0,
+        rarity="common",
+        provenance=_provenance(),
+        review=ReviewState(),
+    )
+    assert item.uses is None
+    assert item.model_dump(mode="json")["uses"] is None
+
+
 def test_item_rarity_default_when_unknown():
     """rarity is required at schema level — null upstream must be resolved by translator,
     not silently defaulted to COMMON here."""

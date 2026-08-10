@@ -570,5 +570,6 @@
     "requires_user_decision": false
   },
   "slug": "robe-of-useful-items",
+  "uses": null,
   "weight": 0.0
 }

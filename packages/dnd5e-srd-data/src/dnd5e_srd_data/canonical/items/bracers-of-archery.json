@@ -64,5 +64,6 @@
     "requires_user_decision": false
   },
   "slug": "bracers-of-archery",
+  "uses": null,
   "weight": 1.0
 }

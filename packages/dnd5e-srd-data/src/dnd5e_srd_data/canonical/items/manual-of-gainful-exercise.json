@@ -230,5 +230,11 @@
     "requires_user_decision": false
   },
   "slug": "manual-of-gainful-exercise",
+  "uses": {
+    "auto_destroy": false,
+    "max": "48",
+    "recovery": [],
+    "spent": 0
+  },
   "weight": 0.0
 }

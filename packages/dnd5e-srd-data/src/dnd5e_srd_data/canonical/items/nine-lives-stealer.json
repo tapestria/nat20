@@ -283,6 +283,12 @@
     "requires_user_decision": false
   },
   "slug": "nine-lives-stealer",
+  "uses": {
+    "auto_destroy": false,
+    "max": "9",
+    "recovery": [],
+    "spent": 0
+  },
   "versatile_damage": null,
   "weapon_category": "simple_melee",
   "weight": 0.0

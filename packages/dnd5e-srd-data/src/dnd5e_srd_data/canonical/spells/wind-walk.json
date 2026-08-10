@@ -111,6 +111,7 @@
     "value": 8
   },
   "entry_kind": "spell",
+  "foundry_uuid": "Compendium.dnd5e.spells24.Item.phbsplWindWalk00",
   "level": 6,
   "materials": {
     "consumed": false,
