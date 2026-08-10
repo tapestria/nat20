@@ -15,6 +15,7 @@ from dnd5e_engine.rest import (
     FEATURE_USE_COUNTER_PREFIX,
     HitDicePool,
     recover_feature_uses,
+    recover_item_uses,
     resolve_long_rest,
     resolve_short_rest,
 )
@@ -169,3 +170,48 @@ def test_recover_feature_uses_lr_only_feature_does_not_recharge_on_short_rest():
     recovery = {"arcane-recovery": [_Recovery("lr", "recoverAll")]}
     assert recover_feature_uses(counters, "sr", recovery) == {"arcane-recovery": 1}
     assert recover_feature_uses(counters, "lr", recovery) == {"arcane-recovery": 0}
+
+
+class _Rule:
+    def __init__(self, period: str, type: str, formula: str = "") -> None:
+        self.period = period
+        self.type = type
+        self.formula = formula
+
+
+def test_recover_item_uses_filters_prefix_and_recovers_all():
+    counters = {
+        "item_use:wand-of-binding": {"spent": 3},
+        "feature_use:second-wind": {"spent": 1},
+    }
+    out = recover_item_uses(counters, "dawn", {"wand-of-binding": [_Rule("dawn", "recoverAll")]})
+    assert out == {"wand-of-binding": 0}  # feature key untouched/absent
+
+
+def test_recover_item_uses_dice_formula_rolls_with_rng():
+    counters = {"item_use:wand-of-lightning-bolts": {"spent": 7}}
+    rules = {"wand-of-lightning-bolts": [_Rule("dawn", "formula", "1d6 + 1")]}
+    out = recover_item_uses(counters, "dawn", rules, rng=random.Random(1))
+    regained = 7 - out["wand-of-lightning-bolts"]
+    assert 2 <= regained <= 7  # 1d6+1 ∈ [2,7]
+    # determinism: same seed, same roll
+    again = recover_item_uses(counters, "dawn", rules, rng=random.Random(1))
+    assert again == out
+
+
+def test_recover_item_uses_dice_formula_without_rng_preserves():
+    counters = {"item_use:x": {"spent": 4}}
+    out = recover_item_uses(counters, "dawn", {"x": [_Rule("dawn", "formula", "1d6 + 1")]})
+    assert out == {"x": 4}
+
+
+def test_recover_item_uses_wrong_period_preserves():
+    counters = {"item_use:x": {"spent": 2}}
+    out = recover_item_uses(counters, "sr", {"x": [_Rule("dawn", "recoverAll")]})
+    assert out == {"x": 2}
+
+
+def test_recover_feature_uses_still_literal_int_without_rng():
+    counters = {"feature_use:second-wind": {"spent": 1}}
+    out = recover_feature_uses(counters, "sr", {"second-wind": [_Rule("sr", "formula", "1")]})
+    assert out == {"second-wind": 0}
