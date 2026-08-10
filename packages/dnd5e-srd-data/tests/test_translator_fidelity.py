@@ -201,6 +201,23 @@ def _daily_uses_diagnostic(doc: dict[str, Any], canonical: dict[str, Any]) -> st
 # ---------------------------------------------------------------------------
 
 
+# The translator emits item charge pools (system.uses) for weapons (18
+# populated pools in canonical), armor (2), and magic items/equipment alike —
+# not just the latter category. Shared across all three category lists below.
+_USES_POOL_PRESERVED = FidelityCheck(
+    name="uses_pool_preserved",
+    foundry_predicate=lambda d: bool(((d.get("system") or {}).get("uses") or {}).get("max")),
+    canonical_assertion=lambda y, c: (
+        c.get("uses") is not None
+        and c["uses"]["max"] == str(((y.get("system") or {}).get("uses") or {}).get("max"))
+    ),
+    diagnostic=lambda y, c: (
+        f"foundry system.uses.max={((y.get('system') or {}).get('uses') or {}).get('max')!r}; "
+        f"canonical uses={c.get('uses')!r}"
+    ),
+)
+
+
 FIDELITY_CHECKS: dict[str, list[FidelityCheck]] = {
     "weapon": [
         FidelityCheck(
@@ -234,6 +251,7 @@ FIDELITY_CHECKS: dict[str, list[FidelityCheck]] = {
                 f"foundry has {len(_foundry_top_effects(y))} effects[]; canonical passive_effects={len(c.get('passive_effects') or [])}"
             ),
         ),
+        _USES_POOL_PRESERVED,
     ],
     "armor": [
         FidelityCheck(
@@ -254,6 +272,7 @@ FIDELITY_CHECKS: dict[str, list[FidelityCheck]] = {
                 f"foundry has {len(_foundry_top_effects(y))} effects[]; canonical passive_effects={len(c.get('passive_effects') or [])}"
             ),
         ),
+        _USES_POOL_PRESERVED,
     ],
     "magic_item_or_equipment": [
         FidelityCheck(
@@ -266,18 +285,7 @@ FIDELITY_CHECKS: dict[str, list[FidelityCheck]] = {
                 f"foundry has {len(_foundry_top_effects(y))} effects[]; canonical passive_effects={len(c.get('passive_effects') or [])} activities={len(c.get('activities') or [])}"
             ),
         ),
-        FidelityCheck(
-            name="uses_pool_preserved",
-            foundry_predicate=lambda d: bool((d.get("system") or {}).get("uses", {}).get("max")),
-            canonical_assertion=lambda y, c: (
-                c.get("uses") is not None
-                and c["uses"]["max"] == str((y.get("system") or {}).get("uses", {}).get("max"))
-            ),
-            diagnostic=lambda y, c: (
-                f"foundry system.uses.max={(y.get('system') or {}).get('uses', {}).get('max')!r}; "
-                f"canonical uses={c.get('uses')!r}"
-            ),
-        ),
+        _USES_POOL_PRESERVED,
     ],
     "monster": [
         FidelityCheck(
