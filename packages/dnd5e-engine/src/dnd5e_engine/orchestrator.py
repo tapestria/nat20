@@ -87,7 +87,7 @@ from dnd5e_engine.outcome import (
     DeathRecord,
     LootDrop,
 )
-from dnd5e_engine.rest import FEATURE_USE_COUNTER_PREFIX
+from dnd5e_engine.rest import FEATURE_USE_COUNTER_PREFIX, ITEM_USE_COUNTER_PREFIX
 from dnd5e_engine.rules.conditions import (
     Condition,
     active_condition_names,
@@ -3201,6 +3201,117 @@ def _record_capped_feature_use(
         _increment_feature_use(live, actor_id, feature_id)
 
 
+def _item_use_counter_key(item_id: str) -> str:
+    """The ``custom_counters`` sidecar key namespacing an item's charge tally."""
+    return f"{ITEM_USE_COUNTER_PREFIX}{item_id}"
+
+
+def _item_charge_cost(item: Any) -> int:
+    """Total ``itemUses`` cost of invoking the item once (all its activities)."""
+    cost = 0
+    for activity in item.activities:
+        for target in activity.consumption.targets:
+            if target.type != "itemUses":
+                continue
+            try:
+                cost += int(str(target.value).strip() or "1")
+            except ValueError:
+                _LOGGER.warning(
+                    "item_charge_cost_unparseable slug=%s value=%r", item.slug, target.value
+                )
+                cost += 1
+    return cost
+
+
+def _item_charge_cap(item: Any) -> int | None:
+    """Resolve an item's charge pool cap from its typed ``uses`` block.
+
+    ``None`` — meaning UNCAPPED, never gated — for an item with no ``uses``
+    block or an unparseable ``max``. Mirrors :func:`_feature_use_cap`'s
+    fail-open contract: a capped resource is never wrongly rejected.
+    """
+    uses = getattr(item, "uses", None)
+    if uses is None or not uses.max:
+        return None
+    try:
+        return int(str(uses.max).strip())
+    except ValueError:
+        _LOGGER.warning("item_charge_cap_unparseable slug=%s max=%r", item.slug, uses.max)
+        return None
+
+
+def _item_charges_spent(live: _LiveCombat, entity_id: str, item_id: str) -> int:
+    """Charges of ``item_id`` already spent by ``entity_id`` this rest cycle."""
+    return (
+        live.custom_counters_by_entity.get(entity_id, {})
+        .get(_item_use_counter_key(item_id), {})
+        .get("spent", 0)
+    )
+
+
+def _item_charge_gate(live: _LiveCombat, actor_id: str, intent: PlayerIntent) -> bool:
+    """True (after emitting ``CastFailed``) when a capped item's remaining
+    charges cannot cover this invocation's cost — reject before any budget
+    is consumed. Items with no ``uses`` pool (``cap is None``) never gate,
+    preserving today's fully ungated ``use_item`` behavior.
+    """
+    if intent.intent_type != "use_item" or not intent.item_id:
+        return False
+    item = get_lib_loader().get_item(intent.item_id)
+    if item is None:
+        return False  # unknown slug falls through to the existing empty-resolution path
+    cap = _item_charge_cap(item)
+    if cap is None:
+        return False
+    cost = _item_charge_cost(item)
+    if cost <= 0:
+        return False
+    if _item_charges_spent(live, actor_id, intent.item_id) + cost > cap:
+        _emit(live, CastFailed(actor_id=actor_id, spell_id="", reason="no_charges_remaining"))
+        return True
+    return False
+
+
+def _gate_feature_and_item_uses(
+    live: _LiveCombat,
+    actor_id: str,
+    intent: PlayerIntent,
+    feature_invocation: _FeatureInvocation | None,
+) -> bool:
+    """True (rejects) when a capped feature invocation's per-rest uses, or a
+    capped item's charge pool, cannot cover this intent.
+
+    Extracted out of ``submit_player_intent`` to keep it under the C901
+    complexity ceiling; groups both gates at their shared placement point —
+    after feature resolution, BEFORE any action-economy budget is consumed.
+    """
+    if (
+        intent.feature_id
+        and feature_invocation is not None
+        and _feature_uses_exhausted(live, actor_id, intent.feature_id, feature_invocation)
+    ):
+        return True
+    return _item_charge_gate(live, actor_id, intent)
+
+
+def _record_item_charge_spend(live: _LiveCombat, actor_id: str, intent: PlayerIntent) -> None:
+    """Commit the charge spend once every gate has passed. No-op for a non-
+    ``use_item`` intent or an uncapped item — only a within-cap invocation
+    reaches here past the early exhaustion gate.
+    """
+    if intent.intent_type != "use_item" or not intent.item_id:
+        return
+    item = get_lib_loader().get_item(intent.item_id)
+    if item is None or _item_charge_cap(item) is None:
+        return
+    cost = _item_charge_cost(item)
+    if cost <= 0:
+        return
+    counters = live.custom_counters_by_entity.setdefault(actor_id, {})
+    counter = counters.setdefault(_item_use_counter_key(intent.item_id), {"spent": 0})
+    counter["spent"] = counter.get("spent", 0) + cost
+
+
 def _resolve_feature_invocation(
     caster: Combatant, feature_id: str, activity_id: str | None = None
 ) -> _FeatureInvocation | None:
@@ -4075,13 +4186,15 @@ async def submit_player_intent(
         if feature_invocation is None:
             return
 
-        # SRD §Limited-Use Features (Cluster 9) — a capped feature (Second Wind)
-        # rejects when its per-rest uses are exhausted with no intervening rest.
-        # Checked BEFORE any budget consumption (mirroring the bonus-action gate):
-        # a rejected invocation spends no Bonus Action. The matching spend is
-        # recorded only once the invocation is committed to resolving (below).
-        if _feature_uses_exhausted(live, actor_id, intent.feature_id, feature_invocation):
-            return
+    # SRD §Limited-Use Features (Cluster 9) / §Item Charges — a capped feature
+    # (Second Wind) rejects when its per-rest uses are exhausted with no
+    # intervening rest; a capped item (Pipes of Haunting) rejects when its
+    # charge pool cannot cover this invocation's cost. Checked BEFORE any
+    # budget consumption (mirroring the bonus-action gate): a rejected
+    # invocation spends no Action/Bonus Action. The matching spend is
+    # recorded only once the invocation is committed to resolving (below).
+    if _gate_feature_and_item_uses(live, actor_id, intent, feature_invocation):
+        return
 
     # SRD §Action Economy — classify the action cost BEFORE emitting
     # IntentSubmitted so a budget-exhausted intent doesn't pollute the
@@ -4253,6 +4366,11 @@ async def submit_player_intent(
     # above. The early gate rejects an over-cap invocation before reaching here, so
     # this only increments a within-cap use (no-op for uncapped / non-feature intents).
     _record_capped_feature_use(live, actor_id, intent.feature_id, feature_invocation)
+
+    # SRD §Item Charges — the item-charge gate above has passed; commit the
+    # spend on the actor's per-rest charge counter (no-op for uncapped /
+    # non-use_item intents).
+    _record_item_charge_spend(live, actor_id, intent)
 
     # ── Typed-Activity resolution (Foundry cutover, Task 5) ─────────────
     #

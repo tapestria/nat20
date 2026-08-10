@@ -51,9 +51,9 @@ class PartyMemberSpec(BaseModel):
     # resolver. Unknown slugs are skipped (with no warning — the caster simply
     # cannot cast that spell at runtime).
     spells_known: list[str] = Field(default_factory=list)
-    # Custom limited-use counters (class features, item charges, etc.),
-    # ``{name: {"value": int, "max": int}}``. Carried onto the live combat
-    # state for the caster.
+    # Custom limited-use counters, carried onto live combat state for the
+    # caster. Namespaced key conventions (see dnd5e_engine.rest):
+    # ``feature_use:<slug>`` / ``item_use:<slug>`` → ``{"spent": n}``.
     custom_counters: dict[str, dict[str, int]] = Field(default_factory=dict)
     # SRD §Concentration — ``effect_id`` the caster is currently concentrating
     # on, or ``None``. Carried across to the live ``Combatant`` so the
