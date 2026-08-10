@@ -131,7 +131,6 @@ def test_c11_s01_pipes_of_haunting_charge_depletion_and_dawn_recharge():
     )
 
     # formula "1d3" recharge, deterministic under rng=random.Random(0): a
-    # regain of 2 brings spent 3 -> 1. Bounded per the formula's dice range
-    # regardless of seed stability (1d3 regains 1-3 charges).
-    assert 0 <= recovered[ITEM_SLUG] <= 2
+    # regain of 2 brings spent 3 -> 1. The seed is fixed, so this exact value
+    # is the point — not just a sanity bound on the 1d3 range.
     assert recovered[ITEM_SLUG] == 1

@@ -3206,21 +3206,49 @@ def _item_use_counter_key(item_id: str) -> str:
     return f"{ITEM_USE_COUNTER_PREFIX}{item_id}"
 
 
-def _item_charge_cost(item: Any) -> int:
-    """Total ``itemUses`` cost of invoking the item once (all its activities)."""
+def _activity_item_use_cost(item_slug: str, activity: Any) -> int:
+    """Positive literal ``itemUses`` cost of ONE activity.
+
+    Symbolic or negative targets (``-3d4``, ``-@item.uses.spent``,
+    ``@item.uses.max``) are recharge/whole-pool semantics, not a spend
+    cost — skipped, never coerced.
+    """
     cost = 0
-    for activity in item.activities:
-        for target in activity.consumption.targets:
-            if target.type != "itemUses":
-                continue
-            try:
-                cost += int(str(target.value).strip() or "1")
-            except ValueError:
-                _LOGGER.warning(
-                    "item_charge_cost_unparseable slug=%s value=%r", item.slug, target.value
-                )
-                cost += 1
+    for target in activity.consumption.targets:
+        if target.type != "itemUses":
+            continue
+        try:
+            value = int(str(target.value).strip())
+        except ValueError:
+            _LOGGER.info("item_charge_target_symbolic slug=%s value=%r", item_slug, target.value)
+            continue
+        if value > 0:
+            cost += value
     return cost
+
+
+def _item_charge_cost(item: Any, activity_id: str | None) -> int:
+    """Cost of ONE invocation: the selected activity's cost, else the first
+    consuming activity's (Foundry activities are alternative invocations,
+    never a batch)."""
+    if activity_id:
+        for activity in item.activities:
+            if activity.id == activity_id:
+                return _activity_item_use_cost(item.slug, activity)
+        return 0
+    consuming = [
+        (activity, _activity_item_use_cost(item.slug, activity)) for activity in item.activities
+    ]
+    consuming = [(a, c) for a, c in consuming if c > 0]
+    if not consuming:
+        return 0
+    if len(consuming) > 1:
+        _LOGGER.warning(
+            "item_charge_ambiguous_activity slug=%s charging_first_of=%d",
+            item.slug,
+            len(consuming),
+        )
+    return consuming[0][1]
 
 
 def _item_charge_cap(item: Any) -> int | None:
@@ -3263,7 +3291,7 @@ def _item_charge_gate(live: _LiveCombat, actor_id: str, intent: PlayerIntent) ->
     cap = _item_charge_cap(item)
     if cap is None:
         return False
-    cost = _item_charge_cost(item)
+    cost = _item_charge_cost(item, intent.activity_id)
     if cost <= 0:
         return False
     if _item_charges_spent(live, actor_id, intent.item_id) + cost > cap:
@@ -3304,7 +3332,7 @@ def _record_item_charge_spend(live: _LiveCombat, actor_id: str, intent: PlayerIn
     item = get_lib_loader().get_item(intent.item_id)
     if item is None or _item_charge_cap(item) is None:
         return
-    cost = _item_charge_cost(item)
+    cost = _item_charge_cost(item, intent.activity_id)
     if cost <= 0:
         return
     counters = live.custom_counters_by_entity.setdefault(actor_id, {})
@@ -3722,6 +3750,8 @@ def _resolve_intent_activities(
         fetched_item = get_lib_loader().get_item(intent.item_id)
         if fetched_item is not None:
             activities = list(fetched_item.activities)
+            if intent.activity_id:
+                activities = [a for a in activities if a.id == intent.activity_id]
     elif intent.feature_id:
         # USE_FEATURE — the feature was already resolved to its single concrete
         # activity (repertoire gate + single-activity validation) above, BEFORE

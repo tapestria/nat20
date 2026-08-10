@@ -259,3 +259,154 @@ def test_partial_seed_spend_accumulates():
     assert len(failed) == 1
     assert failed[0].reason == "no_charges_remaining"
     assert live.custom_counters_by_entity["char:hero"][COUNTER_KEY] == {"spent": 3}
+
+
+def _first_consuming_activity_cost(item) -> int:
+    """Mirrors ``_activity_item_use_cost``'s positive-literal rule, iterating
+    activities in declaration order — the expected "one invocation" cost when
+    no ``activity_id`` is supplied."""
+    for activity in item.activities:
+        cost = 0
+        for target in activity.consumption.targets:
+            if target.type != "itemUses":
+                continue
+            try:
+                value = int(str(target.value).strip())
+            except ValueError:
+                continue
+            if value > 0:
+                cost += value
+        if cost > 0:
+            return cost
+    return 0
+
+
+def test_multi_activity_item_usable_at_full_pool():
+    """``staff-of-frost`` (cap 10) has 4 consuming cast activities whose
+    itemUses costs SUM to 14 > 10 — under the old summing cost model this item
+    was rejected even at a full, unspent pool (the same defect class as
+    ``staff-of-the-magi``, cap 50 cost 56 — swapped in here because
+    ``staff-of-the-magi``'s Retributive Strike activity hits an unrelated,
+    pre-existing formula-resolution gap (``@item.uses.value`` token) once the
+    charge gate stops rejecting it before resolution; out of scope for this
+    charge-cost fix). A plain use_item (no activity_id) must resolve exactly
+    the FIRST consuming activity's cost, not the sum of all of them."""
+    item = BundledAssetLoader().get_item("staff-of-frost")
+    assert item is not None
+    set_lib_loader_for_tests(MemoryAssetLoader(items=[item]))
+    expected_cost = _first_consuming_activity_cost(item)
+    assert 0 < expected_cost < 10
+
+    async def _run():
+        start = await start_combat(
+            session_id="sess-staff-full-pool",
+            party=_party(),
+            encounter=_encounter(),
+            scene_zones=_topology(),
+            rng_seed=1,
+        )
+        live = _get_live(start.handle)
+        await submit_player_intent(
+            start.handle,
+            actor_id="char:hero",
+            intent=PlayerIntent(
+                intent_type="use_item",
+                item_id="staff-of-frost",
+                target_id="mon:foe",
+            ),
+        )
+        return live
+
+    live = asyncio.run(_run())
+    assert not _events_of(live, CastFailed), "a full 10-charge pool must never reject"
+    counter_key = "item_use:staff-of-frost"
+    assert live.custom_counters_by_entity["char:hero"][counter_key] == {"spent": expected_cost}
+
+
+def test_symbolic_and_negative_targets_ignored():
+    """``ball-bearings`` (cap 1) has a spend activity with target value ``1``
+    and a recover activity with target value ``-1``. The old summing model
+    summed these to 0 and bypassed the gate entirely — a positive-literal-only
+    cost model must charge exactly 1 and gate the second use."""
+    item = BundledAssetLoader().get_item("ball-bearings")
+    assert item is not None
+    set_lib_loader_for_tests(MemoryAssetLoader(items=[item]))
+
+    async def _run():
+        start = await start_combat(
+            session_id="sess-ball-bearings",
+            party=_party(),
+            encounter=_encounter(),
+            scene_zones=_topology(),
+            rng_seed=1,
+        )
+        live = _get_live(start.handle)
+        intent = PlayerIntent(
+            intent_type="use_item",
+            item_id="ball-bearings",
+            target_id="mon:foe",
+        )
+        await submit_player_intent(start.handle, actor_id="char:hero", intent=intent)
+        first_spent = live.custom_counters_by_entity["char:hero"]["item_use:ball-bearings"][
+            "spent"
+        ]
+        await advance_monster_turn(start.handle)
+        await submit_player_intent(start.handle, actor_id="char:hero", intent=intent)
+        return live, first_spent
+
+    live, first_spent = asyncio.run(_run())
+    assert first_spent == 1
+    failed = _events_of(live, CastFailed)
+    assert len(failed) == 1
+    assert failed[0].reason == "no_charges_remaining"
+    assert live.custom_counters_by_entity["char:hero"]["item_use:ball-bearings"] == {"spent": 1}
+
+
+def test_activity_id_selects_invocation_and_cost():
+    """``cube-of-force`` (cap 10) has multiple consuming cast activities with
+    distinct costs. Selecting one by ``activity_id`` must charge exactly that
+    activity's cost, not the first-in-order activity's."""
+    item = BundledAssetLoader().get_item("cube-of-force")
+    assert item is not None
+    set_lib_loader_for_tests(MemoryAssetLoader(items=[item]))
+
+    consuming = []
+    for activity in item.activities:
+        cost = 0
+        for target in activity.consumption.targets:
+            if target.type == "itemUses":
+                cost += int(str(target.value).strip())
+        if cost > 0:
+            consuming.append((activity.id, cost))
+    assert len(consuming) >= 2
+    # Pick an activity that is NOT the first consuming one, so the assertion
+    # actually distinguishes activity-id selection from "first activity"
+    # fallback behavior.
+    target_activity_id, target_cost = next(
+        (aid, cost) for aid, cost in consuming[1:] if cost != consuming[0][1]
+    )
+
+    async def _run():
+        start = await start_combat(
+            session_id="sess-cube-of-force",
+            party=_party(),
+            encounter=_encounter(),
+            scene_zones=_topology(),
+            rng_seed=1,
+        )
+        live = _get_live(start.handle)
+        await submit_player_intent(
+            start.handle,
+            actor_id="char:hero",
+            intent=PlayerIntent(
+                intent_type="use_item",
+                item_id="cube-of-force",
+                activity_id=target_activity_id,
+                target_id="mon:foe",
+            ),
+        )
+        return live
+
+    live = asyncio.run(_run())
+    counter_key = "item_use:cube-of-force"
+    assert live.custom_counters_by_entity["char:hero"][counter_key] == {"spent": target_cost}

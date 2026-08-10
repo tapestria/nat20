@@ -173,6 +173,10 @@ def _recover_uses(
 ) -> dict[str, int]:
     """Shared core behind :func:`recover_feature_uses` and :func:`recover_item_uses`.
 
+    ``period`` is caller-defined: feature callers pass rest periods (``"sr"``/
+    ``"lr"``); item callers may also pass time-of-day periods (``"dawn"``/
+    ``"day"``/``"dusk"``), matching Foundry's item ``uses.recovery`` rules.
+
     ``counters`` is a single entity's ``custom_counters`` mapping (as carried on
     ``_LiveCombat.custom_counters_by_entity[entity_id]``); only keys under
     ``prefix`` (``feature_use:`` or ``item_use:``) are tracked, each with a
