@@ -37,7 +37,7 @@ from typing import TYPE_CHECKING, Any, Literal
 from dnd5e_srd_data.schema.common import ActivationBlock, AttackActivity, SaveActivity
 from dnd5e_srd_data.schema.item import Weapon, WeaponProperty
 from dnd5e_srd_data.schema.spell import CastingTimeUnit, Spell, SpellRangeUnits
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from dnd5e_engine.activities.attack import (
     attacker_advantage_flags,
@@ -159,6 +159,9 @@ class PlayerIntent(BaseModel):
     # keeps the safe no-op reject for a multi-activity feature (never guess).
     activity_id: str | None = None
     slot_level: int | None = None
+    # Charges to spend on a variable-cost item invocation (wand upcast).
+    # Validated by the use_item charge gate against consumption.scaling.
+    charges_to_spend: int | None = Field(default=None, ge=1)
     # SRD §Reactions — the trigger condition a ``"ready"`` intent pre-arms
     # (Cluster 6's pending-reaction queue). Consumed by
     # ``_pop_pending_reaction`` / ``_drain_targeted_reactions`` when a

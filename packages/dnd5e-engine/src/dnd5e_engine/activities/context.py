@@ -58,6 +58,11 @@ class ActivityResolutionContext:
     # (`spell.challenge.override` + `attack`): when set, the attack handler uses
     # this verbatim to-hit instead of ability + proficiency + weapon. None otherwise.
     attack_bonus_override: int | None = None
+    # Cast level forced by a variable-charge item invocation (wand upcast):
+    # ``base activity level + extra charges``. When set, resolve_cast uses it
+    # verbatim (bounds-checked) instead of the activity/spell level. None for
+    # every non-item cast.
+    cast_level_override: int | None = None
     # Player-supplied damage-type choice per activity id, for parts that offer a
     # CHOICE of damage type (``DamagePartBlock.types`` with >1 entry — e.g.
     # Chromatic Orb's [acid, cold, fire, ...]). Keyed by activity id; the chosen

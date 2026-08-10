@@ -61,7 +61,12 @@ def resolve_cast(activity: CastActivity, ctx: ActivityResolutionContext) -> None
     #    A cantrip's base level is 0 (``0 <= 0 <= 9`` passes). An out-of-range
     #    cast (e.g. a scroll forged at level 10, or below the spell's base) is a
     #    LOUD no-op — never an absurd upcast (cure-wounds at level 10 → 20d8).
-    cast_level = activity.spell.level if activity.spell.level is not None else spell.level
+    if ctx.cast_level_override is not None:
+        cast_level = ctx.cast_level_override
+    elif activity.spell.level is not None:
+        cast_level = activity.spell.level
+    else:
+        cast_level = spell.level
     if not (spell.level <= cast_level <= 9):
         _LOGGER.warning(
             "cast_invalid_level uuid=%s cast_level=%s base_level=%s",
