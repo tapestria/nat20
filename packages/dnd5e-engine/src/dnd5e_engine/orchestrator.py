@@ -30,6 +30,7 @@ import asyncio
 import itertools
 import logging
 import random
+import re
 from collections.abc import AsyncIterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal
@@ -3230,28 +3231,72 @@ def _activity_item_use_cost(item_slug: str, activity: Any) -> int:
     return cost
 
 
-def _item_charge_cost(item: Any, activity_id: str | None) -> int:
-    """Cost of ONE invocation: the selected activity's cost, else the first
-    consuming activity's (Foundry activities are alternative invocations,
-    never a batch)."""
+def _item_charge_activity(item: Any, activity_id: str | None) -> Any | None:
+    """The activity ``_item_charge_cost`` prices for this intent: the
+    explicitly selected activity, else the first consuming activity
+    (Foundry activities are alternative invocations, never a batch).
+
+    Shared with charge-scaling validation so the cost and the scaling
+    ceiling are always evaluated against the SAME activity.
+    """
     if activity_id:
         for activity in item.activities:
             if activity.id == activity_id:
-                return _activity_item_use_cost(item.slug, activity)
-        return 0
+                return activity
+        return None
     consuming = [
-        (activity, _activity_item_use_cost(item.slug, activity)) for activity in item.activities
+        activity for activity in item.activities if _activity_item_use_cost(item.slug, activity) > 0
     ]
-    consuming = [(a, c) for a, c in consuming if c > 0]
-    if not consuming:
-        return 0
     if len(consuming) > 1:
         _LOGGER.warning(
             "item_charge_ambiguous_activity slug=%s charging_first_of=%d",
             item.slug,
             len(consuming),
         )
-    return consuming[0][1]
+    return consuming[0] if consuming else None
+
+
+def _item_charge_cost(item: Any, activity_id: str | None) -> int:
+    """Cost of ONE invocation: the selected activity's cost, else the first
+    consuming activity's (Foundry activities are alternative invocations,
+    never a batch)."""
+    activity = _item_charge_activity(item, activity_id)
+    if activity is None:
+        return 0
+    return _activity_item_use_cost(item.slug, activity)
+
+
+_CONSUMPTION_MAX_MIN_RE = re.compile(r"^min\(\s*([^,]+?)\s*,\s*([^)]+?)\s*\)$")
+
+
+def _eval_consumption_max(expr: str, *, remaining: int, cap: int | None) -> int | None:
+    """Evaluate the closed ``consumption.scaling.max`` grammar of the SRD item corpus."""
+    text = expr.strip()
+    if not text:
+        return None
+
+    def _term(tok: str) -> int | None:
+        tok = tok.strip()
+        if tok == "@item.uses.value":
+            return remaining
+        if tok == "@item.uses.max":
+            return cap
+        try:
+            return int(tok)
+        except ValueError:
+            return None
+
+    match = _CONSUMPTION_MAX_MIN_RE.match(text)
+    if match:
+        left, right = _term(match.group(1)), _term(match.group(2))
+        if left is None or right is None:
+            _LOGGER.warning("consumption_max_unparseable expr=%r", expr)
+            return None
+        return min(left, right)
+    value = _term(text)
+    if value is None:
+        _LOGGER.warning("consumption_max_unparseable expr=%r", expr)
+    return value
 
 
 def _item_charge_cap(item: Any) -> int | None:
@@ -3280,11 +3325,43 @@ def _item_charges_spent(live: _LiveCombat, entity_id: str, item_id: str) -> int:
     )
 
 
+def _resolve_charge_request(
+    live: _LiveCombat,
+    actor_id: str,
+    item_id: str,
+    item: Any,
+    intent: PlayerIntent,
+    base_cost: int,
+    cap: int,
+) -> int | None:
+    """Validate ``intent.charges_to_spend`` against the SAME activity
+    ``_item_charge_cost`` priced. Returns the effective (requested) cost, or
+    ``None`` after emitting ``CastFailed(reason="invalid_charge_spend")``
+    when the activity doesn't allow scaling or the request is out of the
+    evaluated bounds.
+    """
+    requested = intent.charges_to_spend
+    activity = _item_charge_activity(item, intent.activity_id)
+    scaling = activity.consumption.scaling if activity is not None else None
+    if scaling is None or not scaling.allowed:
+        _emit(live, CastFailed(actor_id=actor_id, spell_id="", reason="invalid_charge_spend"))
+        return None
+    remaining = cap - _item_charges_spent(live, actor_id, item_id)
+    ceiling = _eval_consumption_max(scaling.max, remaining=remaining, cap=cap)
+    upper_bound = min(ceiling, remaining) if ceiling is not None else remaining
+    if requested is None or requested < base_cost or requested > upper_bound:
+        _emit(live, CastFailed(actor_id=actor_id, spell_id="", reason="invalid_charge_spend"))
+        return None
+    return requested
+
+
 def _item_charge_gate(live: _LiveCombat, actor_id: str, intent: PlayerIntent) -> bool:
     """True (after emitting ``CastFailed``) when a capped item's remaining
     charges cannot cover this invocation's cost — reject before any budget
     is consumed. Items with no ``uses`` pool (``cap is None``) never gate,
-    preserving today's fully ungated ``use_item`` behavior.
+    preserving today's fully ungated ``use_item`` behavior — UNLESS the
+    intent carries ``charges_to_spend``, which has nothing to scale against
+    on a pool-less item and rejects ``invalid_charge_spend``.
     """
     if intent.intent_type != "use_item" or not intent.item_id:
         return False
@@ -3292,10 +3369,19 @@ def _item_charge_gate(live: _LiveCombat, actor_id: str, intent: PlayerIntent) ->
     if item is None:
         return False  # unknown slug falls through to the existing empty-resolution path
     cap = _item_charge_cap(item)
+    requested = intent.charges_to_spend
     if cap is None:
+        if requested is not None:
+            _emit(live, CastFailed(actor_id=actor_id, spell_id="", reason="invalid_charge_spend"))
+            return True
         return False
     cost = _item_charge_cost(item, intent.activity_id)
-    if cost <= 0:
+    if requested is not None:
+        resolved = _resolve_charge_request(live, actor_id, intent.item_id, item, intent, cost, cap)
+        if resolved is None:
+            return True
+        cost = resolved
+    elif cost <= 0:
         return False
     if _item_charges_spent(live, actor_id, intent.item_id) + cost > cap:
         _emit(live, CastFailed(actor_id=actor_id, spell_id="", reason="no_charges_remaining"))
@@ -3335,7 +3421,11 @@ def _record_item_charge_spend(live: _LiveCombat, actor_id: str, intent: PlayerIn
     item = get_lib_loader().get_item(intent.item_id)
     if item is None or _item_charge_cap(item) is None:
         return
-    cost = _item_charge_cost(item, intent.activity_id)
+    cost = (
+        intent.charges_to_spend
+        if intent.charges_to_spend is not None
+        else _item_charge_cost(item, intent.activity_id)
+    )
     if cost <= 0:
         return
     counters = live.custom_counters_by_entity.setdefault(actor_id, {})

@@ -347,9 +347,7 @@ def test_symbolic_and_negative_targets_ignored():
             target_id="mon:foe",
         )
         await submit_player_intent(start.handle, actor_id="char:hero", intent=intent)
-        first_spent = live.custom_counters_by_entity["char:hero"]["item_use:ball-bearings"][
-            "spent"
-        ]
+        first_spent = live.custom_counters_by_entity["char:hero"]["item_use:ball-bearings"]["spent"]
         await advance_monster_turn(start.handle)
         await submit_player_intent(start.handle, actor_id="char:hero", intent=intent)
         return live, first_spent
@@ -410,3 +408,180 @@ def test_activity_id_selects_invocation_and_cost():
     live = asyncio.run(_run())
     counter_key = "item_use:cube-of-force"
     assert live.custom_counters_by_entity["char:hero"][counter_key] == {"spent": target_cost}
+
+
+def test_eval_consumption_max_grammar():
+    from dnd5e_engine.orchestrator import _eval_consumption_max
+
+    assert _eval_consumption_max("", remaining=5, cap=7) is None
+    assert _eval_consumption_max("3", remaining=5, cap=7) == 3
+    assert _eval_consumption_max("@item.uses.value", remaining=5, cap=7) == 5
+    assert _eval_consumption_max("@item.uses.max", remaining=5, cap=7) == 7
+    assert _eval_consumption_max("min(@item.uses.value,3)", remaining=5, cap=7) == 3
+    assert _eval_consumption_max("min(@item.uses.value,3)", remaining=2, cap=7) == 2
+    assert _eval_consumption_max("min(5, @item.uses.value)", remaining=3, cap=7) == 3
+    assert _eval_consumption_max("@scale.rogue.sneak", remaining=5, cap=7) is None
+
+
+# wand-of-lightning-bolts: uses.max="7", single ``cast`` activity, itemUses
+# base cost "1", ``consumption.scaling`` allowed with max="min(@item.uses.
+# value,3)" — a real-corpus item whose scaling ceiling is tighter than its
+# raw remaining-charges bound at a fresh pool (min(7,3) == 3).
+WAND_SLUG = "wand-of-lightning-bolts"
+WAND_COUNTER_KEY = f"item_use:{WAND_SLUG}"
+
+
+def _load_wand():
+    item = BundledAssetLoader().get_item(WAND_SLUG)
+    assert item is not None
+    set_lib_loader_for_tests(MemoryAssetLoader(items=[item]))
+    return item
+
+
+def _use_wand_intent(charges_to_spend: int) -> PlayerIntent:
+    return PlayerIntent(
+        intent_type="use_item",
+        item_id=WAND_SLUG,
+        target_id="mon:foe",
+        charges_to_spend=charges_to_spend,
+    )
+
+
+def test_charges_to_spend_over_scaling_max_rejected():
+    """The wand's scaling ceiling at a fresh pool is min(@item.uses.value=7,
+    3) == 3 — a request of 4 exceeds it and must reject with
+    CastFailed(reason="invalid_charge_spend"), leaving the charge counter
+    untouched and the action budget intact."""
+    _load_wand()
+
+    async def _run():
+        start = await start_combat(
+            session_id="sess-wand-over-scaling-max",
+            party=_party(),
+            encounter=_encounter(),
+            scene_zones=_topology(),
+            rng_seed=1,
+        )
+        live = _get_live(start.handle)
+        await submit_player_intent(
+            start.handle,
+            actor_id="char:hero",
+            intent=_use_wand_intent(4),
+        )
+        # The action budget must not have been consumed by the rejected use:
+        # a follow-up attack still goes through this same turn.
+        await submit_player_intent(
+            start.handle,
+            actor_id="char:hero",
+            intent=PlayerIntent(
+                intent_type="attack",
+                weapon_id="unarmed-strike",
+                target_id="mon:foe",
+            ),
+        )
+        return live
+
+    live = asyncio.run(_run())
+    failed = _events_of(live, CastFailed)
+    assert len(failed) == 1
+    assert failed[0].reason == "invalid_charge_spend"
+    counters = live.custom_counters_by_entity.get("char:hero", {})
+    assert WAND_COUNTER_KEY not in counters
+
+
+def test_charges_to_spend_spends_that_many():
+    """A within-bounds charges_to_spend=3 (base cost 1 <= 3 <= ceiling 3)
+    spends exactly that many charges."""
+    _load_wand()
+
+    async def _run():
+        start = await start_combat(
+            session_id="sess-wand-spends-requested",
+            party=_party(),
+            encounter=_encounter(),
+            scene_zones=_topology(),
+            rng_seed=1,
+        )
+        live = _get_live(start.handle)
+        await submit_player_intent(
+            start.handle,
+            actor_id="char:hero",
+            intent=_use_wand_intent(3),
+        )
+        return live
+
+    live = asyncio.run(_run())
+    assert not _events_of(live, CastFailed)
+    assert live.custom_counters_by_entity["char:hero"][WAND_COUNTER_KEY] == {"spent": 3}
+
+
+def test_charges_to_spend_on_unscalable_item_rejected():
+    """``pipes-of-haunting``'s single ``save`` activity has
+    ``consumption.scaling.allowed == False`` — any charges_to_spend request
+    against it must reject with CastFailed(reason="invalid_charge_spend")."""
+    _load_pipes()
+
+    async def _run():
+        start = await start_combat(
+            session_id="sess-pipes-unscalable",
+            party=_party(),
+            encounter=_encounter(),
+            scene_zones=_topology(),
+            rng_seed=1,
+        )
+        live = _get_live(start.handle)
+        await submit_player_intent(
+            start.handle,
+            actor_id="char:hero",
+            intent=PlayerIntent(
+                intent_type="use_item",
+                item_id=ITEM_SLUG,
+                target_id="mon:foe",
+                charges_to_spend=2,
+            ),
+        )
+        return live
+
+    live = asyncio.run(_run())
+    failed = _events_of(live, CastFailed)
+    assert len(failed) == 1
+    assert failed[0].reason == "invalid_charge_spend"
+    counters = live.custom_counters_by_entity.get("char:hero", {})
+    assert COUNTER_KEY not in counters
+
+
+def test_charges_to_spend_on_pool_less_item_rejected():
+    """``net`` carries no ``uses`` pool at all — there is nothing to scale, so
+    a charges_to_spend request against it must reject with
+    CastFailed(reason="invalid_charge_spend") rather than silently falling
+    through the (pool-less) ungated path."""
+    net = BundledAssetLoader().get_item("net")
+    assert net is not None
+    assert net.uses is None
+    set_lib_loader_for_tests(MemoryAssetLoader(items=[net]))
+
+    async def _run():
+        start = await start_combat(
+            session_id="sess-net-pool-less-scaling",
+            party=_party(),
+            encounter=_encounter(),
+            scene_zones=_topology(),
+            rng_seed=1,
+        )
+        live = _get_live(start.handle)
+        await submit_player_intent(
+            start.handle,
+            actor_id="char:hero",
+            intent=PlayerIntent(
+                intent_type="use_item",
+                item_id="net",
+                target_id="mon:foe",
+                charges_to_spend=2,
+            ),
+        )
+        return live
+
+    live = asyncio.run(_run())
+    failed = _events_of(live, CastFailed)
+    assert len(failed) == 1
+    assert failed[0].reason == "invalid_charge_spend"
