@@ -688,3 +688,219 @@ def test_wand_upcast_spends_and_scales():
     assert damage[0].amount == roll_expr("10d6", random.Random(1))
 
     assert live.custom_counters_by_entity["char:hero"][WAND_COUNTER_KEY] == {"spent": 3}
+
+
+# ── Final-review fix wave (C1/C2/I1/I3) ──────────────────────────────────────
+
+STAFF_OF_FIRE_SLUG = "staff-of-fire"
+STAFF_OF_FIRE_COUNTER_KEY = f"item_use:{STAFF_OF_FIRE_SLUG}"
+# The staff's ``cast`` activity delegating Fireball: cost 3 charges,
+# ``spell.challenge.override == False`` — no fixed DC, relies entirely on
+# the item-path blanket DC ``build_activity_context`` computes (C1's bug).
+STAFF_OF_FIRE_FIREBALL_ACTIVITY_ID = "Vb0miyFHetlOTk1l"
+FIREBALL_SPELL_SLUG = "fireball"
+
+WAND_OF_BINDING_SLUG = "wand-of-binding"
+WAND_OF_BINDING_COUNTER_KEY = f"item_use:{WAND_OF_BINDING_SLUG}"
+HOLD_MONSTER_SPELL_SLUG = "hold-monster"
+HOLD_PERSON_SPELL_SLUG = "hold-person"
+
+STAFF_OF_STRIKING_SLUG = "staff-of-striking"
+# The staff's only charge-consuming activity: kind "damage" (not "cast"),
+# cost 1, ``consumption.scaling.allowed == True`` — I1's target.
+STAFF_OF_STRIKING_DAMAGE_ACTIVITY_ID = "sviFeLqVM4b4jHvc"
+
+ROPE_OF_CLIMBING_SLUG = "rope-of-climbing"
+# Recharge-flavored "spend" activity whose sole ``itemUses`` consumption
+# target is a NEGATIVE literal ("-1", regain-on-use) — ``_activity_item_use_
+# cost`` only sums POSITIVE targets, so this activity prices at
+# ``base_cost == 0``. Scaling is allowed (``max="20"``) — I3's target.
+ROPE_OF_CLIMBING_RECHARGE_ACTIVITY_ID = "1zQvPyT12aIg017J"
+
+
+def _load_staff_of_fire_with_fireball():
+    item = BundledAssetLoader().get_item(STAFF_OF_FIRE_SLUG)
+    assert item is not None
+    spell = BundledAssetLoader().get_spell(FIREBALL_SPELL_SLUG)
+    assert spell is not None
+    set_lib_loader_for_tests(MemoryAssetLoader(items=[item], spells=[spell]))
+    return item, spell
+
+
+def test_item_cast_without_challenge_override_resolves():
+    """C1: an item cast wrapper with ``challenge.override == False``
+    (staff-of-fire's Fireball) must inherit the item-path BLANKET flat DC
+    ``build_activity_context`` computed for the top-level ``use_item``
+    context, not clear it to ``None`` — clearing it makes ``resolve_save``
+    (``activities/save.py:_resolve_dc``) raise ``ValueError`` because the
+    item context carries no ``spellcasting_ability`` for the
+    ``"spellcasting"`` DC calculation to fall back on.
+
+    This test FAILS on head 19bb06c with that ``ValueError`` (proven in the
+    fix-wave report via a pre-fix run of this exact test).
+
+    Expected DC arithmetic (``build_context.py:_save_dc``, Character caster,
+    ``spellcasting_ability is None`` — the item path never sets one):
+    ``mod = max(0, caster.attack_bonus - 2)``; ``_party()``'s default
+    ``attack_bonus=5`` -> ``mod = max(0, 3) = 3``; no
+    ``passive_spell_dc_bonus`` sidecar -> ``_spell_dc_bonus == 0``.
+    ``dc = 8 + caster_proficiency_bonus(2) + mod(3) + 0 == 13``.
+    """
+    _load_staff_of_fire_with_fireball()
+
+    async def _run():
+        start = await start_combat(
+            session_id="sess-staff-of-fire-no-override",
+            party=_party(),
+            encounter=_encounter(),
+            scene_zones=_topology(),
+            rng_seed=1,
+        )
+        live = _get_live(start.handle)
+        await submit_player_intent(
+            start.handle,
+            actor_id="char:hero",
+            intent=PlayerIntent(
+                intent_type="use_item",
+                item_id=STAFF_OF_FIRE_SLUG,
+                activity_id=STAFF_OF_FIRE_FIREBALL_ACTIVITY_ID,
+                target_id="mon:foe",
+            ),
+        )
+        return live
+
+    live = asyncio.run(_run())
+    assert not _events_of(live, CastFailed)
+
+    saves = _events_of(live, SaveRolled)
+    assert saves, "the delegated Fireball save must resolve, not raise"
+    assert all(s.dc == 13 for s in saves)
+
+    assert live.custom_counters_by_entity["char:hero"][STAFF_OF_FIRE_COUNTER_KEY] == {"spent": 3}
+
+
+def test_unselected_multi_cast_item_resolves_single_activity():
+    """C2: a ``use_item`` intent with NO ``activity_id`` against an item
+    carrying MULTIPLE alternative cast activities (wand-of-binding: Hold
+    Monster cost 5, Hold Person cost 2) must resolve exactly the ONE
+    activity ``_item_charge_activity`` selects and charges for (Hold
+    Monster, the first consuming activity) — never every activity on the
+    item. Live proof of the pre-fix bug: BOTH Hold Monster and Hold Person
+    used to emit ``SaveRolled`` while only Hold Monster's 5 charges were
+    spent.
+    """
+    item = BundledAssetLoader().get_item(WAND_OF_BINDING_SLUG)
+    assert item is not None
+    hold_monster = BundledAssetLoader().get_spell(HOLD_MONSTER_SPELL_SLUG)
+    hold_person = BundledAssetLoader().get_spell(HOLD_PERSON_SPELL_SLUG)
+    assert hold_monster is not None
+    assert hold_person is not None
+    set_lib_loader_for_tests(MemoryAssetLoader(items=[item], spells=[hold_monster, hold_person]))
+
+    async def _run():
+        start = await start_combat(
+            session_id="sess-wand-of-binding-unselected",
+            party=_party(),
+            encounter=_encounter(),
+            scene_zones=_topology(),
+            rng_seed=1,
+        )
+        live = _get_live(start.handle)
+        await submit_player_intent(
+            start.handle,
+            actor_id="char:hero",
+            intent=PlayerIntent(
+                intent_type="use_item",
+                item_id=WAND_OF_BINDING_SLUG,
+                target_id="mon:foe",
+            ),
+        )
+        return live
+
+    live = asyncio.run(_run())
+    assert not _events_of(live, CastFailed)
+
+    saves = _events_of(live, SaveRolled)
+    assert len(saves) == 1, "exactly one delegated activity must resolve, not both"
+    assert saves[0].dc == 17  # wand-of-binding's fixed challenge override
+
+    assert live.custom_counters_by_entity["char:hero"][WAND_OF_BINDING_COUNTER_KEY] == {"spent": 5}
+
+
+def test_charges_to_spend_on_non_cast_activity_rejected():
+    """I1: ``charges_to_spend`` on a ``scaling.allowed`` activity whose
+    ``kind`` is NOT ``"cast"`` (staff-of-striking's ``damage`` activity) is
+    rejected loudly — the resolver has no "extra dice per charge" scaling
+    semantics for a non-cast activity, so honoring the request would
+    silently charge N and deliver only the base effect."""
+    item = BundledAssetLoader().get_item(STAFF_OF_STRIKING_SLUG)
+    assert item is not None
+    set_lib_loader_for_tests(MemoryAssetLoader(items=[item]))
+
+    async def _run():
+        start = await start_combat(
+            session_id="sess-staff-of-striking-charges",
+            party=_party(),
+            encounter=_encounter(),
+            scene_zones=_topology(),
+            rng_seed=1,
+        )
+        live = _get_live(start.handle)
+        await submit_player_intent(
+            start.handle,
+            actor_id="char:hero",
+            intent=PlayerIntent(
+                intent_type="use_item",
+                item_id=STAFF_OF_STRIKING_SLUG,
+                activity_id=STAFF_OF_STRIKING_DAMAGE_ACTIVITY_ID,
+                charges_to_spend=3,
+                target_id="mon:foe",
+            ),
+        )
+        return live
+
+    live = asyncio.run(_run())
+    failed = _events_of(live, CastFailed)
+    assert len(failed) == 1
+    assert failed[0].reason == "invalid_charge_spend"
+    counters = live.custom_counters_by_entity.get("char:hero", {})
+    assert counters.get(f"item_use:{STAFF_OF_STRIKING_SLUG}") in (None, {"spent": 0})
+
+
+def test_charges_to_spend_on_recharge_activity_rejected():
+    """I3: an activity whose sole ``itemUses`` consumption target is
+    negative/symbolic (rope-of-climbing's regain-on-use utility activity)
+    prices at ``base_cost == 0``. ``charges_to_spend=5`` against it must be
+    rejected rather than silently deducting 5 charges for no effect
+    (``requested < base_cost`` never fires when ``base_cost`` is 0)."""
+    item = BundledAssetLoader().get_item(ROPE_OF_CLIMBING_SLUG)
+    assert item is not None
+    set_lib_loader_for_tests(MemoryAssetLoader(items=[item]))
+
+    async def _run():
+        start = await start_combat(
+            session_id="sess-rope-of-climbing-charges",
+            party=_party(),
+            encounter=_encounter(),
+            scene_zones=_topology(),
+            rng_seed=1,
+        )
+        live = _get_live(start.handle)
+        await submit_player_intent(
+            start.handle,
+            actor_id="char:hero",
+            intent=PlayerIntent(
+                intent_type="use_item",
+                item_id=ROPE_OF_CLIMBING_SLUG,
+                activity_id=ROPE_OF_CLIMBING_RECHARGE_ACTIVITY_ID,
+                charges_to_spend=5,
+            ),
+        )
+        return live
+
+    live = asyncio.run(_run())
+    failed = _events_of(live, CastFailed)
+    assert len(failed) == 1
+    assert failed[0].reason == "invalid_charge_spend"
+    counters = live.custom_counters_by_entity.get("char:hero", {})
+    assert counters.get(f"item_use:{ROPE_OF_CLIMBING_SLUG}") in (None, {"spent": 0})

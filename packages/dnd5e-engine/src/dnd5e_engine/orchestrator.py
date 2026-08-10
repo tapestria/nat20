@@ -3339,11 +3339,31 @@ def _resolve_charge_request(
     ``None`` after emitting ``CastFailed(reason="invalid_charge_spend")``
     when the activity doesn't allow scaling or the request is out of the
     evaluated bounds.
+
+    I1: scaling is only honored on a ``kind == "cast"`` activity. Charge
+    scaling on a non-cast activity (staff-of-striking's damage, ring-of-
+    the-ram's attack) would need "extra dice per charge" semantics the
+    resolver doesn't implement — honest reject rather than silently
+    charging N and delivering the base effect.
+
+    I3: also rejected when ``base_cost <= 0`` — an activity whose only
+    ``itemUses`` targets are negative/symbolic (recharge, not spend; see
+    ``_activity_item_use_cost``) has nothing for ``charges_to_spend`` to
+    scale against (rope-of-climbing's scaling utility activity), so a
+    request there would deduct charges for no effect. Already implied for
+    most cases by the cast-only rule above (those are ``kind == "utility"``),
+    but kept as an explicit guard — cheap, and a belt for host content packs
+    whose "cast" activities might ship a zero/negative cost.
     """
     requested = intent.charges_to_spend
     activity = _item_charge_activity(item, intent.activity_id)
     scaling = activity.consumption.scaling if activity is not None else None
-    if scaling is None or not scaling.allowed:
+    if (
+        scaling is None
+        or not scaling.allowed
+        or getattr(activity, "kind", "") != "cast"
+        or base_cost <= 0
+    ):
         _emit(live, CastFailed(actor_id=actor_id, spell_id="", reason="invalid_charge_spend"))
         return None
     remaining = cap - _item_charges_spent(live, actor_id, item_id)
@@ -3842,9 +3862,20 @@ def _resolve_intent_activities(
         # Item/Weapon/Armor/MagicItem, all of which inherit ``activities``.
         fetched_item = get_lib_loader().get_item(intent.item_id)
         if fetched_item is not None:
-            activities = list(fetched_item.activities)
             if intent.activity_id:
-                activities = [a for a in activities if a.id == intent.activity_id]
+                activities = [a for a in fetched_item.activities if a.id == intent.activity_id]
+            else:
+                # C2: an unselected use_item must resolve the SAME single
+                # activity ``_item_charge_activity`` will charge — resolving
+                # every activity on the item (the old behavior) emits events
+                # for activities that were never paid for (wand-of-binding:
+                # both Hold Monster AND Hold Person fired while only Hold
+                # Monster's 5 charges were spent). An item with no consuming
+                # activity (nothing prices > 0 itemUses) has nothing for
+                # ``_item_charge_activity`` to select — keep the pre-existing
+                # resolve-all behavior for that case.
+                charged = _item_charge_activity(fetched_item, None)
+                activities = [charged] if charged is not None else list(fetched_item.activities)
     elif intent.feature_id:
         # USE_FEATURE — the feature was already resolved to its single concrete
         # activity (repertoire gate + single-activity validation) above, BEFORE
@@ -3882,7 +3913,7 @@ def _build_cast_spell_book(activities: Sequence[Any]) -> dict[str, Spell]:
     return book
 
 
-def _item_cast_level_override(intent: PlayerIntent, activities: Sequence[Any]) -> int | None:
+def _item_cast_level_override(intent: PlayerIntent) -> int | None:
     """The forced cast level a ``use_item`` charges_to_spend request implies
     for the ``cast`` activity being charged, or ``None`` when no override
     applies (no charges_to_spend, or the charged activity doesn't delegate a
@@ -3893,38 +3924,30 @@ def _item_cast_level_override(intent: PlayerIntent, activities: Sequence[Any]) -
     - base_cost)``. ``base_level`` is the wrapper's own ``spell.level``
     override (never the referenced spell's base level — a scroll/wand casts
     AT its own printed level by default); ``base_cost`` is the SAME
-    itemUses cost ``_item_charge_gate`` priced this invocation against
-    (``_activity_item_use_cost``), so the override and the gate never
-    disagree on what "one invocation" costs.
+    itemUses cost ``_item_charge_gate`` priced this invocation against.
+
+    C2/M2: reuses ``_item_charge_activity`` directly (via a fresh
+    ``get_lib_loader().get_item`` lookup) instead of a private
+    re-implementation of its selection rule, so the level override and the
+    charge gate can never disagree on which activity is being charged.
     """
-    if intent.intent_type != "use_item" or intent.charges_to_spend is None:
+    if intent.intent_type != "use_item" or intent.charges_to_spend is None or not intent.item_id:
         return None
-    activity = _select_charged_activity(activities, intent.activity_id)
+    item = get_lib_loader().get_item(intent.item_id)
+    if item is None:
+        return None
+    activity = _item_charge_activity(item, intent.activity_id)
     if activity is None or getattr(activity, "kind", "") != "cast":
         return None
     base_level = activity.spell.level
     if base_level is None:
         return None
-    base_cost = _activity_item_use_cost(intent.item_id or "", activity) or 1
+    # M2: no ``or 1`` fallback — after I1/I3 this path only ever reaches a
+    # "cast" kind activity with a positive itemUses cost, so
+    # ``_activity_item_use_cost``'s value is used as-is and can never
+    # disagree with what ``_resolve_charge_request`` priced.
+    base_cost = _activity_item_use_cost(item.slug, activity)
     return int(base_level) + (intent.charges_to_spend - base_cost)
-
-
-def _select_charged_activity(activities: Sequence[Any], activity_id: str | None) -> Any | None:
-    """The SAME activity ``_item_charge_activity`` would price for this
-    invocation, applied to an already-fetched activities list rather than an
-    item — the explicitly selected activity, else the first consuming one.
-    Mirrors ``_item_charge_activity``'s selection rule so the level override
-    and the charge gate never disagree on which activity is being charged.
-    """
-    if activity_id:
-        for activity in activities:
-            if activity.id == activity_id:
-                return activity
-        return None
-    for activity in activities:
-        if _activity_item_use_cost(activity.id, activity) > 0:
-            return activity
-    return None
 
 
 def _resolve_targets(
@@ -4655,7 +4678,7 @@ async def submit_player_intent(
             # ``use_item`` upcast forces the delegated cast to the level the
             # extra charges paid for; ``None`` (the common case) lets
             # ``resolve_cast`` fall through to the wrapper's own/base level.
-            cast_level_override=_item_cast_level_override(intent, activities),
+            cast_level_override=_item_cast_level_override(intent),
             passive_damage_modifiers=payload["passive_damage_modifiers"],
             save_modifiers=payload["save_modifiers"],
             target_cover=_target_cover_map(live, current.entity_id, targets),
