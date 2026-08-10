@@ -74,6 +74,7 @@ def test_get_live_returns_view_with_full_field_coverage():
         "actor_zone",
         "spell_slots_by_entity",
         "spells_known_by_entity",
+        "custom_counters_by_entity",
         "current_turn_index",
     ):
         assert hasattr(view, field)
@@ -89,3 +90,30 @@ def test_view_is_a_snapshot_not_a_live_handle():
     # the snapshot does not observe later mutations (outer + inner copies)
     assert "mon:111111111111" not in view.dead_ids
     assert "blessed" not in view.active_conditions.get("char:aaaaaaaaaaaa", set())
+
+
+def test_custom_counters_snapshot_is_three_levels_deep():
+    party = [
+        PartyMemberSpec(
+            entity_id="char:aaaaaaaaaaaa",
+            name="Hero",
+            initiative=15,
+            hp_current=20,
+            hp_max=20,
+            zone_id="zone:start",
+            custom_counters={"item_use:wand": {"spent": 1}},
+        ),
+    ]
+    handle = asyncio.run(
+        start_combat(
+            session_id="sess-view-counters",
+            party=party,
+            encounter=_encounter(),
+            scene_zones=SceneTopology(zones=["zone:start"], edges=[]),
+            rng_seed=0,
+        )
+    ).handle
+    view = get_live(handle)
+    live = _get_live(handle)
+    live.custom_counters_by_entity["char:aaaaaaaaaaaa"]["item_use:wand"]["spent"] = 99
+    assert view.custom_counters_by_entity["char:aaaaaaaaaaaa"]["item_use:wand"]["spent"] == 1

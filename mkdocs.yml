@@ -39,4 +39,5 @@ nav:
       - Grid: concepts/grid.md
   - API reference: api.md
   - Comparison: comparison.md
-  - Migration guide: migration/v0.1-to-v0.2.md
+  - Migration guide (0.1→0.2): migration/v0.1-to-v0.2.md
+  - Migration guide (0.2→0.3): migration/v0.2-to-v0.3.md

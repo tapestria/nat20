@@ -45,5 +45,5 @@ for 2-D battlefield movement.
 
 ---
 
-<sub>Nat20 is used in production by [Tapestria](https://tapestria.com), an
+<sub>Nat20 is used in production by [Tapestria](https://tapestria.quest), an
 AI-driven MUD TTRPG, as its deterministic rules oracle.</sub>

@@ -46,6 +46,7 @@ from dnd5e_engine.rest import (
     RecoveryPeriod,
     RestOutcome,
     recover_feature_uses,
+    recover_item_uses,
     resolve_long_rest,
     resolve_short_rest,
 )
@@ -107,6 +108,7 @@ __all__ = [
     "narration_events",
     "parse_cell",
     "recover_feature_uses",
+    "recover_item_uses",
     "resolve_check",
     "resolve_long_rest",
     "resolve_short_rest",

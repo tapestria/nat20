@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0]
+
+Lockstep release with `dnd5e-srd-data` 0.3.0 — the item charge lifecycle: gate
+→ spend → cast-delegate → upcast → recharge → observe. See
+`docs/migration/v0.2-to-v0.3.md` for the full, host-facing migration guide.
+The engine now depends on `dnd5e-srd-data>=0.3.0` (the charge-gate and
+cast-delegation paths read the new `Item.uses` / `Spell.foundry_uuid` schema).
+
 ### Added
 
 - **Item charges** — `use_item` now validates and spends `consumption.targets[type=itemUses]`
@@ -17,9 +25,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   when a `charges_to_spend` request violates the activity's `consumption.scaling` (see
   "Charge upcasting" below).
 - **Item recharge** — `dnd5e_engine.rest.recover_item_uses` (+ `ITEM_USE_COUNTER_PREFIX`,
-  submodule-only export): pure recharge over `item_use:` pools. `RecoveryPeriod` gains
-  `"dawn"`/`"day"`/`"dusk"`; formula recovery now rolls dice ("1d6 + 1") through an
-  optional `rng` (also available on `recover_feature_uses`).
+  submodule-only export): pure recharge over `item_use:` pools. The engine's own
+  `rest.RecoveryPeriod` gains `"dawn"`/`"day"`/`"dusk"` (previously just `"sr"`/`"lr"`;
+  the data package's `RecoveryRule` already knew `"day"` — this widens the engine's
+  narrower rest-period literal to match); formula recovery now rolls dice ("1d6 + 1")
+  through an optional `rng` (also available on `recover_feature_uses`).
 - **Cast delegation** — a used item's `CastActivity` now resolves its referenced spell
   (uuid→Spell via `dnd5e-srd-data`'s `get_spell_by_uuid`) on the PC-intent path, honoring
   the item's flat DC / attack / level overrides. `cast_spell_unresolved` now signals a
@@ -27,6 +37,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Charge upcasting** — `PlayerIntent.charges_to_spend` casts at
   `base level + extra charges`, validated against `consumption.scaling`
   (`invalid_charge_spend` on violation). New `ActivityResolutionContext.cast_level_override`.
+- **Charge read path** — `LiveCombatView.custom_counters_by_entity` (three-level snapshot
+  copy): hosts mirror `item_use:` / `feature_use:` pools per turn the same way they mirror
+  `spell_slots_by_entity`.
 
 ## [0.2.0]
 

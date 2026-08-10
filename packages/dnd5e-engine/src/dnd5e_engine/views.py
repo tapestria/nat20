@@ -35,6 +35,7 @@ class LiveCombatView:
     actor_zone: dict[str, str]
     spell_slots_by_entity: dict[str, dict[int, int]]
     spells_known_by_entity: dict[str, list[str]]
+    custom_counters_by_entity: dict[str, dict[str, dict[str, int]]]
     current_turn_index: int
     round_number: int
     ended: bool
@@ -53,6 +54,10 @@ class LiveCombatView:
             actor_zone=dict(live.actor_zone),
             spell_slots_by_entity={k: dict(v) for k, v in live.spell_slots_by_entity.items()},
             spells_known_by_entity={k: list(v) for k, v in live.spells_known_by_entity.items()},
+            custom_counters_by_entity={
+                entity_id: {key: dict(counter) for key, counter in counters.items()}
+                for entity_id, counters in live.custom_counters_by_entity.items()
+            },
             current_turn_index=live.current_turn_index,
             round_number=live.round_number,
             ended=live.ended,
