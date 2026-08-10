@@ -347,9 +347,7 @@ def test_symbolic_and_negative_targets_ignored():
             target_id="mon:foe",
         )
         await submit_player_intent(start.handle, actor_id="char:hero", intent=intent)
-        first_spent = live.custom_counters_by_entity["char:hero"]["item_use:ball-bearings"][
-            "spent"
-        ]
+        first_spent = live.custom_counters_by_entity["char:hero"]["item_use:ball-bearings"]["spent"]
         await advance_monster_turn(start.handle)
         await submit_player_intent(start.handle, actor_id="char:hero", intent=intent)
         return live, first_spent
