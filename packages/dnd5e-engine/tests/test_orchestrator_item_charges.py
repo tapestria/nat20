@@ -16,13 +16,16 @@ Fixture setup is lifted verbatim from
 from __future__ import annotations
 
 import asyncio
+import logging
+import random
 
 import pytest
 from dnd5e_srd_data import MemoryAssetLoader
 from dnd5e_srd_data.loader import BundledAssetLoader
 
 from dnd5e_engine import PlayerIntent
-from dnd5e_engine.events import CastFailed, SaveRolled
+from dnd5e_engine.activities.dice import roll_expr
+from dnd5e_engine.events import CastFailed, DamageApplied, SaveRolled
 from dnd5e_engine.lib_loader import set_lib_loader_for_tests
 from dnd5e_engine.orchestrator import (
     _get_live,
@@ -585,3 +588,103 @@ def test_charges_to_spend_on_pool_less_item_rejected():
     failed = _events_of(live, CastFailed)
     assert len(failed) == 1
     assert failed[0].reason == "invalid_charge_spend"
+
+
+# ── Task 3: PC-path cast delegation — the wand actually casts its spell ────
+
+WAND_SPELL_SLUG = "lightning-bolt"
+
+
+def _load_wand_with_spell():
+    """Unlike ``_load_wand`` (item only — the delegation seam this task
+    builds is exactly the thing those pre-existing tests exercise as a
+    no-op), the lib here also carries the referenced spell so
+    ``_build_cast_spell_book`` resolves the wand's ``CastActivity`` uuid."""
+    item = BundledAssetLoader().get_item(WAND_SLUG)
+    assert item is not None
+    spell = BundledAssetLoader().get_spell(WAND_SPELL_SLUG)
+    assert spell is not None
+    set_lib_loader_for_tests(MemoryAssetLoader(items=[item], spells=[spell]))
+    return item, spell
+
+
+def test_wand_cast_delegates_to_spell(caplog):
+    """A plain (no charges_to_spend) wand use resolves the delegated
+    Lightning Bolt for real: the wand's fixed challenge DC (15, override),
+    the spell's own base level (3, 8d6), and NO ``cast_spell_unresolved``
+    miss warning — the uuid resolves through the real spell_book now."""
+    _load_wand_with_spell()
+
+    async def _run():
+        start = await start_combat(
+            session_id="sess-wand-cast-delegates",
+            party=_party(),
+            encounter=_encounter(),
+            scene_zones=_topology(),
+            rng_seed=1,
+        )
+        live = _get_live(start.handle)
+        with caplog.at_level(logging.WARNING):
+            await submit_player_intent(
+                start.handle,
+                actor_id="char:hero",
+                intent=PlayerIntent(
+                    intent_type="use_item",
+                    item_id=WAND_SLUG,
+                    target_id="mon:foe",
+                ),
+            )
+        return live
+
+    live = asyncio.run(_run())
+    assert not _events_of(live, CastFailed)
+    assert "cast_spell_unresolved" not in caplog.text
+
+    saves = _events_of(live, SaveRolled)
+    assert len(saves) == 1
+    assert saves[0].ability == "dex"
+    assert saves[0].dc == 15  # the wand's fixed challenge override, not the caster's own DC
+
+    damage = _events_of(live, DamageApplied)
+    assert len(damage) == 1
+    assert damage[0].damage_type == "lightning"
+    # Lightning Bolt at its own base level (3) is 8d6. The resolver draws the
+    # damage dice off ``live.rng`` BEFORE the save d20 (mirrors the delegated
+    # save-activity draw order); replaying "8d6" against an identically
+    # seeded RNG reproduces the exact total, pinning this to a real 8d6
+    # resolution rather than merely "some damage happened".
+    assert damage[0].amount == roll_expr("8d6", random.Random(1))
+
+    assert live.custom_counters_by_entity["char:hero"][WAND_COUNTER_KEY] == {"spent": 1}
+
+
+def test_wand_upcast_spends_and_scales():
+    """``charges_to_spend=3`` forces the delegated cast to level 5
+    (base level 3 + (3 spent - 1 base cost)) — Lightning Bolt scales to
+    10d6 — and spends exactly 3 charges."""
+    _load_wand_with_spell()
+
+    async def _run():
+        start = await start_combat(
+            session_id="sess-wand-upcast-scales",
+            party=_party(),
+            encounter=_encounter(),
+            scene_zones=_topology(),
+            rng_seed=1,
+        )
+        live = _get_live(start.handle)
+        await submit_player_intent(
+            start.handle,
+            actor_id="char:hero",
+            intent=_use_wand_intent(3),
+        )
+        return live
+
+    live = asyncio.run(_run())
+    assert not _events_of(live, CastFailed)
+
+    damage = _events_of(live, DamageApplied)
+    assert len(damage) == 1
+    assert damage[0].amount == roll_expr("10d6", random.Random(1))
+
+    assert live.custom_counters_by_entity["char:hero"][WAND_COUNTER_KEY] == {"spent": 3}

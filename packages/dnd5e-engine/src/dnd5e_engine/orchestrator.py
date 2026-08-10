@@ -2101,10 +2101,10 @@ def _project_caster_pools(
     # Spell book — resolve slugs through the bundled lib corpus. Unknown
     # slugs are silently dropped (the lib is the source of truth for what
     # can be cast). Post-cutover this maps to typed ``Spell`` instances; the
-    # live ``cast``-delegation seam keys spells by Foundry uuid, so no
-    # corpus scenario consumes this projection yet (build_activity_context
-    # is called with spell_book={} today) — it is kept for the eventual
-    # uuid→Spell delegation wiring and as a per-caster known-spells view.
+    # live ``cast``-delegation seam (``_build_cast_spell_book``) keys spells
+    # by Foundry uuid off the resolved intent's own activities instead, so
+    # this projection is not that seam's source — it is kept as a per-caster
+    # known-spells view (narration/UI), separate from delegation.
     spells_known = live.spells_known_by_entity.get(caster.entity_id, [])
     if spells_known:
         lib_loader = get_lib_loader()
@@ -3863,6 +3863,70 @@ def _resolve_intent_activities(
     )
 
 
+def _build_cast_spell_book(activities: Sequence[Any]) -> dict[str, Spell]:
+    """uuid -> Spell map for the ``cast`` activities among the resolved
+    intent's activities — the delegation seam a scroll/wand's ``CastActivity``
+    (``activities/cast.py``) looks its referenced spell up in. A miss (an
+    absent uuid, or one the lib can't resolve) stays out of the book; it is
+    never silent — ``resolve_cast`` logs ``cast_spell_unresolved`` on a
+    lookup failure."""
+    book: dict[str, Spell] = {}
+    loader = get_lib_loader()
+    for activity in activities:
+        uuid = getattr(getattr(activity, "spell", None), "uuid", "")
+        if not uuid or uuid in book:
+            continue
+        spell = loader.get_spell_by_uuid(uuid)
+        if spell is not None:
+            book[uuid] = spell
+    return book
+
+
+def _item_cast_level_override(intent: PlayerIntent, activities: Sequence[Any]) -> int | None:
+    """The forced cast level a ``use_item`` charges_to_spend request implies
+    for the ``cast`` activity being charged, or ``None`` when no override
+    applies (no charges_to_spend, or the charged activity doesn't delegate a
+    cast).
+
+    SRD §Casting a Spell at a Higher Level — the extra charges spent above
+    the wrapper's own base cost fund a level bump: ``base_level + (requested
+    - base_cost)``. ``base_level`` is the wrapper's own ``spell.level``
+    override (never the referenced spell's base level — a scroll/wand casts
+    AT its own printed level by default); ``base_cost`` is the SAME
+    itemUses cost ``_item_charge_gate`` priced this invocation against
+    (``_activity_item_use_cost``), so the override and the gate never
+    disagree on what "one invocation" costs.
+    """
+    if intent.intent_type != "use_item" or intent.charges_to_spend is None:
+        return None
+    activity = _select_charged_activity(activities, intent.activity_id)
+    if activity is None or getattr(activity, "kind", "") != "cast":
+        return None
+    base_level = activity.spell.level
+    if base_level is None:
+        return None
+    base_cost = _activity_item_use_cost(intent.item_id or "", activity) or 1
+    return int(base_level) + (intent.charges_to_spend - base_cost)
+
+
+def _select_charged_activity(activities: Sequence[Any], activity_id: str | None) -> Any | None:
+    """The SAME activity ``_item_charge_activity`` would price for this
+    invocation, applied to an already-fetched activities list rather than an
+    item — the explicitly selected activity, else the first consuming one.
+    Mirrors ``_item_charge_activity``'s selection rule so the level override
+    and the charge gate never disagree on which activity is being charged.
+    """
+    if activity_id:
+        for activity in activities:
+            if activity.id == activity_id:
+                return activity
+        return None
+    for activity in activities:
+        if _activity_item_use_cost(activity.id, activity) > 0:
+            return activity
+    return None
+
+
 def _resolve_targets(
     live: _LiveCombat,
     current: Combatant,
@@ -4088,6 +4152,9 @@ def _resolve_readied_spell_cast(
         spellcasting_ability=spellcasting_ability,
         concentration=spell.concentration,
         source_passive_effects=list(spell.passive_effects),
+        # Monster/reaction paths don't delegate casts yet — PC-path
+        # delegation lives in _build_cast_spell_book; extending it here is a
+        # recorded follow-up.
         spell_book={},
         passive_damage_modifiers=payload["passive_damage_modifiers"],
         save_modifiers=payload["save_modifiers"],
@@ -4200,6 +4267,9 @@ def _drain_counterspell_reaction(
         spellcasting_ability=reactor_spellcasting_ability,
         concentration=False,
         source_passive_effects=list(counterspell.passive_effects),
+        # Monster/reaction paths don't delegate casts yet — PC-path
+        # delegation lives in _build_cast_spell_book; extending it here is a
+        # recorded follow-up.
         spell_book={},
         passive_damage_modifiers=payload["passive_damage_modifiers"],
         save_modifiers=payload["save_modifiers"],
@@ -4574,14 +4644,18 @@ async def submit_player_intent(
             source_passive_effects=(
                 list(cast_spell.passive_effects) if cast_spell else feature_passive_effects
             ),
-            # Empty: ``spell_book`` is the Foundry-uuid → Spell map a
-            # ``CastActivity`` delegates through (scroll/wand casting a
-            # referenced spell). No uuid flows through live combat state today,
-            # and no live scenario exercises cast delegation, so the
-            # uuid→Spell plumbing is a recorded deferred follow-up — NOT built
-            # here. A miss is not silent: ``resolve_cast`` (activities/cast.py)
-            # logs ``cast_spell_unresolved uuid=...`` at WARNING and returns.
-            spell_book={},
+            # ``spell_book`` is the Foundry-uuid → Spell map a ``CastActivity``
+            # delegates through (scroll/wand casting a referenced spell) — the
+            # real uuid→Spell resolution over THIS invocation's own resolved
+            # activities. A miss is not silent: ``resolve_cast``
+            # (activities/cast.py) logs ``cast_spell_unresolved uuid=...`` at
+            # WARNING and returns.
+            spell_book=_build_cast_spell_book(activities),
+            # SRD §Casting a Spell at a Higher Level — a charges_to_spend
+            # ``use_item`` upcast forces the delegated cast to the level the
+            # extra charges paid for; ``None`` (the common case) lets
+            # ``resolve_cast`` fall through to the wrapper's own/base level.
+            cast_level_override=_item_cast_level_override(intent, activities),
             passive_damage_modifiers=payload["passive_damage_modifiers"],
             save_modifiers=payload["save_modifiers"],
             target_cover=_target_cover_map(live, current.entity_id, targets),
@@ -5183,6 +5257,9 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
             spellcasting_ability=None,
             concentration=False,
             source_passive_effects=[],
+            # Monster/reaction paths don't delegate casts yet — PC-path
+            # delegation lives in _build_cast_spell_book; extending it here
+            # is a recorded follow-up.
             spell_book={},
             passive_damage_modifiers=payload["passive_damage_modifiers"],
             save_modifiers=payload["save_modifiers"],

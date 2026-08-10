@@ -147,6 +147,7 @@ def build_activity_context(
     target_cover: dict[str, str] | None = None,
     scale_values: dict[str, int | str] | None = None,
     class_levels: dict[str, int] | None = None,
+    cast_level_override: int | None = None,
     is_feature_invocation: bool = False,
     active_effects: Sequence[ActiveEffect] = (),
     sneak_attack_spent: dict[str, bool] | None = None,
@@ -185,6 +186,14 @@ def build_activity_context(
     So for a feature invocation the override is omitted (``None``), letting the
     save resolver fall through to ``save.dc.calculation``. The spell / item
     path keeps the blanket override.
+
+    ``cast_level_override`` passes straight through to
+    :class:`ActivityResolutionContext` — a ``use_item`` charges_to_spend
+    upcast's forced delegated-cast level (orchestrator-computed off the
+    charge gate's own cost accounting). ``None`` (the default) leaves
+    ``resolve_cast`` (``activities/cast.py``) to fall back to the wrapper
+    activity's own/base spell level, unchanged from before this field
+    existed.
     """
     mod = _caster_mod(caster)
     if caster.entity_type == "Character":
@@ -346,4 +355,5 @@ def build_activity_context(
         spell_book=spell_book,
         scale_values=scale_values or {},
         class_levels=class_levels or {},
+        cast_level_override=cast_level_override,
     )
