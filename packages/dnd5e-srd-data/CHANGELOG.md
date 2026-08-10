@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0]
+
+Lockstep release with `dnd5e-engine` 0.3.0 (the release workflow publishes both
+packages together). All schema changes below are additive — every new field is
+nullable/defaulted, no existing field moved or changed value, and canonical
+output stays byte-deterministic (`make check-regen-clean`). See
+`docs/migration/v0.2-to-v0.3.md` for the full, host-facing migration guide.
+
 ### Added
 - **Item charge pools** — `Item.uses: ItemUses | None` (Foundry `system.uses`: `max`,
   `spent`, `auto_destroy`, `recovery[]`). Regen populated 225 of 546 canonical items;

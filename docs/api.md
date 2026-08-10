@@ -74,6 +74,27 @@ the top-level `dnd5e_engine` package.
       members:
         - build_party_member
 
+## Live combat view
+
+::: dnd5e_engine.views
+    options:
+      members_order: source
+      members:
+        - LiveCombatView
+
+## Rest & recovery
+
+::: dnd5e_engine.rest
+    options:
+      members_order: source
+      members:
+        - resolve_short_rest
+        - resolve_long_rest
+        - recover_feature_uses
+        - recover_item_uses
+        - HitDicePool
+        - RestOutcome
+
 ## Effects
 
 ::: dnd5e_engine.types.effects

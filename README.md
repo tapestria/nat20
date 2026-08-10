@@ -133,4 +133,5 @@ identify the SRD ruleset this project implements.
 
 ---
 
-Built by the [Tapestria](https://github.com/tapestria) team.
+Built by the [Tapestria](https://github.com/tapestria) team. Nat20 is the deterministic
+rules oracle behind [tapestria.quest](https://tapestria.quest), an AI-driven MUD TTRPG.

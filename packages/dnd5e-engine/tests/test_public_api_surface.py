@@ -42,6 +42,7 @@ TOP_LEVEL = {
     "narration_events",
     "parse_cell",
     "recover_feature_uses",
+    "recover_item_uses",
     "resolve_check",
     "resolve_long_rest",
     "resolve_short_rest",
