@@ -26,9 +26,11 @@ from dnd5e_engine.check import CheckKind, CheckResult, CheckSpec, resolve_check
 from dnd5e_engine.events import CombatEvent, IntentType
 from dnd5e_engine.orchestrator import (
     CombatHandle,
+    IntentRejectedError,
     LiveCombatView,
     PlayerIntent,
     advance_monster_turn,
+    drain_pending_events,
     end_combat,
     get_actor_active_effects,
     get_live,
@@ -87,6 +89,7 @@ __all__ = [
     "EndCombatResult",
     "GridScene",
     "HitDicePool",
+    "IntentRejectedError",
     "IntentType",
     "LiveCombatView",
     "LootDrop",
@@ -101,6 +104,7 @@ __all__ = [
     "advance_monster_turn",
     "build_party_member",
     "cell_id",
+    "drain_pending_events",
     "end_combat",
     "get_actor_active_effects",
     "get_live",
