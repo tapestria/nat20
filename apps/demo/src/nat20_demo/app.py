@@ -14,6 +14,7 @@ Only top-level ``dnd5e_engine`` names are imported here, per the demo's
 
 from __future__ import annotations
 
+import html
 from pathlib import Path
 
 from fastapi import FastAPI, Form, Request
@@ -79,11 +80,19 @@ def _state_context(
 def _error_fragment(message: str) -> str:
     """A minimal standalone HTML snippet for the ``/act`` error paths.
 
-    Unlike ``error.html`` (a full page extending ``shell.html``), ``/act``
-    responses are htmx fragments swapped into an existing page — they must
-    never carry a nested ``<html>``/``<head>``/``<body>``.
+    Unlike ``error.html`` (a full page extending ``shell.html``, rendered
+    through Jinja2 and therefore autoescaped), this is raw f-string HTML
+    assembly — so every interpolated value passed in via ``message`` MUST
+    already be safe, or be escaped here. ``html.escape`` is applied to the
+    whole message as defense in depth even though call sites are expected
+    to hand over pre-trimmed, non-reflecting text (see the call sites in
+    ``_act_response``: user-controlled values like ``scenario_id`` are
+    escaped at the interpolation site, and validator-internal exception
+    text — which can echo attacker-controlled JSON verbatim, e.g. a
+    pydantic ``ValidationError`` on a malformed log/command — is never
+    forwarded raw; only a short, fixed, safe description is shown).
     """
-    return f'<p class="error-fragment">{message}</p>'
+    return f'<p class="error-fragment">{html.escape(message)}</p>'
 
 
 async def _play_response(
@@ -138,6 +147,10 @@ async def _play_response(
 
 
 def _act_repro_message(scenario_id: str, seed: int, log: str) -> str:
+    # scenario_id/seed/log are echoed verbatim by design (this is the
+    # reproduction block the brief asks for) -- callers must run this
+    # through ``_error_fragment``, which HTML-escapes the whole message,
+    # so a malicious scenario_id/log can never inject markup here.
     return (
         "Something went wrong replaying this fight. Copy this block into "
         "a GitHub issue — it reproduces the bug exactly: "
@@ -187,17 +200,36 @@ async def _act_response(
     try:
         scenario = get_scenario(scenario_id)
     except KeyError:
+        # scenario_id is a raw path segment -- ``_error_fragment`` escapes
+        # the whole message, so this can't inject markup, but the message
+        # itself is also kept short and fixed rather than echoing anything
+        # exception-derived.
         return HTMLResponse(_error_fragment(f'Unknown scenario "{scenario_id}".'), status_code=404)
 
     try:
         original_log = decode_log(log)
-    except ValueError as exc:
-        return HTMLResponse(_error_fragment(f"Malformed fight log: {exc}"), status_code=400)
+    except ValueError:
+        # Deliberately not forwarding ``str(exc)``: the underlying pydantic
+        # ``ValidationError`` can echo the raw (attacker-controlled)
+        # decoded payload verbatim (e.g. "input_value=b'<script>...'"),
+        # which is exactly the kind of thing that must never round-trip
+        # into a response body even escaped -- a short, fixed, safe
+        # description is all a player needs here.
+        return HTMLResponse(
+            _error_fragment("Malformed fight log — could not decode the log parameter."),
+            status_code=400,
+        )
 
     try:
         new_command = _COMMAND_ADAPTER.validate_json(command)
-    except ValidationError as exc:
-        return HTMLResponse(_error_fragment(f"Malformed command: {exc}"), status_code=400)
+    except ValidationError:
+        # Same rationale as the log-decode branch above: never forward the
+        # raw ValidationError text, which can echo the attacker-controlled
+        # ``command`` JSON verbatim.
+        return HTMLResponse(
+            _error_fragment("Malformed command — could not parse the submitted JSON."),
+            status_code=400,
+        )
 
     new_log = original_log.model_copy(update={"commands": [*original_log.commands, new_command]})
     names = _entity_names(scenario)

@@ -9,6 +9,9 @@ finished combat rather than a hand-tuned event count.
 
 from __future__ import annotations
 
+import base64
+import html
+import urllib.parse
 from typing import Any
 
 import pytest
@@ -231,6 +234,15 @@ async def test_act_rejected_command_returns_prefix_state(client, empty_log_encod
     assert match.group(1) == empty_log_encoded
 
 
+# A payload that would prove reflected XSS if any handler round-tripped it
+# unescaped into an HTML response. Used as the attacker-controlled value in
+# every negative-path test below -- these are the tests that would have
+# caught the raw-f-string-HTML-assembly XSS in ``_error_fragment``. No "/"
+# (would split a path-parameter route segment during ASGI routing, which is
+# an unrelated routing quirk, not the vulnerability under test).
+_XSS_PAYLOAD = "<img src=x onerror=alert(1)>"
+
+
 async def test_act_malformed_command_400(client, empty_log_encoded) -> None:
     scenario = get_scenario("goblin-ambush")
     resp = await client.post(
@@ -238,10 +250,16 @@ async def test_act_malformed_command_400(client, empty_log_encoded) -> None:
         data={
             "seed": scenario.default_seed,
             "log": empty_log_encoded,
-            "command": "not json at all",
+            "command": _XSS_PAYLOAD,  # malformed JSON *and* an XSS probe
         },
     )
     assert resp.status_code == 400
+    assert "Malformed command" in resp.text
+    # The raw tag must never appear -- whether verbatim or via a leaked
+    # pydantic ValidationError that would otherwise echo the bad input.
+    assert _XSS_PAYLOAD not in resp.text
+    assert "<img" not in resp.text
+    assert "onerror=" not in resp.text
 
 
 async def test_act_oversized_log_400(client) -> None:
@@ -252,32 +270,68 @@ async def test_act_oversized_log_400(client) -> None:
         commands=[MonsterTurnCommand()] * 500,
     )
     encoded = encode_log(log)
+    # The command must be well-formed here -- command parsing happens
+    # *before* the cap check, so a malformed command would 400 on that
+    # earlier branch instead of proving this one. There's no natural
+    # attacker-reflected string on this path (the message is purely
+    # numeric), but assert on it anyway as a content regression guard.
     command = MonsterTurnCommand().model_dump_json()
-
     resp = await client.post(
         f"/play/{scenario.id}/act",
         data={"seed": scenario.default_seed, "log": encoded, "command": command},
     )
     assert resp.status_code == 400
+    assert "too large" in resp.text.lower()
+    assert "500" in resp.text  # the cap, surfaced from LogTooLargeError's message
+    assert _XSS_PAYLOAD not in resp.text
 
 
 async def test_act_malformed_log_400(client) -> None:
     scenario = get_scenario("goblin-ambush")
     command = MonsterTurnCommand().model_dump_json()
+    # Valid base64 that decodes to garbage JSON containing the XSS probe --
+    # this is exactly the shape that leaked through pydantic's
+    # ValidationError text (which echoes the raw decoded payload via
+    # "input_value=...") before the fix.
+    poisoned_log = base64.urlsafe_b64encode(_XSS_PAYLOAD.encode()).decode()
+
     resp = await client.post(
+        f"/play/{scenario.id}/act",
+        data={"seed": scenario.default_seed, "log": poisoned_log, "command": command},
+    )
+    assert resp.status_code == 400
+    assert "Malformed fight log" in resp.text
+    assert _XSS_PAYLOAD not in resp.text
+    assert "<img" not in resp.text
+    assert "onerror=" not in resp.text
+
+    # Also cover the not-even-base64 shape.
+    resp2 = await client.post(
         f"/play/{scenario.id}/act",
         data={"seed": scenario.default_seed, "log": "!!!not-b64", "command": command},
     )
-    assert resp.status_code == 400
+    assert resp2.status_code == 400
+    assert "Malformed fight log" in resp2.text
 
 
 async def test_act_unknown_scenario_404(client, empty_log_encoded) -> None:
     command = MonsterTurnCommand().model_dump_json()
+    scenario_id = _XSS_PAYLOAD
     resp = await client.post(
-        "/play/not-a-real-scenario/act",
+        f"/play/{urllib.parse.quote(scenario_id, safe='')}/act",
         data={"seed": 1, "log": empty_log_encoded, "command": command},
     )
     assert resp.status_code == 404
+    assert "Unknown scenario" in resp.text
+    # The 404 message legitimately echoes scenario_id back (e.g. `No
+    # scenario named "..."`) -- that's fine as long as the reflection is
+    # HTML-escaped. The regression this guards against is the raw `<img`
+    # tag delimiter surviving unescaped (which would let the browser parse
+    # it as markup); `onerror=` alone, safely trapped inside an escaped
+    # `&lt;img ... &gt;` text node, is inert and not what's being tested.
+    assert _XSS_PAYLOAD not in resp.text
+    assert "<img" not in resp.text
+    assert html.escape(scenario_id) in resp.text
 
 
 async def test_act_after_combat_over_shows_outcome(client) -> None:
