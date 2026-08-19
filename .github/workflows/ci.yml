@@ -26,6 +26,25 @@ jobs:
       - run: make check
       - run: bash scripts/smoke_clean_install.sh
 
+  nat20-demo:
+    name: nat20-demo (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    defaults:
+      run:
+        working-directory: apps/demo
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: uv sync --extra dev
+      - run: make check
+
   srd-data:
     name: dnd5e-srd-data (py${{ matrix.python-version }})
     runs-on: ubuntu-latest
