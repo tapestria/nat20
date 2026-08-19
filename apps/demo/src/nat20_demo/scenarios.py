@@ -12,6 +12,8 @@ instance is never mutated by a replay.
 
 from __future__ import annotations
 
+from typing import Literal
+
 from dnd5e_engine import (
     EncounterMemberSpec,
     GridScene,
@@ -35,7 +37,10 @@ class ActionOption(BaseModel):
     """One menu entry offered to a PC on their turn.
 
     ``intent`` is a template: the renderer fills in ``target_id`` per living
-    foe at render time when ``needs_target`` is set.
+    combatant on ``target_side`` at render time when ``needs_target`` is
+    set. ``target_side`` defaults to "foe" (attacks, offensive AoE); heal
+    spells set it to "ally" so the expanded menu offers party members
+    (including the caster -- self-heal is legal) instead of enemies.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -43,6 +48,7 @@ class ActionOption(BaseModel):
     label: str
     intent: PlayerIntent
     needs_target: bool = False
+    target_side: Literal["foe", "ally"] = "foe"
 
 
 class Scenario(BaseModel):
@@ -341,6 +347,7 @@ def _hold_the_line() -> Scenario:
                         intent_type="cast_spell", spell_id="cure-wounds", slot_level=1
                     ),
                     needs_target=True,
+                    target_side="ally",
                 ),
                 ActionOption(label="Dodge", intent=PlayerIntent(intent_type="dodge")),
                 ActionOption(label="Pass turn", intent=PlayerIntent(intent_type="pass")),
@@ -547,6 +554,7 @@ def _last_stand() -> Scenario:
                         intent_type="cast_spell", spell_id="healing-word", slot_level=1
                     ),
                     needs_target=True,
+                    target_side="ally",
                 ),
                 ActionOption(
                     label="Cure Wounds",
@@ -554,6 +562,7 @@ def _last_stand() -> Scenario:
                         intent_type="cast_spell", spell_id="cure-wounds", slot_level=1
                     ),
                     needs_target=True,
+                    target_side="ally",
                 ),
                 ActionOption(label="Dodge", intent=PlayerIntent(intent_type="dodge")),
                 ActionOption(label="Pass turn", intent=PlayerIntent(intent_type="pass")),

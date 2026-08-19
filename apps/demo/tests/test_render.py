@@ -78,6 +78,24 @@ async def test_grid_marks_tokens_and_terrain() -> None:
     assert len(ctx["cells"]) == scenario.grid.width * scenario.grid.height
 
 
+async def test_grid_stacked_cell_renders_exactly_one_token() -> None:
+    # burning-hands deliberately stacks all four giant rats on one zone
+    # (cell_id(4, 2)) so a single Burning Hands cast hits them all. The
+    # grid context's per-cell shape has room for exactly one token, so
+    # this pins down the documented last-writer-wins behavior rather than
+    # leaving it unexercised.
+    scenario = get_scenario("burning-hands")
+    out = await _replay("burning-hands")
+    ctx = grid_context(scenario, out)
+    by_cell = {c["cell_id"]: c for c in ctx["cells"]}
+
+    stacked = by_cell[cell_id(4, 2)]
+    assert stacked["token"] is not None
+    rat_ids = {m.entity_id for m in scenario.encounter}
+    assert stacked["token"]["entity_id"] in rat_ids
+    assert stacked["token"]["side"] == "foe"
+
+
 async def test_move_candidates_only_on_pc_turn() -> None:
     scenario = get_scenario("goblin-ambush")
     out = await _replay("goblin-ambush")  # empty log: Brynn's turn (initiative 18, first)
@@ -141,6 +159,40 @@ async def test_actions_expand_targets() -> None:
     parsed_dodge = IntentCommand.model_validate_json(dodge_options[0]["command_json"])
     assert parsed_dodge.intent.intent_type == "dodge"
     assert parsed_dodge.intent.target_id is None
+
+
+async def test_actions_expand_targets_ally_side() -> None:
+    # last-stand: Faye (initiative 15) goes first on an empty log. Her
+    # heal options are target_side="ally" -- they must expand over living
+    # PARTY members (including Faye herself; self-heal is legal), never
+    # over the encounter's monsters.
+    scenario = get_scenario("last-stand")
+    out = await _replay("last-stand")
+    ctx = actions_context(scenario, out)
+
+    assert ctx["mode"] == "pc_turn"
+    assert ctx["actor"] is not None
+    assert ctx["actor"]["entity_id"] == "char:faye"
+
+    party_ids = {p.entity_id for p in scenario.party}
+    encounter_ids = {m.entity_id for m in scenario.encounter}
+
+    for label_prefix in ("Healing Word", "Cure Wounds"):
+        heal_options = [o for o in ctx["options"] if o["label"].startswith(label_prefix)]
+        # One entry per living party member (2 of them, including Faye).
+        assert len(heal_options) == len(party_ids)
+        for opt in heal_options:
+            parsed = IntentCommand.model_validate_json(opt["command_json"])
+            assert parsed.intent.target_id in party_ids
+            assert parsed.intent.target_id not in encounter_ids
+
+    # Faye herself must be a legal self-heal target.
+    healing_word_targets = {
+        IntentCommand.model_validate_json(o["command_json"]).intent.target_id
+        for o in ctx["options"]
+        if o["label"].startswith("Healing Word")
+    }
+    assert "char:faye" in healing_word_targets
 
 
 async def test_actions_monster_turn_mode() -> None:

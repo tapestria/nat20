@@ -203,10 +203,13 @@ def actions_context(scenario: Scenario, out: ReplayOutcome) -> dict[str, Any]:
     """The action menu for whoever's turn it is now.
 
     PC turns expand each ``needs_target`` option into one entry per living
-    encounter member (AoE casts target via ``target_id`` too — the
-    target's zone becomes the anchor, per Task 4's verified targeting
-    semantics). Monster turns offer the single "advance" command; a
-    finished fight offers none.
+    combatant on that option's ``target_side``: "foe" (the default; attacks,
+    offensive AoE) expands over living encounter members (AoE casts target
+    via ``target_id`` too — the target's zone becomes the anchor, per
+    Task 4's verified targeting semantics); "ally" (heal spells) expands
+    over living party members, including the caster themself (self-heal is
+    legal). Monster turns offer the single "advance" command; a finished
+    fight offers none.
     """
     view = out.view
     names = _entity_names(scenario)
@@ -239,16 +242,18 @@ def actions_context(scenario: Scenario, out: ReplayOutcome) -> dict[str, Any]:
         }
 
     living_foes = [m.entity_id for m in scenario.encounter if m.entity_id not in view.dead_ids]
+    living_allies = [p.entity_id for p in scenario.party if p.entity_id not in view.dead_ids]
 
     pc_options: list[dict[str, str]] = []
     for opt in scenario.actions.get(current_actor_id, []):
         if opt.needs_target:
-            for foe_id in living_foes:
-                intent = opt.intent.model_copy(update={"target_id": foe_id})
+            targets = living_allies if opt.target_side == "ally" else living_foes
+            for target_id in targets:
+                intent = opt.intent.model_copy(update={"target_id": target_id})
                 command = IntentCommand(actor=current_actor_id, intent=intent)
                 pc_options.append(
                     {
-                        "label": f"{opt.label} — {names.get(foe_id, foe_id)}",
+                        "label": f"{opt.label} — {names.get(target_id, target_id)}",
                         "command_json": command.model_dump_json(),
                     }
                 )
