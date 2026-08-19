@@ -96,6 +96,22 @@ asyncio.run(main())
 
 The full, verified-runnable version lives in [`examples/grid_combat.py`](examples/grid_combat.py).
 
+## Live demo
+
+[`apps/demo`](apps/demo) is a small playable HTMX web app built on top of the public
+engine API — pick a scenario, take a turn, watch the combat log fill in. The server is
+stateless: every fight is replayed from a seed, so any completed combat is a shareable
+permalink.
+
+Run it locally:
+
+```bash
+cd apps/demo
+uv run uvicorn nat20_demo.app:app
+```
+
+Public URL coming with the first deploy — run it locally meanwhile.
+
 ## Documentation
 
 📖 **[tapestria.github.io/nat20](https://tapestria.github.io/nat20/)** — concepts, the

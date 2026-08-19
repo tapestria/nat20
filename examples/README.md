@@ -19,6 +19,9 @@ uv run python examples/skill_check.py
 uv run python examples/build_party_member.py
 ```
 
+For a full playable application built on this same public API, see
+[`apps/demo`](../apps/demo).
+
 ---
 
 Nat20 implements the D&D 5e SRD 5.2 (CC-BY-4.0); not affiliated with or endorsed by Wizards of the Coast.
