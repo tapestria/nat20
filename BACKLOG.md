@@ -279,6 +279,24 @@ zone + apply logic:
   `"1"`); thread roll-data evaluation through if such data ever lands
   (`packages/dnd5e-engine/src/dnd5e_engine/rest.py`).
 
+## Discovered during demo scenario-catalog work (2026-08-19)
+
+- **`ConcentrationCheck` event type is dead code.** `events.py` defines
+  `ConcentrationCheck` (`type: Literal["concentration_check"]`), includes it
+  in the `CombatEvent` discriminated union, and exports it in `__all__` —
+  but no code path in the engine ever constructs one (`grep -rn
+  "ConcentrationCheck(" packages/dnd5e-engine/` outside `events.py` itself
+  returns nothing; confirmed via `git log -S"ConcentrationCheck("` that no
+  commit has ever wired a constructor call). The real SRD §Concentration-
+  on-damage check ("make a Constitution saving throw ... DC = 10 or half
+  the damage taken") is implemented instead by emitting a plain
+  `SaveRolled(ability="con", ...)`. Consumers that want to distinguish a
+  concentration save from an arbitrary saving throw must currently do so
+  by convention (ability == "con" + a tracked concentration effect), not
+  by event type. Either wire `ConcentrationCheck` as the emitted event in
+  the concentration-on-damage block, or remove the unused type
+  (`packages/dnd5e-engine/src/dnd5e_engine/events.py:244`).
+
 ## Blocked
 
 - **`custom` `ActiveEffectChange` mode — needs a product decision** (2026-07-02).
