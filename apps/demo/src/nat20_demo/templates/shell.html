@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Nat20 demo{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/htmx.min.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/">Nat20</a>
+  </header>
+  <div class="site-content">
+    {% block content %}{% endblock %}
+  </div>
+  <footer class="site-footer">
+    <p>Nat20 — an open-source 5e SRD engine · Built by the team behind
+      <a href="https://github.com/tapestria">Tapestria</a></p>
+    <p class="not-affiliated">Nat20 implements the D&amp;D 5e SRD 5.2 (CC-BY-4.0); not affiliated with or endorsed by Wizards of the Coast.</p>
+  </footer>
+  <script src="/static/log.js"></script>
+</body>
+</html>

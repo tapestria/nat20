@@ -1,0 +1,28 @@
+<div class="grid-wrap" style="--cell: 2.2rem;">
+  <div class="grid" style="--cols: {{ grid.width }}; --rows: {{ grid.height }};">
+    {% for cell in grid.cells %}
+    <div class="cell {{ cell.kind }}{% if cell.move_candidate %} candidate{% endif %}">
+      {% if cell.move_candidate %}
+      <button class="move-btn"
+              hx-post="/play/{{ scenario.id }}/act" hx-include="#fight-log,#fight-seed"
+              hx-vals='{"command": {{ cell.move_command_json | tojson }}}'
+              hx-target="#tape-lines" hx-swap="beforeend"
+              title="Move to {{ cell.cell_id }}"></button>
+      {% endif %}
+      {% if cell.token %}
+      <span class="token {{ cell.token.side }}{% if cell.token.dead %} dead{% endif %}{% if cell.token.current %} current{% endif %}">
+        {{ cell.token.name[:2] }}
+      </span>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  <div class="walls">
+    {% for wall in scenario.grid.wall_segments %}
+    <div class="wall"
+         style="left: calc(var(--cell) * {{ wall.x1 }}); top: calc(var(--cell) * {{ wall.y1 }});
+                width: {% if wall.y1 == wall.y2 %}calc(var(--cell) * {{ (wall.x2 - wall.x1) | abs }}){% else %}0.15rem{% endif %};
+                height: {% if wall.x1 == wall.x2 %}calc(var(--cell) * {{ (wall.y2 - wall.y1) | abs }}){% else %}0.15rem{% endif %};"></div>
+    {% endfor %}
+  </div>
+</div>

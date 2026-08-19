@@ -132,6 +132,25 @@ async def test_move_candidates_only_on_pc_turn() -> None:
     assert all(not c["move_candidate"] for c in monster_ctx["cells"])
 
 
+async def test_grid_move_candidates_carry_move_command_json() -> None:
+    scenario = get_scenario("goblin-ambush")
+    out = await _replay("goblin-ambush")  # empty log: Brynn's turn
+    ctx = grid_context(scenario, out)
+    by_cell = {c["cell_id"]: c for c in ctx["cells"]}
+
+    candidate = by_cell[cell_id(3, 4)]
+    assert candidate["move_candidate"] is True
+    assert candidate["move_command_json"] is not None
+    parsed = IntentCommand.model_validate_json(candidate["move_command_json"])
+    assert parsed.actor == "char:brynn"
+    assert parsed.intent.intent_type == "move"
+    assert parsed.intent.target_zone_id == cell_id(3, 4)
+
+    non_candidate = by_cell[cell_id(11, 9)]
+    assert non_candidate["move_candidate"] is False
+    assert non_candidate["move_command_json"] is None
+
+
 async def test_actions_expand_targets() -> None:
     scenario = get_scenario("goblin-ambush")
     out = await _replay("goblin-ambush")

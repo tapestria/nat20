@@ -15,7 +15,7 @@ import json
 from collections.abc import Callable
 from typing import Any
 
-from dnd5e_engine import CombatEvent, GridScene, LiveCombatView, cell_id, parse_cell
+from dnd5e_engine import CombatEvent, GridScene, LiveCombatView, PlayerIntent, cell_id, parse_cell
 
 from nat20_demo.replay import IntentCommand, MonsterTurnCommand, ReplayOutcome
 from nat20_demo.scenarios import Scenario
@@ -140,6 +140,13 @@ def grid_context(scenario: Scenario, out: ReplayOutcome) -> dict[str, Any]:
                     and cid not in occupied_cells
                 )
 
+            move_command_json = None
+            if move_candidate and current_actor_id is not None:
+                move_command_json = IntentCommand(
+                    actor=current_actor_id,
+                    intent=PlayerIntent(intent_type="move", target_zone_id=cid),
+                ).model_dump_json()
+
             cells.append(
                 {
                     "col": col,
@@ -148,6 +155,7 @@ def grid_context(scenario: Scenario, out: ReplayOutcome) -> dict[str, Any]:
                     "kind": _cell_kind(grid, blocked, difficult, cid),
                     "token": _cell_token(view, names, current_actor_id, occupant_by_cell.get(cid)),
                     "move_candidate": move_candidate,
+                    "move_command_json": move_command_json,
                 }
             )
 
