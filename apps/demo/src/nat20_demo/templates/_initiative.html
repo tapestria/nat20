@@ -1,0 +1,8 @@
+<h2>Initiative</h2>
+<ol class="initiative-list">
+  {% for c in initiative %}
+  <li class="combatant {{ c.side }}{% if c.dead %} dead{% endif %}{% if c.current %} current{% endif %}">
+    {{ c.name }}
+  </li>
+  {% endfor %}
+</ol>

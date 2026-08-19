@@ -1,0 +1,18 @@
+{% extends "shell.html" %}
+{% block title %}Nat20 — scenarios{% endblock %}
+{% block content %}
+<main class="catalog">
+  <h1>Nat20 demo</h1>
+  <p class="lead">Five curated 5e SRD encounters, replayed live against the engine.</p>
+  <ul class="scenario-list">
+    {% for scenario in scenarios %}
+    <li class="scenario-card">
+      <h2><a href="/play/{{ scenario.id }}">{{ scenario.title }}</a></h2>
+      <p class="tagline">{{ scenario.tagline }}</p>
+      <p class="proves"><strong>Proves:</strong> {{ scenario.proves }}</p>
+    </li>
+    {% endfor %}
+  </ul>
+  <p><a href="/about">About this demo</a></p>
+</main>
+{% endblock %}

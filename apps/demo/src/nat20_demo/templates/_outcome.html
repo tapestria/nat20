@@ -1,0 +1,21 @@
+<div class="outcome">
+  <h3>Fight over — {{ outcome.ended_reason }}</h3>
+  {% if outcome.residual_hp %}
+  <ul class="residual-hp">
+    {% for entity_id, hp in outcome.residual_hp.items() %}
+    <li>{{ names.get(entity_id, entity_id) }}: {{ hp }} HP</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  {% if outcome.xp_awarded %}
+  <ul class="xp-awarded">
+    {% for entity_id, xp in outcome.xp_awarded.items() %}
+    <li>{{ names.get(entity_id, entity_id) }}: +{{ xp }} XP</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  <p>
+    <a href="/play/{{ scenario.id }}?seed={{ seed }}">Play again</a>
+    <button id="copy-permalink" type="button">Copy permalink</button>
+  </p>
+</div>
