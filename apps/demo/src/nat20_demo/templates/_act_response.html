@@ -1,0 +1,6 @@
+{% for line in tape %}<li class="ev ev-{{ line.kind }}"><span>{{ line.text }}</span><details><summary>raw</summary><pre>{{ line.raw }}</pre></details></li>{% endfor %}
+<section id="grid" hx-swap-oob="true">{% include "_grid.html" %}</section>
+<aside id="initiative" hx-swap-oob="true">{% include "_initiative.html" %}</aside>
+<aside id="status" hx-swap-oob="true">{% include "_status.html" %}</aside>
+<section id="actions" hx-swap-oob="true">{% if rejected_reason %}{% include "_rejection.html" %}{% else %}{% include "_actions.html" %}{% endif %}</section>
+<input type="hidden" id="fight-log" name="log" value="{{ encoded_log }}" hx-swap-oob="true">
