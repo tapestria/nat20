@@ -1,0 +1,23 @@
+name: Deploy demo
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - apps/demo/**
+      - packages/**
+      - fly.toml
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy nat20-demo to Fly.io
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: ${{ vars.DEPLOY_DEMO == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

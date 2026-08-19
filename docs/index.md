@@ -48,6 +48,15 @@ Nat20 is a working engine with real gaps, and the
 [capability matrix](capabilities.md) is the honest inventory of both — read it
 before betting a project on a particular rule.
 
+## Live demo
+
+[`apps/demo`](https://github.com/tapestria/nat20/tree/main/apps/demo) is a small
+playable HTMX web app built on the public engine API — pick a scenario, take a turn,
+watch the combat log fill in. The server is stateless: every fight is replayed from a
+seed, so any completed combat is a shareable permalink. Run it locally with
+`uv run uvicorn nat20_demo.app:app` from `apps/demo/`; a public URL is coming with the
+first deploy.
+
 ---
 
 <sub>Nat20 is used in production by [Tapestria](https://tapestria.quest), an
