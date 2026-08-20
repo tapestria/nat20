@@ -12,7 +12,8 @@
     <button class="action-btn"
             hx-post="/play/{{ scenario.id }}/act" hx-include="#fight-log,#fight-seed"
             hx-vals='{"command": {{ opt.command_json | tojson }}}'
-            hx-target="#tape-lines" hx-swap="beforeend">
+            hx-target="#tape-lines" hx-swap="beforeend"
+            hx-sync="closest main:drop">
       {{ opt.label }}
     </button>
   </li>

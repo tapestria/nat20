@@ -7,6 +7,7 @@
               hx-post="/play/{{ scenario.id }}/act" hx-include="#fight-log,#fight-seed"
               hx-vals='{"command": {{ cell.move_command_json | tojson }}}'
               hx-target="#tape-lines" hx-swap="beforeend"
+              hx-sync="closest main:drop"
               title="Move to {{ cell.cell_id }}"></button>
       {% endif %}
       {% if cell.token %}
