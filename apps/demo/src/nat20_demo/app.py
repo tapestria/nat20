@@ -179,12 +179,30 @@ async def _act_rejected_response(
     accepted: int,
     rejected_reason: str,
 ) -> HTMLResponse:
-    """Controller Ruling 2: ANY rejection during this replay — whether it came
-    from a command already in the log or the one just submitted — means the
-    response must show only the true accepted prefix (``accepted`` commands
-    from the start of ``new_log``, which is also the start of
-    ``original_log``) and must return the original log completely unchanged.
+    """ANY rejection during this replay — whether it came from a command
+    already in the log or the one just submitted — means the response must
+    show only the true accepted prefix (``accepted`` commands from the
+    start of ``new_log``, which is also the start of ``original_log``).
     Never persist a log that includes a command that failed replay.
+
+    Controller ruling on the spec-vs-Ruling-2 tension: the *returned log*
+    depends on where the failure happened.
+
+    * If the failure was the just-submitted command (``accepted ==
+      len(original_log.commands)`` — every command already in the log
+      still replays clean), ``prefix_log`` is byte-identical to
+      ``original_log``: the board is untouched, matching Ruling 2's
+      "return the original log unchanged".
+    * If the failure was an *old* command already baked into ``log`` (the
+      spec's mid-log-corruption case — a tampered or otherwise-invalid
+      permalink), ``accepted < len(original_log.commands)`` and
+      ``prefix_log`` truncates to the true accepted prefix, so the
+      returned permalink is playable again instead of permanently replaying
+      into the same corruption on every future request.
+
+    Encoding ``prefix_log`` in both cases (rather than branching) is
+    correct because it degenerates to ``original_log`` exactly when no
+    truncation is needed.
     """
     prefix_log = new_log.model_copy(update={"commands": new_log.commands[:accepted]})
     prefix_out = await replay_fight(prefix_log, *fresh_specs(scenario))
@@ -194,8 +212,39 @@ async def _act_rejected_response(
         "seed": original_log.seed,
         "tape": [],
         "rejected_reason": rejected_reason,
-        "encoded_log": encode_log(original_log),
+        "encoded_log": encode_log(prefix_log),
         **_state_context(scenario, prefix_out, names),
+    }
+    return templates.TemplateResponse(request, "_act_response.html", context)
+
+
+async def _act_noop_response(
+    templates: Jinja2Templates,
+    request: Request,
+    scenario: Scenario,
+    names: dict[str, str],
+    original_log: FightLog,
+) -> HTMLResponse:
+    """The submitted command arrived after the fight was already decided.
+
+    ``replay_fight`` treats any command after the fight is over as simply
+    unreachable, not a rejection (``rejected_reason`` stays ``None`` —
+    see ``replay.py``'s trailing-command rule) — so a naive "always append
+    and re-render" would silently drop the command, persist a phantom
+    entry in the log, and re-echo the previous action's delta tape as if
+    it were new. Instead: return the ORIGINAL log unchanged and an empty
+    tape, in the same response shape as the rejection path, showing the
+    over-state panels the fight already ended in.
+    """
+    out = await replay_fight(original_log, *fresh_specs(scenario))
+    context = {
+        "request": request,
+        "scenario": scenario,
+        "seed": original_log.seed,
+        "tape": [],
+        "rejected_reason": None,
+        "encoded_log": encode_log(original_log),
+        **_state_context(scenario, out, names),
     }
     return templates.TemplateResponse(request, "_act_response.html", context)
 
@@ -268,6 +317,13 @@ async def _act_response(
             out.accepted,
             out.rejected_reason,
         )
+
+    if out.accepted < len(new_log.commands):
+        # Not a rejection -- the fight was already over, so the submitted
+        # command was simply unreachable (replay.py's trailing-command
+        # rule). Show the unchanged over-state instead of persisting a
+        # phantom command / re-echoing a stale delta.
+        return await _act_noop_response(templates, request, scenario, names, original_log)
 
     context = {
         "request": request,

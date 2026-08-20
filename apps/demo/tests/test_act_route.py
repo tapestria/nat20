@@ -212,7 +212,15 @@ async def test_act_appends_to_existing_log(client) -> None:
     assert len(decoded.commands) == 2
 
 
-async def test_act_rejected_command_returns_prefix_state(client, empty_log_encoded) -> None:
+async def test_act_rejected_new_command_returns_original_log_unchanged(
+    client, empty_log_encoded
+) -> None:
+    """The new-command-rejected case: every command already in the log
+    (there are none here) still replays clean, only the just-submitted
+    command fails. The returned log must be exactly the original -- this
+    is the ``accepted == len(original_log.commands)`` branch of the
+    controller ruling in ``_act_rejected_response``.
+    """
     scenario = get_scenario("goblin-ambush")
     # It's Brynn's turn on an empty log -- Sera acting is a wrong-turn reject.
     command = IntentCommand(
@@ -233,6 +241,47 @@ async def test_act_rejected_command_returns_prefix_state(client, empty_log_encod
     match = re.search(r'id="fight-log"[^>]*value="([^"]+)"', body)
     assert match is not None
     assert match.group(1) == empty_log_encoded
+
+
+async def test_act_rejected_old_command_truncates_log(client) -> None:
+    """The mid-log-corruption case: an OLD command already baked into the
+    submitted ``log`` fails on replay (e.g. a tampered/hand-crafted
+    permalink), before the just-submitted command is ever reached. Per the
+    controller ruling, the returned log must be truncated to the true
+    accepted prefix (here: empty) so the permalink is playable again,
+    rather than returning the still-corrupt original log unchanged.
+    """
+    scenario = get_scenario("goblin-ambush")
+    # Corrupt log: its lone command is illegal from the very first replay
+    # step (Sera acting on what should be Brynn's opening turn) -- this
+    # simulates a hand-tampered or otherwise-corrupted permalink, not a
+    # log the server itself ever produced.
+    corrupt_log = FightLog(
+        scenario_id=scenario.id,
+        seed=scenario.default_seed,
+        commands=[IntentCommand(actor="char:sera", intent=PlayerIntent(intent_type="dodge"))],
+    )
+    encoded_corrupt = encode_log(corrupt_log)
+    command = IntentCommand(
+        actor="char:brynn", intent=PlayerIntent(intent_type="dodge")
+    ).model_dump_json()
+
+    resp = await client.post(
+        f"/play/{scenario.id}/act",
+        data={"seed": scenario.default_seed, "log": encoded_corrupt, "command": command},
+    )
+    assert resp.status_code == 200
+    body = resp.text
+    assert "rejected" in body.lower()
+    assert "not_actor_turn" in body
+
+    import re
+
+    match = re.search(r'id="fight-log"[^>]*value="([^"]+)"', body)
+    assert match is not None
+    assert match.group(1) != encoded_corrupt
+    decoded = decode_log(match.group(1))
+    assert decoded.commands == []
 
 
 # A payload that would prove reflected XSS if any handler round-tripped it
@@ -368,3 +417,47 @@ async def test_act_after_combat_over_shows_outcome(client) -> None:
     body = resp.text
     assert "Fight over" in body
     assert "Play again" in body
+
+
+async def test_act_after_combat_over_is_a_no_op(client) -> None:
+    """POSTing again after the fight is over must not mutate the canonical
+    log or duplicate tape output -- the command arrived after the outcome
+    was already decided, so ``replay_fight`` treats it as an unreachable
+    no-op (``rejected_reason`` stays ``None``), not a rejection. The
+    endpoint must return the *original* log unchanged and an empty tape
+    rather than appending a phantom command and re-echoing a stale delta.
+    """
+    winning_log = await _play_to_victory("goblin-ambush")
+    scenario = get_scenario("goblin-ambush")
+    encoded = encode_log(winning_log)
+    command = MonsterTurnCommand().model_dump_json()
+
+    import re
+
+    def extract_log(body: str) -> str:
+        match = re.search(r'id="fight-log"[^>]*value="([^"]+)"', body)
+        assert match is not None
+        return match.group(1)
+
+    resp1 = await client.post(
+        f"/play/{scenario.id}/act",
+        data={"seed": scenario.default_seed, "log": encoded, "command": command},
+    )
+    assert resp1.status_code == 200
+    body1 = resp1.text
+    assert "Fight over" in body1
+    log_after_first = extract_log(body1)
+    assert decode_log(log_after_first) == winning_log  # unchanged, no phantom command
+    # No new tape lines -- the fragment above the OOB-swapped panels is the
+    # tape insert; nothing should have been appended for an unreachable command.
+    assert '<li class="ev' not in body1.split('<section id="grid"')[0]
+
+    resp2 = await client.post(
+        f"/play/{scenario.id}/act",
+        data={"seed": scenario.default_seed, "log": log_after_first, "command": command},
+    )
+    assert resp2.status_code == 200
+    body2 = resp2.text
+    log_after_second = extract_log(body2)
+    assert decode_log(log_after_second) == winning_log
+    assert len(decode_log(log_after_second).commands) == len(winning_log.commands)
