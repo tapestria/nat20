@@ -20,6 +20,7 @@ from dnd5e_engine import (
 )
 
 from nat20_demo.replay import (
+    MAX_ENCODED_LOG_BYTES,
     Command,
     FightLog,
     IntentCommand,
@@ -182,6 +183,16 @@ def test_encode_decode_roundtrip() -> None:
 def test_decode_garbage_raises() -> None:
     with pytest.raises(ValueError):
         decode_log("not-base64!!")
+
+
+def test_decode_oversized_raises_before_any_decode_work() -> None:
+    """The size guard runs on ``len(raw)`` alone -- a huge string that isn't
+    even valid base64 still raises the same ``ValueError`` GET/POST already
+    map to 400, fast (no base64/JSON/pydantic work attempted).
+    """
+    huge = "A" * (MAX_ENCODED_LOG_BYTES + 1)
+    with pytest.raises(ValueError, match="too large"):
+        decode_log(huge)
 
 
 async def test_fight_to_the_end_folds_close_events() -> None:
