@@ -18,6 +18,7 @@ import pytest
 from dnd5e_engine import PlayerIntent, cell_id, parse_cell
 
 from nat20_demo.replay import (
+    MAX_ENCODED_LOG_BYTES,
     Command,
     FightLog,
     IntentCommand,
@@ -312,6 +313,23 @@ async def test_act_malformed_log_400(client) -> None:
     )
     assert resp2.status_code == 400
     assert "Malformed fight log" in resp2.text
+
+
+async def test_act_oversized_raw_log_400(client) -> None:
+    """A huge, not-even-base64 ``log`` value is rejected on ``len()`` alone
+    (the size guard in ``decode_log`` runs before any decode work) -- distinct
+    from ``test_act_oversized_log_400`` above, which exercises the
+    ``MAX_COMMANDS`` cap on a well-formed, legitimately encoded log.
+    """
+    scenario = get_scenario("goblin-ambush")
+    huge = "A" * (MAX_ENCODED_LOG_BYTES + 1)
+    command = MonsterTurnCommand().model_dump_json()
+    resp = await client.post(
+        f"/play/{scenario.id}/act",
+        data={"seed": scenario.default_seed, "log": huge, "command": command},
+    )
+    assert resp.status_code == 400
+    assert "Malformed fight log" in resp.text
 
 
 async def test_act_unknown_scenario_404(client, empty_log_encoded) -> None:

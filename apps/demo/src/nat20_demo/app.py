@@ -115,11 +115,19 @@ async def _play_response(
     if log is not None:
         try:
             fight_log = decode_log(log)
-        except ValueError as exc:
+        except ValueError:
+            # Same rationale as the POST /act malformed-log branch: never
+            # forward ``str(exc)`` -- the underlying pydantic
+            # ``ValidationError`` (or the size-cap ``ValueError``) can echo
+            # the raw, attacker-controlled decoded payload verbatim. Reuse
+            # the fixed, safe message the POST path already uses.
             return templates.TemplateResponse(
                 request,
                 "error.html",
-                {"heading": "Malformed fight log", "message": str(exc)},
+                {
+                    "heading": "Malformed fight log",
+                    "message": "Malformed fight log — could not decode the log parameter.",
+                },
                 status_code=400,
             )
     else:
@@ -128,10 +136,13 @@ async def _play_response(
     try:
         out = await replay_fight(fight_log, *fresh_specs(scenario))
     except LogTooLargeError as exc:
+        # ``exc``'s message is purely numeric (command/byte counts), never
+        # attacker-controlled text -- safe to echo, same as the POST /act
+        # branch this mirrors.
         return templates.TemplateResponse(
             request,
             "error.html",
-            {"heading": "Fight log too large", "message": str(exc)},
+            {"heading": "Fight log too large", "message": f"Fight log too large: {exc}"},
             status_code=400,
         )
 
@@ -242,7 +253,8 @@ async def _act_response(
         # Never leak a stack trace to the player; hand back exactly what
         # reproduces the bug instead.
         return HTMLResponse(
-            _error_fragment(_act_repro_message(scenario_id, seed, log)), status_code=500
+            _error_fragment(_act_repro_message(scenario_id, original_log.seed, log)),
+            status_code=500,
         )
 
     if out.rejected_reason is not None:

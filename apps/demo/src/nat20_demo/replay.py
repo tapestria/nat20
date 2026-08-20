@@ -47,6 +47,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 __all__ = [
     "MAX_COMMANDS",
+    "MAX_ENCODED_LOG_BYTES",
     "Command",
     "FightLog",
     "IntentCommand",
@@ -61,6 +62,13 @@ __all__ = [
 # Hard cap on log length: a replay is O(len(commands)) engine work per
 # request, so an unbounded log in a URL is a trivial DoS vector.
 MAX_COMMANDS: int = 500
+
+# Hard cap on the *encoded* log string's length, checked before any
+# base64/JSON/pydantic work runs. A 500-command log (MAX_COMMANDS) encodes
+# to roughly 14KB, so 64KB leaves generous headroom while still rejecting
+# a multi-megabyte ``?log=`` value up front instead of paying decode +
+# validation cost on it.
+MAX_ENCODED_LOG_BYTES: int = 64 * 1024
 
 
 class IntentCommand(BaseModel):
@@ -207,7 +215,14 @@ def encode_log(log: FightLog) -> str:
 
 
 def decode_log(raw: str) -> FightLog:
-    """Inverse of :func:`encode_log`. Raises ``ValueError`` on any garbage."""
+    """Inverse of :func:`encode_log`. Raises ``ValueError`` on any garbage.
+
+    The size guard runs before any base64/JSON/pydantic work — an
+    oversized ``raw`` is rejected on ``len()`` alone, so a huge ``?log=``
+    value costs nothing beyond that check.
+    """
+    if len(raw) > MAX_ENCODED_LOG_BYTES:
+        raise ValueError(f"encoded log too large: {len(raw)} bytes > {MAX_ENCODED_LOG_BYTES} cap")
     try:
         payload = base64.urlsafe_b64decode(raw.encode())
     except (binascii.Error, ValueError) as exc:
