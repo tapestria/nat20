@@ -16,6 +16,8 @@
   {% endif %}
   <p>
     <a href="/play/{{ scenario.id }}?seed={{ seed }}">Play again</a>
-    <button id="copy-permalink" type="button">Copy permalink</button>
+    <!-- "Copy permalink" lives in play.html's persistent shell (outside
+         the OOB-swapped #actions region this fragment renders into) so
+         it's available on every turn, not only here at combat end. -->
   </p>
 </div>
