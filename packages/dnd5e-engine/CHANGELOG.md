@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Live-combat registry no longer leaks ended combats.** `end_combat` now
+  evicts the `_LiveCombat` from the in-memory registry on first close and
+  answers idempotent re-calls from a bounded FIFO cache of the last 1024
+  ended combats (outcome + `final_active_effects` snapshot, byte-equivalent
+  second-call result). Behavioral note: `get_live` on an ended handle now
+  raises `UnknownHandleError` (it previously returned a stale view), and an
+  `end_combat` re-call more than 1024 closes later raises too. Re-opening
+  the same `(session_id, rng_seed)` pair — handle ids are deterministic —
+  correctly resolves to the new live combat, never the stale snapshot.
+
 ## [0.3.0]
 
 Lockstep release with `dnd5e-srd-data` 0.3.0 — the item charge lifecycle: gate

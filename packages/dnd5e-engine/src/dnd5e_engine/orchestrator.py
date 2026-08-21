@@ -31,6 +31,7 @@ import itertools
 import logging
 import random
 import re
+from collections import OrderedDict
 from collections.abc import AsyncIterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal
@@ -967,6 +968,24 @@ class _PendingReaction:
 
 
 _REGISTRY: dict[str, _LiveCombat] = {}
+
+# Bounded FIFO cache of ended combats. ``end_combat`` evicts the (large)
+# ``_LiveCombat`` from ``_REGISTRY`` and parks this small snapshot instead,
+# so the documented double-call idempotency survives eviction without the
+# registry growing forever in long-lived hosts (one stateless open/close
+# cycle used to retain ~43KB of RSS permanently). Beyond ``_ENDED_CAP``
+# entries the oldest snapshot falls off and a late ``end_combat`` re-call
+# raises ``UnknownHandleError``.
+_ENDED_CAP = 1024
+_ENDED: OrderedDict[str, _EndedCombat] = OrderedDict()
+
+
+@dataclass(frozen=True)
+class _EndedCombat:
+    """Post-eviction remnant of one combat: just enough for idempotency."""
+
+    outcome: CombatOutcome
+    final_active_effects: tuple[ActiveEffect, ...]
 
 
 def _get_live(handle: CombatHandle) -> _LiveCombat:
@@ -5429,18 +5448,26 @@ async def end_combat(handle: CombatHandle) -> EndCombatResult:
 
     Idempotent: calling twice returns the same outcome (with an empty
     ``events`` list on subsequent calls — the close events were only
-    emitted once on the first invocation), no re-emission of events, no
-    double-removal from the registry.
+    emitted once on the first invocation), no re-emission of events. The
+    first call evicts the live combat from the registry (so ``get_live``
+    on an ended handle raises ``UnknownHandleError``); idempotent re-calls
+    are answered from a bounded cache of the last ``_ENDED_CAP`` ended
+    combats, beyond which a re-call raises ``UnknownHandleError`` too.
     """
-    live = _get_live(handle)
-    surviving = tuple(eff for target_list in live.active_effects.values() for eff in target_list)
-    if live.ended and live.final_outcome is not None:
-        return EndCombatResult(
-            outcome=live.final_outcome,
-            events=[],
-            final_active_effects=surviving,
-        )
-
+    # Live registry first: handle ids are deterministic
+    # (``combat:{session}:{seed}``), so a host that re-opens the same
+    # (session, seed) pair reuses the id — a stale ended-snapshot must
+    # never shadow the new live combat.
+    live = _REGISTRY.get(handle.handle_id)
+    if live is None:
+        ended = _ENDED.get(handle.handle_id)
+        if ended is not None:
+            return EndCombatResult(
+                outcome=ended.outcome,
+                events=[],
+                final_active_effects=ended.final_active_effects,
+            )
+        raise UnknownHandleError(f"No live combat for handle {handle.handle_id!r}")
     outcome = _project_outcome(live)
     end_events: list[CombatEvent] = []
     live.event_listeners.append(end_events.append)
@@ -5453,9 +5480,14 @@ async def end_combat(handle: CombatHandle) -> EndCombatResult:
 
     live.ended = True
     live.final_outcome = outcome
-    # Re-snapshot after CombatEnded emission in case any listener mutated
+    # Snapshot after CombatEnded emission in case any listener mutated
     # the active_effects registry (e.g. expire handler).
     surviving = tuple(eff for target_list in live.active_effects.values() for eff in target_list)
+    # Evict the live combat; park the small snapshot for idempotent re-calls.
+    _REGISTRY.pop(handle.handle_id, None)
+    _ENDED[handle.handle_id] = _EndedCombat(outcome=outcome, final_active_effects=surviving)
+    while len(_ENDED) > _ENDED_CAP:
+        _ENDED.popitem(last=False)
     return EndCombatResult(
         outcome=outcome,
         events=end_events,
@@ -5472,6 +5504,7 @@ def _reset_registry_for_tests() -> None:
     tests start from a clean slate.
     """
     _REGISTRY.clear()
+    _ENDED.clear()
 
 
 __all__ = [

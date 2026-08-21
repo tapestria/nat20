@@ -163,34 +163,6 @@ zone + apply logic:
   the concentration-on-damage block, or remove the unused type
   (`packages/dnd5e-engine/src/dnd5e_engine/events.py:244`).
 
-## Discovered during demo webapp final review (2026-08-19)
-
-- **`_REGISTRY` retains `_LiveCombat` entries after `end_combat` — no
-  eviction.** `_REGISTRY: dict[str, _LiveCombat] = {}`
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py:969`) is a
-  module-global dict keyed by `handle.handle_id`. `end_combat` reads the
-  live combat, builds the outcome, and returns — it never pops the entry
-  out of `_REGISTRY`. The only way an entry ever leaves the dict is a
-  wholesale `_reset_registry_for_tests()` `.clear()` (line ~5474), a
-  test-only seam with no production caller. Every caller that opens and
-  closes a combat therefore leaks one dict entry per combat, unbounded,
-  for the lifetime of the process. The nat20 demo app
-  (`apps/demo/src/nat20_demo/replay.py::replay_fight`) is a stateless
-  HTTP handler that calls `start_combat` + `end_combat` once per request —
-  a textbook case of exactly this pattern — and measurably leaks: ~43KB
-  RSS retained per request, 201 combats still resident in `_REGISTRY`
-  after 200 sequential /play requests against a single process. The
-  demo mitigates operationally rather than fixing the root cause (Fly.io
-  auto-stop recycles the machine on idle; `MAX_COMMANDS = 500` in
-  `replay.py` caps per-combat size), but neither bounds total leaked
-  entries under sustained traffic. Suggested engine fix: evict the
-  `_REGISTRY` entry inside `end_combat` once the outcome is built, while
-  caching the built `CombatOutcome` (e.g. keyed by `handle_id`, or
-  returned from a small completed-handles cache) so a second `end_combat`
-  call on the same handle still returns the same outcome rather than
-  raising `UnknownHandleError` — `end_combat` is documented as
-  idempotent under double-call and that guarantee must survive the fix.
-
 ## Blocked
 
 - **`custom` `ActiveEffectChange` mode — needs a product decision** (2026-07-02).
