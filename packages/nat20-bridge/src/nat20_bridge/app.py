@@ -68,7 +68,12 @@ def _do_roll(req: _RollRequest) -> dict[str, Any]:
     # Seeding the global module is the sanctioned way to make this call
     # reproducible.
     random.seed(seed)
-    total = roll_dice_str(req.dice)
+    try:
+        total = roll_dice_str(req.dice)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422, detail=f"invalid dice expression {req.dice!r}: {exc}"
+        ) from exc
     return {"total": total, "dice": req.dice, "seed": seed}
 
 

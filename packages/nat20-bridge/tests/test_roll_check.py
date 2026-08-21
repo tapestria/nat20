@@ -18,6 +18,12 @@ def test_roll_without_seed_generates_one(client: TestClient) -> None:
     assert 1 <= body["total"] <= 4
 
 
+def test_roll_invalid_dice_expression_is_422(client: TestClient) -> None:
+    resp = client.post("/v1/roll", json={"dice": "not-a-dice-expr"})
+    assert resp.status_code == 422
+    assert "not-a-dice-expr" in resp.json()["detail"]
+
+
 def test_check_route(client: TestClient) -> None:
     resp = client.post(
         "/v1/check",
