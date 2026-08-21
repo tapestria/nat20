@@ -32,6 +32,7 @@ from nat20_bridge.models import (
 )
 from nat20_bridge.overlay import OverlayAssetLoader
 from nat20_bridge.routes_combat import build_combat_router
+from nat20_bridge.routes_content import build_content_router
 from nat20_bridge.sheet import derive_sheet
 from nat20_bridge.state import BridgeState
 
@@ -256,5 +257,6 @@ def create_app(state: BridgeState) -> FastAPI:
         return _do_rest_long(req)
 
     app.include_router(build_combat_router(state))
+    app.include_router(build_content_router(state))
 
     return app
