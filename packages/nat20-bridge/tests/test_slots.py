@@ -29,3 +29,11 @@ def test_level_bounds() -> None:
     assert slots_for("full", 0) == {}
     assert slots_for("full", -1) == {}
     assert slots_for("full", 25) == slots_for("full", 20)
+
+
+def test_returned_dict_is_a_copy() -> None:
+    result = slots_for("full", 5)
+    result[1] = 999
+    result[42] = 1
+    again = slots_for("full", 5)
+    assert again == {1: 4, 2: 3, 3: 2}

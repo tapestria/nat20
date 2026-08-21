@@ -123,4 +123,4 @@ def slots_for(progression: str, level: int) -> dict[int, int]:
     if level < 1:
         return {}
     index = min(level, 20) - 1
-    return table[index]
+    return dict(table[index])
