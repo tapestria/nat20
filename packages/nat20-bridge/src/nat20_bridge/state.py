@@ -16,6 +16,14 @@ if TYPE_CHECKING:
 @dataclass
 class BridgeState:
     homebrew_path: Path
+    # Monotonically increasing counter for combat_id allocation — never
+    # reused, even after a combat ends and is popped from `combats`. Using
+    # `len(combats) + 1` for the id (as an earlier draft did) collides once
+    # any combat has been removed: start A (c1), start B (c2), end A, start
+    # C -> len(combats) is back down to 1, so C would mint "c2" again and
+    # silently clobber B's still-live combats/events_log/names/seeds/
+    # collectors entries.
+    next_combat_id: int = 1
     combats: dict[str, CombatHandle] = field(default_factory=dict)
     events_log: dict[str, list[CombatEvent]] = field(default_factory=dict)
     seeds: dict[str, int] = field(default_factory=dict)

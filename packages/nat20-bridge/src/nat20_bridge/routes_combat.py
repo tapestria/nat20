@@ -215,6 +215,13 @@ async def _start_route(state: BridgeState, req: _CombatStartRequest) -> dict[str
     # `_do_roll` for the same rationale. Seeding it here (in addition to
     # the engine's own `rng_seed`-threaded RNG) is what makes the
     # same-seed-same-narration test reproducible end to end.
+    # KNOWN LIMITATION (accepted, tracked in BACKLOG under Task 15): this
+    # mutates process-global state, so two `/v1/combat` requests racing
+    # concurrently (different seeds) can have one request's global reseed
+    # clobber the other's before its dice resolve — not safe under
+    # concurrent load. Fine for the current single-connection ST-bridge
+    # usage; a real fix needs the legacy dice paths to accept an injectable
+    # RNG instead of reading the global module.
     random.seed(seed)
     rng = random.Random(seed)
 
@@ -222,7 +229,11 @@ async def _start_route(state: BridgeState, req: _CombatStartRequest) -> dict[str
     encounter_specs, monster_names = _build_encounter_specs(state, req.monsters, rng)
     names = {**party_names, **monster_names}
 
-    cid = f"c{len(state.combats) + 1}"
+    # Monotonic counter, not `len(state.combats) + 1` — the latter
+    # collides once any combat has ended and been popped from `combats`
+    # (see BridgeState.next_combat_id's docstring).
+    cid = f"c{state.next_combat_id}"
+    state.next_combat_id += 1
     result = await start_combat(
         session_id=cid,
         party=party_specs,

@@ -77,3 +77,31 @@ def test_wrong_turn_intent_is_409_unknown_combat_404(client: TestClient) -> None
     r = client.post(f"/v1/combat/{cid}/intent", json={"actor_id": wrong, "intent_type": "pass"})
     assert r.status_code == 409
     assert client.get("/v1/combat/nope").status_code == 404
+
+
+def test_combat_ids_never_reused_after_a_combat_ends(client: TestClient) -> None:
+    # Regression: an earlier `cid = f"c{len(state.combats) + 1}"` scheme
+    # collided once a combat was removed from the registry — start A (c1),
+    # start B (c2), end A (drops A from `combats`, leaving just B), start C
+    # would then also mint "c2", silently clobbering B's still-live
+    # combats/events_log/names/seeds/collectors entries with C's.
+    a = _start(client, seed=101)
+    b = _start(client, seed=102)
+    assert a["combat_id"] != b["combat_id"]
+
+    end_a = client.post(f"/v1/combat/{a['combat_id']}/end", json={})
+    assert end_a.status_code == 200
+
+    c = _start(client, seed=103)
+
+    ids = {a["combat_id"], b["combat_id"], c["combat_id"]}
+    assert len(ids) == 3, f"expected 3 distinct combat ids, got {ids}"
+
+    # B must still be reachable and functional — not overwritten by C.
+    view_b = client.get(f"/v1/combat/{b['combat_id']}")
+    assert view_b.status_code == 200
+    b_ids = [row["entity_id"] for row in view_b.json()["order"]]
+    assert "char:brom" in b_ids
+
+    view_c = client.get(f"/v1/combat/{c['combat_id']}")
+    assert view_c.status_code == 200
