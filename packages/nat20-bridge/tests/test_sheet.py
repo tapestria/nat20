@@ -1,3 +1,5 @@
+import json
+
 import pytest
 from dnd5e_engine import make_build_spec
 from dnd5e_srd_data.loader import BundledAssetLoader
@@ -72,6 +74,36 @@ def test_party_validate_route(client: TestClient) -> None:
     body = resp.json()
     assert body["member"]["hp_max"] == 17
     assert "Elara" in body["summary"]
+
+
+def test_party_validate_route_sees_homebrew_spells(client: TestClient) -> None:
+    # /v1/party/validate must resolve spells_known through the same
+    # homebrew-overlaying loader combat uses (state.loader), not a
+    # canonical-only loader — otherwise a homebrew spell that combat can
+    # see is invisible to validate.
+    spell = LOADER.get_spell("fire-bolt")
+    assert spell is not None
+    raw = json.loads(spell.model_dump_json())
+    raw["slug"] = "hb-scorch-bolt"
+    raw["name"] = "Scorch Bolt"
+    import_resp = client.post("/v1/homebrew/spells", json=raw)
+    assert import_resp.status_code == 200
+
+    resp = client.post(
+        "/v1/party/validate",
+        json={
+            "name": "Elara",
+            "build": {
+                "species_slug": "elf-high",
+                "class_slug": "wizard",
+                "level": 3,
+                "ability_scores": {"str": 8, "dex": 14, "con": 13, "int": 15, "wis": 12, "cha": 10},
+            },
+            "spells_known": ["hb-scorch-bolt"],
+        },
+    )
+    assert resp.status_code == 200
+    assert resp.json()["member"]["spells_known"] == ["hb-scorch-bolt"]
 
 
 def test_party_validate_route_bad_class(client: TestClient) -> None:

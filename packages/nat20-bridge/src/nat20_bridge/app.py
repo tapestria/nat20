@@ -36,12 +36,6 @@ from nat20_bridge.routes_content import build_content_router
 from nat20_bridge.sheet import derive_sheet
 from nat20_bridge.state import BridgeState
 
-# Module-level loader: production canonical-only data, used by
-# ``/v1/party/validate`` (which never sees homebrew content). Combat routes
-# use ``state.loader`` (the homebrew-overlaying loader) instead — see
-# ``create_app``.
-_LOADER = BundledAssetLoader()
-
 
 def _do_roll(req: _RollRequest) -> dict[str, Any]:
     seed = resolve_seed(req.seed)
@@ -212,6 +206,7 @@ def create_app(state: BridgeState) -> FastAPI:
     @app.post("/v1/party/validate")
     def party_validate(req: PartyValidateRequest) -> dict[str, Any]:
         entity_id = req.entity_id or f"char:{slugify(req.name)}"
+        assert state.loader is not None
         try:
             build_spec = make_build_spec(
                 species_slug=req.build.species_slug,
@@ -225,7 +220,7 @@ def create_app(state: BridgeState) -> FastAPI:
                 build_spec,
                 name=req.name,
                 entity_id=entity_id,
-                loader=_LOADER,
+                loader=state.loader,
                 hp_current=req.hp_current,
                 spells_known=req.spells_known,
             )

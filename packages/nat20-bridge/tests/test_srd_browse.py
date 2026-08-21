@@ -54,6 +54,14 @@ def test_forge_item_unknown_base_422(client: TestClient) -> None:
     assert resp.status_code == 422
 
 
+def test_forge_item_negative_bonus_below_zero_422(client: TestClient) -> None:
+    resp = client.post(
+        "/v1/forge/item",
+        json={"name": "Cursed Blade", "base": "longsword", "bonus": -1},
+    )
+    assert resp.status_code == 422
+
+
 def test_homebrew_import_invalid_422(client: TestClient) -> None:
     resp = client.post("/v1/homebrew/items", json={"slug": "hb-junk", "item_kind": "weapon"})
     assert resp.status_code == 422

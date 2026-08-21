@@ -33,3 +33,23 @@ def test_forge_rejects_unknown_base_and_non_weapon() -> None:
 def test_forge_rejects_malformed_damage() -> None:
     with pytest.raises(ForgeError):
         forge_item(name="X", base="longsword", loader=BundledAssetLoader(), extra_damage="coldish")
+
+
+def test_forge_rejects_negative_bonus_below_zero() -> None:
+    # A mundane base (magical_bonus == 0) plus a negative bonus would drive
+    # magical_bonus below zero, violating the schema's NonNegativeInt
+    # constraint — this must surface as ForgeError, not an uncaught
+    # pydantic ValidationError.
+    with pytest.raises(ForgeError):
+        forge_item(name="Cursed Blade", base="longsword", loader=BundledAssetLoader(), bonus=-1)
+
+
+def test_forge_sanitizes_path_like_names_into_clean_slugs() -> None:
+    raw = forge_item(name="../../evil", base="longsword", loader=BundledAssetLoader())
+    weapon = Weapon.model_validate(raw)
+    assert weapon.slug == "hb-evil"
+
+
+def test_forge_rejects_names_with_no_usable_characters() -> None:
+    with pytest.raises(ForgeError):
+        forge_item(name="///", base="longsword", loader=BundledAssetLoader())

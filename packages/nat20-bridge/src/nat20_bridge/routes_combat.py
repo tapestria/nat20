@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import asyncio
 import random
+import re
 from typing import Any
 
 from dnd5e_engine import (
@@ -67,6 +68,24 @@ from nat20_bridge.state import BridgeState
 
 _PUMP_MAX_ITERATIONS = 100
 _PUMP_STABLE_CHECKS = 2
+
+_CONTROL_CHARS_RE = re.compile(r"[\x00-\x1f\x7f]+")
+_WHITESPACE_RE = re.compile(r"\s+")
+_MAX_NAME_LEN = 80
+
+
+def _sanitize_name(name: str, max_len: int = _MAX_NAME_LEN) -> str:
+    """Neutralize prompt-injection vectors in combatant names.
+
+    Homebrew monster/forge names flow verbatim into ``narrate()`` and end up
+    in narration text handed to the host's LLM; a name carrying newlines,
+    control characters, or an unbounded length is a prompt-injection /
+    resource-exhaustion vector. Strip control characters, collapse all
+    whitespace (including newlines) to single spaces, and cap length.
+    """
+    stripped = _CONTROL_CHARS_RE.sub(" ", name)
+    collapsed = _WHITESPACE_RE.sub(" ", stripped).strip()
+    return collapsed[:max_len]
 
 
 def _ability_mod(score: int) -> int:
@@ -157,7 +176,7 @@ def _build_party_specs(
             dex_mod = _ability_mod(member_req.build.ability_scores.dex)
             member = derive_sheet(
                 build_spec,
-                name=member_req.name,
+                name=_sanitize_name(member_req.name),
                 entity_id=entity_id,
                 loader=loader,
                 hp_current=member_req.hp_current,
@@ -189,7 +208,7 @@ def _build_encounter_specs(
         enc = EncounterMemberSpec(
             entity_id=entity_id,
             entity_type="Monster",
-            name=f"{monster.name} {n}",
+            name=_sanitize_name(f"{monster.name} {n}"),
             initiative=rng.randint(1, 20) + dex_mod,
             hp_current=monster.hp,
             hp_max=monster.hp,

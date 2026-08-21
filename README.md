@@ -34,6 +34,9 @@ the bridge instead of freeform narration.
 uvx nat20-bridge  # or: uv run nat20-bridge (in-repo)
 ```
 
+`nat20-bridge` isn't published on PyPI yet — until then, `uvx nat20-bridge` won't
+resolve; run `uv run nat20-bridge` from a checkout of this repo instead.
+
 See [`docs/bridge.md`](docs/bridge.md) for the full endpoint table, quickstart, and
 homebrew-content notes.
 

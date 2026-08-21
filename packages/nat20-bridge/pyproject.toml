@@ -3,7 +3,7 @@ name = "nat20-bridge"
 version = "0.3.0"
 description = "Localhost HTTP sidecar exposing dnd5e-engine to the SillyTavern nat20 extension"
 requires-python = ">=3.12"
-license = { text = "MIT" }
+license = { file = "LICENSE" }
 dependencies = [
     "dnd5e-engine>=0.3.0",
     "dnd5e-srd-data>=0.3.0",
