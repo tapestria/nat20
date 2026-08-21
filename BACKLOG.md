@@ -159,6 +159,53 @@ zone + apply logic:
   matches. Blocked on a maintainer decision for what (if anything) `custom`
   should mean in a host-agnostic engine with no callback registry.
 
+## Chores
+
+- **`__version__` drift from `pyproject.toml`** (2026-08-21). The package
+  metadata (`pyproject.toml`) is `0.3.0`, but the module constant is still
+  `0.2.0` — anything reading `dnd5e_engine.__version__` (e.g. `nat20-bridge`'s
+  `GET /v1/health`, which reports `importlib.metadata.version("dnd5e-engine")`
+  instead and so is unaffected) would report a stale version. Bump the
+  constant alongside future releases, or derive it from package metadata
+  instead of hand-maintaining it (`packages/dnd5e-engine/src/dnd5e_engine/__init__.py`).
+
+---
+
+# nat20-bridge
+
+The SillyTavern sidecar (`packages/nat20-bridge`) is a thin FastAPI routing
+layer over the engine — see `docs/bridge.md`. Gaps found while shipping it:
+
+- **Global-`random` seeding is not safe under concurrent requests**
+  (2026-08-21). `_start_route` (and `app.py`'s `_do_roll`/`_do_check`) seed the
+  stdlib global `random` module to make the engine's legacy dice seam
+  (`roll_dice_str`, `rules/effects.py`) reproducible per request, since that
+  seam reads the global module rather than an injectable RNG. Two `/v1/roll`,
+  `/v1/check`, or `/v1/combat` requests racing concurrently (different seeds)
+  can have one request's reseed clobber the other's before its dice resolve —
+  fine for the bridge's current single-connection, same-machine ST usage, not
+  safe for concurrent multi-client load. Real fix: thread an injectable
+  `random.Random` through the legacy dice paths instead of reading the global
+  module (`packages/nat20-bridge/src/nat20_bridge/routes_combat.py`).
+- **Collector tasks + event logs leak for combats never `/end`ed**
+  (2026-08-21). `BridgeState.combats`/`events_log`/`names`/`seeds`/`collectors`
+  are only cleaned up by `_end_route` (`state.combats.pop`, `_stop_collector`)
+  — a combat a client abandons without calling `POST /v1/combat/{cid}/end`
+  keeps its background collector task running and its event log growing for
+  the life of the bridge process. Needs either a TTL/idle-reap sweep or an
+  explicit cap on live combats (`packages/nat20-bridge/src/nat20_bridge/state.py`).
+- **`attack_bonus` derivation ignores Dexterity / finesse weapons**
+  (2026-08-21). `derive_sheet`'s `attack_bonus = proficiency + str_mod`
+  (`sheet.py`) always uses the Strength modifier, regardless of whether the
+  character's weapon is finesse (SRD 5.2: finesse lets the wielder use either
+  Strength or Dexterity, typically Dexterity for a Rogue/ranged-leaning build)
+  or a ranged weapon (which SRD-legally uses Dexterity, not Strength, absent a
+  feat). A Dex-based Rogue or ranged character gets an under- or over-stated
+  attack bonus in `/v1/party/validate` and `/v1/combat` party derivation.
+  Needs the weapon's `properties`/`weapon_kind` consulted to pick
+  `max(str_mod, dex_mod)` for finesse or `dex_mod` for ranged
+  (`packages/nat20-bridge/src/nat20_bridge/sheet.py`).
+
 ---
 
 # dnd5e-srd-data
