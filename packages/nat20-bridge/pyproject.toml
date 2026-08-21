@@ -78,6 +78,9 @@ exclude_also = [
     "raise NotImplementedError",
 ]
 
+# tests carry asserts (B101); the roll/check/rest routes seed the stdlib
+# RNG (`random.seed`/`random.Random`) to reach the engine's dice-rolling
+# seams deterministically (B311) — game dice, not a security concern.
 [tool.bandit]
 exclude_dirs = ["tests"]
-skips = ["B101"]
+skips = ["B101", "B311"]
