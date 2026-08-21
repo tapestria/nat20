@@ -2,14 +2,13 @@ from __future__ import annotations
 
 import dataclasses
 import random
-import re
-import secrets
 from importlib.metadata import version
 from typing import Any, Literal
 
 from dnd5e_engine import (
     CheckSpec,
     HitDicePool,
+    configure_lib_loader,
     make_build_spec,
     resolve_check,
     resolve_long_rest,
@@ -22,45 +21,29 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from nat20_bridge import __version__
+from nat20_bridge.homebrew import HomebrewStore
+from nat20_bridge.models import (
+    ABILITY_ALIASES,
+    AbilityScoresModel,
+    PartyValidateRequest,
+    full_ability,
+    resolve_seed,
+    slugify,
+)
+from nat20_bridge.overlay import OverlayAssetLoader
+from nat20_bridge.routes_combat import build_combat_router
 from nat20_bridge.sheet import derive_sheet
 from nat20_bridge.state import BridgeState
 
-# Module-level loader: production canonical-only data. A later task swaps in
-# the homebrew-overlaying loader for routes that need it.
+# Module-level loader: production canonical-only data, used by
+# ``/v1/party/validate`` (which never sees homebrew content). Combat routes
+# use ``state.loader`` (the homebrew-overlaying loader) instead — see
+# ``create_app``.
 _LOADER = BundledAssetLoader()
-
-_SLUG_RE = re.compile(r"[^a-z0-9]+")
-
-# Short-form -> canonical ability name. `resolve_check`'s underlying skill /
-# ability / saving-throw resolvers key `ability_scores` (and match
-# `proficient_saves` / the derived-from-skill ability) by the long form, so
-# any abbreviated input from a route body is normalized before it reaches
-# the engine.
-_ABILITY_ALIASES = {
-    "str": "strength",
-    "dex": "dexterity",
-    "con": "constitution",
-    "int": "intelligence",
-    "wis": "wisdom",
-    "cha": "charisma",
-}
-
-
-def _slugify(name: str) -> str:
-    return _SLUG_RE.sub("-", name.strip().lower()).strip("-")
-
-
-def _full_ability(name: str) -> str:
-    lowered = name.strip().lower()
-    return _ABILITY_ALIASES.get(lowered, lowered)
-
-
-def _resolve_seed(seed: int | None) -> int:
-    return seed if seed is not None else secrets.randbits(32)
 
 
 def _do_roll(req: _RollRequest) -> dict[str, Any]:
-    seed = _resolve_seed(req.seed)
+    seed = resolve_seed(req.seed)
     # `roll_dice_str` is the engine's standalone narrator-time dice seam
     # (rules/effects.py) — it draws from the stdlib global `random` module
     # by design ("Public test seam: callers monkeypatch this symbol (or
@@ -86,17 +69,17 @@ def _check_summary(result: Any) -> str:
 
 
 def _do_check(req: _CheckRequest) -> dict[str, Any]:
-    seed = _resolve_seed(req.seed)
+    seed = resolve_seed(req.seed)
     short_scores = req.ability_scores.model_dump(by_alias=True)
-    ability_scores = {full: short_scores[short] for short, full in _ABILITY_ALIASES.items()}
+    ability_scores = {full: short_scores[short] for short, full in ABILITY_ALIASES.items()}
     spec = CheckSpec(
         kind=req.kind,
         ability_scores=ability_scores,
         proficient_skills=req.proficient_skills,
-        proficient_saves=tuple(_full_ability(s) for s in req.proficient_saves),
+        proficient_saves=tuple(full_ability(s) for s in req.proficient_saves),
         proficiency_bonus=req.proficiency_bonus,
         skill=req.skill,
-        ability=_full_ability(req.ability) if req.ability else None,
+        ability=full_ability(req.ability) if req.ability else None,
         dc=req.dc,
         advantage=req.advantage,
         disadvantage=req.disadvantage,
@@ -114,7 +97,7 @@ def _do_check(req: _CheckRequest) -> dict[str, Any]:
 
 
 def _do_rest_short(req: _ShortRestRequest) -> dict[str, Any]:
-    seed = _resolve_seed(req.seed)
+    seed = resolve_seed(req.seed)
     pool = HitDicePool(
         hit_die_size=req.hit_die_size,
         dice_remaining=req.dice_remaining,
@@ -137,7 +120,7 @@ def _do_rest_short(req: _ShortRestRequest) -> dict[str, Any]:
 
 
 def _do_rest_long(req: _LongRestRequest) -> dict[str, Any]:
-    seed = _resolve_seed(req.seed)
+    seed = resolve_seed(req.seed)
     pool = HitDicePool(
         hit_die_size=req.hit_die_size,
         dice_remaining=req.dice_remaining,
@@ -153,34 +136,6 @@ def _do_rest_long(req: _LongRestRequest) -> dict[str, Any]:
     }
 
 
-class _AbilityScores(BaseModel):
-    str_: int = Field(default=10, alias="str")
-    dex: int = 10
-    con: int = 10
-    int_: int = Field(default=10, alias="int")
-    wis: int = 10
-    cha: int = 10
-
-    model_config = {"populate_by_name": True}
-
-
-class _BuildRequest(BaseModel):
-    species_slug: str
-    class_slug: str
-    subclass_slug: str | None = None
-    level: int = 1
-    ability_scores: _AbilityScores = Field(default_factory=lambda: _AbilityScores())
-    equipment: tuple[str, ...] = ()
-
-
-class _PartyValidateRequest(BaseModel):
-    name: str
-    entity_id: str | None = None
-    build: _BuildRequest
-    spells_known: list[str] | None = None
-    hp_current: int | None = None
-
-
 class _RollRequest(BaseModel):
     dice: str
     seed: int | None = None
@@ -191,7 +146,7 @@ class _CheckRequest(BaseModel):
     ability: str | None = None
     skill: str | None = None
     dc: int | None = None
-    ability_scores: _AbilityScores = Field(default_factory=lambda: _AbilityScores())
+    ability_scores: AbilityScoresModel = Field(default_factory=lambda: AbilityScoresModel())
     proficient_skills: tuple[str, ...] = ()
     proficient_saves: tuple[str, ...] = ()
     proficiency_bonus: int = 0
@@ -228,6 +183,23 @@ def create_app(state: BridgeState) -> FastAPI:
         CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
     )
 
+    # Homebrew overlay is installed ONCE here, at app creation, over the
+    # engine's module-global lib loader singleton (`configure_lib_loader`).
+    # `combat` routes (routes_combat.py) resolve monsters/spells/weapons
+    # through this same overlay via `state.loader`; Task 10's homebrew
+    # mutation routes call `state.refresh_loader()` to rebuild the overlay's
+    # in-memory layer after an add/remove without restarting the process.
+    store = HomebrewStore(state.homebrew_path)
+    state.homebrew_store = store
+
+    def _refresh_loader() -> None:
+        loader = OverlayAssetLoader(base=BundledAssetLoader(), overlay=store.as_memory_loader())
+        state.loader = loader
+        configure_lib_loader(loader)
+
+    state.refresh_loader = _refresh_loader
+    _refresh_loader()
+
     @app.get("/v1/health")
     def health() -> dict[str, str]:
         return {
@@ -237,8 +209,8 @@ def create_app(state: BridgeState) -> FastAPI:
         }
 
     @app.post("/v1/party/validate")
-    def party_validate(req: _PartyValidateRequest) -> dict[str, Any]:
-        entity_id = req.entity_id or f"char:{_slugify(req.name)}"
+    def party_validate(req: PartyValidateRequest) -> dict[str, Any]:
+        entity_id = req.entity_id or f"char:{slugify(req.name)}"
         try:
             build_spec = make_build_spec(
                 species_slug=req.build.species_slug,
@@ -282,5 +254,7 @@ def create_app(state: BridgeState) -> FastAPI:
     @app.post("/v1/rest/long")
     def rest_long(req: _LongRestRequest) -> dict[str, Any]:
         return _do_rest_long(req)
+
+    app.include_router(build_combat_router(state))
 
     return app
