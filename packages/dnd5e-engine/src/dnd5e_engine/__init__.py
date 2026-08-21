@@ -24,6 +24,7 @@ from dnd5e_engine.build_spec import (
 )
 from dnd5e_engine.check import CheckKind, CheckResult, CheckSpec, resolve_check
 from dnd5e_engine.events import CombatEvent, IntentType
+from dnd5e_engine.lib_loader import configure_lib_loader
 from dnd5e_engine.orchestrator import (
     CombatHandle,
     LiveCombatView,
@@ -101,6 +102,7 @@ __all__ = [
     "advance_monster_turn",
     "build_party_member",
     "cell_id",
+    "configure_lib_loader",
     "end_combat",
     "get_actor_active_effects",
     "get_live",
