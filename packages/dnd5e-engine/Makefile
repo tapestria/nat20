@@ -12,7 +12,7 @@ test:
 	uv run pytest -q
 # Baseline-and-ratchet coverage gate (75% observed today; floor set 2pts under).
 coverage:
-	uv run pytest -q --cov=dnd5e_engine --cov-report=term-missing --cov-fail-under=73
+	uv run pytest -q --cov=dnd5e_engine --cov-report=term-missing --cov-fail-under=90
 security:
 	uv run bandit -r src/ -c pyproject.toml -q
 smoke:
