@@ -35,6 +35,7 @@ TOP_LEVEL = {
     "advance_monster_turn",
     "build_party_member",
     "cell_id",
+    "configure_lib_loader",
     "end_combat",
     "get_actor_active_effects",
     "get_live",

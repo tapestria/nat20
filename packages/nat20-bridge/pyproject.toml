@@ -1,0 +1,86 @@
+[project]
+name = "nat20-bridge"
+version = "0.3.0"
+description = "Localhost HTTP sidecar exposing dnd5e-engine to the SillyTavern nat20 extension"
+requires-python = ">=3.12"
+license = { file = "LICENSE" }
+dependencies = [
+    "dnd5e-engine>=0.3.0",
+    "dnd5e-srd-data>=0.3.0",
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+]
+
+[project.scripts]
+nat20-bridge = "nat20_bridge.cli:main"
+
+[project.optional-dependencies]
+dev = [
+    "httpx>=0.27",
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=6.0.0",
+    "mypy>=1.10",
+    "ruff>=0.5",
+    "bandit>=1.8.0",
+]
+
+[tool.uv.sources]
+dnd5e-engine = { workspace = true }
+dnd5e-srd-data = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/nat20_bridge"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E", "F", "I", "N", "UP", "B", "SIM", "T20", "BLE",
+    "C90", "ASYNC", "PT", "RUF", "TRY",
+]
+ignore = [
+    "TRY003",
+    "RUF001", "RUF002", "RUF003",
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = [
+    "E501", "F841", "PT006", "PT011", "C901",
+    "PT018", "N806", "BLE001", "SIM102",
+]
+
+[tool.mypy]
+strict = true
+python_version = "3.12"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [".", "src"]
+asyncio_mode = "auto"
+
+[tool.coverage.run]
+source = ["nat20_bridge"]
+
+[tool.coverage.report]
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "@overload",
+    "raise NotImplementedError",
+]
+
+# tests carry asserts (B101); the roll/check/rest routes seed the stdlib
+# RNG (`random.seed`/`random.Random`) to reach the engine's dice-rolling
+# seams deterministically (B311) — game dice, not a security concern.
+[tool.bandit]
+exclude_dirs = ["tests"]
+skips = ["B101", "B311"]

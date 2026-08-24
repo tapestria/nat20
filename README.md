@@ -17,9 +17,28 @@ Nat20 is a `uv` workspace of two complementary packages:
 |---------|-----------|---------|
 | [`dnd5e-engine`](packages/dnd5e-engine) | Pure-Python 5e SRD rules engine — combat, checks, effects, grid/zone movement. Ships no rules data; reads the dataset at runtime. | **MIT** (code) |
 | [`dnd5e-srd-data`](packages/dnd5e-srd-data) | The typed, canonical SRD 5.2 dataset the engine consumes via `BundledAssetLoader`. | **CC-BY-4.0** (data) |
+| [`nat20-bridge`](packages/nat20-bridge) | Localhost FastAPI sidecar that exposes the engine over HTTP — rolls, checks, rests, party validation, full combat lifecycle, SRD browsing, and homebrew content. | **MIT** (code) |
 
 The engine is edition-agnostic: it resolves whatever typed content it is handed. The
 shipped dataset is the 2024 SRD (5.2) corpus.
+
+## SillyTavern bridge
+
+`nat20-bridge` is a small localhost HTTP host that puts the engine behind a REST API,
+so a non-Python client can drive combat, checks, and rests without embedding Python.
+It's the server half of the [SillyTavern-nat20](https://github.com/tapestria/SillyTavern-nat20)
+extension, which lets a SillyTavern chat run 5e SRD combat and skill resolution through
+the bridge instead of freeform narration.
+
+```bash
+uvx nat20-bridge  # or: uv run nat20-bridge (in-repo)
+```
+
+`nat20-bridge` isn't published on PyPI yet — until then, `uvx nat20-bridge` won't
+resolve; run `uv run nat20-bridge` from a checkout of this repo instead.
+
+See [`docs/bridge.md`](docs/bridge.md) for the full endpoint table, quickstart, and
+homebrew-content notes.
 
 ## Quickstart
 

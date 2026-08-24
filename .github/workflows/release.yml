@@ -51,3 +51,22 @@ jobs:
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist/
+
+  publish-bridge:
+    name: publish nat20-bridge
+    needs: publish-engine
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: pypi-bridge
+      url: https://pypi.org/project/nat20-bridge/
+    permissions:
+      id-token: write   # OIDC token for Trusted Publishing
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv build --package nat20-bridge --out-dir dist
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/

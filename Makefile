@@ -2,15 +2,18 @@
 # CI runs each package's `make check` in its own job (.github/workflows/ci.yml);
 # this target mirrors the full gate locally. Run `uv sync --all-packages --extra dev`
 # once first so both packages' dev tools (ruff/mypy/pytest-cov/bandit) are present.
-.PHONY: check check-engine check-srd-data examples smoke format
+.PHONY: check check-engine check-srd-data check-bridge examples smoke format
 
-check: check-srd-data check-engine examples
+check: check-srd-data check-engine check-bridge examples
 
 check-srd-data:
 	$(MAKE) -C packages/dnd5e-srd-data check
 
 check-engine:
 	$(MAKE) -C packages/dnd5e-engine check
+
+check-bridge:
+	$(MAKE) -C packages/nat20-bridge check
 
 # Runnable examples double as an integration smoke over the public API.
 examples:
@@ -27,3 +30,4 @@ smoke:
 format:
 	$(MAKE) -C packages/dnd5e-engine format
 	cd packages/dnd5e-srd-data && uv run ruff format src tests tools
+	cd packages/nat20-bridge && uv run ruff format src tests
