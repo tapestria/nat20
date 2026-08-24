@@ -159,16 +159,6 @@ zone + apply logic:
   matches. Blocked on a maintainer decision for what (if anything) `custom`
   should mean in a host-agnostic engine with no callback registry.
 
-## Chores
-
-- **`__version__` drift from `pyproject.toml`** (2026-08-21). The package
-  metadata (`pyproject.toml`) is `0.3.0`, but the module constant is still
-  `0.2.0` — anything reading `dnd5e_engine.__version__` (e.g. `nat20-bridge`'s
-  `GET /v1/health`, which reports `importlib.metadata.version("dnd5e-engine")`
-  instead and so is unaffected) would report a stale version. Bump the
-  constant alongside future releases, or derive it from package metadata
-  instead of hand-maintaining it (`packages/dnd5e-engine/src/dnd5e_engine/__init__.py`).
-
 ---
 
 # nat20-bridge

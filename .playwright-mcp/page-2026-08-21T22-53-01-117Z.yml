@@ -1,0 +1,332 @@
+- generic [ref=f2e1]:
+  - generic [ref=f2e5]:
+    - generic [ref=f2e6]:
+      - button "" [ref=f2e49] [cursor=pointer]
+      - text:                                        + No items                         ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☑ ☰ ☑ ☰ ☑ ☰ ☑ ☰ ☑ ☰ ☑ ☰ ☐ ☰ ☐ ☰ ☐ ☰                                  + No items      ☰ ☰ ☰ ☰ ☰ ☰ ☰  ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰  ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰  ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰                  +     No items 
+    - generic [ref=f2e9]:
+      - button "" [ref=f2e50] [cursor=pointer]
+      - text:                                                                       
+    - generic [ref=f2e12]:
+      - button "" [ref=f2e51] [cursor=pointer]
+      - text:                                               
+    - generic [ref=f2e15]:
+      - button "" [ref=f2e52] [cursor=pointer]
+      - text:                +     
+    - generic [ref=f2e18]:
+      - button "" [ref=f2e53] [cursor=pointer]
+      - text:                                   
+    - generic [ref=f2e21]:
+      - generic "Change Background Image" [ref=f2e22]:
+        - button "" [ref=f2e54] [cursor=pointer]
+      - text:       +                            
+    - generic [ref=f2e24]:
+      - button "" [ref=f2e55] [cursor=pointer]
+      - text:         +                                                              +   + +  +     +        +        +        +                                               
+    - generic [ref=f2e27]:
+      - button "" [ref=f2e56] [cursor=pointer]
+      - text:                    
+    - generic [ref=f2e30]:
+      - button "" [ref=f2e57] [cursor=pointer]
+      - text:                                                     Group is empty.          No characters available                          
+  - generic:                      +                                                                                +    + +                  
+  - generic:                  
+  - generic [ref=f2e33]:
+    - text: 
+    - generic [ref=f2e34]:
+      - generic [ref=f2e58]:
+        - generic [ref=f2e60] [cursor=pointer]
+        - generic [ref=f2e63]:
+          - generic [ref=f2e64]:
+            - generic [ref=f2e66]:
+              - generic [ref=f2e67]: Nat20
+              - text: 
+              - generic "nat20 -" [ref=f2e68]: August 21, 2026 7:51 PM
+            - generic [ref=f2e69]:
+              - button "" [ref=f2e70] [cursor=pointer]
+              - text:              
+              - button "" [ref=f2e71] [cursor=pointer]
+            - text:       
+          - text:       
+          - generic [ref=f2e72]:
+            - paragraph [ref=f2e73]:
+              - text: 📖
+              - strong [ref=f2e74]: Cure Wounds
+              - text: (spells) A creature you touch regains a number of Hit Points equal to 2d8 plus your spellcasting ability modifier.
+            - paragraph [ref=f2e75]: Using a Higher-Level Spell Slot. The healing increases by 2d8 for each spell slot level above 1.
+      - generic [ref=f2e94]:
+        - generic [ref=f2e96] [cursor=pointer]
+        - generic [ref=f2e98]:
+          - generic [ref=f2e99]:
+            - generic [ref=f2e101]:
+              - generic [ref=f2e102]: Nat20
+              - text: 
+              - generic "nat20 -" [ref=f2e103]: August 21, 2026 7:51 PM
+            - generic [ref=f2e104]:
+              - button "" [ref=f2e105] [cursor=pointer]
+              - text:              
+              - button "" [ref=f2e106] [cursor=pointer]
+            - text:       
+          - text:       
+          - paragraph [ref=f2e108]:
+            - text: "📋 Elara Stealth check vs DC 10:"
+            - strong [ref=f2e109]: "14"
+            - text: — success
+      - generic [ref=f2e111]:
+        - generic [ref=f2e113] [cursor=pointer]
+        - generic [ref=f2e115]:
+          - generic [ref=f2e116]:
+            - generic [ref=f2e118]:
+              - generic [ref=f2e119]: Nat20
+              - text: 
+              - generic "nat20 -" [ref=f2e120]: August 21, 2026 7:51 PM
+            - generic [ref=f2e121]:
+              - button "" [ref=f2e122] [cursor=pointer]
+              - text:              
+              - button "" [ref=f2e123] [cursor=pointer]
+            - text:       
+          - text:       
+          - paragraph [ref=f2e125]: "-- Round 1 -- Elara's turn begins."
+      - generic [ref=f2e127]:
+        - generic [ref=f2e129] [cursor=pointer]
+        - generic [ref=f2e131]:
+          - generic [ref=f2e132]:
+            - generic [ref=f2e134]:
+              - generic [ref=f2e135]: Nat20
+              - text: 
+              - generic "nat20 -" [ref=f2e136]: August 21, 2026 7:51 PM
+            - generic [ref=f2e137]:
+              - button "" [ref=f2e138] [cursor=pointer]
+              - text:              
+              - button "" [ref=f2e139] [cursor=pointer]
+            - text:       
+          - text:       
+          - generic [ref=f2e140]:
+            - paragraph [ref=f2e141]:
+              - text: 📊
+              - strong [ref=f2e142]: Round 1
+            - table [ref=f2e143]:
+              - rowgroup [ref=f2e144]:
+                - row [ref=f2e145]:
+                  - columnheader [ref=f2e146]
+                  - columnheader "Name" [ref=f2e147]
+                  - columnheader "HP" [ref=f2e148]
+                  - columnheader "Conditions" [ref=f2e149]
+              - rowgroup [ref=f2e150]:
+                - row [ref=f2e151]:
+                  - cell "➤" [ref=f2e152]
+                  - cell "Elara" [ref=f2e153]
+                  - cell "17/17" [ref=f2e154]
+                  - cell [ref=f2e155]
+                - row [ref=f2e156]:
+                  - cell [ref=f2e157]
+                  - cell "Goblin Warrior 1" [ref=f2e158]
+                  - cell "10/10" [ref=f2e159]
+                  - cell [ref=f2e160]
+      - generic [ref=f2e162]:
+        - generic [ref=f2e164] [cursor=pointer]
+        - generic [ref=f2e166]:
+          - generic [ref=f2e167]:
+            - generic [ref=f2e169]:
+              - generic [ref=f2e170]: Nat20
+              - text: 
+              - generic "nat20 -" [ref=f2e171]: August 21, 2026 7:51 PM
+            - generic [ref=f2e172]:
+              - button "" [ref=f2e173] [cursor=pointer]
+              - text:              
+              - button "" [ref=f2e174] [cursor=pointer]
+            - text:       
+          - text:       
+          - paragraph [ref=f2e176]: "Elara attempts attack. Elara attacks Goblin Warrior 1: rolls 8 — misses. Elara's turn ends. Goblin Warrior 1's turn begins."
+      - generic [ref=f2e178]:
+        - generic [ref=f2e180] [cursor=pointer]
+        - generic [ref=f2e182]:
+          - generic [ref=f2e183]:
+            - generic [ref=f2e185]:
+              - generic [ref=f2e186]: Nat20
+              - text: 
+              - generic "nat20 -" [ref=f2e187]: August 21, 2026 7:51 PM
+            - generic [ref=f2e188]:
+              - button "" [ref=f2e189] [cursor=pointer]
+              - text:              
+              - button "" [ref=f2e190] [cursor=pointer]
+            - text:       
+          - text:       
+          - paragraph [ref=f2e192]: "Goblin Warrior 1 attempts attack. Goblin Warrior 1 attacks Elara: rolls 3 — misses. Goblin Warrior 1's turn ends. -- Round 2 -- Elara's turn begins."
+      - generic [ref=f2e194]:
+        - generic [ref=f2e196] [cursor=pointer]
+        - generic [ref=f2e198]:
+          - generic [ref=f2e199]:
+            - generic [ref=f2e201]:
+              - generic [ref=f2e202]: Nat20
+              - text: 
+              - generic "nat20 -" [ref=f2e203]: August 21, 2026 7:51 PM
+            - generic [ref=f2e204]:
+              - button "" [ref=f2e205] [cursor=pointer]
+              - text:              
+              - button "" [ref=f2e206] [cursor=pointer]
+            - text:       
+          - text:       
+          - paragraph [ref=f2e208]: "Elara attempts attack. Elara attacks Goblin Warrior 1: rolls 11 — misses. Elara's turn ends. Goblin Warrior 1's turn begins."
+      - generic [ref=f2e210]:
+        - generic [ref=f2e212] [cursor=pointer]
+        - generic [ref=f2e214]:
+          - generic [ref=f2e215]:
+            - generic [ref=f2e217]:
+              - generic [ref=f2e218]: Nat20
+              - text: 
+              - generic "nat20 -" [ref=f2e219]: August 21, 2026 7:52 PM
+            - generic [ref=f2e220]:
+              - button "" [ref=f2e221] [cursor=pointer]
+              - text:              
+              - button "" [ref=f2e222] [cursor=pointer]
+            - text:       
+          - text:       
+          - paragraph [ref=f2e224]: "Goblin Warrior 1 attempts attack. Goblin Warrior 1 attacks Elara: rolls 7 — misses. Goblin Warrior 1's turn ends. -- Round 3 -- Elara's turn begins."
+      - generic [ref=f2e226]:
+        - generic [ref=f2e228] [cursor=pointer]
+        - generic [ref=f2e230]:
+          - generic [ref=f2e231]:
+            - generic [ref=f2e233]:
+              - generic [ref=f2e234]: Nat20
+              - text: 
+              - generic "nat20 -" [ref=f2e235]: August 21, 2026 7:52 PM
+            - generic [ref=f2e236]:
+              - button "" [ref=f2e237] [cursor=pointer]
+              - text:              
+              - button "" [ref=f2e238] [cursor=pointer]
+            - text:       
+          - text:       
+          - paragraph [ref=f2e240]: "Elara attempts cast_spell. Elara attacks Goblin Warrior 1: rolls 10 — misses. Elara's turn ends. Goblin Warrior 1's turn begins."
+      - generic [ref=f2e242]:
+        - generic [ref=f2e244] [cursor=pointer]
+        - generic [ref=f2e246]:
+          - generic [ref=f2e247]:
+            - generic [ref=f2e249]:
+              - generic [ref=f2e250]: Nat20
+              - text: 
+              - generic "nat20 -" [ref=f2e251]: August 21, 2026 7:52 PM
+            - generic [ref=f2e252]:
+              - button "" [ref=f2e253] [cursor=pointer]
+              - text:              
+              - button "" [ref=f2e254] [cursor=pointer]
+            - text:       
+          - text:       
+          - paragraph [ref=f2e256]: "Goblin Warrior 1 attempts attack. Goblin Warrior 1 attacks Elara: rolls 2 — misses. Goblin Warrior 1's turn ends. -- Round 4 -- Elara's turn begins."
+      - generic [ref=f2e258]:
+        - generic [ref=f2e260] [cursor=pointer]
+        - generic [ref=f2e262]:
+          - generic [ref=f2e263]:
+            - generic [ref=f2e265]:
+              - generic [ref=f2e266]: Nat20
+              - text: 
+              - generic "nat20 -" [ref=f2e267]: August 21, 2026 7:52 PM
+            - generic [ref=f2e268]:
+              - button "" [ref=f2e269] [cursor=pointer]
+              - text:              
+              - button "" [ref=f2e270] [cursor=pointer]
+            - text:       
+          - text:       
+          - paragraph [ref=f2e272]: "Elara attempts cast_spell. Elara attacks Goblin Warrior 1: rolls 10 — misses. Elara's turn ends. Goblin Warrior 1's turn begins."
+      - generic [ref=f2e274]:
+        - generic [ref=f2e276] [cursor=pointer]
+        - generic [ref=f2e278]:
+          - generic [ref=f2e279]:
+            - generic [ref=f2e281]:
+              - generic [ref=f2e282]: Nat20
+              - text: 
+              - generic "nat20 -" [ref=f2e283]: August 21, 2026 7:52 PM
+            - generic [ref=f2e284]:
+              - button "" [ref=f2e285] [cursor=pointer]
+              - text:              
+              - button "" [ref=f2e286] [cursor=pointer]
+            - text:       
+          - text:       
+          - paragraph [ref=f2e288]: "Goblin Warrior 1 attempts attack. Goblin Warrior 1 attacks Elara: rolls 3 — misses. Goblin Warrior 1's turn ends. -- Round 5 -- Elara's turn begins."
+      - generic [ref=f2e290]:
+        - generic [ref=f2e292] [cursor=pointer]
+        - generic [ref=f2e294]:
+          - generic [ref=f2e295]:
+            - generic [ref=f2e297]:
+              - generic [ref=f2e298]: Nat20
+              - text: 
+              - generic "nat20 -" [ref=f2e299]: August 21, 2026 7:52 PM
+            - generic [ref=f2e300]:
+              - button "" [ref=f2e301] [cursor=pointer]
+              - text:              
+              - button "" [ref=f2e302] [cursor=pointer]
+            - text:       
+          - text:       
+          - paragraph [ref=f2e304]: "Elara attempts cast_spell. Elara attacks Goblin Warrior 1: rolls 4 — misses. Elara's turn ends. Goblin Warrior 1's turn begins."
+      - generic [ref=f2e306]:
+        - generic [ref=f2e308] [cursor=pointer]
+        - generic [ref=f2e310]:
+          - generic [ref=f2e311]:
+            - generic [ref=f2e313]:
+              - generic [ref=f2e314]: Nat20
+              - text: 
+              - generic "nat20 -" [ref=f2e315]: August 21, 2026 7:52 PM
+            - generic [ref=f2e316]:
+              - button "" [ref=f2e317] [cursor=pointer]
+              - text:              
+              - button "" [ref=f2e318] [cursor=pointer]
+            - text:       
+          - text:       
+          - paragraph [ref=f2e320]: "Goblin Warrior 1 attempts attack. Goblin Warrior 1 attacks Elara: rolls 18 — hits. Elara takes 1 slashing damage. Goblin Warrior 1's turn ends. -- Round 6 -- Elara's turn begins."
+      - generic [ref=f2e322]:
+        - generic [ref=f2e324] [cursor=pointer]
+        - generic [ref=f2e326]:
+          - generic [ref=f2e327]:
+            - generic [ref=f2e329]:
+              - generic [ref=f2e330]: Nat20
+              - text: 
+              - generic "nat20 -" [ref=f2e331]: August 21, 2026 7:52 PM
+            - generic [ref=f2e332]:
+              - button "" [ref=f2e333] [cursor=pointer]
+              - text:              
+              - button "" [ref=f2e334] [cursor=pointer]
+            - text:       
+          - text:       
+          - paragraph [ref=f2e336]: "Elara attempts cast_spell. Elara attacks Goblin Warrior 1: rolls 19 — hits. Goblin Warrior 1 takes 1 fire damage. Elara's turn ends. Goblin Warrior 1's turn begins."
+        - generic:
+          - button ""
+          - generic: 1/1
+      - generic [ref=f2e338]:
+        - generic [ref=f2e340] [cursor=pointer]
+        - generic [ref=f2e342]:
+          - generic [ref=f2e343]:
+            - generic [ref=f2e345]:
+              - generic [ref=f2e346]: Nat20
+              - text: 
+              - generic "nat20 -" [ref=f2e347]: August 21, 2026 7:53 PM
+            - generic [ref=f2e348]:
+              - button "" [ref=f2e349] [cursor=pointer]
+              - text:              
+              - button "" [ref=f2e350] [cursor=pointer]
+            - text:       
+          - text:       
+          - paragraph [ref=f2e352]: "Goblin Warrior 1 attempts attack. Goblin Warrior 1 attacks Elara: rolls 19 — hits. Elara takes 5 slashing damage. Goblin Warrior 1's turn ends. -- Round 7 -- Elara's turn begins."
+        - generic: 1/1
+    - generic [ref=f2e36]:
+      - text:  
+      - generic [ref=f2e37]:
+        - generic [ref=f2e38]:
+          - generic [ref=f2e39] [cursor=pointer]: 
+          - generic "Extensions" [ref=f2e78] [cursor=pointer]: 
+        - textbox "Type a message, or /? for help" [active] [ref=f2e79]
+        - generic [ref=f2e41]:
+          - text:      
+          - generic "Send a message" [ref=f2e80] [cursor=pointer]: 
+  - text:                     1  
+  - generic [ref=f2e81]: 
+  - status [ref=f2e82]
+  - status [ref=f2e83]
+  - status [ref=f2e84]
+  - status [ref=f2e85]
+  - status [ref=f2e86]
+  - status [ref=f2e87]
+  - status [ref=f2e88]
+  - status [ref=f2e89]
+  - status [ref=f2e90]
+  - status [ref=f2e91]
+  - status [ref=f2e92]
+  - status [ref=f2e93]
