@@ -91,7 +91,11 @@ def attack_roll(
     else:
         d20_result = roll_d20(modifier=attacker_bonus)
 
-    natural = d20_result.dice[0] if not (advantage or disadvantage) else max(d20_result.dice)
+    # The die actually in play — `roll_with_advantage` / `roll_with_disadvantage`
+    # already folded max()/min() into `total`, so backing the modifier out
+    # recovers the kept die for all three cases. Taking max() unconditionally
+    # would crit on a 20 that disadvantage discarded.
+    natural = d20_result.total - d20_result.modifier
 
     if natural == 20:
         hit_type = HitType.CRITICAL_HIT
@@ -498,7 +502,10 @@ def resolve_player_attack(
         )
 
     # Re-evaluate hit after effect modifiers applied
-    natural = atk.roll.dice[0] if len(atk.roll.dice) == 1 else max(atk.roll.dice)
+    # Same rule as attack_roll: recover the kept die by backing the modifier
+    # out of the total, so a disadvantage-discarded 20 does not crit here
+    # either.
+    natural = atk.roll.total - atk.roll.modifier
     if natural == 20:
         effective_hit_type = HitType.CRITICAL_HIT
     elif natural == 1 or attack_total < effective_target_ac:
