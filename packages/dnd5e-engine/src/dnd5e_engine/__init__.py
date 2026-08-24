@@ -13,7 +13,7 @@ Deferred for later phases:
 
 from __future__ import annotations
 
-__version__ = "0.2.0"
+__version__ = "0.3.1"
 
 from dnd5e_engine.build_party import build_party_member
 from dnd5e_engine.build_spec import (

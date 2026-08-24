@@ -1,0 +1,210 @@
+- generic [ref=e1]:
+  - generic [ref=e5]:
+    - generic [ref=e6]:
+      - button "" [ref=e48] [cursor=pointer]
+      - text:                                        + No items                         ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☑ ☰ ☑ ☰ ☑ ☰ ☑ ☰ ☑ ☰ ☑ ☰ ☐ ☰ ☐ ☰ ☐ ☰                                  + No items      ☰ ☰ ☰ ☰ ☰ ☰ ☰  ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰  ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰  ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰ ☰                  +     No items 
+    - generic [ref=e9]:
+      - button "" [ref=e72] [cursor=pointer]
+      - text:                                                                       
+    - generic [ref=e12]:
+      - button "" [ref=e50] [cursor=pointer]
+      - text:                                               
+    - generic [ref=e15]:
+      - button "" [ref=e51] [cursor=pointer]
+      - text:                +     
+    - generic [ref=e18]:
+      - button "" [ref=e52] [cursor=pointer]
+      - text:                                   
+    - generic [ref=e21]:
+      - generic "Change Background Image" [ref=e22]:
+        - button "" [ref=e53] [cursor=pointer]
+      - text:       +                            
+    - generic [ref=e24]:
+      - button "" [ref=e54] [cursor=pointer]
+      - generic [ref=e293]:
+        - generic [ref=e294]:
+          - heading "Extensions" [level=3] [ref=e295]
+          - generic [ref=e296]:
+            - checkbox "Notify on extension updates" [ref=e297] [cursor=pointer]
+            - generic [ref=e298]: Notify on extension updates
+          - button " Manage extensions" [ref=e299] [cursor=pointer]:
+            - generic [ref=e300]: 
+            - generic [ref=e301]: Manage extensions
+          - button " Install extension" [ref=e302] [cursor=pointer]:
+            - generic [ref=e303]: 
+            - generic [ref=e304]: Install extension
+        - generic [ref=e305]:
+          - generic [ref=e308]:
+            - generic [ref=e309] [cursor=pointer]:
+              - generic [ref=e310]: Download Extensions & Assets
+              - button "" [ref=e311]
+            - text:   
+          - generic [ref=e314]:
+            - generic [ref=e315] [cursor=pointer]:
+              - generic [ref=e316]: Character Expressions
+              - button "" [ref=e317]
+            - text:  +                                                           
+          - generic [ref=e321] [cursor=pointer]:
+            - generic [ref=e322]: TTS
+            - button "" [ref=e323]
+        - generic [ref=e324]:
+          - generic [ref=e327]:
+            - generic [ref=e328] [cursor=pointer]:
+              - strong [ref=e329]: Quick Reply
+              - button "" [ref=e330]
+            - text: +   + +  +     +        +        +        +  
+          - generic [ref=e333]:
+            - generic [ref=e334] [cursor=pointer]:
+              - generic [ref=e335]: Chat Translation
+              - button "" [ref=e336]
+            - text:   
+          - generic [ref=e339]:
+            - generic [ref=e340] [cursor=pointer]:
+              - generic [ref=e341]: Image Captioning
+              - button "" [ref=e342]
+            - text:  
+          - generic [ref=e345]:
+            - generic [ref=e346] [cursor=pointer]:
+              - generic [ref=e347]:
+                - generic [ref=e348]: Summarize
+                - button "" [ref=e349]
+              - button "" [ref=e350]
+            - text:       
+          - generic [ref=e353]:
+            - generic [ref=e354] [cursor=pointer]:
+              - generic [ref=e355]: Regex
+              - button "" [ref=e356]
+            - text:                      
+          - generic [ref=e359]:
+            - generic [ref=e360] [cursor=pointer]:
+              - generic [ref=e361]: Vector Storage
+              - button "" [ref=e362]
+            - text:    
+          - generic [ref=e364]:
+            - generic [ref=e365] [cursor=pointer]:
+              - generic [ref=e366]: Nat20 Rules Engine
+              - button "" [ref=e367]
+            - generic [ref=e368]:
+              - generic [ref=e369]: Bridge URL
+              - generic [ref=e370]:
+                - textbox "Bridge URL" [ref=e371]:
+                  - /placeholder: http://127.0.0.1:8020
+                  - text: http://127.0.0.1:8020
+                - button "Test connection" [ref=e372] [cursor=pointer]
+              - generic [ref=e373]: bridge 0.3.0 · engine 0.3.0 · data 0.3.0
+              - separator [ref=e374]
+              - generic [ref=e375]: Homebrew JSON
+              - combobox [ref=e377]:
+                - option "Items" [selected]
+                - option "Monsters"
+                - option "Spells"
+                - option "Species"
+                - option "Classes"
+                - option "Subclasses"
+                - option "Backgrounds"
+                - option "Feats"
+                - option "Features"
+              - textbox "Homebrew JSON" [ref=e378]:
+                - /placeholder: Paste homebrew item/spell/monster JSON here
+              - button "Import homebrew" [ref=e380] [cursor=pointer]
+        - separator [ref=e381]
+        - generic [ref=e382]:
+          - heading "(DEPRECATED) Extras API:" [level=4] [ref=e383]
+          - generic [ref=e384]:
+            - generic [ref=e385]: Not connected...
+            - generic [ref=e386]:
+              - checkbox "Auto-connect" [ref=e387] [cursor=pointer]
+              - generic [ref=e388]: Auto-connect
+        - generic [ref=e389]:
+          - textbox "Extras API URL" [ref=e390]: http://localhost:5100
+          - textbox "Extras API key (optional)" [ref=e391]
+          - button "Connect" [ref=e393] [cursor=pointer]
+    - generic [ref=e27]:
+      - button "" [ref=e55] [cursor=pointer]
+      - text:                    
+    - generic [ref=e30]:
+      - button "" [ref=e56] [cursor=pointer]
+      - text:                                                      Group is empty.          No characters available                        
+  - generic:                      +                                                                                +    + +                  
+  - generic:                  
+  - generic [ref=e33]:
+    - text: 
+    - generic [ref=e34]:
+      - generic [ref=e151]:
+        - generic [ref=e153] [cursor=pointer]
+        - generic [ref=e155]:
+          - generic [ref=e156]:
+            - generic [ref=e158]:
+              - generic [ref=e159]: Seraphina
+              - text: 
+              - generic [ref=e160]: April 18, 2026 10:32 PM
+            - generic [ref=e161]:
+              - button "" [ref=e162] [cursor=pointer]
+              - text:              
+              - button "" [ref=e163] [cursor=pointer]
+            - text:       
+          - text:       
+          - paragraph [ref=e165]:
+            - emphasis [ref=e166]: You wake with a start, recalling the events that led you deep into the forest and the beasts that assailed you. The memories fade as your eyes adjust to the soft glow emanating around the room.
+            - text: "\"Ah, you're awake at last. I was so worried, I found you bloodied and unconscious.\""
+            - emphasis [ref=e167]: She walks over, clasping your hands in hers, warmth and comfort radiating from her touch as her lips form a soft, caring smile.
+            - text: "\"The name's Seraphina, guardian of this forest — I've healed your wounds as best I could with my magic. How are you feeling? I hope the tea helps restore your strength.\""
+            - emphasis [ref=e168]: Her amber eyes search yours, filled with compassion and concern for your well being.
+            - text: "\"Please, rest. You're safe here. I'll look after you, but you need to rest. My magic can only do so much to heal you.\""
+      - generic [ref=e169]:
+        - generic [ref=e171] [cursor=pointer]
+        - generic [ref=e173]:
+          - generic [ref=e174]:
+            - generic [ref=e176]:
+              - generic [ref=e177]: Lucas
+              - text: 
+              - generic [ref=e178]: April 19, 2026 10:07 AM
+            - generic [ref=e179]:
+              - button "" [ref=e180] [cursor=pointer]
+              - text:              
+              - button "" [ref=e181] [cursor=pointer]
+            - text:       
+          - text:       
+          - paragraph [ref=e183]: ok, i will rest. where can i do that?
+      - generic [ref=e394]:
+        - generic [ref=e396] [cursor=pointer]
+        - generic [ref=e398]:
+          - generic [ref=e399]:
+            - generic [ref=e401]:
+              - generic [ref=e402]: Nat20
+              - text: 
+              - generic "nat20 -" [ref=e403]: August 21, 2026 7:46 PM
+            - generic [ref=e404]:
+              - button "" [ref=e405] [cursor=pointer]
+              - text:              
+              - button "" [ref=e406] [cursor=pointer]
+            - text:       
+          - text:       
+          - paragraph [ref=e408]:
+            - text: 🎲 2d6+3 →
+            - strong [ref=e409]: "12"
+        - generic: 1/1
+    - generic [ref=e36]:
+      - text:  
+      - generic [ref=e37]:
+        - generic [ref=e38]:
+          - generic [ref=e39] [cursor=pointer]: 
+          - generic "Extensions" [ref=e57] [cursor=pointer]: 
+        - textbox "Type a message, or /? for help" [active] [ref=e149]
+        - generic [ref=e41]:
+          - text:      
+          - generic "Send a message" [ref=e150] [cursor=pointer]: 
+  - text:                     1  
+  - generic [ref=e59]: 
+  - status [ref=e60]
+  - status [ref=e61]
+  - status [ref=e62]
+  - status [ref=e63]
+  - status [ref=e64]
+  - status [ref=e65]
+  - status [ref=e66]
+  - status [ref=e67]
+  - status [ref=e68]
+  - status [ref=e69]
+  - status [ref=e70]
+  - status [ref=e71]
