@@ -125,18 +125,20 @@ which also resolves an attack and prints the resulting `CombatEvent` stream.
 ## Live demo
 
 [`apps/demo`](apps/demo) is a small playable HTMX web app built on top of the public
-engine API — pick a scenario, take a turn, watch the combat log fill in. The server is
-stateless: every fight is replayed from a seed, so any completed combat is a shareable
-permalink.
+engine API — pick a scenario, take a turn, watch the engine's event tape fill in. The
+server is stateless: every fight is replayed from a seed, so any combat is a shareable
+permalink that reproduces the same dice.
 
-Run it locally:
+Run it locally (from the repo root, after `uv sync --all-packages --all-extras`):
 
 ```bash
 cd apps/demo
 uv run uvicorn nat20_demo.app:app
 ```
 
-Public URL coming with the first deploy — run it locally meanwhile.
+then open <http://127.0.0.1:8000>. The [demo README](apps/demo/README.md) covers the
+scenarios, the replay architecture, Docker, development, and deployment. A public URL
+will be linked here once the first deploy lands.
 
 ## Documentation
 
