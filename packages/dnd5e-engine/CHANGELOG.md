@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0]
+
+Lockstep release with `dnd5e-srd-data` 0.4.0 and `nat20-bridge` 0.4.0.
+
+Deprecates the legacy (Gen 1) rules surface. **Nothing is removed**; every
+deprecated import warns. Removal lands in 0.5.0 — see
+`docs/migration/v0.3-to-v0.4.md`.
+
 ### Deprecated
 
 - **The legacy (Gen 1) rules surface — removed in 0.5.0.** `dispatch`,
