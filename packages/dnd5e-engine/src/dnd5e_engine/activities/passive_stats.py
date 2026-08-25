@@ -2,14 +2,14 @@
 
 Maps the **allowlisted** Foundry dotted change-keys (``system.traits.dr.value``,
 ``system.attributes.senses.*``) and species ``trait_grants`` tokens
-(``dr:<type>`` / ``di:<type>``) into a typed :class:`DerivedPassiveStats`
+(``dr:<type>`` / ``di:<type>``) into a typed ``DerivedPassiveStats``
 (resistances, immunities, senses). The ``build_party_member`` seam calls this
 with the PC's always-on feature changes + species data and projects the result
 onto the spec.
 
-Also projects ``condition_immunities`` (``system.traits.ci.value``, C08-S02)
-and movement (``system.attributes.movement.*``, C08-S04 — a flat
-``walk_speed_bonus`` plus a typed :class:`CombatantMovementModes` carrier).
+Also projects ``condition_immunities`` (``system.traits.ci.value``) and movement
+(``system.attributes.movement.*``) — a flat ``walk_speed_bonus`` plus a typed
+``CombatantMovementModes`` carrier.
 
 PURITY CONTRACT: zero I/O, zero logging, never raises. Allowlist misses,
 deferred keys (languages, ``ac.calc``, ability/proficiency grants), and
@@ -39,9 +39,9 @@ _DR_KEY = "system.traits.dr.value"
 _DI_KEY = "system.traits.di.value"
 _CI_KEY = "system.traits.ci.value"
 
-# SRD §Movement (C08-S04). The flat walk-speed change folds into a scalar bonus
+# SRD §Movement . The flat walk-speed change folds into a scalar bonus
 # (composed with the species base_speed at the build seam); the non-walk modes
-# land on the typed :class:`CombatantMovementModes` carrier. Foundry's symbolic
+# land on the typed ``CombatantMovementModes`` carrier. Foundry's symbolic
 # ``@attributes.movement.walk`` token (Roving's "equal to your Speed") resolves
 # to the boosted walk speed — the single formula token this seam handles (no
 # general formula engine).
@@ -58,7 +58,7 @@ _MOVE_WALK_REF = "@attributes.movement.walk"
 # ``"poison"`` for the Poisoned condition; every other SRD condition's ``ci``
 # token already equals its condition slug. Normalize the sole irregular token
 # so the projected ``condition_immunities`` holds condition slugs the
-# ConditionApplied emit-gate compares directly (C08-S02). A single-entry alias,
+# ConditionApplied emit-gate compares directly . A single-entry alias,
 # deliberately not a general trait-vocabulary engine.
 _CI_TOKEN_TO_CONDITION = {"poison": "poisoned"}
 
@@ -78,7 +78,7 @@ class CombatantSenses(BaseModel):
 
 class CombatantMovementModes(BaseModel):
     """A creature's non-walk movement speeds in feet (SRD §Movement). ``None`` =
-    that mode unavailable. Mirrors :class:`CombatantSenses`'s shape; carried on
+    that mode unavailable. Mirrors ``CombatantSenses``'s shape; carried on
     the spec and the live ``Combatant`` alongside the scalar walk ``base_speed``.
     Kept multi-mode (not collapsed to one scalar — collapsing is lossy: a
     creature may have distinct climb / swim / fly / burrow speeds)."""
@@ -92,7 +92,7 @@ class CombatantMovementModes(BaseModel):
 
 
 class DerivedPassiveStats(BaseModel):
-    """Typed output of :func:`interpret_passive_stats` — the always-on passive
+    """Typed output of ``interpret_passive_stats`` — the always-on passive
     deltas to project onto a PC's spec at combat-build time."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -167,7 +167,7 @@ def interpret_passive_stats(
     ``species_base_speed`` is the creature's unmodified walking speed (feet); the
     symbolic ``@attributes.movement.walk`` token on a non-walk mode resolves
     against the *boosted* walk speed (``species_base_speed + walk_speed_bonus``,
-    C08-S04).
+    .
 
     PURE: no I/O, no logging, never raises. Unknown / deferred keys and
     non-literal numeric values are returned in ``skipped_keys``.

@@ -1,6 +1,6 @@
 """Library-side standalone rest resolvers — Short Rest, Long Rest, feature recovery.
 
-Public surface for SRD 5.2 rest & recovery, mirroring :mod:`dnd5e_engine.check`'s
+Public surface for SRD 5.2 rest & recovery, mirroring ``check``'s
 standalone / no-combat-handle pattern. A rest has **no** resolvable seam inside a
 live combat: ``PlayerIntent.intent_type`` structurally cannot express ``"short_rest"``
 (see ``events.py::IntentType``), and SRD 5.2 §Short Rest / §Long Rest list *"Rolling
@@ -72,9 +72,9 @@ class RestOutcome:
 
     ``healed`` / ``dice_spent`` / ``dice_remaining`` / ``rolls`` describe a Short
     Rest's hit-dice spend (``rolls`` is empty for a Long Rest, whose recovery draws
-    no dice). ``hp_current`` and ``pool`` are populated by :func:`resolve_long_rest`
+    no dice). ``hp_current`` and ``pool`` are populated by ``resolve_long_rest``
     (the caller reads the post-rest HP and the fully-restored pool from them) and
-    left ``None`` by :func:`resolve_short_rest`, which only mutates the dice pool.
+    left ``None`` by ``resolve_short_rest``, which only mutates the dice pool.
     """
 
     healed: int
@@ -99,7 +99,7 @@ def resolve_short_rest(
     never to the summed total). Pure: every draw flows through the passed-in ``rng``.
 
     Rejects an overspend (``dice_to_spend`` exceeding ``pool.dice_remaining``) and a
-    negative spend with :class:`ValueError`; the resolver never silently clamps.
+    negative spend with ``ValueError``; the resolver never silently clamps.
     """
     if dice_to_spend < 0:
         raise ValueError(f"dice_to_spend must be non-negative, got {dice_to_spend}")
@@ -171,7 +171,7 @@ def _recover_uses(
     recovery: Mapping[str, Sequence[_RecoveryRuleView]] | None,
     rng: random.Random | None,
 ) -> dict[str, int]:
-    """Shared core behind :func:`recover_feature_uses` and :func:`recover_item_uses`.
+    """Shared core behind ``recover_feature_uses`` and ``recover_item_uses``.
 
     ``period`` is caller-defined: feature callers pass rest periods (``"sr"``/
     ``"lr"``); item callers may also pass time-of-day periods (``"dawn"``/
@@ -265,7 +265,7 @@ def recover_feature_uses(
 ) -> dict[str, int]:
     """Apply a rest's feature-use recovery to a caster's ``custom_counters`` sidecar.
 
-    Tracks ``feature_use:<slug>`` keys; see :func:`_recover_uses` for the shared
+    Tracks ``feature_use:<slug>`` keys; see ``_recover_uses`` for the shared
     recovery-rule contract. ``rng``, when supplied, lets a non-literal ``formula``
     rule roll as dice instead of being preserved unchanged.
     """
@@ -281,7 +281,7 @@ def recover_item_uses(
 ) -> dict[str, int]:
     """Apply a recharge period to ``item_use:<slug>`` charge pools.
 
-    Same contract as :func:`recover_feature_uses`; ``recovery`` maps item slug
+    Same contract as ``recover_feature_uses``; ``recovery`` maps item slug
     → its ``Item.uses.recovery`` rules. Dice formulas ("1d6 + 1", the dominant
     wand recharge) roll through ``rng``; without an rng they preserve the
     counter unchanged.

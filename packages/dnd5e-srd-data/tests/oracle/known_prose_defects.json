@@ -1,0 +1,7 @@
+{
+  "monsters/ancient-gold-dragon": {
+    "field": "actions[0].description",
+    "markup": ["{count}", "[[/item]]"],
+    "note": "Upstream Foundry ships this multiattack description as an unfilled template ('makes {count} [[/item]] attacks and uses [[/item]]'), unlike every sibling ancient dragon which names its Rend attack. The translator is faithful; the defect is upstream. Consequence: the multiattack cannot fan out precisely and falls back to repeating one sibling. Re-check on the next `make refresh-upstream`; if upstream has fixed it, delete this entry. Tracked in BACKLOG.md."
+  }
+}

@@ -1,6 +1,6 @@
 """Combat evaluator event union.
 
-Per ``docs/agent-prompts/combat/00-evaluator-scaffold.md``. Exhaustively
+Exhaustively
 defined here so per-effect implementers + scenario authors do NOT extend
 the union at runtime; any new event type lands as a scaffold-extension
 PR that updates this module first.
@@ -77,9 +77,9 @@ CastFailedReason = Literal[
     # SRD 5.2 Counterspell — "On a failed save, the spell dissipates with no
     # effect, and the action, Bonus Action, or Reaction used to cast it is
     # wasted." Emitted by the pre-armed reaction queue (orchestrator.py,
-    # Cluster 6) when a queued Counterspell's Constitution save fails.
+    # when a queued Counterspell's Constitution save fails.
     "countered",
-    # SRD 5.2 §Limited-Use Features (Cluster 9) — a capped, rest-recharged
+    # SRD 5.2 §Limited-Use Features — a capped, rest-recharged
     # feature (Second Wind) invoked again with no uses left and no intervening
     # rest. Mirrors the ``no_action_economy`` reject shape, extended from a
     # per-turn budget to a per-encounter / per-rest one.
@@ -215,7 +215,7 @@ class EffectApplied(BaseModel):
     type: Literal["effect_applied"] = "effect_applied"
     effect: ActiveEffect
     # statuses live on `effect.statuses`; no separate field — there is
-    # no bridge step in Phase 6.
+    # no bridge step in .
 
 
 class EffectExpired(BaseModel):

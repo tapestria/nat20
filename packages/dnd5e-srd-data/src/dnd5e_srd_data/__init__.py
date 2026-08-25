@@ -1,13 +1,23 @@
-"""dnd5e-srd-data — canonical D&D 5e SRD asset dataset.
+"""dnd5e-srd-data — the canonical D&D 5e SRD 5.2 asset dataset (CC-BY-4.0).
 
-See README.md and the design spec at
-docs/superpowers/specs/2026-05-30-dnd5e-srd-data-phase-7a-design.md
-in the parent Tapestria repository.
+The typed corpus the ``dnd5e-engine`` rules engine reads at runtime. Content
+lives under ``canonical/<category>/<slug>.json`` and is loaded through
+``BundledAssetLoader``; every entry carries frozen
+``Provenance`` tracing it back to the SRD.
+
+See ``README.md`` for the package overview and ``CONTRIBUTING.md`` (repo root)
+for the translator/regeneration flow.
 """
 
 from __future__ import annotations
 
-__version__ = "0.2.0"
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _pkg_version
+
+try:  # pragma: no cover - trivial packaging fallback
+    __version__ = _pkg_version("dnd5e-srd-data")
+except PackageNotFoundError:  # pragma: no cover - source tree without install
+    __version__ = "0.0.0+unknown"
 
 from dnd5e_srd_data.loader import AssetLoader, BundledAssetLoader, Category, MemoryAssetLoader
 from dnd5e_srd_data.schema import (

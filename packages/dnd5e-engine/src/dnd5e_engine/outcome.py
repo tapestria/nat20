@@ -1,9 +1,9 @@
 """CombatOutcome data classes — the pure-data projection of closed combat state.
 
 These models are the typed payload the public combat seam returns from
-``end_combat``. Translation into Tapestria's ``AnyWorldEvent`` discriminated
+``end_combat``. Translation into a host's ``AnyWorldEvent`` discriminated
 union and persistence via the event pipeline live host-side in
-``app.session.combat_outcome``; this module is host-free.
+a host-side outcome record; this module is host-free.
 
 Event-type mapping (host-side projection):
 
@@ -15,10 +15,10 @@ Event-type mapping (host-side projection):
 - Loot → ``ItemTransferred`` / ``ItemCreated`` per the loot source.
 - XP → ``CharacterXpAwarded``.
 
-Phase 6: end-of-combat condition carryover is retired; the authoritative
+end-of-combat condition carryover is retired; the authoritative
 end-of-combat effect snapshot lives on
 ``EndCombatResult.final_active_effects`` (Foundry-aligned
-``ActiveEffect`` rows). Phase 6 callers log-and-discard; persistence is
+``ActiveEffect`` rows). callers log-and-discard; persistence is
 [effects-cross-combat].
 """
 
@@ -77,7 +77,7 @@ class CombatOutcome(BaseModel):
     deaths: list[DeathRecord] = Field(default_factory=list)
     # combatant_id → HP at combat-end (only emitted as CharacterHpChanged
     # for characters; monster/NPC HP at combat-end is not persisted to
-    # graph by this seam — that ephemeral state is owned by combat Redis).
+    # graph by this seam — that ephemeral state is owned by combat host storage).
     residual_hp: dict[str, int] = Field(default_factory=dict)
     residual_temp_hp: dict[str, int] = Field(default_factory=dict)
     loot_drops: list[LootDrop] = Field(default_factory=list)

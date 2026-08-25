@@ -1,49 +1,13 @@
-"""Build an :class:`ActivityResolutionContext` from live combat state.
+"""Build an ``ActivityResolutionContext`` from live combat state.
 
-The integration crux of the Avrae→Foundry resolver cutover (Task 2 of
-``docs/superpowers/plans/2026-06-03-bundled-asset-loader-cutover-plan.md``).
+This is the bridge between the orchestrator's mutable ``_LiveCombat`` and the
+pure activity resolvers. It reads the caster's real six ability scores,
+level-derived proficiency bonus, spellcasting ability and ``@scale`` values,
+folds in the passive attack/damage/save/check modifiers projected from active
+effects and conditions, and hands the resolvers a single immutable context.
 
-The new typed resolver consumes :class:`ActivityResolutionContext`. The OLD
-Avrae path faked caster magnitudes off the narrow :class:`Combatant`
-(``attack_bonus``, ``dexterity`` only — no per-ability scores, proficiency,
-or spellcasting ability). A Character caster's real six-ability scores +
-``character_level``-derived proficiency bonus have since landed (piece 4)
-and, per Cluster 4 (C04-S01), its save DC now runs the honest SRD 5.2
-formula (``8 + proficiency bonus + spellcasting-ability mod``, ``_save_dc``
-below) whenever a spellcasting ability resolves. The OLD flat
-approximations below are the byte-for-byte FALLBACK for the paths that still
-have no better ground truth:
-
-* PC fallback (no resolvable spellcasting ability — e.g. a non-caster class,
-  or a ``use_item`` cast, which never sets one) mirrors
-  ``intent_resolver._spellcasting_mod`` / ``_proficiency_bonus`` /
-  ``_spell_save_dc``: ``mod = max(0, attack_bonus-2)``, ``pb = 2``,
-  ``save_dc = 8 + pb + mod``.
-* Monster magnitudes (unaffected by Cluster 4 — no monster stat block threads
-  a per-ability sheet through here) mirror ``monster_ai._monster_save_dc``:
-  ``mod = attack_bonus``, ``save_dc = 8 + attack_bonus``.
-
-``caster_abilities`` is set uniformly across all six abilities to ``10 +
-2*mod`` FOR A MONSTER caster so the attack/damage handler — which resolves
-the governing ability *dynamically* (explicit ``attack.ability`` → weapon
-SRD default → finesse better-of-str/dex → spellcasting ability) — yields the
-old uniform ``@mod`` regardless of which ability it picks. A Character
-caster's ``caster_abilities`` are its real six scores (see below).
-
-This module is PURE: no I/O, no orchestrator import, no double-compute. The
-orchestrator already builds the per-entity passive sidecars (its
-``_build_hydration_payload`` projection) and passes the two dicts this builder
-needs — ``passive_damage_modifiers`` and ``save_modifiers`` — in as parameters at
-the Task 5/6 cutover. This builder only RESHAPES them into the typed context:
-
-* ``save_modifiers[id]["saves"]`` → ``passive_save_modifiers[id]`` ({ability:int})
-* ``save_modifiers[id]["passive_save_bonus"]`` (signed dice string) → carried verbatim
-* ``save_modifiers[id]["passive_save_adv"/"_dis"/"_auto_fail"]`` (UPPER-case
-  ability-code lists) → carried verbatim
-
-so the typed save path (``save_primitive.roll_save``) consumes the SAME bless/bane
-bonus, advantage/disadvantage, and auto-fail the OLD Avrae ``effects/save.py``
-path did. Empty / absent sidecar fields reproduce the prior behavior exactly.
+The resolvers never touch live combat state directly — everything they need
+arrives on the context, which is what keeps them pure and testable.
 """
 
 from __future__ import annotations
@@ -99,7 +63,7 @@ def _save_dc(
     intent such as ``use_item``, which never sets ``spellcasting_ability``)
     fall back to the OLD flat approximation byte-for-byte: Monster
     ``8 + attack_bonus`` (``_monster_save_dc``); PC ``8 + 2 + mod`` (the
-    Avrae-era ``_spell_save_dc``, ``pb`` hardcoded to ``2``).
+    the legacy evaluator-era ``_spell_save_dc``, ``pb`` hardcoded to ``2``).
     """
     if caster.entity_type == "Monster":
         return 8 + caster.attack_bonus
@@ -154,9 +118,9 @@ def build_activity_context(
     sneak_attack_ally_adjacent: dict[str, bool] | None = None,
 ) -> ActivityResolutionContext:
     """Adapt the caster + the pre-computed hydration sidecars into the typed
-    :class:`ActivityResolutionContext` the new resolver consumes.
+    ``ActivityResolutionContext`` the new resolver consumes.
 
-    Caster magnitudes reproduce the OLD Avrae approximations (see module
+    Caster magnitudes reproduce the OLD the legacy evaluator approximations (see module
     docstring). ``passive_damage_modifiers`` and ``save_modifiers`` are the two
     dicts the orchestrator's ``_build_hydration_payload`` already produces —
     passed IN so this builder stays pure (no orchestrator import, no I/O, no
@@ -188,7 +152,7 @@ def build_activity_context(
     path keeps the blanket override.
 
     ``cast_level_override`` passes straight through to
-    :class:`ActivityResolutionContext` — a ``use_item`` charges_to_spend
+    ``ActivityResolutionContext`` — a ``use_item`` charges_to_spend
     upcast's forced delegated-cast level (orchestrator-computed off the
     charge gate's own cost accounting). ``None`` (the default) leaves
     ``resolve_cast`` (``activities/cast.py``) to fall back to the wrapper
@@ -209,7 +173,7 @@ def build_activity_context(
         }
         caster_proficiency_bonus = proficiency_bonus(caster.character_level)
     else:
-        # Monsters/NPCs have no per-ability sheet here: keep the Avrae-era
+        # Monsters/NPCs have no per-ability sheet here: keep the legacy evaluator-era
         # uniform fake (10 + 2*mod across all six abilities, PB 2) so the
         # dynamic governing-ability resolution in attack.py reproduces the old
         # uniform @mod for any ability it picks.
@@ -253,7 +217,7 @@ def build_activity_context(
     for entity_id, dmg_entry in passive_damage_modifiers.items():
         # ``passive_damage_modifiers`` is a WIDE dict: resistance/immunity/
         # vulnerability lists PLUS the signed-dice ``passive_to_hit_bonus`` STRING
-        # the orchestrator projection wedges in (mirrors the OLD Avrae sidecar).
+        # the orchestrator projection wedges in (mirrors the OLD the legacy evaluator sidecar).
         to_hit: object = dmg_entry.get("passive_to_hit_bonus")
         if isinstance(to_hit, str) and to_hit:
             passive_attack_bonus[entity_id] = to_hit

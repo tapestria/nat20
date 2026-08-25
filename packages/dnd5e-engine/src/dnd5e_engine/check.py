@@ -1,16 +1,22 @@
-"""Library-side standalone check resolver — `resolve_check`.
+"""Standalone check resolver — ``resolve_check``.
 
-Public surface for skill checks, ability checks, and saving throws when
-no combat handle is required (narrator-time skill prompts, out-of-combat
-poison ticks, environmental hazards). Each check honours `active_effects`
-passed by the host so Bless / Guidance / Bane land uniformly.
+Resolves a skill check, ability check, or saving throw with no combat handle
+required (out-of-combat skill prompts, poison ticks, environmental hazards).
+Each check honours the ``active_effects`` you pass, so Bless / Guidance / Bane
+land uniformly here and in combat.
 
-Combat-flow skill checks (`ActionType.SKILL_CHECK` via `dispatch.py`) also
-flow through this resolver — see `dispatch._resolve_skill_check`.
+Determinism
+-----------
+Set ``rng`` to a seeded ``random.Random`` for a reproducible
+result. If you leave it ``None``, the d20 is drawn from the process-global
+``random`` module and the check is reproducible only if you seed that yourself.
+In-combat rolls are unaffected: they always use the generator threaded from
+``start_combat(rng_seed=...)``.
 """
 
 from __future__ import annotations
 
+import random
 from dataclasses import dataclass, field
 from typing import Literal
 
@@ -31,9 +37,9 @@ class CheckSpec:
     """All inputs needed to resolve a standalone check.
 
     Self-contained: the resolver makes zero I/O calls and reads nothing
-    outside the spec. `active_effects` are **pre-filtered by the caller**
-    (host-side `effect_store` filters by action type at fetch time via
-    EffectRef + D-13). The resolver folds Foundry-shaped
+    outside the spec. ``active_effects`` are **pre-filtered by the caller** —
+    the engine does not decide which of a creature's effects apply to this
+    check. The resolver folds Foundry-shaped
     `ActiveEffectChange` entries whose `key` matches the check's bucket
     (`check.bonus` for skill+ability, `save.bonus` for saving_throw).
     Override-mode changes on `flags.advantage.*` / `flags.disadvantage.*`
@@ -61,16 +67,19 @@ class CheckSpec:
     # keeps every existing caller behaviour-neutral until populated downstream.
     expertise_skills: tuple[str, ...] = ()
     active_effects: tuple[ActiveEffect, ...] = field(default_factory=tuple)
+    # Seeded generator for a reproducible roll. ``None`` draws from the
+    # process-global ``random`` module (reproducible only if the caller seeds
+    # it). Excluded from equality/repr so two specs comparing equal still
+    # describe the same check.
+    rng: random.Random | None = field(default=None, compare=False, repr=False)
 
 
 @dataclass(frozen=True)
 class CheckResult:
     """Result fragment for a standalone check.
 
-    Fields mirror the existing `SkillOutcome` / `SavingThrowOutcome`
-    shapes so host callers can lift this into their EngineResult sub-
-    outcomes (host wrap lives in `dispatch._resolve_skill_check` and the
-    `app.session.ws_player_action` consult-codex path).
+    A plain value type: everything a host needs to render or adjudicate the
+    roll, with no engine state attached.
     """
 
     kind: CheckKind
@@ -108,17 +117,16 @@ _KIND_TO_BUCKETS: dict[CheckKind, tuple[str, ...]] = {
 def resolve_check(spec: CheckSpec) -> CheckResult:
     """Resolve a standalone skill / ability / saving-throw check.
 
-    Same code path used by `dispatch._resolve_skill_check` for in-combat
-    SKILL_CHECK intents. Active effects are pre-filtered by the caller
-    (host-side `effect_store` filters by action type at fetch time via
-    EffectRef + D-13). The resolver folds Foundry-shaped
+    Active effects are pre-filtered by the caller. The resolver folds
+    Foundry-shaped
     `ActiveEffectChange` entries whose `key` matches the kind's bucket
     (`check.bonus` for skill+ability, `save.bonus` for saving_throw).
     Override-mode changes on `flags.advantage.*` / `flags.disadvantage.*`
     contribute to `effect_breakdown` only; the roll mechanic's advantage
     is set via `spec.advantage`.
 
-    Pure function — zero I/O.
+    Zero I/O. Pass ``spec.rng`` for a reproducible roll — see the module
+    docstring for the determinism contract.
     """
     buckets: tuple[str, ...] = _KIND_TO_BUCKETS[spec.kind]
     # Saving throws additionally honor the per-ability bucket
@@ -127,7 +135,7 @@ def resolve_check(spec: CheckSpec) -> CheckResult:
     if spec.kind == "saving_throw" and spec.ability:
         buckets = (*buckets, f"save.{spec.ability.lower()}.bonus")
 
-    # Codex Phase 6 review iter-10 P2: derive advantage / disadvantage
+    # Derive advantage / disadvantage
     # from ``flags.advantage.*`` / ``flags.disadvantage.*`` override
     # changes on active_effects. The ieffect2 translator emits effects
     # like frightened/blinded as flag changes (per-bucket or per-ability),
@@ -140,7 +148,7 @@ def resolve_check(spec: CheckSpec) -> CheckResult:
         flag_roots = ("flags.advantage.save", "flags.disadvantage.save")
     flag_advantage = False
     flag_disadvantage = False
-    # Codex Phase 6 review iter-11 P2: for skill checks, derive the
+    # for skill checks, derive the
     # relevant ability from the skill so an ability-tagged
     # ``flags.disadvantage.check.strength`` does not silently penalize a
     # Perception (Wisdom) check. For ability checks the spec carries the
@@ -192,6 +200,7 @@ def resolve_check(spec: CheckSpec) -> CheckResult:
             advantage=effective_advantage,
             disadvantage=effective_disadvantage,
             expertise=spec.skill.lower().replace(" ", "_") in spec.expertise_skills,
+            rng=spec.rng,
         )
         normalized_skill = spec.skill.lower().replace(" ", "_")
         ability_used = SKILL_ABILITIES.get(normalized_skill, "intelligence")
@@ -204,6 +213,7 @@ def resolve_check(spec: CheckSpec) -> CheckResult:
             dc=spec.dc,
             advantage=effective_advantage,
             disadvantage=effective_disadvantage,
+            rng=spec.rng,
         )
         ability_used = spec.ability.lower()
     elif spec.kind == "saving_throw":
@@ -217,6 +227,7 @@ def resolve_check(spec: CheckSpec) -> CheckResult:
             dc=spec.dc,
             advantage=effective_advantage,
             disadvantage=effective_disadvantage,
+            rng=spec.rng,
         )
         ability_used = spec.ability.lower()
     else:  # pragma: no cover -- exhaustively typed by CheckKind
@@ -232,6 +243,7 @@ def resolve_check(spec: CheckSpec) -> CheckResult:
             base_total=modified_total,
             bucket=bucket,
             effects=spec.active_effects,
+            rng=spec.rng,
         )
         breakdown.extend(bucket_breakdown)
     success = (modified_total >= spec.dc) if spec.dc is not None else None

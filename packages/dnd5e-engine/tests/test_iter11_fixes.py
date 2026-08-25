@@ -51,7 +51,7 @@ def test_apply_changes_to_check_negative_string_value_parses():
 
 def test_apply_changes_to_check_dice_formula_still_works(monkeypatch):
     """The dice-formula path is untouched: "1d4" still rolls via the parser."""
-    monkeypatch.setattr("dnd5e_engine.rules.effects.roll_dice_str", lambda s: 3)
+    monkeypatch.setattr("dnd5e_engine.rules.effects.roll_dice_str", lambda s, rng=None: 3)
     eff = _eff_changes(ActiveEffectChange(key="attack.roll.bonus", mode="add", value="1d4"))
     total, _ = apply_changes_to_check(base_total=10, bucket="attack.roll.bonus", effects=[eff])
     assert total == 13

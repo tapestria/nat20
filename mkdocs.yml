@@ -27,8 +27,6 @@ plugins:
           options:
             show_source: false
             docstring_style: google
-not_in_nav: |
-  dev/*
 nav:
   - Home: index.md
   - Quickstart: quickstart.md
@@ -36,9 +34,16 @@ nav:
       - Combat model: concepts/combat.md
       - Activities: concepts/activities.md
       - Effects: concepts/effects.md
+      - Reactions: concepts/reactions.md
+      - Monsters: concepts/monsters.md
       - Grid: concepts/grid.md
+  - Capability matrix: capabilities.md
   - API reference: api.md
   - nat20-bridge (SillyTavern): bridge.md
   - Comparison: comparison.md
+  - Design notes:
+      - Reaction queue: dev/reaction-queue.md
+      - Passive-stat projection: dev/passive-projection.md
+      - Spatial geometry: dev/spatial-geometry.md
   - Migration guide (0.1→0.2): migration/v0.1-to-v0.2.md
   - Migration guide (0.2→0.3): migration/v0.2-to-v0.3.md

@@ -1,8 +1,13 @@
-"""Module-level lib AssetLoader singleton for the typed-Activity resolver.
+"""The asset-loader seam — where the engine gets its rules content.
 
-Returns the lib's typed ``AssetLoader`` (``dnd5e_srd_data``); production combat
-resolution reads its corpus through this singleton. The prior Avrae loader was
-retired in Phase 7b.
+The engine ships no rules data. Every typed entity it resolves is fetched
+through the process-wide ``AssetLoader`` returned by ``get_lib_loader``, which
+defaults to the bundled SRD 5.2 corpus (``BundledAssetLoader``).
+
+The engine is edition-agnostic: it resolves whatever typed content it is handed.
+To drive it from a different corpus, implement the ``AssetLoader`` protocol and
+install it once at startup with ``configure_lib_loader``; pass ``None`` to
+revert to the bundled corpus. Install it before opening any combat.
 """
 
 from __future__ import annotations

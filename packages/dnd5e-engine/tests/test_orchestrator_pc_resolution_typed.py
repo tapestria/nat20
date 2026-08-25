@@ -2,7 +2,7 @@
 
 ``submit_player_intent`` no longer builds an Avrae IR tree + ``evaluate``.
 Instead it fetches the typed entity (weapon / spell / feat) from the lib
-loader, builds an :class:`ActivityResolutionContext`, and walks
+loader, builds an ``ActivityResolutionContext``, and walks
 ``resolve_activity`` over the entity's activities. These tests drive the PC
 seam end-to-end against a ``MemoryAssetLoader`` and lock three contracts:
 

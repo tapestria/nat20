@@ -26,7 +26,7 @@ MIRRORS, does not import from, ``effects/save.py``:
   sidecar (``ctx.passive_save_modifiers[entity_id][ability]``), NOT rebuilt from
   ability score + proficiency; an absent target / ability contributes +0.
 * auto-fail / advantage / disadvantage / save-bonus are sourced from the same
-  per-target sidecar shape the OLD Avrae path read off ``effect_store``; empty
+  per-target sidecar shape the OLD the legacy evaluator path read off the host effect store; empty
   sidecars reproduce the prior single-d20 + per-ability-mod behavior exactly.
 """
 
@@ -58,7 +58,7 @@ def roll_save(
 ) -> tuple[int, bool]:
     """Roll ``target``'s ``ability`` save vs ``dc``; return ``(roll_total, succeeded)``.
 
-    Mirrors the full target-side save sidecar the OLD Avrae path
+    Mirrors the full target-side save sidecar the OLD the legacy evaluator path
     (``effects/save.py``) consumed:
 
     * ``ctx.passive_save_auto_fail[id]`` — if ``ability`` (upper-case) is listed
@@ -68,7 +68,7 @@ def roll_save(
       ``effects/save.py:_is_auto_fail``).
     * ``ctx.passive_save_adv[id]`` / ``ctx.passive_save_dis[id]`` — advantage /
       disadvantage on the d20; an ability present in both cancels to normal
-      (Avrae ``reconcile_adv``).
+      (the legacy evaluator ``reconcile_adv``).
     * ``ctx.passive_save_modifiers[id][ability]`` — the resolved per-ability
       integer modifier (absent → +0).
     * ``ctx.passive_save_bonus[id]`` — a signed dice-expression string (Bless
@@ -120,7 +120,7 @@ def _roll_save_d20(
 
     Advantage / disadvantage are sourced from ``ctx.passive_save_adv`` /
     ``ctx.passive_save_dis`` (UPPER-case ability codes); an ability present in
-    both cancels to normal (Avrae ``reconcile_adv``). With advantage two d20s are
+    both cancels to normal (the legacy evaluator ``reconcile_adv``). With advantage two d20s are
     drawn and the higher kept; with disadvantage the lower; otherwise one d20.
     """
     forced = ctx.variables.get(FORCE_SAVE_D20)

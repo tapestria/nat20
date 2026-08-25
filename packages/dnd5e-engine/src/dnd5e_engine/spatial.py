@@ -265,7 +265,7 @@ class GridTopology:
     ) -> list[str]:
         """SRD 5.2 §Areas of Effect — the in-bounds cell set for a template.
 
-        Chebyshev metric throughout (maintainer decision, catalog C05-S04 —
+        Chebyshev metric throughout (maintainer decision, catalog —
         settled, not relitigated): ``radius_cells = size_ft // cell_size_ft``.
 
         * ``"sphere"``: every cell with ``max(|dx|, |dy|) <= radius_cells``

@@ -1,8 +1,8 @@
 """Pure CombatEvent → dict serialization.
 
-Used by the host's WS-envelope adapter at app.combat.ws_projection.
+Used by the host's WS-envelope adapter in the host.
 Library-internal only — no WS protocol concerns leak in here. The host
-owns Tapestria-specific envelope wrapping (SystemMessage, CombatEnd,
+owns host-specific envelope wrapping (SystemMessage, CombatEnd,
 DeathSaveUpdate); the library only knows how to project an event to its
 generic wire-shape dict.
 """

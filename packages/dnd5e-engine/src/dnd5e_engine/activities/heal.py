@@ -1,14 +1,14 @@
 """``heal`` kind handler for the Activity resolver.
 
 Foundry ``heal-data.mjs`` stores healing as a single ``DamagePartBlock``
-(:class:`HealActivity.healing`), not a list. The ``types`` list carries a
+(``healing``), not a list. The ``types`` list carries a
 single token: ``"healing"`` for HP restoration, ``"temphp"`` for a temporary
 HP buffer — both confirmed against canonical SRD 5.2 data (cure-wounds.json
 emits ``"healing"``; false-life.json emits ``"temphp"``). When ``temphp`` is
-present we emit :class:`TempHpApplied`, otherwise :class:`HealingApplied`.
+present we emit ``TempHpApplied``, otherwise ``HealingApplied``.
 
 MIRRORS, does not import from, ``effects/temphp.py`` for the temp-hp token
-distinction. The keep-higher replacement policy lives only on the Avrae-IR
+distinction. The keep-higher replacement policy lives only on the legacy
 ``effects/`` path (which carries an existing-temp-HP lookup); the typed
 Activity resolver emits the rolled grant directly, matching how ``apply.py``
 emits the rolled magnitude for damage.

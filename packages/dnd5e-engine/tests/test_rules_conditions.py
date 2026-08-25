@@ -142,8 +142,15 @@ def test_get_condition_effects_returns_the_table_entry() -> None:
     assert "Speed becomes 0" in effects
 
 
-def test_exhaustion_lists_all_six_levels() -> None:
-    assert len(get_condition_effects(Condition.EXHAUSTION)) == 6
+def test_exhaustion_describes_the_srd_52_scaling_rule() -> None:
+    """SRD 5.2 replaced the 2014 six-tier ladder with two per-level penalties
+    (D20 Tests -2 x level, Speed -5 ft x level) and death at level 6."""
+    text = " ".join(get_condition_effects(Condition.EXHAUSTION)).lower()
+    assert "d20 test" in text
+    assert "speed" in text
+    assert "level 6" in text
+    assert "death" in text
+    assert "halved" not in text  # the 2014 wording
 
 
 def test_implied_table_only_references_real_conditions() -> None:

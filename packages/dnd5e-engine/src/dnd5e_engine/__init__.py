@@ -1,19 +1,31 @@
-"""dnd5e-engine — host-agnostic D&D 5e SRD rules engine.
+"""dnd5e-engine — a host-agnostic, zero-I/O D&D 5e SRD 5.2 rules engine.
 
-Public API per docs/superpowers/specs/2026-05-26-dnd5e-engine-extraction-design.md.
+Everything exported here is listed in ``__all__`` below; that list is the
+package's stable contract and is pinned by ``tests/test_public_api_surface.py``.
 
-Asset loading runs through ``dnd5e_srd_data.BundledAssetLoader`` (the typed
-2024-SRD corpus), wired via :mod:`dnd5e_engine.lib_loader`.
+The four combat-loop coroutines are ``start_combat``, ``submit_player_intent``,
+``advance_monster_turn`` and ``end_combat``; ``resolve_check`` is the standalone
+ability/skill/saving-throw resolver, and ``build_party_member`` turns a
+``CharacterBuildSpec`` into a combat-ready ``PartyMemberSpec``.
 
-Deferred for later phases:
-  - roll (ad-hoc dice) — Phase 7
-  - get_state_snapshot / list_active_handles (diagnostic introspection)
-    — not yet implemented in orchestrator; will land alongside Phase 5 or 6.
+Rules content is never bundled with the engine. It is read at runtime from the
+companion ``dnd5e-srd-data`` package; call ``configure_lib_loader`` to
+substitute your own typed corpus.
+
+See the ``docs/`` tree (published at https://tapestria.github.io/nat20/) for the
+combat model, the activity corpus, and a per-mechanic capability matrix
+describing exactly which SRD rules this engine resolves today.
 """
 
 from __future__ import annotations
 
-__version__ = "0.3.1"
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _pkg_version
+
+try:  # pragma: no cover - trivial packaging fallback
+    __version__ = _pkg_version("dnd5e-engine")
+except PackageNotFoundError:  # pragma: no cover - source tree without install
+    __version__ = "0.0.0+unknown"
 
 from dnd5e_engine.build_party import build_party_member
 from dnd5e_engine.build_spec import (

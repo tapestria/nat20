@@ -1,16 +1,12 @@
-# Reaction queue (Cluster 6 design note)
+# Reaction queue
 
-Design note for the "Reactions & off-turn intents" `BACKLOG.md` section —
-the pre-armed reaction queue, cross-actor trigger detection, Counterspell,
-Shield, the monster-reactor opportunity attack, and Disengage. Written
-before implementation per the autonomous gap-closing campaign's epic
-protocol (`specs/e2e-scenario-catalog.md`, Cluster 6: C06-S01..S06). The
-BACKLOG section is explicit that every item below shares one machinery and
-must be designed together, not piecemeal; this note is that shared design.
+How the engine models reactions: the pre-armed reaction queue, cross-actor
+trigger detection, Counterspell, Shield, the monster-reactor opportunity
+attack, and Disengage. These share one piece of machinery and were designed
+together rather than piecemeal; this note is that shared design.
 
-**Hard governing constraint (unchanged from the catalog): reactions are
-pre-armed auto-fire.** There is no mid-resolution host round-trip anywhere
-in this cluster — `submit_player_intent` / `advance_monster_turn` remain the
+**Hard governing constraint: reactions are pre-armed auto-fire.** There is no mid-resolution host round-trip anywhere
+in this design — `submit_player_intent` / `advance_monster_turn` remain the
 only two ingress points, and a queued reaction is drained and fully resolved
 entirely inside whichever of those two calls processes the trigger. A host
 never gets asked "do you want to react?" mid-resolution; it must pre-declare
@@ -19,7 +15,7 @@ fires.
 
 ## SRD ground truth
 
-- **Ready** (`raw_sources/foundry/packs/_source/content24/chapter-1/actions.yml`,
+- **Ready** (`the Foundry SRD source packs, content24/chapter-1/actions.yml`,
   journal entry "Ready"): *"Prepare to take an action in response to a
   trigger you define... you take your Reaction to take that action."*
 - **Reactions** (`appendices/appendix-d-rule-references.yml`, journal page
@@ -33,7 +29,7 @@ fires.
   Opportunity Attacks for the rest of the turn."*
 - **Counterspell** / **Shield** (`canonical/spells/counterspell.json` /
   `shield.json` `description` fields, traced verbatim to
-  `raw_sources/foundry/packs/_source/spells24/...`) — quoted in full in each
+  `the Foundry SRD source packs, spells24/...`) — quoted in full in each
   reaction's own section below.
 
 ## Modeling decision: `"ready"` is the pre-arm intent, not true SRD Ready
@@ -127,14 +123,14 @@ Three call sites drain the queue, each for a different trigger:
 3. **`advance_monster_turn`, right before `_build_hydration_payload`** (the
    monster attack path) — `trigger="hit_by_attack"`, `targets=[chosen_target]`
    (the PC the monster is about to attack). This is Shield's hook for the
-   monster-attacker / PC-defender direction — the one C06-S03 actually pins.
+   monster-attacker / PC-defender direction — the one a pinned scenario actually pins.
 
 A fourth, unrelated interaction point — `_handle_move` (the PC move
 handler) — fires the monster-reactor opportunity attack (see below). It
 does **not** go through `pending_reactions` at all (see "Why AoO is not a
 queued reaction").
 
-## Counterspell (C06-S01, S02)
+## Counterspell (a pinned scenario, S02)
 
 > "You attempt to interrupt a creature in the process of casting a spell.
 > The creature makes a Constitution saving throw. On a failed save, the
@@ -165,7 +161,7 @@ resolver, with the interrupted caster as sole target.
 3. Build an `ActivityResolutionContext` with `caster=reactor`,
    `targets=[the interrupted caster]`, resolving the reactor's REAL
    spellcasting ability via the already-shipped
-   `_resolve_caster_spellcasting_ability` (Cluster 4's real-ability-score
+   `_resolve_caster_spellcasting_ability` (an earlier release's real-ability-score
    path — see "Independently-verified gap already closed" below) and run
    Counterspell's `SaveActivity` through `resolve_activity`. This emits
    exactly one `SaveRolled` (no damage, no effect riders — Counterspell's
@@ -187,7 +183,7 @@ submission" entry)
 Two options were on the table (per the BACKLOG entry and this cluster's
 task brief): move `_consume_spell_slot`'s decrement to resolution-time, or
 add a refund path that undoes an already-applied decrement. **Chosen: a
-third option, already implied by C06-S02's own catalog entry — drain the
+third option, already implied by a pinned scenario's own catalog entry — drain the
 reaction queue even earlier than `_consume_spell_slot`, so a countered cast
 never reaches the gate at all.** `_consume_spell_slot` itself is completely
 unmodified. Rationale: a refund path needs to reverse a decrement + risks
@@ -208,17 +204,17 @@ real `8 + proficiency_bonus + ability_mod(spellcasting_ability)` formula,
 which would make this scenario's `dc=15` assertion unreachable. **Verified
 empirically before writing any C06 code:** `build_context.py::_save_dc`
 already implements the real formula whenever a `spellcasting_ability`
-resolves (landed in Cluster 4, per that function's own docstring —
-`"per Cluster 4 (C04-S01), its save DC now runs the honest SRD 5.2
+resolves (landed in an earlier release, per that function's own docstring —
+`"per an earlier release (a pinned scenario), its save DC now runs the honest SRD 5.2
 formula"`). A direct probe (casting `counterspell` on-turn as a level-5
 INT-18 wizard, `rng_seed=9` then `rng_seed=1`) reproduced the catalog's
 exact pinned numbers — `dc=15, roll_total=15, succeeded=True` and
 `dc=15, roll_total=5, succeeded=False` — with **zero** new code. This
-sub-bug needed no fix in this cluster; it is called out here so the
+sub-bug needed no fix in this design; it is called out here so the
 "compounding gap" language in the BACKLOG/brief is not silently
 re-litigated by a future reader.
 
-## Shield (C06-S03, S04)
+## Shield (a pinned scenario, S04)
 
 > "Until the start of your next turn, you have a +5 bonus to AC, including
 > against the triggering attack, and you take no damage from *Magic
@@ -238,7 +234,7 @@ a readied self-buff reaction spell to completion" helper (used by both the
 reactor's reaction + spell slot, emit `ReactionTriggered`, build a context
 with `caster=reactor, targets=[reactor]`, and walk the spell's own
 activities. For Shield this emits `EffectApplied` (the +5 AC rider) with no
-attack roll and no dice at all — consistent with C06-S03's "Shield never
+attack roll and no dice at all — consistent with a pinned scenario's "Shield never
 touches the roll, only the AC comparison" pin.
 
 ### AC-bonus consumption (three compounding drop points, closed together)
@@ -256,7 +252,7 @@ touches the roll, only the AC comparison" pin.
    never a dice formula, in the SRD corpus).
 3. `attack.py::resolve_attack` folds `ctx.passive_ac_bonus.get(target_id, 0)`
    into `effective_ac` alongside the existing cover-bonus fold, symmetric
-   with C05-S02's cover-AC consumer shape.
+   with a pinned scenario's cover-AC consumer shape.
 
 ### Duration-fix semantics (closes the discovered "1-round buffs expire on
 caster's own turn end" entry, for the reaction-applied path)
@@ -287,10 +283,10 @@ be an entire round later. The existing turn-end tick is untouched and
 simply never finds the effect still present by the time it would otherwise
 run (already-expired entries are no-ops for it). Scoped deliberately to
 reaction-fired effects only: a hypothetical multi-round reaction buff isn't
-in this cluster's SRD scope, so no richer round-counting rule was built for
+in this design's SRD scope, so no richer round-counting rule was built for
 a case nothing here exercises.
 
-### Magic Missile carve-out (C06-S04) — narrow, not a force-immunity mechanic
+### Magic Missile carve-out (a pinned scenario) — narrow, not a force-immunity mechanic
 
 > "...and you take no damage from *Magic Missile*." (same Shield text,
 > above) — an explicit SRD *spell-specific* carve-out, not a general force
@@ -312,7 +308,7 @@ force-immunity flag on `Combatant` — deliberately narrower than a real
 force-resistance mechanic, matching the SRD's spell-specific wording and
 the smallest change that satisfies it.
 
-## Monster opportunity attack (C06-S05) + Disengage (C06-S06)
+## Monster opportunity attack (a pinned scenario) + Disengage (a pinned scenario)
 
 ### Why AoO is not a queued reaction
 
@@ -362,7 +358,7 @@ movement doesn't provoke... for the rest of the turn," not permanently.
 - **Monster spellcasting.** `select_typed_monster_action` still never picks
   a `CastActivity`-only action (Spellcasting/Protective Magic), so a monster
   cannot cast Counterspell/Shield on its own turn through the public API;
-  C06-S01/S02 model the "enemy caster" as a second PC for this reason (a
+  a pinned scenario model the "enemy caster" as a second PC for this reason (a
   documented substitution, not an error — see the catalog's own
   "Constructibility finding").
 - **A general force-immunity / resistance mechanic.** Deliberately not

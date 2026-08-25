@@ -1,7 +1,7 @@
 """
 Dice resolution helpers used by the v2.2 engine dispatch layer.
 
-Pure module: zero imports from neo4j, asyncpg, redis, or the host (Neo4j/PG/Redis layers).
+Pure module: zero imports from neo4j, asyncpg, redis, or the host (Neo4j/PG/host storage layers).
 All DB fetching is done by the caller and passed in as parameters.
 """
 

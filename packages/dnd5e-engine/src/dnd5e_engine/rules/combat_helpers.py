@@ -204,7 +204,7 @@ def roll_and_sort_initiative(combatants: list[dict[str, Any]]) -> list[dict[str,
 class DeathSaveState:
     """Mutable state machine for D&D 5e death saving throws.
 
-    Designed for Redis serialization via to_dict / from_dict.
+    Designed for host persistence via to_dict / from_dict.
     """
 
     successes: int = 0
@@ -258,7 +258,7 @@ class DeathSaveState:
         self.is_stable = False
 
     # ------------------------------------------------------------------
-    # Serialization (for Redis)
+    # Serialization (plain dicts for host persistence)
     # ------------------------------------------------------------------
 
     def to_dict(self) -> dict[str, Any]:

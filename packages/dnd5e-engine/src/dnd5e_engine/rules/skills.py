@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import random
 from dataclasses import dataclass
 
 from dnd5e_engine.rules.dice import (
@@ -79,6 +80,8 @@ def skill_check(
     disadvantage: bool = False,
     expertise: bool = False,  # double proficiency
     jack_of_all_trades: bool = False,  # half proficiency even if not proficient
+    *,
+    rng: random.Random | None = None,
 ) -> SkillCheckResult:
     """
     Resolve a skill check.
@@ -106,11 +109,11 @@ def skill_check(
         disadvantage = False
 
     if advantage:
-        result = roll_with_advantage(modifier=modifier)
+        result = roll_with_advantage(modifier=modifier, rng=rng)
     elif disadvantage:
-        result = roll_with_disadvantage(modifier=modifier)
+        result = roll_with_disadvantage(modifier=modifier, rng=rng)
     else:
-        result = roll_d20(modifier=modifier)
+        result = roll_d20(modifier=modifier, rng=rng)
 
     success = (result.total >= dc) if dc is not None else None
 
@@ -138,6 +141,8 @@ def ability_check(
     dc: int | None = None,
     advantage: bool = False,
     disadvantage: bool = False,
+    *,
+    rng: random.Random | None = None,
 ) -> SkillCheckResult:
     """Raw ability check (no skill proficiency)."""
     score = ability_scores.get(ability.lower(), 10)
@@ -148,11 +153,11 @@ def ability_check(
         disadvantage = False
 
     if advantage:
-        result = roll_with_advantage(modifier=modifier)
+        result = roll_with_advantage(modifier=modifier, rng=rng)
     elif disadvantage:
-        result = roll_with_disadvantage(modifier=modifier)
+        result = roll_with_disadvantage(modifier=modifier, rng=rng)
     else:
-        result = roll_d20(modifier=modifier)
+        result = roll_d20(modifier=modifier, rng=rng)
 
     success = (result.total >= dc) if dc is not None else None
 
@@ -176,6 +181,8 @@ def saving_throw(
     dc: int | None = None,
     advantage: bool = False,
     disadvantage: bool = False,
+    *,
+    rng: random.Random | None = None,
 ) -> SkillCheckResult:
     """Resolve a saving throw against an optional DC.
 
@@ -196,11 +203,11 @@ def saving_throw(
         disadvantage = False
 
     if advantage:
-        result = roll_with_advantage(modifier=modifier)
+        result = roll_with_advantage(modifier=modifier, rng=rng)
     elif disadvantage:
-        result = roll_with_disadvantage(modifier=modifier)
+        result = roll_with_disadvantage(modifier=modifier, rng=rng)
     else:
-        result = roll_d20(modifier=modifier)
+        result = roll_d20(modifier=modifier, rng=rng)
 
     success = (result.total >= dc) if dc is not None else None
 

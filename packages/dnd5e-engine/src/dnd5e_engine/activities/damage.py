@@ -6,7 +6,7 @@ SRD 5.2 corpus: a single Magic Missile dart (``1d4+1`` force), or Divine Smite's
 radiant burst (``2d8``/``3d8`` radiant) nested under a melee hit.
 
 Crit rule (``DamageActivityDamageBlock.critical`` is a
-:class:`SaveDamageCriticalBlock` — ``{allow, bonus}``): this activity crits ONLY
+``SaveDamageCriticalBlock`` — ``{allow, bonus}``): this activity crits ONLY
 when ``critical.allow`` is True AND ``ctx.variables["in_crit"]`` is truthy (the
 caller sets ``in_crit`` when the activity is nested under a crit attack). On crit
 the dice double (``roll_damage_part(crit=True)``) and the parsed ``critical.bonus``
@@ -24,7 +24,7 @@ coercion). A typeless part (empty ``types`` — a DATA defect in a handful of
 SRD spells; e.g. Call Lightning's 4d10 part) is logged loudly
 (``damage_part_untyped``) and skipped: ``apply_damage`` keys strictly by SRD
 type and has no untyped bucket, and the resolver cannot invent the SRD-correct
-type. Tracked as a ``dnd5e-srd-data`` data bug in ``docs/BACKLOG.md``.
+type. Tracked as a ``dnd5e-srd-data`` data bug in ``BACKLOG.md``.
 
 MIRRORS, does not import from, ``effects/damage.py``: @-token resolution runs
 through ``formula.resolve_damage_block`` (governing ability = the caster's
@@ -111,7 +111,7 @@ def _part_type(
     * Empty list: a DATA defect (the SRD part should carry a type). There is no
       untyped bucket in ``apply_damage``, so the part is logged loudly
       (``damage_part_untyped``) and skipped. Tracked as a ``dnd5e-srd-data`` bug
-      (see ``docs/BACKLOG.md``); the resolver must not invent the SRD-correct type.
+      (see ``BACKLOG.md``); the resolver must not invent the SRD-correct type.
     """
     if not part.types:
         _LOGGER.warning(

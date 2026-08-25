@@ -4,9 +4,8 @@
 zero-I/O **5e SRD 5.2 rules engine** plus a typed content **dataset**. It
 resolves combat, skill checks, saving throws, effects, and grid movement
 deterministically — give it a seed and the same inputs always produce the
-same outcome. No database, no network, no global state: a TTRPG combat
-engine you can drop into a game server, a bot, a VTT backend, or a test
-harness.
+same outcome. No database, no network, no I/O: a TTRPG combat engine you can
+drop into a game server, a bot, a VTT backend, or a test harness.
 
 !!! warning "Legal / trademark notice"
 
@@ -18,9 +17,11 @@ harness.
 
 ## Why Nat20
 
-- **Deterministic, seedable engine.** Every roll flows through a seeded RNG,
-  so combat is reproducible — ideal for tests, replays, and AI-driven hosts
-  that need a rules oracle.
+- **Deterministic, seedable engine.** Every in-combat roll flows through the
+  RNG seeded by `start_combat(rng_seed=...)`, so a combat is reproducible from
+  its seed and intent sequence alone — ideal for tests, replays, and AI-driven
+  hosts that need a rules oracle. Standalone checks take their own seed via
+  `CheckSpec.rng`.
 - **Pure Python, zero I/O.** The engine performs no I/O of its own. Content
   loads through the companion `dnd5e-srd-data` package via an explicit
   `BundledAssetLoader`. Easy to embed, easy to reason about.
@@ -41,7 +42,11 @@ a `CharacterBuildSpec` into a combat-ready party member; and a `GridScene`
 for 2-D battlefield movement.
 
 [Get started in ~20 lines →](quickstart.md){ .md-button .md-button--primary }
-[Browse the API →](api.md){ .md-button }
+[What it actually resolves →](capabilities.md){ .md-button }
+
+Nat20 is a working engine with real gaps, and the
+[capability matrix](capabilities.md) is the honest inventory of both — read it
+before betting a project on a particular rule.
 
 ---
 

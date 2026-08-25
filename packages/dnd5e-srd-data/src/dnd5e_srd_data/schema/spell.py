@@ -1,7 +1,7 @@
 """Spell schema — surface fields only.
 
 Foundry's ``system.activities`` deep tree is preserved structurally via the
-shared :class:`Activity` model (matches the items deferral in PR 1); the
+shared ``Activity`` model (matches the items deferral in PR 1); the
 Phase 7b resolver will walk it. Phase 7a captures every surface field the
 seeder needs (level, school, components, casting time, range, duration,
 materials) plus the verbatim activity tree.

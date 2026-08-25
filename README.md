@@ -19,8 +19,14 @@ Nat20 is a `uv` workspace of two complementary packages:
 | [`dnd5e-srd-data`](packages/dnd5e-srd-data) | The typed, canonical SRD 5.2 dataset the engine consumes via `BundledAssetLoader`. | **CC-BY-4.0** (data) |
 | [`nat20-bridge`](packages/nat20-bridge) | Localhost FastAPI sidecar that exposes the engine over HTTP — rolls, checks, rests, party validation, full combat lifecycle, SRD browsing, and homebrew content. | **MIT** (code) |
 
-The engine is edition-agnostic: it resolves whatever typed content it is handed. The
-shipped dataset is the 2024 SRD (5.2) corpus.
+The engine is edition-agnostic: it resolves whatever typed content it is handed —
+install your own loader with `set_asset_loader` to drive it from a different corpus.
+The shipped dataset is the 2024 SRD (5.2) corpus.
+
+Nat20 implements much, but not all, of SRD 5.2. The
+**[capability matrix](https://tapestria.github.io/nat20/capabilities/)** is the
+honest per-mechanic inventory of what resolves and what does not; read it before
+depending on a specific rule.
 
 ## SillyTavern bridge
 
@@ -113,12 +119,14 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
-The full, verified-runnable version lives in [`examples/grid_combat.py`](examples/grid_combat.py).
+The full, verified-runnable version lives in [`examples/grid_combat.py`](examples/grid_combat.py),
+which also resolves an attack and prints the resulting `CombatEvent` stream.
 
 ## Documentation
 
 📖 **[tapestria.github.io/nat20](https://tapestria.github.io/nat20/)** — concepts, the
-public API reference, a feature comparison, and developer guides.
+[capability matrix](https://tapestria.github.io/nat20/capabilities/), the public API
+reference, and a feature comparison.
 
 The site is built with MkDocs from [`docs/`](docs/). Build and browse it locally:
 

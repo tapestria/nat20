@@ -7,6 +7,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.2]
+
+Lockstep release with `dnd5e-srd-data` 0.3.2 and `nat20-bridge` 0.3.2.
+
+Additive maturity pass from an independent review of the packages as a
+standalone engine. **No public name is removed or changed shape.**
+
+### Fixed
+
+- **Multiattack fan-out resolved the wrong attack mix for most monsters.** The
+  prose parser only matched `[[/item .id]]{label}`, but the corpus mostly ships
+  `[[/item Name]]` or bare mnemonic ids, so 174 of 180 multiattacks fell back to
+  "repeat one sibling N times" — silently wrong for every heterogeneous
+  multiattacker. The parser now reads per-token counts from the multiattack's
+  first sentence (excluding "It can replace one attack with …" riders) and
+  recovers names from Foundry's mnemonic ids. Precise joins: **6/180 → 119/180**.
+  Chuul, Otyugh, Cloaker, Unicorn, Mummy, Pit Fiend, Xorn and Marilith now make
+  their correct attack sequences. **Behaviour change for consumers:** affected
+  monsters deal their correct (higher) damage per round and consume more of the
+  dice stream, so combat transcripts seeded against 0.3.x will diverge.
+- `__version__` now derives from installed package metadata instead of a
+  hand-maintained literal, so it cannot drift from `pyproject.toml` (0.3.0 shipped
+  reporting `0.2.0`). Pinned by `tests/test_determinism_contract.py`.
+
+### Added
+
+- **`CheckSpec.rng`** — `resolve_check` previously drew its d20 from the
+  process-global `random` module with no way to inject a generator,
+  contradicting the documented determinism guarantee. Pass a seeded
+  `random.Random` for a reproducible standalone check; `None` preserves the old
+  behaviour. `rules.dice`, `rules.skills` and `roll_dice_str` /
+  `apply_changes_to_check` gain matching optional `rng` parameters. Combat
+  resolution was already seeded and is unchanged.
+- **`docs/capabilities.md`** — a per-mechanic matrix of what the engine
+  resolves, what loads but produces no events, and what is not modelled. Its
+  published counts are recomputed from the corpus by
+  `tests/test_capability_matrix.py`.
+- Concept pages for reactions (the pre-armed model) and monsters (the built-in
+  AI, multiattack join rate, absent legendary actions).
+- `tests/test_docstrings_are_host_agnostic.py` — fails the build on a docstring
+  that names a private downstream application, retired tooling, or a doc path
+  that does not exist in this repo. 104 such references were rendered onto the
+  public API site; all removed.
+
+### Changed
+
+- `CONDITION_EFFECTS[EXHAUSTION]` / `[PRONE]` descriptive strings corrected from
+  2014 to SRD 5.2 wording and labelled as not-enforced; the enforced exhaustion
+  rule is still the 2014 one (tracked in `BACKLOG.md`).
+- Sphinx cross-reference roles in docstrings, which rendered as literal markup
+  on the API site, converted to inline code.
+- Monkeypatching `roll_dice_str` now requires a two-parameter double
+  (`lambda expr, rng=None: …`).
+
 ## [0.3.0]
 
 Lockstep release with `dnd5e-srd-data` 0.3.0 — the item charge lifecycle: gate

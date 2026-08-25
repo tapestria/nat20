@@ -3,17 +3,17 @@
 Foundry encodes the 17 2024 SRD feats as ``type: feat`` documents split across
 four ``feats24/`` subdirs. The feat *category* lives in ``system.type.subtype``
 (``origin`` / ``general`` / ``fightingStyle`` / ``epicBoon``) — the translator
-maps those Foundry codes onto :class:`FeatCategory`. Most feats are passive
+maps those Foundry codes onto ``FeatCategory``. Most feats are passive
 benefit grants with an empty ``system.activities``; the four epic boons that
 grant an actionable ability (Boon of Fate, Spell Recall, Dimensional Travel,
 the Night Spirit) carry real ``system.activities`` in the same shape spells and
-weapons use, so :class:`Feat` reuses the :data:`Activity` discriminated union.
+weapons use, so ``Feat`` reuses the ``Activity`` discriminated union.
 
 Foundry's ``system.prerequisites`` block carries a minimum character ``level``
 and an ``items`` list of prerequisite-feature identifiers (the Fighting Style
 feats require the ``fighting-style`` feature); ``system.requirements`` is the
 human-readable prerequisite prose (e.g. "Strength or Dexterity 13+"). Both are
-folded into :class:`FeatPrerequisite`.
+folded into ``FeatPrerequisite``.
 """
 
 from __future__ import annotations
@@ -55,7 +55,7 @@ class Feat(BaseModel):
     category: FeatCategory
     prerequisites: list[FeatPrerequisite] = Field(default_factory=list)
     activities: list[Activity] = Field(default_factory=list)
-    """Translated ``system.activities`` (reusing the shared :data:`Activity`
+    """Translated ``system.activities`` (reusing the shared ``Activity``
     discriminated union). Empty for the 13 passive feats; populated for the
     four epic boons that grant an actionable ability."""
     provenance: Provenance

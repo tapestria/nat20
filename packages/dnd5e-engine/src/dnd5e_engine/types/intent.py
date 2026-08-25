@@ -33,7 +33,7 @@ class ActionType(StrEnum):
     FLEE = "flee"
     MOVE = "move"
     INTERACT_NPC = "interact_npc"
-    # parser-uplift G-017: unfocused world-curiosity question ("what do I
+    # parser-uplift unfocused world-curiosity question ("what do I
     # know about the Tenebres?"). Schema-only at this commit — dispatch
     # wiring lands in subsequent tasks, parser prompt rule teaching when
     # to emit AMBIENT_INQUIRY ships in piece 6 (parser-prompt-rewrite).
@@ -57,18 +57,18 @@ class ActionType(StrEnum):
     # ``granted_features`` repertoire and invokes its single typed Activity.
     USE_FEATURE = "use_feature"
     # Save-side active-effect applicability AND standalone saving-throw
-    # dispatch. Phase 3a.1 wires a feature-flagged short-circuit branch
+    # dispatch. wires a feature-flagged short-circuit branch
     # in engine_dispatch; the real handler that consumes ctx.active_effects
-    # lands in Phase 3c. See docs/design/combat-state-contract.md §10.
+    # lands in . See the combat-state contract §10.
     SAVING_THROW = "saving_throw"
-    # Combat-only zone movement (per docs/design/combat-state-contract.md §10).
-    # Phase 3a.1 wires a feature-flagged short-circuit branch in
-    # engine_dispatch; the real handler lands in Phase 3c.
+    # Combat-only zone movement (per the combat-state contract §10).
+    # wires a feature-flagged short-circuit branch in
+    # engine_dispatch; the real handler lands in .
     ZONE_MOVE = "zone_move"
-    # Wave 4: investigation-quest player primitives.
+    # investigation-quest player primitives.
     # QUEST_RESOLUTION_ATTEMPT — player addresses an NPC to formally state
     # the quest resolution ("I tell Marta the killer is Aldric"). The
-    # dispatch site (ws_player_action) cross-checks the addressed NPC
+    # dispatch site (the host's action entry point) cross-checks the addressed NPC
     # against the active quest's `payload.resolution_recipient_npc_ids`
     # AND against `turn_ctx.context_entity_ids`, then sets a per-turn flag
     # the QuestCompleted precondition gate reads.
@@ -134,19 +134,19 @@ class SkillOutcome(BaseModel):
 
 
 class SavingThrowOutcome(BaseModel):
-    """Engine-resolved standalone saving-throw result (SAVING_THROW, Phase 3c.1).
+    """Engine-resolved standalone saving-throw result (SAVING_THROW, .
 
     The dispatch handler is pure (no I/O); the outcome carries enough
-    detail for the async caller (ws_player_action / combat orchestration)
-    to route the appropriate EffectStore call:
+    detail for the async caller (the host's action entry point / combat orchestration)
+    to route the appropriate the host effect store call:
 
-      - failed save + ``apply_on_fail_template_id`` -> EffectStore.apply_to_targets
-      - successful save + ``source_effect_id`` -> EffectStore.expire (per-target clear)
+      - failed save + ``apply_on_fail_template_id`` -> the host effect store
+      - successful save + ``source_effect_id`` -> the host effect store (per-target clear)
       - failed concentration save + ``source_effect_id`` ->
-        EffectStore.expire_effect_all_targets (cascade clear)
+        the host effect store (cascade clear)
 
     Concentration scoping is the ``(source_entity_id, effect_id)`` pair
-    per docs/design/combat-state-contract.md v9 locked input #1.
+    per the combat-state contract locked input #1.
     """
 
     target_entity_id: str

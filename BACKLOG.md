@@ -9,11 +9,186 @@ application concerns (narrators, persistence, world state, UI) are out of scope.
 closes it. When you discover one, add it under the right section with a date and
 a `packages/…` file anchor. Keep entries engine/data-centric — no host-app paths.
 
-Anchors are current as of `dnd5e-engine` / `dnd5e-srd-data` **v0.2.0**.
+Anchors are current as of `dnd5e-engine` / `dnd5e-srd-data` **v0.3.0**.
+
+The user-facing summary of the same information is
+[`docs/capabilities.md`](docs/capabilities.md) — the per-mechanic matrix of what
+resolves today. When you close a gap here, update that page too; its published
+counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
 
 ---
 
 # dnd5e-engine
+
+## Unimplemented activity kinds (2026-08-22)
+
+- **`summon`, `transform` and `enchant` activities are narrative no-ops.**
+  `activities/resolver.py::resolve_activity` routes all three to a logged
+  no-op, as it does a `utility` activity carrying no effect riders. The
+  measured consequence: **108 of 339 SRD spells (32%) load correctly and emit
+  no events**, including 32 concentration spells — *Blur, Darkness, Fog Cloud,
+  Spiritual Weapon, Wall of Force, Silent Image, Globe of Invulnerability,
+  Expeditious Retreat*. Several are combat staples a host will reach for
+  immediately. `summon` is the largest single bucket (35 spell activities) and
+  needs a design decision first: summoned creatures imply adding combatants
+  mid-combat, which the initiative model does not currently support.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/resolver.py`)
+
+## Monster action economy (2026-08-22)
+
+- **Legendary actions are not modelled.** `Monster.legendary_actions` is
+  populated for **30 monsters** in the corpus and never read; only
+  `Monster.actions` drives a turn. Needs a legendary-point pool per creature,
+  spent between other creatures' turns, and reset at the start of the
+  creature's turn. Same for `lair_actions` (schema field exists; the corpus
+  ships none today) and `special_abilities` (never consumed).
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/monster_actions.py`)
+- **Monster `recharge` (5–6) abilities are not gated.** A breath weapon can be
+  used every turn. Needs a per-creature recharge roll at turn start.
+- **Regeneration is not modelled.**
+- **Residual multiattack imprecision.** The prose join now resolves 119 of 180
+  multiattacks precisely (was 6). The remaining 61 fall back to repeating one
+  sibling N times, logged at `multiattack_join_unresolved`. That is correct for
+  homogeneous and "any combination" multiattacks; **5 are heterogeneous and
+  therefore produce the wrong attack mix** — `bandit-captain`, `doppelganger`,
+  `chain-devil`, `scout`, `ettin`. Each uses an opaque Foundry document key
+  (`[[/item .w3cX0piuU875Hc2M]]`) rather than the mnemonic `mm…` convention, so
+  the token cannot be joined to a typed sibling. Closing this needs the
+  translator to emit a resolved action name alongside the id.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/monster_actions.py`)
+
+## Core combat rules not modelled (2026-08-22)
+
+- **Exhaustion applies the 2014 rule, not SRD 5.2's.** What the engine
+  *enforces* is "disadvantage on ability checks for any exhaustion level"
+  (`rules/conditions.py::project_passive_check_modifiers` /
+  `conditions_grant_disadvantage_on_ability_checks`) — the SRD 5.1 Level-1
+  effect. SRD 5.2 replaced the six-tier ladder with two scaling penalties:
+  every D20 Test reduced by `2 × level`, and Speed reduced by `5 ft × level`.
+  Neither is applied, and `ActiveCondition.exhaustion_level` is ignored by the
+  projection. Closing this needs a **numeric** per-actor check/save/attack
+  modifier path; the check side is blocked on the unpopulated
+  `ctx.check_modifiers` sidecar (see "Unconsumed `system.bonuses.*` buckets"
+  below), so these should be closed together. The descriptive strings in
+  `CONDITION_EFFECTS` were corrected to 5.2 wording (2026-08-22) and are labelled
+  as not-enforced.
+  (`packages/dnd5e-engine/src/dnd5e_engine/rules/conditions.py`)
+- **Speed reduction from conditions is not applied** — `grappled` and
+  `restrained` ("Speed becomes 0") and exhaustion's per-level reduction are
+  descriptive only; `Combatant.movement_remaining` is not touched.
+- **Surprise is not modelled.** SRD 5.2 gives a surprised creature disadvantage
+  on its initiative roll; `start_combat` has no surprise input.
+- **Grapple and Shove are not modelled.** The `grappled` condition exists and
+  can be applied by an effect, but no contested check resolves either action,
+  and neither has an `IntentType`.
+- **Two-weapon fighting is not modelled.** The `light` weapon property is
+  parsed but grants no bonus-action attack.
+- **Ritual casting is not modelled.** 28 spells carry `ritual: true`; the flag
+  is never read.
+- **Spell components are not enforced.** `components` / `materials` ship on
+  every spell and are never checked.
+- **Vision, light and obscurement are not modelled.** `activities/passive_stats.py`
+  *projects* `darkvision`/`blindsight`/`tremorsense` onto the `Combatant`, but
+  nothing consumes them: there is no lighting model, so no attack is ever made
+  at disadvantage for being unable to see.
+
+## Movement (2026-08-22)
+
+- **PC movement is one step per intent.** `orchestrator.py::_handle_move`
+  rejects any non-adjacent `target_zone_id` as `not_adjacent`, regardless of
+  remaining budget — crossing 30 ft on a grid takes six `submit_player_intent`
+  calls. The monster path is asymmetric: `_execute_flee_retreat` walks a full
+  `shortest_path` route via `_walk_zone_path`. Either give the PC path the same
+  multi-step walk, or add a distinct `MoveFailed` reason so a host can
+  distinguish "not adjacent" from "unreachable". Documented in
+  `docs/capabilities.md`.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
+- **No elevation.** The grid is strictly 2-D, so flying creatures have no
+  altitude and `movement_modes` beyond walk speed do not affect positioning.
+- **No multi-tile creature footprints.** Every creature occupies one cell
+  regardless of size.
+
+## Event stream observability (2026-08-22)
+
+- **Roll breakdowns are not exposed.** `AttackRolled` carries `roll_total` but
+  not the natural d20, the attack bonus, or the target's effective AC, so a
+  host cannot render "14 + 5 = 19 vs AC 16" or explain a miss. `SaveRolled`
+  likewise omits the natural roll. `DamageApplied` carries no `source_id`, so
+  damage cannot be attributed to an attacker or effect — a killing blow cannot
+  be credited. Adding these is additive on the event models.
+  (`packages/dnd5e-engine/src/dnd5e_engine/events.py`)
+
+## Character building (2026-08-22)
+
+- **No multiclassing.** `CharacterBuildSpec` carries a single `class_slug` +
+  `level`. Multiclass spell-slot progression and per-class feature grants are
+  unmodelled.
+  (`packages/dnd5e-engine/src/dnd5e_engine/build_spec.py`)
+- **Feats are almost entirely inert.** 1 of the 17 corpus feats carries a
+  mechanical activity; the rest resolve to nothing.
+
+## Architecture (2026-08-22)
+
+- **Two generations of the engine ship side by side, undeclared.**
+  *Gen 1* is `dispatch.py` + `rules/combat.py` (+ `combat_data`,
+  `combat_helpers`, `equipment`, `gambits`, `resolution`, `spells`): dict-shaped
+  inputs, process-global `random`, extracted verbatim from the host app in the
+  initial release. *Gen 2* is `orchestrator.py` + `activities/`: the typed
+  Activity corpus, seeded RNG, built here. Both are public (every Gen 1 module
+  declares `__all__` and is pinned by `test_public_api_surface.py`) and both are
+  live in the reference host — Tapestria's turn loop calls
+  `dispatch.resolve_combat_action` while its `app/combat/` layer wraps
+  `orchestrator`. The README, docs and `docs/capabilities.md` describe only
+  Gen 2. Consequences: (a) SRD rules are implemented twice and drift — the
+  crit/fumble-under-disadvantage fix (#11) landed in Gen 1's `attack_roll`;
+  Gen 2's `_roll_natural_d20` never had the bug; (b) a reviewer can mistake
+  Gen 1 for dead code (this happened — see the 2026-08-22 review handoff);
+  (c) Gen 1 is not seedable, so `docs/index.md`'s determinism claim holds only
+  for Gen 2. Needs a decision: declare Gen 1 a supported API and document it,
+  or declare it a migration path and give Tapestria a route off it. Until then
+  every rules fix has to be applied at both sites.
+  (`packages/dnd5e-engine/src/dnd5e_engine/dispatch.py`,
+  `packages/dnd5e-engine/src/dnd5e_engine/rules/combat.py`,
+  `packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py`)
+- **Host transport/persistence shapes live inside the engine.** The initial
+  extraction brought Tapestria plumbing over with the rules: `types/dice.py`
+  (`DiceOutcome` — a server→client websocket payload with `request_id`,
+  `character_id`, a display `summary`, and `die_size` "for the frontend"),
+  `event_dicts.py` (websocket envelope serialization), the outcome wire-models
+  in `types/intent.py`, `ActionType`'s quest/roleplay parser members
+  (`QUEST_ACCEPT`, `CONSULT_CODEX`, `AMBIENT_INQUIRY`, …),
+  `rules/combat_helpers.py`'s `extract_template_combat_stats` /
+  `build_combat_npc_from_template` (read Neo4j MonsterTemplate node dicts and
+  deserialize JSON-string DB fields), and `rules/resolution.py::
+  parse_ability_scores` ("parse ability scores **from database**"). None of it
+  is SRD logic, and it contradicts the package's zero-I/O, host-agnostic
+  claim. Tapestria imports every one of them from the published package, so
+  removal is a coordinated move: land replacements in Tapestria first, then
+  drop them here in a major bump. (See the 2026-08-22 review handoff for the
+  full import inventory.)
+  (`packages/dnd5e-engine/src/dnd5e_engine/types/dice.py`,
+  `packages/dnd5e-engine/src/dnd5e_engine/event_dicts.py`,
+  `packages/dnd5e-engine/src/dnd5e_engine/rules/combat_helpers.py`,
+  `packages/dnd5e-engine/src/dnd5e_engine/rules/resolution.py`)
+
+- **Reactions are not data-driven.** `orchestrator.py` recognizes reactions
+  through a closed `ReactionTrigger` literal that names a specific spell
+  (`"targeted_by_magic_missile"`), plus per-spell branches
+  (`_apply_magic_missile_shield_carveout`, `_hellish_rebuke_target_invalid`,
+  `_drain_counterspell_reaction`). This contradicts the project's central design
+  claim that new content is a data change, not an engine change: adding a new
+  reaction spell today requires editing the orchestrator. Needs a typed
+  trigger/condition vocabulary on the activity schema.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
+- **Conditions are hard-coded, not data-driven.** `rules/conditions.py` owns the
+  SRD condition list and their effects as Python literals; the dataset has no
+  `conditions` category to source them from. Same architectural inconsistency
+  as above. Closing it needs a data-side rules-glossary category (see the
+  `dnd5e-srd-data` section).
+- **`orchestrator.py` is ~5.5k lines**, about a third of the engine, holding the
+  reaction queue, item/feature charge accounting, the monster turn, the effect
+  lifecycle and the turn loop. Each is a coherent module; splitting them would
+  make the combat loop readable without changing behaviour.
 
 ## Spatial mechanics (grid backend is in place; these are additive)
 
@@ -21,7 +196,7 @@ Anchors are current as of `dnd5e-engine` / `dnd5e-srd-data` **v0.2.0**.
   ("The target gains no benefit from Half Cover or Three-Quarters Cover for
   this save") names a per-activity override that no canonical field backs
   today: `dnd5e_srd_data.schema.common.SaveBlock` carries only `ability`/`dc`,
-  no boolean. Closed-2026-07-02 shrink of the former "Cover model" entry —
+  no boolean. Narrowed 2026-07-02 from the former "Cover model" entry —
   `cover_between`, the AC fold, and the Dexterity-save fold all landed (see
   `packages/dnd5e-engine/src/dnd5e_engine/spatial.py::cover_between`,
   `activities/attack.py::resolve_attack`, `activities/save_primitive.py::roll_save`);
@@ -36,7 +211,7 @@ Anchors are current as of `dnd5e-engine` / `dnd5e-srd-data` **v0.2.0**.
   itself is not yet a cost-aware search over that cost, which is what
   "richer" now refers to.)
 
-## Discovered during Cluster 6 review (2026-07-03)
+## Reactions (2026-07-03)
 
 - **No-slot readied reactions fire for free.** `_resolve_readied_spell_cast`
   and `_drain_counterspell_reaction` decrement the reactor's spell slot only
@@ -51,7 +226,7 @@ Anchors are current as of `dnd5e-engine` / `dnd5e-srd-data` **v0.2.0**.
   scenario co-locates them; needs a topology distance check at drain
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`).
 
-## Discovered during Cluster 8 review (2026-07-03)
+## Weapon mastery (2026-07-03)
 
 - **Weapon-mastery Topple bypasses `condition_immunities`.** C08's
   condition-immunity gate lives in `activities/effects.py::apply_activity_effects`,
@@ -62,7 +237,14 @@ Anchors are current as of `dnd5e-engine` / `dnd5e-srd-data` **v0.2.0**.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/mastery.py`,
   `packages/dnd5e-engine/src/dnd5e_engine/activities/effects.py`).
 
-## Discovered during e2e catalog research (2026-07-02)
+## Effect-change sidecars (2026-07-02)
+
+- **Second `condition_immunities` surface.** `dispatch.py` carries a host-owned
+  condition-immunities path (`DispatchContext.condition_immunities` →
+  `rules/conditions.py::check_immunity`) separate from live combat's
+  `Combatant.condition_immunities` gate in `activities/effects.py`; a future
+  change to either must keep them consistent
+  (`packages/dnd5e-engine/src/dnd5e_engine/dispatch.py`).
 
 - **Weapon-tagged to-hit bonus sidecar never consumed.** The orchestrator's
   `_fold_active_effect_changes` folds a weapon-tagged (`applicable_action_types
@@ -71,28 +253,24 @@ Anchors are current as of `dnd5e-engine` / `dnd5e-srd-data` **v0.2.0**.
   `build_activity_context` only lifts the untagged `passive_to_hit_bonus` into
   `ActivityResolutionContext.passive_attack_bonus`. A +N weapon's to-hit bonus
   therefore never reaches the attack roll via this sidecar (the sibling
-  damage-side gap, `passive_weapon_damage_bonus`, was closed in Cluster 2 —
+  damage-side gap, `passive_weapon_damage_bonus`, has been closed —
   see `docs/migration/v0.1-to-v0.2.md`)
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/build_context.py`,
   `packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py`).
-- **Second, dead `condition_immunities` surface.** `dispatch.py` carries a
-  host-owned condition-immunities path unused by live combat; a future
-  `Combatant.condition_immunities` fix must not collide with it
-  (`packages/dnd5e-engine/src/dnd5e_engine/dispatch.py`).
 ## Class / species feature mechanics
 
 - **Attack-roll advantage/disadvantage on the live path (`activities/attack.py`).**
-  Cluster 7 added attacker-side `flags.advantage.attack` / `flags.disadvantage.attack`
+  An earlier release added attacker-side `flags.advantage.attack` / `flags.disadvantage.attack`
   *detection* (`attacker_advantage_flags`), but it currently only GATES the Sneak
   Attack trigger — the natural d20 still rolls `mode="normal"`. Rolling the base
   attack itself with advantage/disadvantage would shift the seeded dice stream and
-  crit outcome (the C07-S01/S04 pinned per-scenario damage deltas isolate the
+  crit outcome (the pinned per-scenario damage deltas isolate the
   Sneak Attack rider as the only delta, so they require the base roll to stay
   stream-invariant to the advantage flag). Wire the flag into `_roll_natural_d20`'s
   `mode`, plus the target-side producer (Faerie Fire granting attackers advantage —
   `rules/combat.py:459-471` already models it off-path), once a scenario exercises
   the base-roll delta directly. See `docs/migration/v0.1-to-v0.2.md`.
-- **Unconsumed `system.bonuses.*` buckets (partial — Cluster 4 closed the
+- **Unconsumed `system.bonuses.*` buckets (partial — An earlier release added the
   attack/damage + spell.dc families).** `heal.*` and `abilities.check` /
   `abilities.skill` remain inert: no per-actor sidecar consumer exists for
   them today. `activities/heal.py::resolve_heal` never reads any bonus
@@ -110,31 +288,29 @@ Anchors are current as of `dnd5e-engine` / `dnd5e-srd-data` **v0.2.0**.
 The interpreter now projects always-on `dr` (damage resistance), `di`
 (immunity), `dv` (vulnerability), `ci` (condition immunity), `senses`, and
 `movement` (walk-speed bonus + typed non-walk modes) at combat start, plus the
-activation-gated Rage `dr` fold on the active-effect path (Cluster 8). One entry
-of the spec-§D allowlist remains recognized-but-deferred for lack of a landing
+activation-gated Rage `dr` fold on the active-effect path . One entry
+of the the passive-projection spec allowlist remains recognized-but-deferred for lack of a landing
 zone + apply logic:
 
 - **Ability scores, proficiency grants, `ac.calc`, languages** — each needs its
   own landing zone + apply logic (ability-modifier path, proficiency sets +
-  roll-path consumer, AC recomputation, languages field). No Cluster 8 catalog
-  scenario pins these; they stay deferred (routed to `skipped_keys`).
+  roll-path consumer, AC recomputation, languages field). No pinned scenario covers these; they stay deferred (routed to `skipped_keys`).
 
 ## Rest & recovery
 
 - **Non-`@scale` symbolic feature-use caps fall back to uncapped** (2026-07-03,
-  narrowed 2026-07-04, Cluster 9). `orchestrator.py::_feature_use_cap` now
+  narrowed 2026-07-04). `orchestrator.py::_feature_use_cap` now
   resolves a literal-integer `uses.max` exactly AND a `@scale.<owner>.<key>`
   max against the caster's real ScaleValue map (`build_scale_values`), so
   Second Wind caps at its true level-scaled value (3 at Fighter L5 via the
   `{1: 2, 4: 3, 10: 4}` table). The residual gap: a NON-`@scale` symbolic max
   — `@prof` (9 features), `max(1, @abilities.cha.mod)` / `5 * @classes.paladin.levels`
   (~6 more) — is not resolved and falls back to UNCAPPED rather than a wrong
-  floor (a capped resource is never wrongly rejected; this preserves pre-C09
+  floor (a capped resource is never wrongly rejected; this preserves pre-existing
   behaviour for those features). Thread the caster's proficiency bonus / ability
   modifiers into the cap resolver to close it
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`).
-- **Non-literal feature-recovery formulas are unhandled** (2026-07-04,
-  Cluster 9 fix round). `rest.recover_feature_uses` honours each feature's
+- **Non-literal feature-recovery formulas are unhandled** (2026-07-04). `rest.recover_feature_uses` honours each feature's
   typed `uses.recovery` rules: `recoverAll` fully recharges, a literal-integer
   `formula` regains that many uses, and a period-miss (with recovery data
   supplied) correctly preserves `spent` (lr-only features do not recharge on a
@@ -200,11 +376,64 @@ layer over the engine — see `docs/bridge.md`. Gaps found while shipping it:
 
 # dnd5e-srd-data
 
-No open entries.
+## Oracle coverage (2026-08-22)
+
+- **The monster oracle covers 3 of 341 monsters (0.9%).** `tests/oracle/
+  srd_monster_oracle.json` holds three entries; `test_canonical_against_oracle.py`
+  compares only slugs the oracle contains, so **338 monsters have no fidelity
+  check at all** and the suite still reports green. Spells (93%) and items (75%)
+  are well covered by comparison. `tests/test_oracle_coverage_floor.py` now pins
+  the current ratios so they cannot regress — raise the `monsters` floor as
+  entries are added. Subclasses are similarly thin at 4 of 12 (33%).
+  (`packages/dnd5e-srd-data/tests/oracle/srd_monster_oracle.json`)
+
+## Shipped prose quality (2026-08-22)
+
+- **All 341 monsters ship `description: ""`.** A host has nothing to render for
+  any creature in the corpus. The translator populates per-action descriptions
+  but never the top-level one.
+  (`packages/dnd5e-srd-data/tools/translators/`)
+- **Residual Foundry enricher markup and HTML entities in shipped prose.**
+  Roughly 1,000 of 1,545 canonical files carry unresolved markup: 728
+  `&Reference[…]`, 2,162 `[[lookup …]]`, 717 `&amp;` double-escapes, 1,018 HTML
+  tags. **268 of the 931 monster action descriptions (28%) are essentially raw
+  macros** — goblin-warrior's Scimitar reads
+  `"[[/attack extended]]. [[/damage average extended]]…"`. A `cleanup_prose`
+  translator exists and is unit-tested but is evidently not applied to these
+  fields. Note that `[[/item …]]` tokens are load-bearing — the engine's
+  multiattack fan-out parses them — so cleanup must preserve them while
+  resolving `[[lookup]]`, `&Reference[]` and entity escapes.
+  (`packages/dnd5e-srd-data/tools/translators/prose_cleanup.py`)
+- **`monsters/ancient-gold-dragon.json` ships an unfilled template.** Its
+  multiattack description is literally
+  `"makes {count} [[/item]] attacks and uses [[/item]]"`, so the action cannot
+  fan out. Every sibling ancient dragon names its Rend attack correctly, so the
+  defect appears to be upstream rather than in our translator. Registered in
+  `tests/oracle/known_prose_defects.json` and gated by
+  `tests/test_corpus_prose_integrity.py`; re-check on the next
+  `make refresh-upstream` and de-register if upstream has fixed it.
+
+## Missing categories (2026-08-22)
+
+- **No `conditions` / rules-glossary category.** The 15 SRD conditions and their
+  mechanical effects exist only as Python literals in the engine
+  (`rules/conditions.py`), which is why conditions cannot be extended as data.
+  A canonical `conditions/` category would let the engine source them the way it
+  sources spells. Needs a schema and translator support.
+- **`lair_actions` is empty for all 341 monsters** even though SRD 5.2 defines
+  them for several creatures, and the schema field exists.
 
 ---
 
 # Test & fidelity
+
+- **Attack-roll advantage is untested on the LIVE path (2026-08-22).**
+  `test_combat_flag_advantage.py` / `test_combat_bucket_keys.py` pin flag-derived
+  advantage and bucket folding against `rules/combat.py::resolve_player_attack`
+  (the dispatch-layer resolver). The equivalent behaviour on the
+  `activities/attack.py` path is still absent (see "Attack-roll
+  advantage/disadvantage on the live path" above) and has no tests; write them
+  against `activities/attack.py` once the flag is wired into `_roll_natural_d20`.
 
 - **Real-Foundry parity fixtures.** Engine activity-resolution tests run against
   author-derived expected event streams, not byte-for-byte Foundry ground truth.

@@ -6,11 +6,11 @@ their dice/DC formula fields — e.g. Cure Wounds' healing bonus is verbatim
 read these tokens, so each one is replaced with its caster-derived integer (as a
 string) before the dice helper parses the formula.
 
-MIRRORS, does not import from, the old Avrae-IR path's
+MIRRORS, does not import from, the old the legacy path's
 ``intent_resolver._walk_and_patch`` / ``_parse_with_injection``: that path
 injected the same caster magnitudes (ability mods, proficiency, spell DC) into
 formula strings before rolling. The caster's numbers live on
-:class:`ActivityResolutionContext`; the typed Activity only declares WHICH
+``ActivityResolutionContext``; the typed Activity only declares WHICH
 ability/DC-calc applies.
 
 Scope — the roll-data tokens that appear in canonical DICE/DC FORMULA fields

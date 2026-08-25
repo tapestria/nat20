@@ -1,8 +1,13 @@
 # API reference
 
-API reference rendered from source docstrings via mkdocstrings, covering the
-public API surface (`dnd5e_engine.__all__`). Every symbol below is exported from
-the top-level `dnd5e_engine` package.
+Rendered from source docstrings, covering the public API surface
+(`dnd5e_engine.__all__`). Every symbol below is exported from the top-level
+`dnd5e_engine` package, and that list is pinned by
+`tests/test_public_api_surface.py` — nothing here can change without the test
+changing with it.
+
+For what the engine actually resolves behind these signatures, see the
+[capability matrix](capabilities.md).
 
 ## Combat loop
 
@@ -33,6 +38,19 @@ the top-level `dnd5e_engine` package.
         - DeathRecord
         - LootDrop
 
+## Content loading
+
+The engine ships no rules data. It reads typed content through a process-wide
+`AssetLoader`, which defaults to the bundled SRD 5.2 corpus. Install your own to
+drive the engine from a different corpus.
+
+::: dnd5e_engine.lib_loader
+    options:
+      members_order: source
+      members:
+        - get_lib_loader
+        - configure_lib_loader
+
 ## Checks
 
 ::: dnd5e_engine.check
@@ -56,6 +74,8 @@ the top-level `dnd5e_engine` package.
       members:
         - cell_id
         - parse_cell
+        - GridTopology
+        - SpatialTopology
 
 ## Character building
 
@@ -94,6 +114,7 @@ the top-level `dnd5e_engine` package.
         - recover_item_uses
         - HitDicePool
         - RestOutcome
+        - RecoveryPeriod
 
 ## Effects
 
@@ -104,6 +125,14 @@ the top-level `dnd5e_engine` package.
         - ActiveEffect
         - ActiveEffectChange
         - ActiveEffectDuration
+
+## Dice
+
+::: dnd5e_engine.rules.effects
+    options:
+      members_order: source
+      members:
+        - roll_dice_str
 
 ## Events and intent types
 

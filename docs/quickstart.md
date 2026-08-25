@@ -1,14 +1,14 @@
 # Quickstart
 
-Install (once published):
+Install:
 
 ```bash
-pip install dnd5e-engine dnd5e-srd-data
+pip install dnd5e-engine
 ```
 
-The engine reads its rules content from the companion `dnd5e-srd-data`
-package — install both. The engine itself performs no I/O; content is loaded
-explicitly through `BundledAssetLoader`.
+`dnd5e-srd-data` comes along as a dependency — the engine reads its rules
+content from it and performs no I/O of its own. To drive the engine from your
+own typed corpus instead, install a loader with `configure_lib_loader`.
 
 ## A grid combat in ~20 lines
 
@@ -30,8 +30,11 @@ The combat loop is four public coroutines:
 
 ## A one-shot skill check
 
-For an out-of-combat ability, skill, or saving-throw roll, `resolve_check` is
-a pure function that takes a `CheckSpec` and returns a `CheckResult`:
+For an out-of-combat ability, skill, or saving-throw roll, `resolve_check`
+takes a `CheckSpec` and returns a `CheckResult`. Pass a seeded
+`CheckSpec.rng` to make the roll reproducible — unlike combat, which is seeded
+once via `start_combat(rng_seed=...)`, a standalone check carries its own
+generator:
 
 ```python
 --8<-- "examples/skill_check.py"
@@ -46,5 +49,6 @@ resolves it against the SRD 5.2 corpus into a `PartyMemberSpec`:
 --8<-- "examples/build_party_member.py"
 ```
 
-Next: read the [combat model](concepts/combat.md) or browse the full
-[API reference](api.md).
+Next: read the [combat model](concepts/combat.md), check the
+[capability matrix](capabilities.md) to see which rules are actually resolved,
+or browse the full [API reference](api.md).
