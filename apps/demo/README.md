@@ -18,24 +18,18 @@ uv sync --all-packages --all-extras
 Then start the server:
 
 ```bash
-cd apps/demo
-uv run uvicorn nat20_demo.app:app --reload
+uv run nat20-demo
 ```
 
 Open <http://127.0.0.1:8000>. The catalog lists the five scenarios; each card names
-the engine subsystem it demonstrates and carries an editable seed. (`--reload` is
-optional; drop it if you are not editing code.)
+the engine subsystem it demonstrates and carries an editable seed.
 
-### Docker
-
-The image needs both workspace packages, so the build context is the repo root:
+While editing code, run uvicorn directly for auto-reload:
 
 ```bash
-docker build -f apps/demo/Dockerfile -t nat20-demo .
-docker run --rm -p 8080:8080 nat20-demo
+cd apps/demo
+uv run uvicorn nat20_demo.app:app --reload
 ```
-
-Then open <http://127.0.0.1:8080>.
 
 ## How to play
 
@@ -132,21 +126,12 @@ Rules of the house:
 - Attacks need an explicit `weapon_id`; the engine silently resolves a weapon-less
   attack to nothing (tracked in the root `BACKLOG.md`).
 
-## Deployment
+## Hosting
 
-The public instance runs on [Fly.io](https://fly.io) from `apps/demo/Dockerfile`
-and the root `fly.toml` (one `shared-cpu-1x` machine that auto-stops when idle —
-statelessness means nothing is lost when it does).
-`.github/workflows/deploy-demo.yml` runs `flyctl deploy` on pushes to `main` that
-touch `apps/demo/**`, `packages/**`, or `fly.toml` (and on manual dispatch). It is
-inert until a maintainer has:
-
-1. created the app: `fly apps create nat20-demo`
-2. added the repository secret `FLY_API_TOKEN`
-3. set the repository variable `DEPLOY_DEMO=true`
-
-To deploy by hand from a machine with `flyctl` logged in: `fly deploy` from the
-repository root.
+This repository ships no deployment logic on purpose: `nat20-demo` is a plain ASGI app
+(`nat20_demo.app:app`) that any host can run behind uvicorn, and it holds no state, so it
+needs no volume, database, or session store. Deployment of the public Tapestria-hosted
+instance lives in the Tapestria repository, not here.
 
 ---
 

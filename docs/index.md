@@ -54,11 +54,11 @@ before betting a project on a particular rule.
 playable HTMX web app built on the public engine API — pick a scenario, take a turn,
 watch the engine's event tape fill in. The server is stateless: every fight is replayed
 from a seed, so any combat is a shareable permalink. Run it locally with
-`uv run uvicorn nat20_demo.app:app` from `apps/demo/` (after `uv sync --all-packages
---all-extras` at the repo root) and open `http://127.0.0.1:8000`; the
+`uv run nat20-demo` (after `uv sync --all-packages --all-extras` at the repo root) and
+open `http://127.0.0.1:8000`; the
 [demo README](https://github.com/tapestria/nat20/blob/main/apps/demo/README.md) covers
-scenarios, architecture, Docker, and deployment. A public URL will be linked here once
-the first deploy lands.
+scenarios, architecture, and development. The repo ships no deployment logic — the
+demo is a plain ASGI app any host can run.
 
 ---
 

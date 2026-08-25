@@ -132,13 +132,12 @@ permalink that reproduces the same dice.
 Run it locally (from the repo root, after `uv sync --all-packages --all-extras`):
 
 ```bash
-cd apps/demo
-uv run uvicorn nat20_demo.app:app
+uv run nat20-demo
 ```
 
 then open <http://127.0.0.1:8000>. The [demo README](apps/demo/README.md) covers the
-scenarios, the replay architecture, Docker, development, and deployment. A public URL
-will be linked here once the first deploy lands.
+scenarios, the replay architecture, and development. The repo ships no deployment
+logic — the demo is a plain ASGI app any host can run.
 
 ## Documentation
 

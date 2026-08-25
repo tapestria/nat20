@@ -373,3 +373,10 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
+
+
+def main() -> None:
+    """Console-script entrypoint (``uv run nat20-demo``): serve on 127.0.0.1:8000."""
+    import uvicorn
+
+    uvicorn.run("nat20_demo.app:app", host="127.0.0.1", port=8000)

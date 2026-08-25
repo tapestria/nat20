@@ -12,6 +12,9 @@ dependencies = [
     "uvicorn>=0.30",
 ]
 
+[project.scripts]
+nat20-demo = "nat20_demo.app:main"
+
 [project.optional-dependencies]
 dev = [
     "httpx>=0.27",
