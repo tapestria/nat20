@@ -1,0 +1,22 @@
+<h2>Actions</h2>
+{% if actions.rejected %}
+<p class="rejected">Last command rejected: {{ actions.rejected }}</p>
+{% endif %}
+{% if actions.mode == "over" %}
+{% include "_outcome.html" %}
+{% else %}
+<p class="turn-banner">{{ actions.actor.name }}'s turn{% if actions.mode == "monster_turn" %} (monster){% endif %}</p>
+<ul class="action-list">
+  {% for opt in actions.options %}
+  <li>
+    <button class="action-btn"
+            hx-post="/play/{{ scenario.id }}/act" hx-include="#fight-log,#fight-seed"
+            hx-vals='{"command": {{ opt.command_json | tojson }}}'
+            hx-target="#tape-lines" hx-swap="beforeend"
+            hx-sync="closest main:drop">
+      {{ opt.label }}
+    </button>
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}

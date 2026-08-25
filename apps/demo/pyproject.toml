@@ -1,0 +1,65 @@
+[project]
+name = "nat20-demo"
+version = "0.1.0"
+description = "Playable web demo of the dnd5e-engine + dnd5e-srd-data stack (never published)"
+requires-python = ">=3.12"
+classifiers = ["Private :: Do Not Upload"]
+dependencies = [
+    "dnd5e-engine",
+    "fastapi>=0.115",
+    "jinja2>=3.1",
+    "python-multipart>=0.0.9",
+    "uvicorn>=0.30",
+]
+
+[project.scripts]
+nat20-demo = "nat20_demo.app:main"
+
+[project.optional-dependencies]
+dev = [
+    "httpx>=0.27",
+    "mypy>=1.13.0",
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.9.0",
+]
+
+[tool.uv.sources]
+dnd5e-engine = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/nat20_demo"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.mypy]
+python_version = "3.12"
+plugins = ["pydantic.mypy"]
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+warn_unused_ignores = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E", "F", "I", "N", "UP", "B", "SIM", "T20", "BLE",
+    "C90", "ASYNC", "PT", "RUF", "TRY",
+]
+ignore = [
+    "TRY003",
+    "RUF001", "RUF002", "RUF003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Test bodies are allowed to be branchy/repetitive (C901) and print (T201).
+"tests/**/*.py" = ["E501", "F841", "PT006", "PT011", "C901"]

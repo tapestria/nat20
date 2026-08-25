@@ -1,0 +1,233 @@
+/* Nat20 demo — single dark-parchment theme. No framework. */
+
+:root {
+  --bg: #1c1712;
+  --panel: #241d16;
+  --parchment: #e9dcc3;
+  --parchment-dim: #b8a888;
+  --ink: #2b2118;
+  --accent: #b3773a;
+  --accent-bright: #e0a458;
+  --pc: #5f9ea0;
+  --foe: #a83e3e;
+  --danger: #c0392b;
+  --border: #4a3d2c;
+  --cell-floor: #2c261d;
+  --cell-blocked: #171310;
+  --cell-difficult: #3a3320;
+  --cell-cover: #33402f;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--parchment);
+  font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  line-height: 1.5;
+}
+
+a { color: var(--accent-bright); }
+
+.site-header {
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.site-header .brand {
+  font-weight: bold;
+  font-size: 1.25rem;
+  letter-spacing: 0.05em;
+  text-decoration: none;
+}
+
+.site-content { padding: 1.25rem; }
+
+.site-footer {
+  padding: 1rem 1.25rem;
+  border-top: 1px solid var(--border);
+  color: var(--parchment-dim);
+  font-size: 0.85rem;
+}
+
+.site-footer .not-affiliated { font-size: 0.75rem; }
+
+/* Catalog */
+
+.scenario-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+}
+
+.scenario-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  padding: 1rem;
+}
+
+.scenario-card h2 { margin: 0 0 0.35rem; font-size: 1.1rem; }
+.scenario-card .tagline { color: var(--parchment-dim); margin: 0 0 0.5rem; }
+.scenario-card .proves { font-size: 0.85rem; margin: 0; }
+
+/* Play board */
+
+.board {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 2fr) minmax(12rem, 1fr);
+  grid-template-areas:
+    "grid initiative"
+    "grid status"
+    "actions actions"
+    "tape tape";
+}
+
+#grid { grid-area: grid; }
+#initiative { grid-area: initiative; }
+#status { grid-area: status; }
+#actions { grid-area: actions; }
+#tape { grid-area: tape; }
+
+.grid-wrap { position: relative; display: inline-block; }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(var(--cols), var(--cell, 2.2rem));
+  grid-auto-rows: var(--cell, 2.2rem);
+  gap: 1px;
+  background: var(--border);
+}
+
+.cell {
+  position: relative;
+  background: var(--cell-floor);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cell.blocked { background: var(--cell-blocked); }
+.cell.difficult { background: var(--cell-difficult); }
+.cell.cover_half,
+.cell.cover_three_quarters,
+.cell.cover_total { background: var(--cell-cover); }
+
+.cell.candidate { outline: 1px dashed var(--accent-bright); }
+
+.move-btn {
+  position: absolute;
+  inset: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.move-btn:hover { background: rgba(224, 164, 88, 0.25); }
+
+.token {
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: bold;
+  color: var(--ink);
+  z-index: 1;
+}
+
+.token.pc { background: var(--pc); }
+.token.foe { background: var(--foe); }
+.token.current { outline: 2px solid var(--accent-bright); outline-offset: 1px; }
+.token.dead { filter: grayscale(1) brightness(0.6); }
+
+.walls { position: absolute; inset: 0; pointer-events: none; }
+.wall { position: absolute; background: var(--parchment); }
+
+/* Initiative / status */
+
+.initiative-list, .status-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.combatant, .status-card {
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+
+.combatant.current, .status-card .current { color: var(--accent-bright); }
+.combatant.dead { color: var(--parchment-dim); text-decoration: line-through; }
+.combatant.pc { border-left: 3px solid var(--pc); }
+.combatant.foe { border-left: 3px solid var(--foe); }
+
+.status-card { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: baseline; }
+.status-card .name { font-weight: bold; }
+.status-card .conditions { color: var(--danger); }
+.status-card .concentrating { font-style: italic; color: var(--accent-bright); }
+
+/* Actions */
+
+.action-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.action-btn, #copy-permalink {
+  background: var(--accent);
+  color: var(--ink);
+  border: none;
+  border-radius: 0.3rem;
+  padding: 0.5rem 0.85rem;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.action-btn:hover, #copy-permalink:hover { background: var(--accent-bright); }
+
+.rejected { color: var(--danger); }
+
+.outcome { border: 1px solid var(--border); border-radius: 0.4rem; padding: 1rem; }
+
+/* Tape */
+
+#tape-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 20rem;
+  overflow-y: auto;
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 0.3rem;
+}
+
+.ev { padding: 0.25rem 0.5rem; border-bottom: 1px solid var(--border); }
+.ev pre { white-space: pre-wrap; word-break: break-all; margin: 0.25rem 0 0; }
+
+@media (max-width: 40rem) {
+  .board {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "grid"
+      "initiative"
+      "status"
+      "actions"
+      "tape";
+  }
+}

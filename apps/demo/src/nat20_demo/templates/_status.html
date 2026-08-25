@@ -1,0 +1,20 @@
+<h2>Status</h2>
+<ul class="status-list">
+  {% for s in status %}
+  <li class="status-card">
+    <span class="name">{{ s.name }}</span>
+    <span class="hp">{{ s.hp }}/{{ s.hp_max }} HP{% if s.temp_hp %} (+{{ s.temp_hp }} temp){% endif %}</span>
+    {% if s.conditions %}
+    <span class="conditions">{{ s.conditions | join(", ") }}</span>
+    {% endif %}
+    {% if s.slots %}
+    <span class="slots">
+      {% for level, remaining in s.slots.items() %}L{{ level }}: {{ remaining }}{% if not loop.last %}, {% endif %}{% endfor %}
+    </span>
+    {% endif %}
+    {% if s.concentrating %}
+    <span class="concentrating">concentrating</span>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>

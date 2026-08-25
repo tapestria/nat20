@@ -1,0 +1,17 @@
+{% extends "shell.html" %}
+{% block title %}Nat20 — {{ scenario.title }}{% endblock %}
+{% block content %}
+<main class="board" data-scenario="{{ scenario.id }}">
+  <h1>{{ scenario.title }}</h1>
+  <input type="hidden" id="fight-log" name="log" value="{{ encoded_log }}">
+  <input type="hidden" id="fight-seed" name="seed" value="{{ seed }}">
+  <p class="permalink-controls">
+    <button id="copy-permalink" type="button">Copy permalink</button>
+  </p>
+  <section id="grid">{% include "_grid.html" %}</section>
+  <aside id="initiative">{% include "_initiative.html" %}</aside>
+  <aside id="status">{% include "_status.html" %}</aside>
+  <section id="actions">{% include "_actions.html" %}</section>
+  <section id="tape"><ol id="tape-lines">{% include "_tape.html" %}</ol></section>
+</main>
+{% endblock %}

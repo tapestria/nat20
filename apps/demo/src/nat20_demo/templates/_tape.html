@@ -1,0 +1,1 @@
+{% for line in tape %}<li class="ev ev-{{ line.kind }}"><span>{{ line.text }}</span><details><summary>raw</summary><pre>{{ line.raw }}</pre></details></li>{% endfor %}

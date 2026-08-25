@@ -1,0 +1,14 @@
+{% extends "shell.html" %}
+{% block title %}Nat20 — about{% endblock %}
+{% block content %}
+<main class="about">
+  <h1>About this demo</h1>
+  <p>
+    This is a stateless demo of the Nat20 engine — a host-agnostic, zero-I/O
+    5e SRD 5.2 rules engine for Python. Every fight replays a client-held
+    command log against the public engine API; the server keeps no combat
+    state between requests.
+  </p>
+  <p><a href="/">Back to the catalog</a></p>
+</main>
+{% endblock %}
