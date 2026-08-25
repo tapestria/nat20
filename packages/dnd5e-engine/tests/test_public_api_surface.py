@@ -1,4 +1,5 @@
 import importlib
+import warnings
 
 import dnd5e_engine
 
@@ -97,7 +98,11 @@ def test_every_public_module_declares_all():
 
 
 def test_all_names_are_importable():
-    for m in PUBLIC_MODULES:
-        mod = importlib.import_module(m)
-        for name in mod.__all__:
-            assert hasattr(mod, name), f"{m}.{name} missing"
+    # Legacy (Gen 1) names resolve through a warning ``__getattr__`` in 0.4.x;
+    # this test checks presence, not the deprecation contract.
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", DeprecationWarning)
+        for m in PUBLIC_MODULES:
+            mod = importlib.import_module(m)
+            for name in mod.__all__:
+                assert hasattr(mod, name), f"{m}.{name} missing"

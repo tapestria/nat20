@@ -35,7 +35,7 @@ GEN2_ENTRY = (
 
 
 def _loaded_modules() -> list[str]:
-    out = subprocess.run(  # noqa: S603 — fixed argv, our own interpreter
+    out = subprocess.run(
         [sys.executable, "-W", "error::DeprecationWarning:dnd5e_engine", "-c", GEN2_ENTRY],
         check=True,
         capture_output=True,
