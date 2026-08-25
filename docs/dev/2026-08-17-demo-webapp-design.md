@@ -153,13 +153,12 @@ seeding contract live.
 
 ## Deployment
 
-- uv-based Dockerfile (engine + data + demo installed, uvicorn entrypoint).
-- Fly.io, single small machine; statelessness means no volume, replicas and
-  scale-to-zero are acceptable.
-- `deploy.yml` GitHub workflow on main/tag.
-- Abuse guard: request-size cap on the log (500 commands) + platform rate
-  limiting. No accounts, no data at rest.
-- README + docs get screenshots and the live URL.
+**Amended 2026-08-25.** The original design deployed the demo from this repo
+(Dockerfile + Fly.io + a deploy workflow). That was reversed before merge: the
+public library repo ships **no deployment logic**. `nat20-demo` is a plain,
+stateless ASGI app (`nat20_demo.app:app`, console script `nat20-demo`) that any
+host can run behind uvicorn; hosting of the public Tapestria instance lives in
+the Tapestria repository. Local run is the only path this repo documents.
 
 ## Out of scope
 
