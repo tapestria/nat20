@@ -8,20 +8,14 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from enum import StrEnum
 from typing import Any
 
 from dnd5e_engine.rules.combat import HitType, attack_roll, damage_roll
+from dnd5e_engine.types.combat import BehaviorProfile  # re-export; canonical home moved in 0.4.0
 
 # ---------------------------------------------------------------------------
 # Enums and dataclasses
 # ---------------------------------------------------------------------------
-
-
-class BehaviorProfile(StrEnum):
-    AGGRESSIVE = "AGGRESSIVE"
-    RANGED = "RANGED"
-    DEFENSIVE = "DEFENSIVE"
 
 
 @dataclass(frozen=True)
