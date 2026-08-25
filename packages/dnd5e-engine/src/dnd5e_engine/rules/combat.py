@@ -171,11 +171,11 @@ def saving_throw(
     if paralyzed or stunned:
         disadvantage = True
 
-    # Codex Phase 6 review iter-12 P2: also honor flag-based advantage /
+    # also honor flag-based advantage /
     # disadvantage from active_effects (ieffect2 translator emits
     # restrained / blinded / etc. as flags.advantage.save.<ability> or
     # flags.disadvantage.save.<ability>). Mirrors the resolve_check
-    # iter-10/11 fix. The broad form (no ability suffix) applies to
+    # /11 fix. The broad form (no ability suffix) applies to
     # every save; the per-ability form only when matching this save's
     # ability.
     for eff in active_effects:
@@ -204,7 +204,7 @@ def saving_throw(
     else:
         result = roll_d20(modifier=modifier)
 
-    # Apply active effect changes to saving throw (Phase 6 changes vocab)
+    # Apply active effect changes to saving throw changes vocab)
     save_total = result.total
     if active_effects:
         from dnd5e_engine.rules.effects import apply_changes_to_check
@@ -212,8 +212,7 @@ def saving_throw(
         # Fold the generic save.bonus bucket AND the per-ability bucket
         # (save.<ability>.bonus). Mirrors resolve_check() which honors both
         # so a Cloak of Protection (save.bonus +1) and a Ring of Mind
-        # Shielding (save.wisdom.bonus +N style) both land. Codex Phase 6
-        # iter-6 P2.
+        # Shielding (save.wisdom.bonus +N style) both land. # .
         ability_lower = (ability or "").lower()
         for bucket_key in ("save.bonus", f"save.{ability_lower}.bonus" if ability_lower else ""):
             if not bucket_key:
@@ -295,7 +294,7 @@ def opportunity_attack_eligible(
 
 
 # ---------------------------------------------------------------------------
-# Player attack resolution (Phase 55)
+# Player attack resolution
 # ---------------------------------------------------------------------------
 
 
@@ -329,7 +328,7 @@ def resolve_player_attack(
     2. Save-based spell: roll monster saving throw, apply full/half/zero damage.
     3. Standard attack/spell attack roll: d20 + bonus vs AC.
 
-    Returns CombatOutcome with both totals (for Phase 2 LLM narration) and raw
+    Returns CombatOutcome with both totals (for LLM narration) and raw
     dice data (for DiceOutcome broadcast construction).
     """
     from dnd5e_engine.rules.gambits import parse_damage_dice
@@ -442,11 +441,11 @@ def resolve_player_attack(
             raw_save_success=save.success,
         )
 
-    # Codex Phase 6 review iter-12 P2: derive advantage / disadvantage
+    # derive advantage / disadvantage
     # from flag-based active_effect changes so Faerie Fire on the target,
     # Invisible on the attacker, and ieffect2-translated PassiveEffects
     # like attack_advantage=-1 actually shift the d20 mechanic. Mirrors
-    # the resolve_check iter-10 fix. Attacker flags come from
+    # the resolve_check fix. Attacker flags come from
     # active_effects (the attacker's effects); target flags come from
     # target_active_effects (Faerie Fire grants attack ADVANTAGE to
     # attackers, so we flip the target's flag to attacker-side advantage).
@@ -484,7 +483,7 @@ def resolve_player_attack(
         target_conditions=target_conditions,
     )
 
-    # Apply active effect changes to attack roll (Phase 6 changes vocab)
+    # Apply active effect changes to attack roll changes vocab)
     attack_total = atk.roll.total
     if active_effects:
         attack_total, _effect_breakdown = apply_changes_to_check(

@@ -106,7 +106,7 @@ def resolve_attack(
 
     # SRD §Advantage and Disadvantage — read the attacker's own
     # ``flags.advantage.attack`` / ``flags.disadvantage.attack`` override
-    # changes (both present cancel to normal, Avrae ``reconcile_adv``). These
+    # changes (both present cancel to normal, the legacy evaluator ``reconcile_adv``). These
     # gate the SRD §Sneak Attack trigger below; they deliberately do NOT change
     # the natural-d20 ``mode`` on this live path. Doing so would shift the
     # seeded dice stream and the crit outcome of the base attack, perturbing
@@ -127,7 +127,7 @@ def resolve_attack(
         # target's EFFECTIVE AC for this attack only; total cover is filtered
         # upstream (the target is never reachable as a resolver target at all).
         # SRD Shield — "+5 bonus to AC, including against the triggering
-        # attack" (C06-S03): a pre-armed reaction can land an AC-bonus active
+        # attack" a pre-armed reaction can land an AC-bonus active
         # effect on the target between the trigger and this comparison; the
         # natural roll itself is never touched, only this comparison.
         effective_ac = (
@@ -193,7 +193,7 @@ def attacker_advantage_flags(ctx: ActivityResolutionContext) -> tuple[bool, bool
                 has_advantage = True
             elif ch.key == "flags.disadvantage.attack":
                 has_disadvantage = True
-    # Both present cancel to normal (Avrae ``reconcile_adv``).
+    # Both present cancel to normal (the legacy evaluator ``reconcile_adv``).
     if has_advantage and has_disadvantage:
         return False, False
     return has_advantage, has_disadvantage
@@ -290,7 +290,7 @@ def _is_ranged_weapon(weapon: Weapon | None) -> bool:
     """True iff ``weapon`` is a ranged weapon (Foundry rwak scope).
 
     The ranged analog of ``_is_melee_weapon`` — the scope of
-    ``system.bonuses.rwak.damage`` (C04-S03).
+    ``system.bonuses.rwak.damage`` .
     """
     return weapon is not None and weapon.weapon_category in _RANGED_CATEGORIES
 
@@ -311,7 +311,7 @@ def _weapon_default_ability(weapon: Weapon, ctx: ActivityResolutionContext) -> s
     """SRD default attack/damage ability for a weapon with no explicit ability.
 
     * ranged weapon (``weapon_category`` in the ranged set) → DEX.
-    * finesse weapon (the ``finesse`` :class:`WeaponProperty`) → the better of the
+    * finesse weapon (the ``finesse`` ``WeaponProperty``) → the better of the
       caster's STR/DEX modifier (SRD §Finesse: the wielder chooses).
     * otherwise (melee non-finesse) → STR.
 
@@ -482,7 +482,7 @@ def _apply_on_hit_damage(
             if melee_bonus_expr:
                 by_type[first_type] += roll_expr(melee_bonus_expr, ctx.rng)
 
-        # C04-S03 / Foundry ``system.bonuses.rwak.damage`` — a ranged weapon
+        # / Foundry ``system.bonuses.rwak.damage`` — a ranged weapon
         # attack damage bonus, the ranged analog of the melee-only bonus just
         # above. Add it once to the first damage type, RANGED WEAPON only.
         if first_type is not None and _is_ranged_weapon(weapon):

@@ -1,6 +1,6 @@
 """Public read-model for live combat state.
 
-``get_live`` returns a :class:`LiveCombatView` — a point-in-time snapshot
+``get_live`` returns a ``LiveCombatView`` — a point-in-time snapshot
 projection of the engine's private ``_LiveCombat``. Host-side resolvers
 that run alongside the engine's dispatch consume this stable surface,
 never the private dataclass. Container fields are copied (outer + inner)
@@ -63,3 +63,6 @@ class LiveCombatView:
             ended=live.ended,
             final_outcome=live.final_outcome,
         )
+
+
+__all__ = ["LiveCombatView"]

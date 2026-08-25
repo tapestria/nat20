@@ -2,7 +2,7 @@
 
 Value-typed payloads the host adapter passes into start_combat. Owned
 by the library so a standalone consumer can construct combat-ready
-inputs without depending on Tapestria-specific session/world types.
+inputs without depending on the host-specific session/world types.
 """
 
 from __future__ import annotations
@@ -70,7 +70,7 @@ class PartyMemberSpec(BaseModel):
     damage_immunities: list[str] = Field(default_factory=list)
     # SRD §Damage Vulnerability — per-PC type list ("applying twice the normal
     # damage"). Empty by default; threaded onto ``Combatant.damage_vulnerabilities``
-    # → the damage sidecar. Symmetric with the monster path (C08-S03).
+    # → the damage sidecar. Symmetric with the monster path .
     damage_vulnerabilities: list[str] = Field(default_factory=list)
     # SRD §Condition Immunity — condition slugs the PC can't suffer (Nature's
     # Ward → ``"poisoned"``). Populated by ``build_party_member`` from always-on
@@ -191,6 +191,13 @@ class EncounterMemberSpec(BaseModel):
 
 
 class ZoneEdge(BaseModel):
+    """One undirected connection between two zones in a ``SceneTopology``.
+
+    ``a`` and ``b`` are zone ids; ``distance_ft`` is the cost of traversing
+    between them, used for range, reach and movement-budget checks. Edges are
+    undirected — declare each connection once.
+    """
+
     model_config = ConfigDict(extra="forbid")
 
     a: str
@@ -204,7 +211,7 @@ class SceneTopology(BaseModel):
     The orchestrator converts this to a concrete ``ZoneTopology`` (the
     Protocol the scaffold's ``RuntimeContext`` requires) at
     ``start_combat`` time. Per
-    ``docs/agent-prompts/combat/00-evaluator-scaffold.md``, the scaffold
+    the original scaffold
     keeps ``ZoneTopology`` as a structural Protocol; concrete graph
     implementations belong here at the seam.
     """

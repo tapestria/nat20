@@ -83,7 +83,7 @@ class RangeUnits(StrEnum):
 
 class Range(BaseModel, frozen=True):
     """Weapon/spell range at the item level. ``self`` and ``touch`` ignore
-    value/units. Activity range lives in :class:`RangeBlock` instead."""
+    value/units. Activity range lives in ``RangeBlock`` instead."""
 
     kind: Literal["self", "touch", "melee", "ranged", "sight", "unlimited"]
     value: PositiveInt | None = None
@@ -105,7 +105,7 @@ class TargetTemplateShape(StrEnum):
 class TargetTemplate(BaseModel, frozen=True):
     """Item-level AoE shape (used by ``MonsterAction.activities[]`` legacy
     typed targets). Activity-internal templates live in
-    :class:`TargetTemplateBlock`."""
+    ``TargetTemplateBlock``."""
 
     shape: TargetTemplateShape
     size: PositiveInt
@@ -114,7 +114,7 @@ class TargetTemplate(BaseModel, frozen=True):
 
 class Target(BaseModel, frozen=True):
     """Item-level target. Activity-internal targets live in
-    :class:`TargetBlock`."""
+    ``TargetBlock``."""
 
     kind: Literal["self", "creature", "object", "space", "ally", "enemy"]
     count: PositiveInt | None = None
@@ -123,7 +123,7 @@ class Target(BaseModel, frozen=True):
 
 class DamagePart(BaseModel, frozen=True):
     """Top-level weapon ``damage_parts`` entry. Activity damage-part shape
-    is :class:`DamagePartBlock` (Foundry's ``DamageData``)."""
+    is ``DamagePartBlock`` (Foundry's ``DamageData``)."""
 
     dice: str  # "1d8", "2d6+3"
     damage_type: str  # "slashing", "fire", etc. — open vocab from SRD
@@ -311,7 +311,7 @@ class DamageScalingBlock(BaseModel, frozen=True):
 
 class DamagePartBlock(BaseModel, frozen=True):
     """Foundry ``shared/damage-field.mjs`` ``DamageData``. Also used as
-    :class:`HealActivity.healing` since Foundry's heal activity stores
+    ``healing`` since Foundry's heal activity stores
     healing as a single ``DamageField``."""
 
     number: NonNegativeInt | None = None
@@ -606,7 +606,7 @@ class _ActivityBase(BaseModel):
 
 class _ActivityBaseWithEffects(_ActivityBase):
     """Adds the ``effects[]`` list every Foundry activity except CastActivity
-    carries. CastActivity inherits from :class:`_ActivityBase` directly.
+    carries. CastActivity inherits from ``_ActivityBase`` directly.
 
     ``applied_effects`` is Foundry's legacy flat ``appliedEffects`` id list,
     persisted alongside the structured ``effects[]`` slice (it mostly aliases
@@ -672,7 +672,7 @@ class HealActivity(_ActivityBaseWithEffects):
 class SaveActivity(_ActivityBaseWithEffects):
     """Foundry ``save-data.mjs``. Target makes a saving throw vs DC;
     ``damage.on_save`` controls half/none on success. ``effects[]`` uses the
-    save-extended :class:`AppliedEffectRef` (``on_save`` field populated)."""
+    save-extended ``AppliedEffectRef`` (``on_save`` field populated)."""
 
     kind: Literal["save"] = "save"
     damage: SaveDamageBlock = Field(default_factory=SaveDamageBlock)

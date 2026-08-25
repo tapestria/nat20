@@ -35,7 +35,15 @@ CONDITION_IMPLIES: dict[Condition, list[Condition]] = {
     Condition.UNCONSCIOUS: [Condition.INCAPACITATED, Condition.PRONE],
 }
 
-# Human-readable effects per condition
+# Human-readable effects per condition, phrased against SRD 5.2 (2024).
+#
+# These strings are DESCRIPTIVE ONLY — they are surfaced by
+# ``get_condition_effects`` for hosts to display, and are not what the engine
+# enforces. A condition's actual mechanical effect reaches a roll through the
+# projection helpers below (``project_passive_*``) and the active-effect fold in
+# the orchestrator. Where the two differ, the projections are authoritative and
+# the gap is tracked in BACKLOG.md; do not read this table as a statement of
+# what is implemented.
 CONDITION_EFFECTS: dict[Condition, list[str]] = {
     Condition.BLINDED: [
         "Automatically fails any ability check requiring sight",
@@ -50,13 +58,14 @@ CONDITION_EFFECTS: dict[Condition, list[str]] = {
         "Cannot hear",
         "Automatically fails ability checks requiring hearing",
     ],
+    # SRD 5.2 replaced the 2014 six-tier ladder with two scaling penalties.
+    # NOT ENFORCED by the engine today: the level is tracked but applies no
+    # penalty (see BACKLOG.md).
     Condition.EXHAUSTION: [
-        "Level 1: Disadvantage on ability checks",
-        "Level 2: Speed halved",
-        "Level 3: Disadvantage on attack rolls and saving throws",
-        "Level 4: HP maximum halved",
-        "Level 5: Speed reduced to 0",
-        "Level 6: Death",
+        "D20 Tests are reduced by 2 times the creature's Exhaustion level",
+        "Speed is reduced by 5 feet times the creature's Exhaustion level",
+        "Exhaustion level 6 is death",
+        "Finishing a Long Rest removes one level",
     ],
     Condition.FRIGHTENED: [
         "Disadvantage on ability checks and attack rolls while source of fear is in line of sight",
@@ -92,10 +101,10 @@ CONDITION_EFFECTS: dict[Condition, list[str]] = {
         "Disadvantage on attack rolls and ability checks",
     ],
     Condition.PRONE: [
-        "Only movement option is to crawl (costs double movement)",
+        "Only movement option is to crawl, unless the creature stands up",
         "Disadvantage on attack rolls",
-        "Attack rolls within 5 feet have advantage against this creature",
-        "Ranged attack rolls against this creature have disadvantage",
+        "An attack roll against this creature has advantage if the attacker is "
+        "within 5 feet, and disadvantage otherwise",
     ],
     Condition.RESTRAINED: [
         "Speed becomes 0",
@@ -255,7 +264,14 @@ def check_immunity(condition_name: str, immunities: list[str]) -> bool:
 def conditions_grant_disadvantage_on_ability_checks(conditions: list[str]) -> bool:
     """Return True if conditions impose disadvantage on ability checks.
 
-    Level 1 exhaustion and poisoned both impose disadvantage on ability checks per SRD.
+    Poisoned imposes disadvantage on ability checks in both SRD editions.
+
+    Exhaustion is an **edition divergence**: this returns True for it, which is
+    the SRD 5.1 (2014) rule. SRD 5.2 replaced that with a numeric ``-2 x level``
+    penalty on all D20 Tests. Applying the 5.2 rule needs a numeric per-actor
+    check-modifier consumer, which does not exist yet — see BACKLOG.md
+    ("Exhaustion applies the 2014 rule"). Disadvantage is the closest available
+    approximation, not the correct 5.2 mechanic.
     """
     return "exhaustion" in conditions or "poisoned" in conditions
 
@@ -296,7 +312,7 @@ def conditions_grant_advantage_on_attack(
 
 # ── Per-effect sidecar projection (combat orchestrator hydration) ────────────
 #
-# The combat orchestrator hydrates ``EffectStore`` sidecars from the live
+# The combat orchestrator hydrates the active-effect projection sidecars from the live
 # combatant's conditions immediately before invoking the per-effect
 # evaluator. The handlers under ``app/combat/effects/*.py`` read three
 # tables off the store:
@@ -375,17 +391,19 @@ def project_passive_save_modifiers(conditions: list[str]) -> dict[str, list[str]
 def project_passive_check_modifiers(conditions: list[str]) -> dict[str, list[str]]:
     """Return ``passive_check_adv`` / ``passive_check_dis`` lists.
 
-    Per SRD 5.1 §Conditions, conditions that impose disadvantage on
-    *every* ability check use the ``"all"`` catch-all marker the
-    ``check.py`` handler already recognizes (see ``_reconcile_adv_dis``):
+    Conditions that impose disadvantage on *every* ability check use the
+    ``"all"`` catch-all marker the ``check.py`` handler already recognizes
+    (see ``_reconcile_adv_dis``):
 
     * Frightened — "disadvantage on ability checks ... while source of fear
       is in line of sight" (we project as ``all`` — the line-of-sight gate
       isn't carried on the live state today)
     * Poisoned — "disadvantage on attack rolls and ability checks"
-    * Exhaustion ≥ 1 — "disadvantage on ability checks" (Level 1 effect;
-      exhaustion stacks but the disadvantage doesn't compound, so any
-      exhaustion entry surfaces the marker)
+    * Exhaustion ≥ 1 — projected as disadvantage. NOTE: this is the SRD 5.1
+      (2014) rule. SRD 5.2 instead reduces every D20 Test by ``2 x level``,
+      which needs a numeric modifier path this projection cannot express. The
+      divergence is tracked in BACKLOG.md; the exhaustion LEVEL is carried on
+      ``ActiveCondition.exhaustion_level`` and is currently ignored here.
     """
     out: dict[str, list[str]] = {"passive_check_adv": [], "passive_check_dis": []}
     active = {c.lower() for c in conditions}

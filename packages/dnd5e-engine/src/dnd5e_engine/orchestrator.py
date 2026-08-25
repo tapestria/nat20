@@ -1,27 +1,49 @@
-"""Public combat seam — orchestrator.
+"""The combat seam — open a combat, drive it turn by turn, close it.
 
-Per ``docs/agent-prompts/combat/01-boundary-api.md``. This module is the
-typed plumbing the rest of the backend (session router, websocket
-dispatch, narrator) will eventually call to:
+This module owns the engine's stateful combat loop and every piece of runtime
+state behind it. Four coroutines are the whole public contract:
 
-- ``start_combat(...)`` — open a combat, allocate runtime state.
-- ``submit_player_intent(...)`` — accept a PC intent for the current
-  turn, validate it, emit ``IntentSubmitted``.
-- ``narration_events(...)`` — stream the ``CombatEvent`` union out to
-  the narrator.
-- ``end_combat(...)`` — close the combat and return a ``CombatOutcome``.
+- ``start_combat`` — roll initiative, materialize runtime state, return a
+  ``CombatHandle`` you thread through every later call.
+- ``submit_player_intent`` — validate and resolve one PC intent.
+- ``advance_monster_turn`` — run the built-in monster AI for one turn.
+- ``end_combat`` — close the encounter and project a ``CombatOutcome``.
 
-Resolution runs through the typed-Activity resolver: ``submit_player_intent``
-fetches the typed entity (Spell / Weapon / Item) for the intent from the lib
-``BundledAssetLoader`` and walks its activities via the per-kind resolvers
-under :mod:`dnd5e_engine.activities`. The prior Avrae-IR evaluator path was
-retired in Phase 7b.
+Each call emits typed ``CombatEvent`` objects, which
+you read with ``narration_events`` (streaming) or ``drain_pending_events``
+(pull). Live state is readable only through ``get_live``, which returns an
+immutable ``LiveCombatView`` snapshot — the private
+``_LiveCombat`` dataclass is never handed out.
 
-Sidecar hydration: every ``submit_player_intent`` call constructs a real
-:class:`EffectStore` and projects per-resolution sidecar state from
-:class:`_LiveCombat` via :func:`_build_hydration_payload` (passive
-save/attack/damage modifiers from the typed change-fold + condition
-projections) before resolving the intent's activities.
+How an intent resolves
+----------------------
+``submit_player_intent`` reads the intent's ``intent_type`` to pick an asset
+reference (``weapon_id`` / ``spell_id`` / ``item_id`` / ``feature_id``), fetches
+that typed entity through ``get_lib_loader``, and
+walks its activities via the per-kind resolvers in
+``activities``. Before resolving, it projects the actor's
+current active effects and conditions into the resolution context, so passive
+attack/damage/save modifiers land uniformly regardless of which game object
+triggered the activity.
+
+Scope and constraints worth knowing up front
+--------------------------------------------
+- **Determinism.** Every in-combat die is drawn from the ``random.Random``
+  seeded by ``start_combat(rng_seed=...)``. Same seed + same intent sequence
+  reproduces the same combat exactly, independent of global ``random`` state.
+- **Movement is one step per intent.** A ``"move"`` intent must name an
+  *adjacent* cell/zone; it does not path-find. Cross a room by submitting
+  several moves.
+- **Reactions are pre-armed.** The engine never pauses mid-resolution to ask a
+  host "do you want to react?". A reactor arms a reaction on its own turn with
+  a ``"ready"`` intent, and the engine fires it automatically when the trigger
+  occurs.
+- **Effects are combat-scoped.** They live in memory for the encounter and are
+  discarded at ``end_combat``; persisting anything across combats is the host's
+  job.
+
+See ``docs/capabilities.md`` for the per-mechanic matrix of what is and is not
+resolved today.
 """
 
 from __future__ import annotations
@@ -125,7 +147,7 @@ if TYPE_CHECKING:
 # the host passes into ``start_combat`` and have no app.* dependencies.
 
 # SRD §Reactions — the closed set of trigger conditions the pre-armed reaction
-# queue (Cluster 6) recognizes. Typed-semantics rule (CLAUDE.md): a field over
+# queue recognizes. Typed-semantics rule (CLAUDE.md): a field over
 # a closed set is a Literal, never bare str. These three are the exact values
 # ``PlayerIntent.reaction_trigger``'s own docstring already named as its
 # intended examples.
@@ -164,7 +186,7 @@ class PlayerIntent(BaseModel):
     # Validated by the use_item charge gate against consumption.scaling.
     charges_to_spend: int | None = Field(default=None, ge=1)
     # SRD §Reactions — the trigger condition a ``"ready"`` intent pre-arms
-    # (Cluster 6's pending-reaction queue). Consumed by
+    # 's pending-reaction queue). Consumed by
     # ``_pop_pending_reaction`` / ``_drain_targeted_reactions`` when a
     # matching triggering intent is later submitted by any combatant.
     reaction_trigger: ReactionTrigger | None = None
@@ -380,7 +402,7 @@ def _monster_attack_range_ft(activities: Sequence[Any], melee_reach_ft: int) -> 
     The range gate keys off the FIRST offensive activity the turn will resolve
     (multiattack fans out to homogeneous sub-attacks, so the first activity's
     range governs the whole turn — matching the legacy single ``range_ft`` the
-    loader wrapper carried). Only an explicit :class:`AttackActivity` yields a
+    loader wrapper carried). Only an explicit ``AttackActivity`` yields a
     finite reach the movement gate should honor:
 
       * an explicit numeric ``units == "ft"`` range (e.g. a ``"80"`` shortbow
@@ -390,7 +412,7 @@ def _monster_attack_range_ft(activities: Sequence[Any], melee_reach_ft: int) -> 
         (5 by default, 10 for reach creatures) — reproducing the old
         ``range_ft == 5`` melee wrappers.
 
-    A non-``AttackActivity`` offensive activity (a :class:`SaveActivity`)
+    A non-``AttackActivity`` offensive activity (a ``SaveActivity``)
     splits two ways:
 
       * a self-centered AoE (breath weapon: ``range.units == "self"`` OR a
@@ -457,7 +479,7 @@ def _monster_is_fleeing(monster: Combatant) -> bool:
     an AGGRESSIVE monster passes below 10% HP, a RANGED one below 25%; DEFENSIVE
     monsters never flee. The typed selector (``select_typed_monster_action``)
     takes only the static ``Monster`` and so lost access to live HP — this gate
-    re-applies it against the runtime :class:`Combatant` before selection.
+    re-applies it against the runtime ``Combatant`` before selection.
     """
     try:
         profile = BehaviorProfile(monster.behavior_profile)
@@ -579,7 +601,7 @@ def _record_sneak_attack_spent(
 
     Today no PC multi-attack-per-turn intent path exists, so the flag it sets is
     never re-read within the same turn (the cap is exercised only at the resolver
-    seam, C07-S04). Recording it anyway keeps the actor-state honest for the day
+    seam, . Recording it anyway keeps the actor-state honest for the day
     a second-attack path lands.
     """
     if intent.intent_type != "attack" or weapon is None:
@@ -669,7 +691,7 @@ def _plan_flee_destination(
     a fleeing monster on a grid stays put (not a pinned behaviour — grid retreat
     pathing is a surviving BACKLOG item). Composed entirely from the existing
     ``shortest_path`` / ``edge_distance`` primitives (via ``_path_total_distance``);
-    no new :class:`SpatialTopology` capability is introduced.
+    no new ``SpatialTopology`` capability is introduced.
     """
     if not isinstance(topology, _ZoneGraph):
         return None
@@ -776,7 +798,7 @@ def _monster_target_distance_ft(
 
     The same shortest-path cost the movement gate reads — handed to
     ``expand_action_to_activities`` so its range-aware multiattack fallback and
-    the gate agree on the live distance (C10-S02). ``None`` when either actor
+    the gate agree on the live distance . ``None`` when either actor
     has no known zone or no path connects them.
     """
     if target is None:
@@ -811,7 +833,7 @@ def _pc_attack_out_of_range(live: _LiveCombat, actor_id: str, intent: PlayerInte
 
 
 def _synthesize_attack_from_weapon(weapon: Weapon) -> AttackActivity:
-    """Build a base-weapon :class:`AttackActivity` for a weapon with no
+    """Build a base-weapon ``AttackActivity`` for a weapon with no
     activities of its own.
 
     A handful of magic weapons (frost-brand, flame-tongue, …) ship empty
@@ -836,10 +858,10 @@ class _LiveCombat:
     """Per-combat state held by the orchestrator.
 
     Additive scope (per 01-boundary-api.md): in-memory only. The cutover
-    prompt swaps this for the existing Redis-backed combat state in
+    prompt swaps this for the existing host storage-backed combat state in
     ``app/session/manager.py``. Keeping it in-memory here lets the
     boundary surface be exercised standalone without coupling to
-    session/Redis fixtures.
+    session/host storage fixtures.
     """
 
     handle_id: str
@@ -858,7 +880,7 @@ class _LiveCombat:
     # zone occupancy, per entity_id (read by handlers via the ZoneTopology)
     actor_zone: dict[str, str] = field(default_factory=dict)
     # monster-template slug, per entity_id (drives gambit lookup in
-    # :func:`advance_monster_turn`). Absent for PCs and slug-less NPCs.
+    # ``advance_monster_turn``). Absent for PCs and slug-less NPCs.
     monster_slug_by_entity: dict[str, str] = field(default_factory=dict)
     # SRD §Encounter XP — monster.xp_value per encounter member, indexed by
     # entity_id. Used by ``end_combat`` to compute total XP awarded.
@@ -932,7 +954,7 @@ class _LiveCombat:
     # an ``events`` list on the result envelope without changing the
     # canonical queue-based delivery for ``narration_events``.
     event_listeners: list[Any] = field(default_factory=list)
-    # SRD §Reactions — Cluster 6's pre-armed reaction queue (see
+    # SRD §Reactions — 's pre-armed reaction queue (see
     # docs/dev/reaction-queue.md). Populated by a ``"ready"`` intent; drained
     # (popped + resolved) by ``_pop_pending_reaction`` when a matching trigger
     # is observed from another combatant's intent.
@@ -952,7 +974,7 @@ class _LiveCombat:
 
 @dataclass(frozen=True)
 class _PendingReaction:
-    """One armed-but-not-yet-fired reaction — Cluster 6's queue entry.
+    """One armed-but-not-yet-fired reaction — 's queue entry.
 
     Registered by a ``"ready"`` intent (``owner_id`` spends their Action to
     arm it); popped + resolved by ``_pop_pending_reaction`` the moment a
@@ -986,7 +1008,7 @@ def get_live(handle: CombatHandle) -> LiveCombatView:
 def get_actor_active_effects(handle: CombatHandle, entity_id: str) -> tuple[ActiveEffect, ...]:
     """Read-only snapshot of one combatant's active effects.
 
-    Public API for host-side resolvers (e.g. Tapestria's FLEE dispatch path,
+    Public API for host-side resolvers (e.g. a host's FLEE dispatch path,
     `_handle_consult_codex_dispatch`) that run alongside the engine's own
     dispatch and need to see the same active_effects the engine resolvers
     consume internally. The engine is the single source of truth for in-
@@ -994,7 +1016,7 @@ def get_actor_active_effects(handle: CombatHandle, entity_id: str) -> tuple[Acti
     `DispatchContext` without re-implementing the registry.
 
     Returns an empty tuple if the handle has no live combat (caller
-    should treat as out-of-combat — per Phase 6 spec, no effects apply).
+    should treat as out-of-combat — per spec, no effects apply).
     """
     live = _REGISTRY.get(handle.handle_id)
     if live is None:
@@ -1306,7 +1328,7 @@ async def _handle_move_mark(live: _LiveCombat, caster: Combatant, intent: Player
     # Expire the old mark(s) on every prior target. Effect-lifecycle
     # discipline: state mutations flow through EffectExpired /
     # EffectApplied via _emit (the ws_projection picks these up and
-    # forwards through effect_lifecycle to the Redis EffectStore).
+    # forwards through effect_lifecycle to the host effect store).
     for old_target_id, old_effect_id, old_origin in old_mark_entries:
         _emit(
             live,
@@ -1354,7 +1376,7 @@ def _emit(live: _LiveCombat, event: CombatEvent) -> None:
     Per Agent 03 (outcome-population): the orchestrator is the single source
     of truth for end-state derivation. Per-effect handlers emit canonical
     ``CombatEvent`` instances; this listener folds them into running totals
-    so ``end_combat`` can project a populated :class:`CombatOutcome` without
+    so ``end_combat`` can project a populated ``CombatOutcome`` without
     re-reading per-effect state.
 
     Side-effect: when a non-PC combatant's running HP drops to ≤0 from a
@@ -1581,7 +1603,7 @@ def _emit_apply_temp_hp(live: _LiveCombat, event: TempHpApplied) -> None:
     """Fold a ``TempHpApplied`` into running state: max-not-additive temp-HP
     tracking + initiative slot sync."""
     # SRD §Temporary Hit Points — new amount replaces existing if higher,
-    # not additive (Avrae/Open5e canonical behavior).
+    # not additive (the legacy evaluator/Open5e canonical behavior).
     current = live.tracked_temp_hp.get(event.target_id, 0)
     new_temp = max(current, event.amount)
     live.tracked_temp_hp[event.target_id] = new_temp
@@ -1651,9 +1673,9 @@ def _emit_apply_effect_expired(live: _LiveCombat, event: EffectExpired) -> None:
     if expired_effect is not None and expired_effect.statuses:
         combatant = _find_combatant(live, event.target_id)
         remaining_effects = live.active_effects.get(event.target_id, [])
-        # Codex Phase 6 review iter-8 P1: also clear the status from
+        # also clear the status from
         # live.active_conditions (orchestrator_bridge reads this when
-        # mirroring combatant conditions back to Redis). Without this,
+        # mirroring combatant conditions back to host storage). Without this,
         # the projection re-attaches the expired status to session
         # state on the next mirror tick.
         active_cond_set = live.active_conditions.get(event.target_id)
@@ -1690,11 +1712,11 @@ def _maybe_roll_death_save(live: _LiveCombat) -> None:
     Called immediately after a ``TurnStarted`` is emitted for a PC. If the
     active combatant is a Character whose tracked HP is ≤ 0 and who is not
     yet recorded dead, roll one death save via
-    :func:`app.combat.death_saves.roll_death_save`, emit the returned events
+    ``roll_death_save``, emit the returned events
     through ``_emit`` (so ws_projection picks them up), and apply the
     returned ``Combatant`` mutation back into the live initiative slot.
 
-    The death-save state machine in :mod:`app.rules.combat_helpers` owns
+    The death-save state machine in ``death_saves`` owns
     the success/failure counters; this orchestrator helper is the wiring
     that turns its outcome into emitted ``CombatEvent`` instances.
     """
@@ -1769,17 +1791,17 @@ def _record_death(live: _LiveCombat, event: Death, *, killer_id: str | None) -> 
 # ── Sidecar hydration (per-evaluation projection of session state) ──────────
 #
 # The per-effect handlers under ``app/combat/effects/*.py`` read sidecar
-# surfaces hung off ``ctx.effect_store`` — passive damage modifiers, save /
+# surfaces hung off ``ctx.the host effect store`` — passive damage modifiers, save /
 # check modifiers, existing temp-HP, counter pools, narrative text sink,
 # spell book, available slots, active concentration, IEffect graph. The
 # orchestrator projects from ``_LiveCombat`` (the in-memory combat state)
-# and hands the payload to :meth:`EffectStore.set_sidecar_state` immediately
+# and hands the payload to the active-effect projection immediately
 # before invoking the evaluator. ``set_sidecar_state`` resets ``_text_sink``
 # each call, so the per-evaluation narrative bag is fresh.
 #
 # Follow-ups (NOT in scope here; see PR body):
 #   * passive damage / save / check modifiers projection requires reading
-#     active effect modifiers, which is async (EffectStore.read). Today we
+#     active effect modifiers, which is async (the host effect store). Today we
 #     project empty dicts; handlers tolerate the absent state by returning
 #     defaults (0 modifier, no resistances, no advantage/disadvantage).
 #   * spell_book / available_slots / existing_concentration are not yet
@@ -1806,7 +1828,7 @@ _FOUNDRY_ATTACK_BONUS_KEYS = frozenset(
 )
 
 # Foundry-native attack-CATEGORY damage-bonus change keys (Rage's Rage Damage
-# rides ``mwak``; C04-S03's ranged analog rides ``rwak``; melee/ranged SPELL
+# rides ``mwak``; 's ranged analog rides ``rwak``; melee/ranged SPELL
 # attack damage bonuses ride ``msak``/``rsak``). A creature attacks in exactly
 # one category at a time (mirrors the to-hit fold above), so each key folds
 # into its OWN category-scoped sidecar (never a shared bucket) — the consumer
@@ -1830,7 +1852,7 @@ _FOUNDRY_SPELL_DC_BONUS_KEY = "system.bonuses.spell.dc"
 # a numeric bucket" — so the value is a damage-type STRING, not a signed number.
 # Handled at the very top of the change loop, BEFORE the numeric mode guard and
 # the signed-string coercion, appending into the ``resistances`` sidecar list
-# ``apply.py`` already reads (C08-S01; see docs/dev/passive-projection.md).
+# ``apply.py`` already reads ; see docs/dev/passive-projection.md).
 _FOUNDRY_RESISTANCE_KEY = "system.traits.dr.value"
 
 
@@ -1848,7 +1870,7 @@ def _fold_active_effect_changes(
     """
     dmg_dirty = False
     for active_effect in active:
-        # Phase 6 codex iter-6 P1: equipped enchantments and other
+        # codex equipped enchantments and other
         # ActiveEffects carry mechanically-relevant `changes` entries
         # (Foundry-shaped: attack.roll.bonus / damage.bonus /
         # ac.bonus / save.bonus / save.<ability>.bonus). Fold their
@@ -1858,7 +1880,7 @@ def _fold_active_effect_changes(
         # additive strings — the handler's existing parser already
         # handles them.
         #
-        # Codex iter-7 P1: when an effect carries an
+        # Codex when an effect carries an
         # ``applicable_action_types`` restriction (e.g. a +1 weapon
         # tagged ["attack"]), the attack/damage sidecar is
         # action-type-agnostic and would silently buff spell
@@ -1884,7 +1906,7 @@ def _fold_active_effect_changes(
         # the modifier. Fold the attack bonus once per effect.
         attack_bonus_folded = False
         for change in active_effect.changes:
-            # C08-S01: Rage's ``system.traits.dr.value`` resistance change.
+            # Rage's ``system.traits.dr.value`` resistance change.
             # Foundry ``mode=2`` on this key means "add to the resistance SET"
             # (value is a damage-type string like ``"bludgeoning"``), not a
             # numeric bonus — so it must bypass BOTH the ``mode != "add"`` guard
@@ -1922,7 +1944,7 @@ def _fold_active_effect_changes(
             # passive_damage_bonus that buff weapon AND spell
             # attacks alike. Defensive buckets (ac/save) ignore
             # the tag — they apply against any attacker. Codex
-            # iter-14 P1 (corrects iter-7 over-filter).
+            # (corrects over-filter).
             weapon_only = applicable_set is not None and "attack" in applicable_set
             # Foundry-native attack-bonus keys (Bless/Bane carry the
             # four ``system.bonuses.{mwak,msak,rsak,rwak}.attack``
@@ -1937,7 +1959,7 @@ def _fold_active_effect_changes(
             elif key in _FOUNDRY_DAMAGE_BONUS_KEY_TO_SIDECAR:
                 # Rage's ``system.bonuses.mwak.damage`` (melee weapon attack
                 # damage) and its ``rwak``/``msak``/``rsak`` siblings
-                # (C04-S03's ranged-weapon analog + melee/ranged spell-attack
+                # 's ranged-weapon analog + melee/ranged spell-attack
                 # damage). Each normalizes into its OWN category-scoped
                 # damage-bonus sidecar; attack.py gates each on the swing's
                 # own melee/ranged + weapon/spell shape.
@@ -1964,7 +1986,7 @@ def _fold_active_effect_changes(
             elif key == "system.attributes.ac.bonus":
                 # SRD Shield's own change key (Foundry-native path). Alias to
                 # the existing "ac.bonus" branch below — not a new branch
-                # (C06-S03: the branch already existed, the key never matched).
+                # the branch already existed, the key never matched).
                 key = "ac.bonus"
             if key == "attack.roll.bonus":
                 field = "passive_weapon_to_hit_bonus" if weapon_only else "passive_to_hit_bonus"
@@ -1974,14 +1996,14 @@ def _fold_active_effect_changes(
                 )
                 dmg_dirty = True
             elif key == "save.bonus":
-                # Codex Phase 6 review iter-13 P2: project ONLY the
+                # project ONLY the
                 # generic save.bonus into the action-agnostic
                 # sidecar. Per-ability buckets (save.wisdom.bonus,
                 # save.dexterity.bonus) would silently leak into
                 # every saving throw via passive_save_bonus.
                 # combat.saving_throw and resolve_check read
                 # per-ability buckets directly from active_effects
-                # via apply_changes_to_check (iter-6), so the
+                # via apply_changes_to_check so the
                 # per-ability path is functional without the
                 # sidecar projection.
                 existing = per_target_entry.get("passive_save_bonus")
@@ -2037,7 +2059,7 @@ def _project_target_modifiers(
             if dt not in merged_imm:
                 merged_imm.append(dt)
         damage_proj["immunities"] = merged_imm
-    # C08-S03: fold the creature's static damage vulnerabilities into the same
+    # fold the creature's static damage vulnerabilities into the same
     # sidecar (the ONLY producer — vulnerability has no condition-derived
     # source). ``apply.py`` reads ``sidecar["vulnerabilities"]`` and doubles a
     # matching hit. Mirrors the resistances/immunities merge above exactly.
@@ -2124,16 +2146,16 @@ def _project_caster_pools(
 
 
 def _build_hydration_payload(live: _LiveCombat, caster: Combatant | None = None) -> dict[str, Any]:
-    """Project ``EffectStore.set_sidecar_state`` kwargs from live combat state.
+    """Project ``the host effect store`` kwargs from live combat state.
 
     Two projection scopes:
 
     * **Per-combatant** (keyed by ``entity_id``): ``existing_temp_hp``,
       ``passive_damage_modifiers``, ``save_modifiers``, ``check_modifiers``,
       ``existing_concentration``. Derived from canonical
-      :class:`app.models.session.Combatant` fields (``temp_hp``,
+      ``Combatant`` fields (``temp_hp``,
       ``conditions``, ``concentration_effect_id``) plus the SRD-condition
-      projection in :mod:`app.rules.conditions`.
+      projection in ``conditions``.
 
     * **Per-caster** (single dict for the current evaluator turn): the
       ``_counter_state`` accessor is a single dict the handler reads as
@@ -2146,7 +2168,7 @@ def _build_hydration_payload(live: _LiveCombat, caster: Combatant | None = None)
 
     Active-effect modifier projection (Bless +1d4, Bane −1d4, +1 weapon,
     etc.) is folded in from each combatant's
-    :attr:`_LiveCombat.active_effects` row by reading the effects'
+    ``active_effects`` row by reading the effects'
     Foundry-shaped ``changes`` directly (the typed change-fold). The
     int/dice ``add`` changes surface on the per-target ``save_modifiers`` /
     ``passive_damage_modifiers`` entries under ``passive_save_bonus`` /
@@ -2225,7 +2247,7 @@ def _build_hydration_payload(live: _LiveCombat, caster: Combatant | None = None)
 # single-target spell (Sacred Flame, Cure Wounds, Magic Missile, Fire Bolt)
 # carries no template. The lib's Foundry→canonical converter now surfaces this
 # (inherited from ``system.target`` when the activity doesn't override it), so
-# the typed activity alone is the AoE discriminator — no Avrae-wrapper read.
+# the typed activity alone is the AoE discriminator — no the legacy evaluator-wrapper read.
 
 # Activity kinds that resolve against a creature target (vs. ``utility``, which
 # is a self/zone-creating rider that affects no external creature). Only these
@@ -2251,7 +2273,7 @@ def _typed_spell_broadcasts(activities: Sequence[Any]) -> bool:
 
     The authoritative single-vs-area signal is a measured ``target.template``
     on the activity that resolves against creatures (see
-    :func:`_activity_has_measured_template`):
+    ``_activity_has_measured_template``):
 
     - a creature-targeting activity with a measured template (Fireball's
       ``save`` ⇒ sphere/20, Burning Hands ⇒ cone/15) ⇒ area broadcast.
@@ -2502,8 +2524,7 @@ def _tick_durations_at_turn_end(live: _LiveCombat, actor_id: str) -> None:
     or a future seed pattern that doesn't carry a caster), fall back to
     the target-turn-end tick so they still expire eventually.
 
-    Codex Phase 6 review iter-6 P1 introduced the tick; iter-7 P1
-    refined it to the caster-keyed semantics. Pre-Phase-6 the host's
+    introduced the tick; refined it to the caster-keyed semantics. Pre-Phase-6 the host's
     ``_sweep_effects`` already tracked sources separately for this
     case; this restores the same shape.
 
@@ -2665,7 +2686,7 @@ def _run_end_of_turn_saves(live: _LiveCombat, actor_id: str) -> None:
 
 def _pc_condition_immunities(pc: PartyMemberSpec) -> list[str]:
     """Union the PC spec's ``condition_immunities`` with those projected from
-    its always-on granted-feature ``system.traits.ci.value`` changes (C08-S02).
+    its always-on granted-feature ``system.traits.ci.value`` changes .
 
     A PC built via ``build_party_member`` already carries its projected
     condition immunities on the spec; a host that constructs a raw
@@ -2713,7 +2734,7 @@ def _build_pc_combatants(
     spells_known_by_entity: dict[str, list[str]],
     custom_counters_by_entity: dict[str, dict[str, dict[str, int]]],
 ) -> None:
-    """Append a :class:`Combatant` per party member and populate the passed
+    """Append a ``Combatant`` per party member and populate the passed
     accumulator dicts (actor_zone, tracked_hp, spell_slots/spells_known/
     custom_counters) in place. Mutation-only helper — returns ``None``.
     """
@@ -2771,12 +2792,12 @@ def _build_foe_combatants(
     monster_slug_by_entity: dict[str, str],
     xp_value_by_entity: dict[str, int],
 ) -> None:
-    """Append a :class:`Combatant` per encounter foe and populate the passed
+    """Append a ``Combatant`` per encounter foe and populate the passed
     accumulator dicts (actor_zone, tracked_hp, monster_slug, xp_value) in
     place. Mutation-only helper — returns ``None``.
     """
     for foe in encounter:
-        # C08-S03: hydrate the monster's SRD-canonical damage vulnerabilities
+        # hydrate the monster's SRD-canonical damage vulnerabilities
         # from its template when the spec leaves the field empty (the Skeleton's
         # ``["bludgeoning"]``). Scoped to vulnerabilities — the field is new, so
         # this cannot change any existing combat's behavior; resistances/
@@ -2823,7 +2844,7 @@ def _resolve_topology(
     scene_zones: SceneTopology | None,
     grid_scene: GridScene | None,
 ) -> SpatialTopology:
-    """Select the combat's :class:`SpatialTopology` (grid vs. zone graph),
+    """Select the combat's ``SpatialTopology`` (grid vs. zone graph),
     validating grid start-cells. Raises ``ValueError`` on ambiguous/absent
     topology or an out-of-bounds/blocked grid start cell.
     """
@@ -2874,7 +2895,7 @@ def _seed_active_effects(live: _LiveCombat, active_effects: Sequence[ActiveEffec
                 identity = (eff.target_id, eff.id, eff.origin)
                 if identity not in chain:
                     chain.append(identity)
-                # Codex Phase 6 review iter-13 P2: also write the caster's
+                # also write the caster's
                 # Combatant.concentration_effect_id so _build_hydration_payload
                 # can derive existing_concentration. Without this, a seeded
                 # concentration effect (Bless carried over from a prior
@@ -2909,8 +2930,7 @@ def _seed_active_effects(live: _LiveCombat, active_effects: Sequence[ActiveEffec
         # project_combat_state_to_redis sees the seeded statuses on the next
         # mirror tick. Without this, statuses only land on initiative[*]
         # .conditions (set below) and are silently dropped when the bridge
-        # rebuilds Redis conditions from active_conditions. Codex Phase 6
-        # iter-5 P2.
+        # rebuilds host storage conditions from active_conditions. # .
         live.active_conditions.setdefault(eff.target_id, set()).update(eff.statuses)
         for idx, c in enumerate(live.initiative):
             if c.entity_id != eff.target_id:
@@ -2949,7 +2969,7 @@ async def start_combat(
 ) -> StartCombatResult:
     """Open a combat, materialize runtime state, kick off the initiative loop.
 
-    Returns a :class:`StartCombatResult` envelope wrapping the ``CombatHandle``
+    Returns a ``StartCombatResult`` envelope wrapping the ``CombatHandle``
     the caller threads through subsequent seam calls and the events emitted
     during open (round-start + first turn-start).
     """
@@ -3016,8 +3036,8 @@ async def start_combat(
     )
     _REGISTRY[handle_id] = live
 
-    # Phase 6 — seed _LiveCombat.active_effects from the caller. The hook
-    # is live today for equipped-magic-item enchantments (Tapestria-side
+    # — seed _LiveCombat.active_effects from the caller. The hook
+    # is live today for equipped-magic-item enchantments (the host-side
     # _project_party_equipped_enchantments) and reserved for the wider
     # [effects-cross-combat] surface.
     #
@@ -3082,17 +3102,17 @@ class _FeatureInvocation:
     the invocation spends the Bonus Action (Rage, Second Wind) or the Action.
     Resolving this BEFORE consuming any budget is the fix for the economy
     ordering bug: a gate-rejected or multi-activity-no-op feature returns
-    ``None`` from :func:`_resolve_feature_invocation` and spends nothing.
+    ``None`` from ``_resolve_feature_invocation`` and spends nothing.
     """
 
     activities: list[Any]
     passive_effects: list[Any]
     is_bonus_action: bool
-    # SRD 5.2 §Limited-Use Features (Cluster 9) — the per-rest use cap resolved
+    # SRD 5.2 §Limited-Use Features — the per-rest use cap resolved
     # from the feature's typed ``uses`` block (a literal or a ``@scale.*`` max
     # resolved against the caster's ScaleValue map), or ``None`` when the feature
     # is uncapped: no ``uses`` block, empty ``max``, or a symbolic ``max`` that
-    # cannot be resolved. See :func:`_feature_use_cap`.
+    # cannot be resolved. See ``_feature_use_cap``.
     use_cap: int | None = None
 
 
@@ -3303,7 +3323,7 @@ def _item_charge_cap(item: Any) -> int | None:
     """Resolve an item's charge pool cap from its typed ``uses`` block.
 
     ``None`` — meaning UNCAPPED, never gated — for an item with no ``uses``
-    block or an unparseable ``max``. Mirrors :func:`_feature_use_cap`'s
+    block or an unparseable ``max``. Mirrors ``_feature_use_cap``'s
     fail-open contract: a capped resource is never wrongly rejected.
     """
     uses = getattr(item, "uses", None)
@@ -3550,8 +3570,8 @@ def _validate_intent_preconditions(
     live: _LiveCombat, handle: CombatHandle, actor_id: str
 ) -> Combatant:
     """Validate that combat is live, ``actor_id`` is in initiative, and it is
-    currently ``actor_id``'s turn. Raises :class:`IntentRejectedError` on any
-    failure; returns the current actor's :class:`Combatant` on success."""
+    currently ``actor_id``'s turn. Raises ``IntentRejectedError`` on any
+    failure; returns the current actor's ``Combatant`` on success."""
     if live.ended:
         raise IntentRejectedError("combat_ended", f"handle={handle.handle_id}")
 
@@ -3596,7 +3616,7 @@ def _handle_move(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
         _emit(live, MoveFailed(actor_id=actor_id, reason="insufficient_movement"))
         return
     # SRD §Opportunity Attacks — monster-reactor / PC-mover direction
-    # (C06-S05, the mirror of the shipped PC-reactor / monster-mover path).
+    # the mirror of the shipped PC-reactor / monster-mover path).
     # Fires BEFORE the mover leaves reach; a mover that drops to 0 HP here
     # cancels the move entirely (mirrors the shipped direction's
     # mid-path-loop cancellation).
@@ -3656,7 +3676,7 @@ def _classify_action_cost(
     # SRD §Action Economy — a class feature is a Bonus Action when its (single)
     # activity's ``activation.type`` is ``"bonus"`` (Rage, Second Wind). A bonus
     # action does NOT end the turn, so the actor may rage then swing on the same
-    # turn — the very flow Task 4 exercises. ``feature_invocation`` is already
+    # turn — the very flow exercises. ``feature_invocation`` is already
     # resolved (gate + single-activity validation) above; read its cost here.
     if feature_invocation is not None and feature_invocation.is_bonus_action:
         is_bonus_action = True
@@ -3824,7 +3844,7 @@ def _resolve_intent_activities(
 ) -> _ResolvedActivities:
     """Fetch the typed entity for the intent's kind from the lib loader and
     collect the activities the resolver will walk. This is the sole PC
-    resolution path; the old Avrae IR path was retired in Phase 7b."""
+    resolution path; the old the legacy evaluator IR path was retired in ."""
     cast_spell: Spell | None = None
     fetched_weapon: Weapon | None = None
     activities: list[Any] = []
@@ -4002,7 +4022,7 @@ def _resolve_targets(
     return targets
 
 
-# ── Cluster 6: pre-armed reaction queue ─────────────────────────────────────
+# ── pre-armed reaction queue ─────────────────────────────────────
 #
 # See docs/dev/reaction-queue.md for the full design. This section holds the
 # shared drain/fire machinery; the per-reaction call sites live inline in
@@ -4342,7 +4362,7 @@ async def _dispatch_turn_nonending_intent(
     * ``disengage`` — SRD §Disengage: spend the Action; movement provokes
       no Opportunity Attacks for the rest of the turn. Like Dash, keeps
       the actor on turn so a same-turn Disengage→Move sequence works
-      (C06-S06; closes the discovered turn-ending fall-through where
+      ; closes the discovered turn-ending fall-through where
       "disengage" fell through to the generic Action tail that
       unconditionally calls ``_advance_turn``).
     """
@@ -4375,7 +4395,7 @@ async def submit_player_intent(
 
     On success: emit ``IntentSubmitted``, fetch the typed entity for the
     intent from the lib loader, and walk its activities through the per-kind
-    resolvers under :mod:`dnd5e_engine.activities`, emitting the resulting
+    resolvers under ``activities``, emitting the resulting
     ``CombatEvent`` stream.
     """
     live = _get_live(handle)
@@ -4402,7 +4422,7 @@ async def submit_player_intent(
         if feature_invocation is None:
             return
 
-    # SRD §Limited-Use Features (Cluster 9) / §Item Charges — a capped feature
+    # SRD §Limited-Use Features / §Item Charges — a capped feature
     # (Second Wind) rejects when its per-rest uses are exhausted with no
     # intervening rest; a capped item (Pipes of Haunting) rejects when its
     # charge pool cannot cover this invocation's cost. Checked BEFORE any
@@ -4563,7 +4583,7 @@ async def submit_player_intent(
 
     # SRD 5.2 Counterspell — drain a pending "cast_spell" reaction BEFORE
     # the slot gate: a countered cast never reaches ``_consume_spell_slot``,
-    # so the interrupted caster's slot is never expended (C06-S02; see
+    # so the interrupted caster's slot is never expended ; see
     # docs/dev/reaction-queue.md, "Slot-consumption redesign"). Returns True
     # iff the cast was countered — CastFailed(reason="countered") emitted
     # and the turn already advanced (the wasted action).
@@ -4576,7 +4596,7 @@ async def submit_player_intent(
     if _consume_spell_slot(live, current, actor_id, intent):
         return
 
-    # SRD §Limited-Use Features (Cluster 9) — every action-economy / slot gate has
+    # SRD §Limited-Use Features — every action-economy / slot gate has
     # passed and the invocation is now committed to resolving; record the spend on
     # the caster's per-rest use counter so a later same-rest invocation rejects
     # above. The early gate rejects an over-cap invocation before reaching here, so
@@ -4588,11 +4608,11 @@ async def submit_player_intent(
     # non-use_item intents).
     _record_item_charge_spend(live, actor_id, intent)
 
-    # ── Typed-Activity resolution (Foundry cutover, Task 5) ─────────────
+    # ── Typed-Activity resolution (Foundry cutover, ─────────────
     #
     # Fetch the typed entity for the intent's kind from the lib loader and
     # collect the activities the resolver will walk. This is the sole PC
-    # resolution path; the old Avrae IR path was retired in Phase 7b.
+    # resolution path; the old the legacy evaluator IR path was retired in .
     resolved = _resolve_intent_activities(intent, feature_invocation, current)
     activities = resolved.activities
     cast_spell = resolved.cast_spell
@@ -4602,18 +4622,18 @@ async def submit_player_intent(
 
     # SRD §Areas of Effect — fireball / burning-hands hit every creature in
     # the targeted zone. The AoE discriminator is the typed activity's measured
-    # ``target.template`` (Task 9-A): the lib's converter now surfaces Foundry's
+    # ``target.template`` -A): the lib's converter now surfaces Foundry's
     # measured-template block onto each creature-targeting activity, so a spell
     # whose resolving activity carries a template shape (Fireball sphere/20,
     # Burning Hands cone/15) broadcasts to the zone, while a template-less spell
     # (Sacred Flame, Cure Wounds, Magic Missile, Detect Thoughts' single save)
-    # stays single-target. No Avrae-wrapper read.
+    # stays single-target. No the legacy evaluator-wrapper read.
     targets = _resolve_targets(live, current, intent, activities, cast_spell)
 
     # SRD §Reactions — drain any pending target-owned reactions (Shield)
     # BEFORE the sidecar projection below, so a just-applied reaction effect
     # (Shield's +5 AC) folds into this very resolution's hydration payload
-    # (C06-S03/S04). Returns the target ids whose reaction fired against a
+    # . Returns the target ids whose reaction fired against a
     # Magic Missile trigger — needed for the carve-out injection below.
     shielded_vs_magic_missile = _drain_pre_resolution_reactions(live, current, intent, targets)
 
@@ -4633,7 +4653,7 @@ async def submit_player_intent(
     if not activities:
         # Slug absent from the lib (e.g. a wrapper-only spell) or a non-
         # resolving intent kind. Emit nothing, but log the loss — never a
-        # silent no-op. The divergence triage (Task 9) classifies these.
+        # silent no-op. The divergence triage classifies these.
         if intent.intent_type == "cast_spell" and intent.spell_id:
             _LOGGER.warning("activity_resolution_empty slug=%s", intent.spell_id)
         elif intent.intent_type == "attack" and intent.weapon_id:
@@ -4765,7 +4785,7 @@ def _fire_pc_opportunity_attacks_on_move(
     Phase-6 wires this for the **PC reactor / monster mover** direction
     only — the symmetric monster-AoO path requires the reaction-queue
     machinery deferred to the monster-spellcasting epic (see
-    ``docs/BACKLOG.md`` [combat] entry).
+    ``BACKLOG.md`` [combat] entry).
 
     Zone-graph reach approximation: in the current zone model the only
     reach band the orchestrator can resolve cheaply is "same zone" (≤5ft
@@ -4876,7 +4896,7 @@ def _fire_monster_opportunity_attacks_on_move(
     """SRD §Opportunity Attacks — fire monster AoOs when a PC leaves reach.
 
     The monster-reactor / PC-mover mirror of
-    ``_fire_pc_opportunity_attacks_on_move`` (C06-S05): same hit/crit rules,
+    ``_fire_pc_opportunity_attacks_on_move`` same hit/crit rules,
     same reaction-consumed-on-use semantics, same
     ``AttackRolled(is_opportunity_attack=True)`` event shape, same same-zone
     reach approximation (see the shipped direction's docstring — extending
@@ -4889,7 +4909,7 @@ def _fire_monster_opportunity_attacks_on_move(
     One guard the shipped direction does not need: a mover who took the
     Disengage action this turn (``disengaging_this_turn``) never provokes —
     the trigger is suppressed entirely, no reactor spends a Reaction
-    (C06-S06).
+    .
 
     Returns ``True`` if the mover dropped to 0 HP from any AoO — the caller
     cancels the move (SRD: *"The attack occurs right before it leaves your
@@ -5002,22 +5022,22 @@ def _roll_damage_expression(live: _LiveCombat, expr: str, *, crit: bool) -> int:
 async def advance_monster_turn(handle: CombatHandle) -> None:
     """Drive one monster turn through typed selection + the Activity resolver.
 
-    Validation mirrors :func:`submit_player_intent`:
+    Validation mirrors ``submit_player_intent``:
 
       - combat must not have ended
       - the current actor must be a non-Character entity (Monster /
         NPC); calling on a PC turn raises ``IntentRejectedError`` so
         the WS-side dispatch can branch on it
 
-    Selection: :func:`dnd5e_engine.activities.monster_actions.select_typed_monster_action`
+    Selection: ``select_typed_monster_action``
     picks an action from the typed ``Monster.actions`` (fetched from the lib
     loader by ``monster_template_slug``); ``expand_action_to_activities`` fans
     multiattack out into its sub-attacks. Targeting: lowest-HP alive PC in
     initiative order (the legacy gambit's ``target_priority="lowest_hp"``
     semantics). Resolution: each returned ``Activity`` runs through
-    :func:`dnd5e_engine.activities.resolver.resolve_activity` against a context
-    built by :func:`build_activity_context` — the same typed path as the PC
-    turn (Task 5/6 of the Foundry cutover).
+    ``resolve_activity`` against a context
+    built by ``build_activity_context`` — the same typed path as the PC
+    turn /6 of the Foundry cutover).
 
     On dead monsters, an unresolvable slug, or no usable action (flee
     threshold, no attack, no PC targets), the orchestrator records
@@ -5059,7 +5079,7 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
         min(alive_pcs, key=lambda c: c.hp_current) if alive_pcs else None
     )
 
-    # ── Fleeing retreat (C10-S01) ──────────────────────────────────────────
+    # ── Fleeing retreat ──────────────────────────────────────────
     # A live monster over the flee threshold spends its movement putting
     # distance between itself and the nearest threat BEFORE the pass is
     # recorded. Selection/attack stay gated off (``skip_to_record_pass`` is
@@ -5071,11 +5091,11 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
         _execute_flee_retreat(live, current, alive_pcs)
         current = next(c for c in live.initiative if c.entity_id == current.entity_id)
 
-    # ── Typed-Activity monster resolution (Foundry cutover, Task 6) ─────────
+    # ── Typed-Activity monster resolution (Foundry cutover, ─────────
     #
     # Fetch the typed ``Monster`` from the lib loader, pick its action, and fan
-    # out multiattack. This is the sole monster-turn path; the old Avrae IR
-    # path was retired in Phase 7b.
+    # out multiattack. This is the sole monster-turn path; the old the legacy evaluator IR
+    # path was retired in .
     monster_slug = live.monster_slug_by_entity.get(current.entity_id)
     monster_activities: list[Any] = []
     if not skip_to_record_pass and monster_slug is not None:
@@ -5087,7 +5107,7 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
         else:
             monster_action = select_typed_monster_action(monster)
             if monster_action is not None:
-                # C10-S02: hand the labelless-multiattack fallback the live
+                # hand the labelless-multiattack fallback the live
                 # distance + profile so it can prefer a sibling whose own range
                 # already covers the target (scout → longbow at 100 ft) instead
                 # of the first-listed melee weapon. Distance is the same zone-path
@@ -5250,9 +5270,9 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
         # SRD §Reactions — drain the attacked PC's pending ``hit_by_attack``
         # reaction (Shield) BEFORE the sidecar projection below, so the
         # just-applied +5 AC effect folds into THIS attack's hydration
-        # payload — the monster-attacker / PC-defender direction C06-S03
-        # pins. Shield's own resolution draws no dice, so the attack's d20
-        # keeps its seed-stream position.
+        # payload — the monster-attacker / PC-defender direction. Shield's own
+        # resolution draws no dice, so the attack's d20 keeps its seed-stream
+        # position.
         _drain_targeted_reactions(
             live,
             trigger="hit_by_attack",
@@ -5377,7 +5397,7 @@ def _derive_ended_reason(live: _LiveCombat) -> Literal["victory", "defeat_tpk", 
 
 
 def _project_outcome(live: _LiveCombat) -> CombatOutcome:
-    """Fold ``_LiveCombat`` event-derived running state into a :class:`CombatOutcome`.
+    """Fold ``_LiveCombat`` event-derived running state into a ``CombatOutcome``.
 
     Residual HP / temp HP — from the tracked dicts updated by ``_emit``.
     Carried conditions — every still-active ``ConditionApplied`` for a
@@ -5468,7 +5488,7 @@ def _reset_registry_for_tests() -> None:
 
     Pytest's per-function isolation runs each test against fresh module
     state by convention, but the registry is module-global by design
-    here (the cutover replaces it with Redis). This helper lets boundary
+    here (the cutover replaces it with host storage). This helper lets boundary
     tests start from a clean slate.
     """
     _REGISTRY.clear()

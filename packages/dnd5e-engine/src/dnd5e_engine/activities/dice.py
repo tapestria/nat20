@@ -302,7 +302,7 @@ def _cantrip_dice_count(character_level: int) -> int:
 def _double_dice(ast: d20.ast.Node) -> d20.ast.Node:
     """SRD §Critical Hits — double every ``Dice.num``, leave literals alone.
 
-    Mirrors ``effects/damage.py:_apply_crit_doubling`` (Avrae's default
+    Mirrors ``effects/damage.py:_apply_crit_doubling`` (the legacy default
     ``crit_mapper``): ``d20.utils.tree_map`` rebuilds each ``Dice(num, size)``
     as ``Dice(num*2, size)``; numeric modifiers are untouched.
     """

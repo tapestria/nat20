@@ -3,12 +3,12 @@
 Foundry roll-data carries level-scaled magnitudes as ``@scale.<owner>.<key>``
 tokens (and full-suffix variants ``@scale.<owner>.<key>.<sub>``). Each resolves
 against a ScaleValue advancement entry on the OWNER doc — a class, subclass,
-species, or (C04-S02, Cluster 4) a FEATURE granted by one of those. The owner
+species, or a FEATURE granted by one of those. The owner
 doc carries a sparse ``configuration.scale`` keyed by level; the value at a
 given character level is the entry at the highest level <= it.
 
-Determined empirically (SPIKE, Task 2) over ``canonical/features/*.json``;
-extended (C04-S02) to feature-owned scales:
+Determined empirically (SPIKE, over ``canonical/features/*.json``;
+extended to feature-owned scales:
 
 * Owner space = class | subclass | species | feature (``get_class`` /
   ``get_subclass`` / ``get_species`` / ``get_feature``, in that order). Not
@@ -55,7 +55,7 @@ def _slugify(text: str) -> str:
 
 def _owner_doc(identifier: str, loader: AssetLoader) -> Any | None:
     """Resolve an owner slug against class -> subclass -> species -> FEATURE
-    (first hit). The feature fallback (C04-S02) reaches a feature-owned
+    (first hit). The feature fallback reaches a feature-owned
     ``@scale.<feature-slug>.<key>`` token (e.g. Channel Divinity's Divine
     Spark die count) whose ScaleValue advancement lives on the granting
     feature's OWN doc, not its class/subclass/species."""
@@ -171,7 +171,7 @@ def build_scale_values(
     so any full-suffix token the activity references resolves. Unresolvable
     owner slugs contribute nothing.
 
-    C04-S02: a FEATURE-OWNED scale (e.g. Channel Divinity's Divine Spark die
+    a FEATURE-OWNED scale (e.g. Channel Divinity's Divine Spark die
     count) lives on the granting feature's OWN doc, not its granting class/
     subclass/species. After walking the three owner docs directly, also walk
     every feature slug they GRANT at/below ``level`` (the same

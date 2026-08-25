@@ -2,7 +2,7 @@
 
 Hosts the pure rules-engine resolvers for the four combat-flavored
 action types: ATTACK, CAST_SPELL, SKILL_CHECK, SAVING_THROW. Host
-callers (e.g. Tapestria's ``app.rules.engine_dispatch.dispatch_intent``)
+callers (e.g. a host's the host)
 keep ownership of the wider intent taxonomy (MOVE, EQUIP_ITEM,
 PREPARE_SPELL, QUEST_*, ...) and wrap the lib's ``CombatResolverResult``
 into their full ``EngineResult``.
@@ -14,7 +14,7 @@ The resolvers accept ``intent: Any`` and read the following attributes:
     action_type, target_id, spell_id, weapon_id, skill_name,
     condition_to_apply
 
-The host's ``app.models.intent.ParsedIntent`` Pydantic model satisfies
+The host's ``the hostParsedIntent`` Pydantic model satisfies
 the shape. No explicit Protocol is declared because the library never
 constructs an intent — it only reads one provided by the host.
 """
@@ -91,13 +91,13 @@ class DispatchContext:
     # Flee context
     flee_dc: int = 10
 
-    # Condition tracking (Phase 1 v3.1)
+    # Condition tracking v3.1)
     attacker_conditions: list[str] = field(default_factory=list)
     target_conditions: list[str] = field(default_factory=list)
     condition_immunities: dict[str, list[str]] = field(default_factory=dict)
     # entity_id -> list[condition_name] for all combatants in this encounter
 
-    # Equipment state (Phase 2 v3.1)
+    # Equipment state v3.1)
     equipped_weapon_id: str | None = None  # item ID in right_hand slot (None = unarmed)
     equipped_weapon_name: str = "Unarmed Strike"  # resolved name for narrator
     character_ac: int = 10  # computed AC from armor + dex + shield (D-04)
@@ -108,7 +108,7 @@ class DispatchContext:
     weapon_mismatch: str | None = None  # set when parser picked different weapon than equipped
     shield_item_id: str | None = None  # item ID of shield in left_hand
 
-    # Spell preparation state (Phase 3 v3.1)
+    # Spell preparation state v3.1)
     caster_type: str = "none"  # 'prepared' | 'spontaneous' | 'none'
     prep_formula: str = "full"  # 'full' | 'half'
     spellcasting_ability: str = ""  # e.g. 'intelligence', 'wisdom'
@@ -120,12 +120,12 @@ class DispatchContext:
     # tuple = no slot data loaded (non-caster or context built outside combat).
     # Post-refactor (Root Cause B fix): dispatch is the authoritative gate for
     # spell-slot availability. Prior implementation checked slot count only
-    # at ws_player_action.py with a silent `> 0` fallback that let
+    # at the host's action entry point.py with a silent `> 0` fallback that let
     # zero-slot casts resolve anyway. Engine_dispatch rejects before resolver
     # runs when the relevant slot bucket is empty.
     available_spell_slots: tuple[int, ...] = field(default_factory=tuple)
 
-    # Persistent effects (Phase 4 v3.1) — fetched from Redis in build_dispatch_context
+    # Persistent effects v3.1) — fetched from host storage in build_dispatch_context
     # active_effects: effects on the attacker (modify attack rolls, the attacker's own saves)
     # target_active_effects: effects on the target (modify the target's saving throws when the
     # attacker forces a save, e.g. Bless on the defender adding +1d4 to their Dex save vs Fireball)
@@ -140,8 +140,8 @@ class DispatchContext:
 class CombatResolverResult:
     """Result fragment from the library's combat-action resolvers.
 
-    Host's ``app.rules.engine_dispatch.dispatch_intent`` wraps this into
-    ``app.models.intent.EngineResult`` by attaching ``action_type`` plus
+    Host's the host wraps this into
+    ``the hostEngineResult`` by attaching ``action_type`` plus
     the host-only sub-outcomes (MovementOutcome, EquipOutcome,
     PrepareOutcome) which the library never populates.
     """
@@ -277,7 +277,7 @@ def _resolve_combat(intent: Any, ctx: DispatchContext) -> CombatResolverResult:
 
 
 def _resolve_skill_check(intent: Any, ctx: DispatchContext) -> CombatResolverResult:
-    """Resolve SKILL_CHECK via resolve_check (Phase 5).
+    """Resolve SKILL_CHECK via resolve_check .
 
     Threads `ctx.active_effects` through the resolver so Bless / Guidance
     land on SKILL_CHECK dispatch. EQUIP-06 non-proficient-armor

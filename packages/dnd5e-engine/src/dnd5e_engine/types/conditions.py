@@ -12,7 +12,7 @@ ConditionScope = Literal["combat", "session"]
 class ActiveCondition(BaseModel):
     """A condition currently affecting a combatant.
 
-    Phase 1 v3.1: replaces list[str] conditions with structured model.
+    v3.1: replaces list[str] conditions with structured model.
     """
 
     condition: str  # Condition.value (e.g. "poisoned")

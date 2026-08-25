@@ -1,6 +1,6 @@
 """Active-effect resolver helpers — Foundry-shaped changes vocabulary.
 
-Phase 6 retires apply_effect_modifiers / derive_applicable_action_types /
+retires apply_effect_modifiers / derive_applicable_action_types /
 derive_condition_scope / filter_stacking / get_bridged_conditions.
 Replacements:
   - apply_changes_to_check    folds add-mode and override-mode changes
@@ -21,9 +21,15 @@ from collections.abc import Iterable
 from dnd5e_engine.types.effects import ActiveEffect, ActiveEffectChange
 
 
-def roll_dice_str(expr: str) -> int:
-    """Roll a "NdM" / "NdM+K" expression. Public test seam: callers
-    monkeypatch this symbol (or `random.randint`) for determinism in tests."""
+def roll_dice_str(expr: str, rng: random.Random | None = None) -> int:
+    """Roll a plain ``"NdM"`` / ``"NdM+K"`` / ``"NdM-K"`` expression.
+
+    Pass a seeded ``random.Random`` as ``rng`` for a reproducible result. With
+    ``rng=None`` the dice are drawn from the process-global ``random`` module,
+    which is only reproducible if the caller seeds it. In-combat rolls never
+    come through here — they use the seeded generator threaded from
+    ``start_combat(rng_seed=...)``.
+    """
     expr = expr.strip()
     if not expr:
         return 0
@@ -46,7 +52,8 @@ def roll_dice_str(expr: str) -> int:
     n_str, _, d_str = dice_part.partition("d")
     n = int(n_str or "1")
     d = int(d_str)
-    total = sum(random.randint(1, d) for _ in range(n))
+    draw = (rng or random).randint
+    total = sum(draw(1, d) for _ in range(n))
     return sign * (total + flat_v)
 
 
@@ -85,6 +92,7 @@ def apply_changes_to_check(
     base_total: int,
     bucket: str,
     effects: Iterable[ActiveEffect],
+    rng: random.Random | None = None,
 ) -> tuple[int, list[str]]:
     """Fold `bucket`-matching `ActiveEffectChange`s into `base_total`.
 
@@ -122,14 +130,14 @@ def apply_changes_to_check(
     for ch in changes:
         if ch.mode == "add":
             if isinstance(ch.value, str):
-                # Codex Phase 6 review iter-11 P1: some SRD asset templates
+                # some SRD asset templates
                 # encode flat bonuses as plain integer strings ("1", "-1")
                 # rather than dice formulas (Haste / Warding Bond / etc.).
                 # Try integer parse first; fall back to the dice parser
                 # only when the value contains a 'd'.
                 stripped = ch.value.strip()
                 if "d" in stripped:
-                    rolled = roll_dice_str(ch.value)
+                    rolled = roll_dice_str(ch.value, rng)
                     contribution += rolled
                     breakdown.append(f"effect({ch.value}:{rolled})")
                 else:

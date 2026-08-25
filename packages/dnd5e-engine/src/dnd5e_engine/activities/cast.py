@@ -8,7 +8,7 @@ level, the referenced spell's base level / concentration flag / own
 ``resolve_activity`` for each activity on the referenced spell. ``cast`` emits
 NOTHING itself — the delegated child activities emit their own events.
 
-MIRRORS, does not import from, ``effects/spell.py`` (the Avrae-IR ``type:
+MIRRORS, does not import from, ``effects/spell.py`` (the legacy ``type:
 "spell"`` analogue). Reproduces its semantics with the typed lib shapes:
 
 * Spell-within-itself cycle guard FIRST (cheap, before the lookup): a ``uuid``

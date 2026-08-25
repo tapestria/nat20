@@ -76,7 +76,7 @@ class ActivityResolutionContext:
     passive_damage_modifiers: dict[str, dict[str, list[str]]] = field(default_factory=dict)
     # Per-target saving-throw modifier sidecar, keyed entity_id -> {ability ->
     # resolved save bonus}. Mirrors how ``effects/save.py`` sources the target
-    # save modifier (``effect_store._save_modifiers[target_id]["saves"][ability]``)
+    # save modifier (``the host effect store._save_modifiers[target_id]["saves"][ability]``)
     # — the resolved per-ability integer, NOT rebuilt from ability score +
     # proficiency. ``Combatant`` carries no per-ability save table, so the save
     # handler reads this sidecar; an absent target / ability contributes +0
@@ -85,8 +85,8 @@ class ActivityResolutionContext:
     passive_save_modifiers: dict[str, dict[str, int]] = field(default_factory=dict)
     # Per-target additive save bonus, keyed entity_id -> a signed dice-expression
     # STRING (e.g. ``"+1d4"`` for Bless, ``"-1d4"`` for Bane; stacked sources
-    # pre-joined as ``"a + b"``). Mirrors the OLD Avrae path's
-    # ``effect_store._save_modifiers[id]["passive_save_bonus"]`` (orchestrator
+    # pre-joined as ``"a + b"``). Mirrors the OLD the legacy evaluator path's
+    # ``the host effect store._save_modifiers[id]["passive_save_bonus"]`` (orchestrator
     # hydration, ``_build_hydration_payload``); rolled through ``ctx.rng`` so the
     # bless/bane d4 lands in the same seed stream as the save d20. Absent target →
     # +0 (no bonus). Empty default keeps the golden corpus identical.
@@ -148,7 +148,7 @@ class ActivityResolutionContext:
     # ``"STR"``, ``"DEX"``, ...), keyed entity_id -> list[ability]. Mirrors the
     # OLD path's ``passive_save_adv`` / ``passive_save_dis`` (Faerie Fire,
     # Restrained, etc.). An ability present in both cancels to normal
-    # (Avrae ``reconcile_adv``). Empty defaults keep the golden corpus identical.
+    # (the legacy evaluator ``reconcile_adv``). Empty defaults keep the golden corpus identical.
     passive_save_adv: dict[str, list[str]] = field(default_factory=dict)
     passive_save_dis: dict[str, list[str]] = field(default_factory=dict)
     # Per-target auto-fail ability-code list (UPPER-case), keyed entity_id ->
@@ -176,7 +176,7 @@ class ActivityResolutionContext:
     # ``_fold_active_effect_changes`` + extracted in ``build_activity_context``);
     # consumed in ``attack.py`` alongside the cover-AC fold, before the
     # ``total >= target_ac`` comparison. Absent target -> +0. Empty default
-    # keeps the golden corpus identical (C06-S03).
+    # keeps the golden corpus identical .
     passive_ac_bonus: dict[str, int] = field(default_factory=dict)
     # Per-actor ability/skill-check modifier sidecar, mirroring
     # ``effects/check.py:_read_check_modifiers``'s shape

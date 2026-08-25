@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No schema or canonical-content changes.
+
+### Fixed
+
+- `__version__` derives from installed package metadata (0.3.0 shipped reporting
+  `0.2.0`).
+
+### Added
+
+- **Oracle coverage floors** (`tests/test_oracle_coverage_floor.py`). The
+  fidelity suite compares canonical entries only against slugs the oracle
+  contains, silently skipping the rest — so it reported green while the monster
+  oracle covered **3 of 341 monsters**. Coverage is now a tested property with a
+  per-category floor pinned at today's ratio, to be ratcheted upward.
+- **Corpus prose integrity gate** (`tests/test_corpus_prose_integrity.py`).
+  Fails on unsubstituted template placeholders in shipped descriptions. It found
+  `monsters/ancient-gold-dragon` shipping `"makes {count} [[/item]] attacks"`;
+  registered as an upstream defect in `tests/oracle/known_prose_defects.json`
+  rather than hand-edited (the corpus is translator output).
+
+### Changed
+
+- Coverage floor raised 90 → 96 (actual 96.2%).
+
 ## [0.3.0]
 
 Lockstep release with `dnd5e-engine` 0.3.0 (the release workflow publishes both

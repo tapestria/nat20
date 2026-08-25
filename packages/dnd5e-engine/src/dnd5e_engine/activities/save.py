@@ -32,7 +32,7 @@ MIRRORS, does not import from, ``effects/save.py`` + ``effects/damage.py``:
   (a NEW test seam — ``effects/save.py`` has none) for the FIRST target only; the
   modifier is sourced exactly as ``effects/save.py:_read_save_modifier`` does — the
   RESOLVED per-ability integer off a per-target sidecar (there:
-  ``effect_store._save_modifiers[id]["saves"]``; here: ``ctx.passive_save_modifiers[id]``),
+  ``the host effect store._save_modifiers[id]["saves"]``; here: ``ctx.passive_save_modifiers[id]``),
   NOT rebuilt from ability score + proficiency. ``Combatant`` carries no per-
   ability save table, so an absent target / ability contributes +0 (mirrors the
   0 fallback). This handler emits ``SaveRolled`` per target around the primitive.

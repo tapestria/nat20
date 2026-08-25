@@ -1,6 +1,6 @@
 """D&D 5e Active Effects — Foundry VTT dnd5e-aligned schema.
 
-Phase 6 of the dnd5e-engine extraction: the prior `effect_id` /
+of the dnd5e-engine extraction: the prior `effect_id` /
 `source_entity_id` / `rounds_remaining` / `modifiers: list[EffectModifier]`
 shape is replaced by the Foundry-aligned model. `EffectModifier` and
 `EffectRef` retire.
@@ -9,7 +9,7 @@ Reference: /tmp/foundry-dnd5e/module/documents/active-effect.mjs and
 /tmp/foundry-dnd5e/module/data/active-effect/. Foundry's structural
 choices (statuses-set replaces bridge-conditions, structured duration,
 changes[] with mode/value/priority, origin UUID) carry over verbatim
-where applicable. The `changes[].key` vocabulary uses Tapestria's flat
+where applicable. The `changes[].key` vocabulary uses a host's flat
 namespace ("attack.roll.bonus", "save.wisdom.bonus",
 "flags.advantage.<bucket>"), not Foundry's Actor-data dotted paths.
 """
@@ -40,7 +40,7 @@ class ActiveEffectDuration(BaseModel):
 class ActiveEffectChange(BaseModel):
     """One mechanical delta. Foundry CONST.ACTIVE_EFFECT_MODES for mode.
 
-    Key vocabulary (Tapestria namespace):
+    Key vocabulary (the host namespace):
       attack.roll.bonus       — +N or formula on attack rolls
       damage.bonus            — +N or formula on damage rolls
       ac.bonus, ac.override   — AC modifications
@@ -70,12 +70,12 @@ class ActiveEffect(BaseModel):
     is the parent Actor analog — combatant id. `statuses` is the set of
     condition slugs the effect imposes (REPLACES the prior
     `bridge_conditions` derivation). `flags` is a free-form dict for
-    extensibility; Phase 6 uses {"concentration": bool,
+    extensibility; uses {"concentration": bool,
     "applicable_action_types": list[str]} until those fields warrant
     promotion.
 
     Pure Pydantic model. Zero I/O. Engine-owned during combat;
-    Tapestria does not persist instances of this class between combats
+    the host does not persist instances of this class between combats
     (combat-only scope per spec).
     """
 

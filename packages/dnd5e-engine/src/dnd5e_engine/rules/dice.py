@@ -1,9 +1,22 @@
-"""Dice rolling — pure functions, no side effects."""
+"""Dice rolling primitives.
+
+Every roller takes an optional ``rng``. Pass a seeded ``random.Random`` for
+reproducible results; omit it and the roll is drawn from the process-global
+``random`` module, which is NOT reproducible unless the caller seeds it.
+
+In-combat resolution never reaches this module — it draws from the
+``random.Random`` threaded from ``start_combat(rng_seed=...)`` via
+``dnd5e_engine.activities.dice``.
+"""
 
 from __future__ import annotations
 
 import random
 from dataclasses import dataclass
+
+# The process-global ``random`` module satisfies the small surface these
+# helpers use (``randint``), so it doubles as the default generator.
+_Rng = random.Random
 
 
 @dataclass(frozen=True)
@@ -17,58 +30,57 @@ class RollResult:
         return sum(self.dice)
 
 
-def roll(sides: int, count: int = 1, modifier: int = 0) -> RollResult:
+def roll(sides: int, count: int = 1, modifier: int = 0, *, rng: _Rng | None = None) -> RollResult:
     """Roll `count` d`sides` dice plus a modifier."""
     if sides < 1:
         raise ValueError(f"Dice must have at least 1 side, got {sides}")
     if count < 1:
         raise ValueError(f"Must roll at least 1 die, got {count}")
-    dice = [random.randint(1, sides) for _ in range(count)]
+    draw = (rng or random).randint
+    dice = [draw(1, sides) for _ in range(count)]
     return RollResult(dice=dice, modifier=modifier, total=sum(dice) + modifier)
 
 
-def roll_d4(count: int = 1, modifier: int = 0) -> RollResult:
-    return roll(4, count, modifier)
+def roll_d4(count: int = 1, modifier: int = 0, *, rng: _Rng | None = None) -> RollResult:
+    return roll(4, count, modifier, rng=rng)
 
 
-def roll_d6(count: int = 1, modifier: int = 0) -> RollResult:
-    return roll(6, count, modifier)
+def roll_d6(count: int = 1, modifier: int = 0, *, rng: _Rng | None = None) -> RollResult:
+    return roll(6, count, modifier, rng=rng)
 
 
-def roll_d8(count: int = 1, modifier: int = 0) -> RollResult:
-    return roll(8, count, modifier)
+def roll_d8(count: int = 1, modifier: int = 0, *, rng: _Rng | None = None) -> RollResult:
+    return roll(8, count, modifier, rng=rng)
 
 
-def roll_d10(count: int = 1, modifier: int = 0) -> RollResult:
-    return roll(10, count, modifier)
+def roll_d10(count: int = 1, modifier: int = 0, *, rng: _Rng | None = None) -> RollResult:
+    return roll(10, count, modifier, rng=rng)
 
 
-def roll_d12(count: int = 1, modifier: int = 0) -> RollResult:
-    return roll(12, count, modifier)
+def roll_d12(count: int = 1, modifier: int = 0, *, rng: _Rng | None = None) -> RollResult:
+    return roll(12, count, modifier, rng=rng)
 
 
-def roll_d20(modifier: int = 0) -> RollResult:
-    return roll(20, 1, modifier)
+def roll_d20(modifier: int = 0, *, rng: _Rng | None = None) -> RollResult:
+    return roll(20, 1, modifier, rng=rng)
 
 
-def roll_d100() -> RollResult:
-    return roll(100, 1, 0)
+def roll_d100(*, rng: _Rng | None = None) -> RollResult:
+    return roll(100, 1, 0, rng=rng)
 
 
-def roll_with_advantage(modifier: int = 0) -> RollResult:
+def roll_with_advantage(modifier: int = 0, *, rng: _Rng | None = None) -> RollResult:
     """Roll 2d20, take the highest."""
-    a = random.randint(1, 20)
-    b = random.randint(1, 20)
-    best = max(a, b)
-    return RollResult(dice=[a, b], modifier=modifier, total=best + modifier)
+    draw = (rng or random).randint
+    a, b = draw(1, 20), draw(1, 20)
+    return RollResult(dice=[a, b], modifier=modifier, total=max(a, b) + modifier)
 
 
-def roll_with_disadvantage(modifier: int = 0) -> RollResult:
+def roll_with_disadvantage(modifier: int = 0, *, rng: _Rng | None = None) -> RollResult:
     """Roll 2d20, take the lowest."""
-    a = random.randint(1, 20)
-    b = random.randint(1, 20)
-    worst = min(a, b)
-    return RollResult(dice=[a, b], modifier=modifier, total=worst + modifier)
+    draw = (rng or random).randint
+    a, b = draw(1, 20), draw(1, 20)
+    return RollResult(dice=[a, b], modifier=modifier, total=min(a, b) + modifier)
 
 
 def parse_dice_expression(expr: str) -> RollResult:

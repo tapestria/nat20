@@ -5,8 +5,8 @@ Each is short and heavily commented so it doubles as a docs snippet.
 
 | Script | Shows |
 | --- | --- |
-| [`grid_combat.py`](grid_combat.py) | Open a grid combat, submit a player move, and close it — `start_combat` / `submit_player_intent` / `end_combat`. |
-| [`skill_check.py`](skill_check.py) | Resolve a single, seeded skill check — `resolve_check` / `CheckSpec`. |
+| [`grid_combat.py`](grid_combat.py) | A full round against a real SRD goblin: move, attack, monster response, and the streamed `CombatEvent` output — `start_combat` / `submit_player_intent` / `advance_monster_turn` / `narration_events` / `end_combat`. |
+| [`skill_check.py`](skill_check.py) | Resolve a single skill check, seeded via `CheckSpec.rng` — `resolve_check` / `CheckSpec`. |
 | [`build_party_member.py`](build_party_member.py) | Resolve a `CharacterBuildSpec` into combat-ready stats — `make_build_spec` / `build_party_member`. |
 
 ## Running

@@ -1,8 +1,8 @@
 """Resolve a single skill check with the public dnd5e-engine API.
 
-``resolve_check`` is a pure function: it reads only the ``CheckSpec`` you
-hand it and rolls via the standard library ``random`` module, so seeding
-``random`` up front makes the result deterministic.
+``resolve_check`` reads only the ``CheckSpec`` you hand it — no I/O, no combat
+handle. Pass a seeded ``CheckSpec.rng`` and the roll is reproducible; leave it
+``None`` and the d20 comes from the process-global ``random`` module instead.
 """
 
 from __future__ import annotations
@@ -10,9 +10,6 @@ from __future__ import annotations
 import random
 
 from dnd5e_engine import CheckSpec, resolve_check
-
-# Fixed seed => reproducible roll every run.
-random.seed(42)
 
 # A proficient Rogue (Dex 16, +2 proficiency) attempts a DC 15 Stealth check.
 spec = CheckSpec(
@@ -24,6 +21,9 @@ spec = CheckSpec(
     proficient_saves=(),
     proficiency_bonus=2,
     dc=15,
+    # Seeded generator => the same roll every run, regardless of what else in
+    # the process has touched ``random``.
+    rng=random.Random(42),
 )
 
 result = resolve_check(spec)

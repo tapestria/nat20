@@ -93,7 +93,7 @@ def build_party_member(
         species_senses=species.senses,
         species_base_speed=base_speed,
     )
-    # C08-S04: a flat walk-speed change (Roving's +10) composes additively with
+    # a flat walk-speed change (Roving's +10) composes additively with
     # the species base walk speed; the non-walk modes ride the typed carrier.
     base_speed = base_speed + derived.walk_speed_bonus
     if derived.skipped_keys:

@@ -1,10 +1,7 @@
-# Spatial geometry (Cluster 5 design note)
+# Spatial geometry
 
-Design note for the "Spatial mechanics" BACKLOG.md section — wall geometry +
-real line-of-sight, the SRD 5.2 cover model, Chebyshev AoE templates, and
-difficult-terrain path costs. Written before implementation per the
-autonomous gap-closing campaign's epic protocol
-(`specs/e2e-scenario-catalog.md`, Cluster 5: C05-S01..S05).
+How the grid backend models space: wall geometry and real line-of-sight, the
+SRD 5.2 cover model, Chebyshev AoE templates, and difficult-terrain path costs.
 
 All additions are **additive** on `GridScene` / `GridTopology` — the
 `SpatialTopology` Protocol call sites (`orchestrator.py`, `activities/attack.py`,
@@ -91,10 +88,10 @@ shrunk BACKLOG line, not closed.
 
 `GridTopology.cells_in_template(origin, shape, size_ft, *, direction=None) ->
 list[str]` — the BACKLOG's named seam. All three shapes share the settled
-**Chebyshev** metric (maintainer decision, catalog C05-S04 — not
+**Chebyshev** metric (maintainer decision, catalog a pinned scenario — not
 relitigated): `radius_cells = size_ft // cell_size_ft`.
 
-- **`"sphere"`** (C05-S04, e2e-pinned): every cell with
+- **`"sphere"`** (a pinned scenario, e2e-pinned): every cell with
   `max(|dx|, |dy|) <= radius_cells` from the origin, origin included. 20 ft on
   a 5 ft grid → `radius_cells=4` → the full `9x9 = 81`-cell block.
 - **`"line"`** (unit-tested only — no e2e entry): a `direction` unit vector

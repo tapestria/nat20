@@ -1,8 +1,8 @@
-"""Combat participant types — Combatant + CombatNPC.
+"""Combat participant types — ``Combatant`` + ``CombatNPC``.
 
-Moved from `backend/app/models/session.py` as part of the dnd5e-engine Phase 3
-extraction. Host-agnostic; depends only on stdlib + pydantic + the library's
-own `ActiveCondition`.
+Host-agnostic value types: stdlib + pydantic + the engine's own
+``ActiveCondition``. ``Combatant`` is the engine's per-creature runtime combat
+state; hosts read it through ``dnd5e_engine.views.LiveCombatView``.
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ from dnd5e_engine.types.conditions import ActiveCondition
 
 
 class CombatNPC(BaseModel):
-    """Ephemeral sidecar record for an NPC in combat. Lives in Redis only;
+    """Ephemeral sidecar record for an NPC in combat. Host-scoped;
     cleared at end of combat. Owns template-derived combat stats that don't
     fit on the narrow Combatant: saves, resistances, immunities, ability
     scores, behavior_profile. Symmetric to CombatMonster for non-Character
@@ -91,7 +91,7 @@ class Combatant(BaseModel):
     # condition-derived source; it is hydrated from the monster template
     # (skeleton → ``["bludgeoning"]``) or a PC spec and folded into the
     # orchestrator's ``passive_damage_modifiers[...]["vulnerabilities"]`` sidecar
-    # by ``_project_target_modifiers`` (C08-S03). Empty by default.
+    # by ``_project_target_modifiers`` . Empty by default.
     damage_vulnerabilities: list[str] = Field(default_factory=list)
     # SRD §Condition Immunity — condition slugs this creature can't suffer
     # (Nature's Ward → ``"poisoned"``). Projected from PC always-on feature
@@ -100,7 +100,7 @@ class Combatant(BaseModel):
     # monster/NPC templates thread theirs through the spec. The condition-
     # application path (``activities/effects.py::apply_activity_effects``)
     # suppresses a ``ConditionApplied`` whose condition is in this list
-    # (C08-S02). Empty by default. NOTE: distinct from the dead, host-supplied
+    # . Empty by default. NOTE: distinct from the dead, host-supplied
     # ``dispatch.py::DispatchContext.condition_immunities`` legacy surface.
     condition_immunities: list[str] = Field(default_factory=list)
     # SRD §Senses — special senses in feet (darkvision/blindsight/tremorsense/
@@ -111,7 +111,7 @@ class Combatant(BaseModel):
     senses: CombatantSenses = Field(default_factory=CombatantSenses)
     # SRD §Concentration — the effect_id this combatant is concentrating on,
     # if any. ``None`` when not concentrating. Hydrated by the orchestrator
-    # into ``EffectStore._existing_concentration`` for the SRD single-conc
+    # into ``the host effect store`` for the SRD single-conc
     # rule + damage-driven CON-save probe in ``app/combat/effects/spell.py``.
     concentration_effect_id: str | None = None
     # SRD §Cantrips / §Character Advancement — character level (1..20). Drives
@@ -176,7 +176,7 @@ class Combatant(BaseModel):
     last_damaged_by: str | None = None
     # SRD §Actions in Combat, Disengage — "Your movement doesn't provoke
     # Opportunity Attacks for the rest of the turn." Set True by
-    # ``_handle_disengage`` (orchestrator.py, Cluster 6); consulted by the
+    # ``_handle_disengage`` (orchestrator.py, ; consulted by the
     # monster-reactor opportunity-attack scan
     # (``_fire_monster_opportunity_attacks_on_move``) to suppress AoOs for the
     # remainder of the turn. Reset to False at the actor's own TurnStarted,
@@ -196,7 +196,7 @@ class Combatant(BaseModel):
     def migrate_string_conditions(cls, values: Any) -> Any:
         """Backward compat: coerce list[str] conditions to list[ActiveCondition].
 
-        Handles stale Redis sessions with schema_version < 11 (T-01-03 mitigation).
+        Handles stale host storage sessions with schema_version < 11 (T-01-03 mitigation).
         """
         conditions = values.get("conditions") if isinstance(values, dict) else None
         if isinstance(conditions, list) and conditions and isinstance(conditions[0], str):

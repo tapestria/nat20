@@ -315,7 +315,7 @@ def _build_activity(
 
     ``item_target`` is the owning item's ``system.target`` block, inherited
     into the activity's target when the activity does not override it (see
-    :func:`_inherit_item_target`)."""
+    ``_inherit_item_target``)."""
     if item_target is not None:
         raw = _inherit_item_target(raw, item_target)
     raw_kind = str(raw.get("type") or "").strip()
@@ -1781,7 +1781,7 @@ _RECOVERY_TYPE_VALUES = {"recoverAll", "formula"}
 
 
 def _feature_uses(system: dict[str, Any]) -> FeatureUses | None:
-    """Parse Foundry's top-level ``system.uses`` into a typed :class:`FeatureUses`.
+    """Parse Foundry's top-level ``system.uses`` into a typed ``FeatureUses``.
 
     Returns ``None`` when the feature has no meaningful cap — i.e. no ``max``
     expression AND no ``recovery`` entries — so features without a limited-use pool
@@ -2351,7 +2351,7 @@ _FEAT_SUBTYPE_TO_CATEGORY = {
 
 
 def _feat_category(system: dict[str, Any]) -> FeatCategory:
-    """Map Foundry ``system.type.subtype`` onto a :class:`FeatCategory`.
+    """Map Foundry ``system.type.subtype`` onto a ``FeatCategory``.
 
     The 2024 ``ability-score-improvement`` feat ships with an EMPTY ``subtype``
     (and empty ``type.value``) in the Foundry pack, while the 5e-bits SRD
@@ -2365,7 +2365,7 @@ def _feat_category(system: dict[str, Any]) -> FeatCategory:
 
 def _feat_prerequisites(system: dict[str, Any]) -> list[FeatPrerequisite]:
     """Collapse Foundry's ``system.prerequisites`` block plus the free-text
-    ``system.requirements`` into a single :class:`FeatPrerequisite`. Returns an
+    ``system.requirements`` into a single ``FeatPrerequisite``. Returns an
     empty list when the feat has no level gate, no prerequisite features, and no
     requirement prose."""
     prereq = system.get("prerequisites") or {}

@@ -20,7 +20,7 @@ MIRRORS, does not import from, ``effects/check.py``:
 * The skill→ability mapping mirrors ``effects/check.py:_SKILL_TO_ABILITY`` but is
   keyed by the Foundry 3-letter skill *codes* the canonical ``check.associated``
   field actually carries (``"ath"``, ``"slt"``, ``"inv"``, ...) rather than the
-  Avrae long-form (``"athletics"``). Source: ``CONFIG.DND5E.skills`` in
+  the legacy evaluator long-form (``"athletics"``). Source: ``CONFIG.DND5E.skills`` in
   ``foundry/module/config.mjs``.
 * The modifier is the RESOLVED integer off a per-actor sidecar
   (``ctx.check_modifiers``), mirroring ``effects/check.py:_read_check_modifiers``
@@ -67,7 +67,7 @@ _ABILITIES: Final[frozenset[str]] = frozenset(get_args(Ability))
 # Foundry 3-letter skill code → governing SRD ability. Source: CONFIG.DND5E.skills
 # in foundry/module/config.mjs (each skill's ``ability`` field). The canonical
 # ``check.associated`` field carries these codes verbatim. Mirrors
-# ``effects/check.py:_SKILL_TO_ABILITY`` (which keys the Avrae long-form names).
+# ``effects/check.py:_SKILL_TO_ABILITY`` (which keys the legacy evaluator long-form names).
 _SKILL_TO_ABILITY: Final[dict[str, Ability]] = {
     "acr": "dex",
     "ani": "wis",

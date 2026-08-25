@@ -48,12 +48,12 @@ def resolve_activity(
 
     The ``summon``, ``enchant`` and ``transform`` kinds have no mechanical
     resolution today: they emit no ``CombatEvent`` and log an explicit
-    ``activity_kind_narrative`` marker, matching the prior Avrae evaluator's
+    ``activity_kind_narrative`` marker, matching a
     narrative passthrough. A ``utility`` activity is the same narrative no-op
     UNLESS it carries effect riders (``effects[]``): the typed Foundry schema
     legitimately hangs "apply a buff" effects on a ``utility`` activity
     (Bless's only activity, Hunter's-Mark's "Mark Creature"), so an
-    effects-bearing utility applies those riders per target (Task 9-A FIX 2).
+    effects-bearing utility applies those riders per target -A FIX 2).
     With all ten union members now routed, the trailing
     ``activity_kind_unhandled`` WARNING is an unreachable defensive guard for a
     malformed (non-``Activity``) input.

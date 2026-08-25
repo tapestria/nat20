@@ -4,7 +4,7 @@ target-side vulnerability / resistance / immunity, emit ``DamageApplied``.
 MIRRORS, does not import from, ``effects/damage.py``:
 
 * Apply order is vulnerability ×2 → resistance //2 (integer floor) → immunity ⇒ 0,
-  matching ``_apply_resistance`` (Avrae's ``do_resistances`` order). An ``"all"``
+  matching ``_apply_resistance`` (the legacy ``do_resistances`` order). An ``"all"``
   wildcard is honored in each list (SRD §Conditions/Petrified emits "all").
 * ``is_overkill`` mirrors ``effects/damage.py:192`` — ``final_amount >
   target.hp_current`` (strictly greater).
@@ -88,7 +88,7 @@ def _apply_modifiers(
     immunities: set[str],
     vulnerabilities: set[str],
 ) -> int:
-    """Apply vuln (×2) → resist (//2 floor) → immune (⇒0) in Avrae order.
+    """Apply vuln (×2) → resist (//2 floor) → immune (⇒0) in the legacy evaluator order.
 
     Mirrors ``effects/damage.py:_apply_resistance``. The ``"all"`` wildcard is
     honored in each list (SRD §Conditions/Petrified resistance-to-all).

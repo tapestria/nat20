@@ -1,12 +1,9 @@
-# Passive-stat projection (Cluster 8 design note)
+# Passive-stat projection
 
-Design note for the "Passive-stat projection" `BACKLOG.md` section — the four
-gaps where a creature's always-on or activation-gated defensive/movement stats
+How a creature's always-on and activation-gated defensive/movement stats
 (damage resistance while raging, condition immunity, damage vulnerability,
-granted-feature movement modes) are declared in the canonical dataset but never
-reach the live `Combatant` or the damage/condition pipelines that consume them.
-Written before implementation per the autonomous gap-closing campaign's epic
-protocol (`specs/e2e-scenario-catalog.md`, Cluster 8: C08-S01..S04).
+granted-feature movement modes) travel from the canonical dataset to the live
+`Combatant` and the damage/condition pipelines that consume them.
 
 The four gaps do not share one machinery the way the reaction queue did; what
 they share is a diagnosis — a producer/consumer split where the consumer is
@@ -88,10 +85,10 @@ consumer for the condition path (tier-1 static field, gate at emit).
 
 | Gap | Tier | Why |
 |-----|------|-----|
-| **C08-S01** Rage `dr` while raging | **2** (active-effect fold) | Rage is activation-gated (`disabled: true`); the resistance must appear only while the Rage `ActiveEffect` is live. Tier 1 correctly excludes it (fails `not disabled`). The fold is the only tier that sees the effect exactly when active. |
-| **C08-S02** Nature's Ward `ci:poison` | **1** (build-time, always-on) for the field + a **consumer gate** at the condition emit | Nature's Ward is always on; the immunity is known at build time and belongs on the static spec/`Combatant`. The blocking itself is a new consumer in the condition-application path. |
-| **C08-S03** Skeleton `dv:bludgeoning` | **3** (per-intent target-modifier) | The vulnerability is a static monster-template fact hydrated onto the `Combatant`; it must be folded into the damage sidecar every intent, exactly like the existing resistances/immunities merge. |
-| **C08-S04** Roving movement modes | **1** (build-time, always-on) | Roving is always on; the walk bonus and the climb/swim modes are known at build time and belong on the immutable spec (and, copied, the live `Combatant`). |
+| **a pinned scenario** Rage `dr` while raging | **2** (active-effect fold) | Rage is activation-gated (`disabled: true`); the resistance must appear only while the Rage `ActiveEffect` is live. Tier 1 correctly excludes it (fails `not disabled`). The fold is the only tier that sees the effect exactly when active. |
+| **a pinned scenario** Nature's Ward `ci:poison` | **1** (build-time, always-on) for the field + a **consumer gate** at the condition emit | Nature's Ward is always on; the immunity is known at build time and belongs on the static spec/`Combatant`. The blocking itself is a new consumer in the condition-application path. |
+| **a pinned scenario** Skeleton `dv:bludgeoning` | **3** (per-intent target-modifier) | The vulnerability is a static monster-template fact hydrated onto the `Combatant`; it must be folded into the damage sidecar every intent, exactly like the existing resistances/immunities merge. |
+| **a pinned scenario** Roving movement modes | **1** (build-time, always-on) | Roving is always on; the walk bonus and the climb/swim modes are known at build time and belong on the immutable spec (and, copied, the live `Combatant`). |
 
 ## S01 — the `system.traits.dr.value` fold and the mode=2 trap
 
@@ -245,7 +242,7 @@ exists). `rules/` and `dispatch.py` stay pure and untouched.
 - **Ability scores, proficiency grants, `ac.calc`, languages** — the surviving
   fifth bullet of the BACKLOG subsection. Each needs its own landing zone +
   apply logic (ability-modifier path, proficiency sets + roll-path consumer, AC
-  recomputation, a languages field); none has a Cluster 8 catalog scenario.
+  recomputation, a languages field); none has a an earlier release catalog scenario.
 - **The dead `dispatch.py` condition-immunities surface** (see S02 above).
 - **A general Foundry-formula resolver** — only the single
   `@attributes.movement.walk` token is handled.

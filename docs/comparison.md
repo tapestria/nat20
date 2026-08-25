@@ -38,3 +38,13 @@ to decide whether it fits.
 If you want a rules engine you can call from Python and trust to be
 reproducible — without inheriting a VTT, a UI, or a narration model —
 that's the gap Nat20 fills.
+
+## Known gaps
+
+Nat20 does not implement all of SRD 5.2. Legendary actions, summoning,
+polymorph, grapple/shove, surprise and exhaustion penalties are among the
+rules it does not resolve today, and about a third of the spell corpus loads
+without producing any mechanical effect. The
+[capability matrix](capabilities.md) lists all of it per mechanic, and
+[`BACKLOG.md`](https://github.com/tapestria/nat20/blob/main/BACKLOG.md) is the
+tracked gap ledger.

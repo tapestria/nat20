@@ -30,11 +30,21 @@ more fields are additive (each defaults empty, preserving prior behavior):
 ## Movement
 
 To move, submit a `PlayerIntent` with `intent_type="move"` and a
-`target_zone_id` (built with `cell_id`). The engine validates the path
-against the grid — range, blocked cells, and reachability — and emits the
-movement events. Distance for range and reach checks is measured in
-Chebyshev cells scaled to feet; entering a `difficult_terrain_cells` cell
-costs double.
+`target_zone_id` (built with `cell_id`).
+
+!!! warning "One step per intent"
+
+    A move intent must name a cell **adjacent** to the mover. The engine does
+    not path-find: a non-adjacent target is rejected with
+    `MoveFailed(reason="not_adjacent")` even when it is well within the
+    movement budget. Crossing 30 ft means submitting six move intents.
+    `GridTopology.shortest_path` is available if you want to plan the route
+    yourself.
+
+Each step is validated against the grid — adjacency, blocked cells, and the
+remaining movement budget — before emitting `ActorMoved`. Distance for range
+and reach checks is measured in Chebyshev cells scaled to feet; entering a
+`difficult_terrain_cells` cell costs double.
 
 ## Line of sight, cover, and AoE templates
 

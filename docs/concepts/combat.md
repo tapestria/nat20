@@ -18,7 +18,13 @@ On a PC's turn, call `submit_player_intent(handle, actor_id, intent)` with a
 `"help"`, `"use_item"`, `"use_feature"`, `"pass"`, and more) selects which
 optional fields the resolver consumes (`weapon_id`, `spell_id`,
 `target_id`, `target_zone_id`, …). Monster turns advance via
-`advance_monster_turn(handle)`, which runs the built-in monster AI.
+`advance_monster_turn(handle)`, which runs the [built-in monster
+AI](monsters.md).
+
+A `"move"` intent steps to an **adjacent** cell or zone — the engine does not
+path-find, so crossing ground takes one intent per step. Off-turn reactions
+(Shield, Counterspell, opportunity attacks) are never prompted for
+mid-resolution; they must be [pre-armed](reactions.md).
 
 ## Determinism and events
 
@@ -29,7 +35,14 @@ round boundaries) that a host renders or narrates.
 
 ## Closing out
 
+Between combats, `resolve_short_rest` / `resolve_long_rest` restore hit points,
+hit dice, spell slots and feature uses; `resolve_check` resolves a one-off
+ability, skill or saving throw with no handle at all.
+
 `end_combat(handle)` returns an `EndCombatResult` carrying a `CombatOutcome`
 — its `ended_reason` (victory, defeat, flee, forced), `residual_hp`,
 `deaths`, and `loot_drops` — plus the final tuple of `ActiveEffect`s, which
 the engine discards (effects are combat-scoped).
+
+Not every SRD rule is resolved. The [capability matrix](../capabilities.md) is
+the per-mechanic inventory of what is and is not enforced.
