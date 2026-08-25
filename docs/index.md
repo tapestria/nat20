@@ -21,9 +21,7 @@ drop into a game server, a bot, a VTT backend, or a test harness.
   RNG seeded by `start_combat(rng_seed=...)`, so a combat is reproducible from
   its seed and intent sequence alone — ideal for tests, replays, and AI-driven
   hosts that need a rules oracle. Standalone checks take their own seed via
-  `CheckSpec.rng`. (The legacy `dispatch` / `rules.combat` layer inherited from
-  the first host draws from the process-global `random`; it is deprecated in
-  0.4.0 and removed in 0.5.0 — see the [migration guide](migration/v0.3-to-v0.4.md).)
+  `CheckSpec.rng`.
 - **Pure Python, zero I/O.** The engine performs no I/O of its own. Content
   loads through the companion `dnd5e-srd-data` package via an explicit
   `BundledAssetLoader`. Easy to embed, easy to reason about.

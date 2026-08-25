@@ -1,6 +1,6 @@
 [project]
 name = "nat20-bridge"
-version = "0.4.0"
+version = "0.5.0"
 description = "Localhost HTTP sidecar exposing dnd5e-engine to the SillyTavern nat20 extension"
 requires-python = ">=3.12"
 license = { file = "LICENSE" }

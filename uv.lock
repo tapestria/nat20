@@ -318,7 +318,7 @@ wheels = [
 
 [[package]]
 name = "dnd5e-engine"
-version = "0.4.0"
+version = "0.5.0"
 source = { editable = "packages/dnd5e-engine" }
 dependencies = [
     { name = "d20" },
@@ -350,7 +350,7 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "dnd5e-srd-data"
-version = "0.4.0"
+version = "0.5.0"
 source = { editable = "packages/dnd5e-srd-data" }
 dependencies = [
     { name = "pydantic" },
@@ -826,7 +826,7 @@ wheels = [
 
 [[package]]
 name = "nat20-bridge"
-version = "0.4.0"
+version = "0.5.0"
 source = { editable = "packages/nat20-bridge" }
 dependencies = [
     { name = "dnd5e-engine" },

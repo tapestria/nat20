@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0]
+
+Lockstep release with `dnd5e-engine` 0.5.0 and `nat20-bridge` 0.5.0.
+
+No schema or canonical-content changes.
+
 ## [0.4.0]
 
 Lockstep release with `dnd5e-engine` 0.4.0 and `nat20-bridge` 0.4.0.

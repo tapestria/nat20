@@ -170,7 +170,7 @@ class EncounterMemberSpec(BaseModel):
     # Person targets humanoids; Sleep autopasses undead/elves; etc.).
     creature_type: str | None = None
     # SRD §Damage Resistance / §Damage Immunity — per-monster type lists,
-    # populated from MonsterTemplate (via CombatMonster / CombatNPC). Empty
+    # populated from the host's monster template record. Empty
     # by default for fixtures that don't specify.
     damage_resistances: list[str] = Field(default_factory=list)
     damage_immunities: list[str] = Field(default_factory=list)

@@ -19,20 +19,13 @@ def test_ability_modifier_known_values():
 
 
 def test_all_moved_rules_modules_importable():
-    """Smoke: every Phase-3-moved rules module imports without raising."""
+    """Smoke: every surviving rules module imports without raising."""
     import importlib
 
     for mod in [
         "dnd5e_engine.rules.dice",
-        "dnd5e_engine.rules.equipment",
         "dnd5e_engine.rules.conditions",
-        "dnd5e_engine.rules.spells",
         "dnd5e_engine.rules.skills",
-        "dnd5e_engine.rules.combat",
-        "dnd5e_engine.rules.gambits",
-        "dnd5e_engine.rules.combat_data",
-        "dnd5e_engine.rules.combat_helpers",
-        "dnd5e_engine.rules.resolution",
         "dnd5e_engine.rules.effects",
     ]:
         importlib.import_module(mod)

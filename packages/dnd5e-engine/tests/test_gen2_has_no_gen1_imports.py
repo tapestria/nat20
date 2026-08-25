@@ -7,6 +7,7 @@ the supported ones.
 from __future__ import annotations
 
 import ast
+import importlib.util
 import subprocess
 import sys
 
@@ -50,3 +51,8 @@ def test_gen2_entry_points_load_no_gen1_module() -> None:
     loaded = _loaded_modules()
     leaked = [m for m in loaded if m in GEN1]
     assert leaked == [], leaked
+
+
+def test_gen1_modules_no_longer_exist() -> None:
+    present = [m for m in GEN1 if importlib.util.find_spec(m) is not None]
+    assert present == [], present

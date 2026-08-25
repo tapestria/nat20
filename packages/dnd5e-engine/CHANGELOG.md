@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0]
+
+Lockstep release with `dnd5e-srd-data` 0.5.0 and `nat20-bridge` 0.5.0.
+
+Removes the legacy (Gen 1) rules surface deprecated in 0.4.0. The engine now
+ships exactly one, seedable, documented rules implementation
+(`orchestrator` + `activities/`). See `docs/migration/v0.4-to-v0.5.md`.
+
+### Removed
+
+- Modules `dispatch`, `event_dicts`, `types.dice`, `types.intent`, and
+  `rules.{combat, combat_data, combat_helpers, equipment, gambits, resolution,
+  spells}` (plus the private `rules._parsing` / `rules._class_meta`).
+- `dnd5e_engine.ActionType`, `CombatNPC`, and the lazy
+  `dnd5e_engine.types.{ActionType, CombatOutcome, DiceOutcome, CombatNPC}`
+  re-exports; the 0.4.0 `DeathSaveState` / `BehaviorProfile` re-export shims.
+- The cross-generation parity test; its Gen 2 assertions live on in
+  `tests/test_attack_classification.py`.
+
 ## [0.4.0]
 
 Lockstep release with `dnd5e-srd-data` 0.4.0 and `nat20-bridge` 0.4.0.
