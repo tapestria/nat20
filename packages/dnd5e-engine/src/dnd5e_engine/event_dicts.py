@@ -1,5 +1,7 @@
 """Pure CombatEvent → dict serialization.
 
+**DEPRECATED (0.4.0) — removed in 0.5.0.** See docs/migration/v0.3-to-v0.4.md.
+
 Used by the host's WS-envelope adapter in the host.
 Library-internal only — no WS protocol concerns leak in here. The host
 owns host-specific envelope wrapping (SystemMessage, CombatEnd,
@@ -35,3 +37,14 @@ def events_to_dicts(events: Iterable[CombatEvent]) -> list[dict[str, Any]]:
 
 
 __all__ = ["event_to_dict", "events_to_dicts"]
+
+
+# ── 0.4.0 deprecation (module-level, fires once on first import) ─────────────
+import warnings as _warnings  # noqa: E402
+
+_warnings.warn(
+    "dnd5e_engine.event_dicts is part of the legacy (Gen 1) surface and will be "
+    "removed in dnd5e-engine 0.5.0 — see docs/migration/v0.3-to-v0.4.md.",
+    DeprecationWarning,
+    stacklevel=2,
+)

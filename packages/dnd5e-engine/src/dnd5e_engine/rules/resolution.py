@@ -1,4 +1,6 @@
 """
+
+**DEPRECATED (0.4.0) — removed in 0.5.0.** See docs/migration/v0.3-to-v0.4.md.
 Dice resolution helpers used by the v2.2 engine dispatch layer.
 
 Pure module: zero imports from neo4j, asyncpg, redis, or the host (Neo4j/PG/host storage layers).
@@ -165,3 +167,14 @@ __all__ = [
     "extract_skill_from_roll_type",
     "parse_ability_scores",
 ]
+
+
+# ── 0.4.0 deprecation (module-level, fires once on first import) ─────────────
+import warnings as _warnings  # noqa: E402
+
+_warnings.warn(
+    "dnd5e_engine.rules.resolution is part of the legacy (Gen 1) surface and will be "
+    "removed in dnd5e-engine 0.5.0 — see docs/migration/v0.3-to-v0.4.md.",
+    DeprecationWarning,
+    stacklevel=2,
+)

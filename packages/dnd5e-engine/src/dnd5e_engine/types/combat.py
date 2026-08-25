@@ -7,12 +7,21 @@ state; hosts read it through ``dnd5e_engine.views.LiveCombatView``.
 
 from __future__ import annotations
 
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
 
 from dnd5e_engine.activities.passive_stats import CombatantMovementModes, CombatantSenses
 from dnd5e_engine.types.conditions import ActiveCondition
+
+
+class BehaviorProfile(StrEnum):
+    """Monster AI posture consumed by the orchestrator's flee heuristic."""
+
+    AGGRESSIVE = "AGGRESSIVE"
+    RANGED = "RANGED"
+    DEFENSIVE = "DEFENSIVE"
 
 
 class CombatNPC(BaseModel):
@@ -214,6 +223,7 @@ class Combatant(BaseModel):
 
 
 __all__ = [
+    "BehaviorProfile",
     "CombatNPC",
     "Combatant",
 ]

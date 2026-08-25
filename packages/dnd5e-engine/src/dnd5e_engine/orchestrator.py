@@ -119,7 +119,6 @@ from dnd5e_engine.rules.conditions import (
     project_passive_damage_modifiers,
     project_passive_save_modifiers,
 )
-from dnd5e_engine.rules.gambits import BehaviorProfile
 from dnd5e_engine.spatial import GridTopology, SpatialTopology
 from dnd5e_engine.specs import (
     EncounterMemberSpec,
@@ -128,7 +127,7 @@ from dnd5e_engine.specs import (
     SceneTopology,
     ZoneEdge,
 )
-from dnd5e_engine.types.combat import Combatant
+from dnd5e_engine.types.combat import BehaviorProfile, Combatant
 from dnd5e_engine.types.conditions import ActiveCondition
 from dnd5e_engine.types.effects import ActiveEffect, ActiveEffectDuration
 from dnd5e_engine.views import LiveCombatView

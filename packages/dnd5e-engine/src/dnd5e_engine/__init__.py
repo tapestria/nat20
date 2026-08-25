@@ -79,7 +79,6 @@ from dnd5e_engine.types.effects import (
     ActiveEffectChange,
     ActiveEffectDuration,
 )
-from dnd5e_engine.types.intent import ActionType
 
 __all__ = [
     "AbilityScores",
@@ -130,3 +129,25 @@ __all__ = [
     "start_combat",
     "submit_player_intent",
 ]
+
+_GEN1_LAZY = {"ActionType": ("dnd5e_engine.types.intent", "ActionType")}
+
+
+def __getattr__(name: str) -> object:
+    # PEP 562 — keep the 0.3.x names resolvable without importing the
+    # deprecated modules eagerly (which would warn on every ``import dnd5e_engine``).
+    if name in _GEN1_LAZY:
+        import importlib
+        import warnings
+
+        module, attr = _GEN1_LAZY[name]
+        warnings.warn(
+            f"dnd5e_engine.{name} belongs to the legacy (Gen 1) surface — a host-side "
+            f"shape, not an engine type — and will be removed in dnd5e-engine 0.5.0. "
+            f"Import it from {module} (also deprecated) or copy it into your host; "
+            f"see docs/migration/v0.3-to-v0.4.md.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return getattr(importlib.import_module(module), attr)
+    raise AttributeError(f"module 'dnd5e_engine' has no attribute {name!r}")

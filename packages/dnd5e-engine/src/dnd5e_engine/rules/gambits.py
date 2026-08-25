@@ -1,5 +1,7 @@
 """Deterministic monster AI gambit system.
 
+**DEPRECATED (0.4.0) — removed in 0.5.0.** See docs/migration/v0.3-to-v0.4.md.
+
 Selects actions for monsters based on behavior profile and current game state.
 Zero DB imports. Uses only dnd5e_engine.rules.* imports.
 """
@@ -8,20 +10,14 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from enum import StrEnum
 from typing import Any
 
 from dnd5e_engine.rules.combat import HitType, attack_roll, damage_roll
+from dnd5e_engine.types.combat import BehaviorProfile  # re-export; canonical home moved in 0.4.0
 
 # ---------------------------------------------------------------------------
 # Enums and dataclasses
 # ---------------------------------------------------------------------------
-
-
-class BehaviorProfile(StrEnum):
-    AGGRESSIVE = "AGGRESSIVE"
-    RANGED = "RANGED"
-    DEFENSIVE = "DEFENSIVE"
 
 
 @dataclass(frozen=True)
@@ -184,3 +180,14 @@ __all__ = [
     "parse_damage_dice",
     "resolve_monster_action",
 ]
+
+
+# ── 0.4.0 deprecation (module-level, fires once on first import) ─────────────
+import warnings as _warnings  # noqa: E402
+
+_warnings.warn(
+    "dnd5e_engine.rules.gambits is part of the legacy (Gen 1) surface and will be "
+    "removed in dnd5e-engine 0.5.0 — see docs/migration/v0.3-to-v0.4.md.",
+    DeprecationWarning,
+    stacklevel=2,
+)

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "dnd5e-engine"
-version = "0.3.2"
+version = "0.4.0"
 description = "Pure-Python D&D 5e SRD rules engine — combat, checks, effects. Host-agnostic, zero I/O."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -87,6 +87,12 @@ max-complexity = 23
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+filterwarnings = [
+    # Any DeprecationWarning the engine itself raises is a bug — except the
+    # 0.4.0 legacy-surface deprecations, which the suite exercises on purpose.
+    "error::DeprecationWarning:dnd5e_engine",
+    "ignore:.*legacy \\(Gen 1\\) surface.*:DeprecationWarning",
+]
 
 [tool.coverage.run]
 source = ["dnd5e_engine"]
