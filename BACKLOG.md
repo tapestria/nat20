@@ -146,7 +146,10 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   (c) Gen 1 is not seedable, so `docs/index.md`'s determinism claim holds only
   for Gen 2. Needs a decision: declare Gen 1 a supported API and document it,
   or declare it a migration path and give Tapestria a route off it. Until then
-  every rules fix has to be applied at both sites.
+  every rules fix has to be applied at both sites — a cross-generation parity
+  test (`packages/dnd5e-engine/tests/test_generation_parity_attack.py`,
+  2026-08-24) feeds both attack rolls the same d20 stream and fails on the
+  first kept-die or hit/crit divergence, so drift is now caught in CI.
   (`packages/dnd5e-engine/src/dnd5e_engine/dispatch.py`,
   `packages/dnd5e-engine/src/dnd5e_engine/rules/combat.py`,
   `packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py`)

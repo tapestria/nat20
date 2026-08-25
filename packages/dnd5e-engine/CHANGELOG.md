@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Cross-generation attack-roll parity test
+  (`tests/test_generation_parity_attack.py`): `rules/combat.attack_roll` /
+  `resolve_player_attack` and `activities/attack.py` are fed the same d20
+  stream and must keep the same natural die and agree on hit / crit / miss
+  under advantage, disadvantage and flat rolls. This is the guard that would
+  have caught the drift fixed in 0.3.1 (#11). No runtime behavior change.
+
 ## [0.3.2]
 
 Lockstep release with `dnd5e-srd-data` 0.3.2 and `nat20-bridge` 0.3.2.
