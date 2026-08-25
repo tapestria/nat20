@@ -129,51 +129,18 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
 
 ## Architecture (2026-08-22)
 
-- **Two generations of the engine ship side by side, undeclared.**
-  *Gen 1* is `dispatch.py` + `rules/combat.py` (+ `combat_data`,
-  `combat_helpers`, `equipment`, `gambits`, `resolution`, `spells`): dict-shaped
-  inputs, process-global `random`, extracted verbatim from the host app in the
-  initial release. *Gen 2* is `orchestrator.py` + `activities/`: the typed
-  Activity corpus, seeded RNG, built here. Both are public (every Gen 1 module
-  declares `__all__` and is pinned by `test_public_api_surface.py`) and both are
-  live in the reference host — Tapestria's turn loop calls
-  `dispatch.resolve_combat_action` while its `app/combat/` layer wraps
-  `orchestrator`. The README, docs and `docs/capabilities.md` describe only
-  Gen 2. Consequences: (a) SRD rules are implemented twice and drift — the
-  crit/fumble-under-disadvantage fix (#11) landed in Gen 1's `attack_roll`;
-  Gen 2's `_roll_natural_d20` never had the bug; (b) a reviewer can mistake
-  Gen 1 for dead code (this happened — see the 2026-08-22 review handoff);
-  (c) Gen 1 is not seedable, so `docs/index.md`'s determinism claim holds only
-  for Gen 2. Needs a decision: declare Gen 1 a supported API and document it,
-  or declare it a migration path and give Tapestria a route off it. Until then
-  every rules fix has to be applied at both sites — a cross-generation parity
-  test (`packages/dnd5e-engine/tests/test_generation_parity_attack.py`,
-  2026-08-24) feeds both attack rolls the same d20 stream and fails on the
-  first kept-die or hit/crit divergence, so drift is now caught in CI.
-  (`packages/dnd5e-engine/src/dnd5e_engine/dispatch.py`,
-  `packages/dnd5e-engine/src/dnd5e_engine/rules/combat.py`,
-  `packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py`)
-- **Host transport/persistence shapes live inside the engine.** The initial
-  extraction brought Tapestria plumbing over with the rules: `types/dice.py`
-  (`DiceOutcome` — a server→client websocket payload with `request_id`,
-  `character_id`, a display `summary`, and `die_size` "for the frontend"),
-  `event_dicts.py` (websocket envelope serialization), the outcome wire-models
-  in `types/intent.py`, `ActionType`'s quest/roleplay parser members
-  (`QUEST_ACCEPT`, `CONSULT_CODEX`, `AMBIENT_INQUIRY`, …),
-  `rules/combat_helpers.py`'s `extract_template_combat_stats` /
-  `build_combat_npc_from_template` (read Neo4j MonsterTemplate node dicts and
-  deserialize JSON-string DB fields), and `rules/resolution.py::
-  parse_ability_scores` ("parse ability scores **from database**"). None of it
-  is SRD logic, and it contradicts the package's zero-I/O, host-agnostic
-  claim. Tapestria imports every one of them from the published package, so
-  removal is a coordinated move: land replacements in Tapestria first, then
-  drop them here in a major bump. (See the 2026-08-22 review handoff for the
-  full import inventory.)
-  (`packages/dnd5e-engine/src/dnd5e_engine/types/dice.py`,
-  `packages/dnd5e-engine/src/dnd5e_engine/event_dicts.py`,
-  `packages/dnd5e-engine/src/dnd5e_engine/rules/combat_helpers.py`,
-  `packages/dnd5e-engine/src/dnd5e_engine/rules/resolution.py`)
-
+- **Legacy (Gen 1) rules surface — deprecated in 0.4.0, removal tracked for
+  0.5.0.** Decided 2026-08-24: `dispatch` + `rules/{combat, combat_data,
+  combat_helpers, equipment, gambits, resolution, spells}` and the host
+  transport shapes (`event_dicts`, `types/dice`, `types/intent`, `CombatNPC`)
+  are a migration path, not a supported API. 0.4.0 emits `DeprecationWarning`
+  on import and ships `docs/migration/v0.3-to-v0.4.md` with a per-symbol route;
+  a cross-generation parity test
+  (`packages/dnd5e-engine/tests/test_generation_parity_attack.py`) guards
+  attack-roll drift until deletion. Remaining work: delete the modules, their
+  tests and the lazy re-exports in the 0.5.0 lockstep bump, then close this
+  entry. (`packages/dnd5e-engine/src/dnd5e_engine/dispatch.py`,
+  `packages/dnd5e-engine/src/dnd5e_engine/rules/combat.py`)
 - **Reactions are not data-driven.** `orchestrator.py` recognizes reactions
   through a closed `ReactionTrigger` literal that names a specific spell
   (`"targeted_by_magic_missile"`), plus per-spell branches

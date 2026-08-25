@@ -143,8 +143,16 @@ drive the engine from a different corpus.
         - CombatEvent
         - IntentType
 
-::: dnd5e_engine.types.intent
-    options:
-      members_order: source
-      members:
-        - ActionType
+## Deprecated legacy surface (removed in 0.5.0)
+
+The modules below are the legacy rules layer inherited from the engine's first
+host. They are not documented here; importing any of them emits a
+`DeprecationWarning`, and the [0.3→0.4 migration guide](migration/v0.3-to-v0.4.md)
+gives the supported route for every symbol.
+
+`dnd5e_engine.dispatch`, `dnd5e_engine.event_dicts`, `dnd5e_engine.types.dice`,
+`dnd5e_engine.types.intent`, `dnd5e_engine.rules.combat`,
+`dnd5e_engine.rules.combat_data`, `dnd5e_engine.rules.combat_helpers`,
+`dnd5e_engine.rules.equipment`, `dnd5e_engine.rules.gambits`,
+`dnd5e_engine.rules.resolution`, `dnd5e_engine.rules.spells`, and the top-level
+`dnd5e_engine.ActionType` re-export.

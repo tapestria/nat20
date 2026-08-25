@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Deprecated
+
+- **The legacy (Gen 1) rules surface — removed in 0.5.0.** `dispatch`,
+  `event_dicts`, `types.dice`, `types.intent`, and `rules.{combat, combat_data,
+  combat_helpers, equipment, gambits, resolution, spells}` emit a
+  `DeprecationWarning` on import. The top-level `dnd5e_engine.ActionType` and
+  `dnd5e_engine.types.{ActionType, CombatOutcome, DiceOutcome, CombatNPC}`
+  re-exports now resolve lazily and warn on access. Every symbol's supported
+  route is in `docs/migration/v0.3-to-v0.4.md`. Rationale: two drifting
+  implementations of the same SRD rules, a non-seedable legacy path, and host
+  transport/persistence shapes inside a zero-I/O package.
+
+### Changed
+
+- `DeathSaveState` canonical home is now `dnd5e_engine.death_saves`;
+  `BehaviorProfile` is now `dnd5e_engine.types.combat`. The old locations
+  re-export until 0.5.0. The supported engine's import tree no longer reaches
+  any legacy module (pinned by `tests/test_gen2_has_no_gen1_imports.py`).
+
 ### Added
 
 - Cross-generation attack-roll parity test
