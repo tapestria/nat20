@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass
+from typing import Any
 
 from dnd5e_engine.events import (
     CombatEvent,
@@ -30,8 +31,97 @@ from dnd5e_engine.events import (
     DeathSaveStarted,
     Stabilized,
 )
-from dnd5e_engine.rules.combat_helpers import DeathSaveState
 from dnd5e_engine.types.combat import Combatant
+
+
+@dataclass
+class DeathSaveState:
+    """Mutable state machine for D&D 5e death saving throws.
+
+    Designed for host persistence via to_dict / from_dict.
+    """
+
+    successes: int = 0
+    failures: int = 0
+    is_stable: bool = False
+
+    # ------------------------------------------------------------------
+    # Core state transitions
+    # ------------------------------------------------------------------
+
+    def apply_save(self, success: bool, is_critical: bool) -> str:
+        """Apply a death saving throw result.
+
+        Returns one of: "critical_success" | "stabilized" | "dead" | "ongoing".
+
+        Rules:
+        - Nat 20 (success=True, is_critical=True): regain 1 HP -> "critical_success"
+        - Nat 1  (success=False, is_critical=True): 2 failures
+        - Normal success: 1 success; 3 successes -> "stabilized"
+        - Normal failure: 1 failure; 3 failures  -> "dead"
+        """
+        # Nat 20 takes priority — regain 1 HP, no counter update needed
+        if success and is_critical:
+            return "critical_success"
+
+        if success:
+            self.successes += 1
+        elif is_critical:
+            # Nat 1 counts as 2 failures
+            self.failures += 2
+        else:
+            self.failures += 1
+
+        return self._check_outcome()
+
+    def apply_damage_while_unconscious(self, is_melee_within_5ft: bool) -> str:
+        """Apply death save failures from damage while unconscious.
+
+        D&D 5e RAW: taking any damage while at 0 HP is a death save failure.
+        Melee attack within 5 ft = auto-crit = 2 failures. Otherwise 1 failure.
+
+        Returns "dead" if 3+ failures reached, else "ongoing".
+        """
+        self.failures += 2 if is_melee_within_5ft else 1
+        return self._check_outcome()
+
+    def reset(self) -> None:
+        """Reset all counters (called when character regains HP via nat 20)."""
+        self.successes = 0
+        self.failures = 0
+        self.is_stable = False
+
+    # ------------------------------------------------------------------
+    # Serialization (plain dicts for host persistence)
+    # ------------------------------------------------------------------
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "successes": self.successes,
+            "failures": self.failures,
+            "is_stable": self.is_stable,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> DeathSaveState:
+        return cls(
+            successes=d.get("successes", 0),
+            failures=d.get("failures", 0),
+            is_stable=d.get("is_stable", False),
+        )
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _check_outcome(self) -> str:
+        if self.failures >= 3:
+            return "dead"
+        if self.successes >= 3:
+            self.is_stable = True
+            return "stabilized"
+        return "ongoing"
+
 
 # Outcome literal returned alongside events/state for the caller to drive
 # turn skip / combat-end / consciousness restore.
@@ -150,6 +240,7 @@ def reset_death_saves(combatant: Combatant) -> Combatant:
 __all__ = [
     "DeathSaveOutcome",
     "DeathSaveResult",
+    "DeathSaveState",
     "reset_death_saves",
     "roll_death_save",
 ]
