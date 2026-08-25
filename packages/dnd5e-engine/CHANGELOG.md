@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.2]
+
+Lockstep release with `dnd5e-srd-data` 0.3.2 and `nat20-bridge` 0.3.2.
+
 Additive maturity pass from an independent review of the packages as a
 standalone engine. **No public name is removed or changed shape.**
 
