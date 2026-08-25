@@ -129,18 +129,6 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
 
 ## Architecture (2026-08-22)
 
-- **Legacy (Gen 1) rules surface — deprecated in 0.4.0, removal tracked for
-  0.5.0.** Decided 2026-08-24: `dispatch` + `rules/{combat, combat_data,
-  combat_helpers, equipment, gambits, resolution, spells}` and the host
-  transport shapes (`event_dicts`, `types/dice`, `types/intent`, `CombatNPC`)
-  are a migration path, not a supported API. 0.4.0 emits `DeprecationWarning`
-  on import and ships `docs/migration/v0.3-to-v0.4.md` with a per-symbol route;
-  a cross-generation parity test
-  (`packages/dnd5e-engine/tests/test_generation_parity_attack.py`) guards
-  attack-roll drift until deletion. Remaining work: delete the modules, their
-  tests and the lazy re-exports in the 0.5.0 lockstep bump, then close this
-  entry. (`packages/dnd5e-engine/src/dnd5e_engine/dispatch.py`,
-  `packages/dnd5e-engine/src/dnd5e_engine/rules/combat.py`)
 - **Reactions are not data-driven.** `orchestrator.py` recognizes reactions
   through a closed `ReactionTrigger` literal that names a specific spell
   (`"targeted_by_magic_missile"`), plus per-spell branches

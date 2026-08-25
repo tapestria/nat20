@@ -29,13 +29,6 @@ from dnd5e_engine.rules.effects import (
     filter_changes_by_bucket,
     roll_dice_str,
 )
-from dnd5e_engine.rules.gambits import (
-    BehaviorProfile,
-    GambitAction,
-    assign_behavior_profile,
-    parse_damage_dice,
-    resolve_monster_action,
-)
 from dnd5e_engine.types.effects import ActiveEffect, ActiveEffectChange
 
 
@@ -435,28 +428,6 @@ def test_dedupe_of_an_empty_iterable() -> None:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    "expr,expected",
-    [
-        ("2d6+3", (2, 6, 3)),
-        ("1d8-1", (1, 8, -1)),
-        ("3d4", (3, 4, 0)),
-        ("1d6+0", (1, 6, 0)),
-        (" 2D10 + 4 ", (2, 10, 4)),
-    ],
-)
-def test_parse_damage_dice(expr: str, expected: tuple[int, int, int]) -> None:
-    assert parse_damage_dice(expr) == expected
-
-
-@pytest.mark.parametrize("expr", ["d6", "2d", "", "2d6+", "2d6+x", "greatsword"])
-def test_parse_damage_dice_rejects_malformed_expressions(expr: str) -> None:
-    """Unlike the loose dice parser, monster damage must be fully specified —
-    a silent default here would quietly change a monster's damage output."""
-    with pytest.raises(ValueError, match="Invalid damage dice expression"):
-        parse_damage_dice(expr)
-
-
 # ---------------------------------------------------------------------------
 # gambits — resolve_monster_action
 # ---------------------------------------------------------------------------
@@ -471,110 +442,6 @@ def _target(hp_current: int = 20, armor_class: int = 15) -> dict[str, object]:
     }
 
 
-@pytest.mark.parametrize("action_type", ["flee", "pass"])
-def test_non_attack_actions_deal_no_damage(action_type: str) -> None:
-    action = GambitAction(
-        action_type=action_type, target_priority="random", description="retreats into the dark"
-    )
-
-    result = resolve_monster_action(action, 5, "2d6+3", "slashing", _target(), "Goblin")
-
-    assert result.hit is False
-    assert result.damage == 0
-    assert result.is_critical is False
-    assert result.death_save_failures == 0
-    assert result.description == "Goblin retreats into the dark"
-    assert result.target_id == "char:abc123def456"
-
-
-def test_attacking_a_downed_target_auto_crits_and_costs_two_death_saves() -> None:
-    """SRD: a melee hit on a creature at 0 HP is an automatic critical hit and
-    inflicts two death-save failures."""
-    random.seed(23)
-    action = GambitAction(
-        action_type="melee_attack", target_priority="lowest_hp", description="attacks"
-    )
-
-    result = resolve_monster_action(
-        action,
-        attack_bonus=-99,
-        damage_dice="1d6+0",
-        damage_type="piercing",
-        target=_target(hp_current=0, armor_class=99),
-        monster_name="Goblin",
-    )
-
-    # Auto-hit despite an impossible attack bonus against an impossible AC.
-    assert result.hit is True
-    assert result.is_critical is True
-    assert result.death_save_failures == 2
-    # Crit doubles the dice: 2d6 -> 2..12
-    assert 2 <= result.damage <= 12
-    assert "unconscious" in result.description
-
-
-def test_a_hit_reports_damage_of_the_stated_type() -> None:
-    random.seed(24)
-    action = GambitAction(
-        action_type="melee_attack", target_priority="random", description="attacks"
-    )
-
-    # +50 to hit against AC 1 — always a hit (or a crit on a natural 20).
-    result = resolve_monster_action(action, 50, "1d6+2", "slashing", _target(armor_class=1), "Ogre")
-
-    assert result.hit is True
-    assert result.damage_type == "slashing"
-    assert result.damage >= 3
-    assert result.death_save_failures == 0
-    assert "Ogre" in result.description
-
-
-def test_a_miss_deals_no_damage() -> None:
-    random.seed(25)
-    action = GambitAction(
-        action_type="melee_attack", target_priority="random", description="attacks"
-    )
-
-    # -50 to hit against AC 30 — only a natural 20 can land (auto-crit).
-    misses = [
-        resolve_monster_action(action, -50, "1d6+2", "slashing", _target(armor_class=30), "Rat")
-        for _ in range(40)
-    ]
-    clean_misses = [r for r in misses if not r.hit]
-
-    assert clean_misses, "expected at least one miss with a -50 attack bonus"
-    for result in clean_misses:
-        assert result.damage == 0
-        assert result.is_critical is False
-        assert "misses" in result.description
-
-
-def test_resolve_tolerates_a_target_without_ac_or_hp_keys() -> None:
-    """A sparse target dict must default to AC 10 and a living creature rather
-    than raising inside the monster turn."""
-    random.seed(26)
-    action = GambitAction(
-        action_type="melee_attack", target_priority="random", description="attacks"
-    )
-
-    result = resolve_monster_action(action, 5, "1d4", "bludgeoning", {}, "Slime")
-
-    assert result.target_id == ""
-    assert result.death_save_failures == 0
-
-
 # ---------------------------------------------------------------------------
 # gambits — assign_behavior_profile
 # ---------------------------------------------------------------------------
-
-
-def test_ranged_attacker_gets_the_ranged_profile() -> None:
-    assert assign_behavior_profile({"has_ranged_attack": True}) is BehaviorProfile.RANGED
-
-
-def test_melee_only_monster_is_aggressive() -> None:
-    assert assign_behavior_profile({"has_ranged_attack": False}) is BehaviorProfile.AGGRESSIVE
-
-
-def test_missing_ranged_flag_defaults_to_aggressive() -> None:
-    assert assign_behavior_profile({}) is BehaviorProfile.AGGRESSIVE

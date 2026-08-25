@@ -5,7 +5,6 @@ import dnd5e_engine
 
 TOP_LEVEL = {
     "AbilityScores",
-    "ActionType",
     "ActiveEffect",
     "ActiveEffectChange",
     "ActiveEffectDuration",
@@ -54,21 +53,12 @@ TOP_LEVEL = {
 }
 
 PUBLIC_MODULES = [
-    "dnd5e_engine.rules.combat",
     "dnd5e_engine.rules.conditions",
     "dnd5e_engine.rules.dice",
-    "dnd5e_engine.rules.equipment",
-    "dnd5e_engine.rules.gambits",
-    "dnd5e_engine.rules.resolution",
     "dnd5e_engine.rules.skills",
-    "dnd5e_engine.rules.spells",
-    "dnd5e_engine.rules.combat_data",
-    "dnd5e_engine.rules.combat_helpers",
     "dnd5e_engine.events",
-    "dnd5e_engine.event_dicts",
     "dnd5e_engine.death_saves",
     "dnd5e_engine.outcome",
-    "dnd5e_engine.dispatch",
     "dnd5e_engine.specs",
     "dnd5e_engine.spatial",
     "dnd5e_engine.lib_loader",
@@ -77,10 +67,8 @@ PUBLIC_MODULES = [
     "dnd5e_engine.build_spec",
     "dnd5e_engine.build_party",
     "dnd5e_engine.results",
-    "dnd5e_engine.types.intent",
     "dnd5e_engine.types.combat",
     "dnd5e_engine.types.conditions",
-    "dnd5e_engine.types.dice",
     "dnd5e_engine.types.effects",
     "dnd5e_engine.testing",
 ]

@@ -18,16 +18,6 @@ import random
 
 import pytest
 
-from dnd5e_engine.rules.combat_data import (
-    CLASS_SPELLCASTING_ABILITY,
-    UNARMED_STRIKE_DAMAGE_TYPE,
-    calculate_cantrip_dice,
-    is_weapon_proficient,
-    spell_attack_bonus,
-    spell_save_dc,
-    unarmed_strike_damage,
-    weapon_attack_bonus,
-)
 from dnd5e_engine.rules.skills import (
     SKILL_ABILITIES,
     SKILL_DISPLAY_NAMES,
@@ -56,104 +46,14 @@ def fixed_dice(monkeypatch: pytest.MonkeyPatch):
 CANTRIP_TIERS = [5, 11, 17]
 
 
-@pytest.mark.parametrize(
-    "level,expected",
-    [(1, "1d10"), (4, "1d10"), (5, "2d10"), (10, "2d10"), (11, "3d10"), (17, "4d10"), (20, "4d10")],
-)
-def test_cantrip_scales_at_each_tier(level: int, expected: str) -> None:
-    """Fire Bolt: 1d10, +1d10 at 5th, 11th and 17th."""
-    assert calculate_cantrip_dice("1d10", "1d10", CANTRIP_TIERS, level) == expected
-
-
-def test_cantrip_scaling_keeps_the_base_die_size() -> None:
-    """The scaling expression contributes a die *count*; the size comes from
-    the base expression."""
-    assert calculate_cantrip_dice("1d8", "1d6", CANTRIP_TIERS, 11) == "3d8"
-
-
-def test_cantrip_scaling_can_add_more_than_one_die_per_tier() -> None:
-    assert calculate_cantrip_dice("2d6", "2d6", CANTRIP_TIERS, 5) == "4d6"
-
-
-def test_cantrip_without_scaling_dice_is_unchanged() -> None:
-    assert calculate_cantrip_dice("1d10", None, CANTRIP_TIERS, 20) == "1d10"
-
-
-def test_cantrip_without_scaling_levels_is_unchanged() -> None:
-    assert calculate_cantrip_dice("1d10", "1d10", None, 20) == "1d10"
-
-
-def test_cantrip_with_empty_scaling_levels_never_scales() -> None:
-    assert calculate_cantrip_dice("1d10", "1d10", [], 20) == "1d10"
-
-
-def test_cantrip_drops_the_base_flat_modifier() -> None:
-    """The returned expression is pure dice; a flat modifier on the base is
-    the caller's to re-apply."""
-    assert calculate_cantrip_dice("1d10+3", "1d10", CANTRIP_TIERS, 5) == "2d10"
-
-
 # ---------------------------------------------------------------------------
 # Spell attack / save DC
 # ---------------------------------------------------------------------------
 
 
-def test_every_caster_class_has_a_spellcasting_ability() -> None:
-    assert CLASS_SPELLCASTING_ABILITY["wizard"] == "intelligence"
-    assert CLASS_SPELLCASTING_ABILITY["cleric"] == "wisdom"
-    assert CLASS_SPELLCASTING_ABILITY["sorcerer"] == "charisma"
-
-
-def test_spell_attack_bonus_uses_the_class_spellcasting_ability() -> None:
-    scores = {"intelligence": 18, "charisma": 8}
-
-    assert spell_attack_bonus("wizard", scores, 3) == 7  # INT +4 + prof 3
-    assert spell_attack_bonus("sorcerer", scores, 3) == 2  # CHA -1 + prof 3
-
-
-def test_spell_attack_bonus_is_case_insensitive() -> None:
-    assert spell_attack_bonus("WIZARD", {"intelligence": 16}, 2) == 5
-
-
-def test_spell_attack_bonus_is_none_for_non_casters() -> None:
-    """None (not 0) so callers can tell 'cannot cast' from 'a +0 bonus'."""
-    assert spell_attack_bonus("fighter", {"intelligence": 20}, 6) is None
-
-
-def test_spell_attack_bonus_defaults_a_missing_ability_score() -> None:
-    assert spell_attack_bonus("wizard", {}, 2) == 2
-
-
-def test_spell_save_dc_is_eight_plus_proficiency_plus_ability() -> None:
-    assert spell_save_dc("wizard", {"intelligence": 18}, 3) == 15
-
-
-def test_spell_save_dc_is_none_for_non_casters() -> None:
-    assert spell_save_dc("barbarian", {"strength": 20}, 6) is None
-
-
-def test_spell_save_dc_and_attack_bonus_stay_in_lockstep() -> None:
-    """DC is always the attack bonus + 8 for the same caster."""
-    scores = {"wisdom": 17}
-
-    assert spell_save_dc("cleric", scores, 4) == spell_attack_bonus("cleric", scores, 4) + 8
-
-
 # ---------------------------------------------------------------------------
 # Unarmed strike
 # ---------------------------------------------------------------------------
-
-
-@pytest.mark.parametrize(
-    "strength,expected",
-    [(20, 6), (14, 3), (10, 1), (8, 1), (1, 1)],  # never below 1
-)
-def test_unarmed_strike_damage(strength: int, expected: int) -> None:
-    assert unarmed_strike_damage(strength) == expected
-
-
-def test_unarmed_strike_damage_type() -> None:
-    assert UNARMED_STRIKE_DAMAGE_TYPE == "bludgeoning"
 
 
 # ---------------------------------------------------------------------------
@@ -162,55 +62,6 @@ def test_unarmed_strike_damage_type() -> None:
 
 
 SCORES = {"strength": 18, "dexterity": 14}
-
-
-def test_melee_weapon_uses_strength() -> None:
-    assert weapon_attack_bonus(SCORES, 3, True, "Melee", False) == 7
-
-
-def test_ranged_weapon_uses_dexterity() -> None:
-    assert weapon_attack_bonus(SCORES, 3, True, "Ranged", False) == 5
-
-
-def test_finesse_melee_takes_the_better_ability() -> None:
-    dex_heavy = {"strength": 8, "dexterity": 18}
-
-    assert weapon_attack_bonus(dex_heavy, 2, True, "Melee", True) == 6  # DEX +4 wins
-    assert weapon_attack_bonus(SCORES, 2, True, "Melee", True) == 6  # STR +4 wins
-
-
-def test_finesse_does_not_apply_to_ranged_weapons() -> None:
-    """A finesse flag on a ranged weapon must not resurrect a higher STR."""
-    str_heavy = {"strength": 20, "dexterity": 10}
-
-    assert weapon_attack_bonus(str_heavy, 2, True, "Ranged", True) == 2  # DEX +0 + prof
-
-
-def test_non_proficient_weapon_omits_the_proficiency_bonus() -> None:
-    assert weapon_attack_bonus(SCORES, 3, False, "Melee", False) == 4
-
-
-def test_weapon_range_matching_is_case_insensitive() -> None:
-    assert weapon_attack_bonus(SCORES, 0, False, "RANGED", False) == 2
-
-
-def test_weapon_attack_bonus_defaults_missing_scores() -> None:
-    assert weapon_attack_bonus({}, 2, True, "Melee", False) == 2
-
-
-@pytest.mark.parametrize(
-    "category,profs,expected",
-    [
-        ("Simple Melee", ["simple"], True),
-        ("Martial Ranged", ["martial"], True),
-        ("Martial Melee", ["simple"], False),
-        ("simple melee", ["Simple"], True),
-        ("Simple Melee", [], False),
-        ("Simple Melee", ["martial", "simple"], True),
-    ],
-)
-def test_is_weapon_proficient(category: str, profs: list[str], expected: bool) -> None:
-    assert is_weapon_proficient(category, profs) is expected
 
 
 # ---------------------------------------------------------------------------

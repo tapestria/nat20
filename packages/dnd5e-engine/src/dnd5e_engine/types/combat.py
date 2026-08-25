@@ -1,4 +1,4 @@
-"""Combat participant types — ``Combatant`` + ``CombatNPC``.
+"""Combat participant types — ``Combatant`` and ``BehaviorProfile``.
 
 Host-agnostic value types: stdlib + pydantic + the engine's own
 ``ActiveCondition``. ``Combatant`` is the engine's per-creature runtime combat
@@ -22,35 +22,6 @@ class BehaviorProfile(StrEnum):
     AGGRESSIVE = "AGGRESSIVE"
     RANGED = "RANGED"
     DEFENSIVE = "DEFENSIVE"
-
-
-class CombatNPC(BaseModel):
-    """Ephemeral sidecar record for an NPC in combat. Host-scoped;
-    cleared at end of combat. Owns template-derived combat stats that don't
-    fit on the narrow Combatant: saves, resistances, immunities, ability
-    scores, behavior_profile. Symmetric to CombatMonster for non-Character
-    entities."""
-
-    npc_id: str  # persistent NPC node ID (npc:hex12)
-    template_id: str  # MonsterTemplate node ID used at materialization
-    name: str
-    hp_current: int
-    hp_max: int
-    ac: int
-    attack_bonus: int
-    damage_dice: str
-    damage_type: str
-    has_ranged_attack: bool = False
-    dexterity: int = 10
-    strength: int = 10
-    constitution: int = 10
-    wisdom: int = 10
-    intelligence: int = 10
-    charisma: int = 10
-    behavior_profile: str = "AGGRESSIVE"
-    damage_resistances: list[str] = Field(default_factory=list)
-    damage_immunities: list[str] = Field(default_factory=list)
-    is_alive: bool = True
 
 
 class Combatant(BaseModel):
@@ -110,7 +81,7 @@ class Combatant(BaseModel):
     # application path (``activities/effects.py::apply_activity_effects``)
     # suppresses a ``ConditionApplied`` whose condition is in this list
     # . Empty by default. NOTE: distinct from the dead, host-supplied
-    # ``dispatch.py::DispatchContext.condition_immunities`` legacy surface.
+    # legacy dispatch surface's ``condition_immunities`` (removed in 0.5.0).
     condition_immunities: list[str] = Field(default_factory=list)
     # SRD §Senses — special senses in feet (darkvision/blindsight/tremorsense/
     # truesight). Projected from PC species + always-on feature passive_effects
@@ -224,6 +195,5 @@ class Combatant(BaseModel):
 
 __all__ = [
     "BehaviorProfile",
-    "CombatNPC",
     "Combatant",
 ]
