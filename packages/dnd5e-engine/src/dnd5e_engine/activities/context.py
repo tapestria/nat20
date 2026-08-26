@@ -3,7 +3,7 @@ from __future__ import annotations
 import random
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from dnd5e_engine.events import CombatEvent
 from dnd5e_engine.types.combat import Combatant
@@ -180,13 +180,18 @@ class ActivityResolutionContext:
     passive_ac_bonus: dict[str, int] = field(default_factory=dict)
     # Per-actor ability/skill-check modifier sidecar, mirroring
     # ``effects/check.py:_read_check_modifiers``'s shape
-    # ``{entity_id: {"skills": {code: mod}, "ability_mods": {ability: mod}}}``.
-    # The RESOLVED per-skill / per-ability integer, NOT rebuilt from ability
-    # score + proficiency. ``Combatant`` carries no per-skill table, so the
-    # ``check`` handler reads this sidecar; an absent actor / skill / ability
-    # contributes +0. Supplied by golden fixtures now; by the orchestrator (from
-    # actor stat blocks) at cutover.
-    check_modifiers: dict[str, dict[str, dict[str, int]]] = field(default_factory=dict)
+    # ``{entity_id: {"skills": {slug: mod}, "ability_mods": {ability: mod},
+    # "disadvantage": bool}}``. The RESOLVED per-skill / per-ability integer
+    # (ability modifier + proficiency bonus, doubled with Expertise), NOT rebuilt
+    # here from ability score + proficiency; an absent actor / skill / ability
+    # contributes +0. Projected by the orchestrator off the live ``Combatant``
+    # (``_project_target_modifiers`` via ``activities.actor_stats.check_modifier``)
+    # and threaded in by ``build_activity_context`` (F1d). ``disadvantage`` is the
+    # condition-derived flag (Frightened / Poisoned / Exhaustion); it is carried
+    # for consumers and narration — ``check.py`` still draws a single d20 (the
+    # adv/dis roll mechanic on the typed check path is a separate backlog item).
+    # Heterogeneous by construction, hence the ``Any`` value type.
+    check_modifiers: dict[str, dict[str, Any]] = field(default_factory=dict)
     # Effect definitions riding the activity's applied-effect refs, to be
     # translated into runtime ``ActiveEffect``s (one per target) via
     # ``activities/effects.passive_effect_to_active_effect``. Supplied by golden

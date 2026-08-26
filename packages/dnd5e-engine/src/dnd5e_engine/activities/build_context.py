@@ -94,6 +94,35 @@ def _spell_dc_bonus(
     return 0
 
 
+def _check_modifier_sidecar(
+    check_modifiers: dict[str, dict[str, Any]] | None,
+) -> dict[str, dict[str, Any]]:
+    """Narrow the WIDE hydration ``check_modifiers[id]`` entry to the typed
+    per-actor check sidecar ``activities/check.py`` consumes.
+
+    The orchestrator entry carries the condition-derived adv/dis LISTS
+    (``passive_check_adv`` / ``passive_check_dis``) alongside the F1d projection;
+    only ``ability_mods`` (all six abilities), ``skills`` (each proficient skill,
+    proficiency/Expertise already folded in) and the resolved ``disadvantage``
+    boolean cross into the context. Absent (``None``) → empty, leaving the golden
+    corpus identical (no actor projection ⇒ every check modifier is +0).
+    """
+    out: dict[str, dict[str, Any]] = {}
+    for entity_id, entry in (check_modifiers or {}).items():
+        ability_mods = entry.get("ability_mods")
+        skills = entry.get("skills")
+        out[entity_id] = {
+            "ability_mods": (
+                {a: int(v) for a, v in ability_mods.items()}
+                if isinstance(ability_mods, dict)
+                else {}
+            ),
+            "skills": ({s: int(v) for s, v in skills.items()} if isinstance(skills, dict) else {}),
+            "disadvantage": bool(entry.get("disadvantage", False)),
+        }
+    return out
+
+
 def build_activity_context(
     caster: Combatant,
     targets: list[Combatant],
@@ -108,6 +137,7 @@ def build_activity_context(
     spell_book: dict[str, Spell],
     passive_damage_modifiers: dict[str, dict[str, list[str]]],
     save_modifiers: dict[str, dict[str, Any]],
+    check_modifiers: dict[str, dict[str, Any]] | None = None,
     target_cover: dict[str, str] | None = None,
     scale_values: dict[str, int | str] | None = None,
     class_levels: dict[str, int] | None = None,
@@ -314,7 +344,7 @@ def build_activity_context(
         active_effects=active_effects,
         sneak_attack_spent=sneak_attack_spent or {},
         sneak_attack_ally_adjacent=sneak_attack_ally_adjacent or {},
-        check_modifiers={},
+        check_modifiers=_check_modifier_sidecar(check_modifiers),
         source_passive_effects=source_passive_effects,
         spell_book=spell_book,
         scale_values=scale_values or {},

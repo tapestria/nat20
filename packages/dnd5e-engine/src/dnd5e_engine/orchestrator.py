@@ -62,7 +62,12 @@ from dnd5e_srd_data.schema.item import Weapon, WeaponProperty
 from dnd5e_srd_data.schema.spell import CastingTimeUnit, Spell, SpellRangeUnits
 from pydantic import BaseModel, ConfigDict, Field
 
-from dnd5e_engine.activities.actor_stats import ABILITY_CODES, save_modifier
+from dnd5e_engine.activities.actor_stats import (
+    ABILITY_CODES,
+    check_modifier,
+    save_modifier,
+    skill_ability,
+)
 from dnd5e_engine.activities.attack import (
     attacker_advantage_flags,
     sneak_attack_dice,
@@ -130,7 +135,7 @@ from dnd5e_engine.specs import (
 )
 from dnd5e_engine.types.combat import BehaviorProfile, Combatant
 from dnd5e_engine.types.conditions import ActiveCondition
-from dnd5e_engine.types.effects import ActiveEffect, ActiveEffectDuration
+from dnd5e_engine.types.effects import ActiveEffect, ActiveEffectChange, ActiveEffectDuration
 from dnd5e_engine.views import LiveCombatView
 
 _LOGGER = logging.getLogger(__name__)
@@ -1857,15 +1862,92 @@ _FOUNDRY_SPELL_DC_BONUS_KEY = "system.bonuses.spell.dc"
 # ``apply.py`` already reads ; see docs/dev/passive-projection.md).
 _FOUNDRY_RESISTANCE_KEY = "system.traits.dr.value"
 
+# F1d — the three D20-test bonus buckets that land on the per-actor CHECK sidecar
+# (``check_modifiers[id]``) and the per-ability SAVE sidecar
+# (``save_modifiers[id]["saves"]``). Both the engine's short internal key form and
+# the Foundry-native ``system.bonuses.*`` / ``system.abilities.*`` form are
+# accepted, mirroring the ``system.bonuses.abilities.save`` → ``save.bonus``
+# aliasing above.
+#
+# ``abilities.check`` — a bonus to EVERY ability check (Guidance-shaped); it
+# reaches skill checks too, because a skill check IS an ability check (SRD 5.2
+# §Ability Checks).
+_FOUNDRY_CHECK_BONUS_KEYS = frozenset({"abilities.check", "system.bonuses.abilities.check"})
+# ``abilities.skill`` — a bonus to skill checks only.
+_FOUNDRY_SKILL_BONUS_KEYS = frozenset({"abilities.skill", "system.bonuses.abilities.skill"})
+# ``abilities.<ab>.save`` — a bonus to ONE ability's saving throw (the per-ability
+# counterpart of the generic ``system.bonuses.abilities.save`` bucket, which stays
+# on the action-agnostic ``passive_save_bonus`` dice sidecar).
+_FOUNDRY_PER_ABILITY_SAVE_KEYS: dict[str, str] = {
+    key: ability
+    for ability in ("str", "dex", "con", "int", "wis", "cha")
+    for key in (f"abilities.{ability}.save", f"system.abilities.{ability}.bonuses.save")
+}
+
+
+def _flat_change_value(value: bool | int | str) -> int | None:
+    """The int a D20-test bonus change contributes, or ``None`` to skip it.
+
+    ``check_modifiers[id]["ability_mods"/"skills"]`` and
+    ``save_modifiers[id]["saves"]`` are RESOLVED INTEGER sidecars — the consumers
+    (``activities/check.py::resolve_check``, ``activities/save.py``) add them to a
+    natural d20 with no dice parser. So unlike the neighbouring
+    ``passive_save_bonus`` / ``passive_to_hit_bonus`` sidecars (signed dice
+    STRINGS their consumers roll), a dice-valued change on these buckets is
+    dropped rather than folded: rolling it here would both mis-type the sidecar
+    and consume RNG draws inside a projection that must stay draw-free
+    (determinism contract). Plain integer strings ("2", "-1") still fold.
+    """
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    try:
+        return int(value.strip())
+    except ValueError:
+        return None
+
+
+def _fold_d20_test_bonus(
+    change: ActiveEffectChange,
+    per_target_check: dict[str, Any],
+    per_target_entry: dict[str, Any],
+) -> None:
+    """Fold one ``abilities.check`` / ``abilities.skill`` / ``abilities.<ab>.save``
+    ``add`` change into the per-actor check + per-ability save sidecars.
+
+    SRD 5.2 §Ability Checks — a skill check IS an ability check, so an
+    ``abilities.check`` bonus reaches both the six ability-check modifiers and
+    every proficient skill; ``abilities.skill`` reaches skills only.
+    """
+    amount = _flat_change_value(change.value)
+    if amount is None:
+        return
+    key = change.key
+    if key in _FOUNDRY_CHECK_BONUS_KEYS or key in _FOUNDRY_SKILL_BONUS_KEYS:
+        skills = per_target_check.setdefault("skills", {})
+        for skill in skills:
+            skills[skill] += amount
+        if key in _FOUNDRY_CHECK_BONUS_KEYS:
+            ability_mods = per_target_check.setdefault("ability_mods", {})
+            for ability in ability_mods:
+                ability_mods[ability] += amount
+        return
+    ability = _FOUNDRY_PER_ABILITY_SAVE_KEYS[key]
+    saves = per_target_entry.setdefault("saves", {})
+    saves[ability] = saves.get(ability, 0) + amount
+
 
 def _fold_active_effect_changes(
     active: Sequence[ActiveEffect],
     per_target_dmg: dict[str, Any],
     per_target_entry: dict[str, Any],
+    per_target_check: dict[str, Any],
 ) -> bool:
     """Fold each live effect's Foundry-shaped ``changes`` into the per-target
-    ``per_target_dmg`` (attack/damage sidecar) and ``per_target_entry`` (save/ac
-    sidecar) dicts in place. Returns whether ``per_target_dmg`` was mutated
+    ``per_target_dmg`` (attack/damage sidecar), ``per_target_entry`` (save/ac
+    sidecar) and ``per_target_check`` (ability/skill-check sidecar) dicts in
+    place. Returns whether ``per_target_dmg`` was mutated
     (``dmg_dirty``) so the caller knows to re-store it.
 
     Pure projection over the passed dicts — no ``live`` mutation.
@@ -1926,6 +2008,15 @@ def _fold_active_effect_changes(
                     dmg_dirty = True
                 continue
             if change.mode != "add":
+                continue
+            # F1d — the three D20-test buckets land on INT sidecars, so they are
+            # folded before the signed-dice-string coercion below.
+            if (
+                change.key in _FOUNDRY_CHECK_BONUS_KEYS
+                or change.key in _FOUNDRY_SKILL_BONUS_KEYS
+                or change.key in _FOUNDRY_PER_ABILITY_SAVE_KEYS
+            ):
+                _fold_d20_test_bonus(change, per_target_check, per_target_entry)
                 continue
             val = change.value
             if isinstance(val, bool):
@@ -2031,13 +2122,14 @@ def _project_target_modifiers(
     c: Combatant,
     live: _LiveCombat,
     passive_damage_modifiers: dict[str, dict[str, Any]],
-) -> tuple[dict[str, Any], dict[str, Any] | None]:
+) -> tuple[dict[str, Any], dict[str, Any]]:
     """Project one combatant's per-target save/check entries, folding SRD
     conditions, per-creature resistances/immunities, and active-effect changes.
 
     Mutates ``passive_damage_modifiers[c.entity_id]`` in place (the damage
-    projection lands there directly). Returns ``(save_entry, check_entry)``
-    where ``check_entry`` is ``None`` when the SRD check projection is empty.
+    projection lands there directly). Returns ``(save_entry, check_entry)``;
+    both are always present (F1d — every combatant carries the six ability-check
+    modifiers, so the check entry is no longer condition-gated).
     """
     cond_names = [ac.condition for ac in c.conditions]
     damage_proj = project_passive_damage_modifiers(cond_names)
@@ -2091,14 +2183,39 @@ def _project_target_modifiers(
     # change-fold below is the sole source of these passive modifiers;
     # condition-derived save adv/dis comes from the SRD-condition
     # projection (``project_passive_save_modifiers``).
+    # Per-actor ability/skill CHECK projection. SRD 5.2 §D20 Tests: an ability
+    # check is ``d20 + ability modifier``, plus the proficiency bonus when the
+    # actor is proficient in the skill used (doubled with Expertise). All six
+    # ability modifiers and every proficient skill project through
+    # ``actor_stats.check_modifier`` (F1a); the condition-derived adv/dis lists
+    # (``passive_check_adv`` / ``passive_check_dis``) are MERGED, not replaced,
+    # and ``disadvantage`` is their resolved boolean for consumers that want the
+    # answer rather than the list. ``activities/check.py`` reads
+    # ``entry["skills"][slug]`` first, falling back to
+    # ``entry["ability_mods"][ability]``.
+    check_entry: dict[str, Any] = dict(check_proj)
+    check_entry["ability_mods"] = {ab: check_modifier(c, ab).total for ab in ABILITY_CODES}
+    skills: dict[str, int] = {}
+    for skill in c.skill_proficiencies:
+        ability = skill_ability(skill)
+        if ability is None:
+            # Not an SRD skill slug (a tool proficiency, or a Foundry 3-letter
+            # code): no governing ability to project, so the check falls back to
+            # the ability modifier rather than guessing.
+            continue
+        skills[skill] = check_modifier(c, ability, skill).total
+    check_entry["skills"] = skills
+    check_entry["disadvantage"] = bool(check_proj.get("passive_check_dis"))
+
     active = live.active_effects.get(c.entity_id, [])
     if active:
         per_target_dmg = passive_damage_modifiers.get(c.entity_id, dict(damage_proj))
-        dmg_dirty = _fold_active_effect_changes(active, per_target_dmg, per_target_entry)
+        dmg_dirty = _fold_active_effect_changes(
+            active, per_target_dmg, per_target_entry, check_entry
+        )
         if dmg_dirty:
             passive_damage_modifiers[c.entity_id] = per_target_dmg
 
-    check_entry = dict(check_proj) if any(check_proj.values()) else None
     return per_target_entry, check_entry
 
 
@@ -2189,8 +2306,7 @@ def _build_hydration_payload(live: _LiveCombat, caster: Combatant | None = None)
     for c in live.initiative:
         per_target_entry, check_entry = _project_target_modifiers(c, live, passive_damage_modifiers)
         save_modifiers[c.entity_id] = per_target_entry
-        if check_entry is not None:
-            check_modifiers[c.entity_id] = check_entry
+        check_modifiers[c.entity_id] = check_entry
 
     # ── Per-combatant concentration map ─────────────────────────────────────
     # SRD §Concentration — surface ``{effect_name, effect_id}`` per the
@@ -4234,6 +4350,7 @@ def _resolve_readied_spell_cast(
         spell_book={},
         passive_damage_modifiers=payload["passive_damage_modifiers"],
         save_modifiers=payload["save_modifiers"],
+        check_modifiers=payload["check_modifiers"],
     )
     pre_event_count = len(live.event_log)
     for activity in spell.activities:
@@ -4349,6 +4466,7 @@ def _drain_counterspell_reaction(
         spell_book={},
         passive_damage_modifiers=payload["passive_damage_modifiers"],
         save_modifiers=payload["save_modifiers"],
+        check_modifiers=payload["check_modifiers"],
     )
     pre_event_count = len(live.event_log)
     resolve_activity(save_activity, actx, weapon=None)
@@ -4734,6 +4852,7 @@ async def submit_player_intent(
             cast_level_override=_item_cast_level_override(intent),
             passive_damage_modifiers=payload["passive_damage_modifiers"],
             save_modifiers=payload["save_modifiers"],
+            check_modifiers=payload["check_modifiers"],
             target_cover=_target_cover_map(live, current.entity_id, targets),
             scale_values=scale_values,
             class_levels=class_levels,
@@ -5339,6 +5458,7 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
             spell_book={},
             passive_damage_modifiers=payload["passive_damage_modifiers"],
             save_modifiers=payload["save_modifiers"],
+            check_modifiers=payload["check_modifiers"],
             target_cover=_target_cover_map(live, current.entity_id, target_list),
         )
         for activity in monster_activities:
