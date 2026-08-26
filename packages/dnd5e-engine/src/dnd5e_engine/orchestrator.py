@@ -62,6 +62,7 @@ from dnd5e_srd_data.schema.item import Weapon, WeaponProperty
 from dnd5e_srd_data.schema.spell import CastingTimeUnit, Spell, SpellRangeUnits
 from pydantic import BaseModel, ConfigDict, Field
 
+from dnd5e_engine.activities.actor_stats import ABILITY_CODES, save_modifier
 from dnd5e_engine.activities.attack import (
     attacker_advantage_flags,
     sneak_attack_dice,
@@ -1528,15 +1529,17 @@ def _emit_apply_damage(live: _LiveCombat, event: DamageApplied) -> None:
     # higher. On a failed save, the spell ends."* If the damaged
     # combatant is concentrating on an effect (tracked in
     # ``concentration_chain``), roll the CON save and cascade on
-    # failure. No CON modifier projection at the orchestrator boundary
-    # today (mirrors ``_emit_concentration_save_probe`` in
-    # ``effects/ieffect2.py``); the raw d20 vs. DC determines outcome.
+    # failure. The save applies the concentrating creature's real CON
+    # modifier + proficiency bonus (F1c, via ``actor_stats``); the
+    # natural d20 is a single draw as before.
     # Done BEFORE death synthesis so a dropped-conc + slain caster
     # still surface the cascade before the Death event.
     caster_chain = live.concentration_chain.get(event.target_id)
     if caster_chain:
         dc = max(10, event.amount // 2)
-        roll_total = live.rng.randint(1, 20)
+        concentrator = _find_combatant(live, event.target_id)
+        modifier = save_modifier(concentrator, "con").total if concentrator else 0
+        roll_total = live.rng.randint(1, 20) + modifier
         succeeded = roll_total >= dc
         _emit(
             live,
@@ -2070,18 +2073,15 @@ def _project_target_modifiers(
         damage_proj["vulnerabilities"] = merged_vuln
     if any(damage_proj.values()):
         passive_damage_modifiers[c.entity_id] = dict(damage_proj)
-    # Per-target ``saves`` ability-code → modifier projection. SRD
-    # 5e: ability modifier = floor((score - 10) / 2). The combat
-    # scaffold's ``Combatant`` only carries the DEX score today
-    # (other ability scores are owned by the character sheet /
-    # monster template projection and not yet threaded into
-    # ``_LiveCombat``); we project DEX from ``c.dexterity`` and
-    # leave the other abilities at 0 until that projection lands.
-    # save.py reads ``entry["saves"][ability]`` so the per-target
-    # +4 DEX from a 18-score goblin is observable on the IR's
-    # lower-case ability key.
+    # Per-target ``saves`` ability-code → modifier projection. SRD 5.2
+    # §Saving Throws: ``d20 + ability modifier + proficiency bonus (if
+    # proficient in that save)``. All six abilities project through
+    # ``actor_stats.save_modifier`` (F1c), which reads the hydrated
+    # ability scores, ``save_proficiencies`` and the level/CR-derived
+    # proficiency bonus off the ``Combatant``. save.py reads
+    # ``entry["saves"][ability]`` on the lower-case ability key.
     per_target_entry: dict[str, Any] = dict(save_proj)
-    per_target_entry["saves"] = {"dex": (int(c.dexterity) - 10) // 2}
+    per_target_entry["saves"] = {ab: save_modifier(c, ab).total for ab in ABILITY_CODES}
 
     # Active-effect projection: fold each live effect's Foundry-shaped
     # ``changes`` (Bless +1d4 save, Bane −1d4 save, +1 weapon, etc.) into
@@ -2606,12 +2606,10 @@ def _run_end_of_turn_saves(live: _LiveCombat, actor_id: str) -> None:
     clears the matching entry from ``concentration_chain[caster_id]``
     so the caster's concentration tracking reflects the target's exit.
 
-    No save modifier projected — mirrors ``_emit_concentration_save_probe``
-    and the boundary-level save handling: the orchestrator's d20 is the
-    raw roll. The IR-level Save handler does project per-target save
-    modifiers via the sidecar; once a Combatant carries non-DEX ability
-    scores the end-of-turn save can hydrate them through the same
-    projection. Today WIS/CHA/etc. modifiers project as 0.
+    The repeat save applies the target's real ability modifier +
+    proficiency bonus (F1c, via ``actor_stats.save_modifier``), matching
+    the IR-level Save handler's per-target sidecar projection. The
+    natural d20 is a single draw as before.
     """
     # Collect every repeat-save spec keyed on the actor_id-prefixed
     # identity tuples. Identity is (target_id, effect.id, effect.origin)
@@ -2628,7 +2626,9 @@ def _run_end_of_turn_saves(live: _LiveCombat, actor_id: str) -> None:
             dc = int(spec["dc"])
             condition = str(spec["condition"])
             caster_id = str(spec["caster_id"])
-            roll_total = live.rng.randint(1, 20)
+            target = _find_combatant(live, actor_id)
+            modifier = save_modifier(target, ability).total if target else 0
+            roll_total = live.rng.randint(1, 20) + modifier
             succeeded = roll_total >= dc
             _emit(
                 live,

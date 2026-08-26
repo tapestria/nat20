@@ -8,10 +8,14 @@ Pure: reads a ``Combatant``, returns numbers. Foundry parity:
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Final
 
 from dnd5e_engine.events import Ability
 from dnd5e_engine.rules.dice import ability_modifier, proficiency_bonus
 from dnd5e_engine.types.combat import Combatant
+
+# SRD 5.2 §Ability Scores — the closed six-ability set, in canonical order.
+ABILITY_CODES: Final[tuple[Ability, ...]] = ("str", "dex", "con", "int", "wis", "cha")
 
 _SCORE_ATTR: dict[str, str] = {
     "str": "strength",
