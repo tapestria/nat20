@@ -5,17 +5,20 @@ Transcribed from specs/e2e-scenario-catalog.md, Cluster 22
 (specs/catalog-v2/c22.md). Every combat-bearing setup is grid-only per
 spec §6 D8 — ``GridScene`` + ``"col,row"`` cell ids
 (``dnd5e_engine.spatial.cell_id``), never ``SceneTopology``/zones. Data
-assertions run against the bundled corpus via ``BundledAssetLoader``.
-C22-S05 is a PLAIN (non-xfail) regression — ``Armor.strength_min`` /
-``.stealth_disadvantage`` already ship and are already populated
-correctly; marking it strict-xfail would XPASS immediately.
+assertions run against the bundled corpus via ``BundledAssetLoader``;
+compound scenarios (S01-S03) each pair a dataset-leg schema assertion
+with the grid-combat engine leg the catalog's own "Expected" block
+describes. C22-S05 is a PLAIN (non-xfail) regression —
+``Armor.strength_min`` / ``.stealth_disadvantage`` already ship and are
+already populated correctly; marking it strict-xfail would XPASS
+immediately.
 """
 
 from __future__ import annotations
 
 from dnd5e_srd_data.loader import BundledAssetLoader
 
-from dnd5e_engine import PlayerIntent
+from dnd5e_engine import ActiveEffect, PlayerIntent
 from dnd5e_engine.events import AttackRolled, DamageApplied, SaveRolled
 from dnd5e_engine.orchestrator import (
     _get_live,
@@ -23,7 +26,7 @@ from dnd5e_engine.orchestrator import (
     start_combat,
     submit_player_intent,
 )
-from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
+from dnd5e_engine.specs import EncounterMemberSpec, GridScene, PartyMemberSpec
 from tests.e2e.harness import cell, events_of, grid_scene, run_async, xfail_cluster
 
 
@@ -39,7 +42,9 @@ def test_c22_s01_prone_condition_dataset_entry_and_engine_leg():
     """
     loader = BundledAssetLoader()
 
-    # API delta (C22): AssetLoader.get_condition does not exist today.
+    # API delta (C22): AssetLoader.get_condition does not exist today —
+    # this AttributeError drives the xfail before the engine leg below
+    # (S01b) ever runs, mirroring the C16-S02 "unreachable tail" idiom.
     prone = loader.get_condition("prone")
 
     assert prone is not None
@@ -48,6 +53,63 @@ def test_c22_s01_prone_condition_dataset_entry_and_engine_leg():
     assert any(
         effect.kind == ConditionEffectKind.ADVANTAGE_ATTACKS_AGAINST for effect in prone.effects
     )
+
+    # Engine leg (S01b, per catalog script step 3): the attack roll
+    # against a prone mon:foe, from an adjacent cell, should already be
+    # made with Advantage today — this half is expected to hold via the
+    # existing (data-independent) hard-coded conditions path; it's
+    # pinned here so the whole compound scenario is transcribed, even
+    # though the dataset leg above prevents it from ever running.
+    async def _run():
+        start = await start_combat(
+            session_id="e2e-c22-s01",
+            party=[
+                PartyMemberSpec(
+                    entity_id="char:hero",
+                    name="Hero",
+                    initiative=20,
+                    hp_current=20,
+                    hp_max=20,
+                    strength=16,
+                    zone_id=cell(0, 0),
+                )
+            ],
+            encounter=[
+                EncounterMemberSpec(
+                    entity_id="mon:foe",
+                    entity_type="Monster",
+                    name="Foe",
+                    initiative=1,
+                    hp_current=50,
+                    hp_max=50,
+                    ac=14,
+                    zone_id=cell(1, 0),
+                )
+            ],
+            scene_zones=None,
+            grid_scene=grid_scene(),
+            active_effects=[
+                ActiveEffect(
+                    id="effect:prone",
+                    name="Prone",
+                    origin="test:prone",
+                    target_id="mon:foe",
+                    statuses={"prone"},
+                ),
+            ],
+            rng_seed=7,
+        )
+        live = _get_live(start.handle)
+        await submit_player_intent(
+            start.handle,
+            actor_id="char:hero",
+            intent=PlayerIntent(intent_type="attack", weapon_id="dagger", target_id="mon:foe"),
+        )
+        return live
+
+    live = run_async(_run())
+    rolled = next(e for e in events_of(live, AttackRolled) if e.target_id == "mon:foe")
+    assert rolled.advantage == "advantage"
 
 
 @xfail_cluster(22, "dataset")
@@ -64,10 +126,72 @@ def test_c22_s02_magic_resistance_trait_is_typed_not_prose_only():
     pit_fiend = loader.get_monster("pit-fiend")
     magic_resistance = next(a for a in pit_fiend.special_abilities if a.name == "Magic Resistance")
 
-    # API delta (C22): MonsterAction.mechanic does not exist today.
+    # API delta (C22): MonsterAction.mechanic does not exist today — this
+    # AttributeError drives the xfail before the engine leg below (S02b)
+    # ever runs.
     from dnd5e_srd_data.schema.monster import MonsterTraitMechanic
 
     assert magic_resistance.mechanic == MonsterTraitMechanic.MAGIC_RESISTANCE
+
+    # Engine leg (S02b, per catalog script step 3): same-seed A/B, a
+    # save-requiring spell rolled once against the Magic-Resistance
+    # monster (pit-fiend) and once against a control with identical CR
+    # tier but no Magic Resistance trait (ogre, verified corpus:
+    # zero special_abilities). If Magic Resistance were honored, the
+    # pit-fiend's save draws an extra d20 (Advantage), diverging the
+    # RNG stream from the control's flat roll.
+    def _party():
+        return [
+            PartyMemberSpec(
+                entity_id="char:wiz",
+                name="Wizard",
+                initiative=20,
+                hp_current=30,
+                hp_max=30,
+                character_level=5,
+                class_slug="wizard",
+                spells_known=["fireball"],
+                spell_slots={3: 1},
+                zone_id=cell(0, 0),
+            )
+        ]
+
+    async def _run(slug: str, ac: int, hp: int):
+        start = await start_combat(
+            session_id=f"e2e-c22-s02-{slug}",
+            party=_party(),
+            encounter=[
+                EncounterMemberSpec(
+                    entity_id="mon:foe",
+                    entity_type="Monster",
+                    name="Foe",
+                    initiative=1,
+                    hp_current=hp,
+                    hp_max=hp,
+                    ac=ac,
+                    zone_id=cell(2, 0),
+                    monster_template_slug=slug,
+                )
+            ],
+            scene_zones=None,
+            grid_scene=grid_scene(),
+            rng_seed=9,
+        )
+        live = _get_live(start.handle)
+        await submit_player_intent(
+            start.handle,
+            actor_id="char:wiz",
+            intent=PlayerIntent(intent_type="cast_spell", spell_id="fireball", target_id="mon:foe"),
+        )
+        return next(e for e in events_of(live, SaveRolled) if e.target_id == "mon:foe")
+
+    save_resisted = run_async(_run("pit-fiend", 21, 337))
+    save_control = run_async(_run("ogre", 11, 68))
+
+    assert save_resisted.roll_total != save_control.roll_total, (
+        "Magic Resistance should consume an extra d20 draw (advantage), "
+        "diverging the RNG stream from the non-resistant control"
+    )
 
 
 @xfail_cluster(22, "dataset")
@@ -83,8 +207,70 @@ def test_c22_s03_sacred_flame_save_ignores_cover():
     sacred_flame = loader.get_spell("sacred-flame")
     save_activity = next(a for a in sacred_flame.activities if a.kind == "save")
 
-    # API delta (C22): SaveBlock.ignore_cover does not exist today.
+    # API delta (C22): SaveBlock.ignore_cover does not exist today — this
+    # AttributeError drives the xfail before the engine leg below (S03b)
+    # ever runs.
     assert save_activity.save.ignore_cover is True
+
+    # Engine leg (S03b, per catalog script steps 1-2): same-seed A/B — a
+    # control DEX-save cantrip (Acid Splash, the corpus's only other
+    # DEX-save cantrip) against Sacred Flame, cast by the same caster at
+    # the same half-cover target so DC/ability/natural-roll are held
+    # identical and only the ignore_cover carve-out should differ the
+    # totals by cover's +2.
+    def _run(spell_slug: str):
+        async def _inner():
+            start = await start_combat(
+                session_id=f"e2e-c22-s03-{spell_slug}",
+                party=[
+                    PartyMemberSpec(
+                        entity_id="char:cleric",
+                        name="Cleric",
+                        initiative=20,
+                        hp_current=20,
+                        hp_max=20,
+                        spells_known=["sacred-flame", "acid-splash"],
+                        character_level=1,
+                        zone_id=cell(0, 0),
+                    )
+                ],
+                encounter=[
+                    EncounterMemberSpec(
+                        entity_id="mon:foe",
+                        entity_type="Monster",
+                        name="Foe",
+                        initiative=1,
+                        hp_current=20,
+                        hp_max=20,
+                        ac=12,
+                        dexterity=10,
+                        zone_id=cell(5, 0),
+                    )
+                ],
+                scene_zones=None,
+                grid_scene=GridScene(width=10, height=10, cover_cells={cell(5, 0): "half"}),
+                rng_seed=13,
+            )
+            live = _get_live(start.handle)
+            await submit_player_intent(
+                start.handle,
+                actor_id="char:cleric",
+                intent=PlayerIntent(
+                    intent_type="cast_spell", spell_id=spell_slug, target_id="mon:foe"
+                ),
+            )
+            return next(e for e in events_of(live, SaveRolled) if e.target_id == "mon:foe")
+
+        return run_async(_inner())
+
+    control_save = _run("acid-splash")
+    sacred_flame_save = _run("sacred-flame")
+
+    assert control_save.dc == sacred_flame_save.dc
+    assert control_save.roll_total - sacred_flame_save.roll_total == 2, (
+        "cover's +2 should apply to Acid Splash's save but be stripped "
+        "from Sacred Flame's by ignore_cover"
+    )
 
 
 @xfail_cluster(22, "dataset")
@@ -93,63 +279,78 @@ def test_c22_s04_magic_weapon_flag_bypasses_nonmagical_bps_resistance():
     overcome resistance to nonmagical bludgeoning/piercing/slashing.
     ``Weapon`` has no ``magical`` field today; the translator's
     ``_PROPERTY_CODE_TO_ENUM`` map has no ``mgc`` entry, so the flag is
-    silently filtered out — Flame Tongue ships ``magicalBonus: null``
-    while still carrying ``properties: [mgc]``, so ``magical_bonus`` is
-    not a reliable proxy.
+    silently filtered out. Substitution note: the catalog's own example
+    (Flame Tongue) is authored at translate-time as an ``enchant``-kind
+    rider item with no directly-resolvable ``AttackActivity``/
+    ``damage_parts`` of its own (verified live: ``get_weapon(
+    "flame-tongue").damage_parts == []``) — not directly attackable via
+    ``weapon_id``, so this scenario resolves against
+    ``dagger-of-venom`` instead, a real shipped ``+1`` piercing weapon
+    with its own ``AttackActivity`` (corpus-verified:
+    ``magical_bonus=1``, ``damage_parts=[1d4 piercing]``).
     """
     loader = BundledAssetLoader()
-    flame_tongue = loader.get_weapon("flame-tongue")
+    dagger_of_venom = loader.get_weapon("dagger-of-venom")
 
-    # API delta (C22): Weapon.magical does not exist today.
-    assert flame_tongue.magical is True
+    # API delta (C22): Weapon.magical does not exist today — this
+    # AttributeError drives the xfail before the engine leg below ever
+    # runs.
+    assert dagger_of_venom.magical is True
 
-    async def _run():
-        start = await start_combat(
-            session_id="e2e-c22-s04",
-            party=[
-                PartyMemberSpec(
-                    entity_id="char:hero",
-                    name="Hero",
-                    initiative=20,
-                    hp_current=20,
-                    hp_max=20,
-                    strength=16,
-                    attack_bonus=5,
-                    equipment=("flame-tongue",),
-                    zone_id=cell(0, 0),
-                )
-            ],
-            encounter=[
-                EncounterMemberSpec(
-                    entity_id="mon:foe",
-                    entity_type="Monster",
-                    name="Foe",
-                    initiative=1,
-                    hp_current=100,
-                    hp_max=100,
-                    ac=1,
-                    damage_resistances=["bludgeoning", "piercing", "slashing"],
-                    zone_id=cell(1, 0),
-                )
-            ],
-            scene_zones=None,
-            grid_scene=grid_scene(),
-            rng_seed=5,
-        )
-        live = _get_live(start.handle)
-        await submit_player_intent(
-            start.handle,
-            actor_id="char:hero",
-            intent=PlayerIntent(
-                intent_type="attack", weapon_id="flame-tongue", target_id="mon:foe"
-            ),
-        )
-        return live
+    def _run(*, resistant: bool):
+        async def _inner():
+            start = await start_combat(
+                session_id=f"e2e-c22-s04-{resistant}",
+                party=[
+                    PartyMemberSpec(
+                        entity_id="char:hero",
+                        name="Hero",
+                        initiative=20,
+                        hp_current=20,
+                        hp_max=20,
+                        strength=16,
+                        attack_bonus=5,
+                        equipment=("dagger-of-venom",),
+                        zone_id=cell(0, 0),
+                    )
+                ],
+                encounter=[
+                    EncounterMemberSpec(
+                        entity_id="mon:foe",
+                        entity_type="Monster",
+                        name="Foe",
+                        initiative=1,
+                        hp_current=100,
+                        hp_max=100,
+                        ac=1,
+                        damage_resistances=["piercing"] if resistant else [],
+                        zone_id=cell(1, 0),
+                    )
+                ],
+                scene_zones=None,
+                grid_scene=grid_scene(),
+                rng_seed=5,
+            )
+            live = _get_live(start.handle)
+            await submit_player_intent(
+                start.handle,
+                actor_id="char:hero",
+                intent=PlayerIntent(
+                    intent_type="attack", weapon_id="dagger-of-venom", target_id="mon:foe"
+                ),
+            )
+            return sum(e.amount for e in events_of(live, DamageApplied) if e.target_id == "mon:foe")
 
-    live = run_async(_run())
-    dmg = [e for e in events_of(live, DamageApplied) if e.target_id == "mon:foe"]
-    assert dmg
-    assert dmg[0].is_overkill is False or dmg[0].amount > 0
+        return run_async(_inner())
+
+    dmg_resisted_target = _run(resistant=True)
+    dmg_baseline_target = _run(resistant=False)
+
+    assert dmg_resisted_target == dmg_baseline_target, (
+        "a magical weapon should deal its full, unhalved roll against a "
+        "nonmagical-piercing-resistant target, same as against a "
+        "non-resistant one at the same seed"
+    )
 
 
 def test_c22_s05_chain_mail_strength_min_and_stealth_disadvantage():

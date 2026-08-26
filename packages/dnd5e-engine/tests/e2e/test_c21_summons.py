@@ -11,7 +11,7 @@ delta introduces).
 
 from __future__ import annotations
 
-from dnd5e_engine import PlayerIntent
+from dnd5e_engine import ActiveEffect, ActiveEffectDuration, PlayerIntent
 from dnd5e_engine.events import (
     AttackRolled,
     ConcentrationDropped,
@@ -98,6 +98,31 @@ def test_c21_s02_losing_concentration_dismisses_the_summoned_dragon():
     ``EffectExpired`` + ``ConditionRemoved`` today, but it does not
     know about summoned combatants because none can exist yet (per
     C21-S01) — there is no ``CombatantLeft`` event at all.
+
+    Empirically verified in this worktree (``uv run python`` probe
+    against the real seeded engine, ``rng_seed`` 1-29): casting
+    ``summon-dragon`` alone registers NO ``concentration_chain`` entry
+    at all, because the ``summon``-kind activity resolves to a
+    narrative no-op (per C21-S01) that never creates an ``ActiveEffect``
+    — so no seed ever produces a Constitution save from
+    ``mon:breaker``'s hit; the concentration-check mechanism the
+    catalog's "if the save fails by seed" hedge presumes never even
+    fires. To exercise the REAL, already-working half of this scenario
+    (does an existing concentration effect actually break on damage),
+    an ``ActiveEffect(flags={"concentration": True})`` is seeded on
+    ``char:druid`` at ``start_combat`` time — standing in for the
+    concentration link ``summon-dragon``'s cast SHOULD have registered
+    — via the same ``active_effects=`` seam C12/C13 use.
+    ``monster_template_slug="hill-giant"`` is required for
+    ``mon:breaker`` to attack at all: a monster with no
+    ``monster_template_slug`` has no typed action repertoire and
+    resolves its turn to a bare ``pass`` (``advance_monster_turn``
+    only reads ``Monster.actions`` off the lib loader by slug — the
+    legacy flat ``attack_bonus``/``damage_dice`` fields on
+    ``EncounterMemberSpec`` are read nowhere in that path). With both
+    fixes, ``rng_seed=4`` was empirically confirmed to produce a single
+    Tree Club hit (17 damage) and a failed CON save
+    (``roll_total=5`` vs ``dc=10``) — a real ``ConcentrationDropped``.
     """
 
     async def _run():
@@ -135,14 +160,25 @@ def test_c21_s02_losing_concentration_dismisses_the_summoned_dragon():
                     hp_current=100,
                     hp_max=100,
                     ac=1,
-                    attack_bonus=15,
-                    damage_dice="4d8",
+                    monster_template_slug="hill-giant",
                     zone_id=cell(1, 0),
                 ),
             ],
             scene_zones=None,
             grid_scene=GridScene(width=10, height=10, wall_segments=[]),
-            rng_seed=7,
+            active_effects=[
+                # Stands in for the concentration link summon-dragon's
+                # cast SHOULD register today (per C21-S01, it doesn't).
+                ActiveEffect(
+                    id="effect:summon-dragon-concentration",
+                    name="Summon Dragon",
+                    origin="cast:summon-dragon:char:druid",
+                    target_id="char:druid",
+                    duration=ActiveEffectDuration(rounds=10),
+                    flags={"concentration": True},
+                ),
+            ],
+            rng_seed=4,
         )
         live = _get_live(start.handle)
         await submit_player_intent(
@@ -159,7 +195,8 @@ def test_c21_s02_losing_concentration_dismisses_the_summoned_dragon():
     live, roster_before_hit = run_async(_run())
 
     assert events_of(live, ConcentrationDropped), (
-        "rng_seed=7 is pinned to fail char:druid's concentration save against mon:breaker's hit"
+        "rng_seed=4 is empirically verified (see docstring) to fail "
+        "char:druid's concentration save against mon:breaker's hit"
     )
 
     # API delta (C21): CombatantLeft does not exist on events.py today —
@@ -391,6 +428,16 @@ def test_c21_s06_polymorph_save_kind_resolves_save_but_no_transform_effect():
     ``transform``-kind (confirmed via corpus-wide grep) — the save/DC
     half works via ``resolve_save``, but nothing implements the
     stat-block-swap-with-temp-HP-overlay consequence of a failed save.
+
+    Empirically verified in this worktree (``uv run python`` probe
+    against the real seeded engine, ``rng_seed`` 1-29, this exact
+    setup): ``rng_seed=17`` actually produces a SUCCEEDED save
+    (``roll_total=17`` vs ``dc=10``), not a failure as the catalog's
+    original placeholder seed assumed. ``rng_seed=1`` was empirically
+    confirmed to draw a natural roll totalling 5 against ``dc=10`` — a
+    real failed Wisdom save (mon:foe's WIS modifier is +0: no
+    per-ability save bonus is representable on ``EncounterMemberSpec``
+    today, per C18-S03's finding).
     """
 
     async def _run():
@@ -423,7 +470,7 @@ def test_c21_s06_polymorph_save_kind_resolves_save_but_no_transform_effect():
             ],
             scene_zones=None,
             grid_scene=GridScene(width=5, height=5, wall_segments=[]),
-            rng_seed=17,
+            rng_seed=1,
         )
         live0 = _get_live(start.handle)
         baseline = next(c for c in live0.initiative if c.entity_id == "mon:foe")
@@ -444,7 +491,9 @@ def test_c21_s06_polymorph_save_kind_resolves_save_but_no_transform_effect():
     assert saves[0].ability == "wis"
 
     after = next(c for c in live1.initiative if c.entity_id == "mon:foe")
-    assert saves[0].succeeded is False, "rng_seed=17 is pinned to fail mon:foe's Wisdom save"
+    assert saves[0].succeeded is False, (
+        "rng_seed=1 is empirically verified (see docstring) to fail mon:foe's Wisdom save"
+    )
     # API delta (C21): a failed save should grant temp HP + a stat swap;
     # neither consumer exists today regardless of the save's outcome.
     assert live1.tracked_temp_hp.get("mon:foe", 0) > 0

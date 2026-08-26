@@ -10,6 +10,8 @@ convention, since it would XPASS immediately if marked strict-xfail.
 
 from __future__ import annotations
 
+import random
+
 import pytest
 
 from dnd5e_engine import PlayerIntent
@@ -20,6 +22,7 @@ from dnd5e_engine.orchestrator import (
     start_combat,
     submit_player_intent,
 )
+from dnd5e_engine.rules.dice import roll_d6
 from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
 from tests.e2e.harness import cell, events_of, grid_scene, run_async, xfail_cluster
 
@@ -155,6 +158,20 @@ def test_c20_s03_fighting_style_great_weapon_fighting_floors_1_2_damage_dice_at_
     ships ``activities: []``, ``passive_effects: []`` and no per-die
     floor logic exists anywhere under ``activities/dice.py`` or
     ``activities/damage.py``.
+
+    ``buffed_total - base_total`` must equal the exact sum of
+    ``(3 - raw_die)`` over every raw die in ``{1, 2}`` from the SAME
+    seed's underlying 2d6 roll (never negative per die, never applied
+    to dice showing 3-6) — per the catalog's own "pin the seed's raw
+    die values via a direct ``rules/dice.py`` reseed-and-roll probe"
+    technique. Both ``_run`` calls raise a ``pydantic.ValidationError``
+    today (``fighting_style`` is not yet a valid ``PartyMemberSpec``
+    field — ``extra="forbid"`` rejects it before either combat ever
+    starts), so this exact-delta assertion is unreachable code today,
+    same as the weaker bound it replaces; the reseed probe below is a
+    best-effort reconstruction of the raw 2d6 for whichever RNG
+    position the real feature lands on and may need re-pinning once
+    ``fighting_style`` and the per-die floor actually ship.
     """
 
     def _run(fighting_style: str | None):
@@ -206,7 +223,13 @@ def test_c20_s03_fighting_style_great_weapon_fighting_floors_1_2_damage_dice_at_
     base_total = _run(None)
     buffed_total = _run("great-weapon-fighting")
 
-    assert buffed_total > base_total
+    # Reseed-and-roll probe (catalog's own sanctioned technique): pin the
+    # raw 2d6 this seed produces so the delta assertion is exact, not a
+    # bare inequality.
+    raw_dice = roll_d6(count=2, rng=random.Random(13)).dice
+    expected_delta = sum(max(0, 3 - d) for d in raw_dice if d in (1, 2))
+
+    assert buffed_total - base_total == expected_delta
 
 
 @xfail_cluster(20, "class feature mechanics")
