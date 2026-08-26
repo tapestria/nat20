@@ -121,19 +121,92 @@ def test_c16_s02_burning_hands_cone_fires_from_casters_own_cell():
     effect that extends in straight lines from a point of origin in a
     direction its creator chooses."
     (packs/_source/content24/appendices/appendix-d-rule-references.yml,
-    id DqqAOr5JnX71OCOw, heading "Cone"). ``PlayerIntent`` has no
-    ``direction`` field today to express which of the 8 grid directions a
-    self-centered cone fires along — API delta (C16).
+    id DqqAOr5JnX71OCOw, heading "Cone"). Burning Hands' 15 ft cone:
+    packages/dnd5e-srd-data/src/dnd5e_srd_data/canonical/spells/burning-hands.json
+    (``target.template = {type: "cone", size: "15", units: "ft"}``,
+    ``range.units = "self"``).
+
+    With a real cone walk, ``mon:front`` (2 cells "ahead", inside a 3-cell
+    forward cone) should take ``DamageApplied(damage_type="fire")`` (bounded
+    ``[3, 18]``, 3d6) and ``mon:behind`` (2 cells "behind") should take
+    none. ``PlayerIntent`` has no ``direction`` field today to express
+    which of the 8 grid directions a self-centered cone fires along —
+    ``cells_in_template(shape="cone", ...)`` already requires it, but
+    nothing upstream populates one — so the scripted cast below (which
+    presumes the field, per the catalog's own script) fails at intent
+    construction (``extra="forbid"``) before the scripted assertions can
+    even run; they are pinned here so the scenario turns green once
+    ``direction`` lands and ``_expand_aoe_target_list`` gets the
+    ``cells_in_template`` rewiring from C16-S01.
     """
-    kwargs = dict(
-        intent_type="cast_spell",
-        spell_id="burning-hands",
-        target_id="mon:front",
-        direction=(1, 0),
-    )
-    # API delta (C16): PlayerIntent.direction does not exist today —
-    # extra="forbid" rejects the kwarg before any combat is even needed.
-    PlayerIntent(**kwargs)
+
+    async def _run():
+        start = await start_combat(
+            session_id="e2e-c16-s02",
+            party=[
+                PartyMemberSpec(
+                    entity_id="char:wiz",
+                    name="Wizard",
+                    initiative=20,
+                    hp_current=20,
+                    hp_max=20,
+                    character_level=3,
+                    class_slug="wizard",
+                    spells_known=["burning-hands"],
+                    spell_slots={1: 1},
+                    zone_id=cell(5, 5),
+                )
+            ],
+            encounter=[
+                EncounterMemberSpec(
+                    entity_id="mon:front",
+                    entity_type="Monster",
+                    name="Front",
+                    initiative=10,
+                    hp_current=200,
+                    hp_max=200,
+                    ac=1,
+                    zone_id=cell(7, 5),
+                ),
+                EncounterMemberSpec(
+                    entity_id="mon:behind",
+                    entity_type="Monster",
+                    name="Behind",
+                    initiative=9,
+                    hp_current=200,
+                    hp_max=200,
+                    ac=1,
+                    zone_id=cell(3, 5),
+                ),
+            ],
+            scene_zones=None,
+            grid_scene=grid_scene(width=11, height=11),
+            rng_seed=3,
+        )
+        live = _get_live(start.handle)
+        # API delta (C16): PlayerIntent.direction does not exist today —
+        # extra="forbid" rejects this before the cast can even resolve,
+        # which is the failure that drives this scenario's xfail.
+        await submit_player_intent(
+            start.handle,
+            actor_id="char:wiz",
+            intent=PlayerIntent(
+                intent_type="cast_spell",
+                spell_id="burning-hands",
+                target_id="mon:front",
+                direction=(1, 0),
+            ),
+        )
+        return live
+
+    live = run_async(_run())
+    front_dmg = [e for e in events_of(live, DamageApplied) if e.target_id == "mon:front"]
+    behind_dmg = [e for e in events_of(live, DamageApplied) if e.target_id == "mon:behind"]
+
+    assert front_dmg
+    assert front_dmg[0].damage_type == "fire"
+    assert 3 <= front_dmg[0].amount <= 18
+    assert not behind_dmg
 
 
 @xfail_cluster(16, "spatial targeting")

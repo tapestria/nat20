@@ -170,78 +170,126 @@ def test_c18_s03_legendary_resistance_converts_failed_save_and_saves_ignore_prof
     proficient-Wis dragon, dropping the stat block's ``+7`` Wis save
     entirely.
 
-    Seed choice: ``rng_seed=9`` was empirically verified (running the
-    real seeded engine against this exact setup) to draw a natural d20
-    of 15 for the dragon's Wis save against DC 12 — today's ``+0``
-    modifier yields ``roll_total=15`` (succeeds); the SRD-correct
-    proficient ``+7`` modifier this scenario pins would yield
-    ``roll_total=22``, still >= DC 12, so this same seed cannot ALSO
-    exercise a failed-save-converted-by-Legendary-Resistance branch
-    without changing what's asserted — that half of the gap is pinned
-    separately via the presumed event class's mere existence.
+    Part 1 (same-seed A/B delta): ``adult-red-dragon`` (Wis 13, proficient,
+    ``saving_throws.wis=7`` = ability mod +1 + proficiency bonus +6) vs
+    ``brown-bear`` (Wis 13 too, ``saving_throws.wis=None`` — non-proficient)
+    at the identical seed isolates PURELY the proficiency-bonus delta (+6):
+    with matching Wis ability scores on both templates, the only variable
+    left is proficiency. Today both resolve to a flat +0 (empirically
+    verified: seed 9 -> natural 15 on both), so the delta is 0; SRD-correct
+    it should be exactly +6 (the dragon's proficiency bonus component).
+
+    Part 2 (fail -> Legendary-Resistance-converts): seed 2 was empirically
+    verified (running the real seeded engine against this exact setup) to
+    draw a natural d20 of 2 for the dragon's Wis save against DC 12 — this
+    fails even under the SRD-correct proficient +7 modifier this scenario
+    pins (2 + 7 = 9 < 12), so the fail-then-convert narrative holds once
+    both the proficiency gap and the resistance hook land. Run A pins
+    today's already-correct fail/condition-apply mechanics (no gap by
+    itself); Run B exercises the presumed ``resolve_legendary_resistance``
+    hook, which does not exist anywhere in ``orchestrator.py`` today.
     """
 
-    async def _run():
-        start = await start_combat(
-            session_id="e2e-c18-s03",
-            party=[
-                PartyMemberSpec(
-                    entity_id="char:wiz",
-                    name="Wizard",
-                    initiative=20,
-                    hp_current=30,
-                    hp_max=30,
-                    wisdom=10,
-                    character_level=9,
-                    class_slug="wizard",
-                    spells_known=["hold-monster"],
-                    spell_slots={5: 1},
-                    zone_id=cell(0, 0),
-                )
-            ],
-            encounter=[
-                EncounterMemberSpec(
-                    entity_id="mon:dragon",
-                    entity_type="Monster",
-                    name="Adult Red Dragon",
-                    initiative=1,
-                    hp_current=256,
-                    hp_max=256,
-                    ac=19,
-                    zone_id=cell(2, 0),
-                    monster_template_slug="adult-red-dragon",
-                )
-            ],
-            scene_zones=None,
-            grid_scene=grid_scene(),
-            rng_seed=9,
-        )
-        live = _get_live(start.handle)
-        await submit_player_intent(
-            start.handle,
-            actor_id="char:wiz",
-            intent=PlayerIntent(
-                intent_type="cast_spell", spell_id="hold-monster", target_id="mon:dragon"
-            ),
-        )
-        return live
+    def _run(slug: str, hp: int, ac: int, seed: int):
+        async def _inner():
+            start = await start_combat(
+                session_id=f"e2e-c18-s03-{slug}-{seed}",
+                party=[
+                    PartyMemberSpec(
+                        entity_id="char:wiz",
+                        name="Wizard",
+                        initiative=20,
+                        hp_current=30,
+                        hp_max=30,
+                        wisdom=10,
+                        character_level=9,
+                        class_slug="wizard",
+                        spells_known=["hold-monster"],
+                        spell_slots={5: 1},
+                        zone_id=cell(0, 0),
+                    )
+                ],
+                encounter=[
+                    EncounterMemberSpec(
+                        entity_id="mon:dragon",
+                        entity_type="Monster",
+                        name="Dragon",
+                        initiative=1,
+                        hp_current=hp,
+                        hp_max=hp,
+                        ac=ac,
+                        zone_id=cell(2, 0),
+                        monster_template_slug=slug,
+                    )
+                ],
+                scene_zones=None,
+                grid_scene=grid_scene(),
+                rng_seed=seed,
+            )
+            live = _get_live(start.handle)
+            await submit_player_intent(
+                start.handle,
+                actor_id="char:wiz",
+                intent=PlayerIntent(
+                    intent_type="cast_spell", spell_id="hold-monster", target_id="mon:dragon"
+                ),
+            )
+            return start.handle, live
 
-    live = run_async(_run())
-    saves = [e for e in events_of(live, SaveRolled) if e.target_id == "mon:dragon"]
-    assert saves
+        return run_async(_inner())
 
-    # The dragon's stat-block Wis save proficiency (+7) must be reflected in
-    # the roll total — today it is silently dropped to +0 (natural 15 -> 15,
-    # not the SRD-correct 22).
-    save = saves[0]
-    assert save.roll_total == 22, "roll_total should be natural_d20(15) + 7, not +0"
+    # Part 1 — same-seed A/B: proficient dragon vs a non-proficient
+    # same-Wis-ability-score brown-bear, isolating the proficiency delta.
+    _, live_dragon = _run("adult-red-dragon", 256, 19, 9)
+    _, live_bear = _run("brown-bear", 34, 11, 9)
+    roll_dragon = next(
+        e for e in events_of(live_dragon, SaveRolled) if e.target_id == "mon:dragon"
+    ).roll_total
+    roll_bear = next(
+        e for e in events_of(live_bear, SaveRolled) if e.target_id == "mon:dragon"
+    ).roll_total
+    assert roll_dragon - roll_bear == 6, (
+        "same natural d20 (seed 9) should differ ONLY by the dragon's +6 "
+        "Wis-save proficiency bonus, not resolve identically"
+    )
 
-    # API delta (C18): a Legendary-Resistance conversion hook/event does not
-    # exist anywhere today — its mere presence on the events module is
-    # pinned unconditionally (a failed save must be convertible).
+    # Part 2, Run A — a failed save (seed 2 -> natural 2) applies Paralyzed
+    # normally; this half already works today (no gap by itself).
+    from dnd5e_engine.events import ConditionApplied
+
+    _, live_a = _run("adult-red-dragon", 256, 19, 2)
+    save_a = next(e for e in events_of(live_a, SaveRolled) if e.target_id == "mon:dragon")
+    assert save_a.succeeded is False
+    paralyzed_a = [
+        e
+        for e in events_of(live_a, ConditionApplied)
+        if e.target_id == "mon:dragon" and e.condition == "paralyzed"
+    ]
+    assert paralyzed_a
+
+    # Part 2, Run B — identical setup/seed, but the dragon elects to spend a
+    # Legendary Resistance use, converting the failure to success. API delta
+    # (C18): resolve_legendary_resistance does not exist anywhere in
+    # orchestrator.py today.
+    from dnd5e_engine import orchestrator as orchestrator_module
+
+    handle_b, live_b = _run("adult-red-dragon", 256, 19, 2)
+    orchestrator_module.resolve_legendary_resistance(handle_b, "mon:dragon")
+
     from dnd5e_engine import events as events_module
 
-    assert hasattr(events_module, "LegendaryResistanceUsed")
+    used = [
+        e
+        for e in live_b.event_log
+        if isinstance(e, events_module.LegendaryResistanceUsed) and e.actor_id == "mon:dragon"
+    ]
+    assert used
+    paralyzed_b = [
+        e
+        for e in events_of(live_b, ConditionApplied)
+        if e.target_id == "mon:dragon" and e.condition == "paralyzed"
+    ]
+    assert not paralyzed_b, "a Legendary-Resistance-converted save must not apply the condition"
 
 
 @xfail_cluster(18, "monster action economy")

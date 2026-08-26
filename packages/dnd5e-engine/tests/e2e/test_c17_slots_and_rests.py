@@ -187,93 +187,119 @@ def test_c17_s05_magic_missile_upcast_at_slot_3_should_fire_5_darts():
 
 
 @xfail_cluster(17, "spell slots & rests")
-def test_c17_s06_counterspell_with_empty_slot_pool_still_fires_for_free():
-    """C17-S06: general Spell Slots rule — "When you cast a spell, you
-    expend a slot of that spell's level or higher"
+def test_c17_s06_counterspell_with_empty_slot_pool_or_out_of_range_still_fires_for_free():
+    """C17-S06: two independent, co-located gates in
+    ``_drain_counterspell_reaction`` — "No-slot readied reactions fire for
+    free." AND "Counterspell range ungated at drain time." (both
+    BACKLOG.md, "Reactions" section).
+
+    Branch A (no slot): general Spell Slots rule — "When you cast a spell,
+    you expend a slot of that spell's level or higher"
     (packs/_source/content24/chapter-7/spells.yml:503-517); no slot-gated
     cast should resolve without an available slot.
     ``_drain_counterspell_reaction`` contains ``if reactor_slots.get(cs_level, 0)
     > 0: ...`` with NO ``else`` branch — an EMPTY 3rd-level pool still
     lets the reaction fire and resolve for free today.
 
+    Branch B (out of range): Counterspell's own typed data —
+    ``range.value: '60'``, ``range.units: ft`` (confirmed:
+    ``BundledAssetLoader().get_spell("counterspell").range ==
+    RangeSpec(units=ft, value=60)``). ``_drain_counterspell_reaction``
+    never checks range/LoS at all — a reactor 90 ft away (beyond the 60 ft
+    Counterspell range) still drains its reaction and resolves today.
+
     Seed choice: ``rng_seed=9`` matches the catalog's own choice
     (inherited from C06-S01's seed-9 branch, which this scenario
     deliberately mirrors for the reactor/enemy-caster pairing) — kept
-    unchanged per the task brief's binding note; the asserted
-    relationship (a `ReactionTriggered` firing today despite the empty
-    pool) is what's under test, not the specific seed value.
+    unchanged per the task brief's binding note; the asserted relationship
+    (a ``ReactionTriggered`` firing today despite the empty pool / the out-
+    of-range separation) is what's under test, not the specific seed
+    value. Initiative is set so the enemy caster's turn immediately
+    follows the reactor's ``ready`` turn (``mon:target``'s initiative is
+    kept BELOW the enemy caster's, unlike a naive numeric ordering, so the
+    scripted second ``submit_player_intent`` lands on the enemy caster's
+    own turn rather than raising ``not_actor_turn``) — empirically
+    verified against the real engine for both branches below.
     """
 
-    async def _run():
-        start = await start_combat(
-            session_id="e2e-c17-s06",
-            party=[
-                PartyMemberSpec(
-                    entity_id="char:reactor",
-                    name="Reactor",
-                    initiative=20,
-                    hp_current=30,
-                    hp_max=30,
-                    intelligence=18,
-                    class_slug="wizard",
-                    character_level=5,
-                    spells_known=["counterspell"],
-                    spell_slots={3: 0},
-                    zone_id=cell(0, 0),
+    def _run(*, reactor_slots: dict, enemy_col: int, target_col: int):
+        async def _inner():
+            start = await start_combat(
+                session_id=f"e2e-c17-s06-{enemy_col}",
+                party=[
+                    PartyMemberSpec(
+                        entity_id="char:reactor",
+                        name="Reactor",
+                        initiative=20,
+                        hp_current=30,
+                        hp_max=30,
+                        intelligence=18,
+                        class_slug="wizard",
+                        character_level=5,
+                        spells_known=["counterspell"],
+                        spell_slots=reactor_slots,
+                        zone_id=cell(0, 0),
+                    ),
+                    PartyMemberSpec(
+                        entity_id="char:enemy_caster",
+                        name="Enemy Caster",
+                        initiative=15,
+                        hp_current=30,
+                        hp_max=30,
+                        intelligence=16,
+                        class_slug="wizard",
+                        character_level=5,
+                        spells_known=["fireball"],
+                        spell_slots={3: 1},
+                        zone_id=cell(enemy_col, 0),
+                    ),
+                ],
+                encounter=[
+                    EncounterMemberSpec(
+                        entity_id="mon:target",
+                        entity_type="Monster",
+                        name="Target",
+                        initiative=1,
+                        hp_current=50,
+                        hp_max=50,
+                        ac=10,
+                        zone_id=cell(target_col, 0),
+                    )
+                ],
+                scene_zones=None,
+                grid_scene=GridScene(width=30, height=10, cell_size_ft=5),
+                rng_seed=9,
+            )
+            live = _get_live(start.handle)
+            await submit_player_intent(
+                start.handle,
+                actor_id="char:reactor",
+                intent=PlayerIntent(
+                    intent_type="ready",
+                    spell_id="counterspell",
+                    slot_level=3,
+                    reaction_trigger="cast_spell",
                 ),
-                PartyMemberSpec(
-                    entity_id="char:enemy_caster",
-                    name="Enemy Caster",
-                    initiative=1,
-                    hp_current=30,
-                    hp_max=30,
-                    intelligence=16,
-                    class_slug="wizard",
-                    character_level=5,
-                    spells_known=["fireball"],
-                    spell_slots={3: 1},
-                    zone_id=cell(1, 0),
+            )
+            await submit_player_intent(
+                start.handle,
+                actor_id="char:enemy_caster",
+                intent=PlayerIntent(
+                    intent_type="cast_spell",
+                    spell_id="fireball",
+                    slot_level=3,
+                    target_id="mon:target",
                 ),
-            ],
-            encounter=[
-                EncounterMemberSpec(
-                    entity_id="mon:target",
-                    entity_type="Monster",
-                    name="Target",
-                    initiative=2,
-                    hp_current=50,
-                    hp_max=50,
-                    ac=10,
-                    zone_id=cell(2, 0),
-                )
-            ],
-            scene_zones=None,
-            grid_scene=GridScene(width=30, height=10),
-            rng_seed=9,
-        )
-        live = _get_live(start.handle)
-        await submit_player_intent(
-            start.handle,
-            actor_id="char:reactor",
-            intent=PlayerIntent(
-                intent_type="ready",
-                spell_id="counterspell",
-                slot_level=3,
-                reaction_trigger="cast_spell",
-            ),
-        )
-        await submit_player_intent(
-            start.handle,
-            actor_id="char:enemy_caster",
-            intent=PlayerIntent(
-                intent_type="cast_spell",
-                spell_id="fireball",
-                slot_level=3,
-                target_id="mon:target",
-            ),
-        )
-        return live
+            )
+            return live
 
-    live = run_async(_run())
-    # Post-fix (the empty-pool guard added): no reaction fires for free.
-    assert not events_of(live, ReactionTriggered)
+        return run_async(_inner())
+
+    # Branch A — empty slot pool, well within range (1 cell / 5 ft).
+    live_a = _run(reactor_slots={3: 0}, enemy_col=1, target_col=2)
+    assert not events_of(live_a, ReactionTriggered)
+
+    # Branch B — a real slot available, but 90 ft (18 cells) separation,
+    # beyond Counterspell's 60 ft range.
+    live_b = _run(reactor_slots={3: 1}, enemy_col=18, target_col=19)
+    assert not events_of(live_b, ReactionTriggered)
