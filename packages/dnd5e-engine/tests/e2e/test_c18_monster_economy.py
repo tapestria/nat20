@@ -351,6 +351,12 @@ def test_c18_s05_magic_resistance_grants_advantage_on_saves_vs_spells():
     ``activities/save.py``'s save-roll primitive draws exactly one
     natural d20 regardless of target — same-seed A/B: an Ogre (no Magic
     Resistance) and a Hezrou (has it) resolve byte-identically today.
+
+    Dexterity is pinned to a non-default 11 (not the EncounterMemberSpec
+    ``10`` sentinel) so F1b's monster-template ability-score hydration
+    doesn't substitute the two monsters' differing SRD DEX scores — that
+    would diverge the DEX-save modifier for an unrelated reason and
+    falsely XPASS this xfail before Magic Resistance itself is wired up.
     """
 
     def _party():
@@ -382,7 +388,7 @@ def test_c18_s05_magic_resistance_grants_advantage_on_saves_vs_spells():
                     hp_current=hp,
                     hp_max=hp,
                     ac=ac,
-                    dexterity=10,
+                    dexterity=11,
                     zone_id=cell(3, 0),
                     monster_template_slug=slug,
                 )

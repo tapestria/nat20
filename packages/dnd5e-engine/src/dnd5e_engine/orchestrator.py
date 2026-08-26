@@ -2769,6 +2769,10 @@ def _build_pc_combatants(
                 class_slug=pc.class_slug,
                 subclass_slug=pc.subclass_slug,
                 species_slug=pc.species_slug,
+                save_proficiencies=list(pc.save_proficiencies),
+                skill_proficiencies=list(pc.skill_proficiencies),
+                skill_expertise=list(pc.skill_expertise),
+                weapon_proficiencies=list(pc.weapon_proficiencies),
             )
         )
         actor_zone[pc.entity_id] = pc.zone_id
@@ -2802,10 +2806,39 @@ def _build_foe_combatants(
         # this cannot change any existing combat's behavior; resistances/
         # immunities stay host-populated by the existing convention.
         vulnerabilities = list(foe.damage_vulnerabilities)
-        if not vulnerabilities and foe.monster_template_slug:
+        # F1b (2026-08-26) — hydrate the five non-DEX ability scores,
+        # proficiency bonus, and save/skill proficiencies from the SRD
+        # monster template when one is set. Dexterity is spec-authoritative
+        # only when the host moved it away from the ``10`` default sentinel
+        # (an EncounterMemberSpec can't distinguish "left at 10" from
+        # "explicitly set to 10", so 10 always defers to the template).
+        # Nothing in the resolver reads these fields yet (F1c), so this
+        # cannot change any existing combat's rolls.
+        template_kw: dict[str, Any] = {}
+        if foe.monster_template_slug:
             monster = get_lib_loader().get_monster(foe.monster_template_slug)
             if monster is not None:
-                vulnerabilities = list(monster.damage_vulnerabilities)
+                if not vulnerabilities:
+                    vulnerabilities = list(monster.damage_vulnerabilities)
+                sc = monster.ability_scores
+                template_kw = {
+                    "strength": sc.str,
+                    "constitution": sc.con,
+                    "intelligence": sc.int,
+                    "wisdom": sc.wis,
+                    "charisma": sc.cha,
+                    "proficiency_bonus_override": monster.proficiency_bonus,
+                    "save_proficiencies": [
+                        a
+                        for a in ("str", "dex", "con", "int", "wis", "cha")
+                        if getattr(monster.saving_throws, a) is not None
+                    ],
+                    "skill_proficiencies": [
+                        k for k, v in monster.skills.model_dump().items() if v is not None
+                    ],
+                }
+                if foe.dexterity == 10:
+                    template_kw["dexterity"] = sc.dex
         combatants.append(
             Combatant(
                 entity_id=foe.entity_id,
@@ -2819,7 +2852,7 @@ def _build_foe_combatants(
                 damage_dice=foe.damage_dice,
                 damage_type=foe.damage_type,
                 behavior_profile=foe.behavior_profile,
-                dexterity=foe.dexterity,
+                dexterity=template_kw.pop("dexterity", foe.dexterity),
                 creature_type=foe.creature_type,
                 damage_resistances=list(foe.damage_resistances),
                 damage_immunities=list(foe.damage_immunities),
@@ -2827,6 +2860,7 @@ def _build_foe_combatants(
                 condition_immunities=list(foe.condition_immunities),
                 base_speed=foe.base_speed,
                 movement_remaining=foe.base_speed,
+                **template_kw,
             )
         )
         actor_zone[foe.entity_id] = foe.zone_id

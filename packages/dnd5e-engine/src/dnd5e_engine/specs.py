@@ -132,6 +132,16 @@ class PartyMemberSpec(BaseModel):
     # for a Medium creature's unarmed/short-weapon reach). Projected onto
     # ``Combatant.melee_reach_ft`` at start_combat by ``_build_pc_combatants``.
     reach_ft: int = 5
+    # SRD §Proficiency Bonus / §Saving Throws / §Skills — the PC's proficient
+    # save abilities, proficient skills, skills with expertise (double
+    # proficiency), and proficient weapon categories/slugs. Threaded onto the
+    # live ``Combatant`` at start_combat by ``_build_pc_combatants``; nothing
+    # in the resolver reads these yet (F1c wires the proficiency-bonus/adv-dis
+    # math), so empty tuples reproduce pre-F1 behaviour exactly.
+    save_proficiencies: tuple[str, ...] = ()
+    skill_proficiencies: tuple[str, ...] = ()
+    skill_expertise: tuple[str, ...] = ()
+    weapon_proficiencies: tuple[str, ...] = ()
 
 
 class EncounterMemberSpec(BaseModel):
