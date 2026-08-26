@@ -499,6 +499,55 @@ footprints. Exploration-tier; revisit only if a host asks.
   2026-08-26. `test_capability_matrix.py` pins only spell/monster COUNTS, so
   status rows can still drift; consider pinning ❌/⚠️ rows to a code probe.
 
+## Catalog v2 scenarios without a prior entry (2026-08-26)
+
+Nine e2e catalog-v2 scenarios (`specs/catalog-v2/c12.md`, `c13.md`, `c17.md`)
+name a gap with no standalone bullet filed anywhere above — recorded here so
+the close-gap protocol (delete-on-close) has an entry to delete.
+
+- **C12-S01 — Incapacitated does not block an attack intent.**
+  `_validate_intent_preconditions` reads no conditions today, so an
+  Incapacitated actor's `attack` intent silently resolves instead of being
+  rejected. (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
+- **C12-S06 — A PC dropping to 0 HP receives no `unconscious` condition.**
+  `apply_damage` computes `is_overkill` but never checks `hp_current`
+  reaching 0 to emit `ConditionApplied(condition="unconscious")` or start
+  death saves; `death_saves.py::apply_damage_while_unconscious` has no
+  caller from the normal combat-damage path.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/apply.py`)
+- **C13-S01 — Casting a second concentration spell doesn't end the first.**
+  `existing_concentration` is built in the orchestrator but nothing
+  consumes it before `_record_effect_lifecycle_links` appends to
+  `concentration_chain` — the chain grows unbounded instead of dropping the
+  prior effect. (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
+- **C13-S03 — Caster reduced to 0 HP does not end concentration.**
+  `_record_death` never drops the dying caster's concentration effect.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
+- **C13-S04 — Voluntary concentration drop has no intent path.** No
+  `"drop_concentration"` `IntentType` exists; a caster who wants to end
+  their own concentration (no action required, per SRD) has no seam to do
+  so. (`packages/dnd5e-engine/src/dnd5e_engine/events.py`)
+- **C17-S01 — No engine-side per-class spell-slot table derivation.** The
+  engine only accepts a host-precomputed flat `spell_slots` dict; nothing
+  reads a class's `spellcasting.progression` to project a level → slot-table
+  row. (`packages/dnd5e-engine/src/dnd5e_engine/build_spec.py`)
+- **C17-S02 — Pact Magic has no separate slot pool.** Warlock spell slots
+  are folded into the same flat `spell_slots` dict as every other caster;
+  Pact Magic's Short-Rest recovery (the SRD's only Short-Rest-recovering
+  pool) has no seam — `resolve_short_rest` carries no `pact_slots` param.
+  (`packages/dnd5e-engine/src/dnd5e_engine/rest.py`)
+- **C17-S04 — Long Rest doesn't restore spell slots or reduce Exhaustion.**
+  `resolve_long_rest`'s signature is `(pool, hp_current, hp_max) ->
+  RestOutcome` — no `spell_slots`/`exhaustion_level` parameter exists, and
+  `RestOutcome` has no field to report either.
+  (`packages/dnd5e-engine/src/dnd5e_engine/rest.py`)
+- **C17-S05 — Upcast target-count scaling never fires (Magic Missile).**
+  `activities/dice.py`'s scaling machinery reads only `DamagePart.scaling`,
+  never a target's `target.affects.count` field; `PlayerIntent.target_id`
+  is a single `str | None` with no multi-target/dart-count shape to route
+  through, so a 3rd-level Magic Missile still fires only 1 dart, not 5.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/dice.py`)
+
 ## Blocked
 
 - **`custom` `ActiveEffectChange` mode — needs a product decision** (2026-07-02).
