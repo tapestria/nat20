@@ -343,7 +343,7 @@ def test_c14_s04_grapple_shove_and_stand_up():
 
     live, target = run_async(_run())
 
-    from dnd5e_engine.events import ConditionApplied, ConditionRemoved, SaveRolled
+    from dnd5e_engine.events import CheckRolled, ConditionApplied, ConditionRemoved, SaveRolled
 
     grapple_saves = [
         e for e in events_of(live, SaveRolled) if e.target_id == "mon:target" and e.dc == 15
@@ -355,6 +355,14 @@ def test_c14_s04_grapple_shove_and_stand_up():
         if e.target_id == "mon:target" and e.condition == "grappled"
     ]
     assert applied
+    # The escape attempt rolls a Str(Athletics)/Dex(Acrobatics) CheckRolled
+    # against the *stored* grapple DC (15), not a re-derived one.
+    escape_checks = [
+        e
+        for e in events_of(live, CheckRolled)
+        if e.actor_id == "mon:target" and e.ability in ("str", "dex") and e.dc == 15
+    ]
+    assert escape_checks
     removed = [
         e
         for e in events_of(live, ConditionRemoved)

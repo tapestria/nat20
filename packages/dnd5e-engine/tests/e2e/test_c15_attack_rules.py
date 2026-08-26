@@ -7,7 +7,7 @@ Transcribed from specs/e2e-scenario-catalog.md, Cluster 15
 
 from __future__ import annotations
 
-import pytest
+import contextlib
 
 from dnd5e_engine import PlayerIntent
 from dnd5e_engine.events import AttackFailed, AttackRolled, DamageApplied, Death
@@ -329,9 +329,16 @@ def test_c15_s05_loading_weapon_second_shot_rejected_for_the_right_reason():
     you can normally make."
     (packs/_source/content24/chapter-6/equipment.yml, id 7qSj8lqMAP0FBNKK,
     heading "Loading"). No Extra Attack economy exists to cap yet, so a
-    second same-turn attack fails for the WRONG reason
-    (``not_actor_turn``, because the turn already auto-ended) instead of a
-    Loading-specific ``weapon_already_fired`` rejection.
+    second same-turn attack fails for the WRONG reason today
+    (``IntentRejectedError("not_actor_turn")``, because the turn already
+    auto-ended) instead of resolving through the pre-resolution reject
+    path and emitting a Loading-specific ``AttackFailed(reason=
+    "weapon_already_fired")`` event — the same event-based surface as the
+    sibling ``out_of_range``/``target_invalid``/``no_action_economy``
+    rejects (``orchestrator.py:4478-4540``), per ``specs/catalog-v2/
+    API-DELTAS.md``'s ``AttackFailed.reason="weapon_already_fired"``
+    entry (NOT a new ``IntentRejectedError`` reason — that Literal stays
+    closed).
     """
 
     async def _run():
@@ -364,6 +371,7 @@ def test_c15_s05_loading_weapon_second_shot_rejected_for_the_right_reason():
             grid_scene=grid_scene(),
             rng_seed=1,
         )
+        live = _get_live(start.handle)
         await submit_player_intent(
             start.handle,
             actor_id="char:hero",
@@ -371,17 +379,28 @@ def test_c15_s05_loading_weapon_second_shot_rejected_for_the_right_reason():
                 intent_type="attack", weapon_id="light-crossbow", target_id="mon:foe"
             ),
         )
-        await submit_player_intent(
-            start.handle,
-            actor_id="char:hero",
-            intent=PlayerIntent(
-                intent_type="attack", weapon_id="light-crossbow", target_id="mon:foe"
-            ),
-        )
+        # Today this raises IntentRejectedError("not_actor_turn") instead of
+        # resolving through the pre-resolution reject path — suppress so the
+        # event-based assertions below (which pin the SRD-correct, not-yet-
+        # true state) still run.
+        with contextlib.suppress(IntentRejectedError):
+            await submit_player_intent(
+                start.handle,
+                actor_id="char:hero",
+                intent=PlayerIntent(
+                    intent_type="attack", weapon_id="light-crossbow", target_id="mon:foe"
+                ),
+            )
+        return live
 
-    with pytest.raises(IntentRejectedError) as exc_info:
-        run_async(_run())
-    assert exc_info.value.reason == "weapon_already_fired"
+    live = run_async(_run())
+    rejections = [
+        e
+        for e in events_of(live, AttackFailed)
+        if e.actor_id == "char:hero" and e.target_id == "mon:foe"
+    ]
+    assert rejections
+    assert rejections[-1].reason == "weapon_already_fired"
 
 
 @xfail_cluster(15, "attack rules")
