@@ -27,11 +27,18 @@ from typing import Any
 import pytest
 from dnd5e_srd_data.schema.common import CheckActivity
 
+from dnd5e_engine.activities.actor_stats import _SCORE_ATTR
 from dnd5e_engine.activities.build_context import build_activity_context
-from dnd5e_engine.activities.check import FORCE_CHECK_D20, resolve_check
+from dnd5e_engine.activities.check import (
+    _SKILL_CODE_TO_SLUG,
+    _SKILL_TO_ABILITY,
+    FORCE_CHECK_D20,
+    resolve_check,
+)
 from dnd5e_engine.activities.context import ActivityResolutionContext
 from dnd5e_engine.events import CheckRolled
 from dnd5e_engine.orchestrator import _build_hydration_payload, _get_live, start_combat
+from dnd5e_engine.rules.skills import SKILL_ABILITIES
 from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
 from dnd5e_engine.types.combat import Combatant
 from dnd5e_engine.types.conditions import ActiveCondition
@@ -409,6 +416,27 @@ def _f1d_payload(*, party: list[PartyMemberSpec], effects: tuple[Any, ...] = ())
     return _build_hydration_payload(_get_live(start.handle), caster=None)
 
 
+def _f1d_ctx(payload: dict[str, Any], events: list[Any]) -> ActivityResolutionContext:
+    """An activity context threading the hydration payload's check sidecar."""
+    ctx = build_activity_context(
+        _combatant("char:a"),
+        [],
+        rng=random.Random(1),
+        event_emitter=events.append,
+        slot_level=None,
+        base_spell_level=None,
+        spellcasting_ability=None,
+        concentration=False,
+        source_passive_effects=[],
+        spell_book={},
+        passive_damage_modifiers=payload["passive_damage_modifiers"],
+        save_modifiers=payload["save_modifiers"],
+        check_modifiers=payload["check_modifiers"],
+    )
+    ctx.variables[FORCE_CHECK_D20] = 10
+    return ctx
+
+
 def _check_bonus(key: str, value: int) -> tuple[Any, ...]:
     return (
         ActiveEffect(
@@ -490,7 +518,13 @@ def test_per_ability_save_bonus_folds_into_that_save_only() -> None:
     assert saves["cha"] == 0
 
 
-def test_condition_disadvantage_merges_with_the_projected_modifiers() -> None:
+@pytest.mark.parametrize(
+    ("condition", "expected"),
+    [("poisoned", True), ("frightened", True), ("exhaustion", True), ("prone", False)],
+)
+def test_condition_disadvantage_merges_with_the_projected_modifiers(
+    condition: str, expected: bool
+) -> None:
     start = run_async(
         start_combat(
             session_id="f1d-check-dis",
@@ -503,12 +537,15 @@ def test_condition_disadvantage_merges_with_the_projected_modifiers() -> None:
     live = _get_live(start.handle)
     actor = next(c for c in live.initiative if c.entity_id == "char:a")
     actor.conditions.append(
-        ActiveCondition(condition="poisoned", source_entity_id="npc:abc123def456", scope="combat")
+        ActiveCondition(condition=condition, source_entity_id="npc:abc123def456", scope="combat")
     )
 
     entry = _build_hydration_payload(live, caster=None)["check_modifiers"]["char:a"]
-    assert entry["disadvantage"] is True
-    assert entry["passive_check_dis"] == ["all"]
+    # F2 (Task 8/10) routes checks through ``roll_d20_test`` and will consume
+    # this flag; it must already be right for every SRD condition that imposes
+    # disadvantage on ability checks.
+    assert entry["disadvantage"] is expected
+    assert entry["passive_check_dis"] == (["all"] if expected else [])
     assert entry["ability_mods"]["wis"] == 2
 
 
@@ -542,3 +579,46 @@ def test_the_payload_reaches_the_activity_context_and_the_handler() -> None:
     resolve_check(_activity(ability="wis", calculation="flat", formula="10"), ctx)
 
     assert _only_check(events).roll_total == 10 + 4
+
+
+def test_a_prc_check_picks_up_the_actors_perception_proficiency() -> None:
+    """The IR carries ``"prc"``; the sidecar is keyed ``"perception"``.
+
+    WIS 14 (+2) at level 5 (PB +3), proficient in Perception → +5 on a
+    Perception check. The 3-letter → slug translation is the handler's job.
+    """
+    payload = _f1d_payload(
+        party=_f1d_party(wisdom=14, character_level=5, skill_proficiencies=("perception",))
+    )
+    events: list[Any] = []
+    ctx = _f1d_ctx(payload, events)
+
+    resolve_check(_activity(associated=["prc"], calculation="flat", formula="10"), ctx)
+
+    assert _only_check(events).roll_total - 10 == 5
+
+
+def test_an_unproficient_actor_gets_only_the_ability_modifier() -> None:
+    payload = _f1d_payload(party=_f1d_party(wisdom=14, character_level=5))
+    events: list[Any] = []
+    ctx = _f1d_ctx(payload, events)
+
+    resolve_check(_activity(associated=["prc"], calculation="flat", formula="10"), ctx)
+
+    assert _only_check(events).roll_total - 10 == 2
+
+
+def test_a_sidecar_keyed_by_the_legacy_3_letter_code_still_resolves() -> None:
+    """Legacy fallback — a host-built sidecar keyed by code keeps working."""
+    ctx, events = _ctx(check_modifiers={"char:hero": {"skills": {"prc": 7}}})
+
+    resolve_check(_activity(associated=["prc"], calculation="flat", formula="10"), ctx)
+
+    assert _only_check(events).roll_total == 10 + 7
+
+
+def test_every_foundry_skill_code_maps_to_a_known_srd_slug() -> None:
+    """The two skill tables must not drift apart."""
+    assert set(_SKILL_CODE_TO_SLUG) == set(_SKILL_TO_ABILITY)
+    for code, slug in _SKILL_CODE_TO_SLUG.items():
+        assert SKILL_ABILITIES[slug] == _SCORE_ATTR[_SKILL_TO_ABILITY[code]]
