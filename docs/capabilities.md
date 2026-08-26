@@ -24,14 +24,16 @@ without failing CI.
 | Mechanic | Status | Notes |
 |---|---|---|
 | Initiative order, rounds, turns | ✅ Resolved | Deterministic tie-break (initiative → dex → entity id) |
-| Attack rolls, crits, damage, resistances/immunities/vulnerabilities | ✅ Resolved | |
-| Saving throws, half-on-save, save-for-effect | ✅ Resolved | |
+| Attack rolls, crits, damage, resistances/immunities/vulnerabilities | ⚠️ Partial | **Attack rolls are never made with advantage or disadvantage** — the base d20 is hard-coded `normal`, so condition-derived adv/dis is inert. Proficiency is assumed on every attack. Magical vs nonmagical B/P/S cannot be expressed. |
+| Saving throws, half-on-save, save-for-effect | ⚠️ Partial | Only the **DEX** modifier is projected; every other save rolls at +0 with no proficiency. |
 | Ability & skill checks (in and out of combat) | ✅ Resolved | `resolve_check`; seed via `CheckSpec.rng` |
-| Action economy (action, bonus action, reaction, movement) | ✅ Resolved | |
-| Dash, Dodge, Disengage, Hide, Help | ✅ Resolved | |
-| Opportunity attacks | ✅ Resolved | Both directions (PC↔monster) |
-| Death saves, stabilization, instant death | ✅ Resolved | |
-| Concentration, incl. damage-triggered saves and cascade drop | ✅ Resolved | |
+| Action economy (action, bonus action, reaction, movement) | ⚠️ Partial | One action per turn; **Extra Attack / Action Surge are not modelled**. Incapacitated does not block actions. |
+| Dash, Disengage | ✅ Resolved | |
+| Dodge, Hide, Help | ❌ Not modelled | Accepted as intents, but they have **no handler** — they consume the Action and change nothing. |
+| Opportunity attacks | ✅ Resolved | Both directions (PC↔monster); same-zone reach approximation, no "can see" check |
+| Death saves, stabilization | ✅ Resolved | |
+| Instant death (massive damage) | ❌ Not modelled | `is_overkill` is reported on the event only |
+| Concentration, incl. damage-triggered saves and cascade drop | ⚠️ Partial | Drops on a failed CON save only (raw d20). **Not enforced:** one-at-a-time, ending on death/unconscious, timed expiry. |
 | Temporary HP, healing | ✅ Resolved | |
 | Conditions (the 15 SRD conditions) | ⚠️ Partial | Applied/removed and gated by immunities; **mechanical effects are enforced only for the subset that projects into roll modifiers** |
 | Exhaustion | ❌ Not modelled | Levels are tracked but apply no penalty; the text also still describes the 2014 ladder, not SRD 5.2 |
@@ -50,7 +52,7 @@ without failing CI.
 | Blocked cells, difficult terrain | ✅ Resolved | Difficult terrain doubles entry cost |
 | Walls / line of sight | ✅ Resolved | Grid only; the zone backend always has clear sight |
 | Cover (half / three-quarters / total) | ✅ Resolved | Grid only; folds into AC and Dexterity saves |
-| AoE templates (sphere / cone / line) | ✅ Resolved | |
+| AoE templates (sphere / cone / line) | ⚠️ Partial | Geometry helper exists but is **not wired to spell targeting**: AoE spells hit every creature in the anchor's zone — on a grid, that is a single cell. |
 | **Multi-cell movement in one intent** | ❌ Not modelled | A `"move"` intent must name an **adjacent** cell. Crossing 30 ft = six `submit_player_intent` calls. `GridTopology.shortest_path` exists but the PC move handler does not use it. |
 | Elevation / flying altitude | ❌ Not modelled | The grid is strictly 2-D |
 | Multi-tile (Large+) creature footprints | ❌ Not modelled | Every creature occupies one cell |
@@ -77,9 +79,9 @@ combat engine by nature.
 
 | Spell mechanic | Status |
 |---|---|
-| Spell slots, upcasting, at-will/innate casting | ✅ Resolved |
+| Spell slots, upcasting, at-will/innate casting | ⚠️ Partial — upcasting scales dice only (not target count); **rests never restore slots**; no Pact Magic |
 | Spell attack rolls & save DCs (incl. flat overrides) | ✅ Resolved |
-| Concentration (one at a time, drop on failed save) | ✅ Resolved |
+| Concentration (drop on failed save) | ⚠️ Partial — one-at-a-time is not enforced |
 | Counterspell, Shield, Hellish Rebuke, Magic Missile interactions | ⚠️ Partial | Implemented, but as named special cases rather than data-driven rules |
 | Ritual casting | ❌ Not modelled | 28 rituals flagged in the data; the flag is not read |
 | Material components / component pouches | ❌ Not modelled | Components are in the data; never enforced |
@@ -92,22 +94,24 @@ combat engine by nature.
 |---|---|---|
 | Typed action selection + built-in AI | ✅ Resolved | Targets lowest-HP living PC; three behavior profiles |
 | Multiattack fan-out | ⚠️ Mostly | **119 of 180** multiattacks resolve to the exact SRD attack mix. The other 61 fall back to repeating one attack N times, logged at WARNING; 5 of those are heterogeneous and therefore wrong. |
-| Monster spellcasting | ✅ Resolved | |
-| Flee / retreat behaviour | ✅ Resolved | |
+| Monster spellcasting | ❌ Not modelled | The monster AI never selects a `cast` action and its context carries an empty spell book |
+| Flee / retreat behaviour | ⚠️ Partial | Zone-graph only; on a grid the monster holds still |
 | **Legendary actions** | ❌ Not modelled | 30 monsters carry them in the data; no legendary action economy exists |
 | **Lair actions** | ❌ Not modelled | Schema field exists; corpus ships none |
 | Recharge (5–6) abilities | ❌ Not modelled | |
 | Regeneration | ❌ Not modelled | |
-| `special_abilities` | ❌ Not modelled | Carried by the schema, never consumed |
+| `special_abilities` | ❌ Not modelled | 322 traits across 102 names, none consumed (Magic Resistance, Pack Tactics, Legendary Resistance, …). Monster save/skill proficiencies are also never applied |
 
 ## Characters
 
 | Mechanic | Status | Notes |
 |---|---|---|
-| Class, subclass, level 1–20, species, background | ✅ Resolved | |
-| Ability scores, proficiency, expertise, saves | ✅ Resolved | |
-| Class/species feature activities (Rage, Second Wind, …) | ✅ Resolved | Use-capped where the cap is a literal or `@scale` value |
-| Weapon mastery (2024) | ✅ Resolved | |
+| Class, subclass, level 1–20, species | ✅ Resolved | Subclass has no level-3 gate |
+| Background | ❌ Not modelled | No `background_slug` on the build spec |
+| HP, AC, hit dice, skill/save proficiencies | ❌ Host-supplied | The engine derives none of them; they arrive pre-computed on the party spec |
+| Ability scores, proficiency, expertise | ⚠️ Partial | Proficient/expertise skill lists are caller-supplied, never derived. ASI/feat advancements are ignored. |
+| Class/species feature activities (Rage, Second Wind, …) | ⚠️ Partial | Data-driven where the corpus carries a typed activity. **Prose-only, so inert:** Extra Attack, Fighting Style, Divine Smite, Metamagic, Invocations; `selected_choices` is never read |
+| Weapon mastery (2024) | ⚠️ Partial | Graze and Topple only; the other six log and do nothing |
 | Sneak Attack | ✅ Resolved | Once per turn, ally-adjacency or advantage trigger |
 | Short/long rest, hit dice, feature & item recharge | ✅ Resolved | |
 | **Multiclassing** | ❌ Not modelled | `CharacterBuildSpec` takes a single class |
