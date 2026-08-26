@@ -69,9 +69,10 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   every D20 Test reduced by `2 × level`, and Speed reduced by `5 ft × level`.
   Neither is applied, and `ActiveCondition.exhaustion_level` is ignored by the
   projection. Closing this needs a **numeric** per-actor check/save/attack
-  modifier path; the check side is blocked on the unpopulated
-  `ctx.check_modifiers` sidecar (see "Unconsumed `system.bonuses.*` buckets"
-  below), so these should be closed together. The descriptive strings in
+  modifier path; the check and save sides now exist (F1a-F1d —
+  `activities/actor_stats.py` feeding `check_modifiers` / `save_modifiers`), so
+  the remaining work is subtracting `2 × level` through them. The descriptive
+  strings in
   `CONDITION_EFFECTS` were corrected to 5.2 wording (2026-08-22) and are labelled
   as not-enforced.
   (`packages/dnd5e-engine/src/dnd5e_engine/rules/conditions.py`)
@@ -225,18 +226,13 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   `_roll_natural_d20`'s `mode` and accept one fixture re-pin. No live-path test
   exists — write it against `activities/attack.py` when closing.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py`)
-- **Unconsumed `system.bonuses.*` buckets (partial — An earlier release added the
-  attack/damage + spell.dc families).** `heal.*` and `abilities.check` /
-  `abilities.skill` remain inert: no per-actor sidecar consumer exists for
-  them today. `activities/heal.py::resolve_heal` never reads any bonus
-  sidecar off `ActivityResolutionContext` (unlike `attack.py`'s
-  `passive_*_damage_bonus` fields). `activities/check.py::resolve_check`
-  reads a `ctx.check_modifiers[actor_id]["ability_mods"/"skills"]` sidecar,
-  but `build_activity_context` always passes `check_modifiers={}` —
-  `_fold_active_effect_changes` (`orchestrator.py`) has no branch that
-  populates it from active-effect changes (only condition-derived
-  projections land there). (`mwak`/`rwak`/`msak`/`rsak` attack+damage and
-  `spell.dc` are now folded — see `docs/migration/v0.1-to-v0.2.md`.)
+- **Unconsumed `system.bonuses.heal.*` buckets (2026-08-26).**
+  `activities/heal.py::resolve_heal` never reads any bonus sidecar off
+  `ActivityResolutionContext` (unlike `attack.py`'s `passive_*_damage_bonus`
+  fields), so a `system.bonuses.heal.*` change on an active effect is inert.
+  (The attack/damage, `spell.dc` and — as of F1d — `abilities.check` /
+  `abilities.skill` / `abilities.<ab>.save` families are folded.)
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/heal.py`)
 
 ### Passive-stat projection (`activities/passive_stats.py`)
 
@@ -324,16 +320,6 @@ zone + apply logic:
 
 ## Audit 2026-08-26 — rolls & modifiers
 
-- **Non-DEX saving throws roll at +0 for every combatant.** The per-target
-  projection is literally `per_target_entry["saves"] = {"dex": ...}`
-  (`orchestrator.py:2084`); STR/CON/INT/WIS/CHA modifiers and class/monster
-  save proficiencies (`Class.saving_throws`, `Monster.saving_throws` — grep for
-  `saving_throws` in the engine returns nothing) are never hydrated onto
-  `Combatant`. Concentration saves (`orchestrator.py:1526`) and end-of-turn
-  repeat saves (`_run_end_of_turn_saves`) are therefore raw d20 vs DC. Same
-  root cause as the exhaustion / `check_modifiers` entry above: the engine has
-  no per-actor ability-modifier + proficiency projection. Close together.
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
 - **Attack proficiency is assumed.** `build_context.py:278` hard-codes
   `is_proficient_attack=True`; a wizard swinging a greatsword adds PB.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/build_context.py`)

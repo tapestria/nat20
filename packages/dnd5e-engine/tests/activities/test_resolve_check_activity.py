@@ -27,10 +27,16 @@ from typing import Any
 import pytest
 from dnd5e_srd_data.schema.common import CheckActivity
 
+from dnd5e_engine.activities.build_context import build_activity_context
 from dnd5e_engine.activities.check import FORCE_CHECK_D20, resolve_check
 from dnd5e_engine.activities.context import ActivityResolutionContext
 from dnd5e_engine.events import CheckRolled
+from dnd5e_engine.orchestrator import _build_hydration_payload, _get_live, start_combat
+from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
 from dnd5e_engine.types.combat import Combatant
+from dnd5e_engine.types.conditions import ActiveCondition
+from dnd5e_engine.types.effects import ActiveEffect, ActiveEffectChange, ActiveEffectDuration
+from tests.e2e.harness import run_async, single_zone
 
 ABILITIES = {"str": 10, "dex": 10, "con": 10, "int": 10, "wis": 10, "cha": 10}
 
@@ -347,3 +353,192 @@ def test_without_the_forced_seam_the_roll_comes_from_the_seeded_rng() -> None:
 
     assert totals[0] == totals[1]
     assert 1 <= totals[0] <= 20
+
+
+# ---------------------------------------------------------------------------
+# F1d — the sidecar the handler reads is populated by the orchestrator
+# ---------------------------------------------------------------------------
+#
+# The modifier above is read off ``ctx.check_modifiers``; these tests pin WHERE
+# that sidecar comes from. The orchestrator projects every combatant's six
+# ability-check modifiers and every proficient skill's modifier through
+# ``activities.actor_stats.check_modifier`` (SRD 5.2 §D20 Tests: d20 + ability
+# modifier + proficiency bonus if proficient, doubled with Expertise), folds the
+# ``abilities.check`` / ``abilities.skill`` / ``abilities.<ab>.save`` active-effect
+# buckets on top, and ``build_activity_context`` threads the payload through.
+
+
+def _f1d_party(**kw: Any) -> list[PartyMemberSpec]:
+    base: dict[str, Any] = {
+        "entity_id": "char:a",
+        "name": "A",
+        "initiative": 10,
+        "hp_current": 20,
+        "hp_max": 20,
+        "zone_id": "zone:start",
+    }
+    base.update(kw)
+    return [PartyMemberSpec(**base)]
+
+
+def _f1d_foe() -> list[EncounterMemberSpec]:
+    return [
+        EncounterMemberSpec(
+            entity_id="mon:f",
+            entity_type="Monster",
+            name="Foe",
+            initiative=1,
+            hp_current=7,
+            hp_max=7,
+            zone_id="zone:start",
+        )
+    ]
+
+
+def _f1d_payload(*, party: list[PartyMemberSpec], effects: tuple[Any, ...] = ()) -> dict[str, Any]:
+    start = run_async(
+        start_combat(
+            session_id="f1d-check-mods",
+            party=party,
+            encounter=_f1d_foe(),
+            scene_zones=single_zone(),
+            rng_seed=1,
+            active_effects=effects,
+        )
+    )
+    return _build_hydration_payload(_get_live(start.handle), caster=None)
+
+
+def _check_bonus(key: str, value: int) -> tuple[Any, ...]:
+    return (
+        ActiveEffect(
+            id="effect:buff",
+            name="Buff",
+            origin="test",
+            target_id="char:a",
+            duration=ActiveEffectDuration(),
+            changes=[ActiveEffectChange(key=key, mode="add", value=value)],
+        ),
+    )
+
+
+def test_skill_modifier_is_ability_mod_plus_proficiency_plus_effect_bonus() -> None:
+    """WIS 14 (+2), level 5 (PB +3), Perception proficiency, +2 abilities.check."""
+    payload = _f1d_payload(
+        party=_f1d_party(wisdom=14, character_level=5, skill_proficiencies=("perception",)),
+        effects=_check_bonus("abilities.check", 2),
+    )
+
+    assert payload["check_modifiers"]["char:a"]["skills"]["perception"] == 2 + 3 + 2
+
+
+def test_every_ability_check_modifier_is_projected() -> None:
+    payload = _f1d_payload(party=_f1d_party(wisdom=14, strength=8, character_level=5))
+
+    ability_mods = payload["check_modifiers"]["char:a"]["ability_mods"]
+    assert set(ability_mods) == {"str", "dex", "con", "int", "wis", "cha"}
+    assert ability_mods["wis"] == 2
+    assert ability_mods["str"] == -1
+    # No skill proficiencies -> no skill entries (the handler falls back to the
+    # ability modifier).
+    assert payload["check_modifiers"]["char:a"]["skills"] == {}
+
+
+def test_expertise_doubles_the_proficiency_bonus() -> None:
+    payload = _f1d_payload(
+        party=_f1d_party(
+            dexterity=14,
+            character_level=5,
+            skill_proficiencies=("stealth",),
+            skill_expertise=("stealth",),
+        )
+    )
+
+    assert payload["check_modifiers"]["char:a"]["skills"]["stealth"] == 2 + 6
+
+
+def test_abilities_check_bonus_reaches_every_ability_and_skill() -> None:
+    payload = _f1d_payload(
+        party=_f1d_party(skill_proficiencies=("perception",)),
+        effects=_check_bonus("abilities.check", 2),
+    )
+
+    entry = payload["check_modifiers"]["char:a"]
+    assert all(mod == 2 for mod in entry["ability_mods"].values())
+    assert entry["skills"]["perception"] == 2 + 2
+
+
+def test_abilities_skill_bonus_reaches_skills_only() -> None:
+    payload = _f1d_payload(
+        party=_f1d_party(skill_proficiencies=("perception",)),
+        effects=_check_bonus("abilities.skill", 3),
+    )
+
+    entry = payload["check_modifiers"]["char:a"]
+    assert entry["skills"]["perception"] == 2 + 3
+    assert all(mod == 0 for mod in entry["ability_mods"].values())
+
+
+def test_per_ability_save_bonus_folds_into_that_save_only() -> None:
+    payload = _f1d_payload(
+        party=_f1d_party(wisdom=14),
+        effects=_check_bonus("abilities.wis.save", 1),
+    )
+
+    saves = payload["save_modifiers"]["char:a"]["saves"]
+    assert saves["wis"] == 2 + 1
+    assert saves["cha"] == 0
+
+
+def test_condition_disadvantage_merges_with_the_projected_modifiers() -> None:
+    start = run_async(
+        start_combat(
+            session_id="f1d-check-dis",
+            party=_f1d_party(wisdom=14),
+            encounter=_f1d_foe(),
+            scene_zones=single_zone(),
+            rng_seed=1,
+        )
+    )
+    live = _get_live(start.handle)
+    actor = next(c for c in live.initiative if c.entity_id == "char:a")
+    actor.conditions.append(
+        ActiveCondition(condition="poisoned", source_entity_id="npc:abc123def456", scope="combat")
+    )
+
+    entry = _build_hydration_payload(live, caster=None)["check_modifiers"]["char:a"]
+    assert entry["disadvantage"] is True
+    assert entry["passive_check_dis"] == ["all"]
+    assert entry["ability_mods"]["wis"] == 2
+
+
+def test_the_payload_reaches_the_activity_context_and_the_handler() -> None:
+    payload = _f1d_payload(
+        party=_f1d_party(wisdom=14, character_level=5, skill_proficiencies=("perception",)),
+        effects=_check_bonus("abilities.check", 2),
+    )
+    actor = _combatant("char:a")
+    events: list[Any] = []
+    ctx = build_activity_context(
+        actor,
+        [],
+        rng=random.Random(1),
+        event_emitter=events.append,
+        slot_level=None,
+        base_spell_level=None,
+        spellcasting_ability=None,
+        concentration=False,
+        source_passive_effects=[],
+        spell_book={},
+        passive_damage_modifiers=payload["passive_damage_modifiers"],
+        save_modifiers=payload["save_modifiers"],
+        check_modifiers=payload["check_modifiers"],
+    )
+
+    assert ctx.check_modifiers["char:a"]["skills"]["perception"] == 2 + 3 + 2
+    assert ctx.check_modifiers["char:a"]["ability_mods"]["wis"] == 2 + 2
+
+    ctx.variables[FORCE_CHECK_D20] = 10
+    resolve_check(_activity(ability="wis", calculation="flat", formula="10"), ctx)
+
+    assert _only_check(events).roll_total == 10 + 4

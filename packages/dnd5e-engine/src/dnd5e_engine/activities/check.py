@@ -235,6 +235,6 @@ def _check_modifier(
     if skill is not None:
         skills = actor_mods.get("skills", {})
         if skill in skills:
-            return skills[skill]
+            return int(skills[skill])
     ability_mods = actor_mods.get("ability_mods", {})
-    return ability_mods.get(ability, 0)
+    return int(ability_mods.get(ability, 0))
