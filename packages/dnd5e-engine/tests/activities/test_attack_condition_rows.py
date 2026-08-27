@@ -118,3 +118,34 @@ def test_no_condition_still_consumes_exactly_one_draw() -> None:
     e = _swing(_fighter(), _foe(), distance_ft=5)
     mirror = random.Random(_SEED)
     assert e.natural == mirror.randint(1, 20)
+
+
+# SRD 5.2 Paralyzed / Unconscious: "Any attack roll that hits you is a Critical
+# Hit if the attacker is within 5 feet of you."
+def test_hit_on_paralyzed_target_within_5ft_is_a_critical_hit() -> None:
+    e = _swing(_fighter(), _foe("mon:foe", "paralyzed"), distance_ft=5, forced_d20=10)
+    assert e.is_hit is True
+    assert e.is_crit is True
+    assert e.advantage == "advantage"
+
+
+def test_hit_on_unconscious_target_within_5ft_is_a_critical_hit() -> None:
+    e = _swing(_fighter(), _foe("mon:foe", "unconscious"), distance_ft=0, forced_d20=10)
+    assert e.is_crit is True
+
+
+def test_hit_on_paralyzed_target_beyond_5ft_is_not_forced_to_crit() -> None:
+    e = _swing(_fighter(), _foe("mon:foe", "paralyzed"), distance_ft=10, forced_d20=10)
+    assert e.is_hit is True
+    assert e.is_crit is False
+
+
+def test_natural_one_still_misses_a_paralyzed_target() -> None:
+    e = _swing(_fighter(), _foe("mon:foe", "paralyzed"), distance_ft=5, forced_d20=1)
+    assert e.is_hit is False
+    assert e.is_crit is False
+
+
+def test_stunned_target_within_5ft_does_not_auto_crit() -> None:
+    e = _swing(_fighter(), _foe("mon:foe", "stunned"), distance_ft=5, forced_d20=10)
+    assert e.is_crit is False

@@ -74,7 +74,10 @@ from dnd5e_engine.activities.effects import apply_activity_effects
 from dnd5e_engine.activities.formula import resolve_damage_block, resolve_roll_data
 from dnd5e_engine.activities.mastery import apply_mastery_on_hit, apply_mastery_on_miss
 from dnd5e_engine.events import AdvantageMode, AdvantageSource, AttackRolled
-from dnd5e_engine.rules.conditions import conditions_grant_advantage_on_attack
+from dnd5e_engine.rules.conditions import (
+    conditions_auto_crit_within_5ft,
+    conditions_grant_advantage_on_attack,
+)
 from dnd5e_engine.spatial import cover_bonus
 
 if TYPE_CHECKING:
@@ -174,7 +177,14 @@ def resolve_attack(
             + cover_bonus(ctx.target_cover.get(target.entity_id, "none"))
             + ctx.passive_ac_bonus.get(target.entity_id, 0)
         )
-        is_crit, is_hit = _resolve_hit_outcome(natural, total, effective_ac, activity)
+        auto_crit = (
+            distance_ft is not None
+            and distance_ft <= 5
+            and conditions_auto_crit_within_5ft(ctx.target_conditions.get(target.entity_id, []))
+        )
+        is_crit, is_hit = _resolve_hit_outcome(
+            natural, total, effective_ac, activity, auto_crit_on_hit=auto_crit
+        )
 
         ctx.event_emitter(
             AttackRolled(
@@ -433,21 +443,30 @@ def _forced_d20(ctx: ActivityResolutionContext, target_index: int) -> int | None
 
 
 def _resolve_hit_outcome(
-    natural: int, total: int, target_ac: int, activity: AttackActivity
+    natural: int,
+    total: int,
+    target_ac: int,
+    activity: AttackActivity,
+    *,
+    auto_crit_on_hit: bool = False,
 ) -> tuple[bool, bool]:
     """Derive ``(is_crit, is_hit)`` per SRD §Rolling 1 or 20 / §Making an Attack.
 
     Precedence: a natural 1 is ALWAYS an auto-miss (and never a crit), even when a
     degenerate ``critical.threshold`` of 1 would otherwise classify it as a crit —
     the SRD nat-1 rule wins. Then natural ≥ crit threshold
-    (``attack.critical.threshold or 20``) → crit + hit; else ``total >= AC``.
+    (``attack.critical.threshold or 20``) → crit + hit; else ``total >= AC``, and
+    a hit is upgraded to a crit when ``auto_crit_on_hit`` (SRD 5.2 Paralyzed /
+    Unconscious: "Any attack roll that hits you is a Critical Hit if the attacker
+    is within 5 feet of you").
     """
     if natural == 1:
         return False, False
     threshold = activity.attack.critical.threshold or 20
     if natural >= threshold:
         return True, True
-    return False, total >= target_ac
+    is_hit = total >= target_ac
+    return (is_hit and auto_crit_on_hit), is_hit
 
 
 # ── on-hit damage ────────────────────────────────────────────────────────────

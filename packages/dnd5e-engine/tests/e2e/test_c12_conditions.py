@@ -86,7 +86,6 @@ def test_c12_s01_incapacitated_blocks_attack_intent():
     assert exc_info.value.reason == "actor_incapacitated"
 
 
-@xfail_cluster(12, "conditions enforced")
 def test_c12_s02_paralyzed_target_grants_advantage_and_auto_crit_within_5ft():
     """C12-S02: SRD 5.2 Conditions, Paralyzed — attack rolls against you
     have Advantage, and any hit within 5 ft is an automatic Critical Hit
