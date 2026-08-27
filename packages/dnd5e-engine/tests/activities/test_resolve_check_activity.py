@@ -541,9 +541,15 @@ def test_condition_disadvantage_merges_with_the_projected_modifiers(
     )
 
     entry = _build_hydration_payload(live, caster=None)["check_modifiers"]["char:a"]
-    # F2 (Task 8/10) routes checks through ``roll_d20_test`` and will consume
-    # this flag; it must already be right for every SRD condition that imposes
-    # disadvantage on ability checks.
+    # This pins the CURRENT projection, which F2 (Task 8/10) will consume when it
+    # routes checks through ``roll_d20_test``. Frightened and Poisoned are SRD
+    # 5.2 §Conditions ("disadvantage on ability checks"). Exhaustion is NOT:
+    # ``project_passive_check_modifiers`` still applies the SRD 5.1 (2014)
+    # Level-1 effect, whereas SRD 5.2 Appendix A gives exhaustion a numeric
+    # ``-2 x level`` penalty on every D20 Test and NO disadvantage. That
+    # divergence is the tracked BACKLOG entry ("Exhaustion applies the 2014 rule,
+    # not SRD 5.2's"); closing it (C12) replaces this flag for exhaustion with
+    # the numeric penalty, and THIS case is expected to flip to ``False``.
     assert entry["disadvantage"] is expected
     assert entry["passive_check_dis"] == (["all"] if expected else [])
     assert entry["ability_mods"]["wis"] == 2

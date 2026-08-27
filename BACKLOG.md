@@ -74,7 +74,9 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   the remaining work is subtracting `2 × level` through them. The descriptive
   strings in
   `CONDITION_EFFECTS` were corrected to 5.2 wording (2026-08-22) and are labelled
-  as not-enforced.
+  as not-enforced. Closing this must also drop the `disadvantage` projection for
+  exhaustion in `project_passive_check_modifiers` (pinned by
+  `test_resolve_check_activity.py`).
   (`packages/dnd5e-engine/src/dnd5e_engine/rules/conditions.py`)
 - **Speed reduction from conditions is not applied** — `grappled` and
   `restrained` ("Speed becomes 0") and exhaustion's per-level reduction are
@@ -211,6 +213,20 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   see `docs/migration/v0.1-to-v0.2.md`)
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/build_context.py`,
   `packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py`).
+- **Two effect-key namespaces for check/save bonuses (2026-08-26).** The public
+  standalone check resolver folds `check.bonus` / `check.skill_check.bonus` /
+  `check.ability_check.bonus` / `save.bonus` / `save.saving_throw.bonus` /
+  `save.<long ability>.bonus` (e.g. `save.wisdom.bonus`), while the activity path
+  (F1d) folds `abilities.check` / `abilities.skill` / `abilities.<ab>.save` (plus
+  the Foundry-native `system.bonuses.abilities.*` / `system.abilities.<ab>.
+  bonuses.save` spellings) into the `check_modifiers` / `save_modifiers`
+  sidecars. An ActiveEffect authored against one key set is therefore INERT on
+  the other surface. Recommended resolution: alias the standalone resolver's key
+  set onto the `abilities.*` family (one normalization table, both consumers) as
+  part of C12 / C19 — not aliased now, deliberately, to keep the F1d change
+  behaviour-preserving.
+  (`packages/dnd5e-engine/src/dnd5e_engine/check.py:108`,
+  `packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_fold_d20_test_bonus`).
 ## Class / species feature mechanics
 
 - **Attack rolls are NEVER made with advantage or disadvantage** (re-audited
