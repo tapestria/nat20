@@ -17,9 +17,10 @@ MIRRORS, does not import from, ``effects/attack.py`` + ``effects/damage.py``:
   families — the attacker's own ``flags.advantage.attack`` /
   ``flags.disadvantage.attack`` effect changes (``attacker_advantage_flags`` →
   source ``"flag"``) and the condition-derived half
-  (``rules/conditions.py::conditions_grant_advantage_on_attack`` over
-  ``ctx.attacker_conditions`` / ``ctx.target_conditions[target]`` → sources
-  ``"condition:target"`` / ``"condition:attacker"``). Any advantage plus any
+  (``rules/conditions.py::conditions_grant_advantage_on_attack``, called once
+  per side over ``ctx.attacker_conditions`` / ``ctx.target_conditions[target]``
+  so the emitted source names the side that produced it — ``"condition:attacker"``
+  / ``"condition:target"``; both sides can produce either direction). Any advantage plus any
   disadvantage cancel to ``normal`` (SRD §Advantage and Disadvantage). A mode is
   only ever active when a source exists, so a scenario with no advantage
   producer still consumes exactly ONE d20 draw per target and its seeded stream
@@ -121,23 +122,33 @@ def resolve_attack(
     attacker_has_advantage, attacker_has_disadvantage = attacker_advantage_flags(ctx)
 
     for index, target in enumerate(ctx.targets):
-        # Condition-derived half: Invisible attacker / Paralyzed, Stunned,
-        # Unconscious or Blinded target grant advantage; Blinded, Poisoned,
-        # Frightened or Restrained attacker imposes disadvantage.
-        cond_adv, cond_dis = conditions_grant_advantage_on_attack(
-            ctx.attacker_conditions,
-            ctx.target_conditions.get(target.entity_id, []),
+        # Condition-derived half. The helper is called once PER SIDE (the other
+        # side's list empty) purely so the emitted source can name which side
+        # produced it: neither direction is one-way any more — an Invisible
+        # attacker grants itself advantage while an Invisible TARGET imposes
+        # disadvantage, and a Restrained attacker takes disadvantage while a
+        # Restrained TARGET grants advantage. Every row in the helper reads
+        # exactly one of its two arguments, so the split is exact.
+        attacker_cond_adv, attacker_cond_dis = conditions_grant_advantage_on_attack(
+            ctx.attacker_conditions, []
+        )
+        target_cond_adv, target_cond_dis = conditions_grant_advantage_on_attack(
+            [], ctx.target_conditions.get(target.entity_id, [])
         )
         adv_sources: list[AdvantageSource] = []
         dis_sources: list[AdvantageSource] = []
         if attacker_has_advantage:
             adv_sources.append("flag")
-        if cond_adv:
+        if attacker_cond_adv:
+            adv_sources.append("condition:attacker")
+        if target_cond_adv:
             adv_sources.append("condition:target")
         if attacker_has_disadvantage:
             dis_sources.append("flag")
-        if cond_dis:
+        if attacker_cond_dis:
             dis_sources.append("condition:attacker")
+        if target_cond_dis:
+            dis_sources.append("condition:target")
         sources = AdvantageSources(advantage=tuple(adv_sources), disadvantage=tuple(dis_sources))
         roll = roll_d20_test(ctx.rng, attack_bonus, sources, forced_natural=_forced_d20(ctx, index))
         mode: AdvantageMode = roll.mode

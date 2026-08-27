@@ -164,6 +164,64 @@ def test_restrained_attacker_alone_imposes_disadvantage():
     assert event.natural == min(first, second)
 
 
+# ── (b2) SRD 5.2 rows that need no distance / target identity ────────────────
+#
+# Added after the final review: F2b made ``conditions_grant_advantage_on_attack``
+# load-bearing, and three SRD 5.2 rows that need neither a distance nor the
+# identity of a specific creature were missing from it. (Prone and Grappled
+# DO need those, and stay in BACKLOG.md until C12's reach/distance sidecar.)
+
+
+def test_restrained_target_grants_advantage():
+    """SRD 5.2 glossary, Restrained: "Attack rolls against you have Advantage,
+    and your attack rolls have Disadvantage." Only the attacker half was
+    implemented."""
+    event = _swing(attacker=_attacker(), target=_foe("restrained"))
+    mirror = random.Random(_SEED)
+    first, second = mirror.randint(1, 20), mirror.randint(1, 20)
+
+    assert event.advantage == "advantage"
+    assert event.sources == ["condition:target"]
+    assert event.natural == max(first, second)
+
+
+def test_petrified_target_grants_advantage():
+    """SRD 5.2 glossary, Petrified: "Attacks Affected. Attack rolls against you
+    have Advantage." """
+    event = _swing(attacker=_attacker(), target=_foe("petrified"))
+    mirror = random.Random(_SEED)
+    first, second = mirror.randint(1, 20), mirror.randint(1, 20)
+
+    assert event.advantage == "advantage"
+    assert event.sources == ["condition:target"]
+    assert event.natural == max(first, second)
+
+
+def test_invisible_target_imposes_disadvantage():
+    """SRD 5.2 glossary, Invisible: "Attack rolls against you have Disadvantage,
+    and your attack rolls have Advantage." The attacker half shipped without
+    the target half, so an Invisible rogue gained advantage while nobody
+    suffered disadvantage attacking it."""
+    event = _swing(attacker=_attacker(), target=_foe("invisible"))
+    mirror = random.Random(_SEED)
+    first, second = mirror.randint(1, 20), mirror.randint(1, 20)
+
+    assert event.advantage == "disadvantage"
+    assert event.sources == ["condition:target"]
+    assert event.natural == min(first, second)
+
+
+def test_invisible_on_both_sides_cancels_to_normal():
+    """Two Invisible creatures swinging at each other: the attacker's advantage
+    and the target's disadvantage cancel per SRD §Advantage and Disadvantage."""
+    event = _swing(attacker=_attacker("invisible"), target=_foe("invisible"))
+    mirror = random.Random(_SEED)
+
+    assert event.advantage == "normal"
+    assert sorted(event.sources) == ["condition:attacker", "condition:target"]
+    assert event.natural == mirror.randint(1, 20)
+
+
 # ── (c) both sides → cancel to normal ────────────────────────────────────────
 
 

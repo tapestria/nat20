@@ -2673,6 +2673,13 @@ def _record_effect_lifecycle_links(
             continue
 
 
+def _hook_run_end_of_turn_saves(live: _LiveCombat, actor_id: str | None) -> None:
+    """``turn_end`` hook — adapt ``_run_end_of_turn_saves`` to ``TurnHook``."""
+    if actor_id is None:
+        return
+    _run_end_of_turn_saves(live, actor_id)
+
+
 def _hook_tick_durations(live: _LiveCombat, actor_id: str | None) -> None:
     """``turn_end`` hook — adapt ``_tick_durations_at_turn_end`` to ``TurnHook``."""
     if actor_id is None:
@@ -2698,9 +2705,18 @@ def _register_default_turn_hooks(live: _LiveCombat) -> None:
     resolved by the ``rounds`` counter first and the seconds branch then sees
     ``rounds is not None`` and stands down ("rounds wins" — see
     ``_expire_timed_effects_at_turn_end``).
+    ``engine:repeat-save`` is registered FIRST among the ``turn_end`` hooks: the
+    SRD repeat save (Hold Person / Hold Monster / Dominate Person) must resolve
+    while its source effect is still live, so it runs before
+    ``engine:duration-tick`` could expire that effect on the same boundary.
+    Before F3a-follow-up this ran as a hand-placed call at two sites *above* the
+    ``TurnPhase(turn_end)`` marker, which also let a bonus action trigger a
+    second repeat save in the same turn; as a hook it runs exactly once per turn
+    end, inside the phase it belongs to.
     Later clusters (ongoing damage, regeneration, recharge, legendary reset)
     append here rather than editing the advance path.
     """
+    live.lifecycle.register("turn_end", _hook_run_end_of_turn_saves, key="engine:repeat-save")
     live.lifecycle.register("turn_end", _hook_tick_durations, key="engine:duration-tick")
     live.lifecycle.register(
         "turn_end", _hook_expire_timed_effects, key="engine:timed-effect-expiry"
@@ -3983,13 +3999,18 @@ def _end_turn_and_advance(live: _LiveCombat, actor_id: str) -> None:
     Event order at the boundary is fixed and pinned by
     ``tests/test_turn_lifecycle.py``::
 
-        TurnPhase(turn_end, A) -> [turn_end hooks] -> TurnEnded(A)
+        TurnPhase(turn_end, A) -> [turn_end hooks: repeat-save, duration tick,
+                                    timed-effect expiry] -> TurnEnded(A)
         -> (on wrap) RoundStarted -> TurnPhase(round_start) -> [round_start hooks]
         -> TurnStarted(B) -> TurnPhase(turn_start, B) -> [turn_start hooks]
         -> pending death save
 
     The marker precedes its hooks so a host reading the stream sees the phase
-    announced before anything that phase causes.
+    announced before anything that phase causes. That includes the SRD repeat
+    save (Hold Person & co.), which is the ``engine:repeat-save`` ``turn_end``
+    hook rather than a call at the intent sites — so it fires exactly once per
+    turn end and never on the bonus-action path, which returns before reaching
+    here.
     """
     _emit(
         live,
@@ -5187,14 +5208,10 @@ async def submit_player_intent(
     _record_effect_lifecycle_links(live, current, pre_event_count)
 
     # SRD §Hold Person / §Hold Monster — *"At the end of each of its turns,
-    # the target repeats the save."* Roll any pending repeat saves for the
-    # actor whose turn just resolved BEFORE emitting TurnEnded so the
-    # ``SaveRolled`` events surface on the same turn boundary the SRD
-    # specifies. PC self-cast concentration spells (Bless / Bane) don't
-    # register repeat-save specs (no condition + failed-save pairing), so
-    # this is a no-op for self-buff casters.
-    _run_end_of_turn_saves(live, actor_id)
-
+    # the target repeats the save."* This runs as the ``engine:repeat-save``
+    # ``turn_end`` hook inside ``_end_turn_and_advance``, NOT here: a bonus
+    # action does not end the turn, so it must not trigger a repeat save.
+    #
     # Advance the turn. End-of-round wraps to next round + emits a
     # RoundStarted; a follow-up RoundEnded would land in the cutover
     # path where the evaluator drives the loop. Keeping the additive
@@ -5759,12 +5776,6 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
         # (mirrors the PC path; no-op for non-caster monsters).
         _writeback_concentration(live, current, pre_event_count)
         _record_effect_lifecycle_links(live, current, pre_event_count)
-
-    # SRD §Hold Person / §Hold Monster repeat-save — runs whether or not
-    # the monster had an action this turn (a paralyzed goblin with no
-    # gambit still takes its turn-end save). Symmetric with the PC path
-    # in ``submit_player_intent``.
-    _run_end_of_turn_saves(live, current.entity_id)
 
     # Advance the turn — the single shared path (F3a); this site used to carry
     # its own copy of the wrap-and-emit block.
