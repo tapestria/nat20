@@ -123,3 +123,72 @@ def test_legendary_and_lair_actions_are_still_unconsumed() -> None:
             f"{field} is now read by the engine — update docs/capabilities.md "
             "and BACKLOG.md, then relax this test"
         )
+
+
+# ── status-row probes ────────────────────────────────────────────────────────
+#
+# The counts above are pinned; the ✅/⚠️/❌ status rows were not, and drifted
+# (see BACKLOG.md "Documentation drift"). Each probe below is a cheap,
+# grep-level fact about the shipped source that the corresponding row claims.
+# The test asserts the row and the probe agree in BOTH directions: a row that
+# claims a capability the code lost fails, and so does a row still claiming a
+# gap the code has since closed.
+
+
+def _src(rel: str) -> str:
+    """Source text of an engine module, by path relative to the package root."""
+    import dnd5e_engine
+
+    return (Path(dnd5e_engine.__file__).parent / rel).read_text()
+
+
+def _event_class_body(name: str) -> str:
+    """The body of one ``events.py`` event class, up to the next ``class``."""
+    source = _src("events.py")
+    head = source.split(f"\nclass {name}(", 1)
+    assert len(head) == 2, f"events.py no longer defines {name}"
+    return head[1].split("\nclass ", 1)[0]
+
+
+#: row substring → (probe over the shipped source, substring the row must carry
+#: iff the probe is True).
+_PROBES: dict[str, tuple[Any, str]] = {
+    # F1c/F1d: every save path adds a real ability + proficiency modifier.
+    "Saving throws, half-on-save": (
+        lambda: "save_modifier(" in _src("orchestrator.py"),
+        "✅",
+    ),
+    # F2b: activity attacks build typed AdvantageSources instead of the old
+    # hard-coded ``mode: AdvantageMode = "normal"`` parameter.
+    "Attack rolls, crits": (
+        lambda: 'mode: AdvantageMode = "normal"' not in _src("activities/attack.py"),
+        "Advantage/disadvantage is rolled on",
+    ),
+    # Still open (C14): the three intents have no handler at all.
+    "Dodge, Hide, Help": (
+        lambda: '"dodge"' in _src("orchestrator.py"),
+        "✅",
+    ),
+    # F2c: the damage-triggered concentration save emits the dedicated event.
+    "Concentration, incl. damage-triggered saves": (
+        lambda: "ConcentrationCheck(" in _src("orchestrator.py"),
+        "emits `ConcentrationCheck`",
+    ),
+    # F2c: the d20 breakdown is carried on the roll events.
+    "carry the roll breakdown": (
+        lambda: "natural:" in _event_class_body("AttackRolled"),
+        "`natural`",
+    ),
+}
+
+
+@pytest.mark.parametrize("row", sorted(_PROBES))
+def test_status_rows_match_code_probes(row: str, matrix_text: str) -> None:
+    probe, status_if_true = _PROBES[row]
+    lines = [line for line in matrix_text.splitlines() if row in line]
+    assert len(lines) == 1, f"capabilities.md has {len(lines)} lines containing {row!r}, want 1"
+    assert (status_if_true in lines[0]) == probe(), (
+        f"capabilities.md row {row!r} disagrees with the code: the page "
+        f"{'claims' if status_if_true in lines[0] else 'does not claim'} "
+        f"{status_if_true!r}, the source says {probe()}"
+    )
