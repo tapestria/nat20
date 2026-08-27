@@ -375,11 +375,10 @@ def _friendly_combat_ended(e: Any, names: dict[str, str]) -> str:
     return f"Combat ends: {e.reason}"
 
 
-# Covers every event type the brief calls out. ``concentration_check`` is
-# kept for forward-compatibility even though the engine never emits it
-# today (``ConcentrationCheck`` is dead code — see BACKLOG.md); real
-# concentration-on-damage surfaces as a plain ``save_rolled(ability="con")``,
-# already handled by ``_friendly_save_rolled``.
+# Covers every event type the brief calls out. Since engine F2c the
+# concentration-on-damage check emits ``concentration_check`` ALONGSIDE the
+# ``save_rolled(ability="con")`` it has always emitted (the duplicate goes
+# away in engine v0.7), so both renderers below are live.
 _FRIENDLY: dict[str, Callable[[Any, dict[str, str]], str]] = {
     "attack_rolled": _friendly_attack_rolled,
     "save_rolled": _friendly_save_rolled,
