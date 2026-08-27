@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 
 from dnd5e_engine import ActiveEffect, PlayerIntent
-from dnd5e_engine.events import AttackRolled, IntentSubmitted, TurnEnded
+from dnd5e_engine.events import AttackRolled, IntentSubmitted, MoveFailed, TurnEnded
 from dnd5e_engine.orchestrator import (
     IntentRejectedError,
     _get_live,
@@ -151,3 +151,63 @@ def test_incapacitated_monster_turn_records_a_pass() -> None:
     assert submitted
     assert submitted[-1].actor_id == "mon:foe"
     assert submitted[-1].intent_type == "pass"
+
+
+def _combatant(live: Any, entity_id: str) -> Any:
+    return next(c for c in live.initiative if c.entity_id == entity_id)
+
+
+@pytest.mark.parametrize(
+    "status", ["grappled", "restrained", "paralyzed", "petrified", "unconscious"]
+)
+def test_speed_zero_condition_projects_zero_movement_and_fails_moves(status: str) -> None:
+    start = _start(
+        f"c12-speed0-{status}",
+        [_hero()],
+        [_foe(zone_id=cell(5, 5))],
+        [_status("char:hero", status)],
+    )
+    live = _get_live(start.handle)
+    assert _combatant(live, "char:hero").movement_remaining == 0
+    run_async(
+        submit_player_intent(
+            start.handle,
+            actor_id="char:hero",
+            intent=PlayerIntent(intent_type="move", target_zone_id=cell(1, 0)),
+        )
+    )
+    failed = events_of(live, MoveFailed)
+    assert failed
+    assert failed[-1].reason == "speed_zero"
+    assert live.actor_zone["char:hero"] == cell(0, 0)
+
+
+def test_dash_cannot_increase_a_zero_speed() -> None:
+    # SRD 5.2 Grappled: "Your Speed is 0 and can't increase."
+    start = _start(
+        "c12-speed0-dash",
+        [_hero()],
+        [_foe(zone_id=cell(5, 5))],
+        [_status("char:hero", "restrained")],
+    )
+    run_async(
+        submit_player_intent(
+            start.handle, actor_id="char:hero", intent=PlayerIntent(intent_type="dash")
+        )
+    )
+    assert _combatant(_get_live(start.handle), "char:hero").movement_remaining == 0
+
+
+def test_exhaustion_reduces_the_movement_budget_by_five_feet_per_level() -> None:
+    start = _start(
+        "c12-exh-speed",
+        [_hero()],
+        [_foe(zone_id=cell(5, 5))],
+        [_status("char:hero", "exhaustion")],
+    )
+    assert _combatant(_get_live(start.handle), "char:hero").movement_remaining == 25
+
+
+def test_unconditioned_actor_keeps_the_full_budget() -> None:
+    start = _start("c12-speed-baseline", [_hero()], [_foe(zone_id=cell(5, 5))])
+    assert _combatant(_get_live(start.handle), "char:hero").movement_remaining == 30

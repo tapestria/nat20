@@ -124,10 +124,12 @@ from dnd5e_engine.rules.conditions import (
     Condition,
     active_condition_names,
     conditions_block_actions,
+    exhaustion_level_of,
     is_condition_active,
     project_passive_check_modifiers,
     project_passive_damage_modifiers,
     project_passive_save_modifiers,
+    project_speed,
 )
 from dnd5e_engine.spatial import GridTopology, SpatialTopology
 from dnd5e_engine.specs import (
@@ -1120,6 +1122,27 @@ def _condition_names(c: Combatant) -> list[str]:
     return active_condition_names(c.conditions)
 
 
+def _effective_speed(c: Combatant) -> int:
+    """SRD 5.2 walking Speed under the combatant's conditions
+    (``rules.conditions.project_speed``): 0 under a Speed-0 condition, else
+    ``base_speed - 5 x exhaustion level``."""
+    return project_speed(c.base_speed, _condition_names(c), exhaustion_level_of(c.conditions))
+
+
+def _clamp_movement_budget(live: _LiveCombat, entity_id: str) -> None:
+    """Re-project one combatant's ``movement_remaining`` after its conditions
+    changed mid-turn: never above the effective Speed (a creature grappled
+    mid-move loses the rest of its budget; the budget is never RAISED here —
+    only the turn-start reset and Dash add movement)."""
+    for idx, c in enumerate(live.initiative):
+        if c.entity_id != entity_id:
+            continue
+        cap = _effective_speed(c)
+        if c.movement_remaining > cap:
+            live.initiative[idx] = c.model_copy(update={"movement_remaining": cap})
+        break
+
+
 #: SRD 5.2 Incapacitated — intents that spend NO action, Bonus Action or
 #: Reaction and therefore stay legal: ending the turn, and plain movement
 #: (Speed is governed separately — see ``_handle_move``'s speed gate).
@@ -1236,7 +1259,8 @@ def _handle_dash(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
     else:
         budget_consumed = "action"
 
-    new_movement = current.movement_remaining + current.base_speed
+    # SRD 5.2 Dash adds the creature's (current) Speed; a Speed of 0 "can't increase".
+    new_movement = current.movement_remaining + _effective_speed(current)
     budget_field = (
         "bonus_action_available" if budget_consumed == "bonus_action" else "action_available"
     )
@@ -1544,11 +1568,11 @@ def _emit_apply_turn_started(live: _LiveCombat, event: TurnStarted) -> None:
                     "action_available": True,
                     "bonus_action_available": True,
                     "reaction_available": True,
-                    # SRD §Movement — movement budget refreshes to the
-                    # actor's full walking speed at the start of their
-                    # own turn. Per-MOVE-intent decrement is the only
-                    # writer; this is the only reset.
-                    "movement_remaining": c.base_speed,
+                    # SRD §Movement — the budget refreshes to the actor's
+                    # EFFECTIVE Speed (Speed-0 conditions, Exhaustion) at the
+                    # start of their turn. Per-MOVE-intent decrement is the
+                    # only other writer; this is the only reset.
+                    "movement_remaining": _effective_speed(c),
                     # SRD §Disengage — "for the rest of the turn"; this is
                     # the start of a NEW turn, so the suppression lapses.
                     "disengaging_this_turn": False,
@@ -1790,6 +1814,9 @@ def _emit_apply_effect_applied(live: _LiveCombat, event: EffectApplied) -> None:
                 if c.entity_id == applied.target_id:
                     live.initiative[idx] = c.model_copy(update={"conditions": new_conditions})
                     break
+        # C12 — a newly applied Speed-0 / Exhaustion condition immediately
+        # caps whatever movement the target had left this turn.
+        _clamp_movement_budget(live, applied.target_id)
     # SRD spell-slot consumption: spell effects with concentration imply
     # a slot was spent. The slot level is not on the event today (follow-up
     # in the cutover); we record under a coarse "slots" label keyed by name.
@@ -3547,6 +3574,11 @@ async def start_combat(
     # at seed time; the next runtime save will repopulate as needed.
     _seed_active_effects(live, active_effects)
 
+    # C12 — the seeded conditions may already zero or reduce a Speed; project
+    # every combatant's opening movement budget before the first turn opens.
+    for c in list(live.initiative):
+        _clamp_movement_budget(live, c.entity_id)
+
     # Emit the round-start + first turn-start so a consumer of
     # ``narration_events`` sees combat actually open. The evaluator
     # itself is invoked only from inside ``submit_player_intent`` once
@@ -4156,6 +4188,13 @@ def _handle_move(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
     ``MoveFailed`` and return without mutating budget or position.
     """
     actor_id = current.entity_id
+    # SRD 5.2 "Speed 0. Your Speed is 0 and can't increase." (Grappled /
+    # Restrained / Paralyzed / Petrified / Unconscious) and Exhaustion's
+    # ``-5 ft x level``: a creature whose effective Speed is 0 cannot move at
+    # all — distinct from ``insufficient_movement`` (budget spent this turn).
+    if _effective_speed(current) == 0:
+        _emit(live, MoveFailed(actor_id=actor_id, reason="speed_zero"))
+        return
     target_zone_id = intent.target_zone_id
     current_zone = live.actor_zone.get(actor_id)
     if (

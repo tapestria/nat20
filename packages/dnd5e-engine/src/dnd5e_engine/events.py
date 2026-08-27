@@ -443,7 +443,15 @@ class MoveFailed(BaseModel):
 
     type: Literal["move_failed"] = "move_failed"
     actor_id: str
-    reason: Literal["not_adjacent", "insufficient_movement", "combat_ended", "not_actor_turn"]
+    reason: Literal[
+        "not_adjacent",
+        "insufficient_movement",
+        "combat_ended",
+        "not_actor_turn",
+        # SRD 5.2 "Speed 0" conditions (Grappled / Restrained / Paralyzed /
+        # Petrified / Unconscious) or Exhaustion reducing Speed to 0 (C12).
+        "speed_zero",
+    ]
 
 
 class AttackFailed(BaseModel):

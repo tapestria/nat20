@@ -275,7 +275,6 @@ def test_c12_s03_prone_target_melee_advantage_ranged_disadvantage():
     assert base_ranged.advantage == "normal"
 
 
-@xfail_cluster(12, "conditions enforced")
 def test_c12_s04_grappled_actor_has_speed_zero():
     """C12-S04: SRD 5.2 Conditions, Grappled — "Your Speed is 0 and can't
     increase." (packs/_source/content24/appendices/rules-glossary.yml:1251).
