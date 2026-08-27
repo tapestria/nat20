@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from dnd5e_engine.events import (
     AttackRolled,
+    ConcentrationCheck,
     DamageApplied,
     Death,
     RoundStarted,
+    SaveRolled,
     TurnPhase,
     TurnStarted,
 )
@@ -151,3 +153,31 @@ def test_narrating_only_markers_yields_empty_text() -> None:
     """The degenerate case: a delta containing nothing but markers narrates to
     the empty string rather than a run of blank lines."""
     assert narrate([TurnPhase(actor_id=None, phase="round_start", round_number=3)], NAMES) == ""
+
+
+def test_concentration_save_narrates_exactly_one_line() -> None:
+    """The engine emits ``ConcentrationCheck`` *and* a twin ``SaveRolled`` for
+    one concentration save until v0.7. Narrating both would tell the LLM the
+    same save happened twice, so the transitional ``concentration_check`` is
+    skipped and the human-readable ``save_rolled`` line is the one kept.
+    """
+    events = [
+        SaveRolled(
+            target_id="char:elara",
+            ability="con",
+            dc=10,
+            roll_total=14,
+            succeeded=True,
+        ),
+        ConcentrationCheck(
+            target_id="char:elara",
+            dc=10,
+            roll_total=14,
+            succeeded=True,
+        ),
+    ]
+    text = narrate(events, NAMES)
+    lines = text.splitlines()
+    assert len(lines) == 1
+    assert "concentration_check" not in text
+    assert "Elara" in lines[0] and "con save" in lines[0] and "14" in lines[0]
