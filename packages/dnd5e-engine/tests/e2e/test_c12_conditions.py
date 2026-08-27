@@ -164,7 +164,6 @@ def test_c12_s02_paralyzed_target_grants_advantage_and_auto_crit_within_5ft():
     assert base.advantage == "normal"
 
 
-@xfail_cluster(12, "conditions enforced")
 def test_c12_s03_prone_target_melee_advantage_ranged_disadvantage():
     """C12-S03: SRD 5.2 Conditions, Prone — attack rolls against a Prone
     target have Advantage within 5 ft and Disadvantage otherwise

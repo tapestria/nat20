@@ -140,6 +140,8 @@ def build_activity_context(
     save_modifiers: dict[str, dict[str, Any]],
     check_modifiers: dict[str, dict[str, Any]] | None = None,
     target_cover: dict[str, str] | None = None,
+    target_distance_ft: dict[str, int] | None = None,
+    attacker_grappler_id: str | None = None,
     scale_values: dict[str, int | str] | None = None,
     class_levels: dict[str, int] | None = None,
     cast_level_override: int | None = None,
@@ -337,6 +339,8 @@ def build_activity_context(
         passive_save_auto_fail=passive_save_auto_fail,
         passive_ac_bonus=passive_ac_bonus,
         target_cover=target_cover or {},
+        target_distance_ft=target_distance_ft or {},
+        attacker_grappler_id=attacker_grappler_id,
         # SRD §Advantage / §Sneak Attack — the caster's own active effects
         # (attacker-side ``flags.advantage.attack`` / ``flags.disadvantage.attack``
         # read by ``attack.py``) plus the two Sneak Attack sidecars. The

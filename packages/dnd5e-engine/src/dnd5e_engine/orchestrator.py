@@ -327,6 +327,16 @@ class _ZoneGraph:
                     frontier.append((new_dist, neighbour))
         return False
 
+    def distance_ft(self, a: str, b: str) -> int | None:
+        """Shortest-path distance in feet over the zone graph; ``None`` when
+        unreachable or unknown. (Zone graph is deprecated in 0.6 — parity only.)"""
+        if a == b and a in self._zones:
+            return 0
+        path = self.shortest_path(a, b)
+        if not path:
+            return None
+        return _path_total_distance(self, path)
+
     def shortest_path(self, a: str, b: str) -> list[str]:
         """Return the sequence of zones from ``a`` to ``b`` (inclusive), or ``[]``.
 
@@ -548,6 +558,59 @@ def _target_cover_map(
             continue
         out[target.entity_id] = live.topology.cover_between(caster_zone, target_zone)
     return out
+
+
+def _target_distance_map(
+    live: _LiveCombat, caster_id: str, targets: Sequence[Combatant]
+) -> dict[str, int]:
+    """Per-target attacker→target distance in feet (``SpatialTopology.distance_ft``),
+    threaded into ``ActivityResolutionContext.target_distance_ft`` for the
+    distance-aware condition rows (SRD 5.2 Prone). A participant without a
+    tracked position, or an unreachable pair, is simply absent (the rows stay
+    inert) — mirrors ``_target_cover_map``.
+    """
+    caster_zone = live.actor_zone.get(caster_id)
+    if caster_zone is None:
+        return {}
+    out: dict[str, int] = {}
+    for target in targets:
+        target_zone = live.actor_zone.get(target.entity_id)
+        if target_zone is None:
+            continue
+        distance = live.topology.distance_ft(caster_zone, target_zone)
+        if distance is not None:
+            out[target.entity_id] = distance
+    return out
+
+
+#: ``ActiveEffect.origin`` prefixes whose THIRD ``:``-segment is the entity that
+#: created the effect (``cast:<slug>:<caster_id>`` is the shipped convention;
+#: ``grapple:<slug>:<grappler_id>`` is reserved for C14's grapple contest).
+_ENTITY_ORIGIN_PREFIXES: frozenset[str] = frozenset({"cast", "grapple"})
+
+
+def _condition_source_entity(live: _LiveCombat, combatant: Combatant, condition: str) -> str | None:
+    """Who imposed ``condition`` on ``combatant`` (the grappler, the charmer)?
+
+    Resolution order: an ``ActiveCondition.source_entity_id`` that is a real
+    entity id (not an ``implied:*`` marker); else the imposing ``ActiveEffect``
+    (via ``source_effect_id``) whose ``origin`` encodes its creator. ``None``
+    when unknown — every consumer treats unknown as "no restriction".
+    """
+    for ac in combatant.conditions:
+        if ac.condition != condition:
+            continue
+        if not ac.source_entity_id.startswith("implied:"):
+            return ac.source_entity_id
+        if ac.source_effect_id is None:
+            continue
+        for eff in live.active_effects.get(combatant.entity_id, []):
+            if eff.id != ac.source_effect_id:
+                continue
+            parts = (eff.origin or "").split(":", 2)
+            if len(parts) == 3 and parts[0] in _ENTITY_ORIGIN_PREFIXES and parts[2]:
+                return parts[2]
+    return None
 
 
 def _sneak_ally_adjacent_map(
@@ -4662,6 +4725,8 @@ def _resolve_readied_spell_cast(
         passive_damage_modifiers=payload["passive_damage_modifiers"],
         save_modifiers=payload["save_modifiers"],
         check_modifiers=payload["check_modifiers"],
+        target_distance_ft=_target_distance_map(live, reactor.entity_id, [reactor]),
+        attacker_grappler_id=_condition_source_entity(live, reactor, "grappled"),
     )
     pre_event_count = len(live.event_log)
     for activity in spell.activities:
@@ -4778,6 +4843,8 @@ def _drain_counterspell_reaction(
         passive_damage_modifiers=payload["passive_damage_modifiers"],
         save_modifiers=payload["save_modifiers"],
         check_modifiers=payload["check_modifiers"],
+        target_distance_ft=_target_distance_map(live, reactor.entity_id, [current]),
+        attacker_grappler_id=_condition_source_entity(live, reactor, "grappled"),
     )
     pre_event_count = len(live.event_log)
     resolve_activity(save_activity, actx, weapon=None)
@@ -5165,6 +5232,8 @@ async def submit_player_intent(
             save_modifiers=payload["save_modifiers"],
             check_modifiers=payload["check_modifiers"],
             target_cover=_target_cover_map(live, current.entity_id, targets),
+            target_distance_ft=_target_distance_map(live, current.entity_id, targets),
+            attacker_grappler_id=_condition_source_entity(live, current, "grappled"),
             scale_values=scale_values,
             class_levels=class_levels,
             # A FEATURE invocation must not inherit the blanket spell
@@ -5767,6 +5836,8 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
             save_modifiers=payload["save_modifiers"],
             check_modifiers=payload["check_modifiers"],
             target_cover=_target_cover_map(live, current.entity_id, target_list),
+            target_distance_ft=_target_distance_map(live, current.entity_id, target_list),
+            attacker_grappler_id=_condition_source_entity(live, current, "grappled"),
         )
         for activity in monster_activities:
             # Monster attacks carry their damage on the AttackActivity itself,

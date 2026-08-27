@@ -168,6 +168,16 @@ class ActivityResolutionContext:
     # to AC and Dexterity saving throws"). Absent target -> "none" (+0).
     # Empty default keeps the golden corpus identical (no cover geometry).
     target_cover: dict[str, str] = field(default_factory=dict)
+    # Per-TARGET attacker→target distance in feet (``SpatialTopology.distance_ft``),
+    # computed once per resolution by the orchestrator (``_target_distance_map``).
+    # Consumed by ``attack.py`` for the SRD 5.2 Prone target row (advantage
+    # within 5 ft, disadvantage otherwise). Absent target -> unknown -> that row
+    # stays inert.
+    target_distance_ft: dict[str, int] = field(default_factory=dict)
+    # The entity grappling the ATTACKER (SRD 5.2 Grappled: disadvantage on
+    # attack rolls against any target other than the grappler). ``None`` when
+    # not grappled or the grappler is unknown -> row inert.
+    attacker_grappler_id: str | None = None
     # Per-TARGET flat AC bonus from an active effect (Shield's +5, keyed
     # ``"system.attributes.ac.bonus"`` in the Foundry source data, aliased to
     # the engine's ``"ac.bonus"`` fold key). Mirrors ``passive_save_modifiers``'s

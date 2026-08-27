@@ -145,6 +145,8 @@ class SpatialTopology(Protocol):
 
     def cover_between(self, a: str, b: str) -> CoverDegree: ...
 
+    def distance_ft(self, a: str, b: str) -> int | None: ...
+
 
 class GridTopology:
     """Chebyshev (8-direction, one cell = ``cell_size_ft``) grid backend.
@@ -204,6 +206,12 @@ class GridTopology:
         if dist is None:
             return False
         return dist * self._cell_size_ft <= range_ft
+
+    def distance_ft(self, a: str, b: str) -> int | None:
+        """Straight-line Chebyshev distance in feet (``None`` when either cell is
+        out of bounds). SRD 5.2 grid rule: a diagonal step is one square."""
+        dist = self._chebyshev(a, b)
+        return None if dist is None else dist * self._cell_size_ft
 
     def has_line_of_sight(self, a: str, b: str) -> bool:
         """SRD 5.2 §Areas of Effect — a wall blocks sight between two cells.

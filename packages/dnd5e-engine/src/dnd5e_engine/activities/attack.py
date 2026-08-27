@@ -25,8 +25,9 @@ MIRRORS, does not import from, ``effects/attack.py`` + ``effects/damage.py``:
   only ever active when a source exists, so a scenario with no advantage
   producer still consumes exactly ONE d20 draw per target and its seeded stream
   is unchanged. The same flags additionally GATE the SRD §Sneak Attack trigger
-  below. Prone/reach and other distance-derived sources are still deferred (see
-  ``BACKLOG.md``).
+  below. Prone (distance-aware via ``ctx.target_distance_ft``) and Grappled (via
+  ``ctx.attacker_grappler_id``) are live since C12; unseen / long-range sources
+  are C15/C16b.
 * Hit / crit / miss mirrors ``effects/attack.py:_resolve_hit_outcome``: natural
   20 → auto crit+hit, natural 1 → auto miss, else ``total >= AC`` (SRD §Rolling
   1 or 20 / §Making an Attack). The crit threshold is ``attack.critical.threshold
@@ -129,11 +130,17 @@ def resolve_attack(
         # disadvantage, and a Restrained attacker takes disadvantage while a
         # Restrained TARGET grants advantage. Every row in the helper reads
         # exactly one of its two arguments, so the split is exact.
+        distance_ft = ctx.target_distance_ft.get(target.entity_id)
         attacker_cond_adv, attacker_cond_dis = conditions_grant_advantage_on_attack(
-            ctx.attacker_conditions, []
+            ctx.attacker_conditions,
+            [],
+            grappler_id=ctx.attacker_grappler_id,
+            target_id=target.entity_id,
         )
         target_cond_adv, target_cond_dis = conditions_grant_advantage_on_attack(
-            [], ctx.target_conditions.get(target.entity_id, [])
+            [],
+            ctx.target_conditions.get(target.entity_id, []),
+            distance_ft=distance_ft,
         )
         adv_sources: list[AdvantageSource] = []
         dis_sources: list[AdvantageSource] = []
