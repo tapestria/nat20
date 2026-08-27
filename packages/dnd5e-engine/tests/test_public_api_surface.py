@@ -8,6 +8,7 @@ TOP_LEVEL = {
     "ActiveEffect",
     "ActiveEffectChange",
     "ActiveEffectDuration",
+    "AdvantageSource",
     "CharacterBuildSpec",
     "CheckKind",
     "CheckResult",

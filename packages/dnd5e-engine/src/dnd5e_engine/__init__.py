@@ -35,7 +35,7 @@ from dnd5e_engine.build_spec import (
     make_build_spec,
 )
 from dnd5e_engine.check import CheckKind, CheckResult, CheckSpec, resolve_check
-from dnd5e_engine.events import CombatEvent, IntentType
+from dnd5e_engine.events import AdvantageSource, CombatEvent, IntentType
 from dnd5e_engine.lib_loader import configure_lib_loader
 from dnd5e_engine.orchestrator import (
     CombatHandle,
@@ -87,6 +87,7 @@ __all__ = [
     "ActiveEffect",
     "ActiveEffectChange",
     "ActiveEffectDuration",
+    "AdvantageSource",
     "CharacterBuildSpec",
     "CheckKind",
     "CheckResult",
