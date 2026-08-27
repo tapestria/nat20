@@ -643,6 +643,7 @@ def test_the_check_reports_its_natural_modifier_and_sources() -> None:
     check = _only_check(events)
     assert (check.natural, check.modifier) == (11, 4)
     assert check.roll_total == check.natural + check.modifier
+    assert check.advantage == "normal"
     assert check.sources == []
 
 
@@ -671,6 +672,7 @@ def test_condition_disadvantage_makes_the_actor_keep_the_lower_die() -> None:
 
     check = _only_check(events)
     assert check.natural == expected
+    assert check.advantage == "disadvantage"
     assert check.sources == ["condition:attacker"]
 
 
@@ -689,6 +691,7 @@ def test_the_disadvantage_flag_is_scoped_to_the_rolling_actor() -> None:
     check = _only_check(events)
     assert check.actor_id == "npc:bound"
     assert check.natural == expected
+    assert check.advantage == "normal"
     assert check.sources == []
 
 
@@ -712,9 +715,6 @@ def test_a_poisoned_pc_draws_two_dice_through_the_live_orchestrator() -> None:
     ``build_activity_context``'s sidecar narrowing, and is consumed by the
     handler (F2c), so the actor draws TWO d20s and keeps the lower.
 
-    ``CheckRolled`` carries no ``advantage`` mode field (unlike
-    ``AttackRolled``); the mode is read off ``sources``, which is empty for a
-    normal roll and non-empty here.
     """
     start = run_async(
         start_combat(
@@ -758,4 +758,5 @@ def test_a_poisoned_pc_draws_two_dice_through_the_live_orchestrator() -> None:
     assert check.natural == expected
     assert check.modifier == 2  # WIS 14, not proficient in Perception
     assert check.roll_total == expected + 2
+    assert check.advantage == "disadvantage"
     assert check.sources == ["condition:attacker"]

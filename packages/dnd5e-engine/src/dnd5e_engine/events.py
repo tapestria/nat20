@@ -211,6 +211,9 @@ class SaveRolled(BaseModel):
     dc: int
     roll_total: int
     succeeded: bool
+    # F2 — the resolved D20 Test mode, matching ``AttackRolled.advantage``.
+    # Defaults to ``"normal"`` so pre-F2 constructors stay valid.
+    advantage: AdvantageMode = "normal"
     # F2 — optional D20 Test provenance; see ``AttackRolled``.
     natural: int | None = None
     modifier: int | None = None
@@ -225,6 +228,9 @@ class CheckRolled(BaseModel):
     dc: int | None
     roll_total: int
     succeeded: bool | None
+    # F2 — the resolved D20 Test mode, matching ``AttackRolled.advantage``.
+    # Defaults to ``"normal"`` so pre-F2 constructors stay valid.
+    advantage: AdvantageMode = "normal"
     # F2 — optional D20 Test provenance; see ``AttackRolled``.
     natural: int | None = None
     modifier: int | None = None
@@ -304,6 +310,8 @@ class ConcentrationCheck(BaseModel):
     dc: int
     roll_total: int
     succeeded: bool
+    # F2 — the resolved D20 Test mode, matching ``AttackRolled.advantage``.
+    advantage: AdvantageMode = "normal"
     # F2 — optional D20 Test provenance; see ``AttackRolled``. Carried here as
     # well as on the twin ``SaveRolled`` so the breakdown survives the v0.7
     # removal of that duplicate.

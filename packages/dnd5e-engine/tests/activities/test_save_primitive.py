@@ -423,6 +423,7 @@ def test_advantage_is_reported_as_a_target_condition_source() -> None:
 
     roll = roll_save(ctx, _target(), "wis", dc=1)
 
+    assert roll.mode == "advantage"
     assert roll.sources == ("condition:target",)
 
 
@@ -431,6 +432,7 @@ def test_disadvantage_is_reported_as_a_target_condition_source() -> None:
 
     roll = roll_save(ctx, _target(), "dex", dc=1)
 
+    assert roll.mode == "disadvantage"
     assert roll.sources == ("condition:target",)
 
 
@@ -441,6 +443,7 @@ def test_cancelling_sources_are_both_reported() -> None:
 
     roll = roll_save(ctx, _target(), "wis", dc=1)
 
+    assert roll.mode == "normal"
     assert roll.sources == ("condition:target", "condition:target")
     # ...and still exactly one die was drawn.
     assert roll.natural == random.Random(1).randint(1, 20)
@@ -452,6 +455,7 @@ def test_an_auto_failed_save_reports_no_natural() -> None:
     roll = roll_save(ctx, _target(), "dex", dc=5)
 
     assert (roll.total, roll.succeeded, roll.natural, roll.modifier) == (0, False, None, 0)
+    assert roll.mode == "normal"  # no die was rolled
 
 
 @pytest.mark.parametrize(

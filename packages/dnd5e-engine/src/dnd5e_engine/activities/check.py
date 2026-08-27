@@ -157,6 +157,7 @@ def resolve_check(activity: CheckActivity, ctx: ActivityResolutionContext) -> No
             dc=dc,
             roll_total=total,
             succeeded=succeeded,
+            advantage=roll.mode,
             natural=roll.kept,
             modifier=roll.modifier,
             sources=list(roll.sources),
