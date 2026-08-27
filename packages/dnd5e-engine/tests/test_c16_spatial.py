@@ -4,7 +4,7 @@ card in specs/rule-cards/c16-spatial-vision.md."""
 
 from __future__ import annotations
 
-from dnd5e_engine.spatial import GridTopology
+from dnd5e_engine.spatial import GridTopology, cell_id
 from dnd5e_engine.specs import GridScene
 
 
@@ -113,3 +113,43 @@ def test_shortest_path_neighbour_order_is_unchanged_without_obstacles():
     # Determinism guard: the BFS tie-break on main picks the straight row.
     g = _grid(difficult_terrain_cells=["2,0"])
     assert g.shortest_path("0,0", "3,0") == ["0,0", "1,0", "2,0", "3,0"]
+
+
+# ── Task 3: cube / cylinder templates ────────────────────────────────────
+
+
+def test_cell_size_ft_property():
+    assert _grid().cell_size_ft == 5
+    assert _grid(cell_size_ft=10).cell_size_ft == 10
+
+
+def test_cells_in_template_cylinder_matches_sphere_and_includes_origin():
+    g = _grid()
+    assert g.cells_in_template("5,5", "cylinder", 10) == g.cells_in_template("5,5", "sphere", 10)
+    assert "5,5" in g.cells_in_template("5,5", "cylinder", 10)
+
+
+def test_cells_in_template_cube_cardinal_is_face_anchored_and_excludes_origin():
+    g = _grid()
+    cells = set(g.cells_in_template("0,5", "cube", 15, direction=(1, 0)))
+    assert "0,5" not in cells
+    assert cells == {cell_id(c, r) for c in (1, 2, 3) for r in (4, 5, 6)}
+
+
+def test_cells_in_template_cube_clips_to_bounds():
+    g = _grid()
+    cells = set(g.cells_in_template("0,0", "cube", 15, direction=(1, 0)))
+    assert cells == {cell_id(c, r) for c in (1, 2, 3) for r in (0, 1)}
+
+
+def test_cells_in_template_cube_diagonal_is_the_corner_block():
+    g = _grid()
+    cells = set(g.cells_in_template("2,2", "cube", 10, direction=(-1, -1)))
+    assert cells == {"0,0", "1,0", "0,1", "1,1"}
+
+
+def test_cells_in_template_cube_requires_direction():
+    import pytest
+
+    with pytest.raises(ValueError):
+        _grid().cells_in_template("0,0", "cube", 15)

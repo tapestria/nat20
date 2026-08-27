@@ -168,6 +168,11 @@ class GridTopology:
         self._cover_cells: dict[str, str] = dict(scene.cover_cells)
         self._difficult: set[str] = set(scene.difficult_terrain_cells)
 
+    @property
+    def cell_size_ft(self) -> int:
+        """Feet per cell — the scale every ``*_ft`` argument is divided by."""
+        return self._cell_size_ft
+
     def _in_bounds(self, cid: str) -> bool:
         try:
             col, row = parse_cell(cid)
@@ -314,7 +319,7 @@ class GridTopology:
     def cells_in_template(
         self,
         origin: str,
-        shape: Literal["sphere", "cone", "line"],
+        shape: Literal["sphere", "cone", "line", "cube", "cylinder"],
         size_ft: int,
         *,
         direction: tuple[int, int] | None = None,
@@ -327,6 +332,9 @@ class GridTopology:
         * ``"sphere"``: every cell with ``max(|dx|, |dy|) <= radius_cells``
           from ``origin`` (origin included — SRD: "a Sphere's point of origin
           is included in the Sphere's area of effect").
+        * ``"cylinder"``: the same cell set as ``"sphere"`` — SRD: "a
+          Cylinder's point of origin is included in the area of effect"; the
+          height dimension has no 2-D meaning on a grid template.
         * ``"line"``: requires ``direction`` (a nonzero grid-offset vector,
           normalized to one of the 8 unit grid directions); the
           ``radius_cells + 1`` cells stepping from the origin along that
@@ -338,6 +346,11 @@ class GridTopology:
           triangle from the origin. See ``docs/dev/spatial-geometry.md`` for
           the full rationale (an engine convention, not literal SRD prose
           geometry — squares have no single canonical cone rasterization).
+        * ``"cube"``: requires ``direction``; a face-anchored ``n x n`` block
+          (``n = radius_cells``) whose near face touches the origin cell —
+          SRD: "A Cube's point of origin isn't included in the area of
+          effect unless its creator decides otherwise" (origin excluded).
+          See ``docs/dev/spatial-geometry.md`` for the placement convention.
 
         See ``docs/dev/spatial-geometry.md``. Not part of the
         ``SpatialTopology`` Protocol — grid-only (the zone-graph backend has
@@ -348,7 +361,7 @@ class GridTopology:
         radius_cells = size_ft // self._cell_size_ft
         oc, orow = parse_cell(origin)
 
-        if shape == "sphere":
+        if shape in ("sphere", "cylinder"):
             cells: list[str] = []
             for dc in range(-radius_cells, radius_cells + 1):
                 for dr in range(-radius_cells, radius_cells + 1):
@@ -374,6 +387,11 @@ class GridTopology:
                     line_cells.append(cid)
             return line_cells
 
+        if shape == "cube":
+            # radius_cells = size_ft // cell_size_ft is already the cube's
+            # side length in cells (not a radius here) — see docstring.
+            return self._cube_cells(oc, orow, sdc, sdr, radius_cells)
+
         if shape == "cone":
             cone_cells: list[str] = []
             for dc in range(-radius_cells, radius_cells + 1):
@@ -389,6 +407,27 @@ class GridTopology:
             return cone_cells
 
         raise ValueError(f"unknown template shape: {shape!r}")
+
+    def _cube_cells(self, oc: int, orow: int, sdc: int, sdr: int, side: int) -> list[str]:
+        """The face-anchored ``side x side`` block for ``"cube"`` — see the
+        placement convention in ``cells_in_template``'s docstring and
+        ``docs/dev/spatial-geometry.md``."""
+        if sdc != 0 and sdr != 0:
+            cols = [oc + sdc * k for k in range(1, side + 1)]
+            rows = [orow + sdr * k for k in range(1, side + 1)]
+        elif sdc != 0:
+            cols = [oc + sdc * k for k in range(1, side + 1)]
+            rows = [orow - side // 2 + k for k in range(side)]
+        else:
+            cols = [oc - side // 2 + k for k in range(side)]
+            rows = [orow + sdr * k for k in range(1, side + 1)]
+        cube_cells: list[str] = []
+        for c in cols:
+            for r in rows:
+                cid = cell_id(c, r)
+                if self._in_bounds(cid):
+                    cube_cells.append(cid)
+        return cube_cells
 
     def _neighbors(self, cid: str) -> list[str]:
         col, row = parse_cell(cid)
