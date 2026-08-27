@@ -288,6 +288,17 @@ class ConditionRemoved(BaseModel):
 
 
 class ConcentrationCheck(BaseModel):
+    """SRD 5.2 §Concentration — the Constitution save a concentrating
+    creature makes when it takes damage (``DC = 10 or half the damage
+    taken, whichever is higher``). Emitted by the orchestrator's
+    concentration-on-damage block since F2c.
+
+    TRANSITIONAL: emitted alongside ``SaveRolled(ability='con')`` until
+    v0.7. The generic ``SaveRolled`` is the shape hosts consumed before
+    this event was wired, so both are emitted for one release; hosts that
+    count saves must filter one of them out.
+    """
+
     type: Literal["concentration_check"] = "concentration_check"
     target_id: str
     dc: int

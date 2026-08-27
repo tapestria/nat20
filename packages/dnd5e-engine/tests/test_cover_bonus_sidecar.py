@@ -58,41 +58,51 @@ def _ctx(target_cover: dict[str, str]) -> ActivityResolutionContext:
 
 def test_dex_save_gains_half_cover_bonus():
     target = _target()
-    total_no_cover, _ = roll_save(_ctx({}), target, "dex", dc=15)
-    total_half_cover, _ = roll_save(_ctx({"mon:foe": "half"}), target, "dex", dc=15)
+    _roll = roll_save(_ctx({}), target, "dex", dc=15)
+    total_no_cover, _ = _roll.total, _roll.succeeded
+    _roll = roll_save(_ctx({"mon:foe": "half"}), target, "dex", dc=15)
+    total_half_cover, _ = _roll.total, _roll.succeeded
     assert total_half_cover == total_no_cover + 2
 
 
 def test_dex_save_gains_three_quarters_cover_bonus():
     target = _target()
-    total_no_cover, _ = roll_save(_ctx({}), target, "dex", dc=15)
-    total_boosted, _ = roll_save(_ctx({"mon:foe": "three_quarters"}), target, "dex", dc=15)
+    _roll = roll_save(_ctx({}), target, "dex", dc=15)
+    total_no_cover, _ = _roll.total, _roll.succeeded
+    _roll = roll_save(_ctx({"mon:foe": "three_quarters"}), target, "dex", dc=15)
+    total_boosted, _ = _roll.total, _roll.succeeded
     assert total_boosted == total_no_cover + 5
 
 
 def test_cover_bonus_flips_dex_save_failure_to_success():
     target = _target()
     # natural 10 + 0 mod == 10 < dc 12 -> fails without cover.
-    total, succeeded = roll_save(_ctx({}), target, "dex", dc=12)
+    _roll = roll_save(_ctx({}), target, "dex", dc=12)
+    total, succeeded = _roll.total, _roll.succeeded
     assert total == 10
     assert succeeded is False
     # +2 half cover -> 12 >= dc 12 -> succeeds.
-    total_cover, succeeded_cover = roll_save(_ctx({"mon:foe": "half"}), target, "dex", dc=12)
+    _roll = roll_save(_ctx({"mon:foe": "half"}), target, "dex", dc=12)
+    total_cover, succeeded_cover = _roll.total, _roll.succeeded
     assert total_cover == 12
     assert succeeded_cover is True
 
 
 def test_non_dex_save_is_unaffected_by_cover():
     target = _target()
-    total_no_cover, _ = roll_save(_ctx({}), target, "con", dc=15)
-    total_with_cover_tag, _ = roll_save(_ctx({"mon:foe": "total"}), target, "con", dc=15)
+    _roll = roll_save(_ctx({}), target, "con", dc=15)
+    total_no_cover, _ = _roll.total, _roll.succeeded
+    _roll = roll_save(_ctx({"mon:foe": "total"}), target, "con", dc=15)
+    total_with_cover_tag, _ = _roll.total, _roll.succeeded
     assert total_with_cover_tag == total_no_cover  # cover is AC/DEX-save only
 
 
 def test_absent_target_cover_entry_contributes_zero():
     target = _target()
-    total, _ = roll_save(_ctx({"mon:someone_else": "total"}), target, "dex", dc=15)
-    total_none, _ = roll_save(_ctx({}), target, "dex", dc=15)
+    _roll = roll_save(_ctx({"mon:someone_else": "total"}), target, "dex", dc=15)
+    total, _ = _roll.total, _roll.succeeded
+    _roll = roll_save(_ctx({}), target, "dex", dc=15)
+    total_none, _ = _roll.total, _roll.succeeded
     assert total == total_none
 
 

@@ -75,6 +75,7 @@ from dnd5e_engine.activities.attack import (
 )
 from dnd5e_engine.activities.build_context import build_activity_context
 from dnd5e_engine.activities.context import ActivityResolutionContext
+from dnd5e_engine.activities.d20 import AdvantageSources, roll_d20_test
 from dnd5e_engine.activities.monster_actions import (
     expand_action_to_activities,
     select_typed_monster_action,
@@ -91,6 +92,7 @@ from dnd5e_engine.events import (
     CastFailed,
     CombatEnded,
     CombatEvent,
+    ConcentrationCheck,
     ConcentrationDropped,
     ConditionApplied,
     ConditionRemoved,
@@ -1535,8 +1537,9 @@ def _emit_apply_damage(live: _LiveCombat, event: DamageApplied) -> None:
     # combatant is concentrating on an effect (tracked in
     # ``concentration_chain``), roll the CON save and cascade on
     # failure. The save applies the concentrating creature's real CON
-    # modifier + proficiency bonus (F1c, via ``actor_stats``); the
-    # natural d20 is a single draw as before.
+    # modifier + proficiency bonus (F1c, via ``actor_stats``) and goes
+    # through the shared ``roll_d20_test`` primitive (F2c) with no
+    # advantage source, so it is still a single draw.
     # Done BEFORE death synthesis so a dropped-conc + slain caster
     # still surface the cascade before the Death event.
     caster_chain = live.concentration_chain.get(event.target_id)
@@ -1544,13 +1547,30 @@ def _emit_apply_damage(live: _LiveCombat, event: DamageApplied) -> None:
         dc = max(10, event.amount // 2)
         concentrator = _find_combatant(live, event.target_id)
         modifier = save_modifier(concentrator, "con").total if concentrator else 0
-        roll_total = live.rng.randint(1, 20) + modifier
+        roll = roll_d20_test(live.rng, modifier, AdvantageSources())
+        roll_total = roll.total
         succeeded = roll_total >= dc
+        # TRANSITIONAL (F2c): the concentration check emits BOTH the
+        # generic ``SaveRolled(ability="con")`` it has always emitted and
+        # the specific ``ConcentrationCheck``. Hosts should migrate to the
+        # latter; the duplicate ``SaveRolled`` is removed in v0.7.
         _emit(
             live,
             SaveRolled(
                 target_id=event.target_id,
                 ability="con",
+                dc=dc,
+                roll_total=roll_total,
+                succeeded=succeeded,
+                natural=roll.kept,
+                modifier=roll.modifier,
+                sources=list(roll.sources),
+            ),
+        )
+        _emit(
+            live,
+            ConcentrationCheck(
+                target_id=event.target_id,
                 dc=dc,
                 roll_total=roll_total,
                 succeeded=succeeded,
@@ -2724,8 +2744,9 @@ def _run_end_of_turn_saves(live: _LiveCombat, actor_id: str) -> None:
 
     The repeat save applies the target's real ability modifier +
     proficiency bonus (F1c, via ``actor_stats.save_modifier``), matching
-    the IR-level Save handler's per-target sidecar projection. The
-    natural d20 is a single draw as before.
+    the IR-level Save handler's per-target sidecar projection, and the d20
+    goes through the shared ``roll_d20_test`` primitive (F2c) with no
+    advantage source — a single draw, as before.
     """
     # Collect every repeat-save spec keyed on the actor_id-prefixed
     # identity tuples. Identity is (target_id, effect.id, effect.origin)
@@ -2744,7 +2765,8 @@ def _run_end_of_turn_saves(live: _LiveCombat, actor_id: str) -> None:
             caster_id = str(spec["caster_id"])
             target = _find_combatant(live, actor_id)
             modifier = save_modifier(target, ability).total if target else 0
-            roll_total = live.rng.randint(1, 20) + modifier
+            roll = roll_d20_test(live.rng, modifier, AdvantageSources())
+            roll_total = roll.total
             succeeded = roll_total >= dc
             _emit(
                 live,
@@ -2754,6 +2776,9 @@ def _run_end_of_turn_saves(live: _LiveCombat, actor_id: str) -> None:
                     dc=dc,
                     roll_total=roll_total,
                     succeeded=succeeded,
+                    natural=roll.kept,
+                    modifier=roll.modifier,
+                    sources=list(roll.sources),
                 ),
             )
             if not succeeded:

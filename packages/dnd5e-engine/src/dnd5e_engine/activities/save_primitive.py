@@ -14,8 +14,9 @@ The caller still constructs and emits ``SaveRolled`` because the two sites carry
 different surrounding context — ``save.py`` emits per target inside its loop with
 the activity's save ability, while ``mastery.py`` emits a single ``con`` save
 before applying ``prone``. The shared piece is the ROLL + MODIFIER + COMPARISON,
-not the event shape, so the primitive returns ``(roll_total, succeeded)`` and the
-caller decides what event to emit.
+not the event shape, so the primitive returns a ``SaveRoll`` envelope (total,
+success, kept natural, flat modifier, advantage sources) and the caller decides
+what event to emit.
 
 MIRRORS, does not import from, ``effects/save.py``:
 
@@ -32,10 +33,13 @@ MIRRORS, does not import from, ``effects/save.py``:
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Final
 
 import d20
 
+from dnd5e_engine.activities.d20 import AdvantageSources, D20Result, roll_d20_test
+from dnd5e_engine.events import AdvantageSource
 from dnd5e_engine.spatial import cover_bonus
 
 if TYPE_CHECKING:
@@ -48,6 +52,32 @@ if TYPE_CHECKING:
 FORCE_SAVE_D20: Final = "force_save_d20"
 
 
+@dataclass(frozen=True)
+class SaveRoll:
+    """The resolved outcome of one saving throw, with its D20 Test provenance.
+
+    A named envelope rather than a bare tuple (CLAUDE.md: results are named
+    envelopes) because the callers now forward the roll breakdown onto
+    ``SaveRolled``.
+
+    * ``natural`` is the KEPT die (post advantage/disadvantage), or ``None``
+      when the save auto-failed and no die was drawn.
+    * ``modifier`` is the FLAT, deterministic part of the total — the resolved
+      per-ability save modifier plus any Dexterity cover bonus. It EXCLUDES the
+      ``passive_save_bonus`` dice (SRD §Bless / §Bane), which must be rolled
+      AFTER the d20 to keep the seeded draw ORDER intact; mirrors the
+      ``AttackRolled.modifier`` convention. So ``total == natural + modifier``
+      holds only when no Bless/Bane-style sidecar is active on the target.
+    * ``sources`` is the advantage/disadvantage provenance actually applied.
+    """
+
+    total: int
+    succeeded: bool
+    natural: int | None
+    modifier: int
+    sources: tuple[AdvantageSource, ...]
+
+
 def roll_save(
     ctx: ActivityResolutionContext,
     target: Combatant,
@@ -55,20 +85,21 @@ def roll_save(
     dc: int,
     *,
     target_index: int = 0,
-) -> tuple[int, bool]:
-    """Roll ``target``'s ``ability`` save vs ``dc``; return ``(roll_total, succeeded)``.
+) -> SaveRoll:
+    """Roll ``target``'s ``ability`` save vs ``dc``; return the ``SaveRoll`` envelope.
 
     Mirrors the full target-side save sidecar the OLD the legacy evaluator path
     (``effects/save.py``) consumed:
 
     * ``ctx.passive_save_auto_fail[id]`` — if ``ability`` (upper-case) is listed
       (Paralyzed / Stunned / Petrified / Unconscious auto-fail STR + DEX), the
-      save short-circuits to ``(0, False)`` with NO d20 draw, so the
+      save short-circuits to a failed ``SaveRoll`` with NO d20 draw, so the
       deterministic rng stream is not perturbed (matches ``conditions.py`` +
       ``effects/save.py:_is_auto_fail``).
     * ``ctx.passive_save_adv[id]`` / ``ctx.passive_save_dis[id]`` — advantage /
-      disadvantage on the d20; an ability present in both cancels to normal
-      (the legacy evaluator ``reconcile_adv``).
+      disadvantage on the d20, fed to the shared ``roll_d20_test`` primitive
+      (F2c); an ability present in both cancels to normal (SRD 5.2 §Advantage
+      and Disadvantage, the legacy evaluator ``reconcile_adv``).
     * ``ctx.passive_save_modifiers[id][ability]`` — the resolved per-ability
       integer modifier (absent → +0).
     * ``ctx.passive_save_bonus[id]`` — a signed dice-expression string (Bless
@@ -84,12 +115,22 @@ def roll_save(
     sidecars reproduce the prior single-d20 + per-ability-mod behavior exactly.
     """
     if _is_auto_fail(ctx, target, ability):
-        return 0, False
-    natural = _roll_save_d20(ctx, target, ability, target_index=target_index)
-    total = natural + _target_save_modifier(ctx, target, ability) + _passive_save_bonus(ctx, target)
+        return SaveRoll(total=0, succeeded=False, natural=None, modifier=0, sources=())
+    modifier = _target_save_modifier(ctx, target, ability)
     if ability == "dex":
-        total += cover_bonus(ctx.target_cover.get(target.entity_id, "none"))
-    return total, total >= dc
+        modifier += cover_bonus(ctx.target_cover.get(target.entity_id, "none"))
+    # Draw ORDER matters for determinism: the d20 first, the Bless/Bane bonus
+    # dice after (folding those dice into the primitive's flat modifier would
+    # mean rolling them BEFORE the d20 and would shift the seeded stream).
+    roll = _roll_save_d20(ctx, target, ability, modifier, target_index=target_index)
+    total = roll.total + _passive_save_bonus(ctx, target)
+    return SaveRoll(
+        total=total,
+        succeeded=total >= dc,
+        natural=roll.kept,
+        modifier=roll.modifier,
+        sources=roll.sources,
+    )
 
 
 def _is_auto_fail(ctx: ActivityResolutionContext, target: Combatant, ability: str) -> bool:
@@ -107,10 +148,19 @@ def _roll_save_d20(
     ctx: ActivityResolutionContext,
     target: Combatant,
     ability: str,
+    modifier: int,
     *,
     target_index: int,
-) -> int:
-    """Natural save d20, honoring ``variables["force_save_d20"]`` + adv/dis.
+) -> D20Result:
+    """The save's D20 Test, honoring ``variables["force_save_d20"]`` + adv/dis.
+
+    Delegates to the shared ``activities/d20.py::roll_d20_test`` primitive (F2c)
+    so every d20 in the engine resolves advantage in ONE place. ``modifier`` is
+    the flat, deterministic part of the save total (see ``SaveRoll.modifier``).
+
+    Draw discipline is unchanged by the delegation: normal mode consumes exactly
+    one ``rng.randint(1, 20)``, advantage/disadvantage exactly two, a forced
+    value zero.
 
     The forced value is a TEST seam scoped to the FIRST target only
     (``target_index == 0``), mirroring ``activities/attack.py``'s ``force_d20``
@@ -120,23 +170,24 @@ def _roll_save_d20(
 
     Advantage / disadvantage are sourced from ``ctx.passive_save_adv`` /
     ``ctx.passive_save_dis`` (UPPER-case ability codes); an ability present in
-    both cancels to normal (the legacy evaluator ``reconcile_adv``). With advantage two d20s are
-    drawn and the higher kept; with disadvantage the lower; otherwise one d20.
+    both cancels to normal (SRD 5.2 §Advantage and Disadvantage — the primitive
+    owns that reconciliation now). Both sidecars are typed as the ``"effect"``
+    ``AdvantageSource``: they are hydrated from a MIX of active effects and SRD
+    conditions (``project_passive_save_modifiers``) and an entry's origin is no
+    longer recoverable here, so the broader ``"effect"`` tag is used rather
+    than guessing ``"condition:target"``.
     """
     forced = ctx.variables.get(FORCE_SAVE_D20)
-    if forced is not None and target_index == 0:
-        return int(forced)
+    forced_natural = int(forced) if forced is not None and target_index == 0 else None
 
     ability_upper = ability.upper()
     has_adv = ability_upper in ctx.passive_save_adv.get(target.entity_id, [])
     has_dis = ability_upper in ctx.passive_save_dis.get(target.entity_id, [])
-    if has_adv and has_dis:
-        has_adv = has_dis = False
-    if has_adv:
-        return max(ctx.rng.randint(1, 20), ctx.rng.randint(1, 20))
-    if has_dis:
-        return min(ctx.rng.randint(1, 20), ctx.rng.randint(1, 20))
-    return ctx.rng.randint(1, 20)
+    sources = AdvantageSources(
+        advantage=("effect",) if has_adv else (),
+        disadvantage=("effect",) if has_dis else (),
+    )
+    return roll_d20_test(ctx.rng, modifier, sources, forced_natural=forced_natural)
 
 
 def _passive_save_bonus(ctx: ActivityResolutionContext, target: Combatant) -> int:

@@ -628,3 +628,78 @@ def test_every_foundry_skill_code_maps_to_a_known_srd_slug() -> None:
     assert set(_SKILL_CODE_TO_SLUG) == set(_SKILL_TO_ABILITY)
     for code, slug in _SKILL_CODE_TO_SLUG.items():
         assert SKILL_ABILITIES[slug] == _SCORE_ATTR[_SKILL_TO_ABILITY[code]]
+
+
+# ---------------------------------------------------------------------------
+# F2c — the check's D20 Test (``roll_d20_test``)
+# ---------------------------------------------------------------------------
+
+
+def test_the_check_reports_its_natural_modifier_and_sources() -> None:
+    ctx, events = _ctx(forced_d20=11, check_modifiers={"char:hero": {"skills": {"perception": 4}}})
+
+    resolve_check(_activity(associated=["prc"], calculation="flat", formula="10"), ctx)
+
+    check = _only_check(events)
+    assert (check.natural, check.modifier) == (11, 4)
+    assert check.roll_total == check.natural + check.modifier
+    assert check.sources == []
+
+
+def test_a_check_with_no_disadvantage_draws_exactly_one_d20() -> None:
+    """Determinism: the pre-F2c stream for an unflagged actor is unchanged."""
+    ctx, events = _ctx(forced_d20=None)
+    expected = random.Random(1).randint(1, 20)
+
+    resolve_check(_activity(associated=["prc"], calculation="flat", formula="10"), ctx)
+
+    assert _only_check(events).natural == expected
+
+
+def test_condition_disadvantage_makes_the_actor_keep_the_lower_die() -> None:
+    """SRD 5.2 §Frightened / §Poisoned — disadvantage on ability checks. The
+    flag is projected by F1d and consumed here for the first time (F2c), so a
+    flagged actor draws TWO dice."""
+    ctx, events = _ctx(
+        forced_d20=None,
+        check_modifiers={"char:hero": {"ability_mods": {"wis": 0}, "disadvantage": True}},
+    )
+    rolls = random.Random(1)
+    expected = min(rolls.randint(1, 20), rolls.randint(1, 20))
+
+    resolve_check(_activity(associated=["prc"], calculation="flat", formula="10"), ctx)
+
+    check = _only_check(events)
+    assert check.natural == expected
+    assert check.sources == ["condition:attacker"]
+
+
+def test_the_disadvantage_flag_is_scoped_to_the_rolling_actor() -> None:
+    """An imposed check reads the flag off the TARGET that rolls, not the
+    caster who applied it."""
+    ctx, events = _ctx(
+        forced_d20=None,
+        targets=[_combatant("npc:bound")],
+        check_modifiers={"char:hero": {"disadvantage": True}},
+    )
+    expected = random.Random(1).randint(1, 20)
+
+    resolve_check(_activity(associated=["slt"], calculation="flat", formula="10"), ctx)
+
+    check = _only_check(events)
+    assert check.actor_id == "npc:bound"
+    assert check.natural == expected
+    assert check.sources == []
+
+
+def test_a_forced_check_d20_bypasses_the_disadvantage_draw() -> None:
+    ctx, events = _ctx(
+        forced_d20=19,
+        check_modifiers={"char:hero": {"disadvantage": True}},
+    )
+    expected_next = random.Random(1).randint(1, 20)
+
+    resolve_check(_activity(associated=["prc"], calculation="flat", formula="10"), ctx)
+
+    assert _only_check(events).natural == 19
+    assert ctx.rng.randint(1, 20) == expected_next

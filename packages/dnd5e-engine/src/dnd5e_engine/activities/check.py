@@ -37,8 +37,11 @@ MIRRORS, does not import from, ``effects/check.py``:
   formula), and resolves to ``None`` only when calculation AND formula are both
   empty.
 
-The natural d20 honors ``ctx.variables["force_check_d20"]`` — a NEW test seam
-(our own; ``effects/check.py`` relies on a seeded ``ctx.rng``). Riders fire AFTER
+The d20 goes through the shared ``activities/d20.py::roll_d20_test`` primitive
+(F2c) and honors ``ctx.variables["force_check_d20"]`` — a NEW test seam (our own;
+``effects/check.py`` relies on a seeded ``ctx.rng``). Condition-derived
+disadvantage (SRD 5.2 §Frightened / §Poisoned / §Exhaustion) arrives on
+``ctx.check_modifiers[actor]["disadvantage"]``. Riders fire AFTER
 the roll via the shared ``apply_activity_effects`` (``EffectApplied`` then
 ``ConditionApplied``), applied to the rolling actor.
 """
@@ -48,10 +51,11 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Final, get_args
 
+from dnd5e_engine.activities.d20 import AdvantageSources, D20Result, roll_d20_test
 from dnd5e_engine.activities.dice import roll_expr
 from dnd5e_engine.activities.effects import apply_activity_effects
 from dnd5e_engine.activities.formula import resolve_roll_data
-from dnd5e_engine.events import Ability, CheckRolled
+from dnd5e_engine.events import Ability, AdvantageSource, CheckRolled
 
 if TYPE_CHECKING:
     from dnd5e_srd_data.schema.common import CheckActivity
@@ -140,9 +144,9 @@ def resolve_check(activity: CheckActivity, ctx: ActivityResolutionContext) -> No
     skill, ability = _resolve_skill_ability(activity)
     actor = ctx.targets[0] if ctx.targets else ctx.caster
 
-    natural = _roll_d20(ctx)
     modifier = _check_modifier(ctx, actor, skill=skill, ability=ability)
-    total = natural + modifier
+    roll = _roll_d20(ctx, actor, modifier)
+    total = roll.total
     succeeded = (total >= dc) if dc is not None else None
 
     ctx.event_emitter(
@@ -153,6 +157,9 @@ def resolve_check(activity: CheckActivity, ctx: ActivityResolutionContext) -> No
             dc=dc,
             roll_total=total,
             succeeded=succeeded,
+            natural=roll.kept,
+            modifier=roll.modifier,
+            sources=list(roll.sources),
         )
     )
 
@@ -238,16 +245,31 @@ def _resolve_skill_ability(activity: CheckActivity) -> tuple[str | None, Ability
 # ── roll + modifier ───────────────────────────────────────────────────────────
 
 
-def _roll_d20(ctx: ActivityResolutionContext) -> int:
-    """Natural check d20, honoring ``variables["force_check_d20"]``.
+def _roll_d20(ctx: ActivityResolutionContext, actor: Combatant, modifier: int) -> D20Result:
+    """The check's D20 Test, honoring ``variables["force_check_d20"]``.
 
-    Piece-1-2 scope has no check advantage/disadvantage projection, so a single
-    d20 is drawn (off ``ctx.rng`` unless the forced test seam is set).
+    Delegates to the shared ``activities/d20.py::roll_d20_test`` primitive (F2c),
+    so an ability check resolves advantage in the same one place an attack or a
+    save does.
+
+    SRD 5.2 §Frightened / §Poisoned / §Exhaustion impose disadvantage on ability
+    checks. That is projected onto ``ctx.check_modifiers[actor]["disadvantage"]``
+    by the orchestrator (F1d) and consumed HERE for the first time — tagged
+    ``"condition:attacker"`` because the source is always a condition on the
+    ROLLING actor. There is no check-advantage producer in the engine yet
+    (Help / Guidance are not modelled), so the advantage side stays empty.
+
+    Draw discipline: a check with no disadvantage flag consumes exactly one
+    ``rng.randint(1, 20)`` (unchanged); a flagged actor now consumes two.
     """
     forced = ctx.variables.get(FORCE_CHECK_D20)
-    if forced is not None:
-        return int(forced)
-    return ctx.rng.randint(1, 20)
+    forced_natural = int(forced) if forced is not None else None
+    dis: tuple[AdvantageSource, ...] = ()
+    if ctx.check_modifiers.get(actor.entity_id, {}).get("disadvantage"):
+        dis = ("condition:attacker",)
+    return roll_d20_test(
+        ctx.rng, modifier, AdvantageSources(disadvantage=dis), forced_natural=forced_natural
+    )
 
 
 def _check_modifier(
