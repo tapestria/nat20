@@ -23,7 +23,8 @@ without failing CI.
 
 | Mechanic | Status | Notes |
 |---|---|---|
-| Initiative order, rounds, turns | ✅ Resolved | Deterministic tie-break (initiative → dex → entity id) |
+| Initiative order, rounds, turns | ✅ Resolved | Deterministic tie-break (initiative → dex → entity id); one shared turn-advance path, and each boundary is marked in the stream by a `TurnPhase` event |
+| Turn-boundary hooks (start/end of turn, top of round) | ⚠️ Partial | The seam exists (`turn_lifecycle.py`, run off the single advance path in registration order) but only the duration tick and reaction-effect expiry are registered — ongoing damage, regeneration and recharge have no producer yet |
 | Attack rolls, crits, damage, resistances/immunities/vulnerabilities | ⚠️ Partial | Advantage/disadvantage is rolled on **activity** attacks: attacker `flags.advantage.attack` / `flags.disadvantage.attack` effects plus the condition-derived sources (Invisible attacker; Blinded/Poisoned/Frightened/Restrained attacker; Paralyzed/Stunned/Unconscious/Blinded target), cancelling per SRD §Advantage and Disadvantage. **Opportunity attacks still roll flat `normal`** (pending C14). Distance-derived sources (unseen attacker, ranged-in-melee, long range, Prone) are still inert. Proficiency is assumed on every attack. Magical vs nonmagical B/P/S cannot be expressed. |
 | Saving throws, half-on-save, save-for-effect | ⚠️ Partial | Only the **DEX** modifier is projected; every other save rolls at +0 with no proficiency. |
 | Ability & skill checks (in and out of combat) | ✅ Resolved | `resolve_check`; seed via `CheckSpec.rng` |
@@ -153,5 +154,10 @@ can render "14 + 5 = 19". Two residual limits:
   "vs AC 16"; and `modifier` excludes Bless/Bane-style bonus DICE, which must be
   rolled after the d20 to keep the seeded stream stable.
 - `DamageApplied` carries no source/attacker id, so damage cannot be attributed.
+
+`TurnPhase(phase, actor_id, round_number)` marks each turn boundary —
+`round_start` / `turn_start` / `turn_end` — immediately before the engine runs
+that phase's lifecycle hooks, so "top of round 3" and "end of Alice's turn" are
+readable directly rather than inferred from `TurnStarted`/`TurnEnded` adjacency.
 
 Every residual limit in that list is tracked in `BACKLOG.md`.
