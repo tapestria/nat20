@@ -152,6 +152,36 @@ class TurnEnded(BaseModel):
     actor_id: str
 
 
+#: The three turn-boundary phases the engine runs hooks at
+#: (``dnd5e_engine.turn_lifecycle``). ``round_start`` fires once per round on
+#: the initiative wrap; ``turn_start`` / ``turn_end`` bracket each actor's turn.
+TurnPhaseName = Literal["round_start", "turn_start", "turn_end"]
+
+
+class TurnPhase(BaseModel):
+    """Marker for a turn-boundary phase — emitted around every turn edge.
+
+    Purely informational: it carries no rules outcome of its own. It marks the
+    point in the stream at which the engine ran that phase's lifecycle hooks,
+    so a host can render "top of round 3" / "end of Alice's turn" without
+    inferring boundaries from ``TurnStarted``/``TurnEnded`` adjacency, and so
+    boundary effects (ongoing damage, regeneration, recharge) are attributable
+    to a phase rather than to whichever event happened to precede them.
+
+    ``actor_id`` is the actor whose turn is starting or ending, and ``None``
+    for ``round_start``. Ordering at a turn boundary is fixed::
+
+        TurnPhase(turn_end, A) -> [turn_end hooks] -> TurnEnded(A)
+        -> (on wrap) RoundStarted -> TurnPhase(round_start) -> [round_start hooks]
+        -> TurnStarted(B) -> TurnPhase(turn_start, B) -> [turn_start hooks]
+    """
+
+    type: Literal["turn_phase"] = "turn_phase"
+    actor_id: str | None
+    phase: TurnPhaseName
+    round_number: int
+
+
 class IntentSubmitted(BaseModel):
     type: Literal["intent_submitted"] = "intent_submitted"
     actor_id: str
@@ -464,6 +494,7 @@ CombatEvent = Annotated[
     | RoundEnded
     | TurnStarted
     | TurnEnded
+    | TurnPhase
     | IntentSubmitted
     | AttackRolled
     | SaveRolled
@@ -502,6 +533,7 @@ ALL_COMBAT_EVENT_TYPES: tuple[type[BaseModel], ...] = (
     RoundEnded,
     TurnStarted,
     TurnEnded,
+    TurnPhase,
     IntentSubmitted,
     AttackRolled,
     SaveRolled,
@@ -569,6 +601,8 @@ __all__ = [
     "Stabilized",
     "TempHpApplied",
     "TurnEnded",
+    "TurnPhase",
+    "TurnPhaseName",
     "TurnStarted",
     "Unconscious",
     "ZoneTransit",

@@ -322,9 +322,14 @@ def test_c06_s02_countered_cast_preserves_slot_and_wastes_action():
     # Action wasted: the tail after CastFailed shows TurnEnded(enemy_caster)
     # -> TurnStarted(<next actor>), no further activity events this turn —
     # mirrors the shipped no_slot/no_action_economy CastFailed branches'
-    # own _advance_turn call.
+    # own _end_turn_and_advance call.
     failed_idx = live.event_log.index(failed[0])
-    tail = live.event_log[failed_idx + 1 :]
+    # Engine F3a interleaves informational ``TurnPhase`` markers around every
+    # turn boundary; they carry no rules outcome, so the "nothing happened
+    # between CastFailed and TurnEnded" assertion below reads the tail with
+    # them filtered out. The marker order itself is pinned in
+    # tests/test_turn_lifecycle.py.
+    tail = [e for e in live.event_log[failed_idx + 1 :] if e.type != "turn_phase"]
     # No further activity events for char:enemy_caster this turn — TurnEnded
     # must be the very next event after CastFailed, with a TurnStarted for
     # the next actor following it.
