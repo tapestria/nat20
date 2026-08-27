@@ -192,6 +192,7 @@ def _resolve_topple(
             dc=dc,
             roll_total=roll.total,
             succeeded=roll.succeeded,
+            advantage=roll.mode,
             natural=roll.natural,
             modifier=roll.modifier,
             sources=list(roll.sources),

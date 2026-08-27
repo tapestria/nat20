@@ -102,6 +102,7 @@ def resolve_save(activity: SaveActivity, ctx: ActivityResolutionContext) -> None
                 dc=dc,
                 roll_total=roll.total,
                 succeeded=succeeded,
+                advantage=roll.mode,
                 natural=roll.natural,
                 modifier=roll.modifier,
                 sources=list(roll.sources),

@@ -120,6 +120,7 @@ def test_concentration_save_carries_its_roll_breakdown() -> None:
     assert 1 <= save.natural <= 20
     assert save.modifier == 7
     assert save.roll_total == save.natural + save.modifier
+    assert save.advantage == "normal"
     assert save.sources == []
 
 
@@ -133,6 +134,7 @@ def test_concentration_check_carries_the_same_roll_breakdown() -> None:
     assert check.natural == save.natural
     assert check.modifier == 7
     assert check.roll_total == check.natural + check.modifier
+    assert check.advantage == save.advantage == "normal"
     assert check.sources == []
 
 

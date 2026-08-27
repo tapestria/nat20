@@ -39,7 +39,7 @@ from typing import TYPE_CHECKING, Final
 import d20
 
 from dnd5e_engine.activities.d20 import AdvantageSources, D20Result, roll_d20_test
-from dnd5e_engine.events import AdvantageSource
+from dnd5e_engine.events import AdvantageMode, AdvantageSource
 from dnd5e_engine.spatial import cover_bonus
 
 if TYPE_CHECKING:
@@ -68,6 +68,9 @@ class SaveRoll:
       AFTER the d20 to keep the seeded draw ORDER intact; mirrors the
       ``AttackRolled.modifier`` convention. So ``total == natural + modifier``
       holds only when no Bless/Bane-style sidecar is active on the target.
+    * ``mode`` is the resolved SRD 5.2 D20 Test mode (advantage and
+      disadvantage cancel to ``"normal"``); an auto-failed save reports
+      ``"normal"`` since no die was rolled.
     * ``sources`` is the advantage/disadvantage provenance actually applied.
     """
 
@@ -75,6 +78,7 @@ class SaveRoll:
     succeeded: bool
     natural: int | None
     modifier: int
+    mode: AdvantageMode
     sources: tuple[AdvantageSource, ...]
 
 
@@ -115,7 +119,9 @@ def roll_save(
     sidecars reproduce the prior single-d20 + per-ability-mod behavior exactly.
     """
     if _is_auto_fail(ctx, target, ability):
-        return SaveRoll(total=0, succeeded=False, natural=None, modifier=0, sources=())
+        return SaveRoll(
+            total=0, succeeded=False, natural=None, modifier=0, mode="normal", sources=()
+        )
     modifier = _target_save_modifier(ctx, target, ability)
     if ability == "dex":
         modifier += cover_bonus(ctx.target_cover.get(target.entity_id, "none"))
@@ -129,6 +135,7 @@ def roll_save(
         succeeded=total >= dc,
         natural=roll.kept,
         modifier=roll.modifier,
+        mode=roll.mode,
         sources=roll.sources,
     )
 
