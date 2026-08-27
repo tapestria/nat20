@@ -187,9 +187,10 @@ class ActivityResolutionContext:
     # contributes +0. Projected by the orchestrator off the live ``Combatant``
     # (``_project_target_modifiers`` via ``activities.actor_stats.check_modifier``)
     # and threaded in by ``build_activity_context`` (F1d). ``disadvantage`` is the
-    # condition-derived flag (Frightened / Poisoned / Exhaustion); it is carried
-    # for consumers and narration — ``check.py`` still draws a single d20 (the
-    # adv/dis roll mechanic on the typed check path is a separate backlog item).
+    # condition-derived flag (Frightened / Poisoned / Exhaustion); since F2c it
+    # is CONSUMED by ``check.py``, which feeds it to ``roll_d20_test`` as the
+    # ``"condition:attacker"`` source (a flagged actor draws two d20s and keeps
+    # the lower).
     # Heterogeneous by construction, hence the ``Any`` value type.
     check_modifiers: dict[str, dict[str, Any]] = field(default_factory=dict)
     # Effect definitions riding the activity's applied-effect refs, to be

@@ -24,6 +24,7 @@ import random
 from dataclasses import dataclass
 from typing import Any
 
+from dnd5e_engine.activities.d20 import AdvantageSources, roll_d20_test
 from dnd5e_engine.events import (
     CombatEvent,
     Death,
@@ -147,7 +148,15 @@ class DeathSaveResult:
 
 
 def _roll_d20(rng: random.Random) -> int:
-    return rng.randint(1, 20)
+    """The death save's D20 Test.
+
+    SRD §Dying — a death saving throw is a d20 with NO modifier and no
+    advantage source the engine models today, so the shared
+    ``activities/d20.py::roll_d20_test`` primitive (F2c) is called with an
+    empty ``AdvantageSources`` and a +0 modifier: exactly one
+    ``rng.randint(1, 20)`` draw, identical to the pre-F2c stream.
+    """
+    return roll_d20_test(rng, 0, AdvantageSources()).kept
 
 
 def roll_death_save(combatant: Combatant, rng: random.Random) -> DeathSaveResult:

@@ -174,11 +174,13 @@ def test_roll_save_applies_bonus_and_short_circuits_auto_fail():
     ctx.variables["force_save_d20"] = 10
 
     # Auto-fail ability (STR): short-circuits to (0, False), no d20, ignores DC.
-    total, succeeded = roll_save(ctx, target, "str", dc=1, target_index=0)
+    _roll = roll_save(ctx, target, "str", dc=1, target_index=0)
+    total, succeeded = _roll.total, _roll.succeeded
     assert (total, succeeded) == (0, False)
 
     # Normal ability (WIS): natural 10 (forced) + wis mod 2 + bless 1d4 (1..4).
-    total, succeeded = roll_save(ctx, target, "wis", dc=5, target_index=0)
+    _roll = roll_save(ctx, target, "wis", dc=5, target_index=0)
+    total, succeeded = _roll.total, _roll.succeeded
     assert 13 <= total <= 16  # 10 + 2 + [1..4]
     assert succeeded is True
 
@@ -190,6 +192,7 @@ def test_roll_save_empty_sidecar_matches_plain_d20_plus_mod():
     save_modifiers = {target.entity_id: {"saves": {"dex": 3}}}
     ctx = _build(target, [target], save_modifiers=save_modifiers)
     ctx.variables["force_save_d20"] = 11
-    total, succeeded = roll_save(ctx, target, "dex", dc=14, target_index=0)
+    _roll = roll_save(ctx, target, "dex", dc=14, target_index=0)
+    total, succeeded = _roll.total, _roll.succeeded
     assert total == 11 + 3
     assert succeeded is True

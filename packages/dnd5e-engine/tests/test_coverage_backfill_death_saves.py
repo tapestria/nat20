@@ -120,3 +120,27 @@ def test_reset_death_saves_clears_dict() -> None:
     assert cleared.death_saves == {}
     # Original is untouched (pydantic model_copy).
     assert pc.death_saves == {"successes": 2, "failures": 1, "is_stable": False}
+
+
+# ---------------------------------------------------------------------------
+# F2c — the death save goes through the shared D20 Test primitive
+# ---------------------------------------------------------------------------
+
+
+def test_death_save_draws_exactly_one_d20_off_the_seeded_stream() -> None:
+    """SRD §Dying: a death save is a d20 with NO modifier and no advantage
+    source, so routing it through ``roll_d20_test`` must leave the seeded
+    stream byte-identical — one draw, no modifier folded in."""
+    import random
+
+    rng = random.Random(20260826)
+    reference = random.Random(20260826)
+    expected_natural = reference.randint(1, 20)
+    expected_next = reference.randint(1, 20)
+
+    result = roll_death_save(_dying_pc(), rng)
+
+    rolled = [e for e in result.events if e.type == "death_save_rolled"]
+    assert len(rolled) == 1
+    assert rolled[0].roll_total == expected_natural
+    assert rng.randint(1, 20) == expected_next

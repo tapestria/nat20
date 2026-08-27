@@ -333,3 +333,17 @@ def test_deferred_masteries_apply_no_mechanic_but_log_the_gap(
 
     assert events == []
     assert caplog.text.count(f"mastery_deferred mastery={mastery}") == 2
+
+
+def test_topple_save_carries_its_roll_breakdown() -> None:
+    """F2c — every ``SaveRolled`` emitted by the engine now reports the kept
+    natural, the flat modifier and the advantage sources that applied."""
+    ctx, events = _ctx(abilities={**ABILITIES, "str": 18}, forced_save_d20=13)
+
+    apply_mastery_on_hit(_weapon("topple"), ctx, _target(), "str")
+
+    save = next(e for e in events if isinstance(e, SaveRolled))
+    assert save.natural == 13
+    assert save.modifier == 0  # no per-target save sidecar in this context
+    assert save.roll_total == 13
+    assert save.sources == []

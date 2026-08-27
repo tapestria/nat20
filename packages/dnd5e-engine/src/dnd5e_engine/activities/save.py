@@ -92,15 +92,19 @@ def resolve_save(activity: SaveActivity, ctx: ActivityResolutionContext) -> None
     shared_parts = _roll_shared_damage(activity, ctx)
 
     for index, target in enumerate(ctx.targets):
-        total, succeeded = roll_save(ctx, target, ability, dc, target_index=index)
+        roll = roll_save(ctx, target, ability, dc, target_index=index)
+        succeeded = roll.succeeded
 
         ctx.event_emitter(
             SaveRolled(
                 target_id=target.entity_id,
                 ability=ability,
                 dc=dc,
-                roll_total=total,
+                roll_total=roll.total,
                 succeeded=succeeded,
+                natural=roll.natural,
+                modifier=roll.modifier,
+                sources=list(roll.sources),
             )
         )
 
