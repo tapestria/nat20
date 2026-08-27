@@ -414,25 +414,6 @@ def _forced_d20(ctx: ActivityResolutionContext, target_index: int) -> int | None
     return None
 
 
-def _roll_natural_d20(
-    ctx: ActivityResolutionContext, mode: AdvantageMode, *, target_index: int = 0
-) -> int:
-    """Natural-d20 outcome for an explicitly supplied ``mode``.
-
-    A thin wrapper over the shared ``roll_d20_test`` primitive kept for the
-    mode-driven callers (classification tests / mastery-style hooks that already
-    know their mode): honors ``_forced_d20`` and otherwise keeps the higher of
-    two ``ctx.rng`` draws for advantage, the lower for disadvantage, one for
-    normal. ``resolve_attack`` itself no longer calls this — it builds typed
-    ``AdvantageSources`` and calls ``roll_d20_test`` directly.
-    """
-    sources = AdvantageSources(
-        advantage=("flag",) if mode == "advantage" else (),
-        disadvantage=("flag",) if mode == "disadvantage" else (),
-    )
-    return roll_d20_test(ctx.rng, 0, sources, forced_natural=_forced_d20(ctx, target_index)).kept
-
-
 def _resolve_hit_outcome(
     natural: int, total: int, target_ac: int, activity: AttackActivity
 ) -> tuple[bool, bool]:
