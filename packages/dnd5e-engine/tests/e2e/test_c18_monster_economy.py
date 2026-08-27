@@ -388,6 +388,11 @@ def test_c18_s05_magic_resistance_grants_advantage_on_saves_vs_spells():
                     hp_current=hp,
                     hp_max=hp,
                     ac=ac,
+                    # 11, not the default 10: ``EncounterMemberSpec.dexterity``
+                    # treats exactly 10 as "unset" when ``monster_template_slug``
+                    # resolves, so 10 would silently take the template's DEX.
+                    # Revert to 10 when the field is retyped ``int | None`` — see
+                    # the T5 entry in BACKLOG.md's foundations follow-ups.
                     dexterity=11,
                     zone_id=cell(3, 0),
                     monster_template_slug=slug,

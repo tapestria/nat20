@@ -310,6 +310,11 @@ zone + apply logic:
   ~5107) emit `AttackRolled(advantage="normal")` without consulting
   `roll_d20_test` sources; route them through `resolve_attack`'s primitive in
   C14. (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
+- **Distance/identity-dependent attack adv/dis rows missing** — Prone (within
+  5 ft → advantage, else disadvantage) and Grappled attacker (disadvantage vs
+  any target other than the grappler) are not in
+  `conditions_grant_advantage_on_attack`; C12 lands them with the reach/distance
+  sidecar. (`packages/dnd5e-engine/src/dnd5e_engine/rules/conditions.py`)
 - **Attack proficiency is assumed.** `build_context.py:278` hard-codes
   `is_proficient_attack=True`; a wizard swinging a greatsword adds PB.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/build_context.py`)
