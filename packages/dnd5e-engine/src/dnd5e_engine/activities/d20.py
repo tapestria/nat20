@@ -39,13 +39,19 @@ class AdvantageSources:
 class D20Result:
     """The outcome of a single SRD 5.2 D20 Test.
 
-    ``natural`` is the die face that would be reported as the "natural"
-    roll (the first draw under advantage/disadvantage, per Foundry
-    parity); ``kept`` is the face actually used for the total once
-    advantage/disadvantage resolution has picked higher/lower.
+    ``first`` is the FIRST d20 drawn (the only one in ``normal`` mode);
+    ``kept`` is the face actually used for the total once
+    advantage/disadvantage resolution has picked higher/lower. The two are
+    equal in ``normal`` mode and whenever ``forced_natural`` is supplied.
+
+    The field is deliberately NOT called ``natural``: ``AttackRolled.natural``
+    is the KEPT die (the die the natural-20 crit / natural-1 fumble test
+    reads), and two same-named fields meaning different things is a footgun.
+    A full ``draws`` tuple, if a host ever needs to render the discarded die,
+    is a later additive change.
     """
 
-    natural: int
+    first: int
     kept: int
     modifier: int
     total: int
@@ -82,11 +88,10 @@ def roll_d20_test(
     mode = resolve_mode(sources)
     applied = sources.advantage + sources.disadvantage
     if forced_natural is not None:
-        kept = natural = int(forced_natural)
+        kept = first = int(forced_natural)
     elif mode == "normal":
-        kept = natural = rng.randint(1, 20)
+        kept = first = rng.randint(1, 20)
     else:
         first, second = rng.randint(1, 20), rng.randint(1, 20)
-        natural = first
         kept = max(first, second) if mode == "advantage" else min(first, second)
-    return D20Result(natural, kept, modifier, kept + modifier, mode, applied)
+    return D20Result(first, kept, modifier, kept + modifier, mode, applied)

@@ -86,6 +86,7 @@ def _swing(
     attacker: Combatant,
     target: Combatant,
     active_effects: tuple[ActiveEffect, ...] = (),
+    passive_attack_bonus: dict[str, str] | None = None,
 ) -> AttackRolled:
     """Resolve one dagger swing and return the emitted ``AttackRolled``."""
     weapon, activity = _dagger_attack()
@@ -101,6 +102,7 @@ def _swing(
         active_effects=active_effects,
         attacker_conditions=[c.condition for c in attacker.conditions],
         target_conditions={target.entity_id: [c.condition for c in target.conditions]},
+        passive_attack_bonus=passive_attack_bonus or {},
     )
     resolve_activity(activity, ctx, weapon=weapon)
     rolled = [e for e in events if isinstance(e, AttackRolled)]
@@ -194,3 +196,23 @@ def test_modifier_and_natural_reconstruct_the_roll_total():
     assert event.modifier is not None
     assert event.natural is not None
     assert event.roll_total == event.natural + event.modifier
+
+
+def test_modifier_excludes_the_bless_style_attack_bonus_die():
+    """``modifier`` is the FLAT attack bonus — the Bless/Bane ``passive_attack_bonus``
+    d4 is rolled separately and folded into ``roll_total`` only.
+
+    Keeping the die out of ``modifier`` is deliberate: it is a die, not a flat
+    bonus, and folding it into ``roll_d20_test`` would change the seeded draw
+    ORDER. The consequence is that ``roll_total == natural + modifier`` holds
+    only when no such sidecar is active; with one, the residual is the d4.
+    """
+    event = _swing(
+        attacker=_attacker(),
+        target=_foe(),
+        passive_attack_bonus={"char:rogue": "1d4"},
+    )
+    assert event.modifier is not None
+    assert event.natural is not None
+    residual = event.roll_total - (event.natural + event.modifier)
+    assert 1 <= residual <= 4

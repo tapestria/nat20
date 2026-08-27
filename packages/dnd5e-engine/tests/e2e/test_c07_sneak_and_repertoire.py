@@ -39,7 +39,11 @@ def test_c07_s01_sneak_attack_adds_bounded_extra_damage_on_advantage():
     this path).
     """
 
-    def _party():
+    def _party(class_slug: str = "rogue"):
+        # ``class_slug`` is the ONLY same-stream lever that suppresses the rider:
+        # the Sneak Attack dice come from the rogue ``@scale`` value, and party
+        # construction draws no dice, so a non-rogue baseline replays the exact
+        # same seeded stream with no rider folded in.
         return [
             PartyMemberSpec(
                 entity_id="char:rogue",
@@ -47,7 +51,7 @@ def test_c07_s01_sneak_attack_adds_bounded_extra_damage_on_advantage():
                 initiative=20,
                 hp_current=30,
                 hp_max=30,
-                class_slug="rogue",
+                class_slug=class_slug,
                 character_level=5,
                 dexterity=18,
                 attack_bonus=7,
@@ -70,10 +74,10 @@ def test_c07_s01_sneak_attack_adds_bounded_extra_damage_on_advantage():
             )
         ]
 
-    async def _run(active_effects):
+    async def _run(active_effects, class_slug="rogue"):
         start = await start_combat(
             session_id="e2e-c07-s01",
-            party=_party(),
+            party=_party(class_slug),
             encounter=_encounter(),
             scene_zones=SceneTopology(zones=["zone:a"], edges=[]),
             rng_seed=5,
@@ -87,11 +91,6 @@ def test_c07_s01_sneak_attack_adds_bounded_extra_damage_on_advantage():
         )
         return live
 
-    live_a = run_async(_run(()))
-    no_adv_total = sum(
-        e.amount for e in events_of(live_a, DamageApplied) if e.target_id == "mon:foe"
-    )
-
     adv_effect = ActiveEffect(
         id="effect:adv",
         name="adv",
@@ -99,18 +98,37 @@ def test_c07_s01_sneak_attack_adds_bounded_extra_damage_on_advantage():
         target_id="char:rogue",
         changes=[ActiveEffectChange(key="flags.advantage.attack", mode="override", value=True)],
     )
+
+    # F2b amendment (NOT a weakening — this TIGHTENS the assertion): since the
+    # attack roll itself now honours ``flags.advantage.attack``, an
+    # advantage-LESS run no longer shares a dice stream with the advantage run,
+    # so differencing the two would conflate the rider with a shifted base
+    # weapon damage roll and a possible crit/no-crit divergence. The reference
+    # is the SAME advantage stream with the rogue Sneak Attack dice absent, so
+    # the measured delta is the rider ALONE.
+    live_a = run_async(_run((adv_effect,), class_slug="fighter"))
+    no_rider_total = sum(
+        e.amount for e in events_of(live_a, DamageApplied) if e.target_id == "mon:foe"
+    )
+
     live_b = run_async(_run((adv_effect,)))
     adv_total = sum(e.amount for e in events_of(live_b, DamageApplied) if e.target_id == "mon:foe")
+
+    # The two runs really are the same stream: identical attack roll + crit flag.
+    attack_a = next(iter(events_of(live_a, AttackRolled)))
+    attack_b = next(iter(events_of(live_b, AttackRolled)))
+    assert (attack_a.roll_total, attack_a.is_crit) == (attack_b.roll_total, attack_b.is_crit)
+    # ...and the advantage really is live on both.
+    assert attack_b.advantage == "advantage"
+    assert attack_b.sources == ["flag"]
 
     # Catalog amendment 2026-07-03 (user-approved, NOT a weakening): the bound
     # is crit-aware. SRD 5.2 §Critical Hit ("Roll all of the attack's damage
     # dice twice and add them together", 09_rules_glossary.md:310) doubles the
-    # Sneak Attack rider on a crit — and under rng_seed=5 this attack IS a
-    # natural-20 crit, so the rider is 6d6 in [6, 36]; a non-crit hit stays 3d6
-    # in [3, 18]. The original [3, 18] was derived assuming a non-crit path.
-    is_crit = next(e.is_crit for e in events_of(live_b, AttackRolled))
-    lo, hi = (6, 36) if is_crit else (3, 18)
-    assert lo <= adv_total - no_adv_total <= hi
+    # Sneak Attack rider on a crit, so the rider is 6d6 in [6, 36]; a non-crit
+    # hit stays 3d6 in [3, 18]. The original [3, 18] assumed a non-crit path.
+    lo, hi = (6, 36) if attack_b.is_crit else (3, 18)
+    assert lo <= adv_total - no_rider_total <= hi
 
 
 def test_c07_s02_sneak_attack_ally_adjacent_alternative_trigger():
