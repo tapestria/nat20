@@ -128,11 +128,17 @@ def test_c16_s02_burning_hands_cone_fires_from_casters_own_cell():
     With a real cone walk, ``mon:front`` (2 cells "ahead", inside a 3-cell
     forward cone) should take ``DamageApplied(damage_type="fire")`` (bounded
     ``[3, 18]``, 3d6) and ``mon:behind`` (2 cells "behind") should take
-    none. ``cells_in_template(shape="cone", ...)`` requires a direction
-    vector to know which of the 8 grid directions a self-centered cone
-    fires along; ``PlayerIntent.direction`` (Task 5) supplies it and
-    ``_expand_aoe_target_list``'s ``cells_in_template`` rewiring (Task 1)
-    consumes it, so the scripted cast below now resolves for real.
+    none. ``PlayerIntent.direction`` (Task 5) now exists, so the scripted
+    cast below no longer fails at intent construction — but
+    ``_expand_aoe_target_list`` (orchestrator.py) still does legacy
+    zone-string equality against the named target's zone and never calls
+    ``cells_in_template``; it does not consume ``direction`` at all. This
+    scenario currently passes only because its candidate list collapses to
+    the single named target (``mon:front``), which happens to be the
+    correct answer here — not because the geometry is real. Task 6's
+    ``cells_in_template`` cone-walk rewiring of ``_expand_aoe_target_list``
+    must keep this scenario green for the right reason (a true directional
+    cone walk), not merely preserve this incidental pass.
     """
 
     async def _run():
