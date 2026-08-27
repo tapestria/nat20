@@ -229,19 +229,6 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   `packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_fold_d20_test_bonus`).
 ## Class / species feature mechanics
 
-- **Attack rolls are NEVER made with advantage or disadvantage** (re-audited
-  2026-08-26; promoted from a footnote). `activities/attack.py:121` hard-codes
-  `mode: AdvantageMode = "normal"`; `attacker_advantage_flags(ctx)` is read only
-  to GATE the Sneak Attack rider. `rules/conditions.py::conditions_grant_advantage_on_attack`
-  is dead code (imported only by tests), so prone / blinded / invisible /
-  restrained / paralyzed / stunned / unconscious grant no attack-roll effect in
-  combat, and neither do unseen-attacker, ranged-in-melee or long-range rules.
-  Saves DO honour adv/dis (`activities/save_primitive.py:130-138`), attacks do
-  not. The original reason was keeping seeded dice streams invariant for pinned
-  fixtures; the fix is to wire the flag (and the condition projection) into
-  `_roll_natural_d20`'s `mode` and accept one fixture re-pin. No live-path test
-  exists — write it against `activities/attack.py` when closing.
-  (`packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py`)
 - **Unconsumed `system.bonuses.heal.*` buckets (2026-08-26).**
   `activities/heal.py::resolve_heal` never reads any bonus sidecar off
   `ActivityResolutionContext` (unlike `attack.py`'s `passive_*_damage_bonus`
