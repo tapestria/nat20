@@ -171,11 +171,14 @@ def _roll_save_d20(
     Advantage / disadvantage are sourced from ``ctx.passive_save_adv`` /
     ``ctx.passive_save_dis`` (UPPER-case ability codes); an ability present in
     both cancels to normal (SRD 5.2 §Advantage and Disadvantage — the primitive
-    owns that reconciliation now). Both sidecars are typed as the ``"effect"``
-    ``AdvantageSource``: they are hydrated from a MIX of active effects and SRD
-    conditions (``project_passive_save_modifiers``) and an entry's origin is no
-    longer recoverable here, so the broader ``"effect"`` tag is used rather
-    than guessing ``"condition:target"``.
+    owns that reconciliation now). Both sidecars are typed as the
+    ``"condition:target"`` ``AdvantageSource``: their sole in-engine producer is
+    ``rules/conditions.py::project_passive_save_modifiers`` (SRD §Conditions —
+    Restrained ⇒ disadvantage on DEX saves, and so on), i.e. always a condition
+    on the SAVING creature. ``_fold_active_effect_changes`` never writes these
+    keys, so an ``"effect"`` tag would be wrong for every entry the engine
+    itself hydrates. A host hand-building the sidecar from a non-condition
+    source is the only way to make the tag inexact.
     """
     forced = ctx.variables.get(FORCE_SAVE_D20)
     forced_natural = int(forced) if forced is not None and target_index == 0 else None
@@ -184,8 +187,8 @@ def _roll_save_d20(
     has_adv = ability_upper in ctx.passive_save_adv.get(target.entity_id, [])
     has_dis = ability_upper in ctx.passive_save_dis.get(target.entity_id, [])
     sources = AdvantageSources(
-        advantage=("effect",) if has_adv else (),
-        disadvantage=("effect",) if has_dis else (),
+        advantage=("condition:target",) if has_adv else (),
+        disadvantage=("condition:target",) if has_dis else (),
     )
     return roll_d20_test(ctx.rng, modifier, sources, forced_natural=forced_natural)
 

@@ -415,14 +415,23 @@ def test_bless_dice_are_excluded_from_the_reported_modifier() -> None:
     assert 1 <= roll.total - (roll.natural or 0) - roll.modifier <= 4
 
 
-def test_advantage_is_reported_as_an_effect_source() -> None:
-    """The ``passive_save_adv`` sidecar mixes effect- and condition-derived
-    entries, so the broader ``effect`` tag is used (see ``_roll_save_d20``)."""
+def test_advantage_is_reported_as_a_target_condition_source() -> None:
+    """``passive_save_adv`` / ``passive_save_dis`` are produced only by
+    ``rules/conditions.py::project_passive_save_modifiers`` — always a
+    condition on the SAVING creature (see ``_roll_save_d20``)."""
     ctx = _ctx(passive_save_adv={"mon:foe": ["WIS"]})
 
     roll = roll_save(ctx, _target(), "wis", dc=1)
 
-    assert roll.sources == ("effect",)
+    assert roll.sources == ("condition:target",)
+
+
+def test_disadvantage_is_reported_as_a_target_condition_source() -> None:
+    ctx = _ctx(passive_save_dis={"mon:foe": ["DEX"]})
+
+    roll = roll_save(ctx, _target(), "dex", dc=1)
+
+    assert roll.sources == ("condition:target",)
 
 
 def test_cancelling_sources_are_both_reported() -> None:
@@ -432,7 +441,7 @@ def test_cancelling_sources_are_both_reported() -> None:
 
     roll = roll_save(ctx, _target(), "wis", dc=1)
 
-    assert roll.sources == ("effect", "effect")
+    assert roll.sources == ("condition:target", "condition:target")
     # ...and still exactly one die was drawn.
     assert roll.natural == random.Random(1).randint(1, 20)
 

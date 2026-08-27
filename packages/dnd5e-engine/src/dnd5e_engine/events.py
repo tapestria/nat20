@@ -304,6 +304,12 @@ class ConcentrationCheck(BaseModel):
     dc: int
     roll_total: int
     succeeded: bool
+    # F2 — optional D20 Test provenance; see ``AttackRolled``. Carried here as
+    # well as on the twin ``SaveRolled`` so the breakdown survives the v0.7
+    # removal of that duplicate.
+    natural: int | None = None
+    modifier: int | None = None
+    sources: list[AdvantageSource] = Field(default_factory=list)
 
 
 class ConcentrationDropped(BaseModel):

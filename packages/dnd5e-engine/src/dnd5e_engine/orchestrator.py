@@ -1574,6 +1574,9 @@ def _emit_apply_damage(live: _LiveCombat, event: DamageApplied) -> None:
                 dc=dc,
                 roll_total=roll_total,
                 succeeded=succeeded,
+                natural=roll.kept,
+                modifier=roll.modifier,
+                sources=list(roll.sources),
             ),
         )
         if not succeeded:
