@@ -254,7 +254,10 @@ async def test_tape_friendly_lines() -> None:
     assert out.rejected_reason is None
     lines = tape_lines(out.all_events, names)
 
-    assert len(lines) == len(out.all_events)
+    # One line per event EXCEPT the structural ``turn_phase`` markers, which
+    # the tape drops (see test_tape_skips_turn_phase_markers).
+    rendered_events = [e for e in out.all_events if e.type != "turn_phase"]
+    assert len(lines) == len(rendered_events)
     attack_lines = [ln for ln in lines if ln["kind"] == "attack_rolled"]
     assert attack_lines, "expected at least one attack_rolled event"
     line = attack_lines[0]
@@ -265,7 +268,7 @@ async def test_tape_friendly_lines() -> None:
     assert line["text"].split(" vs AC: ")[1] in ("hit", "miss", "crit")
 
     # raw is valid JSON round-tripping the event's own payload.
-    for ln, event in zip(lines, out.all_events, strict=True):
+    for ln, event in zip(lines, rendered_events, strict=True):
         payload = json.loads(ln["raw"])
         assert payload["type"] == event.type
 
@@ -344,3 +347,32 @@ async def test_initiative_context_orders_and_flags() -> None:
     gob1 = next(c for c in ctx if c["entity_id"] == "mon:gob1")
     assert gob1["side"] == "foe"
     assert gob1["current"] is False
+
+
+async def test_tape_skips_turn_phase_markers() -> None:
+    """``turn_phase`` is a structural marker, not narration — it must produce
+    NO tape line.
+
+    Engine F3a emits two or three ``TurnPhase`` events at every turn boundary
+    purely so a host can locate the boundary. The tape already shows the
+    boundary via ``turn_started`` / ``round_started``, so rendering the marker
+    (which has no friendly formatter, and would therefore fall back to a raw
+    ``turn_phase: {...}`` payload dump) would bury the actual combat log in
+    noise.
+    """
+    scenario = get_scenario("goblin-ambush")
+    names = {p.entity_id: p.name for p in scenario.party}
+    names.update({m.entity_id: m.name for m in scenario.encounter})
+
+    out = await _replay("goblin-ambush", [_attack("char:brynn", "longsword", "mon:gob1")])
+    assert out.rejected_reason is None
+
+    # The replay really does carry the markers — otherwise this test would
+    # pass vacuously if the engine stopped emitting them.
+    assert [e for e in out.all_events if e.type == "turn_phase"]
+
+    lines = tape_lines(out.all_events, names)
+    assert [ln for ln in lines if ln["kind"] == "turn_phase"] == []
+    assert not any("turn_phase" in ln["text"] for ln in lines)
+    # The boundary is still visible through the structural events proper.
+    assert [ln for ln in lines if ln["kind"] == "turn_started"]

@@ -375,11 +375,10 @@ def _friendly_combat_ended(e: Any, names: dict[str, str]) -> str:
     return f"Combat ends: {e.reason}"
 
 
-# Covers every event type the brief calls out. ``concentration_check`` is
-# kept for forward-compatibility even though the engine never emits it
-# today (``ConcentrationCheck`` is dead code — see BACKLOG.md); real
-# concentration-on-damage surfaces as a plain ``save_rolled(ability="con")``,
-# already handled by ``_friendly_save_rolled``.
+# Covers every event type the brief calls out. Since engine F2c the
+# concentration-on-damage check emits ``concentration_check`` ALONGSIDE the
+# ``save_rolled(ability="con")`` it has always emitted (the duplicate goes
+# away in engine v0.7), so both renderers below are live.
 _FRIENDLY: dict[str, Callable[[Any, dict[str, str]], str]] = {
     "attack_rolled": _friendly_attack_rolled,
     "save_rolled": _friendly_save_rolled,
@@ -403,15 +402,26 @@ _FRIENDLY: dict[str, Callable[[Any, dict[str, str]], str]] = {
 }
 
 
+# Structural markers with no narrative content — dropped from the tape rather
+# than rendered. ``turn_phase`` (engine F3a) fires 2-3 times per turn boundary
+# purely to tell a host WHERE the boundary is; the tape already shows the
+# boundary via ``turn_started`` / ``round_started``, so printing the marker's
+# raw payload alongside them would be noise, not information.
+_SKIPPED_EVENT_TYPES: frozenset[str] = frozenset({"turn_phase"})
+
+
 def tape_lines(events: list[CombatEvent], names: dict[str, str]) -> list[dict[str, str]]:
     """The combat-log tape: one friendly one-liner + raw JSON per event.
 
     Every event type renders something — types not in ``_FRIENDLY`` (and
     any future addition to the engine's closed ``CombatEvent`` union) fall
-    back to ``"{type}: {payload}"`` rather than raising.
+    back to ``"{type}: {payload}"`` rather than raising — except the purely
+    structural types in ``_SKIPPED_EVENT_TYPES``, which produce no line at all.
     """
     lines: list[dict[str, str]] = []
     for e in events:
+        if e.type in _SKIPPED_EVENT_TYPES:
+            continue
         render = _FRIENDLY.get(e.type)
         text = render(e, names) if render is not None else f"{e.type}: {e.model_dump()}"
         lines.append(

@@ -96,6 +96,7 @@ def _ctx(
     abilities: dict[str, int] | None = None,
     proficiency: int = 2,
     forced_save_d20: int | None = 10,
+    **context_kwargs: Any,
 ) -> tuple[ActivityResolutionContext, list[Any]]:
     events: list[Any] = []
     variables: dict[str, Any] = {}
@@ -116,6 +117,7 @@ def _ctx(
         caster_abilities=abilities or dict(ABILITIES),
         caster_proficiency_bonus=proficiency,
         variables=variables,
+        **context_kwargs,
     )
     return ctx, events
 
@@ -333,3 +335,38 @@ def test_deferred_masteries_apply_no_mechanic_but_log_the_gap(
 
     assert events == []
     assert caplog.text.count(f"mastery_deferred mastery={mastery}") == 2
+
+
+def test_topple_save_carries_its_roll_breakdown() -> None:
+    """F2c — every ``SaveRolled`` emitted by the engine now reports the kept
+    natural, the flat modifier and the advantage sources that applied."""
+    ctx, events = _ctx(abilities={**ABILITIES, "str": 18}, forced_save_d20=13)
+
+    apply_mastery_on_hit(_weapon("topple"), ctx, _target(), "str")
+
+    save = next(e for e in events if isinstance(e, SaveRolled))
+    assert save.natural == 13
+    assert save.modifier == 0  # no per-target save sidecar in this context
+    assert save.roll_total == 13
+    assert save.advantage == "normal"
+    assert save.sources == []
+
+
+def test_topple_save_reports_target_side_advantage() -> None:
+    """F2c round 2 — ``SaveRolled.advantage`` mirrors ``AttackRolled.advantage``:
+    a target with SRD condition-derived advantage on the topple Con save keeps
+    the higher of two dice and the event says so."""
+    ctx, events = _ctx(
+        abilities={**ABILITIES, "str": 18},
+        forced_save_d20=None,
+        passive_save_adv={"mon:foe": ["CON"]},
+    )
+    rolls = random.Random(1)
+    expected = max(rolls.randint(1, 20), rolls.randint(1, 20))
+
+    apply_mastery_on_hit(_weapon("topple"), ctx, _target(), "str")
+
+    save = next(e for e in events if isinstance(e, SaveRolled))
+    assert save.natural == expected
+    assert save.advantage == "advantage"
+    assert save.sources == ["condition:target"]

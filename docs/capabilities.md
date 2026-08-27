@@ -23,9 +23,11 @@ without failing CI.
 
 | Mechanic | Status | Notes |
 |---|---|---|
-| Initiative order, rounds, turns | ✅ Resolved | Deterministic tie-break (initiative → dex → entity id) |
-| Attack rolls, crits, damage, resistances/immunities/vulnerabilities | ⚠️ Partial | **Attack rolls are never made with advantage or disadvantage** — the base d20 is hard-coded `normal`, so condition-derived adv/dis is inert. Proficiency is assumed on every attack. Magical vs nonmagical B/P/S cannot be expressed. |
-| Saving throws, half-on-save, save-for-effect | ⚠️ Partial | Only the **DEX** modifier is projected; every other save rolls at +0 with no proficiency. |
+| Initiative order, rounds, turns | ✅ Resolved | Deterministic tie-break (initiative → dex → entity id); one shared turn-advance path, and each boundary is marked in the stream by a `TurnPhase` event |
+| Turn lifecycle — start/end of turn, top-of-round hooks | ⚠️ Partial | The seam exists (`turn_lifecycle.py`, run off the single advance path in registration order); the registered hooks are the round-duration tick, the timed-effect expiry (`seconds` / `turns` / until-end-of-next-turn) and the reaction-effect expiry — ongoing damage, regeneration and recharge have no producer yet |
+| Effect durations (`rounds`, `turns`, `seconds`, until end of next turn) | ✅ Resolved | `rounds` and `ceil(seconds / 6)` tick at the caster's turn end, `turns` at the target's; `flags["until_end_of_next_turn_of"]` expires at that actor's next turn end. `rounds` wins when an effect carries both counters; concentration-flagged effects are exempt (the concentration cascade owns them) |
+| Attack rolls, crits, damage, resistances/immunities/vulnerabilities | ⚠️ Partial | Advantage/disadvantage is rolled on **activity** attacks: attacker `flags.advantage.attack` / `flags.disadvantage.attack` effects plus the condition-derived sources (Invisible attacker; Blinded/Poisoned/Frightened/Restrained attacker; Paralyzed/Stunned/Unconscious/Blinded target), cancelling per SRD §Advantage and Disadvantage. **Opportunity attacks still roll flat `normal`** (pending C14). Distance-derived sources (unseen attacker, ranged-in-melee, long range, Prone) are still inert. Proficiency is assumed on every attack, and magical vs nonmagical B/P/S cannot be expressed (both pending C15). |
+| Saving throws, half-on-save, save-for-effect | ✅ Resolved | Every save adds `d20 + ability modifier + proficiency bonus (if proficient)` for all six abilities, on all three paths (activity saves, the damage-triggered concentration check, the end-of-turn repeat save). Monster ability scores, save proficiencies and proficiency bonus hydrate from the `monster_template_slug`. **Not yet folded in:** effect-derived bonuses (Bless/Bane) and condition-derived save advantage on the two orchestrator-level paths. |
 | Ability & skill checks (in and out of combat) | ✅ Resolved | `resolve_check`; seed via `CheckSpec.rng` |
 | Action economy (action, bonus action, reaction, movement) | ⚠️ Partial | One action per turn; **Extra Attack / Action Surge are not modelled**. Incapacitated does not block actions. |
 | Dash, Disengage | ✅ Resolved | |
@@ -33,9 +35,9 @@ without failing CI.
 | Opportunity attacks | ✅ Resolved | Both directions (PC↔monster); same-zone reach approximation, no "can see" check |
 | Death saves, stabilization | ✅ Resolved | |
 | Instant death (massive damage) | ❌ Not modelled | `is_overkill` is reported on the event only |
-| Concentration, incl. damage-triggered saves and cascade drop | ⚠️ Partial | Drops on a failed CON save only (raw d20). **Not enforced:** one-at-a-time, ending on death/unconscious, timed expiry. |
+| Concentration, incl. damage-triggered saves and cascade drop | ⚠️ Partial | The damage save applies the real CON modifier and emits `ConcentrationCheck` (plus, until v0.7, the legacy `SaveRolled`). Drops on a failed CON save only. **Not enforced:** one-at-a-time, ending on death/unconscious, timed expiry. |
 | Temporary HP, healing | ✅ Resolved | |
-| Conditions (the 15 SRD conditions) | ⚠️ Partial | Applied/removed and gated by immunities; **mechanical effects are enforced only for the subset that projects into roll modifiers** |
+| Conditions (the 15 SRD conditions) | ⚠️ Partial | Applied/removed and gated by immunities. The **attack-roll** advantage/disadvantage they grant is now applied (Invisible/Blinded/Poisoned/Frightened/Restrained attacker; Paralyzed/Stunned/Unconscious/Blinded target), as is check disadvantage. The rest — action denial while Incapacitated, Speed becoming 0, auto-failed saves, the Paralyzed auto-crit in melee — is still descriptive only |
 | Exhaustion | ❌ Not modelled | Levels are tracked but apply no penalty; the text also still describes the 2014 ladder, not SRD 5.2 |
 | Surprise | ❌ Not modelled | |
 | Grapple / Shove | ❌ Not modelled | The `grappled` condition exists, but no contest resolves it |
@@ -100,7 +102,7 @@ combat engine by nature.
 | **Lair actions** | ❌ Not modelled | Schema field exists; corpus ships none |
 | Recharge (5–6) abilities | ❌ Not modelled | |
 | Regeneration | ❌ Not modelled | |
-| `special_abilities` | ❌ Not modelled | 322 traits across 102 names, none consumed (Magic Resistance, Pack Tactics, Legendary Resistance, …). Monster save/skill proficiencies are also never applied |
+| `special_abilities` | ❌ Not modelled | 322 traits across 102 names, none consumed (Magic Resistance, Pack Tactics, Legendary Resistance, …). Monster ability scores, save/skill proficiencies and proficiency bonus *do* hydrate from the template and feed saves and checks |
 
 ## Characters
 
@@ -142,10 +144,26 @@ weapons, object interaction, and encumbrance.
 
 ## Event stream
 
-Every call returns typed `CombatEvent`s. Two known limits on what they carry:
+Every call returns typed `CombatEvent`s.
 
-- `AttackRolled` reports `roll_total` but not the natural d20, the attack bonus,
-  or the target's AC — so a host cannot render "14 + 5 = 19 vs AC 16".
+`AttackRolled`, `SaveRolled`, `CheckRolled` and `ConcentrationCheck` all
+carry the roll breakdown: `natural` (the die kept after advantage/disadvantage),
+`modifier` (the flat bonus) and `sources` (which advantage/disadvantage sources
+applied) — so a host can render "14 + 5 = 19". Two residual limits:
+
+- The target's effective AC is not reported, so a miss cannot be explained as
+  "vs AC 16"; and `modifier` excludes Bless/Bane-style bonus DICE, which must be
+  rolled after the d20 to keep the seeded stream stable.
 - `DamageApplied` carries no source/attacker id, so damage cannot be attributed.
 
-Both are tracked in `BACKLOG.md`.
+`TurnPhase(phase, actor_id, round_number)` marks each turn boundary —
+`round_start` / `turn_start` / `turn_end` — immediately before the engine runs
+that phase's lifecycle hooks, so "top of round 3" and "end of Alice's turn" are
+readable directly rather than inferred from `TurnStarted`/`TurnEnded` adjacency.
+
+`ConcentrationCheck(target_id, dc, roll_total, succeeded, …)` is emitted for the
+damage-triggered concentration save. Until v0.7 the legacy `SaveRolled` for the
+same roll is emitted alongside it, so a host that counts saves must skip one of
+the pair — see [the v0.5 → v0.6 migration guide](migration/v0.5-to-v0.6.md).
+
+Every residual limit in that list is tracked in `BACKLOG.md`.

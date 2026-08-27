@@ -183,19 +183,23 @@ def _resolve_topple(
     bug). The save d20 honors ``force_save_d20`` for determinism.
     """
     dc = _topple_dc(ctx, governing_ability)
-    total, succeeded = roll_save(ctx, target, "con", dc)
+    roll = roll_save(ctx, target, "con", dc)
 
     ctx.event_emitter(
         SaveRolled(
             target_id=target.entity_id,
             ability="con",
             dc=dc,
-            roll_total=total,
-            succeeded=succeeded,
+            roll_total=roll.total,
+            succeeded=roll.succeeded,
+            advantage=roll.mode,
+            natural=roll.natural,
+            modifier=roll.modifier,
+            sources=list(roll.sources),
         )
     )
 
-    if not succeeded:
+    if not roll.succeeded:
         ctx.event_emitter(ConditionApplied(target_id=target.entity_id, condition="prone"))
 
 

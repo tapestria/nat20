@@ -69,11 +69,14 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   every D20 Test reduced by `2 × level`, and Speed reduced by `5 ft × level`.
   Neither is applied, and `ActiveCondition.exhaustion_level` is ignored by the
   projection. Closing this needs a **numeric** per-actor check/save/attack
-  modifier path; the check side is blocked on the unpopulated
-  `ctx.check_modifiers` sidecar (see "Unconsumed `system.bonuses.*` buckets"
-  below), so these should be closed together. The descriptive strings in
+  modifier path; the check and save sides now exist (F1a-F1d —
+  `activities/actor_stats.py` feeding `check_modifiers` / `save_modifiers`), so
+  the remaining work is subtracting `2 × level` through them. The descriptive
+  strings in
   `CONDITION_EFFECTS` were corrected to 5.2 wording (2026-08-22) and are labelled
-  as not-enforced.
+  as not-enforced. Closing this must also drop the `disadvantage` projection for
+  exhaustion in `project_passive_check_modifiers` (pinned by
+  `test_resolve_check_activity.py`).
   (`packages/dnd5e-engine/src/dnd5e_engine/rules/conditions.py`)
 - **Speed reduction from conditions is not applied** — `grappled` and
   `restrained` ("Speed becomes 0") and exhaustion's per-level reduction are
@@ -112,12 +115,12 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
 
 ## Event stream observability (2026-08-22)
 
-- **Roll breakdowns are not exposed.** `AttackRolled` carries `roll_total` but
-  not the natural d20, the attack bonus, or the target's effective AC, so a
-  host cannot render "14 + 5 = 19 vs AC 16" or explain a miss. `SaveRolled`
-  likewise omits the natural roll. `DamageApplied` carries no `source_id`, so
-  damage cannot be attributed to an attacker or effect — a killing blow cannot
-  be credited. Adding these is additive on the event models.
+- **Damage is not attributed.** `DamageApplied` carries no `source_id`, so
+  damage cannot be credited to an attacker or effect — a killing blow cannot be
+  attributed. Additive on the event model; owned by C15. (The roll-breakdown
+  half of this entry closed in F2c: `AttackRolled` / `SaveRolled` /
+  `CheckRolled` now carry `natural`, `modifier` and `sources`; the target's
+  effective AC is still not reported.)
   (`packages/dnd5e-engine/src/dnd5e_engine/events.py`)
 
 ## Character building (2026-08-22)
@@ -210,33 +213,29 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   see `docs/migration/v0.1-to-v0.2.md`)
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/build_context.py`,
   `packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py`).
+- **Two effect-key namespaces for check/save bonuses (2026-08-26).** The public
+  standalone check resolver folds `check.bonus` / `check.skill_check.bonus` /
+  `check.ability_check.bonus` / `save.bonus` / `save.saving_throw.bonus` /
+  `save.<long ability>.bonus` (e.g. `save.wisdom.bonus`), while the activity path
+  (F1d) folds `abilities.check` / `abilities.skill` / `abilities.<ab>.save` (plus
+  the Foundry-native `system.bonuses.abilities.*` / `system.abilities.<ab>.
+  bonuses.save` spellings) into the `check_modifiers` / `save_modifiers`
+  sidecars. An ActiveEffect authored against one key set is therefore INERT on
+  the other surface. Recommended resolution: alias the standalone resolver's key
+  set onto the `abilities.*` family (one normalization table, both consumers) as
+  part of C12 / C19 — not aliased now, deliberately, to keep the F1d change
+  behaviour-preserving.
+  (`packages/dnd5e-engine/src/dnd5e_engine/check.py:108`,
+  `packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_fold_d20_test_bonus`).
 ## Class / species feature mechanics
 
-- **Attack rolls are NEVER made with advantage or disadvantage** (re-audited
-  2026-08-26; promoted from a footnote). `activities/attack.py:121` hard-codes
-  `mode: AdvantageMode = "normal"`; `attacker_advantage_flags(ctx)` is read only
-  to GATE the Sneak Attack rider. `rules/conditions.py::conditions_grant_advantage_on_attack`
-  is dead code (imported only by tests), so prone / blinded / invisible /
-  restrained / paralyzed / stunned / unconscious grant no attack-roll effect in
-  combat, and neither do unseen-attacker, ranged-in-melee or long-range rules.
-  Saves DO honour adv/dis (`activities/save_primitive.py:130-138`), attacks do
-  not. The original reason was keeping seeded dice streams invariant for pinned
-  fixtures; the fix is to wire the flag (and the condition projection) into
-  `_roll_natural_d20`'s `mode` and accept one fixture re-pin. No live-path test
-  exists — write it against `activities/attack.py` when closing.
-  (`packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py`)
-- **Unconsumed `system.bonuses.*` buckets (partial — An earlier release added the
-  attack/damage + spell.dc families).** `heal.*` and `abilities.check` /
-  `abilities.skill` remain inert: no per-actor sidecar consumer exists for
-  them today. `activities/heal.py::resolve_heal` never reads any bonus
-  sidecar off `ActivityResolutionContext` (unlike `attack.py`'s
-  `passive_*_damage_bonus` fields). `activities/check.py::resolve_check`
-  reads a `ctx.check_modifiers[actor_id]["ability_mods"/"skills"]` sidecar,
-  but `build_activity_context` always passes `check_modifiers={}` —
-  `_fold_active_effect_changes` (`orchestrator.py`) has no branch that
-  populates it from active-effect changes (only condition-derived
-  projections land there). (`mwak`/`rwak`/`msak`/`rsak` attack+damage and
-  `spell.dc` are now folded — see `docs/migration/v0.1-to-v0.2.md`.)
+- **Unconsumed `system.bonuses.heal.*` buckets (2026-08-26).**
+  `activities/heal.py::resolve_heal` never reads any bonus sidecar off
+  `ActivityResolutionContext` (unlike `attack.py`'s `passive_*_damage_bonus`
+  fields), so a `system.bonuses.heal.*` change on an active effect is inert.
+  (The attack/damage, `spell.dc` and — as of F1d — `abilities.check` /
+  `abilities.skill` / `abilities.<ab>.save` families are folded.)
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/heal.py`)
 
 ### Passive-stat projection (`activities/passive_stats.py`)
 
@@ -276,24 +275,6 @@ zone + apply logic:
   `"1"`); thread roll-data evaluation through if such data ever lands
   (`packages/dnd5e-engine/src/dnd5e_engine/rest.py`).
 
-## Discovered during demo scenario-catalog work (2026-08-19)
-
-- **`ConcentrationCheck` event type is dead code.** `events.py` defines
-  `ConcentrationCheck` (`type: Literal["concentration_check"]`), includes it
-  in the `CombatEvent` discriminated union, and exports it in `__all__` —
-  but no code path in the engine ever constructs one (`grep -rn
-  "ConcentrationCheck(" packages/dnd5e-engine/` outside `events.py` itself
-  returns nothing; confirmed via `git log -S"ConcentrationCheck("` that no
-  commit has ever wired a constructor call). The real SRD §Concentration-
-  on-damage check ("make a Constitution saving throw ... DC = 10 or half
-  the damage taken") is implemented instead by emitting a plain
-  `SaveRolled(ability="con", ...)`. Consumers that want to distinguish a
-  concentration save from an arbitrary saving throw must currently do so
-  by convention (ability == "con" + a tracked concentration effect), not
-  by event type. Either wire `ConcentrationCheck` as the emitted event in
-  the concentration-on-damage block, or remove the unused type
-  (`packages/dnd5e-engine/src/dnd5e_engine/events.py:244`).
-
 ## Discovered during demo webapp final review (2026-08-19)
 
 - **`_REGISTRY` retains `_LiveCombat` entries after `end_combat` — no
@@ -324,16 +305,16 @@ zone + apply logic:
 
 ## Audit 2026-08-26 — rolls & modifiers
 
-- **Non-DEX saving throws roll at +0 for every combatant.** The per-target
-  projection is literally `per_target_entry["saves"] = {"dex": ...}`
-  (`orchestrator.py:2084`); STR/CON/INT/WIS/CHA modifiers and class/monster
-  save proficiencies (`Class.saving_throws`, `Monster.saving_throws` — grep for
-  `saving_throws` in the engine returns nothing) are never hydrated onto
-  `Combatant`. Concentration saves (`orchestrator.py:1526`) and end-of-turn
-  repeat saves (`_run_end_of_turn_saves`) are therefore raw d20 vs DC. Same
-  root cause as the exhaustion / `check_modifiers` entry above: the engine has
-  no per-actor ability-modifier + proficiency projection. Close together.
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
+- **Opportunity attacks bypass the d20 pipeline.**
+  `_resolve_pc_opportunity_attack` / monster OA path (`orchestrator.py` ~5007,
+  ~5107) emit `AttackRolled(advantage="normal")` without consulting
+  `roll_d20_test` sources; route them through `resolve_attack`'s primitive in
+  C14. (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
+- **Distance/identity-dependent attack adv/dis rows missing** — Prone (within
+  5 ft → advantage, else disadvantage) and Grappled attacker (disadvantage vs
+  any target other than the grappler) are not in
+  `conditions_grant_advantage_on_attack`; C12 lands them with the reach/distance
+  sidecar. (`packages/dnd5e-engine/src/dnd5e_engine/rules/conditions.py`)
 - **Attack proficiency is assumed.** `build_context.py:278` hard-codes
   `is_proficient_attack=True`; a wizard swinging a greatsword adds PB.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/build_context.py`)
@@ -371,12 +352,15 @@ zone + apply logic:
   (`orchestrator.py:3568`) checks only ended / in-initiative / your-turn; a
   paralyzed or stunned PC may still attack. Paralyzed auto-crit within 5 ft is
   applied only on death-save damage (`death_saves.py:81`), not in combat.
-- **No start-of-turn hook / ongoing damage.** Effects tick only at turn END and
-  only on `rounds` (`_tick_durations_at_turn_end`; `seconds`/`turns` on
-  `types/effects.py` are never read). Start-of-turn damage (Acid Arrow, Spirit
-  Guardians), regeneration and recharge rolls have no place to land.
-  "Until the end of your next turn" is hard-coded only for reaction-cast
-  effects (`orchestrator.py:1464-1485`).
+- **No ongoing-damage / regeneration / recharge producers.** (2026-08-26) F3a
+  gave them a place to land — `turn_lifecycle.py` runs `round_start` /
+  `turn_start` / `turn_end` hooks off the single `_end_turn_and_advance` path —
+  but the only registered hooks are the pre-existing duration tick and
+  reaction-effect expiry, plus F3b's timed-effect expiry. Start-of-turn damage
+  (Acid Arrow, Spirit Guardians), regeneration and recharge rolls still have no
+  producer.
+  (`packages/dnd5e-engine/src/dnd5e_engine/turn_lifecycle.py`,
+  `packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_register_default_turn_hooks`)
 - **Instant death from massive damage is not applied.** `activities/apply.py:79`
   computes `is_overkill` purely to decorate the event. A PC dropping to 0 also
   never receives an `unconscious` `ConditionApplied` (the heal path only
@@ -473,10 +457,11 @@ stand-in, not an engine capability. Specifically:
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/monster_actions.py`)
 - **79 monster actions carry `recharge`; zero `.recharge` reads** (sharpens
   the "recharge not gated" entry above).
-- **Monster skill and save proficiencies are never hydrated** onto `Combatant`
-  (`_build_foe_combatants`, `orchestrator.py:2786`); only vulnerabilities
-  auto-hydrate from the template — resistances/immunities must be host-supplied
-  on `EncounterMemberSpec`.
+- **Monster damage resistances/immunities are never hydrated** onto `Combatant`
+  (`_build_foe_combatants`); only vulnerabilities auto-hydrate from the template,
+  so resistances/immunities must be host-supplied on `EncounterMemberSpec`.
+  (Ability scores, save/skill proficiencies and the proficiency bonus DO
+  hydrate as of F1b.)
 - **Target selection is hard-coded lowest-HP living PC** (`orchestrator.py:5069`)
   with no reach/LoS/threat consideration; flee planning returns `None` on a
   grid (`_plan_flee_destination:695`) so a fleeing monster holds still.
@@ -496,8 +481,10 @@ footprints. Exploration-tier; revisit only if a host asks.
   monster spellcasting, saves, background, weapon mastery, concentration
   exclusivity, AoE templates, Extra Attack-less action economy, opportunity
   attacks' "can see" check, ability-score/proficiency derivation). Corrected
-  2026-08-26. `test_capability_matrix.py` pins only spell/monster COUNTS, so
-  status rows can still drift; consider pinning ❌/⚠️ rows to a code probe.
+  2026-08-26. Closed 2026-08-26: `test_capability_matrix.py::
+  test_status_rows_match_code_probes` now pins five representative rows to a
+  grep-level code probe in both directions. The probe set is a sample, not
+  exhaustive — **add a probe entry whenever a status row is flipped.**
 
 ## Catalog v2 scenarios without a prior entry (2026-08-26)
 
@@ -547,6 +534,50 @@ the close-gap protocol (delete-on-close) has an entry to delete.
   is a single `str | None` with no multi-target/dart-count shape to route
   through, so a 3rd-level Magic Missile still fires only 1 dart, not 5.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/dice.py`)
+
+## Foundations follow-ups (2026-08-26)
+
+Reviewed and deliberately deferred during the F1–F3 foundations pass (actor
+stat projection, unified d20, turn lifecycle). Each is additive and none blocks
+a cluster; they are consolidated here so they are not re-discovered.
+
+- **`AdvantageMode` and `TurnPhase` are not top-level exports.** Both live on
+  `dnd5e_engine.events` and are reachable there, and the package exports no
+  other event class or roll-mode alias from `__init__.py`, so the asymmetry is
+  consistent rather than an omission. Revisit only if the whole event surface is
+  re-exported. (`packages/dnd5e-engine/src/dnd5e_engine/__init__.py`,
+  `packages/dnd5e-engine/src/dnd5e_engine/events.py`)
+- **`EncounterMemberSpec.dexterity: int = 10` is a lossy sentinel.** The monster
+  template hydration cannot distinguish "host left the default" from "host
+  explicitly set 10", so an explicit 10 always defers to the template's DEX.
+  Retype to `int | None = None` (additive; needs a migration note) in C18/C23.
+  (`packages/dnd5e-engine/src/dnd5e_engine/specs.py`)
+- **Roll events cannot report bonus DICE.** `roll_total == natural + modifier`
+  only when no Bless/Bane-style bonus die applied; `modifier` deliberately
+  excludes them (they are rolled after the d20 to keep the seeded stream
+  stable), so the printed breakdown does not add up in that case. Fix shape: an
+  additive `bonus_dice_total: int | None` on `AttackRolled` / `SaveRolled` /
+  `CheckRolled` / `ConcentrationCheck`.
+  (`packages/dnd5e-engine/src/dnd5e_engine/events.py`)
+- **`TurnLifecycle` has no public registry introspection.** The registration
+  ORDER of turn hooks is a determinism contract, and the only way to assert it
+  is reading the private `_hooks` list (`tests/test_turn_lifecycle.py` does).
+  A `registered_keys(phase) -> tuple[str, ...]` accessor is the clean fix.
+  (`packages/dnd5e-engine/src/dnd5e_engine/turn_lifecycle.py`)
+- **The turn-start log index is recomputed per candidate effect.**
+  `_effect_applied_during_current_turn` rescans the event log for each
+  until-end-of-next-turn effect at a turn boundary. Bounded and immaterial at
+  today's scale; when C12/C18 add a *second* log-reading turn hook, hoist a
+  single `current_turn_start_index` computed once in `_begin_turn` and have
+  both hooks read it.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_begin_turn`)
+- **The two orchestrator-level save paths bypass effect/condition save
+  projections.** F1c gave the concentration check and the end-of-turn repeat
+  save their real ability + proficiency modifier, but neither folds the
+  effect-derived `passive_save_bonus` (Bless/Bane) nor the condition-derived
+  save advantage / auto-fail projections the IR-level save handler honours.
+  Owned by C12.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
 
 ## Blocked
 

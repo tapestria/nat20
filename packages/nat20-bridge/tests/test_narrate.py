@@ -4,9 +4,12 @@ from __future__ import annotations
 
 from dnd5e_engine.events import (
     AttackRolled,
+    ConcentrationCheck,
     DamageApplied,
     Death,
     RoundStarted,
+    SaveRolled,
+    TurnPhase,
     TurnStarted,
 )
 
@@ -115,3 +118,66 @@ def test_unhandled_event_uses_generic_fallback() -> None:
 def test_names_fallback_to_raw_id() -> None:
     text = narrate([TurnStarted(actor_id="unknown:1")], NAMES)
     assert "unknown:1" in text
+
+
+def test_turn_phase_markers_produce_no_narration() -> None:
+    """``turn_phase`` is a structural marker, not narration.
+
+    Engine F3a emits two or three ``TurnPhase`` events at every turn boundary
+    so a host can locate the boundary programmatically. This narration is fed
+    to an LLM, and the boundary is already stated by the ``-- Round N --`` /
+    turn-start lines, so rendering the marker through the generic fallback
+    (``[turn_phase] actor_id=... phase=... round_number=...``) would spend
+    tokens on pure noise. It must contribute no line at all.
+    """
+    text = narrate(
+        [
+            TurnPhase(actor_id="char:elara", phase="turn_end", round_number=1),
+            RoundStarted(round_number=2),
+            TurnPhase(actor_id=None, phase="round_start", round_number=2),
+            TurnStarted(actor_id="char:elara"),
+            TurnPhase(actor_id="char:elara", phase="turn_start", round_number=2),
+        ],
+        NAMES,
+    )
+    assert "turn_phase" not in text
+    # Only the two real structural events survive — one line each, no blanks.
+    lines = text.split("\n")
+    assert len(lines) == 2
+    assert all(line.strip() for line in lines)
+    assert lines[0] == "-- Round 2 --"
+    assert "Elara" in lines[1]
+
+
+def test_narrating_only_markers_yields_empty_text() -> None:
+    """The degenerate case: a delta containing nothing but markers narrates to
+    the empty string rather than a run of blank lines."""
+    assert narrate([TurnPhase(actor_id=None, phase="round_start", round_number=3)], NAMES) == ""
+
+
+def test_concentration_save_narrates_exactly_one_line() -> None:
+    """The engine emits ``ConcentrationCheck`` *and* a twin ``SaveRolled`` for
+    one concentration save until v0.7. Narrating both would tell the LLM the
+    same save happened twice, so the transitional ``concentration_check`` is
+    skipped and the human-readable ``save_rolled`` line is the one kept.
+    """
+    events = [
+        SaveRolled(
+            target_id="char:elara",
+            ability="con",
+            dc=10,
+            roll_total=14,
+            succeeded=True,
+        ),
+        ConcentrationCheck(
+            target_id="char:elara",
+            dc=10,
+            roll_total=14,
+            succeeded=True,
+        ),
+    ]
+    text = narrate(events, NAMES)
+    lines = text.splitlines()
+    assert len(lines) == 1
+    assert "concentration_check" not in text
+    assert "Elara" in lines[0] and "con save" in lines[0] and "14" in lines[0]

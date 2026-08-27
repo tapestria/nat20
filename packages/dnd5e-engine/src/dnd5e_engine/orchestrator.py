@@ -62,6 +62,12 @@ from dnd5e_srd_data.schema.item import Weapon, WeaponProperty
 from dnd5e_srd_data.schema.spell import CastingTimeUnit, Spell, SpellRangeUnits
 from pydantic import BaseModel, ConfigDict, Field
 
+from dnd5e_engine.activities.actor_stats import (
+    ABILITY_CODES,
+    check_modifier,
+    save_modifier,
+    skill_ability,
+)
 from dnd5e_engine.activities.attack import (
     attacker_advantage_flags,
     sneak_attack_dice,
@@ -69,6 +75,7 @@ from dnd5e_engine.activities.attack import (
 )
 from dnd5e_engine.activities.build_context import build_activity_context
 from dnd5e_engine.activities.context import ActivityResolutionContext
+from dnd5e_engine.activities.d20 import AdvantageSources, roll_d20_test
 from dnd5e_engine.activities.monster_actions import (
     expand_action_to_activities,
     select_typed_monster_action,
@@ -85,6 +92,7 @@ from dnd5e_engine.events import (
     CastFailed,
     CombatEnded,
     CombatEvent,
+    ConcentrationCheck,
     ConcentrationDropped,
     ConditionApplied,
     ConditionRemoved,
@@ -102,6 +110,7 @@ from dnd5e_engine.events import (
     SaveRolled,
     TempHpApplied,
     TurnEnded,
+    TurnPhase,
     TurnStarted,
 )
 from dnd5e_engine.lib_loader import get_lib_loader
@@ -127,9 +136,15 @@ from dnd5e_engine.specs import (
     SceneTopology,
     ZoneEdge,
 )
+from dnd5e_engine.turn_lifecycle import (
+    TurnLifecycle,
+    run_round_start,
+    run_turn_end,
+    run_turn_start,
+)
 from dnd5e_engine.types.combat import BehaviorProfile, Combatant
 from dnd5e_engine.types.conditions import ActiveCondition
-from dnd5e_engine.types.effects import ActiveEffect, ActiveEffectDuration
+from dnd5e_engine.types.effects import ActiveEffect, ActiveEffectChange, ActiveEffectDuration
 from dnd5e_engine.views import LiveCombatView
 
 _LOGGER = logging.getLogger(__name__)
@@ -969,6 +984,12 @@ class _LiveCombat:
     reaction_effects_pending_expiry: dict[str, list[tuple[str, str, str]]] = field(
         default_factory=dict
     )
+    # Turn-boundary hook registry (``dnd5e_engine.turn_lifecycle``). Populated
+    # by ``_register_default_turn_hooks`` in ``start_combat``; run by
+    # ``_end_turn_and_advance`` / ``_begin_turn``. Every rule that fires "at the
+    # start/end of a turn" registers here rather than being open-coded into the
+    # advance path.
+    lifecycle: TurnLifecycle = field(default_factory=TurnLifecycle)
 
 
 @dataclass(frozen=True)
@@ -1461,28 +1482,39 @@ def _emit_apply_turn_started(live: _LiveCombat, event: TurnStarted) -> None:
             )
             break
 
-    # SRD Shield / one-round reaction buffs — expire any effect this actor
-    # cast off-turn (via the reaction queue) with a round-scoped duration,
-    # right here at the OWNER's own next TurnStarted, rather than waiting for
-    # a TurnEnded that may be a full round later (see
-    # ``docs/dev/reaction-queue.md``, "Duration-fix semantics").
-    pending_expiry = live.reaction_effects_pending_expiry.pop(event.actor_id, None)
-    if pending_expiry:
-        for target_id, effect_id, origin in pending_expiry:
-            still_present = any(
-                eff.id == effect_id and eff.origin == origin
-                for eff in live.active_effects.get(target_id, [])
+
+def _hook_expire_reaction_effects(live: _LiveCombat, actor_id: str | None) -> None:
+    """``turn_start`` hook — SRD Shield / one-round reaction buffs.
+
+    An effect this actor cast off-turn (via the reaction queue) with a
+    round-scoped duration expires at the OWNER's own next turn start, rather
+    than waiting for a ``TurnEnded`` that may be a full round later (see
+    ``docs/dev/reaction-queue.md``, "Duration-fix semantics"). Before F3a this
+    ran inline inside ``_emit_apply_turn_started``; it is now a registered
+    lifecycle hook and therefore fires just after the ``TurnPhase(turn_start)``
+    marker instead of during the ``TurnStarted`` fold — the relative order of
+    the ``EffectExpired`` events against every pre-existing event is unchanged.
+    """
+    if actor_id is None:
+        return
+    pending_expiry = live.reaction_effects_pending_expiry.pop(actor_id, None)
+    if not pending_expiry:
+        return
+    for target_id, effect_id, origin in pending_expiry:
+        still_present = any(
+            eff.id == effect_id and eff.origin == origin
+            for eff in live.active_effects.get(target_id, [])
+        )
+        if still_present:
+            _emit(
+                live,
+                EffectExpired(
+                    effect_id=effect_id,
+                    target_id=target_id,
+                    origin=origin,
+                    reason="duration",
+                ),
             )
-            if still_present:
-                _emit(
-                    live,
-                    EffectExpired(
-                        effect_id=effect_id,
-                        target_id=target_id,
-                        origin=origin,
-                        reason="duration",
-                    ),
-                )
 
 
 def _emit_apply_damage(live: _LiveCombat, event: DamageApplied) -> None:
@@ -1528,16 +1560,30 @@ def _emit_apply_damage(live: _LiveCombat, event: DamageApplied) -> None:
     # higher. On a failed save, the spell ends."* If the damaged
     # combatant is concentrating on an effect (tracked in
     # ``concentration_chain``), roll the CON save and cascade on
-    # failure. No CON modifier projection at the orchestrator boundary
-    # today (mirrors ``_emit_concentration_save_probe`` in
-    # ``effects/ieffect2.py``); the raw d20 vs. DC determines outcome.
+    # failure. The save applies the concentrating creature's real CON
+    # modifier + proficiency bonus (F1c, via ``actor_stats``) and goes
+    # through the shared ``roll_d20_test`` primitive (F2c) with no
+    # advantage source, so it is still a single draw.
     # Done BEFORE death synthesis so a dropped-conc + slain caster
     # still surface the cascade before the Death event.
     caster_chain = live.concentration_chain.get(event.target_id)
     if caster_chain:
         dc = max(10, event.amount // 2)
-        roll_total = live.rng.randint(1, 20)
+        concentrator = _find_combatant(live, event.target_id)
+        # The ``else 0`` cannot fire in practice: ``concentration_chain`` is
+        # only ever keyed by an entity that is in ``live.initiative``, and the
+        # damage that got us here was applied to that same combatant. It stays
+        # because ``_emit_apply_damage`` is contractually non-throwing — a
+        # missing combatant degrades to an unmodified save rather than
+        # aborting damage application mid-flight.
+        modifier = save_modifier(concentrator, "con").total if concentrator else 0
+        roll = roll_d20_test(live.rng, modifier, AdvantageSources())
+        roll_total = roll.total
         succeeded = roll_total >= dc
+        # TRANSITIONAL (F2c): the concentration check emits BOTH the
+        # generic ``SaveRolled(ability="con")`` it has always emitted and
+        # the specific ``ConcentrationCheck``. Hosts should migrate to the
+        # latter; the duplicate ``SaveRolled`` is removed in v0.7.
         _emit(
             live,
             SaveRolled(
@@ -1546,6 +1592,23 @@ def _emit_apply_damage(live: _LiveCombat, event: DamageApplied) -> None:
                 dc=dc,
                 roll_total=roll_total,
                 succeeded=succeeded,
+                advantage=roll.mode,
+                natural=roll.kept,
+                modifier=roll.modifier,
+                sources=list(roll.sources),
+            ),
+        )
+        _emit(
+            live,
+            ConcentrationCheck(
+                target_id=event.target_id,
+                dc=dc,
+                roll_total=roll_total,
+                succeeded=succeeded,
+                advantage=roll.mode,
+                natural=roll.kept,
+                modifier=roll.modifier,
+                sources=list(roll.sources),
             ),
         )
         if not succeeded:
@@ -1854,15 +1917,92 @@ _FOUNDRY_SPELL_DC_BONUS_KEY = "system.bonuses.spell.dc"
 # ``apply.py`` already reads ; see docs/dev/passive-projection.md).
 _FOUNDRY_RESISTANCE_KEY = "system.traits.dr.value"
 
+# F1d — the three D20-test bonus buckets that land on the per-actor CHECK sidecar
+# (``check_modifiers[id]``) and the per-ability SAVE sidecar
+# (``save_modifiers[id]["saves"]``). Both the engine's short internal key form and
+# the Foundry-native ``system.bonuses.*`` / ``system.abilities.*`` form are
+# accepted, mirroring the ``system.bonuses.abilities.save`` → ``save.bonus``
+# aliasing above.
+#
+# ``abilities.check`` — a bonus to EVERY ability check (Guidance-shaped); it
+# reaches skill checks too, because a skill check IS an ability check (SRD 5.2
+# §Ability Checks).
+_FOUNDRY_CHECK_BONUS_KEYS = frozenset({"abilities.check", "system.bonuses.abilities.check"})
+# ``abilities.skill`` — a bonus to skill checks only.
+_FOUNDRY_SKILL_BONUS_KEYS = frozenset({"abilities.skill", "system.bonuses.abilities.skill"})
+# ``abilities.<ab>.save`` — a bonus to ONE ability's saving throw (the per-ability
+# counterpart of the generic ``system.bonuses.abilities.save`` bucket, which stays
+# on the action-agnostic ``passive_save_bonus`` dice sidecar).
+_FOUNDRY_PER_ABILITY_SAVE_KEYS: dict[str, str] = {
+    key: ability
+    for ability in ("str", "dex", "con", "int", "wis", "cha")
+    for key in (f"abilities.{ability}.save", f"system.abilities.{ability}.bonuses.save")
+}
+
+
+def _flat_change_value(value: bool | int | str) -> int | None:
+    """The int a D20-test bonus change contributes, or ``None`` to skip it.
+
+    ``check_modifiers[id]["ability_mods"/"skills"]`` and
+    ``save_modifiers[id]["saves"]`` are RESOLVED INTEGER sidecars — the consumers
+    (``activities/check.py::resolve_check``, ``activities/save.py``) add them to a
+    natural d20 with no dice parser. So unlike the neighbouring
+    ``passive_save_bonus`` / ``passive_to_hit_bonus`` sidecars (signed dice
+    STRINGS their consumers roll), a dice-valued change on these buckets is
+    dropped rather than folded: rolling it here would both mis-type the sidecar
+    and consume RNG draws inside a projection that must stay draw-free
+    (determinism contract). Plain integer strings ("2", "-1") still fold.
+    """
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    try:
+        return int(value.strip())
+    except ValueError:
+        return None
+
+
+def _fold_d20_test_bonus(
+    change: ActiveEffectChange,
+    per_target_check: dict[str, Any],
+    per_target_entry: dict[str, Any],
+) -> None:
+    """Fold one ``abilities.check`` / ``abilities.skill`` / ``abilities.<ab>.save``
+    ``add`` change into the per-actor check + per-ability save sidecars.
+
+    SRD 5.2 §Ability Checks — a skill check IS an ability check, so an
+    ``abilities.check`` bonus reaches both the six ability-check modifiers and
+    every proficient skill; ``abilities.skill`` reaches skills only.
+    """
+    amount = _flat_change_value(change.value)
+    if amount is None:
+        return
+    key = change.key
+    if key in _FOUNDRY_CHECK_BONUS_KEYS or key in _FOUNDRY_SKILL_BONUS_KEYS:
+        skills = per_target_check.setdefault("skills", {})
+        for skill in skills:
+            skills[skill] += amount
+        if key in _FOUNDRY_CHECK_BONUS_KEYS:
+            ability_mods = per_target_check.setdefault("ability_mods", {})
+            for ability in ability_mods:
+                ability_mods[ability] += amount
+        return
+    ability = _FOUNDRY_PER_ABILITY_SAVE_KEYS[key]
+    saves = per_target_entry.setdefault("saves", {})
+    saves[ability] = saves.get(ability, 0) + amount
+
 
 def _fold_active_effect_changes(
     active: Sequence[ActiveEffect],
     per_target_dmg: dict[str, Any],
     per_target_entry: dict[str, Any],
+    per_target_check: dict[str, Any],
 ) -> bool:
     """Fold each live effect's Foundry-shaped ``changes`` into the per-target
-    ``per_target_dmg`` (attack/damage sidecar) and ``per_target_entry`` (save/ac
-    sidecar) dicts in place. Returns whether ``per_target_dmg`` was mutated
+    ``per_target_dmg`` (attack/damage sidecar), ``per_target_entry`` (save/ac
+    sidecar) and ``per_target_check`` (ability/skill-check sidecar) dicts in
+    place. Returns whether ``per_target_dmg`` was mutated
     (``dmg_dirty``) so the caller knows to re-store it.
 
     Pure projection over the passed dicts — no ``live`` mutation.
@@ -1923,6 +2063,15 @@ def _fold_active_effect_changes(
                     dmg_dirty = True
                 continue
             if change.mode != "add":
+                continue
+            # F1d — the three D20-test buckets land on INT sidecars, so they are
+            # folded before the signed-dice-string coercion below.
+            if (
+                change.key in _FOUNDRY_CHECK_BONUS_KEYS
+                or change.key in _FOUNDRY_SKILL_BONUS_KEYS
+                or change.key in _FOUNDRY_PER_ABILITY_SAVE_KEYS
+            ):
+                _fold_d20_test_bonus(change, per_target_check, per_target_entry)
                 continue
             val = change.value
             if isinstance(val, bool):
@@ -2028,13 +2177,14 @@ def _project_target_modifiers(
     c: Combatant,
     live: _LiveCombat,
     passive_damage_modifiers: dict[str, dict[str, Any]],
-) -> tuple[dict[str, Any], dict[str, Any] | None]:
+) -> tuple[dict[str, Any], dict[str, Any]]:
     """Project one combatant's per-target save/check entries, folding SRD
     conditions, per-creature resistances/immunities, and active-effect changes.
 
     Mutates ``passive_damage_modifiers[c.entity_id]`` in place (the damage
-    projection lands there directly). Returns ``(save_entry, check_entry)``
-    where ``check_entry`` is ``None`` when the SRD check projection is empty.
+    projection lands there directly). Returns ``(save_entry, check_entry)``;
+    both are always present (F1d — every combatant carries the six ability-check
+    modifiers, so the check entry is no longer condition-gated).
     """
     cond_names = [ac.condition for ac in c.conditions]
     damage_proj = project_passive_damage_modifiers(cond_names)
@@ -2070,18 +2220,15 @@ def _project_target_modifiers(
         damage_proj["vulnerabilities"] = merged_vuln
     if any(damage_proj.values()):
         passive_damage_modifiers[c.entity_id] = dict(damage_proj)
-    # Per-target ``saves`` ability-code → modifier projection. SRD
-    # 5e: ability modifier = floor((score - 10) / 2). The combat
-    # scaffold's ``Combatant`` only carries the DEX score today
-    # (other ability scores are owned by the character sheet /
-    # monster template projection and not yet threaded into
-    # ``_LiveCombat``); we project DEX from ``c.dexterity`` and
-    # leave the other abilities at 0 until that projection lands.
-    # save.py reads ``entry["saves"][ability]`` so the per-target
-    # +4 DEX from a 18-score goblin is observable on the IR's
-    # lower-case ability key.
+    # Per-target ``saves`` ability-code → modifier projection. SRD 5.2
+    # §Saving Throws: ``d20 + ability modifier + proficiency bonus (if
+    # proficient in that save)``. All six abilities project through
+    # ``actor_stats.save_modifier`` (F1c), which reads the hydrated
+    # ability scores, ``save_proficiencies`` and the level/CR-derived
+    # proficiency bonus off the ``Combatant``. save.py reads
+    # ``entry["saves"][ability]`` on the lower-case ability key.
     per_target_entry: dict[str, Any] = dict(save_proj)
-    per_target_entry["saves"] = {"dex": (int(c.dexterity) - 10) // 2}
+    per_target_entry["saves"] = {ab: save_modifier(c, ab).total for ab in ABILITY_CODES}
 
     # Active-effect projection: fold each live effect's Foundry-shaped
     # ``changes`` (Bless +1d4 save, Bane −1d4 save, +1 weapon, etc.) into
@@ -2091,14 +2238,39 @@ def _project_target_modifiers(
     # change-fold below is the sole source of these passive modifiers;
     # condition-derived save adv/dis comes from the SRD-condition
     # projection (``project_passive_save_modifiers``).
+    # Per-actor ability/skill CHECK projection. SRD 5.2 §D20 Tests: an ability
+    # check is ``d20 + ability modifier``, plus the proficiency bonus when the
+    # actor is proficient in the skill used (doubled with Expertise). All six
+    # ability modifiers and every proficient skill project through
+    # ``actor_stats.check_modifier`` (F1a); the condition-derived adv/dis lists
+    # (``passive_check_adv`` / ``passive_check_dis``) are MERGED, not replaced,
+    # and ``disadvantage`` is their resolved boolean for consumers that want the
+    # answer rather than the list. ``activities/check.py`` reads
+    # ``entry["skills"][slug]`` first, falling back to
+    # ``entry["ability_mods"][ability]``.
+    check_entry: dict[str, Any] = dict(check_proj)
+    check_entry["ability_mods"] = {ab: check_modifier(c, ab).total for ab in ABILITY_CODES}
+    skills: dict[str, int] = {}
+    for skill in c.skill_proficiencies:
+        ability = skill_ability(skill)
+        if ability is None:
+            # Not an SRD skill slug (a tool proficiency, or a Foundry 3-letter
+            # code): no governing ability to project, so the check falls back to
+            # the ability modifier rather than guessing.
+            continue
+        skills[skill] = check_modifier(c, ability, skill).total
+    check_entry["skills"] = skills
+    check_entry["disadvantage"] = bool(check_proj.get("passive_check_dis"))
+
     active = live.active_effects.get(c.entity_id, [])
     if active:
         per_target_dmg = passive_damage_modifiers.get(c.entity_id, dict(damage_proj))
-        dmg_dirty = _fold_active_effect_changes(active, per_target_dmg, per_target_entry)
+        dmg_dirty = _fold_active_effect_changes(
+            active, per_target_dmg, per_target_entry, check_entry
+        )
         if dmg_dirty:
             passive_damage_modifiers[c.entity_id] = per_target_dmg
 
-    check_entry = dict(check_proj) if any(check_proj.values()) else None
     return per_target_entry, check_entry
 
 
@@ -2189,8 +2361,7 @@ def _build_hydration_payload(live: _LiveCombat, caster: Combatant | None = None)
     for c in live.initiative:
         per_target_entry, check_entry = _project_target_modifiers(c, live, passive_damage_modifiers)
         save_modifiers[c.entity_id] = per_target_entry
-        if check_entry is not None:
-            check_modifiers[c.entity_id] = check_entry
+        check_modifiers[c.entity_id] = check_entry
 
     # ── Per-combatant concentration map ─────────────────────────────────────
     # SRD §Concentration — surface ``{effect_name, effect_id}`` per the
@@ -2502,6 +2673,59 @@ def _record_effect_lifecycle_links(
             continue
 
 
+def _hook_run_end_of_turn_saves(live: _LiveCombat, actor_id: str | None) -> None:
+    """``turn_end`` hook — adapt ``_run_end_of_turn_saves`` to ``TurnHook``."""
+    if actor_id is None:
+        return
+    _run_end_of_turn_saves(live, actor_id)
+
+
+def _hook_tick_durations(live: _LiveCombat, actor_id: str | None) -> None:
+    """``turn_end`` hook — adapt ``_tick_durations_at_turn_end`` to ``TurnHook``."""
+    if actor_id is None:
+        return
+    _tick_durations_at_turn_end(live, actor_id)
+
+
+def _hook_expire_timed_effects(live: _LiveCombat, actor_id: str | None) -> None:
+    """``turn_end`` hook — adapt ``_expire_timed_effects_at_turn_end`` to ``TurnHook``."""
+    if actor_id is None:
+        return
+    _expire_timed_effects_at_turn_end(live, actor_id)
+
+
+def _register_default_turn_hooks(live: _LiveCombat) -> None:
+    """Register the engine's built-in turn-boundary hooks on ``live``.
+
+    Registration order IS execution order. The two F3a hooks (duration tick,
+    reaction-effect expiry) reproduce exactly where each used to run inline, so
+    seeded replays are byte-identical apart from the new ``TurnPhase`` markers.
+    F3b's ``engine:timed-effect-expiry`` is appended AFTER the round tick, so an
+    effect carrying both a ``rounds`` counter and a ``seconds`` duration is
+    resolved by the ``rounds`` counter first and the seconds branch then sees
+    ``rounds is not None`` and stands down ("rounds wins" — see
+    ``_expire_timed_effects_at_turn_end``).
+    ``engine:repeat-save`` is registered FIRST among the ``turn_end`` hooks: the
+    SRD repeat save (Hold Person / Hold Monster / Dominate Person) must resolve
+    while its source effect is still live, so it runs before
+    ``engine:duration-tick`` could expire that effect on the same boundary.
+    Before F3a-follow-up this ran as a hand-placed call at two sites *above* the
+    ``TurnPhase(turn_end)`` marker, which also let a bonus action trigger a
+    second repeat save in the same turn; as a hook it runs exactly once per turn
+    end, inside the phase it belongs to.
+    Later clusters (ongoing damage, regeneration, recharge, legendary reset)
+    append here rather than editing the advance path.
+    """
+    live.lifecycle.register("turn_end", _hook_run_end_of_turn_saves, key="engine:repeat-save")
+    live.lifecycle.register("turn_end", _hook_tick_durations, key="engine:duration-tick")
+    live.lifecycle.register(
+        "turn_end", _hook_expire_timed_effects, key="engine:timed-effect-expiry"
+    )
+    live.lifecycle.register(
+        "turn_start", _hook_expire_reaction_effects, key="engine:reaction-effect-expiry"
+    )
+
+
 def _tick_durations_at_turn_end(live: _LiveCombat, actor_id: str) -> None:
     """Decrement ``ActiveEffect.duration.rounds`` on the actor's owned
     maintained effects at turn-end and emit ``EffectExpired``
@@ -2552,19 +2776,13 @@ def _tick_durations_at_turn_end(live: _LiveCombat, actor_id: str) -> None:
             # save own these effects' lifetimes.
             if eff.flags.get("concentration"):
                 continue
-            should_tick = False
-            origin = eff.origin or ""
-            if origin.startswith("cast:"):
-                parts = origin.split(":", 2)
-                caster_id = parts[2] if len(parts) == 3 else ""
-                if caster_id == actor_id:
-                    should_tick = True
-            else:
-                # Item / environment / non-spell origins: fall back to
-                # ticking at the target's turn-end so they still expire.
-                if target_id == actor_id:
-                    should_tick = True
-            if not should_tick:
+            # Caster-keyed, with a target-keyed fallback for item /
+            # environment / non-spell origins so they still expire (see
+            # ``_duration_tick_matches_actor`` — F3b extracted this predicate
+            # verbatim so the seconds branch keys off the same owner).
+            if not _duration_tick_matches_actor(
+                origin=eff.origin or "", target_id=target_id, actor_id=actor_id
+            ):
                 continue
             new_rounds = eff.duration.rounds - 1
             if new_rounds > 0:
@@ -2578,6 +2796,158 @@ def _tick_durations_at_turn_end(live: _LiveCombat, actor_id: str) -> None:
                 target_effects[idx] = new_eff
                 continue
             to_expire.append((target_id, eff.id, eff.origin))
+
+    for target_id, effect_id, origin in to_expire:
+        _emit(
+            live,
+            EffectExpired(
+                effect_id=effect_id,
+                target_id=target_id,
+                origin=origin,
+                reason="duration",
+            ),
+        )
+
+
+#: SRD 5.2 §Duration — "a round represents about 6 seconds in the game world".
+#: The conversion factor for ``ActiveEffectDuration.seconds`` -> rounds.
+_SECONDS_PER_ROUND = 6
+
+
+def _duration_tick_matches_actor(*, origin: str, target_id: str, actor_id: str) -> bool:
+    """Whether a round-scoped duration ticks now, at ``actor_id``'s turn end.
+
+    Effect ``origin`` follows ``"cast:<slug>:<caster_id>"`` for spells and
+    ``"item:<item_id>:<id>"`` for equipped items. Cast-origin effects tick at
+    the CASTER's turn end (SRD §Combat: Bless on three allies still lasts ten
+    rounds, not ten thirds). Everything else — item, environment, or a seeded
+    effect with no caster in its origin — falls back to the TARGET's turn end
+    so it still expires eventually.
+    """
+    if origin.startswith("cast:"):
+        parts = origin.split(":", 2)
+        caster_id = parts[2] if len(parts) == 3 else ""
+        return caster_id == actor_id
+    return target_id == actor_id
+
+
+def _effect_applied_during_current_turn(
+    live: _LiveCombat, actor_id: str, identity: tuple[str, str, str]
+) -> bool:
+    """Was ``identity`` applied during the turn of ``actor_id`` that is ending?
+
+    Read-only over ``live.event_log``: find the most recent
+    ``TurnStarted(actor_id)`` (the turn now ending, since this is only called
+    from a ``turn_end`` hook) and look for a matching ``EffectApplied`` after
+    it. This is how "until the end of your NEXT turn" gets its one-turn grace
+    without a side table — an effect applied on your own turn survives that
+    turn's end; one applied on somebody else's turn dies at your very next
+    one. Effects seeded into ``start_combat`` emit no ``EffectApplied`` and so
+    read as "not applied this turn", which is the right answer for them.
+    """
+    target_id, effect_id, origin = identity
+    last_start = -1
+    for i in range(len(live.event_log) - 1, -1, -1):
+        ev = live.event_log[i]
+        if isinstance(ev, TurnStarted) and ev.actor_id == actor_id:
+            last_start = i
+            break
+    if last_start < 0:
+        return False
+    return any(
+        isinstance(ev, EffectApplied)
+        and ev.effect.target_id == target_id
+        and ev.effect.id == effect_id
+        and ev.effect.origin == origin
+        for ev in live.event_log[last_start + 1 :]
+    )
+
+
+def _expire_timed_effects_at_turn_end(live: _LiveCombat, actor_id: str) -> None:
+    """F3b — the three duration shapes ``_tick_durations_at_turn_end`` does not own.
+
+    Registered as the ``engine:timed-effect-expiry`` ``turn_end`` hook, right
+    after the ``rounds`` tick. Every branch emits
+    ``EffectExpired(reason="duration")`` and, like the round tick, snapshots the
+    identities first so in-loop ``_emit`` calls (which pop the effect out of
+    ``live.active_effects``) cannot invalidate the iteration. No RNG.
+
+    ``turns`` — SRD durations counted in the *subject's* turns ("until the end
+    of its next turn", Foundry's ``duration.turns``). Decremented at the
+    TARGET's own turn end, not the caster's, and independent of any ``rounds``
+    counter: whichever counter reaches zero first expires the effect.
+
+    ``seconds`` — SRD §Duration puts a round at 6 seconds, so a seconds-valued
+    duration is ``ceil(seconds / 6)`` rounds ticked exactly like ``rounds``
+    (caster-keyed, via ``_duration_tick_matches_actor``). The derived counter is
+    materialised ONCE into ``duration.rounds`` — decremented in the same pass,
+    so ``seconds=12`` is indistinguishable from ``rounds=2`` — after which the
+    pre-existing round tick owns it and this branch stands down. ``seconds`` is
+    never mutated; it stays readable as the effect's narrative-time duration.
+    An effect that arrives with BOTH ``rounds`` and ``seconds`` (Bless ships
+    ``rounds=10, seconds=60``) is governed by ``rounds``: the seconds branch
+    only fires when ``rounds is None``.
+
+    ``flags["until_end_of_next_turn_of"] = <actor_id>`` — "until the end of
+    your next turn". Expires at that actor's next turn end, with a one-turn
+    grace when the effect was applied during that same actor's turn
+    (``_effect_applied_during_current_turn``).
+
+    Concentration-flagged effects are exempt from all three branches, exactly
+    as they are from the round tick: the concentration cascade and the
+    per-turn repeat save own their lifetime, and the Foundry packs ship
+    display-only counters on them (Hunter's Mark's ``seconds=600``).
+    """
+    to_expire: list[tuple[str, str, str]] = []
+    for target_id, target_effects in list(live.active_effects.items()):
+        for idx, eff in enumerate(list(target_effects)):
+            if eff.flags.get("concentration"):
+                continue
+            duration = eff.duration
+            expired = False
+
+            # (1) turns — the TARGET's own turn end.
+            if duration.turns is not None and target_id == actor_id:
+                turns_left = duration.turns - 1
+                if turns_left > 0:
+                    duration = duration.model_copy(update={"turns": turns_left})
+                else:
+                    expired = True
+
+            # (2) seconds -> ceil(seconds / 6) rounds, caster-keyed. Skipped
+            # entirely once a rounds counter exists (rounds wins).
+            if (
+                not expired
+                and duration.rounds is None
+                and duration.seconds is not None
+                and _duration_tick_matches_actor(
+                    origin=eff.origin or "", target_id=target_id, actor_id=actor_id
+                )
+            ):
+                whole_rounds = -(-duration.seconds // _SECONDS_PER_ROUND)
+                rounds_left = whole_rounds - 1
+                if rounds_left > 0:
+                    duration = duration.model_copy(update={"rounds": rounds_left})
+                else:
+                    expired = True
+
+            # (3) until the end of <actor>'s next turn.
+            if (
+                not expired
+                and eff.flags.get("until_end_of_next_turn_of") == actor_id
+                and not _effect_applied_during_current_turn(
+                    live, actor_id, (target_id, eff.id, eff.origin)
+                )
+            ):
+                expired = True
+
+            if expired:
+                to_expire.append((target_id, eff.id, eff.origin))
+            elif duration is not eff.duration:
+                # Immutable replacement — previously emitted EffectApplied
+                # events hold the same ActiveEffect instance (see the round
+                # tick's note), so never mutate the duration in place.
+                target_effects[idx] = eff.model_copy(update={"duration": duration})
 
     for target_id, effect_id, origin in to_expire:
         _emit(
@@ -2606,12 +2976,11 @@ def _run_end_of_turn_saves(live: _LiveCombat, actor_id: str) -> None:
     clears the matching entry from ``concentration_chain[caster_id]``
     so the caster's concentration tracking reflects the target's exit.
 
-    No save modifier projected — mirrors ``_emit_concentration_save_probe``
-    and the boundary-level save handling: the orchestrator's d20 is the
-    raw roll. The IR-level Save handler does project per-target save
-    modifiers via the sidecar; once a Combatant carries non-DEX ability
-    scores the end-of-turn save can hydrate them through the same
-    projection. Today WIS/CHA/etc. modifiers project as 0.
+    The repeat save applies the target's real ability modifier +
+    proficiency bonus (F1c, via ``actor_stats.save_modifier``), matching
+    the IR-level Save handler's per-target sidecar projection, and the d20
+    goes through the shared ``roll_d20_test`` primitive (F2c) with no
+    advantage source — a single draw, as before.
     """
     # Collect every repeat-save spec keyed on the actor_id-prefixed
     # identity tuples. Identity is (target_id, effect.id, effect.origin)
@@ -2619,6 +2988,14 @@ def _run_end_of_turn_saves(live: _LiveCombat, actor_id: str) -> None:
     pending_keys = [k for k in live.repeat_save_on_turn_end if k[0] == actor_id]
     if not pending_keys:
         return
+    # One lookup for the whole call: every spec here re-saves for ``actor_id``
+    # (the creature whose turn is ending), so the combatant is invariant across
+    # both loops. The ``else 0`` below cannot fire in practice — this function
+    # is only reached from the turn-advance path for a combatant that is in
+    # ``live.initiative`` — but ``_run_end_of_turn_saves`` runs inside the
+    # non-throwing turn-boundary contract, so a missing combatant degrades to an
+    # unmodified save rather than aborting the turn.
+    target = _find_combatant(live, actor_id)
     for identity in pending_keys:
         target_id, effect_id, origin = identity
         specs = live.repeat_save_on_turn_end.get(identity, [])
@@ -2628,7 +3005,9 @@ def _run_end_of_turn_saves(live: _LiveCombat, actor_id: str) -> None:
             dc = int(spec["dc"])
             condition = str(spec["condition"])
             caster_id = str(spec["caster_id"])
-            roll_total = live.rng.randint(1, 20)
+            modifier = save_modifier(target, ability).total if target else 0
+            roll = roll_d20_test(live.rng, modifier, AdvantageSources())
+            roll_total = roll.total
             succeeded = roll_total >= dc
             _emit(
                 live,
@@ -2638,6 +3017,10 @@ def _run_end_of_turn_saves(live: _LiveCombat, actor_id: str) -> None:
                     dc=dc,
                     roll_total=roll_total,
                     succeeded=succeeded,
+                    advantage=roll.mode,
+                    natural=roll.kept,
+                    modifier=roll.modifier,
+                    sources=list(roll.sources),
                 ),
             )
             if not succeeded:
@@ -2769,6 +3152,10 @@ def _build_pc_combatants(
                 class_slug=pc.class_slug,
                 subclass_slug=pc.subclass_slug,
                 species_slug=pc.species_slug,
+                save_proficiencies=list(pc.save_proficiencies),
+                skill_proficiencies=list(pc.skill_proficiencies),
+                skill_expertise=list(pc.skill_expertise),
+                weapon_proficiencies=list(pc.weapon_proficiencies),
             )
         )
         actor_zone[pc.entity_id] = pc.zone_id
@@ -2802,10 +3189,39 @@ def _build_foe_combatants(
         # this cannot change any existing combat's behavior; resistances/
         # immunities stay host-populated by the existing convention.
         vulnerabilities = list(foe.damage_vulnerabilities)
-        if not vulnerabilities and foe.monster_template_slug:
+        # F1b (2026-08-26) — hydrate the five non-DEX ability scores,
+        # proficiency bonus, and save/skill proficiencies from the SRD
+        # monster template when one is set. Dexterity is spec-authoritative
+        # only when the host moved it away from the ``10`` default sentinel
+        # (an EncounterMemberSpec can't distinguish "left at 10" from
+        # "explicitly set to 10", so 10 always defers to the template).
+        # Read by ``activities/actor_stats`` on every save/check path (F1c/F1d);
+        # a foe with no ``monster_template_slug`` keeps the spec's values.
+        template_kw: dict[str, Any] = {}
+        if foe.monster_template_slug:
             monster = get_lib_loader().get_monster(foe.monster_template_slug)
             if monster is not None:
-                vulnerabilities = list(monster.damage_vulnerabilities)
+                if not vulnerabilities:
+                    vulnerabilities = list(monster.damage_vulnerabilities)
+                sc = monster.ability_scores
+                template_kw = {
+                    "strength": sc.str,
+                    "constitution": sc.con,
+                    "intelligence": sc.int,
+                    "wisdom": sc.wis,
+                    "charisma": sc.cha,
+                    "proficiency_bonus_override": monster.proficiency_bonus,
+                    "save_proficiencies": [
+                        a
+                        for a in ("str", "dex", "con", "int", "wis", "cha")
+                        if getattr(monster.saving_throws, a) is not None
+                    ],
+                    "skill_proficiencies": [
+                        k for k, v in monster.skills.model_dump().items() if v is not None
+                    ],
+                }
+                if foe.dexterity == 10:
+                    template_kw["dexterity"] = sc.dex
         combatants.append(
             Combatant(
                 entity_id=foe.entity_id,
@@ -2819,7 +3235,7 @@ def _build_foe_combatants(
                 damage_dice=foe.damage_dice,
                 damage_type=foe.damage_type,
                 behavior_profile=foe.behavior_profile,
-                dexterity=foe.dexterity,
+                dexterity=template_kw.pop("dexterity", foe.dexterity),
                 creature_type=foe.creature_type,
                 damage_resistances=list(foe.damage_resistances),
                 damage_immunities=list(foe.damage_immunities),
@@ -2827,6 +3243,7 @@ def _build_foe_combatants(
                 condition_immunities=list(foe.condition_immunities),
                 base_speed=foe.base_speed,
                 movement_remaining=foe.base_speed,
+                **template_kw,
             )
         )
         actor_zone[foe.entity_id] = foe.zone_id
@@ -3034,6 +3451,7 @@ async def start_combat(
         custom_counters_by_entity=custom_counters_by_entity,
     )
     _REGISTRY[handle_id] = live
+    _register_default_turn_hooks(live)
 
     # — seed _LiveCombat.active_effects from the caller. The hook
     # is live today for equipped-magic-item enchantments (the host-side
@@ -3059,9 +3477,7 @@ async def start_combat(
     start_events: list[CombatEvent] = []
     live.event_listeners.append(start_events.append)
     try:
-        _emit(live, RoundStarted(round_number=live.round_number))
-        _emit(live, TurnStarted(actor_id=_current_actor(live).entity_id))
-        _maybe_roll_death_save(live)
+        _begin_turn(live, new_round=True)
     finally:
         live.event_listeners.remove(start_events.append)
 
@@ -3545,24 +3961,69 @@ def _resolve_feature_invocation(
     )
 
 
-def _advance_turn(live: _LiveCombat, actor_id: str) -> None:
+def _begin_turn(live: _LiveCombat, *, new_round: bool) -> None:
+    """Open the turn ``live.current_turn_index`` now points at.
+
+    The second half of the turn boundary, shared by ``start_combat`` (which has
+    no turn to end) and ``_end_turn_and_advance``. Emits the round-start pair
+    when ``new_round``, then ``TurnStarted`` (whose ``_emit`` fold performs the
+    action-economy resets), the ``turn_start`` marker + hooks, and finally any
+    pending death save.
+    """
+    if new_round:
+        _emit(live, RoundStarted(round_number=live.round_number))
+        _emit(
+            live,
+            TurnPhase(actor_id=None, phase="round_start", round_number=live.round_number),
+        )
+        run_round_start(live)
+    actor_id = _current_actor(live).entity_id
+    _emit(live, TurnStarted(actor_id=actor_id))
+    _emit(
+        live,
+        TurnPhase(actor_id=actor_id, phase="turn_start", round_number=live.round_number),
+    )
+    run_turn_start(live, actor_id)
+    _maybe_roll_death_save(live)
+
+
+def _end_turn_and_advance(live: _LiveCombat, actor_id: str) -> None:
     """SRD §Action Economy — end ``actor_id``'s turn and start the next.
 
-    Ticks effect durations at turn end, emits ``TurnEnded``, advances
-    ``current_turn_index`` (wrapping to the next round with a ``RoundStarted``
-    on wrap), emits ``TurnStarted`` for the new current actor, and rolls any
-    pending death save. This is the shared epilogue used by both spell-slot
-    reject paths and the normal post-resolution path.
+    The ONE turn-advance implementation in the engine: ``submit_player_intent``
+    (both the spell-slot reject paths and the normal post-resolution path) and
+    ``advance_monster_turn`` all route through here, and ``start_combat`` runs
+    the second half via ``_begin_turn``. Before F3a each of those three sites
+    carried its own copy of the emit-and-wrap block.
+
+    Event order at the boundary is fixed and pinned by
+    ``tests/test_turn_lifecycle.py``::
+
+        TurnPhase(turn_end, A) -> [turn_end hooks: repeat-save, duration tick,
+                                    timed-effect expiry] -> TurnEnded(A)
+        -> (on wrap) RoundStarted -> TurnPhase(round_start) -> [round_start hooks]
+        -> TurnStarted(B) -> TurnPhase(turn_start, B) -> [turn_start hooks]
+        -> pending death save
+
+    The marker precedes its hooks so a host reading the stream sees the phase
+    announced before anything that phase causes. That includes the SRD repeat
+    save (Hold Person & co.), which is the ``engine:repeat-save`` ``turn_end``
+    hook rather than a call at the intent sites — so it fires exactly once per
+    turn end and never on the bonus-action path, which returns before reaching
+    here.
     """
-    _tick_durations_at_turn_end(live, actor_id)
+    _emit(
+        live,
+        TurnPhase(actor_id=actor_id, phase="turn_end", round_number=live.round_number),
+    )
+    run_turn_end(live, actor_id)
     _emit(live, TurnEnded(actor_id=actor_id))
     live.current_turn_index += 1
-    if live.current_turn_index >= len(live.initiative):
+    new_round = live.current_turn_index >= len(live.initiative)
+    if new_round:
         live.current_turn_index = 0
         live.round_number += 1
-        _emit(live, RoundStarted(round_number=live.round_number))
-    _emit(live, TurnStarted(actor_id=_current_actor(live).entity_id))
-    _maybe_roll_death_save(live)
+    _begin_turn(live, new_round=new_round)
 
 
 def _validate_intent_preconditions(
@@ -3786,7 +4247,7 @@ def _consume_spell_slot(
                 reason="no_slot",
             ),
         )
-        _advance_turn(live, actor_id)
+        _end_turn_and_advance(live, actor_id)
         return True
     if base_level > 0:
         slots = live.spell_slots_by_entity.get(current.entity_id, {})
@@ -3800,7 +4261,7 @@ def _consume_spell_slot(
                     reason="no_slot",
                 ),
             )
-            _advance_turn(live, actor_id)
+            _end_turn_and_advance(live, actor_id)
             return True
         # Consume the slot. The typed PC resolver does not touch
         # ``_counter_state``, so this subtract is the authoritative
@@ -4200,6 +4661,7 @@ def _resolve_readied_spell_cast(
         spell_book={},
         passive_damage_modifiers=payload["passive_damage_modifiers"],
         save_modifiers=payload["save_modifiers"],
+        check_modifiers=payload["check_modifiers"],
     )
     pre_event_count = len(live.event_log)
     for activity in spell.activities:
@@ -4315,6 +4777,7 @@ def _drain_counterspell_reaction(
         spell_book={},
         passive_damage_modifiers=payload["passive_damage_modifiers"],
         save_modifiers=payload["save_modifiers"],
+        check_modifiers=payload["check_modifiers"],
     )
     pre_event_count = len(live.event_log)
     resolve_activity(save_activity, actx, weapon=None)
@@ -4335,7 +4798,7 @@ def _drain_counterspell_reaction(
             reason="countered",
         ),
     )
-    _advance_turn(live, actor_id)
+    _end_turn_and_advance(live, actor_id)
     return True
 
 
@@ -4345,7 +4808,7 @@ async def _dispatch_turn_nonending_intent(
     """Dispatch the turn-non-ending intents; return ``True`` when handled.
 
     SRD §Action Economy — these intents keep the actor on turn (no
-    ``_advance_turn``); the actor may follow with another intent:
+    ``_end_turn_and_advance``); the actor may follow with another intent:
 
     * ``move_mark`` — SRD §Hunter's Mark: *"If the target drops to 0 Hit
       Points before this spell ends, you can take a Bonus Action to move
@@ -4363,7 +4826,7 @@ async def _dispatch_turn_nonending_intent(
       the actor on turn so a same-turn Disengage→Move sequence works
       ; closes the discovered turn-ending fall-through where
       "disengage" fell through to the generic Action tail that
-      unconditionally calls ``_advance_turn``).
+      unconditionally calls ``_end_turn_and_advance``).
     """
     if intent.intent_type == "move_mark":
         await _handle_move_mark(live, current, intent)
@@ -4700,6 +5163,7 @@ async def submit_player_intent(
             cast_level_override=_item_cast_level_override(intent),
             passive_damage_modifiers=payload["passive_damage_modifiers"],
             save_modifiers=payload["save_modifiers"],
+            check_modifiers=payload["check_modifiers"],
             target_cover=_target_cover_map(live, current.entity_id, targets),
             scale_values=scale_values,
             class_levels=class_levels,
@@ -4744,14 +5208,10 @@ async def submit_player_intent(
     _record_effect_lifecycle_links(live, current, pre_event_count)
 
     # SRD §Hold Person / §Hold Monster — *"At the end of each of its turns,
-    # the target repeats the save."* Roll any pending repeat saves for the
-    # actor whose turn just resolved BEFORE emitting TurnEnded so the
-    # ``SaveRolled`` events surface on the same turn boundary the SRD
-    # specifies. PC self-cast concentration spells (Bless / Bane) don't
-    # register repeat-save specs (no condition + failed-save pairing), so
-    # this is a no-op for self-buff casters.
-    _run_end_of_turn_saves(live, actor_id)
-
+    # the target repeats the save."* This runs as the ``engine:repeat-save``
+    # ``turn_end`` hook inside ``_end_turn_and_advance``, NOT here: a bonus
+    # action does not end the turn, so it must not trigger a repeat save.
+    #
     # Advance the turn. End-of-round wraps to next round + emits a
     # RoundStarted; a follow-up RoundEnded would land in the cutover
     # path where the evaluator drives the loop. Keeping the additive
@@ -4763,7 +5223,7 @@ async def submit_player_intent(
     if is_bonus_action:
         _maybe_roll_death_save(live)
         return
-    _advance_turn(live, actor_id)
+    _end_turn_and_advance(live, actor_id)
 
 
 def _fire_pc_opportunity_attacks_on_move(
@@ -5305,6 +5765,7 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
             spell_book={},
             passive_damage_modifiers=payload["passive_damage_modifiers"],
             save_modifiers=payload["save_modifiers"],
+            check_modifiers=payload["check_modifiers"],
             target_cover=_target_cover_map(live, current.entity_id, target_list),
         )
         for activity in monster_activities:
@@ -5316,22 +5777,9 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
         _writeback_concentration(live, current, pre_event_count)
         _record_effect_lifecycle_links(live, current, pre_event_count)
 
-    # SRD §Hold Person / §Hold Monster repeat-save — runs whether or not
-    # the monster had an action this turn (a paralyzed goblin with no
-    # gambit still takes its turn-end save). Symmetric with the PC path
-    # in ``submit_player_intent``.
-    _run_end_of_turn_saves(live, current.entity_id)
-
-    # Advance the turn (same wrap-and-emit shape as submit_player_intent).
-    _tick_durations_at_turn_end(live, current.entity_id)
-    _emit(live, TurnEnded(actor_id=current.entity_id))
-    live.current_turn_index += 1
-    if live.current_turn_index >= len(live.initiative):
-        live.current_turn_index = 0
-        live.round_number += 1
-        _emit(live, RoundStarted(round_number=live.round_number))
-    _emit(live, TurnStarted(actor_id=_current_actor(live).entity_id))
-    _maybe_roll_death_save(live)
+    # Advance the turn — the single shared path (F3a); this site used to carry
+    # its own copy of the wrap-and-emit block.
+    _end_turn_and_advance(live, current.entity_id)
 
 
 def drain_pending_events(handle: CombatHandle) -> list[CombatEvent]:

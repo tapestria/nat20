@@ -57,6 +57,24 @@ ConditionType = Literal[
 
 AdvantageMode = Literal["advantage", "disadvantage", "normal"]
 
+# F2 — the typed provenance of a single advantage/disadvantage contribution
+# feeding ``activities.d20.roll_d20_test``. SRD 5.2 "Advantage and
+# Disadvantage" only cares about presence, not count or source, but the
+# engine tracks source for narration + future rules interactions (e.g.
+# Reliable Talent, Elven Accuracy) that key off *which* source applied.
+AdvantageSource = Literal[
+    "flag",
+    "effect",
+    "condition:attacker",
+    "condition:target",
+    "cover",
+    "range:long",
+    "ranged_in_melee",
+    "unseen",
+    "dodge",
+    "help",
+]
+
 EffectExpiryReason = Literal[
     "duration",
     "concentration_drop",
@@ -134,6 +152,36 @@ class TurnEnded(BaseModel):
     actor_id: str
 
 
+#: The three turn-boundary phases the engine runs hooks at
+#: (``dnd5e_engine.turn_lifecycle``). ``round_start`` fires once per round on
+#: the initiative wrap; ``turn_start`` / ``turn_end`` bracket each actor's turn.
+TurnPhaseName = Literal["round_start", "turn_start", "turn_end"]
+
+
+class TurnPhase(BaseModel):
+    """Marker for a turn-boundary phase — emitted around every turn edge.
+
+    Purely informational: it carries no rules outcome of its own. It marks the
+    point in the stream at which the engine ran that phase's lifecycle hooks,
+    so a host can render "top of round 3" / "end of Alice's turn" without
+    inferring boundaries from ``TurnStarted``/``TurnEnded`` adjacency, and so
+    boundary effects (ongoing damage, regeneration, recharge) are attributable
+    to a phase rather than to whichever event happened to precede them.
+
+    ``actor_id`` is the actor whose turn is starting or ending, and ``None``
+    for ``round_start``. Ordering at a turn boundary is fixed::
+
+        TurnPhase(turn_end, A) -> [turn_end hooks] -> TurnEnded(A)
+        -> (on wrap) RoundStarted -> TurnPhase(round_start) -> [round_start hooks]
+        -> TurnStarted(B) -> TurnPhase(turn_start, B) -> [turn_start hooks]
+    """
+
+    type: Literal["turn_phase"] = "turn_phase"
+    actor_id: str | None
+    phase: TurnPhaseName
+    round_number: int
+
+
 class IntentSubmitted(BaseModel):
     type: Literal["intent_submitted"] = "intent_submitted"
     actor_id: str
@@ -164,6 +212,26 @@ class AttackRolled(BaseModel):
     # the attacker's own Action. Consumed by the WS client + future monster-
     # AoO path when the reaction queue lands.
     is_opportunity_attack: bool = False
+    # F2 — optional D20 Test provenance (``activities.d20.D20Result``).
+    # Additive: unset by pre-F2 callers (e.g. the opportunity-attack path);
+    # populated by ``activities/attack.py::resolve_attack`` since F2b.
+    # ``natural`` is the KEPT die after advantage — the face actually used
+    # for the total once advantage/disadvantage has picked higher/lower, and
+    # the die the natural-20 crit / natural-1 fumble test reads. Under
+    # advantage/disadvantage it is therefore NOT the first draw; the
+    # discarded die is not currently reported (``D20Result.first`` holds it
+    # inside the resolver).
+    natural: int | None = None
+    # ``modifier`` is the FLAT attack bonus (ability mod + proficiency +
+    # parsed ``attack.bonus`` + the weapon's magical bonus). It deliberately
+    # EXCLUDES the per-attacker ``passive_attack_bonus`` dice sidecar (SRD
+    # §Bless / §Bane, a signed d4 rolled fresh per swing): folding that into
+    # the primitive's modifier would change the seeded draw ORDER. So
+    # ``roll_total == natural + modifier`` holds only when no Bless/Bane-style
+    # sidecar is active on the attacker; with one, the difference is the d4.
+    # A separate ``bonus_dice_total`` field is deferred.
+    modifier: int | None = None
+    sources: list[AdvantageSource] = Field(default_factory=list)
 
 
 class SaveRolled(BaseModel):
@@ -173,6 +241,13 @@ class SaveRolled(BaseModel):
     dc: int
     roll_total: int
     succeeded: bool
+    # F2 — the resolved D20 Test mode, matching ``AttackRolled.advantage``.
+    # Defaults to ``"normal"`` so pre-F2 constructors stay valid.
+    advantage: AdvantageMode = "normal"
+    # F2 — optional D20 Test provenance; see ``AttackRolled``.
+    natural: int | None = None
+    modifier: int | None = None
+    sources: list[AdvantageSource] = Field(default_factory=list)
 
 
 class CheckRolled(BaseModel):
@@ -183,6 +258,13 @@ class CheckRolled(BaseModel):
     dc: int | None
     roll_total: int
     succeeded: bool | None
+    # F2 — the resolved D20 Test mode, matching ``AttackRolled.advantage``.
+    # Defaults to ``"normal"`` so pre-F2 constructors stay valid.
+    advantage: AdvantageMode = "normal"
+    # F2 — optional D20 Test provenance; see ``AttackRolled``.
+    natural: int | None = None
+    modifier: int | None = None
+    sources: list[AdvantageSource] = Field(default_factory=list)
 
 
 # ── damage / healing / temp HP ──────────────────────────────────────────────
@@ -242,11 +324,30 @@ class ConditionRemoved(BaseModel):
 
 
 class ConcentrationCheck(BaseModel):
+    """SRD 5.2 §Concentration — the Constitution save a concentrating
+    creature makes when it takes damage (``DC = 10 or half the damage
+    taken, whichever is higher``). Emitted by the orchestrator's
+    concentration-on-damage block since F2c.
+
+    TRANSITIONAL: emitted alongside ``SaveRolled(ability='con')`` until
+    v0.7. The generic ``SaveRolled`` is the shape hosts consumed before
+    this event was wired, so both are emitted for one release; hosts that
+    count saves must filter one of them out.
+    """
+
     type: Literal["concentration_check"] = "concentration_check"
     target_id: str
     dc: int
     roll_total: int
     succeeded: bool
+    # F2 — the resolved D20 Test mode, matching ``AttackRolled.advantage``.
+    advantage: AdvantageMode = "normal"
+    # F2 — optional D20 Test provenance; see ``AttackRolled``. Carried here as
+    # well as on the twin ``SaveRolled`` so the breakdown survives the v0.7
+    # removal of that duplicate.
+    natural: int | None = None
+    modifier: int | None = None
+    sources: list[AdvantageSource] = Field(default_factory=list)
 
 
 class ConcentrationDropped(BaseModel):
@@ -393,6 +494,7 @@ CombatEvent = Annotated[
     | RoundEnded
     | TurnStarted
     | TurnEnded
+    | TurnPhase
     | IntentSubmitted
     | AttackRolled
     | SaveRolled
@@ -431,6 +533,7 @@ ALL_COMBAT_EVENT_TYPES: tuple[type[BaseModel], ...] = (
     RoundEnded,
     TurnStarted,
     TurnEnded,
+    TurnPhase,
     IntentSubmitted,
     AttackRolled,
     SaveRolled,
@@ -465,6 +568,7 @@ __all__ = [
     "Ability",
     "ActorMoved",
     "AdvantageMode",
+    "AdvantageSource",
     "AttackFailed",
     "AttackRolled",
     "CastFailed",
@@ -497,6 +601,8 @@ __all__ = [
     "Stabilized",
     "TempHpApplied",
     "TurnEnded",
+    "TurnPhase",
+    "TurnPhaseName",
     "TurnStarted",
     "Unconscious",
     "ZoneTransit",

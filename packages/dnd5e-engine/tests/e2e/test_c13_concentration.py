@@ -123,8 +123,12 @@ def test_c13_s02_damage_triggers_concentration_check_with_con_modifier():
     or half the damage taken (round down), whichever number is higher, up
     to a maximum DC of 30."
     (packs/_source/content24/appendices/appendix-d-rule-references.yml:5261-5266).
-    ``_emit_apply_damage`` rolls a raw d20 with no CON modifier and emits
-    ``SaveRolled`` instead of the harmonised ``ConcentrationCheck``.
+    F1c gave ``_emit_apply_damage`` the real CON modifier and F2c emits the
+    harmonised ``ConcentrationCheck`` (alongside the legacy ``SaveRolled``
+    until v0.7); F1c also added ``PartyMemberSpec.save_proficiencies``, so a
+    CON-save-proficient caster IS expressible now (set below). The residual gap
+    this scenario still pins is the DC: it is not capped at the SRD maximum
+    of 30.
     """
 
     def _foe():
@@ -155,9 +159,10 @@ def test_c13_s02_damage_triggers_concentration_check_with_con_modifier():
             zone_id=cell(0, 0),
         )
         if proficient:
-            # API delta (C13, dependent on cluster F1/F2 ability-modifier
-            # plumbing): PartyMemberSpec has no save_proficiencies field
-            # today — ConfigDict(extra="forbid") rejects it.
+            # F1c added this field; before it, ConfigDict(extra="forbid")
+            # rejected the kwarg and a CON-save-proficient caster was
+            # inexpressible. The scenario's residual gap is the missing DC 30
+            # cap, not this.
             kwargs["save_proficiencies"] = ("con",)
         return kwargs
 

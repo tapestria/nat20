@@ -283,6 +283,13 @@ def conditions_grant_advantage_on_attack(
     """
     Returns (attacker_has_advantage, attacker_has_disadvantage) based on conditions.
     Does NOT account for ranged vs melee distinction (caller's responsibility).
+
+    Covers only the SRD 5.2 rows that need **no** distance or target-identity
+    information. Two rows are therefore still missing and are tracked in
+    ``BACKLOG.md`` ("Audit 2026-08-26 — rolls & modifiers"): Prone (advantage
+    only from within 5 ft, disadvantage otherwise) and a Grappled attacker
+    (disadvantage against any target other than the grappler). Both need the
+    reach/distance sidecar that lands with C12.
     """
     advantage = False
     disadvantage = False
@@ -306,6 +313,21 @@ def conditions_grant_advantage_on_attack(
         advantage = True
     if is_condition_active(Condition.BLINDED, target_conditions):
         advantage = True
+    # SRD 5.2 glossary, Restrained: "Attack rolls against you have Advantage,
+    # and your attack rolls have Disadvantage."
+    if is_condition_active(Condition.RESTRAINED, target_conditions):
+        advantage = True
+    # SRD 5.2 glossary, Petrified: "Attacks Affected. Attack rolls against you
+    # have Advantage."
+    if is_condition_active(Condition.PETRIFIED, target_conditions):
+        advantage = True
+    # SRD 5.2 glossary, Invisible: "Attack rolls against you have Disadvantage,
+    # and your attack rolls have Advantage. If a creature can somehow see you,
+    # you don't gain this benefit against that creature." (The "can somehow see
+    # you" exception needs per-attacker senses, which the engine does not model
+    # yet.)
+    if is_condition_active(Condition.INVISIBLE, target_conditions):
+        disadvantage = True
 
     return advantage, disadvantage
 

@@ -35,7 +35,10 @@ def _rage_effect() -> ActiveEffect:
 def test_dr_value_change_folds_into_resistances_list():
     per_target_dmg: dict = {}
     per_target_entry: dict = {}
-    dirty = _fold_active_effect_changes([_rage_effect()], per_target_dmg, per_target_entry)
+    per_target_check: dict = {}
+    dirty = _fold_active_effect_changes(
+        [_rage_effect()], per_target_dmg, per_target_entry, per_target_check
+    )
 
     assert dirty is True
     assert set(per_target_dmg["resistances"]) == {"bludgeoning", "piercing", "slashing"}
@@ -46,7 +49,10 @@ def test_dr_value_change_folds_into_resistances_list():
 def test_dr_value_merges_with_preexisting_resistances_without_duplicating():
     per_target_dmg: dict = {"resistances": ["bludgeoning"]}
     per_target_entry: dict = {}
-    _fold_active_effect_changes([_rage_effect()], per_target_dmg, per_target_entry)
+    per_target_check: dict = {}
+    _fold_active_effect_changes(
+        [_rage_effect()], per_target_dmg, per_target_entry, per_target_check
+    )
 
     # bludgeoning already present → set-semantics, no duplicate.
     assert per_target_dmg["resistances"].count("bludgeoning") == 1

@@ -3,7 +3,7 @@ from __future__ import annotations
 import random
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from dnd5e_engine.events import CombatEvent
 from dnd5e_engine.types.combat import Combatant
@@ -180,13 +180,19 @@ class ActivityResolutionContext:
     passive_ac_bonus: dict[str, int] = field(default_factory=dict)
     # Per-actor ability/skill-check modifier sidecar, mirroring
     # ``effects/check.py:_read_check_modifiers``'s shape
-    # ``{entity_id: {"skills": {code: mod}, "ability_mods": {ability: mod}}}``.
-    # The RESOLVED per-skill / per-ability integer, NOT rebuilt from ability
-    # score + proficiency. ``Combatant`` carries no per-skill table, so the
-    # ``check`` handler reads this sidecar; an absent actor / skill / ability
-    # contributes +0. Supplied by golden fixtures now; by the orchestrator (from
-    # actor stat blocks) at cutover.
-    check_modifiers: dict[str, dict[str, dict[str, int]]] = field(default_factory=dict)
+    # ``{entity_id: {"skills": {slug: mod}, "ability_mods": {ability: mod},
+    # "disadvantage": bool}}``. The RESOLVED per-skill / per-ability integer
+    # (ability modifier + proficiency bonus, doubled with Expertise), NOT rebuilt
+    # here from ability score + proficiency; an absent actor / skill / ability
+    # contributes +0. Projected by the orchestrator off the live ``Combatant``
+    # (``_project_target_modifiers`` via ``activities.actor_stats.check_modifier``)
+    # and threaded in by ``build_activity_context`` (F1d). ``disadvantage`` is the
+    # condition-derived flag (Frightened / Poisoned / Exhaustion); since F2c it
+    # is CONSUMED by ``check.py``, which feeds it to ``roll_d20_test`` as the
+    # ``"condition:attacker"`` source (a flagged actor draws two d20s and keeps
+    # the lower).
+    # Heterogeneous by construction, hence the ``Any`` value type.
+    check_modifiers: dict[str, dict[str, Any]] = field(default_factory=dict)
     # Effect definitions riding the activity's applied-effect refs, to be
     # translated into runtime ``ActiveEffect``s (one per target) via
     # ``activities/effects.passive_effect_to_active_effect``. Supplied by golden
@@ -227,6 +233,16 @@ class ActivityResolutionContext:
     # fixtures now. Empty default keeps the golden corpus identical (no
     # advantage producer ⇒ every attack rolls ``normal``, as before).
     active_effects: Sequence[ActiveEffect] = ()
+    # F2b — SRD §Advantage and Disadvantage, condition-derived half. The
+    # CASTER's own active condition NAMES (``rules/conditions.active_condition_names``)
+    # and the same per-target projection keyed by ``entity_id``. Consumed by
+    # ``attack.py`` via ``rules/conditions.conditions_grant_advantage_on_attack``
+    # (Invisible/Blinded/Poisoned/Frightened/Restrained on the attacker;
+    # Paralyzed/Stunned/Unconscious/Blinded on the target). Filled by
+    # ``build_activity_context`` from ``Combatant.conditions``; empty defaults
+    # leave every attack at ``normal``, byte-identical to the pre-F2b stream.
+    attacker_conditions: list[str] = field(default_factory=list)
+    target_conditions: dict[str, list[str]] = field(default_factory=dict)
     # SRD §Sneak Attack (Rogue), "Once per turn" — per-ATTACKER gate keyed by
     # ``entity_id`` (mirrors ``passive_melee_damage_bonus``'s per-caster shape).
     # ``True`` means the caster has ALREADY landed a Sneak Attack rider this

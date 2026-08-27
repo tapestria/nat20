@@ -7,6 +7,81 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Core-mechanics **foundations** (F1 actor stat projection, F2 unified d20 test,
+F3 turn lifecycle). Nothing is removed and no signature changes shape — every
+new field is optional and defaults to the pre-0.6 behaviour. Behavioural deltas
+(and the fixtures they move) are enumerated in
+[`docs/migration/v0.5-to-v0.6.md`](../../docs/migration/v0.5-to-v0.6.md).
+
+### Added
+
+- **`activities/actor_stats.py`** — the per-actor D20-test modifier projection
+  (SRD 5.2 §D20 Tests / §Proficiency). `save_modifier(combatant, ability)` and
+  `check_modifier(combatant, ability, skill=None)` return a typed
+  `D20Modifier(ability, ability_mod, proficiency, expertise, total)`;
+  `ability_modifier_of` / `proficiency_bonus_of` / `skill_ability` are the
+  supporting primitives.
+- **`activities/d20.py`** — the single SRD 5.2 D20 Test primitive.
+  `roll_d20_test(rng, modifier, sources, *, forced_natural=None) -> D20Result`
+  with a typed `AdvantageSources(advantage, disadvantage)` and
+  `resolve_mode(...)` implementing the SRD's cancel-to-normal rule. Normal mode
+  still consumes exactly one RNG draw, so pre-0.6 seeded streams are unmoved.
+- **`dnd5e_engine.AdvantageSource`** (new top-level export) — the closed
+  `Literal` naming *why* a roll had advantage/disadvantage (`flag`,
+  `condition:self`, `condition:target`, …), carried on the roll events.
+- **Roll-breakdown fields on the roll events.** `AttackRolled`, `SaveRolled`,
+  `CheckRolled` and `ConcentrationCheck` gained `natural` (the die kept after
+  advantage/disadvantage), `modifier` (the flat bonus) and `sources`, plus
+  `advantage` on `SaveRolled` / `CheckRolled` / `ConcentrationCheck`. All
+  optional; hosts that ignore them are unaffected.
+- **`TurnPhase(phase, actor_id, round_number)` event** — marks each
+  `round_start` / `turn_start` / `turn_end` boundary immediately before that
+  phase's hooks run. It is a marker event with no mechanical payload; renderers
+  should skip event types they do not recognise.
+- **`turn_lifecycle.py`** — the `TurnLifecycle` hook registry
+  (`register` / `unregister` / `run`) that the single turn-advance path drives.
+  Every "at the start/end of a turn" rule registers here instead of being
+  open-coded into the advance path.
+- **Timed effect expiry.** Effect durations in `seconds` (materialised as
+  `ceil(seconds / 6)` rounds), `turns`, and `flags["until_end_of_next_turn_of"]`
+  now expire, alongside the pre-existing `rounds` counter.
+- **Proficiency fields on `PartyMemberSpec` and `Combatant`** —
+  `save_proficiencies`, `skill_proficiencies`, `skill_expertise`,
+  `weapon_proficiencies`, plus `Combatant.proficiency_bonus_override` (monsters
+  carry their template's CR-derived bonus). All default to empty / `None`, so a
+  host that sets none reproduces pre-0.6 behaviour exactly.
+- **`test_capability_matrix.py::test_status_rows_match_code_probes`** pins
+  `docs/capabilities.md` status rows to grep-level code probes, in both
+  directions.
+
+### Changed
+
+- **Saving throws apply real modifiers.** All three save paths (activity saves,
+  the damage-triggered concentration check, the end-of-turn repeat save) now add
+  `ability modifier + proficiency bonus (if proficient)` for all six abilities,
+  where v0.5 projected DEX only and the two orchestrator paths rolled a raw d20.
+  Monster ability scores, save/skill proficiencies and proficiency bonus hydrate
+  from `monster_template_slug`.
+- **Ability checks apply the actor projection** and fold the
+  `abilities.check` / `abilities.skill` / `abilities.<ab>.save` (and Foundry-native
+  `system.bonuses.abilities.*`) effect-change families, where
+  `build_activity_context` previously hard-coded `check_modifiers={}`.
+- **Activity attack rolls honour advantage/disadvantage**: attacker
+  `flags.advantage.attack` / `flags.disadvantage.attack` effects plus the
+  condition-derived sources, cancelling per SRD §Advantage and Disadvantage.
+  Opportunity attacks still roll flat `normal`.
+- **Every d20 in the engine goes through `roll_d20_test`** — attacks, saves,
+  ability/skill checks, death saves and the concentration check.
+- **`ConcentrationCheck` is now emitted** for the damage-triggered concentration
+  save. *Transitional:* the legacy `SaveRolled(ability="con")` for the same roll
+  is emitted alongside it until v0.7; a host that counts saves must filter one
+  of the pair out.
+- **`D20Result.first`** is the first die drawn, deliberately not named
+  `natural` — `AttackRolled.natural` is the *kept* die (the one the natural-20
+  crit / natural-1 fumble test reads).
+- Turn advancement runs through one shared path, so every boundary rule fires
+  in a single, registration-ordered place.
+
 ## [0.5.0]
 
 Lockstep release with `dnd5e-srd-data` 0.5.0 and `nat20-bridge` 0.5.0.

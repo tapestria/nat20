@@ -4,7 +4,8 @@ One line per event, joined by ``\\n``. High-traffic event types get a
 per-type formatter tuned for readability; every other event type — including
 any future addition to the ``CombatEvent`` union — falls through to a
 generic ``[type] k=v ...`` dump so this function never raises regardless of
-which event it is handed.
+which event it is handed. Purely structural markers (``_SKIPPED_EVENT_TYPES``)
+contribute no line at all.
 """
 
 from __future__ import annotations
@@ -160,13 +161,28 @@ def _render_one(event: Any, names: dict[str, str]) -> str:
         return _fallback(event, names)
 
 
+# Structural markers with no narrative content — dropped rather than rendered.
+# ``turn_phase`` (engine F3a) fires 2-3 times per turn boundary purely to tell a
+# host WHERE the boundary is; the narration already marks it with the
+# ``-- Round N --`` / ``It is X's turn.`` lines, and this text is fed to an LLM,
+# so a raw ``[turn_phase] actor_id=... phase=...`` dump would be pure token noise.
+# ``concentration_check`` is the transitional twin of the ``SaveRolled`` the
+# engine still emits for the same roll; narrating both would describe one
+# concentration save twice. Skip the newer shape and keep the ``save_rolled``
+# line -- remove when the SaveRolled twin is dropped in 0.7.
+_SKIPPED_EVENT_TYPES: frozenset[str] = frozenset({"turn_phase", "concentration_check"})
+
+
 def narrate(events: Sequence[CombatEvent], names: dict[str, str]) -> str:
     """Render ``events`` as one narration line per event, joined by newlines.
 
     ``names`` maps entity id -> display name; ids missing from the map are
     rendered as-is. Event types without a dedicated formatter — including any
     type added to the ``CombatEvent`` union after this module was written —
-    render via a generic ``[type] key=value ...`` fallback. This function
-    never raises.
+    render via a generic ``[type] key=value ...`` fallback, except the purely
+    structural types in ``_SKIPPED_EVENT_TYPES``, which contribute no line at
+    all. This function never raises.
     """
-    return "\n".join(_render_one(event, names) for event in events)
+    return "\n".join(
+        _render_one(event, names) for event in events if event.type not in _SKIPPED_EVENT_TYPES
+    )

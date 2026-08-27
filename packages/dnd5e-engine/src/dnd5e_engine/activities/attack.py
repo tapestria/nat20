@@ -10,15 +10,23 @@ of Smiting (+1 weapon, base ``1d6`` bludgeoning, ``damage.critical.bonus == "7"`
 
 MIRRORS, does not import from, ``effects/attack.py`` + ``effects/damage.py``:
 
-* The natural-d20 roll honors ``ctx.variables["force_d20"]`` (the test seam),
-  else draws from ``ctx.rng`` — ``max`` of two for advantage, ``min`` of two for
-  disadvantage, one otherwise (SRD §Advantage and Disadvantage). The d20 ``mode``
-  itself stays ``"normal"`` on this live path: ``ctx.active_effects`` IS now read
-  for the attacker's ``flags.advantage.attack`` / ``flags.disadvantage.attack``
-  (``attacker_advantage_flags``), but only to GATE the SRD §Sneak Attack trigger
-  below — not to reroll the base attack. Rolling the base d20 with advantage/
-  disadvantage would shift the seeded stream and crit outcome; that separate
-  delta is deferred (see ``docs/migration/v0.1-to-v0.2.md`` / ``BACKLOG.md``).
+* The natural-d20 roll goes through the single SRD 5.2 D20 Test primitive
+  ``activities/d20.py::roll_d20_test``, honoring ``ctx.variables["force_d20"]``
+  (the test seam, first target only) as ``forced_natural``. Advantage /
+  disadvantage is LIVE (F2b): the mode is resolved from two typed source
+  families — the attacker's own ``flags.advantage.attack`` /
+  ``flags.disadvantage.attack`` effect changes (``attacker_advantage_flags`` →
+  source ``"flag"``) and the condition-derived half
+  (``rules/conditions.py::conditions_grant_advantage_on_attack``, called once
+  per side over ``ctx.attacker_conditions`` / ``ctx.target_conditions[target]``
+  so the emitted source names the side that produced it — ``"condition:attacker"``
+  / ``"condition:target"``; both sides can produce either direction). Any advantage plus any
+  disadvantage cancel to ``normal`` (SRD §Advantage and Disadvantage). A mode is
+  only ever active when a source exists, so a scenario with no advantage
+  producer still consumes exactly ONE d20 draw per target and its seeded stream
+  is unchanged. The same flags additionally GATE the SRD §Sneak Attack trigger
+  below. Prone/reach and other distance-derived sources are still deferred (see
+  ``BACKLOG.md``).
 * Hit / crit / miss mirrors ``effects/attack.py:_resolve_hit_outcome``: natural
   20 → auto crit+hit, natural 1 → auto miss, else ``total >= AC`` (SRD §Rolling
   1 or 20 / §Making an Attack). The crit threshold is ``attack.critical.threshold
@@ -59,11 +67,13 @@ from typing import TYPE_CHECKING
 from dnd5e_srd_data.schema.item import WeaponProperty
 
 from dnd5e_engine.activities.apply import apply_damage
+from dnd5e_engine.activities.d20 import AdvantageSources, roll_d20_test
 from dnd5e_engine.activities.dice import roll_damage_part, roll_expr
 from dnd5e_engine.activities.effects import apply_activity_effects
 from dnd5e_engine.activities.formula import resolve_damage_block, resolve_roll_data
 from dnd5e_engine.activities.mastery import apply_mastery_on_hit, apply_mastery_on_miss
-from dnd5e_engine.events import AdvantageMode, AttackRolled
+from dnd5e_engine.events import AdvantageMode, AdvantageSource, AttackRolled
+from dnd5e_engine.rules.conditions import conditions_grant_advantage_on_attack
 from dnd5e_engine.spatial import cover_bonus
 
 if TYPE_CHECKING:
@@ -104,23 +114,45 @@ def resolve_attack(
     # fresh d4 in the seeded stream — mirrors save_primitive's passive_save_bonus.
     attack_bonus_expr = ctx.passive_attack_bonus.get(ctx.caster.entity_id)
 
-    # SRD §Advantage and Disadvantage — read the attacker's own
+    # SRD §Advantage and Disadvantage — the attacker's own
     # ``flags.advantage.attack`` / ``flags.disadvantage.attack`` override
-    # changes (both present cancel to normal, the legacy evaluator ``reconcile_adv``). These
-    # gate the SRD §Sneak Attack trigger below; they deliberately do NOT change
-    # the natural-d20 ``mode`` on this live path. Doing so would shift the
-    # seeded dice stream and the crit outcome of the base attack, perturbing
-    # the very damage magnitudes the once-per-turn / ally-adjacent scenarios
-    # isolate (a Sneak Attack rider must be the ONLY damage delta a qualifying
-    # trigger introduces). Rolling the base attack itself with advantage/
-    # disadvantage on the live path is a separate, deferred delta — see
-    # ``docs/migration/v0.1-to-v0.2.md`` and ``BACKLOG.md``.
+    # changes (both present cancel to normal, the legacy evaluator
+    # ``reconcile_adv``). These both feed the d20 mode below (F2b) and gate the
+    # SRD §Sneak Attack trigger.
     attacker_has_advantage, attacker_has_disadvantage = attacker_advantage_flags(ctx)
 
     for index, target in enumerate(ctx.targets):
-        mode: AdvantageMode = "normal"
-        natural = _roll_natural_d20(ctx, mode, target_index=index)
-        total = natural + attack_bonus
+        # Condition-derived half. The helper is called once PER SIDE (the other
+        # side's list empty) purely so the emitted source can name which side
+        # produced it: neither direction is one-way any more — an Invisible
+        # attacker grants itself advantage while an Invisible TARGET imposes
+        # disadvantage, and a Restrained attacker takes disadvantage while a
+        # Restrained TARGET grants advantage. Every row in the helper reads
+        # exactly one of its two arguments, so the split is exact.
+        attacker_cond_adv, attacker_cond_dis = conditions_grant_advantage_on_attack(
+            ctx.attacker_conditions, []
+        )
+        target_cond_adv, target_cond_dis = conditions_grant_advantage_on_attack(
+            [], ctx.target_conditions.get(target.entity_id, [])
+        )
+        adv_sources: list[AdvantageSource] = []
+        dis_sources: list[AdvantageSource] = []
+        if attacker_has_advantage:
+            adv_sources.append("flag")
+        if attacker_cond_adv:
+            adv_sources.append("condition:attacker")
+        if target_cond_adv:
+            adv_sources.append("condition:target")
+        if attacker_has_disadvantage:
+            dis_sources.append("flag")
+        if attacker_cond_dis:
+            dis_sources.append("condition:attacker")
+        if target_cond_dis:
+            dis_sources.append("condition:target")
+        sources = AdvantageSources(advantage=tuple(adv_sources), disadvantage=tuple(dis_sources))
+        roll = roll_d20_test(ctx.rng, attack_bonus, sources, forced_natural=_forced_d20(ctx, index))
+        mode: AdvantageMode = roll.mode
+        natural, total = roll.kept, roll.total
         if attack_bonus_expr:
             total += roll_expr(attack_bonus_expr, ctx.rng)
         # SRD 5.2 §Cover — half (+2) / three-quarters (+5) cover raises the
@@ -146,6 +178,9 @@ def resolve_attack(
                 is_crit=is_crit,
                 is_hit=is_hit,
                 is_opportunity_attack=False,
+                natural=roll.kept,
+                modifier=attack_bonus,
+                sources=list(roll.sources),
             )
         )
 
@@ -377,25 +412,17 @@ def _resolve_flat_bonus(
 # ── natural d20 + hit/crit/miss ──────────────────────────────────────────────
 
 
-def _roll_natural_d20(
-    ctx: ActivityResolutionContext, mode: AdvantageMode, *, target_index: int = 0
-) -> int:
-    """Natural-d20 outcome, honoring ``variables["force_d20"]`` for determinism.
+def _forced_d20(ctx: ActivityResolutionContext, target_index: int) -> int | None:
+    """The ``variables["force_d20"]`` determinism seam, or ``None``.
 
-    The ``force_d20`` seam is a TEST hook scoped to the FIRST target only
-    (``target_index == 0``); every other target rolls live off ``ctx.rng`` so a
-    forced value never silently reuses one kept d20 across a multi-target attack.
-    Mirrors ``effects/attack.py:_roll_natural_d20`` for the live path: advantage
-    keeps the higher of two ``ctx.rng`` rolls, disadvantage the lower, normal one.
+    A TEST hook scoped to the FIRST target only (``target_index == 0``); every
+    other target rolls live off ``ctx.rng`` so a forced value never silently
+    reuses one kept d20 across a multi-target attack.
     """
     forced = ctx.variables.get("force_d20")
     if forced is not None and target_index == 0:
         return int(forced)
-    if mode == "advantage":
-        return max(ctx.rng.randint(1, 20), ctx.rng.randint(1, 20))
-    if mode == "disadvantage":
-        return min(ctx.rng.randint(1, 20), ctx.rng.randint(1, 20))
-    return ctx.rng.randint(1, 20)
+    return None
 
 
 def _resolve_hit_outcome(

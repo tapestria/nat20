@@ -47,6 +47,13 @@ class Combatant(BaseModel):
     intelligence: int = 10
     wisdom: int = 10
     charisma: int = 10
+    # F1 (2026-08-26): proficiency projection. Defaults keep every pre-F1
+    # fixture byte-identical: no proficiencies → ability modifier only.
+    proficiency_bonus_override: int | None = None  # monsters: template PB by CR
+    save_proficiencies: list[str] = Field(default_factory=list)  # Ability codes
+    skill_proficiencies: list[str] = Field(default_factory=list)  # skill slugs
+    skill_expertise: list[str] = Field(default_factory=list)
+    weapon_proficiencies: list[str] = Field(default_factory=list)  # categories + slugs
     death_saves: dict[str, Any] = Field(default_factory=dict)  # serialized DeathSaveState
     # SRD §Creatures — creature_type (e.g. "humanoid", "undead", "construct",
     # "elf"). Drives type-gated spell semantics (Hold Person targets only

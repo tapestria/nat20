@@ -24,9 +24,38 @@ ChangeMode = Literal["custom", "multiply", "add", "downgrade", "upgrade", "overr
 
 
 class ActiveEffectDuration(BaseModel):
-    """Structured duration. Either rounds/turns drive in-combat tick, or
-    seconds drives narrative-time decay (deferred to
-    `[effects-cross-combat]`)."""
+    """Structured duration. All three counters tick in combat (F3b).
+
+    SRD 5.2 §Duration puts a round at about 6 seconds, so the engine reads the
+    three fields as follows (``orchestrator._tick_durations_at_turn_end`` for
+    ``rounds``, ``orchestrator._expire_timed_effects_at_turn_end`` for the
+    rest; both are ``turn_end`` hooks on ``turn_lifecycle``):
+
+    ``rounds``
+        Decremented once per round at the **caster's** turn end (parsed from
+        the effect ``origin``; item/environment origins fall back to the
+        target's turn end). Reaching zero emits
+        ``EffectExpired(reason="duration")``.
+    ``turns``
+        Decremented at the **target's own** turn end — durations counted in
+        the subject's turns rather than the caster's. Independent of
+        ``rounds``: whichever counter hits zero first expires the effect.
+    ``seconds``
+        Narrative-time duration, read in combat as ``ceil(seconds / 6)``
+        rounds and ticked exactly like ``rounds`` (caster-keyed). The derived
+        count is materialised once into ``rounds`` (and decremented in the
+        same pass, so ``seconds=12`` is indistinguishable from ``rounds=2``);
+        ``seconds`` itself is never mutated. **If an effect carries both
+        ``rounds`` and ``seconds``, ``rounds`` wins** — the seconds branch only
+        fires when ``rounds is None``. Foundry packs routinely ship both
+        (Bless: ``rounds=10, seconds=60``).
+
+    ``start_round`` / ``start_turn`` are carried for host bookkeeping and are
+    not read by the engine. Concentration-flagged effects are exempt from
+    every branch above: the concentration cascade and the per-turn repeat save
+    own their lifetime, and the packs' counters on them are display-only
+    (Hunter's Mark ships ``seconds=600``).
+    """
 
     model_config = ConfigDict(extra="forbid")
 
@@ -72,7 +101,11 @@ class ActiveEffect(BaseModel):
     `bridge_conditions` derivation). `flags` is a free-form dict for
     extensibility; uses {"concentration": bool,
     "applicable_action_types": list[str]} until those fields warrant
-    promotion.
+    promotion. One flag is a duration, not a modifier:
+    ``{"until_end_of_next_turn_of": "<entity_id>"}`` expresses SRD's "until
+    the end of your next turn" — the engine expires the effect at that
+    actor's next turn end, granting a one-turn grace when the effect was
+    applied during that actor's own turn.
 
     Pure Pydantic model. Zero I/O. Engine-owned during combat;
     the host does not persist instances of this class between combats

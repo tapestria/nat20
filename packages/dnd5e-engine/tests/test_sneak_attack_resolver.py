@@ -157,7 +157,9 @@ def test_spell_attack_never_qualifies():
 # ── end-to-end fold through resolve_attack (guaranteed hit) ──────────────────
 
 
-def _swing_total(*, active_effects=(), sneak_attack_spent=None, ally_adjacent=None) -> int:
+def _swing_total(
+    *, active_effects=(), sneak_attack_spent=None, ally_adjacent=None, scale_values=None
+) -> int:
     weapon = _dagger()
     activity = next(a for a in weapon.activities if a.kind == "attack")
     target = _foe()
@@ -166,6 +168,7 @@ def _swing_total(*, active_effects=(), sneak_attack_spent=None, ally_adjacent=No
         rng=random.Random(9),
         targets=[target],
         event_emitter=events.append,
+        scale_values={"rogue.sneak-attack": "3d6"} if scale_values is None else scale_values,
         active_effects=active_effects,
         sneak_attack_spent=sneak_attack_spent or {},
         sneak_attack_ally_adjacent=ally_adjacent or {},
@@ -195,11 +198,18 @@ def test_finesse_weapon_without_sneak_dice_gets_no_rider():
 
 
 def test_once_per_turn_gate_blocks_second_rider():
-    baseline = _swing_total()
-    unspent = _swing_total(active_effects=(_flag_effect("flags.advantage.attack"),))
-    spent = _swing_total(
-        active_effects=(_flag_effect("flags.advantage.attack"),),
-        sneak_attack_spent={"char:rogue": True},
-    )
-    assert 3 <= unspent - baseline <= 18
+    # F2b: ``flags.advantage.attack`` now drives the BASE d20 as well (two draws
+    # instead of one), so a no-advantage swing is no longer a stream-comparable
+    # baseline. Isolate the rider against the same advantage stream with the
+    # sneak dice absent — then the ONLY delta is the rider itself, which is what
+    # the once-per-turn gate is supposed to control.
+    #
+    # Under seed 9 the advantage draws are (15, 20) → the KEPT die is a natural
+    # 20, i.e. a crit, so the 3d6 rider is crit-doubled to 6d6 (SRD §Critical
+    # Hits) — the rider window is 6..36, not 3..18.
+    adv = (_flag_effect("flags.advantage.attack"),)
+    baseline = _swing_total(active_effects=adv, scale_values={})
+    unspent = _swing_total(active_effects=adv)
+    spent = _swing_total(active_effects=adv, sneak_attack_spent={"char:rogue": True})
+    assert 6 <= unspent - baseline <= 36
     assert spent - baseline == 0

@@ -24,9 +24,11 @@ MIRRORS, does not import from, ``effects/check.py``:
   ``foundry/module/config.mjs``.
 * The modifier is the RESOLVED integer off a per-actor sidecar
   (``ctx.check_modifiers``), mirroring ``effects/check.py:_read_check_modifiers``
-  / ``_modifier_for_key`` — the skill mod (``skills[code]``) when a skill is
-  named, else the ability mod (``ability_mods[ability]``), else +0. ``Combatant``
-  carries no per-skill table, so the value comes from the sidecar.
+  / ``_modifier_for_key`` — the skill mod when a skill is named (the 3-letter
+  ``associated`` code mapped to the canonical SRD slug the sidecar is keyed by,
+  via ``_SKILL_CODE_TO_SLUG``), else the ability mod
+  (``ability_mods[ability]``), else +0. ``Combatant`` carries no per-skill table,
+  so the value comes from the sidecar.
 * The DC resolution mirrors Foundry ``check-data.mjs`` prepareFinalData
   (lines 65-69): ``"spellcasting"`` → ``8 + prof + spellcasting-ability mod``;
   ``"flat"`` → the parsed ``check.dc.formula``; an EMPTY calculation falls back
@@ -35,8 +37,11 @@ MIRRORS, does not import from, ``effects/check.py``:
   formula), and resolves to ``None`` only when calculation AND formula are both
   empty.
 
-The natural d20 honors ``ctx.variables["force_check_d20"]`` — a NEW test seam
-(our own; ``effects/check.py`` relies on a seeded ``ctx.rng``). Riders fire AFTER
+The d20 goes through the shared ``activities/d20.py::roll_d20_test`` primitive
+(F2c) and honors ``ctx.variables["force_check_d20"]`` — a NEW test seam (our own;
+``effects/check.py`` relies on a seeded ``ctx.rng``). Condition-derived
+disadvantage (SRD 5.2 §Frightened / §Poisoned / §Exhaustion) arrives on
+``ctx.check_modifiers[actor]["disadvantage"]``. Riders fire AFTER
 the roll via the shared ``apply_activity_effects`` (``EffectApplied`` then
 ``ConditionApplied``), applied to the rolling actor.
 """
@@ -46,10 +51,11 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Final, get_args
 
+from dnd5e_engine.activities.d20 import AdvantageSources, D20Result, roll_d20_test
 from dnd5e_engine.activities.dice import roll_expr
 from dnd5e_engine.activities.effects import apply_activity_effects
 from dnd5e_engine.activities.formula import resolve_roll_data
-from dnd5e_engine.events import Ability, CheckRolled
+from dnd5e_engine.events import Ability, AdvantageSource, CheckRolled
 
 if TYPE_CHECKING:
     from dnd5e_srd_data.schema.common import CheckActivity
@@ -89,6 +95,37 @@ _SKILL_TO_ABILITY: Final[dict[str, Ability]] = {
     "sur": "wis",
 }
 
+# Foundry 3-letter skill code → canonical SRD skill SLUG. Source: the same
+# ``CONFIG.DND5E.skills`` block in ``foundry/module/config.mjs`` as the ability
+# table above (each entry's key is the code, its ``label`` the skill).
+#
+# The engine's canonical skill namespace is the long-form SRD slug: it is what
+# ``Combatant.skill_proficiencies``, ``rules/skills.SKILL_ABILITIES`` and the
+# corpus (``Monster.skills``) all carry, and therefore how the orchestrator keys
+# ``ctx.check_modifiers[actor]["skills"]`` (F1d). The 3-letter code is an IR
+# detail of ``check.associated``, so the translation happens HERE — the single
+# site that reads the sidecar by skill — and nowhere else.
+_SKILL_CODE_TO_SLUG: Final[dict[str, str]] = {
+    "acr": "acrobatics",
+    "ani": "animal_handling",
+    "arc": "arcana",
+    "ath": "athletics",
+    "dec": "deception",
+    "his": "history",
+    "ins": "insight",
+    "itm": "intimidation",
+    "inv": "investigation",
+    "med": "medicine",
+    "nat": "nature",
+    "prc": "perception",
+    "prf": "performance",
+    "per": "persuasion",
+    "rel": "religion",
+    "slt": "sleight_of_hand",
+    "ste": "stealth",
+    "sur": "survival",
+}
+
 # Test-determinism seam for the natural check d20 (our own code; effects/check.py
 # has none and relies on a seeded ctx.rng).
 FORCE_CHECK_D20: Final = "force_check_d20"
@@ -107,9 +144,9 @@ def resolve_check(activity: CheckActivity, ctx: ActivityResolutionContext) -> No
     skill, ability = _resolve_skill_ability(activity)
     actor = ctx.targets[0] if ctx.targets else ctx.caster
 
-    natural = _roll_d20(ctx)
     modifier = _check_modifier(ctx, actor, skill=skill, ability=ability)
-    total = natural + modifier
+    roll = _roll_d20(ctx, actor, modifier)
+    total = roll.total
     succeeded = (total >= dc) if dc is not None else None
 
     ctx.event_emitter(
@@ -120,6 +157,10 @@ def resolve_check(activity: CheckActivity, ctx: ActivityResolutionContext) -> No
             dc=dc,
             roll_total=total,
             succeeded=succeeded,
+            advantage=roll.mode,
+            natural=roll.kept,
+            modifier=roll.modifier,
+            sources=list(roll.sources),
         )
     )
 
@@ -205,16 +246,31 @@ def _resolve_skill_ability(activity: CheckActivity) -> tuple[str | None, Ability
 # ── roll + modifier ───────────────────────────────────────────────────────────
 
 
-def _roll_d20(ctx: ActivityResolutionContext) -> int:
-    """Natural check d20, honoring ``variables["force_check_d20"]``.
+def _roll_d20(ctx: ActivityResolutionContext, actor: Combatant, modifier: int) -> D20Result:
+    """The check's D20 Test, honoring ``variables["force_check_d20"]``.
 
-    Piece-1-2 scope has no check advantage/disadvantage projection, so a single
-    d20 is drawn (off ``ctx.rng`` unless the forced test seam is set).
+    Delegates to the shared ``activities/d20.py::roll_d20_test`` primitive (F2c),
+    so an ability check resolves advantage in the same one place an attack or a
+    save does.
+
+    SRD 5.2 §Frightened / §Poisoned / §Exhaustion impose disadvantage on ability
+    checks. That is projected onto ``ctx.check_modifiers[actor]["disadvantage"]``
+    by the orchestrator (F1d) and consumed HERE for the first time — tagged
+    ``"condition:attacker"`` because the source is always a condition on the
+    ROLLING actor. There is no check-advantage producer in the engine yet
+    (Help / Guidance are not modelled), so the advantage side stays empty.
+
+    Draw discipline: a check with no disadvantage flag consumes exactly one
+    ``rng.randint(1, 20)`` (unchanged); a flagged actor now consumes two.
     """
     forced = ctx.variables.get(FORCE_CHECK_D20)
-    if forced is not None:
-        return int(forced)
-    return ctx.rng.randint(1, 20)
+    forced_natural = int(forced) if forced is not None else None
+    dis: tuple[AdvantageSource, ...] = ()
+    if ctx.check_modifiers.get(actor.entity_id, {}).get("disadvantage"):
+        dis = ("condition:attacker",)
+    return roll_d20_test(
+        ctx.rng, modifier, AdvantageSources(disadvantage=dis), forced_natural=forced_natural
+    )
 
 
 def _check_modifier(
@@ -226,15 +282,21 @@ def _check_modifier(
 ) -> int:
     """The actor's resolved check modifier off ``ctx.check_modifiers``.
 
-    Mirrors ``effects/check.py:_modifier_for_key`` — the skill mod
-    (``skills[skill]``) takes precedence when a skill is named and present; else
-    the ability mod (``ability_mods[ability]``); else +0. The sidecar shape is
-    ``{entity_id: {"skills": {code: mod}, "ability_mods": {ability: mod}}}``.
+    Mirrors ``effects/check.py:_modifier_for_key`` — the skill mod takes
+    precedence when a skill is named and present; else the ability mod
+    (``ability_mods[ability]``); else +0. The sidecar shape is
+    ``{entity_id: {"skills": {slug: mod}, "ability_mods": {ability: mod}}}``,
+    keyed by the canonical SRD skill SLUG, so the activity's Foundry 3-letter
+    ``check.associated`` code is translated through ``_SKILL_CODE_TO_SLUG``
+    first. The raw code is then tried as a fallback — LEGACY: it keeps a
+    host-built sidecar that was keyed by code (the pre-F1d golden-fixture shape)
+    working unchanged.
     """
     actor_mods = ctx.check_modifiers.get(actor.entity_id, {})
     if skill is not None:
         skills = actor_mods.get("skills", {})
-        if skill in skills:
-            return skills[skill]
+        for key in (_SKILL_CODE_TO_SLUG.get(skill), skill):
+            if key is not None and key in skills:
+                return int(skills[key])
     ability_mods = actor_mods.get("ability_mods", {})
-    return ability_mods.get(ability, 0)
+    return int(ability_mods.get(ability, 0))

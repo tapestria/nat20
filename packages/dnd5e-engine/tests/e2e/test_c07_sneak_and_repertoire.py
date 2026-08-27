@@ -34,12 +34,21 @@ def test_c07_s01_sneak_attack_adds_bounded_extra_damage_on_advantage():
     "@scale.rogue.sneak-attack"`); engine:
     packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py
     (`resolve_attack` walks ONLY the attacking weapon's own activity
-    damage parts; `mode: AdvantageMode = "normal"` hardcoded,
-    `ctx.active_effects` never consulted for `flags.advantage.attack` on
-    this path).
+    damage parts).
+
+    Historical note: the transcribed gap prose also named a hardcoded
+    `mode: AdvantageMode = "normal"` with `ctx.active_effects` never
+    consulted for `flags.advantage.attack`. F2b (2026-08-26) closed that
+    half — `resolve_attack` now builds typed `AdvantageSources` from the
+    attacker's flags and conditions. The scenario's assertions are
+    unchanged; only this citation was corrected.
     """
 
-    def _party():
+    def _party(class_slug: str = "rogue"):
+        # ``class_slug`` is the ONLY same-stream lever that suppresses the rider:
+        # the Sneak Attack dice come from the rogue ``@scale`` value, and party
+        # construction draws no dice, so a non-rogue baseline replays the exact
+        # same seeded stream with no rider folded in.
         return [
             PartyMemberSpec(
                 entity_id="char:rogue",
@@ -47,7 +56,7 @@ def test_c07_s01_sneak_attack_adds_bounded_extra_damage_on_advantage():
                 initiative=20,
                 hp_current=30,
                 hp_max=30,
-                class_slug="rogue",
+                class_slug=class_slug,
                 character_level=5,
                 dexterity=18,
                 attack_bonus=7,
@@ -70,10 +79,10 @@ def test_c07_s01_sneak_attack_adds_bounded_extra_damage_on_advantage():
             )
         ]
 
-    async def _run(active_effects):
+    async def _run(active_effects, class_slug="rogue"):
         start = await start_combat(
             session_id="e2e-c07-s01",
-            party=_party(),
+            party=_party(class_slug),
             encounter=_encounter(),
             scene_zones=SceneTopology(zones=["zone:a"], edges=[]),
             rng_seed=5,
@@ -87,11 +96,6 @@ def test_c07_s01_sneak_attack_adds_bounded_extra_damage_on_advantage():
         )
         return live
 
-    live_a = run_async(_run(()))
-    no_adv_total = sum(
-        e.amount for e in events_of(live_a, DamageApplied) if e.target_id == "mon:foe"
-    )
-
     adv_effect = ActiveEffect(
         id="effect:adv",
         name="adv",
@@ -99,18 +103,37 @@ def test_c07_s01_sneak_attack_adds_bounded_extra_damage_on_advantage():
         target_id="char:rogue",
         changes=[ActiveEffectChange(key="flags.advantage.attack", mode="override", value=True)],
     )
+
+    # F2b amendment (NOT a weakening — this TIGHTENS the assertion): since the
+    # attack roll itself now honours ``flags.advantage.attack``, an
+    # advantage-LESS run no longer shares a dice stream with the advantage run,
+    # so differencing the two would conflate the rider with a shifted base
+    # weapon damage roll and a possible crit/no-crit divergence. The reference
+    # is the SAME advantage stream with the rogue Sneak Attack dice absent, so
+    # the measured delta is the rider ALONE.
+    live_a = run_async(_run((adv_effect,), class_slug="fighter"))
+    no_rider_total = sum(
+        e.amount for e in events_of(live_a, DamageApplied) if e.target_id == "mon:foe"
+    )
+
     live_b = run_async(_run((adv_effect,)))
     adv_total = sum(e.amount for e in events_of(live_b, DamageApplied) if e.target_id == "mon:foe")
+
+    # The two runs really are the same stream: identical attack roll + crit flag.
+    attack_a = next(iter(events_of(live_a, AttackRolled)))
+    attack_b = next(iter(events_of(live_b, AttackRolled)))
+    assert (attack_a.roll_total, attack_a.is_crit) == (attack_b.roll_total, attack_b.is_crit)
+    # ...and the advantage really is live on both.
+    assert attack_b.advantage == "advantage"
+    assert attack_b.sources == ["flag"]
 
     # Catalog amendment 2026-07-03 (user-approved, NOT a weakening): the bound
     # is crit-aware. SRD 5.2 §Critical Hit ("Roll all of the attack's damage
     # dice twice and add them together", 09_rules_glossary.md:310) doubles the
-    # Sneak Attack rider on a crit — and under rng_seed=5 this attack IS a
-    # natural-20 crit, so the rider is 6d6 in [6, 36]; a non-crit hit stays 3d6
-    # in [3, 18]. The original [3, 18] was derived assuming a non-crit path.
-    is_crit = next(e.is_crit for e in events_of(live_b, AttackRolled))
-    lo, hi = (6, 36) if is_crit else (3, 18)
-    assert lo <= adv_total - no_adv_total <= hi
+    # Sneak Attack rider on a crit, so the rider is 6d6 in [6, 36]; a non-crit
+    # hit stays 3d6 in [3, 18]. The original [3, 18] assumed a non-crit path.
+    lo, hi = (6, 36) if attack_b.is_crit else (3, 18)
+    assert lo <= adv_total - no_rider_total <= hi
 
 
 def test_c07_s02_sneak_attack_ally_adjacent_alternative_trigger():
@@ -127,6 +150,11 @@ def test_c07_s02_sneak_attack_ally_adjacent_alternative_trigger():
     injection at all, and no code anywhere in
     packages/dnd5e-engine/src/ evaluates "an ally is within 5 ft of the
     target and not Incapacitated."
+
+    Historical note: as in C07-S01, the advantage half of the transcribed
+    citation is stale — F2b (2026-08-26) wired typed `AdvantageSources`
+    into `resolve_attack`. Neither of this scenario's two runs carries an
+    advantage source, so nothing about the assertions moves.
     """
 
     async def _run(with_ally: bool):
@@ -325,7 +353,7 @@ def test_c07_s04_sneak_attack_once_per_turn_cap_resets_next_turn():
         changes=[ActiveEffectChange(key="flags.advantage.attack", mode="override", value=True)],
     )
 
-    def _hit_total(active_effects, sneak_attack_spent):
+    def _hit_total(active_effects, sneak_attack_spent, scale_values=None):
         events: list = []
         target = Combatant(
             entity_id="mon:foe",
@@ -344,7 +372,7 @@ def test_c07_s04_sneak_attack_once_per_turn_cap_resets_next_turn():
             caster_abilities={"str": 10, "dex": 18, "con": 10, "int": 10, "wis": 10, "cha": 10},
             caster_proficiency_bonus=3,
             caster_level=5,
-            scale_values={"rogue.sneak-attack": "3d6"},
+            scale_values=({"rogue.sneak-attack": "3d6"} if scale_values is None else scale_values),
             active_effects=active_effects,  # type: ignore[call-arg]
             sneak_attack_spent=sneak_attack_spent,  # type: ignore[call-arg]
         )
@@ -353,11 +381,19 @@ def test_c07_s04_sneak_attack_once_per_turn_cap_resets_next_turn():
             e.amount for e in events if isinstance(e, DamageApplied) and e.target_id == "mon:foe"
         )
 
-    baseline_total = _hit_total(active_effects=(), sneak_attack_spent={})
+    # F2b: ``flags.advantage.attack`` now also drives the BASE d20 (two draws
+    # instead of one), so an advantage-less swing is no longer a
+    # stream-comparable baseline. The reference is the SAME advantage stream
+    # with the sneak dice absent, so the only delta measured below is the rider.
+    baseline_total = _hit_total(
+        active_effects=(adv_effect,), sneak_attack_spent={}, scale_values={}
+    )
     hit1_total = _hit_total(active_effects=(adv_effect,), sneak_attack_spent={})
     hit2_total = _hit_total(active_effects=(adv_effect,), sneak_attack_spent={"char:rogue": True})
     hit3_total = _hit_total(active_effects=(adv_effect,), sneak_attack_spent={})
 
-    assert 3 <= hit1_total - baseline_total <= 18
+    # Seed 9 under advantage draws (15, 20) → the kept die is a natural 20, so
+    # the 3d6 rider is crit-doubled to 6d6 (SRD §Critical Hits): window 6..36.
+    assert 6 <= hit1_total - baseline_total <= 36
     assert hit2_total - baseline_total == 0
-    assert 3 <= hit3_total - baseline_total <= 18
+    assert 6 <= hit3_total - baseline_total <= 36
