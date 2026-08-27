@@ -34,9 +34,14 @@ def test_c07_s01_sneak_attack_adds_bounded_extra_damage_on_advantage():
     "@scale.rogue.sneak-attack"`); engine:
     packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py
     (`resolve_attack` walks ONLY the attacking weapon's own activity
-    damage parts; `mode: AdvantageMode = "normal"` hardcoded,
-    `ctx.active_effects` never consulted for `flags.advantage.attack` on
-    this path).
+    damage parts).
+
+    Historical note: the transcribed gap prose also named a hardcoded
+    `mode: AdvantageMode = "normal"` with `ctx.active_effects` never
+    consulted for `flags.advantage.attack`. F2b (2026-08-26) closed that
+    half — `resolve_attack` now builds typed `AdvantageSources` from the
+    attacker's flags and conditions. The scenario's assertions are
+    unchanged; only this citation was corrected.
     """
 
     def _party(class_slug: str = "rogue"):
@@ -145,6 +150,11 @@ def test_c07_s02_sneak_attack_ally_adjacent_alternative_trigger():
     injection at all, and no code anywhere in
     packages/dnd5e-engine/src/ evaluates "an ally is within 5 ft of the
     target and not Incapacitated."
+
+    Historical note: as in C07-S01, the advantage half of the transcribed
+    citation is stale — F2b (2026-08-26) wired typed `AdvantageSources`
+    into `resolve_attack`. Neither of this scenario's two runs carries an
+    advantage source, so nothing about the assertions moves.
     """
 
     async def _run(with_ally: bool):

@@ -1570,6 +1570,12 @@ def _emit_apply_damage(live: _LiveCombat, event: DamageApplied) -> None:
     if caster_chain:
         dc = max(10, event.amount // 2)
         concentrator = _find_combatant(live, event.target_id)
+        # The ``else 0`` cannot fire in practice: ``concentration_chain`` is
+        # only ever keyed by an entity that is in ``live.initiative``, and the
+        # damage that got us here was applied to that same combatant. It stays
+        # because ``_emit_apply_damage`` is contractually non-throwing — a
+        # missing combatant degrades to an unmodified save rather than
+        # aborting damage application mid-flight.
         modifier = save_modifier(concentrator, "con").total if concentrator else 0
         roll = roll_d20_test(live.rng, modifier, AdvantageSources())
         roll_total = roll.total
@@ -2966,6 +2972,14 @@ def _run_end_of_turn_saves(live: _LiveCombat, actor_id: str) -> None:
     pending_keys = [k for k in live.repeat_save_on_turn_end if k[0] == actor_id]
     if not pending_keys:
         return
+    # One lookup for the whole call: every spec here re-saves for ``actor_id``
+    # (the creature whose turn is ending), so the combatant is invariant across
+    # both loops. The ``else 0`` below cannot fire in practice — this function
+    # is only reached from the turn-advance path for a combatant that is in
+    # ``live.initiative`` — but ``_run_end_of_turn_saves`` runs inside the
+    # non-throwing turn-boundary contract, so a missing combatant degrades to an
+    # unmodified save rather than aborting the turn.
+    target = _find_combatant(live, actor_id)
     for identity in pending_keys:
         target_id, effect_id, origin = identity
         specs = live.repeat_save_on_turn_end.get(identity, [])
@@ -2975,7 +2989,6 @@ def _run_end_of_turn_saves(live: _LiveCombat, actor_id: str) -> None:
             dc = int(spec["dc"])
             condition = str(spec["condition"])
             caster_id = str(spec["caster_id"])
-            target = _find_combatant(live, actor_id)
             modifier = save_modifier(target, ability).total if target else 0
             roll = roll_d20_test(live.rng, modifier, AdvantageSources())
             roll_total = roll.total
@@ -3166,8 +3179,8 @@ def _build_foe_combatants(
         # only when the host moved it away from the ``10`` default sentinel
         # (an EncounterMemberSpec can't distinguish "left at 10" from
         # "explicitly set to 10", so 10 always defers to the template).
-        # Nothing in the resolver reads these fields yet (F1c), so this
-        # cannot change any existing combat's rolls.
+        # Read by ``activities/actor_stats`` on every save/check path (F1c/F1d);
+        # a foe with no ``monster_template_slug`` keeps the spec's values.
         template_kw: dict[str, Any] = {}
         if foe.monster_template_slug:
             monster = get_lib_loader().get_monster(foe.monster_template_slug)

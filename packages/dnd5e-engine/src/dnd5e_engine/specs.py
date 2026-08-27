@@ -135,9 +135,10 @@ class PartyMemberSpec(BaseModel):
     # SRD §Proficiency Bonus / §Saving Throws / §Skills — the PC's proficient
     # save abilities, proficient skills, skills with expertise (double
     # proficiency), and proficient weapon categories/slugs. Threaded onto the
-    # live ``Combatant`` at start_combat by ``_build_pc_combatants``; nothing
-    # in the resolver reads these yet (F1c wires the proficiency-bonus/adv-dis
-    # math), so empty tuples reproduce pre-F1 behaviour exactly.
+    # live ``Combatant`` at start_combat by ``_build_pc_combatants`` and read by
+    # ``activities/actor_stats.save_modifier`` / ``check_modifier`` (F1c/F1d).
+    # Empty tuples reproduce pre-F1 behaviour exactly: ability modifier only,
+    # no proficiency bonus.
     save_proficiencies: tuple[str, ...] = ()
     skill_proficiencies: tuple[str, ...] = ()
     skill_expertise: tuple[str, ...] = ()
