@@ -26,7 +26,6 @@ from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
 from tests.e2e.harness import cell, events_of, grid_scene, run_async, xfail_cluster
 
 
-@xfail_cluster(12, "conditions enforced")
 def test_c12_s01_incapacitated_blocks_attack_intent():
     """C12-S01: SRD 5.2 Conditions, Incapacitated — "You can't take any
     action, Bonus Action, or Reaction."

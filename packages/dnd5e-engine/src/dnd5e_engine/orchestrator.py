@@ -123,6 +123,7 @@ from dnd5e_engine.rest import FEATURE_USE_COUNTER_PREFIX, ITEM_USE_COUNTER_PREFI
 from dnd5e_engine.rules.conditions import (
     Condition,
     active_condition_names,
+    conditions_block_actions,
     is_condition_active,
     project_passive_check_modifiers,
     project_passive_damage_modifiers,
@@ -249,6 +250,7 @@ class IntentRejectedError(CombatSeamError):
         "not_actor_turn",
         "combat_ended",
         "no_action_economy",
+        "actor_incapacitated",
     ]
 
     def __init__(self, reason: RejectionReason, detail: str) -> None:
@@ -1109,6 +1111,19 @@ def get_actor_active_effects(handle: CombatHandle, entity_id: str) -> tuple[Acti
 
 def _current_actor(live: _LiveCombat) -> Combatant:
     return live.initiative[live.current_turn_index]
+
+
+def _condition_names(c: Combatant) -> list[str]:
+    """The combatant's active condition slugs (``is_condition_active`` resolves
+    ``CONDITION_IMPLIES`` from the names, so implied conditions need not be
+    materialised on ``Combatant.conditions``)."""
+    return active_condition_names(c.conditions)
+
+
+#: SRD 5.2 Incapacitated — intents that spend NO action, Bonus Action or
+#: Reaction and therefore stay legal: ending the turn, and plain movement
+#: (Speed is governed separately — see ``_handle_move``'s speed gate).
+_INCAPACITATED_ALLOWED_INTENTS: frozenset[str] = frozenset({"pass", "move"})
 
 
 def _find_combatant(live: _LiveCombat, entity_id: str) -> Combatant | None:
@@ -4090,11 +4105,17 @@ def _end_turn_and_advance(live: _LiveCombat, actor_id: str) -> None:
 
 
 def _validate_intent_preconditions(
-    live: _LiveCombat, handle: CombatHandle, actor_id: str
+    live: _LiveCombat,
+    handle: CombatHandle,
+    actor_id: str,
+    *,
+    intent: PlayerIntent | None = None,
 ) -> Combatant:
-    """Validate that combat is live, ``actor_id`` is in initiative, and it is
-    currently ``actor_id``'s turn. Raises ``IntentRejectedError`` on any
-    failure; returns the current actor's ``Combatant`` on success."""
+    """Validate that combat is live, ``actor_id`` is in initiative, it is
+    currently ``actor_id``'s turn, and — when ``intent`` is given — the actor
+    is not Incapacitated for an action/bonus/reaction-shaped intent. Raises
+    ``IntentRejectedError`` on any failure; returns the current actor's
+    ``Combatant`` on success."""
     if live.ended:
         raise IntentRejectedError("combat_ended", f"handle={handle.handle_id}")
 
@@ -4110,6 +4131,18 @@ def _validate_intent_preconditions(
         raise IntentRejectedError(
             "not_actor_turn",
             f"current_turn={current.entity_id!r}, submitted={actor_id!r}",
+        )
+
+    # SRD 5.2 Incapacitated: "You can't take any action, Bonus Action, or
+    # Reaction." (implied by Paralyzed / Petrified / Stunned / Unconscious).
+    if (
+        intent is not None
+        and intent.intent_type not in _INCAPACITATED_ALLOWED_INTENTS
+        and conditions_block_actions(_condition_names(current))
+    ):
+        raise IntentRejectedError(
+            "actor_incapacitated",
+            f"actor_id={actor_id!r} is Incapacitated and cannot take {intent.intent_type!r}",
         )
     return current
 
@@ -4652,6 +4685,9 @@ def _pop_pending_reaction(
             continue
         if not reactor.is_alive or reactor.hp_current <= 0:
             continue
+        # SRD 5.2 Incapacitated — no Reaction (so no opportunity attack either).
+        if conditions_block_actions(_condition_names(reactor)):
+            continue
         if not reactor.reaction_available:
             continue
         match = next(
@@ -4928,7 +4964,7 @@ async def submit_player_intent(
     ``CombatEvent`` stream.
     """
     live = _get_live(handle)
-    current = _validate_intent_preconditions(live, handle, actor_id)
+    current = _validate_intent_preconditions(live, handle, actor_id, intent=intent)
 
     # Turn-non-ending intents (move_mark / move / dash) dispatch through
     # their dedicated handlers and keep the actor on turn — see
@@ -5350,6 +5386,9 @@ def _fire_pc_opportunity_attacks_on_move(
             continue
         if not reactor.is_alive or reactor.hp_current <= 0:
             continue
+        # SRD 5.2 Incapacitated — no Reaction (so no opportunity attack either).
+        if conditions_block_actions(_condition_names(reactor)):
+            continue
         if not reactor.reaction_available:
             continue
         if live.actor_zone.get(reactor.entity_id) != from_zone:
@@ -5451,6 +5490,9 @@ def _fire_monster_opportunity_attacks_on_move(
         if reactor.entity_id not in live.encounter_ids:
             continue
         if not reactor.is_alive or reactor.hp_current <= 0:
+            continue
+        # SRD 5.2 Incapacitated — no Reaction (so no opportunity attack either).
+        if conditions_block_actions(_condition_names(reactor)):
             continue
         if not reactor.reaction_available:
             continue
@@ -5590,7 +5632,11 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
     # attacking instead of fleeing. A fleeing monster takes the same no-action /
     # pass path dead monsters take.
     skip_to_record_pass = (
-        not current.is_alive or current.hp_current <= 0 or _monster_is_fleeing(current)
+        not current.is_alive
+        or current.hp_current <= 0
+        or _monster_is_fleeing(current)
+        # SRD 5.2 Incapacitated — the monster takes no action this turn.
+        or conditions_block_actions(_condition_names(current))
     )
 
     # Build alive-PC target list (lowest_hp priority — the legacy

@@ -1,0 +1,153 @@
+"""C12 — orchestrator-level condition gates (incapacitated, speed, charmed)."""
+
+from __future__ import annotations
+
+from typing import Any
+
+import pytest
+
+from dnd5e_engine import ActiveEffect, PlayerIntent
+from dnd5e_engine.events import AttackRolled, IntentSubmitted, TurnEnded
+from dnd5e_engine.orchestrator import (
+    IntentRejectedError,
+    _get_live,
+    advance_monster_turn,
+    start_combat,
+    submit_player_intent,
+)
+from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
+from tests.e2e.harness import cell, events_of, grid_scene, run_async
+
+
+def _hero(**kw: Any) -> PartyMemberSpec:
+    base: dict[str, Any] = dict(
+        entity_id="char:hero",
+        name="Hero",
+        initiative=20,
+        hp_current=20,
+        hp_max=20,
+        attack_bonus=5,
+        base_speed=30,
+        zone_id=cell(0, 0),
+    )
+    base.update(kw)
+    return PartyMemberSpec(**base)
+
+
+def _foe(**kw: Any) -> EncounterMemberSpec:
+    base: dict[str, Any] = dict(
+        entity_id="mon:foe",
+        entity_type="Monster",
+        name="Foe",
+        initiative=1,
+        hp_current=50,
+        hp_max=50,
+        ac=1,
+        zone_id=cell(1, 0),
+    )
+    base.update(kw)
+    return EncounterMemberSpec(**base)
+
+
+def _status(target_id: str, *statuses: str, origin: str = "test:cond") -> ActiveEffect:
+    return ActiveEffect(
+        id=f"effect:{'-'.join(statuses)}:{target_id}",
+        name="Cond",
+        origin=origin,
+        target_id=target_id,
+        statuses=set(statuses),
+    )
+
+
+def _start(
+    session: str,
+    party: list[PartyMemberSpec],
+    encounter: list[EncounterMemberSpec],
+    effects: Any = (),
+) -> Any:
+    return run_async(
+        start_combat(
+            session_id=session,
+            party=party,
+            encounter=encounter,
+            scene_zones=None,
+            grid_scene=grid_scene(),
+            active_effects=list(effects),
+            rng_seed=1,
+        )
+    )
+
+
+@pytest.mark.parametrize(
+    "status", ["incapacitated", "paralyzed", "stunned", "petrified", "unconscious"]
+)
+def test_incapacitating_condition_rejects_an_attack(status: str) -> None:
+    start = _start(f"c12-incap-{status}", [_hero()], [_foe()], [_status("char:hero", status)])
+    with pytest.raises(IntentRejectedError) as exc:
+        run_async(
+            submit_player_intent(
+                start.handle,
+                actor_id="char:hero",
+                intent=PlayerIntent(
+                    intent_type="attack", weapon_id="longsword", target_id="mon:foe"
+                ),
+            )
+        )
+    assert exc.value.reason == "actor_incapacitated"
+    live = _get_live(start.handle)
+    assert not events_of(live, IntentSubmitted)  # rejected BEFORE IntentSubmitted
+
+
+def test_incapacitated_actor_may_still_pass_the_turn() -> None:
+    start = _start("c12-incap-pass", [_hero()], [_foe()], [_status("char:hero", "incapacitated")])
+    run_async(
+        submit_player_intent(
+            start.handle, actor_id="char:hero", intent=PlayerIntent(intent_type="pass")
+        )
+    )
+    live = _get_live(start.handle)
+    assert [e.actor_id for e in events_of(live, TurnEnded)] == ["char:hero"]
+
+
+def test_stunned_actor_may_still_move_but_not_dash() -> None:
+    # SRD 5.2 Stunned has no Speed clause; Dash is an action and is blocked.
+    start = _start(
+        "c12-stunned-move",
+        [_hero()],
+        [_foe(zone_id=cell(5, 5))],
+        [_status("char:hero", "stunned")],
+    )
+    run_async(
+        submit_player_intent(
+            start.handle,
+            actor_id="char:hero",
+            intent=PlayerIntent(intent_type="move", target_zone_id=cell(1, 0)),
+        )
+    )
+    assert _get_live(start.handle).actor_zone["char:hero"] == cell(1, 0)
+    with pytest.raises(IntentRejectedError) as exc:
+        run_async(
+            submit_player_intent(
+                start.handle, actor_id="char:hero", intent=PlayerIntent(intent_type="dash")
+            )
+        )
+    assert exc.value.reason == "actor_incapacitated"
+
+
+def test_incapacitated_monster_turn_records_a_pass() -> None:
+    start = _start(
+        "c12-incap-monster",
+        [_hero(initiative=1)],
+        [_foe(initiative=20, monster_template_slug="goblin-warrior")],
+        [_status("mon:foe", "paralyzed")],
+    )
+    # NOTE: slug is "goblin-warrior" (the brief said "goblin", which is not a
+    # canonical SRD slug and would make this assertion vacuous via
+    # monster_unresolved).
+    run_async(advance_monster_turn(start.handle))
+    live = _get_live(start.handle)
+    assert not events_of(live, AttackRolled)
+    submitted = events_of(live, IntentSubmitted)
+    assert submitted
+    assert submitted[-1].actor_id == "mon:foe"
+    assert submitted[-1].intent_type == "pass"
