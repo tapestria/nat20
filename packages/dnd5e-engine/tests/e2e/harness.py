@@ -13,7 +13,8 @@ from typing import Any
 
 import pytest
 
-from dnd5e_engine.specs import SceneTopology, ZoneEdge
+from dnd5e_engine.spatial import cell_id
+from dnd5e_engine.specs import GridScene, SceneTopology, ZoneEdge
 
 
 def run_async(coro: Any) -> Any:
@@ -25,6 +26,16 @@ def single_zone() -> SceneTopology:
         zones=["zone:start"],
         edges=[ZoneEdge(a="zone:start", b="zone:start", distance_ft=0)],
     )
+
+
+def grid_scene(width: int = 10, height: int = 10, **kw: Any) -> GridScene:
+    """Default 10x10 grid scene for C12+ scenarios (grid-only per D8)."""
+    return GridScene(width=width, height=height, **kw)
+
+
+def cell(col: int, row: int) -> str:
+    """Wraps ``dnd5e_engine.spatial.cell_id`` for e2e test setups."""
+    return cell_id(col, row)
 
 
 def events_of(live: Any, kind: type) -> list[Any]:
