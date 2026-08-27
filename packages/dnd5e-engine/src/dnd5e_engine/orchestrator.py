@@ -2674,16 +2674,31 @@ def _hook_tick_durations(live: _LiveCombat, actor_id: str | None) -> None:
     _tick_durations_at_turn_end(live, actor_id)
 
 
+def _hook_expire_timed_effects(live: _LiveCombat, actor_id: str | None) -> None:
+    """``turn_end`` hook — adapt ``_expire_timed_effects_at_turn_end`` to ``TurnHook``."""
+    if actor_id is None:
+        return
+    _expire_timed_effects_at_turn_end(live, actor_id)
+
+
 def _register_default_turn_hooks(live: _LiveCombat) -> None:
     """Register the engine's built-in turn-boundary hooks on ``live``.
 
-    Registration order IS execution order, and both hooks below predate F3a —
-    the order here reproduces exactly where each used to run inline, so seeded
-    replays are byte-identical apart from the new ``TurnPhase`` markers.
+    Registration order IS execution order. The two F3a hooks (duration tick,
+    reaction-effect expiry) reproduce exactly where each used to run inline, so
+    seeded replays are byte-identical apart from the new ``TurnPhase`` markers.
+    F3b's ``engine:timed-effect-expiry`` is appended AFTER the round tick, so an
+    effect carrying both a ``rounds`` counter and a ``seconds`` duration is
+    resolved by the ``rounds`` counter first and the seconds branch then sees
+    ``rounds is not None`` and stands down ("rounds wins" — see
+    ``_expire_timed_effects_at_turn_end``).
     Later clusters (ongoing damage, regeneration, recharge, legendary reset)
     append here rather than editing the advance path.
     """
     live.lifecycle.register("turn_end", _hook_tick_durations, key="engine:duration-tick")
+    live.lifecycle.register(
+        "turn_end", _hook_expire_timed_effects, key="engine:timed-effect-expiry"
+    )
     live.lifecycle.register(
         "turn_start", _hook_expire_reaction_effects, key="engine:reaction-effect-expiry"
     )
@@ -2739,19 +2754,13 @@ def _tick_durations_at_turn_end(live: _LiveCombat, actor_id: str) -> None:
             # save own these effects' lifetimes.
             if eff.flags.get("concentration"):
                 continue
-            should_tick = False
-            origin = eff.origin or ""
-            if origin.startswith("cast:"):
-                parts = origin.split(":", 2)
-                caster_id = parts[2] if len(parts) == 3 else ""
-                if caster_id == actor_id:
-                    should_tick = True
-            else:
-                # Item / environment / non-spell origins: fall back to
-                # ticking at the target's turn-end so they still expire.
-                if target_id == actor_id:
-                    should_tick = True
-            if not should_tick:
+            # Caster-keyed, with a target-keyed fallback for item /
+            # environment / non-spell origins so they still expire (see
+            # ``_duration_tick_matches_actor`` — F3b extracted this predicate
+            # verbatim so the seconds branch keys off the same owner).
+            if not _duration_tick_matches_actor(
+                origin=eff.origin or "", target_id=target_id, actor_id=actor_id
+            ):
                 continue
             new_rounds = eff.duration.rounds - 1
             if new_rounds > 0:
@@ -2765,6 +2774,158 @@ def _tick_durations_at_turn_end(live: _LiveCombat, actor_id: str) -> None:
                 target_effects[idx] = new_eff
                 continue
             to_expire.append((target_id, eff.id, eff.origin))
+
+    for target_id, effect_id, origin in to_expire:
+        _emit(
+            live,
+            EffectExpired(
+                effect_id=effect_id,
+                target_id=target_id,
+                origin=origin,
+                reason="duration",
+            ),
+        )
+
+
+#: SRD 5.2 §Duration — "a round represents about 6 seconds in the game world".
+#: The conversion factor for ``ActiveEffectDuration.seconds`` -> rounds.
+_SECONDS_PER_ROUND = 6
+
+
+def _duration_tick_matches_actor(*, origin: str, target_id: str, actor_id: str) -> bool:
+    """Whether a round-scoped duration ticks now, at ``actor_id``'s turn end.
+
+    Effect ``origin`` follows ``"cast:<slug>:<caster_id>"`` for spells and
+    ``"item:<item_id>:<id>"`` for equipped items. Cast-origin effects tick at
+    the CASTER's turn end (SRD §Combat: Bless on three allies still lasts ten
+    rounds, not ten thirds). Everything else — item, environment, or a seeded
+    effect with no caster in its origin — falls back to the TARGET's turn end
+    so it still expires eventually.
+    """
+    if origin.startswith("cast:"):
+        parts = origin.split(":", 2)
+        caster_id = parts[2] if len(parts) == 3 else ""
+        return caster_id == actor_id
+    return target_id == actor_id
+
+
+def _effect_applied_during_current_turn(
+    live: _LiveCombat, actor_id: str, identity: tuple[str, str, str]
+) -> bool:
+    """Was ``identity`` applied during the turn of ``actor_id`` that is ending?
+
+    Read-only over ``live.event_log``: find the most recent
+    ``TurnStarted(actor_id)`` (the turn now ending, since this is only called
+    from a ``turn_end`` hook) and look for a matching ``EffectApplied`` after
+    it. This is how "until the end of your NEXT turn" gets its one-turn grace
+    without a side table — an effect applied on your own turn survives that
+    turn's end; one applied on somebody else's turn dies at your very next
+    one. Effects seeded into ``start_combat`` emit no ``EffectApplied`` and so
+    read as "not applied this turn", which is the right answer for them.
+    """
+    target_id, effect_id, origin = identity
+    last_start = -1
+    for i in range(len(live.event_log) - 1, -1, -1):
+        ev = live.event_log[i]
+        if isinstance(ev, TurnStarted) and ev.actor_id == actor_id:
+            last_start = i
+            break
+    if last_start < 0:
+        return False
+    return any(
+        isinstance(ev, EffectApplied)
+        and ev.effect.target_id == target_id
+        and ev.effect.id == effect_id
+        and ev.effect.origin == origin
+        for ev in live.event_log[last_start + 1 :]
+    )
+
+
+def _expire_timed_effects_at_turn_end(live: _LiveCombat, actor_id: str) -> None:
+    """F3b — the three duration shapes ``_tick_durations_at_turn_end`` does not own.
+
+    Registered as the ``engine:timed-effect-expiry`` ``turn_end`` hook, right
+    after the ``rounds`` tick. Every branch emits
+    ``EffectExpired(reason="duration")`` and, like the round tick, snapshots the
+    identities first so in-loop ``_emit`` calls (which pop the effect out of
+    ``live.active_effects``) cannot invalidate the iteration. No RNG.
+
+    ``turns`` — SRD durations counted in the *subject's* turns ("until the end
+    of its next turn", Foundry's ``duration.turns``). Decremented at the
+    TARGET's own turn end, not the caster's, and independent of any ``rounds``
+    counter: whichever counter reaches zero first expires the effect.
+
+    ``seconds`` — SRD §Duration puts a round at 6 seconds, so a seconds-valued
+    duration is ``ceil(seconds / 6)`` rounds ticked exactly like ``rounds``
+    (caster-keyed, via ``_duration_tick_matches_actor``). The derived counter is
+    materialised ONCE into ``duration.rounds`` — decremented in the same pass,
+    so ``seconds=12`` is indistinguishable from ``rounds=2`` — after which the
+    pre-existing round tick owns it and this branch stands down. ``seconds`` is
+    never mutated; it stays readable as the effect's narrative-time duration.
+    An effect that arrives with BOTH ``rounds`` and ``seconds`` (Bless ships
+    ``rounds=10, seconds=60``) is governed by ``rounds``: the seconds branch
+    only fires when ``rounds is None``.
+
+    ``flags["until_end_of_next_turn_of"] = <actor_id>`` — "until the end of
+    your next turn". Expires at that actor's next turn end, with a one-turn
+    grace when the effect was applied during that same actor's turn
+    (``_effect_applied_during_current_turn``).
+
+    Concentration-flagged effects are exempt from all three branches, exactly
+    as they are from the round tick: the concentration cascade and the
+    per-turn repeat save own their lifetime, and the Foundry packs ship
+    display-only counters on them (Hunter's Mark's ``seconds=600``).
+    """
+    to_expire: list[tuple[str, str, str]] = []
+    for target_id, target_effects in list(live.active_effects.items()):
+        for idx, eff in enumerate(list(target_effects)):
+            if eff.flags.get("concentration"):
+                continue
+            duration = eff.duration
+            expired = False
+
+            # (1) turns — the TARGET's own turn end.
+            if duration.turns is not None and target_id == actor_id:
+                turns_left = duration.turns - 1
+                if turns_left > 0:
+                    duration = duration.model_copy(update={"turns": turns_left})
+                else:
+                    expired = True
+
+            # (2) seconds -> ceil(seconds / 6) rounds, caster-keyed. Skipped
+            # entirely once a rounds counter exists (rounds wins).
+            if (
+                not expired
+                and duration.rounds is None
+                and duration.seconds is not None
+                and _duration_tick_matches_actor(
+                    origin=eff.origin or "", target_id=target_id, actor_id=actor_id
+                )
+            ):
+                whole_rounds = -(-duration.seconds // _SECONDS_PER_ROUND)
+                rounds_left = whole_rounds - 1
+                if rounds_left > 0:
+                    duration = duration.model_copy(update={"rounds": rounds_left})
+                else:
+                    expired = True
+
+            # (3) until the end of <actor>'s next turn.
+            if (
+                not expired
+                and eff.flags.get("until_end_of_next_turn_of") == actor_id
+                and not _effect_applied_during_current_turn(
+                    live, actor_id, (target_id, eff.id, eff.origin)
+                )
+            ):
+                expired = True
+
+            if expired:
+                to_expire.append((target_id, eff.id, eff.origin))
+            elif duration is not eff.duration:
+                # Immutable replacement — previously emitted EffectApplied
+                # events hold the same ActiveEffect instance (see the round
+                # tick's note), so never mutate the duration in place.
+                target_effects[idx] = eff.model_copy(update={"duration": duration})
 
     for target_id, effect_id, origin in to_expire:
         _emit(

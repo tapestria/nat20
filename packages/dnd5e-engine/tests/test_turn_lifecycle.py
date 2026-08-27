@@ -275,8 +275,11 @@ def test_turn_phase_markers_bracket_the_boundary_in_a_fixed_order():
 
 
 def test_hooks_registered_by_the_engine_are_present_and_ordered():
-    """The two pre-F3a inline blocks are now registered hooks. Registration
-    order is part of the seeded-replay contract, so it is pinned here."""
+    """The two pre-F3a inline blocks are now registered hooks, joined by F3b's
+    timed-effect expiry. Registration order is part of the seeded-replay
+    contract, so it is pinned here — ``engine:timed-effect-expiry`` must stay
+    AFTER ``engine:duration-tick`` (the round tick claims an effect's
+    ``rounds`` counter before the seconds branch can look at it)."""
 
     async def _run():
         start = await _start("sess-lifecycle-defaults")
@@ -286,5 +289,5 @@ def test_hooks_registered_by_the_engine_are_present_and_ordered():
     assert asyncio.run(_run()) == {
         "round_start": [],
         "turn_start": ["engine:reaction-effect-expiry"],
-        "turn_end": ["engine:duration-tick"],
+        "turn_end": ["engine:duration-tick", "engine:timed-effect-expiry"],
     }

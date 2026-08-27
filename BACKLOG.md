@@ -351,10 +351,9 @@ zone + apply logic:
   gave them a place to land — `turn_lifecycle.py` runs `round_start` /
   `turn_start` / `turn_end` hooks off the single `_end_turn_and_advance` path —
   but the only registered hooks are the pre-existing duration tick and
-  reaction-effect expiry. Start-of-turn damage (Acid Arrow, Spirit Guardians),
-  regeneration and recharge rolls still have no producer. Effect durations also
-  still tick only on `rounds`; `seconds` / `turns` on `types/effects.py` are
-  never read.
+  reaction-effect expiry, plus F3b's timed-effect expiry. Start-of-turn damage
+  (Acid Arrow, Spirit Guardians), regeneration and recharge rolls still have no
+  producer.
   (`packages/dnd5e-engine/src/dnd5e_engine/turn_lifecycle.py`,
   `packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_register_default_turn_hooks`)
 - **Instant death from massive damage is not applied.** `activities/apply.py:79`
