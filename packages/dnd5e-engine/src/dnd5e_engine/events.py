@@ -401,7 +401,8 @@ class ZoneTransit(BaseModel):
 
 
 class ActorMoved(BaseModel):
-    """Emitted when a MOVE intent successfully shifts an actor to an adjacent zone.
+    """Emitted when a MOVE intent successfully shifts an actor to the requested
+    cell/zone (one event per intent, ``distance_ft`` = total feet spent).
 
     Distinct from ``ZoneTransit`` (an evaluator-internal "I moved this many
     feet" notification for AOE/ranged geometry handlers): ``ActorMoved`` is
@@ -415,6 +416,25 @@ class ActorMoved(BaseModel):
     from_zone: str
     to_zone: str
     distance_ft: int
+
+
+class CombatantMoved(BaseModel):
+    """Emitted when the ENGINE relocates a combatant outside a MOVE intent —
+    forced movement (Thunderwave's "pushed 10 feet away from you", the Push
+    weapon mastery, Shove). ``forced=True`` for every emitter today; the flag
+    exists so a future non-forced engine relocation (teleport riders) can reuse
+    the event without a new type. Intent-driven moves stay ``ActorMoved``.
+    Forced movement consumes no movement budget and provokes no opportunity
+    attack (SRD 5.2 §Opportunity Attacks: "You also don't provoke an
+    Opportunity Attack when … something moves you without using your movement").
+    """
+
+    type: Literal["combatant_moved"] = "combatant_moved"
+    actor_id: str
+    from_zone: str
+    to_zone: str
+    distance_ft: int
+    forced: bool
 
 
 class DashTaken(BaseModel):
@@ -443,7 +463,16 @@ class MoveFailed(BaseModel):
 
     type: Literal["move_failed"] = "move_failed"
     actor_id: str
-    reason: Literal["not_adjacent", "insufficient_movement", "combat_ended", "not_actor_turn"]
+    reason: Literal[
+        "not_adjacent",
+        "insufficient_movement",
+        "combat_ended",
+        "not_actor_turn",
+        # C16 — multi-cell moves (SRD 5.2 §Movement and Position, "Playing on a Grid").
+        "unreachable",  # no legal route (walls / blocked cells / enemies box the mover in)
+        "occupied",  # "You can't willingly end a move in a space occupied by another creature."
+        "blocked_path",  # the single requested step crosses a wall or cuts a blocked corner
+    ]
 
 
 class AttackFailed(BaseModel):
@@ -515,6 +544,7 @@ CombatEvent = Annotated[
     | Death
     | ZoneTransit
     | ActorMoved
+    | CombatantMoved
     | DashTaken
     | MoveFailed
     | AttackFailed
@@ -554,6 +584,7 @@ ALL_COMBAT_EVENT_TYPES: tuple[type[BaseModel], ...] = (
     Death,
     ZoneTransit,
     ActorMoved,
+    CombatantMoved,
     DashTaken,
     MoveFailed,
     AttackFailed,
@@ -576,6 +607,7 @@ __all__ = [
     "CheckRolled",
     "CombatEnded",
     "CombatEvent",
+    "CombatantMoved",
     "ConcentrationCheck",
     "ConcentrationDropped",
     "ConditionApplied",
