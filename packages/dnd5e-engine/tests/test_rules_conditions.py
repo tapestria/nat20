@@ -20,20 +20,27 @@ from __future__ import annotations
 import pytest
 
 from dnd5e_engine.rules.conditions import (
+    AUTO_CRIT_WITHIN_5FT_CONDITIONS,
     CONDITION_EFFECTS,
     CONDITION_IMPLIES,
+    SPEED_ZERO_CONDITIONS,
     Condition,
     active_condition_names,
     apply_condition,
     apply_condition_with_implies,
     check_immunity,
+    conditions_auto_crit_within_5ft,
+    conditions_block_actions,
     conditions_grant_advantage_on_attack,
     conditions_grant_disadvantage_on_ability_checks,
+    d20_test_penalty,
+    exhaustion_level_of,
     get_condition_effects,
     is_condition_active,
     project_passive_check_modifiers,
     project_passive_damage_modifiers,
     project_passive_save_modifiers,
+    project_speed,
     remove_condition,
     remove_condition_with_implies,
 )
@@ -178,7 +185,8 @@ def test_check_immunity_hit_and_miss() -> None:
 @pytest.mark.parametrize(
     "conditions,expected",
     [
-        (["exhaustion"], True),
+        # SRD 5.2: exhaustion is a numeric -2×level penalty, not disadvantage (C12).
+        (["exhaustion"], False),
         (["poisoned"], True),
         (["prone"], False),
         ([], False),
@@ -408,7 +416,9 @@ def test_save_projection_is_empty_without_relevant_conditions() -> None:
     }
 
 
-@pytest.mark.parametrize("condition", ["frightened", "poisoned", "exhaustion"])
+# SRD 5.2 dropped Exhaustion from this table (C12): it is now a numeric
+# ``-2 x level`` D20 Test penalty, not a blanket check-disadvantage marker.
+@pytest.mark.parametrize("condition", ["frightened", "poisoned"])
 def test_check_projection_marks_blanket_disadvantage(condition: str) -> None:
     out = project_passive_check_modifiers([condition])
 
@@ -426,3 +436,86 @@ def test_check_projection_is_empty_for_unrelated_conditions() -> None:
     out = project_passive_check_modifiers(["prone", "restrained"])
 
     assert out == {"passive_check_adv": [], "passive_check_dis": []}
+
+
+# ---------------------------------------------------------------------------
+# Exhaustion / speed / incapacitated projections (C12)
+# ---------------------------------------------------------------------------
+
+
+def _ac(name: str, level: int = 1) -> ActiveCondition:
+    return ActiveCondition(
+        condition=name, source_entity_id="implied:effect", scope="combat", exhaustion_level=level
+    )
+
+
+# SRD 5.2 Exhaustion: "the roll is reduced by 2 times your Exhaustion level."
+def test_exhaustion_level_is_the_highest_carried_level() -> None:
+    assert exhaustion_level_of([]) == 0
+    assert exhaustion_level_of([_ac("poisoned")]) == 0
+    assert exhaustion_level_of([_ac("exhaustion")]) == 1
+    assert exhaustion_level_of([_ac("exhaustion", 3), _ac("exhaustion", 2)]) == 3
+
+
+@pytest.mark.parametrize(("level", "penalty"), [(0, 0), (1, -2), (3, -6), (5, -10)])
+def test_d20_test_penalty_is_minus_two_per_level(level: int, penalty: int) -> None:
+    conds = [_ac("exhaustion", level)] if level else []
+    assert d20_test_penalty(conds) == penalty
+
+
+# SRD 5.2 Exhaustion: "Your Speed is reduced by a number of feet equal to 5
+# times your Exhaustion level." Grappled/Restrained/Paralyzed/Petrified/
+# Unconscious: "Your Speed is 0 and can't increase."
+def test_project_speed_subtracts_five_feet_per_exhaustion_level() -> None:
+    assert project_speed(30, [], 0) == 30
+    assert project_speed(30, ["exhaustion"], 1) == 25
+    assert project_speed(30, ["exhaustion"], 6) == 0
+    assert project_speed(5, ["exhaustion"], 2) == 0  # never negative
+
+
+@pytest.mark.parametrize("name", sorted(SPEED_ZERO_CONDITIONS))
+def test_project_speed_is_zero_for_speed_zero_conditions(name: str) -> None:
+    assert project_speed(30, [name], 0) == 0
+
+
+def test_stunned_and_prone_do_not_zero_speed() -> None:
+    # SRD 5.2 Stunned has no Speed clause; Prone restricts movement mode only.
+    assert project_speed(30, ["stunned"], 0) == 30
+    assert project_speed(30, ["prone"], 0) == 30
+
+
+# SRD 5.2 Incapacitated: "You can't take any action, Bonus Action, or Reaction."
+@pytest.mark.parametrize(
+    ("names", "blocked"),
+    [
+        (["incapacitated"], True),
+        (["paralyzed"], True),
+        (["stunned"], True),
+        (["petrified"], True),
+        (["unconscious"], True),
+        (["prone"], False),
+        (["grappled", "poisoned"], False),
+        ([], False),
+    ],
+)
+def test_conditions_block_actions(names: list[str], blocked: bool) -> None:
+    assert conditions_block_actions(names) is blocked
+
+
+@pytest.mark.parametrize("name", sorted(AUTO_CRIT_WITHIN_5FT_CONDITIONS))
+def test_auto_crit_conditions(name: str) -> None:
+    assert conditions_auto_crit_within_5ft([name]) is True
+
+
+def test_stunned_does_not_auto_crit() -> None:
+    assert conditions_auto_crit_within_5ft(["stunned"]) is False
+
+
+# SRD 5.2 dropped the 2014 exhaustion "disadvantage on ability checks" tier.
+def test_exhaustion_no_longer_projects_check_disadvantage() -> None:
+    assert project_passive_check_modifiers(["exhaustion"]) == {
+        "passive_check_adv": [],
+        "passive_check_dis": [],
+    }
+    assert project_passive_check_modifiers(["poisoned"])["passive_check_dis"] == ["all"]
+    assert project_passive_check_modifiers(["frightened"])["passive_check_dis"] == ["all"]

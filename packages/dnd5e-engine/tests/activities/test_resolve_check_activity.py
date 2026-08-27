@@ -520,7 +520,7 @@ def test_per_ability_save_bonus_folds_into_that_save_only() -> None:
 
 @pytest.mark.parametrize(
     ("condition", "expected"),
-    [("poisoned", True), ("frightened", True), ("exhaustion", True), ("prone", False)],
+    [("poisoned", True), ("frightened", True), ("exhaustion", False), ("prone", False)],
 )
 def test_condition_disadvantage_merges_with_the_projected_modifiers(
     condition: str, expected: bool
@@ -541,15 +541,8 @@ def test_condition_disadvantage_merges_with_the_projected_modifiers(
     )
 
     entry = _build_hydration_payload(live, caster=None)["check_modifiers"]["char:a"]
-    # This pins the CURRENT projection, which F2 (Task 8/10) will consume when it
-    # routes checks through ``roll_d20_test``. Frightened and Poisoned are SRD
-    # 5.2 §Conditions ("disadvantage on ability checks"). Exhaustion is NOT:
-    # ``project_passive_check_modifiers`` still applies the SRD 5.1 (2014)
-    # Level-1 effect, whereas SRD 5.2 Appendix A gives exhaustion a numeric
-    # ``-2 x level`` penalty on every D20 Test and NO disadvantage. That
-    # divergence is the tracked BACKLOG entry ("Exhaustion applies the 2014 rule,
-    # not SRD 5.2's"); closing it (C12) replaces this flag for exhaustion with
-    # the numeric penalty, and THIS case is expected to flip to ``False``.
+    # SRD 5.2 §Exhaustion is a numeric -2 x level penalty on every D20 Test (C12,
+    # rules/conditions.py::d20_test_penalty); it no longer projects disadvantage.
     assert entry["disadvantage"] is expected
     assert entry["passive_check_dis"] == (["all"] if expected else [])
     assert entry["ability_mods"]["wis"] == 2
