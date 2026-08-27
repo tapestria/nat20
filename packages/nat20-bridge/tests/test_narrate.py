@@ -7,6 +7,7 @@ from dnd5e_engine.events import (
     DamageApplied,
     Death,
     RoundStarted,
+    TurnPhase,
     TurnStarted,
 )
 
@@ -115,3 +116,38 @@ def test_unhandled_event_uses_generic_fallback() -> None:
 def test_names_fallback_to_raw_id() -> None:
     text = narrate([TurnStarted(actor_id="unknown:1")], NAMES)
     assert "unknown:1" in text
+
+
+def test_turn_phase_markers_produce_no_narration() -> None:
+    """``turn_phase`` is a structural marker, not narration.
+
+    Engine F3a emits two or three ``TurnPhase`` events at every turn boundary
+    so a host can locate the boundary programmatically. This narration is fed
+    to an LLM, and the boundary is already stated by the ``-- Round N --`` /
+    turn-start lines, so rendering the marker through the generic fallback
+    (``[turn_phase] actor_id=... phase=... round_number=...``) would spend
+    tokens on pure noise. It must contribute no line at all.
+    """
+    text = narrate(
+        [
+            TurnPhase(actor_id="char:elara", phase="turn_end", round_number=1),
+            RoundStarted(round_number=2),
+            TurnPhase(actor_id=None, phase="round_start", round_number=2),
+            TurnStarted(actor_id="char:elara"),
+            TurnPhase(actor_id="char:elara", phase="turn_start", round_number=2),
+        ],
+        NAMES,
+    )
+    assert "turn_phase" not in text
+    # Only the two real structural events survive — one line each, no blanks.
+    lines = text.split("\n")
+    assert len(lines) == 2
+    assert all(line.strip() for line in lines)
+    assert lines[0] == "-- Round 2 --"
+    assert "Elara" in lines[1]
+
+
+def test_narrating_only_markers_yields_empty_text() -> None:
+    """The degenerate case: a delta containing nothing but markers narrates to
+    the empty string rather than a run of blank lines."""
+    assert narrate([TurnPhase(actor_id=None, phase="round_start", round_number=3)], NAMES) == ""
