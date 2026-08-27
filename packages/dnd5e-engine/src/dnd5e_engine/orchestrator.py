@@ -110,6 +110,7 @@ from dnd5e_engine.events import (
     SaveRolled,
     TempHpApplied,
     TurnEnded,
+    TurnPhase,
     TurnStarted,
 )
 from dnd5e_engine.lib_loader import get_lib_loader
@@ -134,6 +135,12 @@ from dnd5e_engine.specs import (
     PartyMemberSpec,
     SceneTopology,
     ZoneEdge,
+)
+from dnd5e_engine.turn_lifecycle import (
+    TurnLifecycle,
+    run_round_start,
+    run_turn_end,
+    run_turn_start,
 )
 from dnd5e_engine.types.combat import BehaviorProfile, Combatant
 from dnd5e_engine.types.conditions import ActiveCondition
@@ -977,6 +984,12 @@ class _LiveCombat:
     reaction_effects_pending_expiry: dict[str, list[tuple[str, str, str]]] = field(
         default_factory=dict
     )
+    # Turn-boundary hook registry (``dnd5e_engine.turn_lifecycle``). Populated
+    # by ``_register_default_turn_hooks`` in ``start_combat``; run by
+    # ``_end_turn_and_advance`` / ``_begin_turn``. Every rule that fires "at the
+    # start/end of a turn" registers here rather than being open-coded into the
+    # advance path.
+    lifecycle: TurnLifecycle = field(default_factory=TurnLifecycle)
 
 
 @dataclass(frozen=True)
@@ -1469,28 +1482,39 @@ def _emit_apply_turn_started(live: _LiveCombat, event: TurnStarted) -> None:
             )
             break
 
-    # SRD Shield / one-round reaction buffs — expire any effect this actor
-    # cast off-turn (via the reaction queue) with a round-scoped duration,
-    # right here at the OWNER's own next TurnStarted, rather than waiting for
-    # a TurnEnded that may be a full round later (see
-    # ``docs/dev/reaction-queue.md``, "Duration-fix semantics").
-    pending_expiry = live.reaction_effects_pending_expiry.pop(event.actor_id, None)
-    if pending_expiry:
-        for target_id, effect_id, origin in pending_expiry:
-            still_present = any(
-                eff.id == effect_id and eff.origin == origin
-                for eff in live.active_effects.get(target_id, [])
+
+def _hook_expire_reaction_effects(live: _LiveCombat, actor_id: str | None) -> None:
+    """``turn_start`` hook — SRD Shield / one-round reaction buffs.
+
+    An effect this actor cast off-turn (via the reaction queue) with a
+    round-scoped duration expires at the OWNER's own next turn start, rather
+    than waiting for a ``TurnEnded`` that may be a full round later (see
+    ``docs/dev/reaction-queue.md``, "Duration-fix semantics"). Before F3a this
+    ran inline inside ``_emit_apply_turn_started``; it is now a registered
+    lifecycle hook and therefore fires just after the ``TurnPhase(turn_start)``
+    marker instead of during the ``TurnStarted`` fold — the relative order of
+    the ``EffectExpired`` events against every pre-existing event is unchanged.
+    """
+    if actor_id is None:
+        return
+    pending_expiry = live.reaction_effects_pending_expiry.pop(actor_id, None)
+    if not pending_expiry:
+        return
+    for target_id, effect_id, origin in pending_expiry:
+        still_present = any(
+            eff.id == effect_id and eff.origin == origin
+            for eff in live.active_effects.get(target_id, [])
+        )
+        if still_present:
+            _emit(
+                live,
+                EffectExpired(
+                    effect_id=effect_id,
+                    target_id=target_id,
+                    origin=origin,
+                    reason="duration",
+                ),
             )
-            if still_present:
-                _emit(
-                    live,
-                    EffectExpired(
-                        effect_id=effect_id,
-                        target_id=target_id,
-                        origin=origin,
-                        reason="duration",
-                    ),
-                )
 
 
 def _emit_apply_damage(live: _LiveCombat, event: DamageApplied) -> None:
@@ -2643,6 +2667,28 @@ def _record_effect_lifecycle_links(
             continue
 
 
+def _hook_tick_durations(live: _LiveCombat, actor_id: str | None) -> None:
+    """``turn_end`` hook — adapt ``_tick_durations_at_turn_end`` to ``TurnHook``."""
+    if actor_id is None:
+        return
+    _tick_durations_at_turn_end(live, actor_id)
+
+
+def _register_default_turn_hooks(live: _LiveCombat) -> None:
+    """Register the engine's built-in turn-boundary hooks on ``live``.
+
+    Registration order IS execution order, and both hooks below predate F3a —
+    the order here reproduces exactly where each used to run inline, so seeded
+    replays are byte-identical apart from the new ``TurnPhase`` markers.
+    Later clusters (ongoing damage, regeneration, recharge, legendary reset)
+    append here rather than editing the advance path.
+    """
+    live.lifecycle.register("turn_end", _hook_tick_durations, key="engine:duration-tick")
+    live.lifecycle.register(
+        "turn_start", _hook_expire_reaction_effects, key="engine:reaction-effect-expiry"
+    )
+
+
 def _tick_durations_at_turn_end(live: _LiveCombat, actor_id: str) -> None:
     """Decrement ``ActiveEffect.duration.rounds`` on the actor's owned
     maintained effects at turn-end and emit ``EffectExpired``
@@ -3215,6 +3261,7 @@ async def start_combat(
         custom_counters_by_entity=custom_counters_by_entity,
     )
     _REGISTRY[handle_id] = live
+    _register_default_turn_hooks(live)
 
     # — seed _LiveCombat.active_effects from the caller. The hook
     # is live today for equipped-magic-item enchantments (the host-side
@@ -3240,9 +3287,7 @@ async def start_combat(
     start_events: list[CombatEvent] = []
     live.event_listeners.append(start_events.append)
     try:
-        _emit(live, RoundStarted(round_number=live.round_number))
-        _emit(live, TurnStarted(actor_id=_current_actor(live).entity_id))
-        _maybe_roll_death_save(live)
+        _begin_turn(live, new_round=True)
     finally:
         live.event_listeners.remove(start_events.append)
 
@@ -3726,24 +3771,64 @@ def _resolve_feature_invocation(
     )
 
 
-def _advance_turn(live: _LiveCombat, actor_id: str) -> None:
+def _begin_turn(live: _LiveCombat, *, new_round: bool) -> None:
+    """Open the turn ``live.current_turn_index`` now points at.
+
+    The second half of the turn boundary, shared by ``start_combat`` (which has
+    no turn to end) and ``_end_turn_and_advance``. Emits the round-start pair
+    when ``new_round``, then ``TurnStarted`` (whose ``_emit`` fold performs the
+    action-economy resets), the ``turn_start`` marker + hooks, and finally any
+    pending death save.
+    """
+    if new_round:
+        _emit(live, RoundStarted(round_number=live.round_number))
+        _emit(
+            live,
+            TurnPhase(actor_id=None, phase="round_start", round_number=live.round_number),
+        )
+        run_round_start(live)
+    actor_id = _current_actor(live).entity_id
+    _emit(live, TurnStarted(actor_id=actor_id))
+    _emit(
+        live,
+        TurnPhase(actor_id=actor_id, phase="turn_start", round_number=live.round_number),
+    )
+    run_turn_start(live, actor_id)
+    _maybe_roll_death_save(live)
+
+
+def _end_turn_and_advance(live: _LiveCombat, actor_id: str) -> None:
     """SRD §Action Economy — end ``actor_id``'s turn and start the next.
 
-    Ticks effect durations at turn end, emits ``TurnEnded``, advances
-    ``current_turn_index`` (wrapping to the next round with a ``RoundStarted``
-    on wrap), emits ``TurnStarted`` for the new current actor, and rolls any
-    pending death save. This is the shared epilogue used by both spell-slot
-    reject paths and the normal post-resolution path.
+    The ONE turn-advance implementation in the engine: ``submit_player_intent``
+    (both the spell-slot reject paths and the normal post-resolution path) and
+    ``advance_monster_turn`` all route through here, and ``start_combat`` runs
+    the second half via ``_begin_turn``. Before F3a each of those three sites
+    carried its own copy of the emit-and-wrap block.
+
+    Event order at the boundary is fixed and pinned by
+    ``tests/test_turn_lifecycle.py``::
+
+        TurnPhase(turn_end, A) -> [turn_end hooks] -> TurnEnded(A)
+        -> (on wrap) RoundStarted -> TurnPhase(round_start) -> [round_start hooks]
+        -> TurnStarted(B) -> TurnPhase(turn_start, B) -> [turn_start hooks]
+        -> pending death save
+
+    The marker precedes its hooks so a host reading the stream sees the phase
+    announced before anything that phase causes.
     """
-    _tick_durations_at_turn_end(live, actor_id)
+    _emit(
+        live,
+        TurnPhase(actor_id=actor_id, phase="turn_end", round_number=live.round_number),
+    )
+    run_turn_end(live, actor_id)
     _emit(live, TurnEnded(actor_id=actor_id))
     live.current_turn_index += 1
-    if live.current_turn_index >= len(live.initiative):
+    new_round = live.current_turn_index >= len(live.initiative)
+    if new_round:
         live.current_turn_index = 0
         live.round_number += 1
-        _emit(live, RoundStarted(round_number=live.round_number))
-    _emit(live, TurnStarted(actor_id=_current_actor(live).entity_id))
-    _maybe_roll_death_save(live)
+    _begin_turn(live, new_round=new_round)
 
 
 def _validate_intent_preconditions(
@@ -3967,7 +4052,7 @@ def _consume_spell_slot(
                 reason="no_slot",
             ),
         )
-        _advance_turn(live, actor_id)
+        _end_turn_and_advance(live, actor_id)
         return True
     if base_level > 0:
         slots = live.spell_slots_by_entity.get(current.entity_id, {})
@@ -3981,7 +4066,7 @@ def _consume_spell_slot(
                     reason="no_slot",
                 ),
             )
-            _advance_turn(live, actor_id)
+            _end_turn_and_advance(live, actor_id)
             return True
         # Consume the slot. The typed PC resolver does not touch
         # ``_counter_state``, so this subtract is the authoritative
@@ -4518,7 +4603,7 @@ def _drain_counterspell_reaction(
             reason="countered",
         ),
     )
-    _advance_turn(live, actor_id)
+    _end_turn_and_advance(live, actor_id)
     return True
 
 
@@ -4528,7 +4613,7 @@ async def _dispatch_turn_nonending_intent(
     """Dispatch the turn-non-ending intents; return ``True`` when handled.
 
     SRD §Action Economy — these intents keep the actor on turn (no
-    ``_advance_turn``); the actor may follow with another intent:
+    ``_end_turn_and_advance``); the actor may follow with another intent:
 
     * ``move_mark`` — SRD §Hunter's Mark: *"If the target drops to 0 Hit
       Points before this spell ends, you can take a Bonus Action to move
@@ -4546,7 +4631,7 @@ async def _dispatch_turn_nonending_intent(
       the actor on turn so a same-turn Disengage→Move sequence works
       ; closes the discovered turn-ending fall-through where
       "disengage" fell through to the generic Action tail that
-      unconditionally calls ``_advance_turn``).
+      unconditionally calls ``_end_turn_and_advance``).
     """
     if intent.intent_type == "move_mark":
         await _handle_move_mark(live, current, intent)
@@ -4947,7 +5032,7 @@ async def submit_player_intent(
     if is_bonus_action:
         _maybe_roll_death_save(live)
         return
-    _advance_turn(live, actor_id)
+    _end_turn_and_advance(live, actor_id)
 
 
 def _fire_pc_opportunity_attacks_on_move(
@@ -5507,16 +5592,9 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
     # in ``submit_player_intent``.
     _run_end_of_turn_saves(live, current.entity_id)
 
-    # Advance the turn (same wrap-and-emit shape as submit_player_intent).
-    _tick_durations_at_turn_end(live, current.entity_id)
-    _emit(live, TurnEnded(actor_id=current.entity_id))
-    live.current_turn_index += 1
-    if live.current_turn_index >= len(live.initiative):
-        live.current_turn_index = 0
-        live.round_number += 1
-        _emit(live, RoundStarted(round_number=live.round_number))
-    _emit(live, TurnStarted(actor_id=_current_actor(live).entity_id))
-    _maybe_roll_death_save(live)
+    # Advance the turn — the single shared path (F3a); this site used to carry
+    # its own copy of the wrap-and-emit block.
+    _end_turn_and_advance(live, current.entity_id)
 
 
 def drain_pending_events(handle: CombatHandle) -> list[CombatEvent]:
