@@ -140,7 +140,7 @@ class SpatialTopology(Protocol):
 
     def within_range(self, caster: str, target: str, range_ft: int) -> bool: ...
 
-    def shortest_path(self, a: str, b: str) -> list[str]: ...
+    def shortest_path(self, a: str, b: str, *, avoid: Collection[str] = ()) -> list[str]: ...
 
     def has_line_of_sight(self, a: str, b: str) -> bool: ...
 
@@ -188,14 +188,35 @@ class GridTopology:
         dist = self._chebyshev(a, b)
         return dist == 1
 
-    def edge_distance(self, a: str, b: str) -> int | None:
-        """One step's movement cost, in feet, entering ``b`` from adjacent ``a``.
+    def _step_is_legal(self, a: str, b: str) -> bool:
+        """SRD 5.2 §Playing on a Grid, "Corners" — a single step ``a -> b``
+        (already Chebyshev-adjacent, ``b`` not blocked) is legal unless the
+        centre-to-centre segment crosses or touches a wall, or the step is a
+        diagonal whose orthogonal corner cells include a blocked cell."""
+        ac, ar = parse_cell(a)
+        bc, br = parse_cell(b)
+        dc, dr = bc - ac, br - ar
+        if (
+            dc != 0
+            and dr != 0
+            and (cell_id(ac + dc, ar) in self._blocked or cell_id(ac, ar + dr) in self._blocked)
+        ):
+            return False
+        if self._walls:
+            p1 = (ac + 0.5, ar + 0.5)
+            p2 = (bc + 0.5, br + 0.5)
+            for wall in self._walls:
+                if _segments_intersect(p1, p2, (wall.x1, wall.y1), (wall.x2, wall.y2)):
+                    return False
+        return True
 
-        SRD 5.2 §Difficult Terrain: entering a difficult-terrain cell costs
-        double. The cost keys off the cell being ENTERED (``b``), not ``a`` —
-        "every foot of movement IN Difficult Terrain."
-        """
-        if not self.is_adjacent(a, b):
+    def edge_distance(self, a: str, b: str) -> int | None:
+        """One step's movement cost, in feet, entering ``b`` from adjacent ``a``;
+        ``None`` when the step is illegal (not adjacent, ``b`` blocked, a wall
+        crosses the step, or a diagonal cuts a blocked corner — SRD 5.2
+        §Playing on a Grid "Corners"). SRD 5.2 §Difficult Terrain: entering a
+        difficult-terrain cell costs double (keyed on the cell ENTERED)."""
+        if not self.is_adjacent(a, b) or not self._step_is_legal(a, b):
             return None
         cost = self._cell_size_ft
         if b in self._difficult:
@@ -377,17 +398,26 @@ class GridTopology:
                 if dc == 0 and dr == 0:
                     continue
                 nid = cell_id(col + dc, row + dr)
-                if self._in_bounds(nid) and nid not in self._blocked:
+                if self._in_bounds(nid) and self.edge_distance(cid, nid) is not None:
                     out.append(nid)
         return out
 
-    def shortest_path(self, a: str, b: str) -> list[str]:
+    def shortest_path(self, a: str, b: str, *, avoid: Collection[str] = ()) -> list[str]:
+        """Fewest-cells path from ``a`` to ``b`` over LEGAL steps (BFS, 8
+        neighbours in fixed order — the tie-break is part of the seeded
+        contract). ``avoid`` cells are never entered (occupied-by-enemy cells,
+        SRD 5.2 §Moving Around Other Creatures); ``b`` in ``avoid`` ⇒ ``[]``.
+        Route cost is NOT minimised — callers charge each leg's
+        ``edge_distance`` against the budget."""
         if not self._in_bounds(a) or not self._in_bounds(b):
             return []
         if a == b:
             return [a]
-        # BFS over 8-neighbours (uniform 1-step cost ⇒ fewest cells). Blocked
-        # cells are never enqueued, so paths route around them.
+        avoid_set = set(avoid)
+        if b in avoid_set:
+            return []
+        # BFS over 8-neighbours (uniform 1-step cost ⇒ fewest cells). Illegal
+        # or avoided cells are never enqueued, so paths route around them.
         prev: dict[str, str] = {}
         seen: set[str] = {a}
         queue: deque[str] = deque([a])
@@ -400,7 +430,7 @@ class GridTopology:
                 path.reverse()
                 return path
             for nb in self._neighbors(node):
-                if nb not in seen:
+                if nb not in seen and nb not in avoid_set:
                     seen.add(nb)
                     prev[nb] = node
                     queue.append(nb)

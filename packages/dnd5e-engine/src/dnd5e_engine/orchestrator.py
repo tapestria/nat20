@@ -327,7 +327,7 @@ class _ZoneGraph:
                     frontier.append((new_dist, neighbour))
         return False
 
-    def shortest_path(self, a: str, b: str) -> list[str]:
+    def shortest_path(self, a: str, b: str, *, avoid: Collection[str] = ()) -> list[str]:
         """Return the sequence of zones from ``a`` to ``b`` (inclusive), or ``[]``.
 
         Dijkstra over the undirected weighted zone graph. Returned list
@@ -339,6 +339,9 @@ class _ZoneGraph:
         Phase-5 monster gambits use this to plan "MOVE toward the target"
         — they walk the returned path step-by-step, paying each edge's
         distance_ft out of the per-turn movement budget.
+
+        ``avoid``: zone graph — occupancy is not modelled; parameter accepted
+        for Protocol parity, removed with the backend in 0.7.
         """
         if a not in self._zones or b not in self._zones:
             return []
