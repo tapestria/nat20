@@ -384,7 +384,6 @@ def test_c16_s04_creature_standing_between_attacker_and_target_grants_half_cover
     assert rolled_b.is_hit is False
 
 
-@xfail_cluster(16, "spatial targeting")
 def test_c16_s05_blocked_cell_blocks_los_and_wall_blocks_corner_cutting():
     """C16-S05: SRD 5.2 §Areas of Effect / Point of Origin — "To block a
     line, an obstruction must provide Total Cover."

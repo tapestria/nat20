@@ -261,6 +261,47 @@ def test_pc_move_to_non_adjacent_cell_is_rejected():
     assert failed[-1].reason == "not_adjacent"
 
 
+def test_pc_move_across_a_wall_between_adjacent_cells_is_rejected():
+    """A wall on the shared edge makes the step illegal even though the two
+    cells are Chebyshev-adjacent — ``edge_distance`` returns ``None`` (SRD
+    5.2 "Corners"). Regression: this used to crash on an ``assert
+    distance_ft is not None`` inside ``_handle_move``; it must instead
+    reject the move like any other illegal step."""
+    from dnd5e_engine.orchestrator import PlayerIntent, submit_player_intent
+    from dnd5e_engine.specs import WallSegment
+
+    set_lib_loader_for_tests(MemoryAssetLoader())
+
+    async def _run():
+        start = await start_combat(
+            session_id="sess-grid-wallmove",
+            party=_party(cell_id(0, 0)),
+            encounter=_encounter(cell_id(9, 9)),
+            scene_zones=None,
+            grid_scene=GridScene(
+                width=10,
+                height=10,
+                wall_segments=[WallSegment(x1=1, y1=0, x2=1, y2=2)],
+            ),
+            rng_seed=5,
+        )
+        live = _get_live(start.handle)
+        await submit_player_intent(
+            start.handle,
+            actor_id="char:hero",
+            intent=PlayerIntent(intent_type="move", target_zone_id=cell_id(1, 0)),
+        )
+        return live
+
+    live = asyncio.run(_run())
+    assert live.actor_zone["char:hero"] == "0,0"  # unchanged
+    moved = [e for e in live.event_log if type(e).__name__ == "ActorMoved"]
+    assert not moved
+    failed = [e for e in live.event_log if type(e).__name__ == "MoveFailed"]
+    assert failed
+    assert failed[-1].reason == "not_adjacent"
+
+
 def test_ranged_attack_out_of_range_is_gated_on_grid():
     from dnd5e_engine.orchestrator import PlayerIntent, submit_player_intent
     from tests.test_orchestrator_gating_typed import _melee_weapon

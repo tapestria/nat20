@@ -4061,8 +4061,9 @@ def _handle_move(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
     adjacent zone, paying the edge's distance_ft from their per-turn movement
     budget. Movement does NOT end the turn; the actor keeps initiative.
 
-    Rejections (no target_zone_id, not adjacent, insufficient budget) emit
-    ``MoveFailed`` and return without mutating budget or position.
+    Rejections (no target_zone_id, not adjacent, illegal grid step — wall
+    crossing or diagonal corner-cut, insufficient budget) emit ``MoveFailed``
+    and return without mutating budget or position.
     """
     actor_id = current.entity_id
     target_zone_id = intent.target_zone_id
@@ -4075,8 +4076,12 @@ def _handle_move(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
         _emit(live, MoveFailed(actor_id=actor_id, reason="not_adjacent"))
         return
     distance_ft = live.topology.edge_distance(current_zone, target_zone_id)
-    # edge_distance returns int when is_adjacent is True; mypy needs the cast.
-    assert distance_ft is not None
+    # Grid backend: adjacency alone doesn't guarantee a legal step — a wall
+    # crossing the segment or a diagonal cutting a blocked corner also
+    # yields None here (SRD 5.2 "Corners"). Reject rather than crash.
+    if distance_ft is None:
+        _emit(live, MoveFailed(actor_id=actor_id, reason="not_adjacent"))
+        return
     if current.movement_remaining < distance_ft:
         _emit(live, MoveFailed(actor_id=actor_id, reason="insufficient_movement"))
         return
