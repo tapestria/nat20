@@ -115,12 +115,12 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
 
 ## Event stream observability (2026-08-22)
 
-- **Roll breakdowns are not exposed.** `AttackRolled` carries `roll_total` but
-  not the natural d20, the attack bonus, or the target's effective AC, so a
-  host cannot render "14 + 5 = 19 vs AC 16" or explain a miss. `SaveRolled`
-  likewise omits the natural roll. `DamageApplied` carries no `source_id`, so
-  damage cannot be attributed to an attacker or effect — a killing blow cannot
-  be credited. Adding these is additive on the event models.
+- **Damage is not attributed.** `DamageApplied` carries no `source_id`, so
+  damage cannot be credited to an attacker or effect — a killing blow cannot be
+  attributed. Additive on the event model; owned by C15. (The roll-breakdown
+  half of this entry closed in F2c: `AttackRolled` / `SaveRolled` /
+  `CheckRolled` now carry `natural`, `modifier` and `sources`; the target's
+  effective AC is still not reported.)
   (`packages/dnd5e-engine/src/dnd5e_engine/events.py`)
 
 ## Character building (2026-08-22)
@@ -274,24 +274,6 @@ zone + apply logic:
   `canonical/features` shows all 5 `formula` recovery entries are the literal
   `"1"`); thread roll-data evaluation through if such data ever lands
   (`packages/dnd5e-engine/src/dnd5e_engine/rest.py`).
-
-## Discovered during demo scenario-catalog work (2026-08-19)
-
-- **`ConcentrationCheck` event type is dead code.** `events.py` defines
-  `ConcentrationCheck` (`type: Literal["concentration_check"]`), includes it
-  in the `CombatEvent` discriminated union, and exports it in `__all__` —
-  but no code path in the engine ever constructs one (`grep -rn
-  "ConcentrationCheck(" packages/dnd5e-engine/` outside `events.py` itself
-  returns nothing; confirmed via `git log -S"ConcentrationCheck("` that no
-  commit has ever wired a constructor call). The real SRD §Concentration-
-  on-damage check ("make a Constitution saving throw ... DC = 10 or half
-  the damage taken") is implemented instead by emitting a plain
-  `SaveRolled(ability="con", ...)`. Consumers that want to distinguish a
-  concentration save from an arbitrary saving throw must currently do so
-  by convention (ability == "con" + a tracked concentration effect), not
-  by event type. Either wire `ConcentrationCheck` as the emitted event in
-  the concentration-on-damage block, or remove the unused type
-  (`packages/dnd5e-engine/src/dnd5e_engine/events.py:244`).
 
 ## Discovered during demo webapp final review (2026-08-19)
 

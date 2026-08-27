@@ -33,7 +33,7 @@ without failing CI.
 | Opportunity attacks | ✅ Resolved | Both directions (PC↔monster); same-zone reach approximation, no "can see" check |
 | Death saves, stabilization | ✅ Resolved | |
 | Instant death (massive damage) | ❌ Not modelled | `is_overkill` is reported on the event only |
-| Concentration, incl. damage-triggered saves and cascade drop | ⚠️ Partial | Drops on a failed CON save only (raw d20). **Not enforced:** one-at-a-time, ending on death/unconscious, timed expiry. |
+| Concentration, incl. damage-triggered saves and cascade drop | ⚠️ Partial | The damage save applies the real CON modifier and emits `ConcentrationCheck` (plus, until v0.7, the legacy `SaveRolled`). Drops on a failed CON save only. **Not enforced:** one-at-a-time, ending on death/unconscious, timed expiry. |
 | Temporary HP, healing | ✅ Resolved | |
 | Conditions (the 15 SRD conditions) | ⚠️ Partial | Applied/removed and gated by immunities; **mechanical effects are enforced only for the subset that projects into roll modifiers** |
 | Exhaustion | ❌ Not modelled | Levels are tracked but apply no penalty; the text also still describes the 2014 ladder, not SRD 5.2 |
@@ -142,10 +142,16 @@ weapons, object interaction, and encumbrance.
 
 ## Event stream
 
-Every call returns typed `CombatEvent`s. Two known limits on what they carry:
+Every call returns typed `CombatEvent`s.
 
-- `AttackRolled` reports `roll_total` but not the natural d20, the attack bonus,
-  or the target's AC — so a host cannot render "14 + 5 = 19 vs AC 16".
+`AttackRolled`, `SaveRolled` and `CheckRolled` carry the roll breakdown —
+`natural` (the die kept after advantage/disadvantage), `modifier` (the flat
+bonus) and `sources` (which advantage/disadvantage sources applied) — so a host
+can render "14 + 5 = 19". Two residual limits:
+
+- The target's effective AC is not reported, so a miss cannot be explained as
+  "vs AC 16"; and `modifier` excludes Bless/Bane-style bonus DICE, which must be
+  rolled after the d20 to keep the seeded stream stable.
 - `DamageApplied` carries no source/attacker id, so damage cannot be attributed.
 
 Both are tracked in `BACKLOG.md`.
