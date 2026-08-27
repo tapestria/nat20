@@ -123,8 +123,11 @@ def test_c13_s02_damage_triggers_concentration_check_with_con_modifier():
     or half the damage taken (round down), whichever number is higher, up
     to a maximum DC of 30."
     (packs/_source/content24/appendices/appendix-d-rule-references.yml:5261-5266).
-    ``_emit_apply_damage`` rolls a raw d20 with no CON modifier and emits
-    ``SaveRolled`` instead of the harmonised ``ConcentrationCheck``.
+    F1c gave ``_emit_apply_damage`` the real CON modifier and F2c emits the
+    harmonised ``ConcentrationCheck`` (alongside the legacy ``SaveRolled``
+    until v0.7). The residual gaps this scenario still pins: the DC is NOT
+    capped at 30, and ``PartyMemberSpec`` carries no ``save_proficiencies``
+    field, so a CON-save-proficient caster cannot be expressed.
     """
 
     def _foe():

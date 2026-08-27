@@ -703,3 +703,59 @@ def test_a_forced_check_d20_bypasses_the_disadvantage_draw() -> None:
 
     assert _only_check(events).natural == 19
     assert ctx.rng.randint(1, 20) == expected_next
+
+
+def test_a_poisoned_pc_draws_two_dice_through_the_live_orchestrator() -> None:
+    """End-to-end on the production path: SRD 5.2 §Poisoned — *"the creature
+    has Disadvantage on attack rolls and ability checks"*. The condition is
+    projected by the orchestrator (F1d), survives the hydration payload and
+    ``build_activity_context``'s sidecar narrowing, and is consumed by the
+    handler (F2c), so the actor draws TWO d20s and keeps the lower.
+
+    ``CheckRolled`` carries no ``advantage`` mode field (unlike
+    ``AttackRolled``); the mode is read off ``sources``, which is empty for a
+    normal roll and non-empty here.
+    """
+    start = run_async(
+        start_combat(
+            session_id="f2c-check-poisoned",
+            party=_f1d_party(wisdom=14, character_level=5),
+            encounter=_f1d_foe(),
+            scene_zones=single_zone(),
+            rng_seed=1,
+        )
+    )
+    live = _get_live(start.handle)
+    actor = next(c for c in live.initiative if c.entity_id == "char:a")
+    actor.conditions.append(
+        ActiveCondition(condition="poisoned", source_entity_id="npc:abc123def456", scope="combat")
+    )
+    payload = _build_hydration_payload(live, caster=None)
+
+    events: list[Any] = []
+    ctx = build_activity_context(
+        _combatant("char:a"),
+        [],
+        rng=random.Random(7),
+        event_emitter=events.append,
+        slot_level=None,
+        base_spell_level=None,
+        spellcasting_ability=None,
+        concentration=False,
+        source_passive_effects=[],
+        spell_book={},
+        passive_damage_modifiers=payload["passive_damage_modifiers"],
+        save_modifiers=payload["save_modifiers"],
+        check_modifiers=payload["check_modifiers"],
+    )
+    assert ctx.check_modifiers["char:a"]["disadvantage"] is True
+
+    resolve_check(_activity(associated=["prc"], calculation="flat", formula="10"), ctx)
+
+    rolls = random.Random(7)
+    expected = min(rolls.randint(1, 20), rolls.randint(1, 20))
+    check = _only_check(events)
+    assert check.natural == expected
+    assert check.modifier == 2  # WIS 14, not proficient in Perception
+    assert check.roll_total == expected + 2
+    assert check.sources == ["condition:attacker"]

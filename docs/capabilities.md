@@ -154,4 +154,4 @@ can render "14 + 5 = 19". Two residual limits:
   rolled after the d20 to keep the seeded stream stable.
 - `DamageApplied` carries no source/attacker id, so damage cannot be attributed.
 
-Both are tracked in `BACKLOG.md`.
+Every residual limit in that list is tracked in `BACKLOG.md`.

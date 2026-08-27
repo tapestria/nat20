@@ -123,6 +123,19 @@ def test_concentration_save_carries_its_roll_breakdown() -> None:
     assert save.sources == []
 
 
+def test_concentration_check_carries_the_same_roll_breakdown() -> None:
+    """The breakdown rides the SPECIFIC event too, so it survives the v0.7
+    removal of the duplicate ``SaveRolled``."""
+    live = _damage(24)
+    save = _events(live, SaveRolled)[0]
+    check = _events(live, ConcentrationCheck)[0]
+
+    assert check.natural == save.natural
+    assert check.modifier == 7
+    assert check.roll_total == check.natural + check.modifier
+    assert check.sources == []
+
+
 def test_no_concentration_means_no_check_event() -> None:
     live = _damage(24, concentrating=False)
 
