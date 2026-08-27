@@ -283,17 +283,23 @@ def conditions_grant_disadvantage_on_ability_checks(conditions: list[str]) -> bo
 def conditions_grant_advantage_on_attack(
     attacker_conditions: list[str],
     target_conditions: list[str],
+    *,
+    distance_ft: int | None = None,
+    grappler_id: str | None = None,
+    target_id: str | None = None,
 ) -> tuple[bool, bool]:
     """
     Returns (attacker_has_advantage, attacker_has_disadvantage) based on conditions.
     Does NOT account for ranged vs melee distinction (caller's responsibility).
 
-    Covers only the SRD 5.2 rows that need **no** distance or target-identity
-    information. Two rows are therefore still missing and are tracked in
-    ``BACKLOG.md`` ("Audit 2026-08-26 — rolls & modifiers"): Prone (advantage
-    only from within 5 ft, disadvantage otherwise) and a Grappled attacker
-    (disadvantage against any target other than the grappler). Both need the
-    reach/distance sidecar that lands with C12.
+    Keyword inputs (all optional — absent means "unknown" and the row that
+    needs it stays inert, so pre-0.6 callers are unaffected):
+
+    * ``distance_ft`` — attacker→target distance for the Prone target row
+      (SRD 5.2 Prone: advantage within 5 ft, disadvantage otherwise).
+    * ``grappler_id`` / ``target_id`` — identity of the creature grappling the
+      ATTACKER and of the target, for the Grappled attacker row (SRD 5.2
+      Grappled: disadvantage against any target other than the grappler).
     """
     advantage = False
     disadvantage = False
@@ -331,6 +337,27 @@ def conditions_grant_advantage_on_attack(
     # you" exception needs per-attacker senses, which the engine does not model
     # yet.)
     if is_condition_active(Condition.INVISIBLE, target_conditions):
+        disadvantage = True
+
+    # SRD 5.2 glossary, Prone: "You have Disadvantage on attack rolls."
+    if is_condition_active(Condition.PRONE, attacker_conditions):
+        disadvantage = True
+    # SRD 5.2 glossary, Prone: "An attack roll against you has Advantage if the
+    # attacker is within 5 feet of you. Otherwise, that attack roll has
+    # Disadvantage." Needs a distance; unknown distance → inert.
+    if is_condition_active(Condition.PRONE, target_conditions) and distance_ft is not None:
+        if distance_ft <= 5:
+            advantage = True
+        else:
+            disadvantage = True
+    # SRD 5.2 glossary, Grappled: "You have Disadvantage on attack rolls against
+    # any target other than the grappler." Unknown grappler → inert (never
+    # penalise a swing that might be at the grappler).
+    if (
+        is_condition_active(Condition.GRAPPLED, attacker_conditions)
+        and grappler_id is not None
+        and target_id != grappler_id
+    ):
         disadvantage = True
 
     return advantage, disadvantage

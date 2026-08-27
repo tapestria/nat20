@@ -519,3 +519,50 @@ def test_exhaustion_no_longer_projects_check_disadvantage() -> None:
     }
     assert project_passive_check_modifiers(["poisoned"])["passive_check_dis"] == ["all"]
     assert project_passive_check_modifiers(["frightened"])["passive_check_dis"] == ["all"]
+
+
+# SRD 5.2 Prone: "You have Disadvantage on attack rolls. An attack roll against
+# you has Advantage if the attacker is within 5 feet of you. Otherwise, that
+# attack roll has Disadvantage."
+def test_prone_attacker_has_disadvantage() -> None:
+    assert conditions_grant_advantage_on_attack(["prone"], []) == (False, True)
+
+
+def test_prone_target_grants_advantage_within_5ft() -> None:
+    assert conditions_grant_advantage_on_attack([], ["prone"], distance_ft=5) == (True, False)
+    assert conditions_grant_advantage_on_attack([], ["prone"], distance_ft=0) == (True, False)
+
+
+def test_prone_target_imposes_disadvantage_beyond_5ft() -> None:
+    assert conditions_grant_advantage_on_attack([], ["prone"], distance_ft=10) == (False, True)
+    assert conditions_grant_advantage_on_attack([], ["prone"], distance_ft=30) == (False, True)
+
+
+def test_prone_target_with_unknown_distance_is_inert() -> None:
+    # No distance sidecar (zone-less combat): neither direction fires.
+    assert conditions_grant_advantage_on_attack([], ["prone"]) == (False, False)
+
+
+# SRD 5.2 Grappled: "You have Disadvantage on attack rolls against any target
+# other than the grappler."
+def test_grappled_attacker_has_disadvantage_against_non_grappler() -> None:
+    assert conditions_grant_advantage_on_attack(
+        ["grappled"], [], grappler_id="mon:ogre", target_id="mon:goblin"
+    ) == (False, True)
+
+
+def test_grappled_attacker_rolls_normally_against_the_grappler() -> None:
+    assert conditions_grant_advantage_on_attack(
+        ["grappled"], [], grappler_id="mon:ogre", target_id="mon:ogre"
+    ) == (False, False)
+
+
+def test_grappled_attacker_with_unknown_grappler_is_inert() -> None:
+    assert conditions_grant_advantage_on_attack(["grappled"], [], target_id="mon:goblin") == (
+        False,
+        False,
+    )
+
+
+def test_existing_rows_unchanged_without_keywords() -> None:
+    assert conditions_grant_advantage_on_attack(["poisoned"], ["paralyzed"]) == (True, True)
