@@ -185,11 +185,21 @@ class AttackRolled(BaseModel):
     # F2 — optional D20 Test provenance (``activities.d20.D20Result``).
     # Additive: unset by pre-F2 callers (e.g. the opportunity-attack path);
     # populated by ``activities/attack.py::resolve_attack`` since F2b.
-    # ``natural`` is the KEPT die — the face actually used for the total
-    # after advantage/disadvantage resolution, i.e. the die the natural-20
-    # crit / natural-1 fumble test reads. Under advantage/disadvantage it is
-    # therefore the higher/lower of the two draws, NOT the first draw.
+    # ``natural`` is the KEPT die after advantage — the face actually used
+    # for the total once advantage/disadvantage has picked higher/lower, and
+    # the die the natural-20 crit / natural-1 fumble test reads. Under
+    # advantage/disadvantage it is therefore NOT the first draw; the
+    # discarded die is not currently reported (``D20Result.first`` holds it
+    # inside the resolver).
     natural: int | None = None
+    # ``modifier`` is the FLAT attack bonus (ability mod + proficiency +
+    # parsed ``attack.bonus`` + the weapon's magical bonus). It deliberately
+    # EXCLUDES the per-attacker ``passive_attack_bonus`` dice sidecar (SRD
+    # §Bless / §Bane, a signed d4 rolled fresh per swing): folding that into
+    # the primitive's modifier would change the seeded draw ORDER. So
+    # ``roll_total == natural + modifier`` holds only when no Bless/Bane-style
+    # sidecar is active on the attacker; with one, the difference is the d4.
+    # A separate ``bonus_dice_total`` field is deferred.
     modifier: int | None = None
     sources: list[AdvantageSource] = Field(default_factory=list)
 
