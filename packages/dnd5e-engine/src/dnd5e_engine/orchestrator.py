@@ -53,7 +53,7 @@ import itertools
 import logging
 import random
 import re
-from collections.abc import AsyncIterator, Mapping, Sequence
+from collections.abc import AsyncIterator, Collection, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -374,7 +374,9 @@ class _ZoneGraph:
         # geometry is a grid-only capability — see docs/dev/spatial-geometry.md.)
         return a in self._zones and b in self._zones
 
-    def cover_between(self, a: str, b: str) -> Literal["none", "half", "three_quarters", "total"]:
+    def cover_between(
+        self, a: str, b: str, occupied_cells: Collection[str] = ()
+    ) -> Literal["none", "half", "three_quarters", "total"]:
         # Zone graph has no positional cover model — an abstract graph of
         # named locations has no coordinate system to hang obstruction
         # geometry off of. Always "none" preserves current zone-combat

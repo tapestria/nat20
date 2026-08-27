@@ -10,6 +10,7 @@ the zone graph (``_ZoneGraph`` in ``orchestrator.py``) and the grid
 from __future__ import annotations
 
 from collections import deque
+from collections.abc import Collection
 from typing import Literal, Protocol, runtime_checkable
 
 from dnd5e_engine.specs import GridScene, WallSegment
@@ -143,7 +144,9 @@ class SpatialTopology(Protocol):
 
     def has_line_of_sight(self, a: str, b: str) -> bool: ...
 
-    def cover_between(self, a: str, b: str) -> CoverDegree: ...
+    def cover_between(
+        self, a: str, b: str, occupied_cells: Collection[str] = ()
+    ) -> CoverDegree: ...
 
 
 class GridTopology:
@@ -206,49 +209,81 @@ class GridTopology:
         return dist * self._cell_size_ft <= range_ft
 
     def has_line_of_sight(self, a: str, b: str) -> bool:
-        """SRD 5.2 §Areas of Effect — a wall blocks sight between two cells.
+        """SRD 5.2 §Point of Origin — "To block a line, an obstruction must
+        provide Total Cover." Two obstruction sources share one walk:
 
-        Traces the straight segment between ``a``'s and ``b``'s CELL-CENTER
-        points against every ``wall_segments`` entry (grid-corner endpoints);
-        any proper intersection blocks the line. No walls ⇒ always True
-        (preserves prior behavior byte-for-byte).
+        * ``wall_segments`` — the straight segment between the two cells'
+          CENTER points is tested against every wall edge (grid-corner
+          endpoints); any intersection blocks.
+        * ``blocked_cells`` — a terrain feature that fills its space is Total
+          Cover: any cell strictly between ``a`` and ``b`` on the Bresenham
+          line that is blocked blocks sight. Endpoints never count.
+
+        No walls and no blocked cells ⇒ always True (unchanged behaviour).
         """
         if not self._in_bounds(a) or not self._in_bounds(b):
             return False
-        if not self._walls:
-            return True
         ac, ar = parse_cell(a)
         bc, br = parse_cell(b)
+        if self._blocked:
+            for cid in _bresenham_cells(ac, ar, bc, br):
+                if cid != a and cid != b and cid in self._blocked:
+                    return False
+        if not self._walls:
+            return True
         p1 = (ac + 0.5, ar + 0.5)
         p2 = (bc + 0.5, br + 0.5)
         for wall in self._walls:
-            p3 = (wall.x1, wall.y1)
-            p4 = (wall.x2, wall.y2)
-            if _segments_intersect(p1, p2, p3, p4):
+            if _segments_intersect(p1, p2, (wall.x1, wall.y1), (wall.x2, wall.y2)):
                 return False
         return True
 
-    def cover_between(self, a: str, b: str) -> CoverDegree:
-        """SRD 5.2 §Cover — the highest cover degree an obstruction cell
-        lying on the straight line between ``a`` and ``b`` grants.
+    def cover_between(self, a: str, b: str, occupied_cells: Collection[str] = ()) -> CoverDegree:
+        """SRD 5.2 §Cover — the highest cover degree an obstruction on the
+        straight line between ``a`` and ``b`` grants (``none < half <
+        three_quarters < total``). Three sources, one Bresenham walk over the
+        cells strictly between the endpoints:
 
-        Walks the Bresenham line of cells from ``a`` to ``b`` (excluding both
-        endpoints — a combatant's own/target's cell never grants itself
-        cover) and returns the HIGHEST tagged ``cover_cells`` degree among
-        them (``none < half < three_quarters < total``). No cover geometry ⇒
-        always ``"none"`` (preserves prior no-cover behavior).
+        * ``cover_cells`` — host-authored degree per cell. The TARGET's own
+          cell counts (an object in its space covers it); the ORIGIN cell
+          never does. Ruling shared with C22 Task 6 — keep at merge;
+        * ``blocked_cells`` — "an object that covers the whole target" ⇒ ``total``;
+        * ``occupied_cells`` — "another creature … that covers at least half
+          of the target" ⇒ ``half``. The caller passes the cells of every
+          OTHER live combatant (never the attacker's or the target's own cell —
+          those are skipped here defensively as well). Ally or enemy makes no
+          difference (rule card: creature cover ignores alignment).
+
+        Empty geometry and no occupants ⇒ ``"none"`` (unchanged behaviour).
         """
-        if not self._cover_cells or not self._in_bounds(a) or not self._in_bounds(b):
+        if not self._in_bounds(a) or not self._in_bounds(b):
+            return "none"
+        occupied = set(occupied_cells)
+        if not self._cover_cells and not self._blocked and not occupied:
             return "none"
         ac, ar = parse_cell(a)
         bc, br = parse_cell(b)
         best: CoverDegree = "none"
         for cid in _bresenham_cells(ac, ar, bc, br):
-            if cid in (a, b):
+            if cid == a:
                 continue
-            degree = self._cover_cells.get(cid)
+            degree: CoverDegree | None = None
+            if cid in self._blocked and cid != b:
+                degree = "total"
+            else:
+                tagged = self._cover_cells.get(cid)
+                if tagged is not None:
+                    degree = tagged  # type: ignore[assignment]
+                # Creature cover: the target's own cell is occupied by the
+                # target itself and never grants it cover.
+                if (
+                    cid != b
+                    and cid in occupied
+                    and (degree is None or _COVER_RANK[degree] < _COVER_RANK["half"])
+                ):
+                    degree = "half"
             if degree is not None and _COVER_RANK[degree] > _COVER_RANK[best]:
-                best = degree  # type: ignore[assignment]
+                best = degree
         return best
 
     def is_valid_cell(self, cid: str) -> bool:
