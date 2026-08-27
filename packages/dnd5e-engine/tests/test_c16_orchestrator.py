@@ -5,10 +5,12 @@ from __future__ import annotations
 
 import typing
 
-from pydantic import TypeAdapter
+import pytest
+from pydantic import TypeAdapter, ValidationError
 
 from dnd5e_engine import events as events_module
 from dnd5e_engine.events import ALL_COMBAT_EVENT_TYPES, CombatEvent, MoveFailed
+from dnd5e_engine.orchestrator import PlayerIntent
 
 # ── Task 4: typed surface ────────────────────────────────────────────────
 
@@ -28,3 +30,14 @@ def test_combatant_moved_is_a_registered_discriminated_event():
     round_tripped = TypeAdapter(CombatEvent).validate_python(ev.model_dump())
     assert isinstance(round_tripped, cls)
     assert round_tripped.forced is True
+
+
+# ── Task 5: PlayerIntent.direction ───────────────────────────────────────
+
+
+def test_player_intent_direction_defaults_none_and_accepts_a_vector():
+    assert PlayerIntent(intent_type="cast_spell", spell_id="burning-hands").direction is None
+    intent = PlayerIntent(intent_type="cast_spell", spell_id="burning-hands", direction=(1, 0))
+    assert intent.direction == (1, 0)
+    with pytest.raises(ValidationError):
+        PlayerIntent(intent_type="cast_spell", spell_id="burning-hands", direction=(0, 0))

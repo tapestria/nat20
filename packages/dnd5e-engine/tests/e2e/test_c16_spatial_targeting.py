@@ -115,7 +115,6 @@ def test_c16_s01_fireball_sphere_hits_every_creature_within_radius():
     assert not far_dmg
 
 
-@xfail_cluster(16, "spatial targeting")
 def test_c16_s02_burning_hands_cone_fires_from_casters_own_cell():
     """C16-S02: SRD 5.2 §Areas of Effect, Cone — "A Cone is an area of
     effect that extends in straight lines from a point of origin in a
@@ -129,15 +128,11 @@ def test_c16_s02_burning_hands_cone_fires_from_casters_own_cell():
     With a real cone walk, ``mon:front`` (2 cells "ahead", inside a 3-cell
     forward cone) should take ``DamageApplied(damage_type="fire")`` (bounded
     ``[3, 18]``, 3d6) and ``mon:behind`` (2 cells "behind") should take
-    none. ``PlayerIntent`` has no ``direction`` field today to express
-    which of the 8 grid directions a self-centered cone fires along —
-    ``cells_in_template(shape="cone", ...)`` already requires it, but
-    nothing upstream populates one — so the scripted cast below (which
-    presumes the field, per the catalog's own script) fails at intent
-    construction (``extra="forbid"``) before the scripted assertions can
-    even run; they are pinned here so the scenario turns green once
-    ``direction`` lands and ``_expand_aoe_target_list`` gets the
-    ``cells_in_template`` rewiring from C16-S01.
+    none. ``cells_in_template(shape="cone", ...)`` requires a direction
+    vector to know which of the 8 grid directions a self-centered cone
+    fires along; ``PlayerIntent.direction`` (Task 5) supplies it and
+    ``_expand_aoe_target_list``'s ``cells_in_template`` rewiring (Task 1)
+    consumes it, so the scripted cast below now resolves for real.
     """
 
     async def _run():
@@ -184,9 +179,6 @@ def test_c16_s02_burning_hands_cone_fires_from_casters_own_cell():
             rng_seed=3,
         )
         live = _get_live(start.handle)
-        # API delta (C16): PlayerIntent.direction does not exist today —
-        # extra="forbid" rejects this before the cast can even resolve,
-        # which is the failure that drives this scenario's xfail.
         await submit_player_intent(
             start.handle,
             actor_id="char:wiz",

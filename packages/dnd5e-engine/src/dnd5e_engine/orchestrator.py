@@ -60,7 +60,7 @@ from typing import TYPE_CHECKING, Any, Literal
 from dnd5e_srd_data.schema.common import ActivationBlock, AttackActivity, SaveActivity
 from dnd5e_srd_data.schema.item import Weapon, WeaponProperty
 from dnd5e_srd_data.schema.spell import CastingTimeUnit, Spell, SpellRangeUnits
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from dnd5e_engine.activities.actor_stats import (
     ABILITY_CODES,
@@ -209,11 +209,24 @@ class PlayerIntent(BaseModel):
     # the room") and projected through ``parsed_intent_to_player_intent``
     # from ``ParsedIntent.target_zone_id``.
     target_zone_id: str | None = None
+    # C16 — SRD 5.2 §Areas of Effect: a Cone / Line / Cube "extends … in a
+    # direction its creator chooses". Grid offset vector ``(dcol, drow)``; only
+    # the sign of each component matters (one of the 8 grid directions). When
+    # omitted for a directional template the orchestrator aims from the caster
+    # through ``target_id``. Ignored for sphere / cylinder and non-AoE intents.
+    direction: tuple[int, int] | None = None
     # SRD §Combat — Dash budget choice. False → Action (default). True → Bonus
     # Action (Rogue Cunning Action). The orchestrator rejects the bonus-action
     # path when the actor is not a Rogue. Carried from
     # ``ParsedIntent.use_bonus_action``.
     use_bonus_action: bool = False
+
+    @field_validator("direction")
+    @classmethod
+    def _direction_nonzero(cls, value: tuple[int, int] | None) -> tuple[int, int] | None:
+        if value is not None and value == (0, 0):
+            raise ValueError("direction must be a nonzero grid vector")
+        return value
 
 
 # ── Public handle ───────────────────────────────────────────────────────────
