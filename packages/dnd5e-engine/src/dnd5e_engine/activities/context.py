@@ -232,6 +232,16 @@ class ActivityResolutionContext:
     # fixtures now. Empty default keeps the golden corpus identical (no
     # advantage producer ⇒ every attack rolls ``normal``, as before).
     active_effects: Sequence[ActiveEffect] = ()
+    # F2b — SRD §Advantage and Disadvantage, condition-derived half. The
+    # CASTER's own active condition NAMES (``rules/conditions.active_condition_names``)
+    # and the same per-target projection keyed by ``entity_id``. Consumed by
+    # ``attack.py`` via ``rules/conditions.conditions_grant_advantage_on_attack``
+    # (Invisible/Blinded/Poisoned/Frightened/Restrained on the attacker;
+    # Paralyzed/Stunned/Unconscious/Blinded on the target). Filled by
+    # ``build_activity_context`` from ``Combatant.conditions``; empty defaults
+    # leave every attack at ``normal``, byte-identical to the pre-F2b stream.
+    attacker_conditions: list[str] = field(default_factory=list)
+    target_conditions: dict[str, list[str]] = field(default_factory=dict)
     # SRD §Sneak Attack (Rogue), "Once per turn" — per-ATTACKER gate keyed by
     # ``entity_id`` (mirrors ``passive_melee_damage_bonus``'s per-caster shape).
     # ``True`` means the caster has ALREADY landed a Sneak Attack rider this
