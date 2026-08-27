@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No schema or canonical-content changes. The `dnd5e-engine` core-mechanics
+foundations (F1–F3) read the existing corpus unchanged — see
+[`docs/migration/v0.5-to-v0.6.md`](../../docs/migration/v0.5-to-v0.6.md).
+
 ## [0.5.0]
 
 Lockstep release with `dnd5e-engine` 0.5.0 and `nat20-bridge` 0.5.0.

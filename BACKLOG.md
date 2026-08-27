@@ -452,10 +452,11 @@ stand-in, not an engine capability. Specifically:
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/monster_actions.py`)
 - **79 monster actions carry `recharge`; zero `.recharge` reads** (sharpens
   the "recharge not gated" entry above).
-- **Monster skill and save proficiencies are never hydrated** onto `Combatant`
-  (`_build_foe_combatants`, `orchestrator.py:2786`); only vulnerabilities
-  auto-hydrate from the template — resistances/immunities must be host-supplied
-  on `EncounterMemberSpec`.
+- **Monster damage resistances/immunities are never hydrated** onto `Combatant`
+  (`_build_foe_combatants`); only vulnerabilities auto-hydrate from the template,
+  so resistances/immunities must be host-supplied on `EncounterMemberSpec`.
+  (Ability scores, save/skill proficiencies and the proficiency bonus DO
+  hydrate as of F1b.)
 - **Target selection is hard-coded lowest-HP living PC** (`orchestrator.py:5069`)
   with no reach/LoS/threat consideration; flee planning returns `None` on a
   grid (`_plan_flee_destination:695`) so a fleeing monster holds still.
@@ -475,8 +476,10 @@ footprints. Exploration-tier; revisit only if a host asks.
   monster spellcasting, saves, background, weapon mastery, concentration
   exclusivity, AoE templates, Extra Attack-less action economy, opportunity
   attacks' "can see" check, ability-score/proficiency derivation). Corrected
-  2026-08-26. `test_capability_matrix.py` pins only spell/monster COUNTS, so
-  status rows can still drift; consider pinning ❌/⚠️ rows to a code probe.
+  2026-08-26. Closed 2026-08-26: `test_capability_matrix.py::
+  test_status_rows_match_code_probes` now pins five representative rows to a
+  grep-level code probe in both directions. The probe set is a sample, not
+  exhaustive — **add a probe entry whenever a status row is flipped.**
 
 ## Catalog v2 scenarios without a prior entry (2026-08-26)
 
@@ -526,6 +529,50 @@ the close-gap protocol (delete-on-close) has an entry to delete.
   is a single `str | None` with no multi-target/dart-count shape to route
   through, so a 3rd-level Magic Missile still fires only 1 dart, not 5.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/dice.py`)
+
+## Foundations follow-ups (2026-08-26)
+
+Reviewed and deliberately deferred during the F1–F3 foundations pass (actor
+stat projection, unified d20, turn lifecycle). Each is additive and none blocks
+a cluster; they are consolidated here so they are not re-discovered.
+
+- **`AdvantageMode` and `TurnPhase` are not top-level exports.** Both live on
+  `dnd5e_engine.events` and are reachable there, and the package exports no
+  other event class or roll-mode alias from `__init__.py`, so the asymmetry is
+  consistent rather than an omission. Revisit only if the whole event surface is
+  re-exported. (`packages/dnd5e-engine/src/dnd5e_engine/__init__.py`,
+  `packages/dnd5e-engine/src/dnd5e_engine/events.py`)
+- **`EncounterMemberSpec.dexterity: int = 10` is a lossy sentinel.** The monster
+  template hydration cannot distinguish "host left the default" from "host
+  explicitly set 10", so an explicit 10 always defers to the template's DEX.
+  Retype to `int | None = None` (additive; needs a migration note) in C18/C23.
+  (`packages/dnd5e-engine/src/dnd5e_engine/specs.py`)
+- **Roll events cannot report bonus DICE.** `roll_total == natural + modifier`
+  only when no Bless/Bane-style bonus die applied; `modifier` deliberately
+  excludes them (they are rolled after the d20 to keep the seeded stream
+  stable), so the printed breakdown does not add up in that case. Fix shape: an
+  additive `bonus_dice_total: int | None` on `AttackRolled` / `SaveRolled` /
+  `CheckRolled` / `ConcentrationCheck`.
+  (`packages/dnd5e-engine/src/dnd5e_engine/events.py`)
+- **`TurnLifecycle` has no public registry introspection.** The registration
+  ORDER of turn hooks is a determinism contract, and the only way to assert it
+  is reading the private `_hooks` list (`tests/test_turn_lifecycle.py` does).
+  A `registered_keys(phase) -> tuple[str, ...]` accessor is the clean fix.
+  (`packages/dnd5e-engine/src/dnd5e_engine/turn_lifecycle.py`)
+- **The turn-start log index is recomputed per candidate effect.**
+  `_effect_applied_during_current_turn` rescans the event log for each
+  until-end-of-next-turn effect at a turn boundary. Bounded and immaterial at
+  today's scale; when C12/C18 add a *second* log-reading turn hook, hoist a
+  single `current_turn_start_index` computed once in `_begin_turn` and have
+  both hooks read it.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_begin_turn`)
+- **The two orchestrator-level save paths bypass effect/condition save
+  projections.** F1c gave the concentration check and the end-of-turn repeat
+  save their real ability + proficiency modifier, but neither folds the
+  effect-derived `passive_save_bonus` (Bless/Bane) nor the condition-derived
+  save advantage / auto-fail projections the IR-level save handler honours.
+  Owned by C12.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
 
 ## Blocked
 
