@@ -242,6 +242,56 @@ def test_seconds_six_expires_at_first_caster_turn_end() -> None:
     assert remaining["effect:seven"].duration.rounds == 1
 
 
+def test_seconds_sixty_expires_at_the_casters_tenth_turn_end() -> None:
+    """``seconds=60`` — one minute, the most common duration in the pack corpus —
+    is ``ceil(60 / 6) = 10`` rounds: present after the caster's 9th turn end,
+    gone at the 10th, and never at the 11th (it is already gone).
+
+    Walks the whole chain because the first tick is the odd one out: the
+    seconds branch materialises ``rounds=9`` and decrements in the same pass,
+    after which the pre-existing round tick owns the counter. An off-by-one in
+    that hand-off would only ever show up at the far end.
+    """
+
+    async def _run() -> Any:
+        eff = ActiveEffect(
+            id="effect:minute",
+            name="One Minute",
+            origin="cast:minute:char:hero",
+            target_id="char:hero",
+            duration=ActiveEffectDuration(seconds=60),
+            flags={"concentration": False},
+        )
+        start = await _start("sess-seconds-60", (eff,))
+        live = _get_live(start.handle)
+        for turn_ends in range(1, 10):
+            await _hero_turn(start.handle)  # the caster's Nth turn end
+            remaining = _effects_of(live, "char:hero")
+            assert remaining, f"1 minute must outlive the caster's turn end #{turn_ends}"
+            # 10 rounds total: the Nth caster turn end leaves 10 - N.
+            assert remaining[0].duration.rounds == 10 - turn_ends
+            assert remaining[0].duration.seconds == 60
+            await _foe_turn(start.handle)
+            assert _effects_of(live, "char:hero"), "the foe's turn end must not tick it"
+        await _hero_turn(start.handle)  # the caster's 10th turn end
+        return live
+
+    live = asyncio.run(_run())
+    assert not _effects_of(live, "char:hero")
+    expired = [e for e in live.event_log if isinstance(e, EffectExpired)]
+    assert [(e.effect_id, e.reason) for e in expired] == [("effect:minute", "duration")]
+    hero_ends = [
+        i
+        for i, e in enumerate(live.event_log)
+        if isinstance(e, TurnEnded) and e.actor_id == "char:hero"
+    ]
+    assert len(hero_ends) == 10
+    # Fired inside the 10th turn-end hook run: after the 9th TurnEnded, before
+    # the 10th (turn_end hooks run ahead of the TurnEnded event).
+    idx = live.event_log.index(expired[0])
+    assert hero_ends[8] < idx < hero_ends[9]
+
+
 def test_seconds_exempt_for_concentration_effects() -> None:
     """Hunter's Mark (``seconds=600``, concentration) is untouched by the hook."""
 
