@@ -325,7 +325,7 @@ def test_c07_s04_sneak_attack_once_per_turn_cap_resets_next_turn():
         changes=[ActiveEffectChange(key="flags.advantage.attack", mode="override", value=True)],
     )
 
-    def _hit_total(active_effects, sneak_attack_spent):
+    def _hit_total(active_effects, sneak_attack_spent, scale_values=None):
         events: list = []
         target = Combatant(
             entity_id="mon:foe",
@@ -344,7 +344,7 @@ def test_c07_s04_sneak_attack_once_per_turn_cap_resets_next_turn():
             caster_abilities={"str": 10, "dex": 18, "con": 10, "int": 10, "wis": 10, "cha": 10},
             caster_proficiency_bonus=3,
             caster_level=5,
-            scale_values={"rogue.sneak-attack": "3d6"},
+            scale_values=({"rogue.sneak-attack": "3d6"} if scale_values is None else scale_values),
             active_effects=active_effects,  # type: ignore[call-arg]
             sneak_attack_spent=sneak_attack_spent,  # type: ignore[call-arg]
         )
@@ -353,11 +353,19 @@ def test_c07_s04_sneak_attack_once_per_turn_cap_resets_next_turn():
             e.amount for e in events if isinstance(e, DamageApplied) and e.target_id == "mon:foe"
         )
 
-    baseline_total = _hit_total(active_effects=(), sneak_attack_spent={})
+    # F2b: ``flags.advantage.attack`` now also drives the BASE d20 (two draws
+    # instead of one), so an advantage-less swing is no longer a
+    # stream-comparable baseline. The reference is the SAME advantage stream
+    # with the sneak dice absent, so the only delta measured below is the rider.
+    baseline_total = _hit_total(
+        active_effects=(adv_effect,), sneak_attack_spent={}, scale_values={}
+    )
     hit1_total = _hit_total(active_effects=(adv_effect,), sneak_attack_spent={})
     hit2_total = _hit_total(active_effects=(adv_effect,), sneak_attack_spent={"char:rogue": True})
     hit3_total = _hit_total(active_effects=(adv_effect,), sneak_attack_spent={})
 
-    assert 3 <= hit1_total - baseline_total <= 18
+    # Seed 9 under advantage draws (15, 20) → the kept die is a natural 20, so
+    # the 3d6 rider is crit-doubled to 6d6 (SRD §Critical Hits): window 6..36.
+    assert 6 <= hit1_total - baseline_total <= 36
     assert hit2_total - baseline_total == 0
-    assert 3 <= hit3_total - baseline_total <= 18
+    assert 6 <= hit3_total - baseline_total <= 36

@@ -183,8 +183,12 @@ class AttackRolled(BaseModel):
     # AoO path when the reaction queue lands.
     is_opportunity_attack: bool = False
     # F2 — optional D20 Test provenance (``activities.d20.D20Result``).
-    # Additive: unset by pre-F2 callers, populated once attack resolution
-    # is wired through the unified primitive (Task 9).
+    # Additive: unset by pre-F2 callers (e.g. the opportunity-attack path);
+    # populated by ``activities/attack.py::resolve_attack`` since F2b.
+    # ``natural`` is the KEPT die — the face actually used for the total
+    # after advantage/disadvantage resolution, i.e. the die the natural-20
+    # crit / natural-1 fumble test reads. Under advantage/disadvantage it is
+    # therefore the higher/lower of the two draws, NOT the first draw.
     natural: int | None = None
     modifier: int | None = None
     sources: list[AdvantageSource] = Field(default_factory=list)

@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, Any
 from dnd5e_engine.activities.context import ActivityResolutionContext
 from dnd5e_engine.activities.dice import roll_expr
 from dnd5e_engine.events import CombatEvent
+from dnd5e_engine.rules.conditions import active_condition_names
 from dnd5e_engine.rules.dice import proficiency_bonus
 from dnd5e_engine.types.combat import Combatant
 
@@ -342,6 +343,12 @@ def build_activity_context(
         # orchestrator projects these from live state; empty defaults keep the
         # golden corpus identical (no advantage producer, no rider).
         active_effects=active_effects,
+        # F2b — condition-derived advantage sidecars (SRD §Advantage and
+        # Disadvantage). Projected straight off the live ``Combatant.conditions``
+        # so the pure resolver never touches combat state; no conditions ⇒ empty
+        # ⇒ ``normal``, byte-identical to the pre-F2b seeded stream.
+        attacker_conditions=active_condition_names(caster.conditions),
+        target_conditions={t.entity_id: active_condition_names(t.conditions) for t in targets},
         sneak_attack_spent=sneak_attack_spent or {},
         sneak_attack_ally_adjacent=sneak_attack_ally_adjacent or {},
         check_modifiers=_check_modifier_sidecar(check_modifiers),
