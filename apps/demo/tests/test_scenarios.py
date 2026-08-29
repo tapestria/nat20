@@ -44,9 +44,12 @@ def _pass(actor: str) -> Command:
     return IntentCommand(actor=actor, intent=PlayerIntent(intent_type="pass"))
 
 
-# Diagonal-first path so Brynn closes the full 6-cell (30 ft) budget and
-# lands adjacent to the goblin she opened on.
-_BRYNN_APPROACH = [(2, 4), (3, 4), (4, 4), (5, 4), (6, 4), (7, 3)]
+# Brynn closes the full 6-cell (30 ft) budget and lands adjacent to the goblin
+# she opens on. The route dips south to round the wall at x=6, y=2..5: as of
+# engine 0.6 a wall blocks MOVEMENT as well as sight, so the old straight line
+# across row 4 is no longer a legal path (see docs/migration/v0.5-to-v0.6.md,
+# "Walls, blocked cells and creatures form one obstruction model").
+_BRYNN_APPROACH = [(2, 5), (3, 5), (4, 5), (5, 5), (6, 5), (7, 4)]
 
 SHOWCASE_SCRIPTS: dict[str, list[Command]] = {
     # Brynn closes to melee range (grid movement around/through the cover
