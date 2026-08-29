@@ -174,6 +174,21 @@ _PROBES: dict[str, tuple[Any, str]] = {
         lambda: "ConcentrationCheck(" in _src("orchestrator.py"),
         "emits `ConcentrationCheck`",
     ),
+    # C12: the Incapacitated action gate exists in the orchestrator.
+    "Conditions (the 15 SRD conditions)": (
+        lambda: '"actor_incapacitated"' in _src("orchestrator.py"),
+        "✅",
+    ),
+    # C12: the SRD 5.2 exhaustion penalty is a real projection, not prose.
+    "| Exhaustion |": (
+        lambda: "def d20_test_penalty(" in _src("rules/conditions.py"),
+        "✅",
+    ),
+    # C12: massive damage kills outright rather than only decorating the event.
+    "Instant death (massive damage)": (
+        lambda: '"instant_kill"' in _src("orchestrator.py"),
+        "✅",
+    ),
     # F2c: the d20 breakdown is carried on the roll events.
     "carry the roll breakdown": (
         lambda: "natural:" in _event_class_body("AttackRolled"),
