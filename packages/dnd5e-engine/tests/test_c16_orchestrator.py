@@ -147,7 +147,36 @@ def test_sphere_line_of_effect_excludes_cells_behind_a_wall():
     assert "mon:b" not in _damaged(live)
 
 
-def test_creatures_never_block_line_of_effect():
+def test_line_of_effect_ignores_creature_occupancy_but_not_total_cover():
+    """SRD 5.2 §Point of Origin — "To block a line, an obstruction must provide
+    Total Cover." A creature provides Half Cover at most, so it never blocks;
+    a Total Cover obstruction and an impassable cell both do. All three cases
+    use the SAME interposing cell, so the assertions turn on the obstruction
+    model rather than on the geometry."""
+    from dnd5e_engine.orchestrator import _has_line_of_effect
+    from dnd5e_engine.spatial import GridTopology
+
+    open_grid = GridTopology(GridScene(width=5, height=1))
+    # An occupied interposing cell IS a cover signal ``cover_between`` reports
+    # when it is asked for one...
+    assert open_grid.cover_between(cell(0, 0), cell(2, 0), occupied_cells={cell(1, 0)}) == "half"
+    # ...but line of effect never asks, so the far cell stays inside the area.
+    assert _has_line_of_effect(open_grid, cell(0, 0), cell(2, 0))
+    # The same cell tagged Total Cover cuts the line.
+    covered = GridTopology(GridScene(width=5, height=1, cover_cells={cell(1, 0): "total"}))
+    assert covered.cover_between(cell(0, 0), cell(2, 0)) == "total"
+    assert not _has_line_of_effect(covered, cell(0, 0), cell(2, 0))
+    # So does an impassable cell (one obstruction model — blocks sight outright).
+    blocked = GridTopology(GridScene(width=5, height=1, blocked_cells=[cell(1, 0)]))
+    assert not blocked.has_line_of_sight(cell(0, 0), cell(2, 0))
+    assert not _has_line_of_effect(blocked, cell(0, 0), cell(2, 0))
+    # The origin is always in its own area, whatever sits on it.
+    assert _has_line_of_effect(blocked, cell(1, 0), cell(1, 0))
+
+
+def test_fireball_hits_every_creature_in_a_row_inside_the_radius():
+    """The wiring counterpart of the unit above: three creatures single-file in
+    the sphere all take damage — none of them shadows the ones behind it."""
     scene = GridScene(width=21, height=21)
     live = run_async(
         _cast(
@@ -195,6 +224,8 @@ def test_cone_hits_an_unnamed_creature_inside_the_cone():
 
 
 def test_directional_template_without_target_or_direction_is_rejected():
+    """Rejects in the pre-slot validation block, like every other
+    ``target_invalid``: the slot, the Action and the turn all survive."""
     scene = GridScene(width=11, height=11)
     live = run_async(
         _cast(
@@ -208,3 +239,9 @@ def test_directional_template_without_target_or_direction_is_rejected():
     assert failed
     assert failed[0].reason == "target_invalid"
     assert not _damaged(live)
+    # Nothing was spent: the 1st-level slot is intact and the Action is still
+    # available on the caster's own turn.
+    assert live.spell_slots_by_entity["char:wiz"] == {1: 1}
+    caster = next(c for c in live.initiative if c.entity_id == "char:wiz")
+    assert caster.action_available is True
+    assert live.initiative[live.current_turn_index].entity_id == "char:wiz"

@@ -2548,6 +2548,35 @@ def _aoe_direction(
     return ((tc > cc) - (tc < cc), (tr > cr) - (tr < cr))
 
 
+# SRD 5.2 §Areas of Effect — a Cone, Line or Cube "extends in straight lines
+# from a point of origin in a direction its creator chooses", so these three
+# shapes cannot be placed without an aim vector. Sphere / Cylinder / Emanation
+# are radial and need none.
+_DIRECTIONAL_AOE_SHAPES: frozenset[str] = frozenset({"cone", "line", "cube"})
+
+
+def _directional_aoe_lacks_direction(
+    live: _LiveCombat, actor_id: str, intent: PlayerIntent, cast_spell: Spell | None
+) -> bool:
+    """True iff this cast is a grid AoE whose template needs an aim vector and
+    none can be derived (no ``intent.direction``, no distinct named target).
+
+    Reads the ``Spell`` already fetched for casting-time classification, so the
+    gate costs no extra loader hit, and shares ``_aoe_template`` /
+    ``_aoe_direction`` with ``_expand_aoe_target_list`` — one implementation,
+    two call sites. Zone-graph combats never need a direction (the legacy
+    zone-equality body ignores geometry), hence the backend guard.
+    """
+    if intent.intent_type != "cast_spell" or cast_spell is None:
+        return False
+    if not isinstance(live.topology, GridTopology):
+        return False
+    template = _aoe_template(cast_spell.activities)
+    if template is None or template.shape not in _DIRECTIONAL_AOE_SHAPES:
+        return False
+    return _aoe_direction(live, actor_id, intent) is None
+
+
 def _has_line_of_effect(topology: SpatialTopology, origin: str, cell: str) -> bool:
     """SRD 5.2 §Point of Origin — "If all straight lines extending from the
     point of origin to a location ... are blocked, that location isn't included
@@ -2626,17 +2655,15 @@ def _expand_aoe_target_list(
         if template.origin == "target" and named_target_id:
             origin = live.actor_zone.get(named_target_id, caster_cell)
         direction: tuple[int, int] | None = None
-        if template.shape in ("cone", "line", "cube"):
+        if template.shape in _DIRECTIONAL_AOE_SHAPES:
             direction = _aoe_direction(live, caster.entity_id, intent)
             if direction is None:
-                _emit(
-                    live,
-                    CastFailed(
-                        actor_id=caster.entity_id,
-                        spell_id=intent.spell_id or "",
-                        reason="target_invalid",
-                    ),
-                )
+                # Unreachable on the live cast path: the pre-slot
+                # ``_directional_aoe_lacks_direction`` gate in
+                # ``submit_player_intent`` already emitted
+                # ``CastFailed(target_invalid)`` and returned before any slot or
+                # action was spent. Kept as a defensive floor so an unaimed
+                # template can never reach ``cells_in_template``, which raises.
                 return []
         cells = topology.cells_in_template(
             origin, template.shape, template.size_ft, direction=direction
@@ -4325,6 +4352,25 @@ def _hellish_rebuke_target_invalid(current: Combatant, intent: PlayerIntent) -> 
     )
 
 
+def _cast_target_invalid(
+    live: _LiveCombat,
+    caster: Combatant,
+    actor_id: str,
+    intent: PlayerIntent,
+    cast_spell: Spell | None,
+) -> bool:
+    """Every pre-slot ``target_invalid`` reason for a cast, in one predicate.
+
+    Two today: Hellish Rebuke's "the creature that damaged you" trigger target,
+    and a Cone/Line/Cube AoE template with no way to aim it. Both must reject
+    before budget/slot consumption, so they share one gate in
+    ``submit_player_intent`` and one ``CastFailed`` emission.
+    """
+    return _hellish_rebuke_target_invalid(caster, intent) or _directional_aoe_lacks_direction(
+        live, actor_id, intent, cast_spell
+    )
+
+
 def _consume_action_budget(live: _LiveCombat, actor_id: str, cost: _ActionCost) -> Combatant:
     """Consume the classified action-economy budget on ``actor_id``'s
     initiative slot and return the refreshed current actor. ``current`` is a
@@ -5083,16 +5129,16 @@ async def submit_player_intent(
         )
         return
 
-    # SRD §Hellish Rebuke — *"the creature that damaged you"*. The legal
-    # target is the most-recent damager tracked on the caster as
-    # ``last_damaged_by``. Hard-coded for HR until a general trigger
-    # system lands. Reject BEFORE budget/slot consumption.
-    if _hellish_rebuke_target_invalid(current, intent):
+    # Pre-slot ``target_invalid`` gate: every cast whose target or template
+    # placement is illegal rejects HERE, before any budget or slot is
+    # consumed, so a host reading ``CastFailed(reason="target_invalid")``
+    # always knows nothing was spent and the turn is preserved.
+    if _cast_target_invalid(live, current, actor_id, intent, cast_spell_for_timing):
         _emit(
             live,
             CastFailed(
                 actor_id=actor_id,
-                spell_id=intent.spell_id,
+                spell_id=intent.spell_id or "",
                 reason="target_invalid",
             ),
         )
