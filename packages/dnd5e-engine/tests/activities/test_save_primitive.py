@@ -28,6 +28,7 @@ import pytest
 
 from dnd5e_engine.activities.context import ActivityResolutionContext
 from dnd5e_engine.activities.save_primitive import FORCE_SAVE_D20, roll_save
+from dnd5e_engine.rules.conditions import project_passive_save_modifiers
 from dnd5e_engine.types.combat import Combatant
 
 ABILITIES = {"str": 10, "dex": 10, "con": 10, "int": 10, "wis": 10, "cha": 10}
@@ -506,3 +507,17 @@ def test_exhaustion_penalty_is_folded_into_the_save_modifier() -> None:
     assert roll.modifier == -6
     assert roll.total == 4
     assert roll.succeeded is False
+
+
+@pytest.mark.parametrize("condition", ["paralyzed", "stunned", "petrified", "unconscious"])
+def test_helpless_condition_projection_short_circuits_str_and_dex_saves(condition: str) -> None:
+    """End-to-end over the projection: what ``project_passive_save_modifiers``
+    emits for the condition is exactly what ``roll_save`` short-circuits on."""
+    proj = project_passive_save_modifiers([condition])
+    ctx = _ctx(passive_save_auto_fail={"mon:foe": proj["passive_save_auto_fail"]})
+    before = ctx.rng.getstate()
+    for ability in ("str", "dex"):
+        roll = roll_save(ctx, _target(), ability, dc=5)
+        assert roll.succeeded is False
+        assert roll.natural is None
+    assert ctx.rng.getstate() == before  # no draw consumed

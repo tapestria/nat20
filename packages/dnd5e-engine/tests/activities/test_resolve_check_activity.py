@@ -762,3 +762,23 @@ def test_exhaustion_penalty_is_folded_into_the_check_modifier() -> None:
     ctx, events = _ctx(forced_d20=10, d20_test_penalty={"char:hero": -2})
     resolve_activity(_activity(ability="wis"), ctx)
     assert _only_check(events).roll_total == 8
+
+
+@pytest.mark.parametrize("condition", ["poisoned", "frightened"])
+def test_condition_check_disadvantage_reaches_the_roll_event(condition: str) -> None:
+    """SRD 5.2 §Frightened / §Poisoned — disadvantage on ability checks,
+    end-to-end from a live condition effect (F1d's projection) through the
+    hydration payload's ``check_modifiers`` sidecar (F2c's consumer)."""
+    payload = _f1d_payload(
+        party=_f1d_party(wisdom=14),
+        effects=(
+            ActiveEffect(id="e", name="c", origin="test", target_id="char:a", statuses={condition}),
+        ),
+    )
+    events: list[Any] = []
+    ctx = _f1d_ctx(payload, events)
+    ctx.variables.pop(FORCE_CHECK_D20)  # let the mode draw two dice
+    resolve_activity(_activity(ability="wis"), ctx)
+    rolled = _only_check(events)
+    assert rolled.advantage == "disadvantage"
+    assert "condition:attacker" in rolled.sources

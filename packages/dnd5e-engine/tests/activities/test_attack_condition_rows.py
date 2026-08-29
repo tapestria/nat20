@@ -153,6 +153,12 @@ def test_stunned_target_within_5ft_does_not_auto_crit() -> None:
     assert e.is_crit is False
 
 
+def test_poisoned_attacker_has_disadvantage() -> None:
+    e = _swing(_fighter("poisoned"), _foe())
+    assert e.advantage == "disadvantage"
+    assert "condition:attacker" in e.sources
+
+
 def test_exhaustion_penalty_lowers_attack_modifier_and_total_without_extra_draws() -> None:
     plain = _swing(_fighter(), _foe(), forced_d20=10)
     tired = _swing(
