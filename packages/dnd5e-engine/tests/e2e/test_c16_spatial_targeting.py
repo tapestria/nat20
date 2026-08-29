@@ -20,7 +20,7 @@ from dnd5e_engine.events import (
 )
 from dnd5e_engine.orchestrator import _get_live, start_combat, submit_player_intent
 from dnd5e_engine.specs import EncounterMemberSpec, GridScene, PartyMemberSpec
-from tests.e2e.harness import cell, events_of, grid_scene, run_async, xfail_cluster
+from tests.e2e.harness import cell, events_of, grid_scene, run_async
 
 
 def test_c16_s01_fireball_sphere_hits_every_creature_within_radius():
@@ -674,7 +674,6 @@ def test_c16_s07_thunderwave_pushes_failed_save_target_10ft_away():
     assert pushes[0].to_zone == cell(3, 0)
 
 
-@xfail_cluster(16, "vision & light")
 def test_c16_s08_target_in_darkness_without_darkvision_grants_attack_disadvantage():
     """C16-S08 (C16b): SRD 5.2 §Vision and Light — "A Heavily Obscured
     area—such as an area with Darkness... is opaque. You have the

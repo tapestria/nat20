@@ -147,6 +147,8 @@ def build_activity_context(
     active_effects: Sequence[ActiveEffect] = (),
     sneak_attack_spent: dict[str, bool] | None = None,
     sneak_attack_ally_adjacent: dict[str, bool] | None = None,
+    target_unseen: dict[str, bool] | None = None,
+    attacker_unseen_by: dict[str, bool] | None = None,
 ) -> ActivityResolutionContext:
     """Adapt the caster + the pre-computed hydration sidecars into the typed
     ``ActivityResolutionContext`` the new resolver consumes.
@@ -337,6 +339,13 @@ def build_activity_context(
         passive_save_auto_fail=passive_save_auto_fail,
         passive_ac_bonus=passive_ac_bonus,
         target_cover=target_cover or {},
+        # C16b — SRD 5.2 "Unseen Attackers and Targets": the two PRE-RESOLVED
+        # per-target visibility maps, computed by the orchestrator
+        # (``_target_visibility_maps``, spatial-seam access there). This pure
+        # builder never touches the spatial seam; absent (``None``) → empty,
+        # leaving the golden corpus identical (no lighting ⇒ everyone seen).
+        target_unseen=target_unseen or {},
+        attacker_unseen_by=attacker_unseen_by or {},
         # SRD §Advantage / §Sneak Attack — the caster's own active effects
         # (attacker-side ``flags.advantage.attack`` / ``flags.disadvantage.attack``
         # read by ``attack.py``) plus the two Sneak Attack sidecars. The

@@ -725,3 +725,68 @@ def test_start_combat_with_grid_scene_does_not_warn():
                 cell(1, 1),
             )
         )
+
+
+# ── Task 12: unseen both directions ──────────────────────────────────────
+
+
+def test_visibility_maps_are_directional_and_read_senses() -> None:
+    from dnd5e_engine.activities.passive_stats import CombatantSenses
+    from dnd5e_engine.orchestrator import _target_visibility_maps
+
+    hero = _hero(cell(0, 0), senses=CombatantSenses(darkvision=60))
+    live = run_async(
+        _shoot(
+            GridScene(width=10, height=10, lighting={cell(0, 0): "dark"}),
+            [_foe("mon:foe", cell(4, 0))],
+            party=[hero],
+        )
+    )
+    caster = next(c for c in live.initiative if c.entity_id == "char:hero")
+    foe = next(c for c in live.initiative if c.entity_id == "mon:foe")
+    target_unseen, attacker_unseen_by = _target_visibility_maps(live, caster, [foe])
+    assert target_unseen == {"mon:foe": False}  # hero (darkvision) sees the lit foe
+    assert attacker_unseen_by == {"mon:foe": True}  # foe cannot see the hero in darkness
+    rolled = next(
+        e for e in events_of(live, events_module.AttackRolled) if e.target_id == "mon:foe"
+    )
+    assert rolled.advantage == "advantage"
+    assert "unseen" in rolled.sources
+
+
+def test_monster_attack_against_unseen_pc_has_advantage() -> None:
+    from dnd5e_srd_data import MemoryAssetLoader
+
+    from dnd5e_engine.orchestrator import advance_monster_turn
+    from tests.test_orchestrator_monster_typed import _melee_attack, _monster
+
+    async def _go() -> Any:
+        set_lib_loader_for_tests(
+            MemoryAssetLoader(monsters=[_monster("biter", [_melee_attack("Bite")])])
+        )
+        start = await start_combat(
+            session_id="c16-monster-unseen",
+            party=[
+                PartyMemberSpec(
+                    entity_id="char:hero",
+                    name="Hero",
+                    initiative=1,
+                    hp_current=50,
+                    hp_max=50,
+                    zone_id=cell(0, 0),
+                )
+            ],
+            encounter=[_foe("mon:foe", cell(1, 0), initiative=20, monster_template_slug="biter")],
+            scene_zones=None,
+            grid_scene=GridScene(width=10, height=10, lighting={cell(1, 0): "dark"}),
+            rng_seed=1,
+        )
+        live = _get_live(start.handle)
+        await advance_monster_turn(start.handle)
+        return live
+
+    live = run_async(_go())
+    rolled = [e for e in events_of(live, events_module.AttackRolled) if e.attacker_id == "mon:foe"]
+    assert rolled
+    assert rolled[0].advantage == "advantage"
+    assert "unseen" in rolled[0].sources

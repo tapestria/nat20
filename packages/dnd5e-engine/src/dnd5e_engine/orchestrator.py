@@ -593,6 +593,37 @@ def _target_cover_map(
     return out
 
 
+def _target_visibility_maps(
+    live: _LiveCombat, caster: Combatant, targets: Sequence[Combatant]
+) -> tuple[dict[str, bool], dict[str, bool]]:
+    """SRD 5.2 "Unseen Attackers and Targets" — per target, (attacker cannot
+    see target, target cannot see attacker), from ``SpatialTopology.can_see``
+    with each viewer's own ``Combatant.senses``. Untracked positions ⇒ seen.
+
+    Threaded into ``ActivityResolutionContext.target_unseen`` /
+    ``.attacker_unseen_by`` so ``activities/attack.py`` can add the ``"unseen"``
+    disadvantage / advantage source without importing the spatial seam. A
+    zone-graph combat (``_ZoneGraph.can_see`` ⇒ True for any two known zones)
+    and a scene with no lighting data both yield all-False maps ⇒ ``normal``.
+    """
+    caster_zone = live.actor_zone.get(caster.entity_id)
+    target_unseen: dict[str, bool] = {}
+    attacker_unseen_by: dict[str, bool] = {}
+    if caster_zone is None:
+        return target_unseen, attacker_unseen_by
+    for target in targets:
+        target_zone = live.actor_zone.get(target.entity_id)
+        if target_zone is None:
+            continue
+        target_unseen[target.entity_id] = not live.topology.can_see(
+            caster_zone, target_zone, caster.senses
+        )
+        attacker_unseen_by[target.entity_id] = not live.topology.can_see(
+            target_zone, caster_zone, target.senses
+        )
+    return target_unseen, attacker_unseen_by
+
+
 def _sneak_ally_adjacent_map(
     live: _LiveCombat, caster: Combatant, targets: Sequence[Combatant]
 ) -> dict[str, bool]:
@@ -5456,6 +5487,7 @@ async def submit_player_intent(
             loader=get_lib_loader(),
         )
         class_levels = {current.class_slug: current.character_level} if current.class_slug else {}
+        visibility = _target_visibility_maps(live, current, targets)
         actx = build_activity_context(
             current,
             targets,
@@ -5484,6 +5516,8 @@ async def submit_player_intent(
             save_modifiers=payload["save_modifiers"],
             check_modifiers=payload["check_modifiers"],
             target_cover=_target_cover_map(live, current.entity_id, targets),
+            target_unseen=visibility[0],
+            attacker_unseen_by=visibility[1],
             scale_values=scale_values,
             class_levels=class_levels,
             # A FEATURE invocation must not inherit the blanket spell
@@ -6074,6 +6108,7 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
         # are reproduced by ``build_activity_context``'s ``entity_type ==
         # "Monster"`` branch — no per-call slot/spell parameters apply to a
         # mundane monster attack.
+        visibility = _target_visibility_maps(live, current, target_list)
         actx = build_activity_context(
             current,
             target_list,
@@ -6092,6 +6127,8 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
             save_modifiers=payload["save_modifiers"],
             check_modifiers=payload["check_modifiers"],
             target_cover=_target_cover_map(live, current.entity_id, target_list),
+            target_unseen=visibility[0],
+            attacker_unseen_by=visibility[1],
         )
         for activity in monster_activities:
             # Monster attacks carry their damage on the AttackActivity itself,
