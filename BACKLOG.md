@@ -579,6 +579,29 @@ a cluster; they are consolidated here so they are not re-discovered.
   Owned by C12.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
 
+## Damage at 0 Hit Points (2026-08-29)
+
+Surfaced while landing C12-S06 (Characters fall Unconscious at 0 HP). Both need
+the C15 `DamageApplied` attribution seam, so neither is fixable in isolation.
+
+- **A multi-type hit inflicts one death-save failure PER DAMAGE TYPE.** SRD 5.2
+  "Damage at 0 Hit Points" charges one failure per instance of damage, but
+  `activities/apply.py` emits one `DamageApplied` per damage type and the 0-HP
+  fold counts a failure per event, so a fire+slashing hit on a downed Character
+  costs two failures. Needs per-event attribution (a shared `source_id` /
+  instance id on `DamageApplied`) so the fold can collapse the events of one
+  attack — the same seam C15 needs for the Critical-Hit two-failure clause.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py:1845`
+  `_apply_zero_hp_to_character`,
+  `packages/dnd5e-engine/src/dnd5e_engine/activities/apply.py:75`)
+- **A death-save failure from damage at 0 HP surfaces no event.** The failure is
+  written straight onto `Combatant.death_saves`; hosts narrating from the event
+  stream see the `DamageApplied` but never learn a failure landed (only
+  `DeathSaveRolled`, from the turn-start roll, carries counters). The fix needs
+  a new `CombatEvent` member (or a counters payload on an existing one), which
+  the C12 constraints forbid mid-cluster.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py:1845`)
+
 ## Blocked
 
 - **`custom` `ActiveEffectChange` mode — needs a product decision** (2026-07-02).

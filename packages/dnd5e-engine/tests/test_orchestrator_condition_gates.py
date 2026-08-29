@@ -427,3 +427,89 @@ def test_monster_at_zero_hp_dies_outright_with_no_death_save_path() -> None:
     assert not [e for e in events_of(live, ConditionApplied) if e.target_id == "mon:foe"]
     foe = _combatant(live, "mon:foe")
     assert foe.death_saves in ({}, None)
+
+
+class _FixedRng:
+    """Minimal ``random.Random`` stand-in returning a fixed d20 roll."""
+
+    def __init__(self, value: int) -> None:
+        self._value = value
+
+    def randint(self, a: int, b: int) -> int:
+        return self._value
+
+
+def test_condition_removed_keeps_a_condition_another_live_effect_still_imposes() -> None:
+    # Two effects impose "restrained"; one is dropped (EffectExpired +
+    # ConditionRemoved, the ``_drop_concentration`` order). The condition must
+    # survive on the still-imposing effect — same multi-source stacking guard
+    # ``_emit_apply_effect_expired`` already honours.
+    from dnd5e_engine.events import EffectExpired
+    from dnd5e_engine.orchestrator import _emit
+
+    web = _status("char:hero", "restrained", origin="cast:web:mon:foe")
+    web = web.model_copy(update={"id": "effect:web:char:hero"})
+    vine = _status("char:hero", "restrained", origin="cast:vine:mon:foe")
+    vine = vine.model_copy(update={"id": "effect:vine:char:hero"})
+    start = _start("c12-two-sources", [_hero()], [_foe(zone_id=cell(5, 5))], [web, vine])
+    live = _get_live(start.handle)
+    assert [c.condition for c in _combatant(live, "char:hero").conditions] == [
+        "restrained",
+        "restrained",
+    ]
+
+    _emit(
+        live,
+        EffectExpired(
+            target_id="char:hero",
+            effect_id=web.id,
+            origin=web.origin,
+            reason="concentration_drop",
+        ),
+    )
+    _emit(live, ConditionRemoved(target_id="char:hero", condition="restrained"))
+
+    names = [c.condition for c in _combatant(live, "char:hero").conditions]
+    assert names == ["restrained"]
+    assert "restrained" in live.active_conditions.get("char:hero", set())
+
+
+def test_nat_twenty_death_save_revive_is_event_symmetric_and_leaves_prone() -> None:
+    from dnd5e_engine.orchestrator import _maybe_roll_death_save
+
+    start = _duel("c12-nat20-revive", _victim())
+    live = _stab(start)
+    assert "unconscious" in live.active_conditions.get("char:victim", set())
+
+    live.current_turn_index = next(
+        i for i, c in enumerate(live.initiative) if c.entity_id == "char:victim"
+    )
+    live.rng = _FixedRng(20)  # type: ignore[assignment]
+    _maybe_roll_death_save(live)
+
+    assert "unconscious" not in live.active_conditions.get("char:victim", set())
+    names = [c.condition for c in _combatant(live, "char:victim").conditions]
+    assert "unconscious" not in names
+    assert "prone" in names
+    removed = [e for e in events_of(live, ConditionRemoved) if e.target_id == "char:victim"]
+    assert [e.condition for e in removed] == ["unconscious"]
+    applied = [
+        e.condition for e in events_of(live, ConditionApplied) if e.target_id == "char:victim"
+    ]
+    assert applied == ["unconscious", "prone"]
+
+
+def test_zero_damage_at_zero_hp_is_not_a_death_save_failure() -> None:
+    # ``activities/apply.py`` emits ``DamageApplied`` unconditionally, so an
+    # immune damage type (or one fully absorbed by temp HP) arrives with
+    # ``amount=0``. SRD 5.2 charges a failure for *damage taken* only.
+    from dnd5e_engine.events import DamageApplied
+    from dnd5e_engine.orchestrator import _emit
+
+    live = _stab(_duel("c12-zero-damage", _victim()))
+    before = _combatant(live, "char:victim").death_saves.get("failures", 0)
+    _emit(
+        live,
+        DamageApplied(target_id="char:victim", amount=0, damage_type="fire", is_overkill=False),
+    )
+    assert _combatant(live, "char:victim").death_saves.get("failures", 0) == before

@@ -1188,16 +1188,35 @@ def _fold_condition_onto_combatant(live: _LiveCombat, entity_id: str, condition:
 
 
 def _strip_condition_from_combatant(live: _LiveCombat, entity_id: str, condition: str) -> None:
-    """Drop every ``Combatant.conditions`` entry named ``condition`` (all
-    sources) after a ``ConditionRemoved``."""
+    """Drop the ``Combatant.conditions`` entries named ``condition`` after a
+    ``ConditionRemoved``.
+
+    Multi-source stacking guard (same rule ``_emit_apply_effect_expired``
+    honours): an entry bridged from an effect that is STILL active is kept —
+    ``_drop_concentration`` emits one ``ConditionRemoved`` per condition its
+    dropped effect installed, and that must not clear a condition another live
+    effect keeps imposing. When such an entry survives, the coarse
+    ``live.active_conditions`` name (discarded by the ``_emit`` fold before we
+    are called) is restored so both views agree.
+    """
     c = _find_combatant(live, entity_id)
     if c is None or not any(ac.condition == condition for ac in c.conditions):
         return
-    new = [ac for ac in c.conditions if ac.condition != condition]
+    live_effect_ids = {eff.id for eff in live.active_effects.get(entity_id, [])}
+    new = [
+        ac
+        for ac in c.conditions
+        if ac.condition != condition
+        or (ac.source_effect_id is not None and ac.source_effect_id in live_effect_ids)
+    ]
+    if len(new) == len(c.conditions):
+        return
     for idx, slot in enumerate(live.initiative):
         if slot.entity_id == entity_id:
             live.initiative[idx] = slot.model_copy(update={"conditions": new})
             break
+    if any(ac.condition == condition for ac in new):
+        live.active_conditions.setdefault(entity_id, set()).add(condition)
 
 
 def _drop_concentration(live: _LiveCombat, caster_id: str) -> None:
@@ -1817,6 +1836,11 @@ def _apply_zero_hp_to_character(
             _emit(live, Unconscious(target_id=event.target_id))
             _emit(live, ConditionApplied(target_id=event.target_id, condition="unconscious"))
         return
+    # SRD 5.2 charges a failure for damage TAKEN: an immune damage type (or a
+    # hit fully absorbed by temp HP) reaches this fold with nothing left, and
+    # ``activities/apply.py`` emits ``DamageApplied`` unconditionally.
+    if damage_after_temp <= 0:
+        return
     state = DeathSaveState.from_dict(target.death_saves) if target.death_saves else DeathSaveState()
     outcome = state.apply_damage_while_unconscious(False)
     update: dict[str, Any] = {"death_saves": state.to_dict()}
@@ -2026,9 +2050,14 @@ def _maybe_roll_death_save(live: _LiveCombat) -> None:
             live.initiative[idx] = result.combatant
             break
     # On crit_success (nat-20), HP resets to 1 — sync the tracker so the
-    # PC can act on their next turn.
+    # PC can act on their next turn, and mirror the healing revive's condition
+    # events so ``live.active_conditions`` (read by ``views.py`` and by effect
+    # expiry) does not keep a stale ``unconscious``. SRD 5.2 Unconscious:
+    # "When this condition ends, you remain Prone."
     if result.outcome == "critical_success":
         live.tracked_hp[actor.entity_id] = result.combatant.hp_current
+        _emit(live, ConditionRemoved(target_id=actor.entity_id, condition="unconscious"))
+        _emit(live, ConditionApplied(target_id=actor.entity_id, condition="prone"))
 
 
 def _hp_max_for(live: _LiveCombat, entity_id: str) -> int:
