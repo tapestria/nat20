@@ -68,15 +68,21 @@ SHOWCASE_SCRIPTS: dict[str, list[Command]] = {
         MonsterTurnCommand(),
     ],
     # Doran closes on the captain, Mira holds it (Paralyzed, concentration
-    # flagged) — then the captain's own attack (still landing this turn;
-    # see task-4-report.md's concentration-check finding) and the bandits'
-    # hits force Mira's concentration saves under fire.
+    # flagged). Since engine C12 the Paralyzed captain can no longer act, so
+    # its turn is a no-op and the pressure on Mira's concentration comes from
+    # the two bandits instead — which takes a second round to land, hence the
+    # extra pass/monster-turn block below.
     "hold-the-line": [
         _move("char:doran", cell_id(3, 3)),
         _move("char:doran", cell_id(4, 3)),
         _move("char:doran", cell_id(5, 3)),
         _attack("char:doran", "mace", "mon:captain"),
         _cast("char:mira", "hold-person", target="mon:captain", slot=2),
+        MonsterTurnCommand(),
+        MonsterTurnCommand(),
+        MonsterTurnCommand(),
+        _pass("char:doran"),
+        _pass("char:mira"),
         MonsterTurnCommand(),
         MonsterTurnCommand(),
         MonsterTurnCommand(),
