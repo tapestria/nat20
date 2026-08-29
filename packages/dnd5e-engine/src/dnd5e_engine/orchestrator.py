@@ -128,7 +128,7 @@ from dnd5e_engine.rules.conditions import (
     project_passive_damage_modifiers,
     project_passive_save_modifiers,
 )
-from dnd5e_engine.spatial import GridTopology, SpatialTopology
+from dnd5e_engine.spatial import GridTopology, SpatialTopology, parse_cell
 from dnd5e_engine.specs import (
     EncounterMemberSpec,
     GridScene,
@@ -2477,6 +2477,88 @@ def _typed_spell_broadcasts(activities: Sequence[Any]) -> bool:
     return any(_activity_has_measured_template(a) for a in activities)
 
 
+# C16 — Foundry ``target.template.type`` → engine template. ``origin`` says
+# where the point of origin sits ("target": the named target's cell, else the
+# caster's; "caster": always the caster's cell); ``include_origin`` follows
+# SRD 5.2 §Areas of Effect (Sphere/Cylinder include it; Cone/Cube/Line and an
+# Emanation — Foundry ``radius`` — do not "unless its creator decides
+# otherwise", and the engine does not). ``wall`` (Wall of Fire's line of
+# panels) has no single-origin geometry and falls back to the legacy list.
+_AoeShape = Literal["sphere", "cone", "line", "cube", "cylinder"]
+_AOE_TEMPLATE_TYPES: dict[str, tuple[_AoeShape, Literal["target", "caster"], bool]] = {
+    "sphere": ("sphere", "target", True),
+    "circle": ("sphere", "target", True),
+    "cylinder": ("cylinder", "target", True),
+    "radius": ("sphere", "caster", False),
+    "cube": ("cube", "caster", False),
+    "square": ("cube", "caster", False),
+    "cone": ("cone", "caster", False),
+    "line": ("line", "caster", False),
+}
+
+
+@dataclass(frozen=True)
+class _AoeTemplate:
+    shape: _AoeShape
+    size_ft: int
+    origin: Literal["target", "caster"]
+    include_origin: bool
+
+
+def _aoe_template(activities: Sequence[Any]) -> _AoeTemplate | None:
+    """The first creature-targeting activity's measured template, or ``None``
+    when the spell is single-target or its template has no grid geometry."""
+    for activity in activities:
+        if not _activity_has_measured_template(activity):
+            continue
+        template = activity.target.template
+        mapped = _AOE_TEMPLATE_TYPES.get(template.type)
+        try:
+            size_ft = int(float(template.size))
+        except (TypeError, ValueError):
+            size_ft = 0
+        if mapped is None or size_ft <= 0:
+            _LOGGER.warning(
+                "aoe_template_unsupported type=%s size=%r — "
+                "falling back to zone-equality targeting",
+                template.type,
+                template.size,
+            )
+            return None
+        shape, origin, include_origin = mapped
+        return _AoeTemplate(
+            shape=shape, size_ft=size_ft, origin=origin, include_origin=include_origin
+        )
+    return None
+
+
+def _aoe_direction(
+    live: _LiveCombat, caster_id: str, intent: PlayerIntent
+) -> tuple[int, int] | None:
+    """Aim vector for a directional template: the intent's ``direction``, else
+    caster → named target (sign per axis); ``None`` when neither exists."""
+    if intent.direction is not None:
+        return intent.direction
+    caster_cell = live.actor_zone.get(caster_id)
+    target_cell = live.actor_zone.get(intent.target_id) if intent.target_id else None
+    if caster_cell is None or target_cell is None or caster_cell == target_cell:
+        return None
+    cc, cr = parse_cell(caster_cell)
+    tc, tr = parse_cell(target_cell)
+    return ((tc > cc) - (tc < cc), (tr > cr) - (tr < cr))
+
+
+def _has_line_of_effect(topology: SpatialTopology, origin: str, cell: str) -> bool:
+    """SRD 5.2 §Point of Origin — "If all straight lines extending from the
+    point of origin to a location ... are blocked, that location isn't included
+    ... To block a line, an obstruction must provide Total Cover." Walls and
+    blocked cells block; creatures (half cover at most) never do, so no
+    ``occupied_cells`` are passed."""
+    return origin == cell or (
+        topology.has_line_of_sight(origin, cell) and topology.cover_between(origin, cell) != "total"
+    )
+
+
 def _activities_bear_effects(activities: Sequence[Any]) -> bool:
     """True iff any activity carries effect riders (``effects[]``).
 
@@ -2519,32 +2601,60 @@ def _spell_is_self_or_targetless(cast_spell: Spell | None, named_target_id: str 
 def _expand_aoe_target_list(
     live: _LiveCombat,
     caster: Combatant,
-    named_target_id: str | None,
+    intent: PlayerIntent,
+    activities: Sequence[Any],
 ) -> list[Combatant]:
-    """Build the AoE candidate list for the spell's resolved IR.
+    """Build the AoE candidate list (SRD 5.2 §Areas of Effect).
 
-    Per SRD §Fireball / §Burning Hands / §Areas of Effect — the sphere /
-    cone hits every creature in range, including allies and the caster.
-    With zone-graph occupancy the projection is: every alive combatant
-    whose zone matches the targeted zone. The targeted zone is the
-    named target's zone (``intent.target_id``) when one is named, else
-    the caster's zone (self-centered AoE like Burning Hands).
+    Grid backend: resolve the typed template (``_aoe_template``), place its
+    point of origin, aim it, enumerate ``cells_in_template``, drop every cell
+    without line of effect from the origin, and return every alive combatant
+    standing in a surviving cell (allies and the caster included when the
+    geometry says so — Fireball hits the caster in its own radius).
+
+    Zone graph (legacy, removed with the backend in 0.7): every alive
+    combatant whose zone equals the anchor zone (the named target's, else the
+    caster's).
     """
+    named_target_id = intent.target_id
+    alive = [c for c in live.initiative if c.is_alive and c.entity_id not in live.dead_ids]
+    template = _aoe_template(activities)
+    topology = live.topology
+    caster_cell = live.actor_zone.get(caster.entity_id)
+    if isinstance(topology, GridTopology) and template is not None and caster_cell is not None:
+        origin = caster_cell
+        if template.origin == "target" and named_target_id:
+            origin = live.actor_zone.get(named_target_id, caster_cell)
+        direction: tuple[int, int] | None = None
+        if template.shape in ("cone", "line", "cube"):
+            direction = _aoe_direction(live, caster.entity_id, intent)
+            if direction is None:
+                _emit(
+                    live,
+                    CastFailed(
+                        actor_id=caster.entity_id,
+                        spell_id=intent.spell_id or "",
+                        reason="target_invalid",
+                    ),
+                )
+                return []
+        cells = topology.cells_in_template(
+            origin, template.shape, template.size_ft, direction=direction
+        )
+        area = {c for c in cells if _has_line_of_effect(topology, origin, c)}
+        if not template.include_origin:
+            area.discard(origin)
+        return [c for c in alive if live.actor_zone.get(c.entity_id) in area]
+    # zone graph: legacy behaviour until removal in 0.7
     anchor_zone: str | None = None
     if named_target_id:
         anchor_zone = live.actor_zone.get(named_target_id)
     if anchor_zone is None:
-        anchor_zone = live.actor_zone.get(caster.entity_id)
+        anchor_zone = caster_cell
     if anchor_zone is None:
         # No zone info — fall back to caster + named target only.
         return [c for c in live.initiative if c.entity_id in {caster.entity_id, named_target_id}]
-    return [
-        c
-        for c in live.initiative
-        if c.is_alive
-        and c.entity_id not in live.dead_ids
-        and live.actor_zone.get(c.entity_id) == anchor_zone
-    ]
+    return [c for c in alive if live.actor_zone.get(c.entity_id) == anchor_zone]
 
 
 # ── Concentration writeback ─────────────────────────────────────────────────
@@ -4466,7 +4576,7 @@ def _resolve_targets(
     targetless buff or a self-targeting feature."""
     targets: list[Combatant]
     if intent.intent_type == "cast_spell" and _typed_spell_broadcasts(activities):
-        targets = _expand_aoe_target_list(live, current, intent.target_id)
+        targets = _expand_aoe_target_list(live, current, intent, activities)
     else:
         targets = [c for c in live.initiative if c.entity_id == intent.target_id]
         # SRD §Range: Self — an effect-bearing self/targetless buff (Shield,

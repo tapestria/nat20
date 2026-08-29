@@ -23,7 +23,6 @@ from dnd5e_engine.specs import EncounterMemberSpec, GridScene, PartyMemberSpec
 from tests.e2e.harness import cell, events_of, grid_scene, run_async, xfail_cluster
 
 
-@xfail_cluster(16, "spatial targeting")
 def test_c16_s01_fireball_sphere_hits_every_creature_within_radius():
     """C16-S01: SRD 5.2 §Areas of Effect, Sphere — "A Sphere is an area of
     effect that extends in straight lines from a point of origin outward
@@ -125,20 +124,16 @@ def test_c16_s02_burning_hands_cone_fires_from_casters_own_cell():
     (``target.template = {type: "cone", size: "15", units: "ft"}``,
     ``range.units = "self"``).
 
-    With a real cone walk, ``mon:front`` (2 cells "ahead", inside a 3-cell
-    forward cone) should take ``DamageApplied(damage_type="fire")`` (bounded
-    ``[3, 18]``, 3d6) and ``mon:behind`` (2 cells "behind") should take
-    none. ``PlayerIntent.direction`` (Task 5) now exists, so the scripted
-    cast below no longer fails at intent construction — but
-    ``_expand_aoe_target_list`` (orchestrator.py) still does legacy
-    zone-string equality against the named target's zone and never calls
-    ``cells_in_template``; it does not consume ``direction`` at all. This
-    scenario currently passes only because its candidate list collapses to
-    the single named target (``mon:front``), which happens to be the
-    correct answer here — not because the geometry is real. Task 6's
-    ``cells_in_template`` cone-walk rewiring of ``_expand_aoe_target_list``
-    must keep this scenario green for the right reason (a true directional
-    cone walk), not merely preserve this incidental pass.
+    ``mon:front`` (2 cells "ahead", inside the 3-cell forward cone) takes
+    ``DamageApplied(damage_type="fire")`` (bounded ``[3, 18]``, 3d6) and
+    ``mon:behind`` (2 cells "behind") takes none.
+    ``_expand_aoe_target_list`` (orchestrator.py) now walks
+    ``GridTopology.cells_in_template("cone", 15, direction=(1, 0))`` from
+    the caster's own cell (origin excluded per SRD) and keeps every alive
+    combatant standing in a resulting cell, so ``mon:behind`` is excluded
+    by geometry rather than by not being the named target. See
+    ``tests/test_c16_orchestrator.py::test_cone_hits_an_unnamed_creature_inside_the_cone``
+    for the companion unit that pins the "unnamed but in-cone" half.
     """
 
     async def _run():
@@ -207,7 +202,6 @@ def test_c16_s02_burning_hands_cone_fires_from_casters_own_cell():
     assert not behind_dmg
 
 
-@xfail_cluster(16, "spatial targeting")
 def test_c16_s03_lightning_bolt_line_hits_every_cell_along_its_length():
     """C16-S03: SRD 5.2 §Areas of Effect, Line — "A Line is an area of
     effect that extends from a point of origin in a straight path along
