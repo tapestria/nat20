@@ -2764,31 +2764,36 @@ def _expand_aoe_target_list(
     """
     named_target_id = intent.target_id
     alive = [c for c in live.initiative if c.is_alive and c.entity_id not in live.dead_ids]
-    template = _aoe_template(activities)
     topology = live.topology
     caster_cell = live.actor_zone.get(caster.entity_id)
-    if isinstance(topology, GridTopology) and template is not None and caster_cell is not None:
-        origin = caster_cell
-        if template.origin == "target" and named_target_id:
-            origin = live.actor_zone.get(named_target_id, caster_cell)
-        direction: tuple[int, int] | None = None
-        if template.shape in _DIRECTIONAL_AOE_SHAPES:
-            direction = _aoe_direction(live, caster.entity_id, intent)
-            if direction is None:
-                # Unreachable on the live cast path: the pre-slot
-                # ``_directional_aoe_lacks_direction`` gate in
-                # ``submit_player_intent`` already emitted
-                # ``CastFailed(target_invalid)`` and returned before any slot or
-                # action was spent. Kept as a defensive floor so an unaimed
-                # template can never reach ``cells_in_template``, which raises.
-                return []
-        cells = topology.cells_in_template(
-            origin, template.shape, template.size_ft, direction=direction
-        )
-        area = {c for c in cells if _has_line_of_effect(topology, origin, c)}
-        if not template.include_origin:
-            area.discard(origin)
-        return [c for c in alive if live.actor_zone.get(c.entity_id) in area]
+    # ``_aoe_template`` is only consulted on the grid: it logs
+    # ``aoe_template_unsupported`` for a template it cannot map, and the zone
+    # graph never reads geometry, so calling it there would warn for nothing.
+    if isinstance(topology, GridTopology) and caster_cell is not None:
+        template = _aoe_template(activities)
+        if template is not None:
+            origin = caster_cell
+            if template.origin == "target" and named_target_id:
+                origin = live.actor_zone.get(named_target_id, caster_cell)
+            direction: tuple[int, int] | None = None
+            if template.shape in _DIRECTIONAL_AOE_SHAPES:
+                direction = _aoe_direction(live, caster.entity_id, intent)
+                if direction is None:
+                    # Unreachable on the live cast path: the pre-slot
+                    # ``_directional_aoe_lacks_direction`` gate in
+                    # ``submit_player_intent`` already emitted
+                    # ``CastFailed(target_invalid)`` and returned before any
+                    # slot or action was spent. Kept as a defensive floor so an
+                    # unaimed template can never reach ``cells_in_template``,
+                    # which raises.
+                    return []
+            cells = topology.cells_in_template(
+                origin, template.shape, template.size_ft, direction=direction
+            )
+            area = {c for c in cells if _has_line_of_effect(topology, origin, c)}
+            if not template.include_origin:
+                area.discard(origin)
+            return [c for c in alive if live.actor_zone.get(c.entity_id) in area]
     # zone graph: legacy behaviour until removal in 0.7
     anchor_zone: str | None = None
     if named_target_id:
@@ -4788,9 +4793,12 @@ def _resolve_targets(
     cast_spell: Spell | None,
 ) -> list[Combatant]:
     """SRD §Areas of Effect / §Range: Self — resolve the target list. An AoE
-    cast broadcasts to every creature in the targeted zone; otherwise the named
-    target is used, defaulting to the caster for an effect-bearing self/
-    targetless buff or a self-targeting feature."""
+    cast expands through ``_expand_aoe_target_list`` (on the grid: every
+    creature standing in a cell of the measured template that has line of
+    effect from the point of origin; on the legacy zone graph: every creature
+    in the anchor zone). Otherwise the named target is used, defaulting to the
+    caster for an effect-bearing self/targetless buff or a self-targeting
+    feature."""
     targets: list[Combatant]
     if intent.intent_type == "cast_spell" and _typed_spell_broadcasts(activities):
         targets = _expand_aoe_target_list(live, current, intent, activities)
@@ -5487,7 +5495,7 @@ async def submit_player_intent(
             loader=get_lib_loader(),
         )
         class_levels = {current.class_slug: current.character_level} if current.class_slug else {}
-        visibility = _target_visibility_maps(live, current, targets)
+        target_unseen, attacker_unseen_by = _target_visibility_maps(live, current, targets)
         actx = build_activity_context(
             current,
             targets,
@@ -5516,8 +5524,8 @@ async def submit_player_intent(
             save_modifiers=payload["save_modifiers"],
             check_modifiers=payload["check_modifiers"],
             target_cover=_target_cover_map(live, current.entity_id, targets),
-            target_unseen=visibility[0],
-            attacker_unseen_by=visibility[1],
+            target_unseen=target_unseen,
+            attacker_unseen_by=attacker_unseen_by,
             scale_values=scale_values,
             class_levels=class_levels,
             # A FEATURE invocation must not inherit the blanket spell
@@ -6108,7 +6116,7 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
         # are reproduced by ``build_activity_context``'s ``entity_type ==
         # "Monster"`` branch — no per-call slot/spell parameters apply to a
         # mundane monster attack.
-        visibility = _target_visibility_maps(live, current, target_list)
+        target_unseen, attacker_unseen_by = _target_visibility_maps(live, current, target_list)
         actx = build_activity_context(
             current,
             target_list,
@@ -6127,8 +6135,8 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
             save_modifiers=payload["save_modifiers"],
             check_modifiers=payload["check_modifiers"],
             target_cover=_target_cover_map(live, current.entity_id, target_list),
-            target_unseen=visibility[0],
-            attacker_unseen_by=visibility[1],
+            target_unseen=target_unseen,
+            attacker_unseen_by=attacker_unseen_by,
         )
         for activity in monster_activities:
             # Monster attacks carry their damage on the AttackActivity itself,

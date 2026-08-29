@@ -32,9 +32,13 @@ def test_c16_s01_fireball_sphere_hits_every_creature_within_radius():
     id npdEWb2egUPnB5Fa, heading "Sphere"); fireball's 20 ft radius:
     packages/dnd5e-srd-data/src/dnd5e_srd_data/canonical/spells/fireball.json
     (``target.template = {type: "sphere", size: "20", units: "ft"}``).
-    ``orchestrator._expand_aoe_target_list`` does zone-EQUALITY filtering
-    on a named target, not a ``cells_in_template`` radius walk — a
-    geometrically-in-radius ``mon:near2`` never takes damage today.
+    ``orchestrator._expand_aoe_target_list`` walks
+    ``GridTopology.cells_in_template("sphere", 20)`` from the point of
+    origin and keeps every alive combatant standing in a resulting cell
+    with line of effect, so the geometrically-in-radius but unnamed
+    ``mon:near2`` takes damage alongside the named target. Before C16 the
+    expansion was zone-EQUALITY filtering on the named target and
+    ``mon:near2`` was never hit.
     """
 
     async def _run():
@@ -209,12 +213,12 @@ def test_c16_s03_lightning_bolt_line_hits_every_cell_along_its_length():
     (packs/_source/content24/appendices/appendix-d-rule-references.yml,
     id 6DOoBgg7okm9gBc6, heading "Line"). Lightning Bolt's 100 ft line:
     packages/dnd5e-srd-data/src/dnd5e_srd_data/canonical/spells/lightning-bolt.json.
-    ``_expand_aoe_target_list``'s zone-equality gap means the named
-    target (the anchor cell) is always hit, but a DIFFERENT creature
-    sitting on the same line's path (``mon:near``, between the caster
-    and the named target) is never hit — the bolt degenerates to a
-    single terminal-point hit rather than traveling the full line; a
-    creature off the line's path (``mon:offline``) correctly takes none.
+    ``_expand_aoe_target_list`` enumerates the line's cells from the
+    caster's own point of origin, so every creature standing on the
+    bolt's path is hit — both the named target and ``mon:near``, which
+    sits between the caster and it — while a creature off the path
+    (``mon:offline``) takes none. Before C16 the zone-equality expansion
+    degenerated the bolt to a single terminal-point hit.
     """
 
     async def _run():
@@ -681,10 +685,13 @@ def test_c16_s08_target_in_darkness_without_darkvision_grants_attack_disadvantag
     (packs/_source/content24/chapter-1/exploration.yml, "Vision and
     Light"), combined with "an attack roll against a target you can't
     see is made at Disadvantage" (Unseen Attackers and Targets).
-    ``GridScene`` (specs.py) has exactly four geometry fields today —
-    no ``lighting``/``obscurement_cells`` field of any kind — and there
-    is no ``can_see`` predicate anywhere in the engine; both a lit and a
-    dark run resolve identically (single d20, no disadvantage).
+    ``GridScene`` (specs.py) carries ``lighting`` / ``default_lighting``
+    / ``obscurement_cells``, and ``GridTopology.can_see`` reads them
+    together with the viewer's senses; ``_target_visibility_maps``
+    (orchestrator.py) threads the result into the attack resolver as the
+    ``unseen`` advantage source. The lit run therefore resolves on a
+    single d20 and the dark run at Disadvantage. Before C16b the scene
+    had geometry fields only and both runs resolved identically.
     """
     from dnd5e_srd_data import MemoryAssetLoader
 
