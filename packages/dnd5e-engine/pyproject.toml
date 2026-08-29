@@ -72,12 +72,17 @@ ignore = [
 ]
 
 # Baseline-and-ratchet: set at the worst function observed today
-# (submit_player_intent=23, in orchestrator.py). Ratcheted down from 56
+# (submit_player_intent=24, in orchestrator.py). Ratcheted down from 56
 # after extracting the orchestrator hotspots (_emit 49→12, start_combat
-# 34→3, _build_hydration_payload 36→6). A PR past this must justify it;
-# keep ratcheting DOWN.
+# 34→3, _build_hydration_payload 36→6). Bumped 23→24 for the C12 Charmed
+# pre-resolution gate (SRD 5.2 "You can't attack the charmer or target the
+# charmer with damaging abilities or magical effects"), which mirrors the
+# existing out-of-range/Hellish-Rebuke reject gates already inline in this
+# function and was extracted to a single boolean-returning helper
+# (`_reject_charmed_target`) to add only one decision point. A PR past this
+# must justify it; keep ratcheting DOWN otherwise.
 [tool.ruff.lint.mccabe]
-max-complexity = 23
+max-complexity = 24
 
 [tool.ruff.lint.per-file-ignores]
 # Test bodies are allowed to be branchy/repetitive (C901) and print (T201).

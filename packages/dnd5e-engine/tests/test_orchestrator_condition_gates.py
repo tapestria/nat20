@@ -9,7 +9,9 @@ import pytest
 from dnd5e_engine import ActiveEffect, PlayerIntent
 from dnd5e_engine.events import (
     ActorMoved,
+    AttackFailed,
     AttackRolled,
+    CastFailed,
     ConditionApplied,
     ConditionRemoved,
     Death,
@@ -513,3 +515,77 @@ def test_zero_damage_at_zero_hp_is_not_a_death_save_failure() -> None:
         DamageApplied(target_id="char:victim", amount=0, damage_type="fire", is_overkill=False),
     )
     assert _combatant(live, "char:victim").death_saves.get("failures", 0) == before
+
+
+def _charm(target_id: str, charmer_id: str) -> ActiveEffect:
+    return ActiveEffect(
+        id="effect:charm",
+        name="Charmed",
+        origin=f"cast:charm-person:{charmer_id}",
+        target_id=target_id,
+        statuses={"charmed"},
+    )
+
+
+def test_charmed_actor_cannot_attack_the_charmer() -> None:
+    start = _start("c12-charm-attack", [_hero()], [_foe()], [_charm("char:hero", "mon:foe")])
+    run_async(
+        submit_player_intent(
+            start.handle,
+            actor_id="char:hero",
+            intent=PlayerIntent(intent_type="attack", weapon_id="longsword", target_id="mon:foe"),
+        )
+    )
+    live = _get_live(start.handle)
+    failed = events_of(live, AttackFailed)
+    assert failed
+    assert failed[-1].reason == "target_is_charmer"
+    assert failed[-1].target_id == "mon:foe"
+    assert not events_of(live, AttackRolled)
+    assert _combatant(live, "char:hero").action_available is True  # nothing spent, turn kept
+
+
+def test_charmed_actor_may_attack_someone_else() -> None:
+    other = _foe(entity_id="mon:other", name="Other", zone_id=cell(0, 1))
+    start = _start("c12-charm-other", [_hero()], [_foe(), other], [_charm("char:hero", "mon:foe")])
+    run_async(
+        submit_player_intent(
+            start.handle,
+            actor_id="char:hero",
+            intent=PlayerIntent(intent_type="attack", weapon_id="longsword", target_id="mon:other"),
+        )
+    )
+    assert events_of(_get_live(start.handle), AttackRolled)
+
+
+def test_charmed_actor_cannot_target_the_charmer_with_a_harmful_spell() -> None:
+    start = _start(
+        "c12-charm-cast",
+        [_hero(spells_known=["fire-bolt"])],
+        [_foe()],
+        [_charm("char:hero", "mon:foe")],
+    )
+    run_async(
+        submit_player_intent(
+            start.handle,
+            actor_id="char:hero",
+            intent=PlayerIntent(
+                intent_type="cast_spell", spell_id="fire-bolt", target_id="mon:foe"
+            ),
+        )
+    )
+    failed = events_of(_get_live(start.handle), CastFailed)
+    assert failed
+    assert failed[-1].reason == "target_is_charmer"
+
+
+def test_unknown_charmer_imposes_no_restriction() -> None:
+    start = _start("c12-charm-unknown", [_hero()], [_foe()], [_status("char:hero", "charmed")])
+    run_async(
+        submit_player_intent(
+            start.handle,
+            actor_id="char:hero",
+            intent=PlayerIntent(intent_type="attack", weapon_id="longsword", target_id="mon:foe"),
+        )
+    )
+    assert events_of(_get_live(start.handle), AttackRolled)

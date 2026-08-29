@@ -917,6 +917,60 @@ def _pc_attack_out_of_range(live: _LiveCombat, actor_id: str, intent: PlayerInte
     return not _in_range_with_los(live.topology, attacker_zone, target_zone, weapon_reach)
 
 
+_HARMFUL_ACTIVITY_KINDS: frozenset[str] = frozenset({"attack", "damage", "save"})
+
+
+def _spell_is_harmful(spell: Spell) -> bool:
+    """SRD 5.2 Charmed's "damaging abilities or magical effects" — a spell with
+    any attack / damage / save activity. Heal- and utility-only spells are
+    not restricted."""
+    return any(a.kind in _HARMFUL_ACTIVITY_KINDS for a in spell.activities)
+
+
+def _charmed_target_violation(
+    live: _LiveCombat, current: Combatant, intent: PlayerIntent
+) -> str | None:
+    """The charmer's id when ``intent`` would attack / harmfully target the
+    creature that charmed ``current``; ``None`` otherwise (not charmed, unknown
+    charmer, other target, beneficial spell, non-targeting intent)."""
+    if intent.target_id is None or not is_condition_active(
+        Condition.CHARMED, _condition_names(current)
+    ):
+        return None
+    charmer = _condition_source_entity(live, current, "charmed")
+    if charmer is None or charmer != intent.target_id:
+        return None
+    if intent.intent_type == "attack":
+        return charmer
+    if intent.intent_type == "cast_spell" and intent.spell_id:
+        spell = get_lib_loader().get_spell(intent.spell_id)
+        if spell is not None and _spell_is_harmful(spell):
+            return charmer
+    return None
+
+
+def _reject_charmed_target(
+    live: _LiveCombat, actor_id: str, current: Combatant, intent: PlayerIntent
+) -> bool:
+    """Emit the typed Charmed-target rejection (``AttackFailed`` /
+    ``CastFailed``, reason ``target_is_charmer``) when ``intent`` would attack
+    or harmfully target the charmer; report whether one fired so
+    ``submit_player_intent`` can return early with no budget consumed."""
+    charmer = _charmed_target_violation(live, current, intent)
+    if charmer is None:
+        return False
+    if intent.intent_type == "attack":
+        _emit(live, AttackFailed(actor_id=actor_id, target_id=charmer, reason="target_is_charmer"))
+    else:
+        _emit(
+            live,
+            CastFailed(
+                actor_id=actor_id, spell_id=intent.spell_id or "", reason="target_is_charmer"
+            ),
+        )
+    return True
+
+
 def _synthesize_attack_from_weapon(weapon: Weapon) -> AttackActivity:
     """Build a base-weapon ``AttackActivity`` for a weapon with no
     activities of its own.
@@ -5272,6 +5326,12 @@ async def submit_player_intent(
                 reason="out_of_range",
             ),
         )
+        return
+
+    # SRD 5.2 Charmed — "You can't attack the charmer or target the charmer
+    # with damaging abilities or magical effects." Reject pre-resolution: no
+    # budget consumed, turn preserved.
+    if _reject_charmed_target(live, actor_id, current, intent):
         return
 
     # SRD §Hellish Rebuke — *"the creature that damaged you"*. The legal
