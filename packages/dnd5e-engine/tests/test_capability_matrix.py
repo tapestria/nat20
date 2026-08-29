@@ -179,6 +179,36 @@ _PROBES: dict[str, tuple[Any, str]] = {
         lambda: "natural:" in _event_class_body("AttackRolled"),
         "`natural`",
     ),
+    # C16: the PC move handler paths through shortest_path and reports unreachable.
+    "Multi-cell movement in one intent": (
+        lambda: (
+            '"unreachable"' in _src("orchestrator.py")
+            and "shortest_path(" in _src("orchestrator.py")
+        ),
+        "✅",
+    ),
+    # C16: AoE spells enumerate template cells instead of zone equality.
+    "AoE templates (sphere / cone / line / cube / cylinder)": (
+        lambda: "cells_in_template(" in _src("orchestrator.py"),
+        "✅",
+    ),
+    # C16: the forced-movement primitive emits CombatantMoved.
+    "Forced movement (push)": (
+        lambda: "CombatantMoved(" in _src("orchestrator.py"),
+        "✅",
+    ),
+    # C16b: the visibility predicate feeds the attack resolver.
+    "Vision and light (darkness": (
+        lambda: (
+            "can_see(" in _src("orchestrator.py") and '"unseen"' in _src("activities/attack.py")
+        ),
+        "⚠️ Partial",
+    ),
+    # D8: the zone graph is deprecated (warning raised in _resolve_topology).
+    "Zone-graph topology": (
+        lambda: "DeprecationWarning" in _src("orchestrator.py"),
+        "Deprecated",
+    ),
 }
 
 

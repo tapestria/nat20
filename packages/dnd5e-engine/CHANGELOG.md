@@ -53,6 +53,29 @@ new field is optional and defaults to the pre-0.6 behaviour. Behavioural deltas
 - **`test_capability_matrix.py::test_status_rows_match_code_probes`** pins
   `docs/capabilities.md` status rows to grep-level code probes, in both
   directions.
+- **Grid AoE targeting (C16).** `_expand_aoe_target_list` enumerates the typed
+  template (`sphere` / `cone` / `line` / `cube` / `cylinder`; Foundry `radius`
+  = emanation, `circle`, `square` mapped) via `GridTopology.cells_in_template`
+  and drops cells without line of effect from the point of origin (SRD 5.2
+  §Point of Origin). New `PlayerIntent.direction: tuple[int, int] | None`
+  aims cones, lines and cubes (defaults to caster → named target).
+- **Creature cover.** `GridTopology.cover_between(a, b, occupied_cells=())`
+  — every other live combatant on the line grants half cover; blocked cells
+  grant total cover and block sight (`has_line_of_sight`).
+- **Multi-cell `move` intent.** `_handle_move` paths with `shortest_path`
+  (walls block, no diagonal corner-cutting, enemies impassable, allies
+  passable, no ending in an occupied cell) and charges each leg's
+  `edge_distance`; new `MoveFailed.reason` members `unreachable`, `occupied`,
+  `blocked_path`.
+- **Forced movement.** `orchestrator.push_combatant(live, target_id,
+  origin_cell, distance_ft)` and the `CombatantMoved(forced=True)` event;
+  `activities/forced_movement.py` wires Thunderwave's push.
+- **Vision & light (C16b).** `GridScene.lighting`, `default_lighting`,
+  `obscurement_cells` (`LightLevel` / `Obscurement` Literals) and
+  `GridTopology.can_see(a, b, senses)`; `ActivityResolutionContext.target_unseen`
+  / `attacker_unseen_by` feed the `unseen` `AdvantageSource` both directions.
+- `SaveBlock.ignore_cover` is honoured when present (`roll_save(...,
+  ignore_cover=)`); the dataset field itself ships with C22.
 
 ### Changed
 
@@ -81,6 +104,14 @@ new field is optional and defaults to the pre-0.6 behaviour. Behavioural deltas
   crit / natural-1 fumble test reads).
 - Turn advancement runs through one shared path, so every boundary rule fires
   in a single, registration-ordered place.
+- Walls now block movement as well as sight; `edge_distance` returns `None` for
+  an illegal step. `ActorMoved` carries the whole intent's distance (one event
+  per `move`).
+
+### Deprecated
+
+- `start_combat(scene_zones=...)` — `DeprecationWarning` since 0.6.0, removed in
+  0.7.0. Pass `grid_scene=GridScene(...)` instead.
 
 ## [0.5.0]
 
