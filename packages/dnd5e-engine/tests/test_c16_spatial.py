@@ -153,3 +153,21 @@ def test_cells_in_template_cube_requires_direction():
 
     with pytest.raises(ValueError):
         _grid().cells_in_template("0,0", "cube", 15)
+
+
+# ── Task 9: push path ────────────────────────────────────────────────────
+
+
+def test_push_path_moves_straight_away_from_origin():
+    g = _grid()
+    assert g.push_path("0,0", "1,0", 10) == ["2,0", "3,0"]
+    assert g.push_path("2,2", "1,1", 10) == ["0,0"]  # diagonal, clipped by the edge
+    assert g.push_path("0,0", "0,0", 10) == []
+
+
+def test_push_path_stops_at_obstacles_and_creatures():
+    g = _grid(blocked_cells=["3,0"])
+    assert g.push_path("0,0", "1,0", 15) == ["2,0"]
+    walled = _grid(wall_segments=[{"x1": 3, "y1": 0, "x2": 3, "y2": 1}])
+    assert walled.push_path("0,0", "1,0", 15) == ["2,0"]
+    assert _grid().push_path("0,0", "1,0", 15, occupied_cells={"3,0"}) == ["2,0"]

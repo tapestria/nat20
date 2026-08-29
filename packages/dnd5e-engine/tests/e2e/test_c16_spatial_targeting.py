@@ -593,7 +593,6 @@ def test_c16_s06_multicell_move_succeeds_with_terrain_cost_or_fails_unreachable_
     assert live_c.actor_zone["mon:occupant"] == cell(4, 0)
 
 
-@xfail_cluster(16, "spatial targeting")
 def test_c16_s07_thunderwave_pushes_failed_save_target_10ft_away():
     """C16-S07: SRD 5.2 §Spell Descriptions, Thunderwave — "On a failed
     save, a creature takes 2d8 Thunder damage and is pushed 10 feet away
@@ -602,12 +601,9 @@ def test_c16_s07_thunderwave_pushes_failed_save_target_10ft_away():
     in ``orchestrator.py`` and ``events.py`` has no ``CombatantMoved``
     event — the save/damage resolve, but the target never moves.
 
-    Seed choice: ``rng_seed=7`` is the catalog's own placeholder,
-    empirically chosen so ``mon:foe``'s Constitution save (dexterity=8,
-    biasing a weak save) fails against the level-3 Thunderwave DC once
-    the cast pathway resolves the save roll deterministically off this
-    seed — verified against this repo's existing seeded-save convention
-    (cf. C05-S02's ``rng_seed=1`` -> natural roll of 10).
+    Seed choice: rng_seed=1 — verified on main a886f77: 2d8 drawn first,
+    then the Constitution d20 = 9 vs DC 10 (INT 10 wizard, +0 CON foe) →
+    failed save. Seed 7 (the catalog placeholder) rolls 13 and succeeds.
     """
 
     async def _run():
@@ -642,7 +638,7 @@ def test_c16_s07_thunderwave_pushes_failed_save_target_10ft_away():
             ],
             scene_zones=None,
             grid_scene=grid_scene(),
-            rng_seed=7,
+            rng_seed=1,
         )
         live = _get_live(start.handle)
         await submit_player_intent(

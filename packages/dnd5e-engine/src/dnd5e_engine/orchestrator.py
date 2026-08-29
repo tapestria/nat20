@@ -76,6 +76,7 @@ from dnd5e_engine.activities.attack import (
 from dnd5e_engine.activities.build_context import build_activity_context
 from dnd5e_engine.activities.context import ActivityResolutionContext
 from dnd5e_engine.activities.d20 import AdvantageSources, roll_d20_test
+from dnd5e_engine.activities.forced_movement import FORCED_MOVEMENT_RIDERS
 from dnd5e_engine.activities.monster_actions import (
     expand_action_to_activities,
     select_typed_monster_action,
@@ -90,6 +91,7 @@ from dnd5e_engine.events import (
     AttackFailed,
     AttackRolled,
     CastFailed,
+    CombatantMoved,
     CombatEnded,
     CombatEvent,
     ConcentrationCheck,
@@ -628,6 +630,56 @@ def _sneak_ally_adjacent_map(
                 out[target.entity_id] = True
                 break
     return out
+
+
+def push_combatant(live: _LiveCombat, target_id: str, origin_cell: str, distance_ft: int) -> None:
+    """Forced movement primitive — move ``target_id`` up to ``distance_ft``
+    straight away from ``origin_cell`` and emit ``CombatantMoved(forced=True)``
+    for the distance actually covered. Consumes no movement budget and
+    provokes no opportunity attack (SRD 5.2 §Opportunity Attacks). Grid-only:
+    the zone graph has no direction to push along (legacy backend, removed in
+    0.7) — a no-op there. A dead or untracked target is never moved."""
+    topology = live.topology
+    target_cell = live.actor_zone.get(target_id)
+    if not isinstance(topology, GridTopology) or target_cell is None or target_id in live.dead_ids:
+        return  # zone graph: legacy behaviour until removal in 0.7
+    occupied = _occupied_cells(live, exclude=(target_id,))
+    path = topology.push_path(origin_cell, target_cell, distance_ft, occupied_cells=occupied)
+    if not path:
+        return
+    live.actor_zone[target_id] = path[-1]
+    _emit(
+        live,
+        CombatantMoved(
+            actor_id=target_id,
+            from_zone=target_cell,
+            to_zone=path[-1],
+            distance_ft=len(path) * topology.cell_size_ft,
+            forced=True,
+        ),
+    )
+
+
+def _apply_forced_movement_riders(
+    live: _LiveCombat, caster: Combatant, intent: PlayerIntent, pre_event_count: int
+) -> None:
+    """After a cast resolves, apply the spell's typed forced-movement rider to
+    every target whose ``SaveRolled`` in this resolution FAILED (trigger
+    ``failed_save``). Pushes happen after all saves/damage so the rider never
+    perturbs the seeded roll order. Each target is pushed at most once — a
+    second failed ``SaveRolled`` in the same slice (e.g. the concentration
+    save the spell's own damage triggered) is not a second push."""
+    rider = FORCED_MOVEMENT_RIDERS.get(intent.spell_id or "")
+    if rider is None or rider.trigger != "failed_save":
+        return
+    origin_cell = live.actor_zone.get(caster.entity_id)
+    if origin_cell is None:
+        return
+    pushed: set[str] = set()
+    for ev in list(live.event_log[pre_event_count:]):
+        if isinstance(ev, SaveRolled) and not ev.succeeded and ev.target_id not in pushed:
+            pushed.add(ev.target_id)
+            push_combatant(live, ev.target_id, origin_cell, rider.distance_ft)
 
 
 def _record_sneak_attack_spent(
@@ -5431,6 +5483,12 @@ async def submit_player_intent(
         _record_sneak_attack_spent(
             live, current, intent, fetched_weapon, targets, actx, pre_event_count
         )
+
+        # SRD 5.2 §Spell Descriptions — typed forced-movement riders (e.g.
+        # Thunderwave's "pushed 10 feet away from you") fire after the
+        # save/damage resolution so the push never perturbs the seeded roll
+        # order and a target that died is left where it fell.
+        _apply_forced_movement_riders(live, current, intent, pre_event_count)
 
     # SRD §Concentration — fold any emitted ``EffectApplied(is_concentration=True)``
     # back onto the caster's ``Combatant.concentration_effect_id`` so the

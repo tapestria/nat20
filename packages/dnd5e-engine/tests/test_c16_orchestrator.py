@@ -549,3 +549,77 @@ def test_zone_graph_move_into_an_occupied_zone_still_succeeds() -> None:
     assert len(moved) == 1
     assert moved[0].to_zone == "zone:b"
     assert moved[0].distance_ft == 30
+
+
+# ── Task 9: forced movement ──────────────────────────────────────────────
+
+
+def test_forced_movement_registry_is_typed_and_names_thunderwave():
+    from dnd5e_engine.activities.forced_movement import (
+        FORCED_MOVEMENT_RIDERS,
+        ForcedMovementRider,
+    )
+
+    rider = FORCED_MOVEMENT_RIDERS["thunderwave"]
+    assert rider == ForcedMovementRider(
+        distance_ft=10, trigger="failed_save", direction="away_from_caster"
+    )
+
+
+def test_push_combatant_emits_combatant_moved_without_spending_budget():
+    from dnd5e_engine.orchestrator import push_combatant
+
+    live = run_async(
+        _move(
+            GridScene(width=10, height=10),
+            [_mover(cell(0, 0))],
+            [_foe("mon:foe", cell(1, 0))],
+            cell(0, 0),
+        )
+    )
+    before = next(c for c in live.initiative if c.entity_id == "mon:foe").movement_remaining
+    push_combatant(live, "mon:foe", cell(0, 0), 10)
+    pushed = [e for e in live.event_log if isinstance(e, events_module.CombatantMoved)]
+    assert pushed
+    assert (pushed[0].from_zone, pushed[0].to_zone, pushed[0].distance_ft, pushed[0].forced) == (
+        cell(1, 0),
+        cell(3, 0),
+        10,
+        True,
+    )
+    assert live.actor_zone["mon:foe"] == cell(3, 0)
+    assert next(c for c in live.initiative if c.entity_id == "mon:foe").movement_remaining == before
+
+
+def test_push_combatant_into_a_wall_moves_as_far_as_possible_and_no_event_when_stuck():
+    from dnd5e_engine.orchestrator import push_combatant
+
+    scene = GridScene(width=10, height=10, wall_segments=[{"x1": 3, "y1": 0, "x2": 3, "y2": 1}])
+    live = run_async(_move(scene, [_mover(cell(0, 0))], [_foe("mon:foe", cell(1, 0))], cell(0, 0)))
+    push_combatant(live, "mon:foe", cell(0, 0), 10)
+    pushed = [e for e in live.event_log if isinstance(e, events_module.CombatantMoved)]
+    assert pushed[0].to_zone == cell(2, 0)
+    assert pushed[0].distance_ft == 5
+    push_combatant(live, "mon:foe", cell(0, 0), 10)  # now flush against the wall
+    assert len([e for e in live.event_log if isinstance(e, events_module.CombatantMoved)]) == 1
+
+
+def test_thunderwave_push_skips_a_creature_that_saved():
+    # seed 3 → natural 12 vs DC 10 (verified on main): saved, damaged, not pushed
+    from dnd5e_engine.lib_loader import set_lib_loader_for_tests
+
+    # The move tests above install a MemoryAssetLoader; this one needs the
+    # real corpus (thunderwave's activities) regardless of file order.
+    set_lib_loader_for_tests(None)
+    live = run_async(
+        _cast(
+            GridScene(width=10, height=10),
+            [_wiz(["thunderwave"], {1: 1}, cell(0, 0), level=3)],
+            [_foe("mon:foe", cell(1, 0), dexterity=8)],
+            PlayerIntent(intent_type="cast_spell", spell_id="thunderwave", target_id="mon:foe"),
+            seed=3,
+        )
+    )
+    assert events_of(live, events_module.SaveRolled)[0].succeeded is True
+    assert not [e for e in live.event_log if isinstance(e, events_module.CombatantMoved)]
+    assert live.actor_zone["mon:foe"] == cell(1, 0)

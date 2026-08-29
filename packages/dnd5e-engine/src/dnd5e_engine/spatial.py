@@ -408,6 +408,44 @@ class GridTopology:
 
         raise ValueError(f"unknown template shape: {shape!r}")
 
+    def push_path(
+        self,
+        origin: str,
+        target: str,
+        distance_ft: int,
+        *,
+        occupied_cells: Collection[str] = (),
+    ) -> list[str]:
+        """Forced movement "straight away from" ``origin``: the cells a creature
+        at ``target`` crosses when pushed ``distance_ft`` (SRD 5.2 Thunderwave
+        "pushed 10 feet away from you", Push mastery "straight away from
+        yourself"). Direction is the sign of ``target - origin`` per axis (one
+        of the 8 grid directions). The walk stops early at the grid edge, a
+        blocked cell, a wall, a corner cut (``edge_distance`` is ``None``) or an
+        occupied cell — the creature is moved as far as it can go. Grid-only;
+        not part of ``SpatialTopology``."""
+        if not self._in_bounds(origin) or not self._in_bounds(target) or origin == target:
+            return []
+        oc, orow = parse_cell(origin)
+        tc, tr = parse_cell(target)
+        sdc = (tc > oc) - (tc < oc)
+        sdr = (tr > orow) - (tr < orow)
+        occupied = set(occupied_cells)
+        out: list[str] = []
+        current = target
+        for _ in range(distance_ft // self._cell_size_ft):
+            cc, cr = parse_cell(current)
+            nxt = cell_id(cc + sdc, cr + sdr)
+            if (
+                not self._in_bounds(nxt)
+                or nxt in occupied
+                or self.edge_distance(current, nxt) is None
+            ):
+                break
+            out.append(nxt)
+            current = nxt
+        return out
+
     def _cube_cells(self, oc: int, orow: int, sdc: int, sdr: int, side: int) -> list[str]:
         """The face-anchored ``side x side`` block for ``"cube"`` — see the
         placement convention in ``cells_in_template``'s docstring and
