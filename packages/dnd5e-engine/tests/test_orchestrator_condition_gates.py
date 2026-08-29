@@ -10,6 +10,9 @@ from dnd5e_engine import ActiveEffect, PlayerIntent
 from dnd5e_engine.events import (
     ActorMoved,
     AttackRolled,
+    ConditionApplied,
+    ConditionRemoved,
+    Death,
     IntentSubmitted,
     MoveFailed,
     SaveRolled,
@@ -301,3 +304,126 @@ def test_end_of_turn_repeat_save_honours_auto_fail_and_restrained_disadvantage()
     assert strength.succeeded is False
     assert strength.natural is None
     assert strength.roll_total == 0
+
+
+# ---------------------------------------------------------------------------
+# C12-S06 — Dropping to 0 Hit Points (SRD 5.2 "Damage and Healing")
+# ---------------------------------------------------------------------------
+
+
+def _victim(**kw: Any) -> PartyMemberSpec:
+    base: dict[str, Any] = dict(
+        entity_id="char:victim",
+        name="Victim",
+        initiative=1,
+        hp_current=1,
+        hp_max=20,
+        ac=1,
+        zone_id=cell(1, 0),
+    )
+    base.update(kw)
+    return PartyMemberSpec(**base)
+
+
+def _duel(session: str, victim: PartyMemberSpec) -> Any:
+    return _start(
+        session,
+        [
+            _hero(
+                entity_id="char:attacker",
+                name="Attacker",
+                attack_bonus=99,
+                zone_id=cell(0, 0),
+            ),
+            victim,
+        ],
+        [_foe(initiative=5, hp_current=20, hp_max=20, ac=99, zone_id=cell(5, 5))],
+    )
+
+
+def _stab(start: Any) -> Any:
+    run_async(
+        submit_player_intent(
+            start.handle,
+            actor_id="char:attacker",
+            intent=PlayerIntent(
+                intent_type="attack", weapon_id="longsword", target_id="char:victim"
+            ),
+        )
+    )
+    return _get_live(start.handle)
+
+
+def test_character_at_zero_hp_gains_unconscious_and_is_incapacitated_and_prone() -> None:
+    live = _stab(_duel("c12-zero-hp", _victim()))
+    applied = [e for e in events_of(live, ConditionApplied) if e.target_id == "char:victim"]
+    assert [e.condition for e in applied] == ["unconscious"]
+    victim = _combatant(live, "char:victim")
+    names = [c.condition for c in victim.conditions]
+    assert "unconscious" in names
+    assert victim.hp_current == 0
+    assert victim.is_alive is True
+    assert victim.movement_remaining == 0
+    assert not events_of(live, Death)
+
+
+def test_massive_damage_kills_outright() -> None:
+    # hp_max 1: any longsword hit leaves remainder >= max after reaching 0.
+    live = _stab(_duel("c12-massive", _victim(hp_current=1, hp_max=1)))
+    deaths = [e for e in events_of(live, Death) if e.target_id == "char:victim"]
+    assert deaths
+    assert deaths[0].reason == "instant_kill"
+    assert not [e for e in events_of(live, ConditionApplied) if e.target_id == "char:victim"]
+
+
+def test_damage_while_at_zero_hp_is_a_death_save_failure() -> None:
+    start = _duel("c12-damage-at-zero", _victim(hp_current=1, hp_max=40))
+    live = _stab(start)
+    # Attacker's turn ended; skip the foe and the victim (victim rolls a death
+    # save at turn start), then stab again on the attacker's next turn.
+    run_async(advance_monster_turn(start.handle))
+    run_async(
+        submit_player_intent(
+            start.handle, actor_id="char:victim", intent=PlayerIntent(intent_type="pass")
+        )
+    )
+    failures_before = _combatant(live, "char:victim").death_saves.get("failures", 0)
+    _stab(start)
+    assert _combatant(live, "char:victim").death_saves.get("failures", 0) == failures_before + 1
+
+
+def test_healing_from_zero_removes_unconscious_and_leaves_prone() -> None:
+    from dnd5e_engine.events import HealingApplied
+    from dnd5e_engine.orchestrator import _emit
+
+    live = _stab(_duel("c12-revive", _victim()))
+    _emit(live, HealingApplied(target_id="char:victim", amount=5))
+    names = [c.condition for c in _combatant(live, "char:victim").conditions]
+    assert "unconscious" not in names
+    assert "prone" in names
+    removed = [e for e in events_of(live, ConditionRemoved) if e.target_id == "char:victim"]
+    assert removed
+    assert removed[-1].condition == "unconscious"
+
+
+def test_monster_at_zero_hp_dies_outright_with_no_death_save_path() -> None:
+    # SRD 5.2 "Monster Death" — monsters die the instant they drop to 0 HP;
+    # only Characters fall Unconscious and roll death saves.
+    start = _start(
+        "c12-monster-death",
+        [_hero(attack_bonus=99)],
+        [_foe(hp_current=1, hp_max=30, ac=1, zone_id=cell(1, 0))],
+    )
+    run_async(
+        submit_player_intent(
+            start.handle,
+            actor_id="char:hero",
+            intent=PlayerIntent(intent_type="attack", weapon_id="longsword", target_id="mon:foe"),
+        )
+    )
+    live = _get_live(start.handle)
+    deaths = [e for e in events_of(live, Death) if e.target_id == "mon:foe"]
+    assert [e.reason for e in deaths] == ["damage"]
+    assert not [e for e in events_of(live, ConditionApplied) if e.target_id == "mon:foe"]
+    foe = _combatant(live, "mon:foe")
+    assert foe.death_saves in ({}, None)

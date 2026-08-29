@@ -84,7 +84,7 @@ from dnd5e_engine.activities.passive_stats import interpret_passive_stats
 from dnd5e_engine.activities.resolver import resolve_activity
 from dnd5e_engine.activities.scale import build_scale_values
 from dnd5e_engine.build_party import granted_feature_slugs
-from dnd5e_engine.death_saves import roll_death_save
+from dnd5e_engine.death_saves import DeathSaveState, roll_death_save
 from dnd5e_engine.events import (
     ActorMoved,
     AdvantageMode,
@@ -114,6 +114,7 @@ from dnd5e_engine.events import (
     TurnEnded,
     TurnPhase,
     TurnStarted,
+    Unconscious,
 )
 from dnd5e_engine.lib_loader import get_lib_loader
 from dnd5e_engine.outcome import (
@@ -1160,6 +1161,45 @@ def _find_combatant(live: _LiveCombat, entity_id: str) -> Combatant | None:
     return None
 
 
+def _fold_condition_onto_combatant(live: _LiveCombat, entity_id: str, condition: str) -> None:
+    """Materialise a ``ConditionApplied`` on ``Combatant.conditions`` so every
+    projection (speed, incapacitated gate, save auto-fail, attack rows) sees it.
+
+    Idempotent per condition name; implied conditions are NOT materialised —
+    ``is_condition_active`` resolves ``CONDITION_IMPLIES`` from the names.
+    """
+    c = _find_combatant(live, entity_id)
+    if c is None or any(ac.condition == condition for ac in c.conditions):
+        return
+    new = [
+        *c.conditions,
+        ActiveCondition(
+            condition=condition,
+            source_entity_id="implied:event",
+            scope="combat",
+            applied_round=live.round_number,
+        ),
+    ]
+    for idx, slot in enumerate(live.initiative):
+        if slot.entity_id == entity_id:
+            live.initiative[idx] = slot.model_copy(update={"conditions": new})
+            break
+    _clamp_movement_budget(live, entity_id)
+
+
+def _strip_condition_from_combatant(live: _LiveCombat, entity_id: str, condition: str) -> None:
+    """Drop every ``Combatant.conditions`` entry named ``condition`` (all
+    sources) after a ``ConditionRemoved``."""
+    c = _find_combatant(live, entity_id)
+    if c is None or not any(ac.condition == condition for ac in c.conditions):
+        return
+    new = [ac for ac in c.conditions if ac.condition != condition]
+    for idx, slot in enumerate(live.initiative):
+        if slot.entity_id == entity_id:
+            live.initiative[idx] = slot.model_copy(update={"conditions": new})
+            break
+
+
 def _drop_concentration(live: _LiveCombat, caster_id: str) -> None:
     """Cascade a concentration drop: ``ConcentrationDropped`` + per-target
     ``EffectExpired(reason=concentration_drop)`` + ``ConditionRemoved`` for
@@ -1533,10 +1573,12 @@ def _emit(live: _LiveCombat, event: CombatEvent) -> None:
 
     if isinstance(event, ConditionApplied):
         live.active_conditions.setdefault(event.target_id, set()).add(event.condition)
+        _fold_condition_onto_combatant(live, event.target_id, event.condition)
         return
 
     if isinstance(event, ConditionRemoved):
         live.active_conditions.get(event.target_id, set()).discard(event.condition)
+        _strip_condition_from_combatant(live, event.target_id, event.condition)
         return
 
     if isinstance(event, EffectApplied):
@@ -1723,18 +1765,70 @@ def _emit_apply_damage(live: _LiveCombat, event: DamageApplied) -> None:
         )
         if not succeeded:
             _drop_concentration(live, event.target_id)
-    if (
-        new_hp <= 0
-        and event.target_id not in live.party_ids
-        and event.target_id not in live.dead_ids
-    ):
-        # Synthesize a Death(damage) for the non-PC. Recursion guard:
-        # _emit re-enters here for the Death, but the dead_ids set blocks
-        # double-recording, and Death's only running-state effect is to
-        # record the death (no further HP arithmetic).
-        killer = live.current_actor_id
-        death_event = Death(target_id=event.target_id, reason="damage")
-        _record_death(live, death_event, killer_id=killer)
+    if new_hp <= 0 and event.target_id not in live.dead_ids:
+        if event.target_id in live.party_ids:
+            _apply_zero_hp_to_character(live, event, hp_before=tracked, damage_after_temp=remaining)
+        else:
+            # SRD 5.2 "Monster Death" — a monster dies the instant it drops to
+            # 0 HP. Recursion guard: _emit re-enters here for the Death, but
+            # the dead_ids set blocks double-recording, and Death's only
+            # running-state effect is to record the death.
+            killer = live.current_actor_id
+            death_event = Death(target_id=event.target_id, reason="damage")
+            _record_death(live, death_event, killer_id=killer)
+            live.event_log.append(death_event)
+            live.event_queue.put_nowait(death_event)
+
+
+def _apply_zero_hp_to_character(
+    live: _LiveCombat, event: DamageApplied, *, hp_before: int, damage_after_temp: int
+) -> None:
+    """SRD 5.2 "Dropping to 0 Hit Points" for a Character.
+
+    * Massive Damage: "When damage reduces a character to 0 Hit Points and
+      damage remains, the character dies if the remainder equals or exceeds
+      their Hit Point maximum." -> ``Death(reason="instant_kill")``.
+    * Falling Unconscious: otherwise the character gains the Unconscious
+      condition (``ConditionApplied``; the legacy ``Unconscious`` marker is
+      emitted first for hosts that narrate it) and death saves begin on their
+      next turn (``_maybe_roll_death_save``).
+    * Damage at 0 Hit Points: "If you take any damage while you have 0 Hit
+      Points, you suffer a Death Saving Throw failure. ... If the damage
+      equals or exceeds your Hit Point maximum, you die." (The Critical-Hit
+      two-failure clause needs a crit flag on ``DamageApplied`` — C15 seam.)
+    """
+    target = _find_combatant(live, event.target_id)
+    if target is None:
+        return
+    hp_max = _hp_max_for(live, event.target_id)
+    remainder = damage_after_temp - hp_before if hp_before > 0 else damage_after_temp
+    if remainder >= hp_max:
+        death_event = Death(target_id=event.target_id, reason="instant_kill")
+        _record_death(live, death_event, killer_id=live.current_actor_id)
+        live.event_log.append(death_event)
+        live.event_queue.put_nowait(death_event)
+        for idx, c in enumerate(live.initiative):
+            if c.entity_id == event.target_id:
+                live.initiative[idx] = c.model_copy(update={"is_alive": False})
+                break
+        return
+    if hp_before > 0:
+        if "unconscious" not in _condition_names(target):
+            _emit(live, Unconscious(target_id=event.target_id))
+            _emit(live, ConditionApplied(target_id=event.target_id, condition="unconscious"))
+        return
+    state = DeathSaveState.from_dict(target.death_saves) if target.death_saves else DeathSaveState()
+    outcome = state.apply_damage_while_unconscious(False)
+    update: dict[str, Any] = {"death_saves": state.to_dict()}
+    if outcome == "dead":
+        update["is_alive"] = False
+    for idx, c in enumerate(live.initiative):
+        if c.entity_id == event.target_id:
+            live.initiative[idx] = c.model_copy(update=update)
+            break
+    if outcome == "dead":
+        death_event = Death(target_id=event.target_id, reason="death_saves")
+        _record_death(live, death_event, killer_id=live.current_actor_id)
         live.event_log.append(death_event)
         live.event_queue.put_nowait(death_event)
 
@@ -1758,17 +1852,31 @@ def _emit_apply_healing(live: _LiveCombat, event: HealingApplied) -> None:
     # the post-heal state even when the heal didn't cross the 0->1
     # revive boundary.
     revived = tracked == 0 and new_hp > 0
+    revived_ids: list[str] = []
     for idx, c in enumerate(live.initiative):
         if c.entity_id == event.target_id:
             heal_update: dict[str, Any] = {"hp_current": new_hp}
             if revived:
                 heal_update["is_alive"] = True
                 heal_update["death_saves"] = {}
-                heal_update["conditions"] = [
-                    cond for cond in c.conditions if cond.condition != "unconscious"
-                ]
+                # SRD 5.2 Unconscious: "When this condition ends, you remain Prone."
+                kept = [cond for cond in c.conditions if cond.condition != "unconscious"]
+                if not any(cond.condition == "prone" for cond in kept):
+                    kept.append(
+                        ActiveCondition(
+                            condition="prone",
+                            source_entity_id="implied:revive",
+                            scope="combat",
+                            applied_round=live.round_number,
+                        )
+                    )
+                heal_update["conditions"] = kept
+                revived_ids.append(c.entity_id)
             live.initiative[idx] = c.model_copy(update=heal_update)
             break
+    for entity_id in revived_ids:
+        _emit(live, ConditionRemoved(target_id=entity_id, condition="unconscious"))
+        _emit(live, ConditionApplied(target_id=entity_id, condition="prone"))
 
 
 def _emit_apply_temp_hp(live: _LiveCombat, event: TempHpApplied) -> None:

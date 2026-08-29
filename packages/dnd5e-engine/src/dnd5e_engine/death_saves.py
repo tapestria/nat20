@@ -34,6 +34,7 @@ from dnd5e_engine.events import (
 )
 from dnd5e_engine.rules.conditions import d20_test_penalty
 from dnd5e_engine.types.combat import Combatant
+from dnd5e_engine.types.conditions import ActiveCondition
 
 
 @dataclass
@@ -76,15 +77,18 @@ class DeathSaveState:
 
         return self._check_outcome()
 
-    def apply_damage_while_unconscious(self, is_melee_within_5ft: bool) -> str:
+    def apply_damage_while_unconscious(self, is_critical: bool) -> str:
         """Apply death save failures from damage while unconscious.
 
-        D&D 5e RAW: taking any damage while at 0 HP is a death save failure.
-        Melee attack within 5 ft = auto-crit = 2 failures. Otherwise 1 failure.
+        SRD 5.2 "Damage at 0 Hit Points": taking any damage while at 0 HP is
+        one Death Saving Throw failure; a Critical Hit is two. (The parameter
+        was historically named ``is_melee_within_5ft`` — melee within 5 ft of
+        an Unconscious target is an automatic Critical Hit, so the meaning is
+        unchanged; the positional shape is preserved.)
 
         Returns "dead" if 3+ failures reached, else "ongoing".
         """
-        self.failures += 2 if is_melee_within_5ft else 1
+        self.failures += 2 if is_critical else 1
         return self._check_outcome()
 
     def reset(self) -> None:
@@ -223,7 +227,17 @@ def roll_death_save(combatant: Combatant, rng: random.Random) -> DeathSaveResult
         updates["death_saves"] = prior_state.to_dict()
         updates["hp_current"] = 1
         updates["is_alive"] = True
-        updates["conditions"] = [c for c in combatant.conditions if c.condition != "unconscious"]
+        # SRD 5.2 Unconscious: "When this condition ends, you remain Prone."
+        kept = [c for c in combatant.conditions if c.condition != "unconscious"]
+        if not any(c.condition == "prone" for c in kept):
+            kept.append(
+                ActiveCondition(
+                    condition="prone",
+                    source_entity_id="implied:revive",
+                    scope="combat",
+                )
+            )
+        updates["conditions"] = kept
     else:
         updates["death_saves"] = prior_state.to_dict()
 

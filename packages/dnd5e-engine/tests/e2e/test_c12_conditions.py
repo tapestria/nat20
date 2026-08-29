@@ -23,7 +23,7 @@ from dnd5e_engine.orchestrator import (
     submit_player_intent,
 )
 from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
-from tests.e2e.harness import cell, events_of, grid_scene, run_async, xfail_cluster
+from tests.e2e.harness import cell, events_of, grid_scene, run_async
 
 
 def test_c12_s01_incapacitated_blocks_attack_intent():
@@ -414,7 +414,6 @@ def test_c12_s05_exhaustion_applies_d20_and_speed_penalties():
     assert exh_hero.movement_remaining == base_hero.movement_remaining - 5
 
 
-@xfail_cluster(12, "conditions enforced")
 def test_c12_s06_dropping_to_zero_hp_applies_unconscious():
     """C12-S06: SRD 5.2 Damage and Healing, Dropping to 0 Hit Points —
     "If you reach 0 Hit Points and don't die instantly, you have the
