@@ -53,7 +53,7 @@ import itertools
 import logging
 import random
 import re
-from collections.abc import AsyncIterator, Mapping, Sequence
+from collections.abc import AsyncIterator, Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -917,6 +917,18 @@ def _pc_attack_out_of_range(live: _LiveCombat, actor_id: str, intent: PlayerInte
     return not _in_range_with_los(live.topology, attacker_zone, target_zone, weapon_reach)
 
 
+def _attack_out_of_range_failure(
+    live: _LiveCombat, actor_id: str, intent: PlayerIntent
+) -> CombatEvent | None:
+    """``AttackFailed(reason="out_of_range")`` when ``intent`` is a
+    weapon-reach-gated attack; ``None`` otherwise. One of the
+    ``pre_resolution_gates`` failure-builders consumed by
+    ``submit_player_intent``."""
+    if intent.intent_type != "attack" or not _pc_attack_out_of_range(live, actor_id, intent):
+        return None
+    return AttackFailed(actor_id=actor_id, target_id=intent.target_id, reason="out_of_range")
+
+
 _HARMFUL_ACTIVITY_KINDS: frozenset[str] = frozenset({"attack", "damage", "save"})
 
 
@@ -949,26 +961,20 @@ def _charmed_target_violation(
     return None
 
 
-def _reject_charmed_target(
+def _charmed_target_failure(
     live: _LiveCombat, actor_id: str, current: Combatant, intent: PlayerIntent
-) -> bool:
-    """Emit the typed Charmed-target rejection (``AttackFailed`` /
-    ``CastFailed``, reason ``target_is_charmer``) when ``intent`` would attack
-    or harmfully target the charmer; report whether one fired so
-    ``submit_player_intent`` can return early with no budget consumed."""
+) -> CombatEvent | None:
+    """The typed Charmed-target rejection (``AttackFailed`` / ``CastFailed``,
+    reason ``target_is_charmer``) when ``intent`` would attack or harmfully
+    target the charmer; ``None`` when the gate doesn't apply. One of the
+    ``pre_resolution_gates`` failure-builders consumed by
+    ``submit_player_intent``."""
     charmer = _charmed_target_violation(live, current, intent)
     if charmer is None:
-        return False
+        return None
     if intent.intent_type == "attack":
-        _emit(live, AttackFailed(actor_id=actor_id, target_id=charmer, reason="target_is_charmer"))
-    else:
-        _emit(
-            live,
-            CastFailed(
-                actor_id=actor_id, spell_id=intent.spell_id or "", reason="target_is_charmer"
-            ),
-        )
-    return True
+        return AttackFailed(actor_id=actor_id, target_id=charmer, reason="target_is_charmer")
+    return CastFailed(actor_id=actor_id, spell_id=intent.spell_id or "", reason="target_is_charmer")
 
 
 def _synthesize_attack_from_weapon(weapon: Weapon) -> AttackActivity:
@@ -4551,6 +4557,20 @@ def _spell_out_of_range(
     return False
 
 
+def _spell_out_of_range_failure(
+    live: _LiveCombat,
+    actor_id: str,
+    intent: PlayerIntent,
+    cast_spell_for_timing: Spell | None,
+) -> CombatEvent | None:
+    """``CastFailed(reason="out_of_range")`` when ``intent`` is a spell-range-
+    gated cast; ``None`` otherwise. One of the ``pre_resolution_gates``
+    failure-builders consumed by ``submit_player_intent``."""
+    if not _spell_out_of_range(live, actor_id, intent, cast_spell_for_timing):
+        return None
+    return CastFailed(actor_id=actor_id, spell_id=intent.spell_id or "", reason="out_of_range")
+
+
 def _hellish_rebuke_target_invalid(current: Combatant, intent: PlayerIntent) -> bool:
     """SRD §Hellish Rebuke — return ``True`` if this is a Hellish Rebuke cast
     whose target is not the most-recent damager tracked on the caster."""
@@ -4559,6 +4579,18 @@ def _hellish_rebuke_target_invalid(current: Combatant, intent: PlayerIntent) -> 
         and intent.spell_id == "hellish-rebuke"
         and (current.last_damaged_by is None or intent.target_id != current.last_damaged_by)
     )
+
+
+def _hellish_rebuke_failure(
+    actor_id: str, current: Combatant, intent: PlayerIntent
+) -> CombatEvent | None:
+    """``CastFailed(reason="target_invalid")`` when ``intent`` is a Hellish
+    Rebuke cast at the wrong target; ``None`` otherwise. One of the
+    ``pre_resolution_gates`` failure-builders consumed by
+    ``submit_player_intent``."""
+    if not _hellish_rebuke_target_invalid(current, intent):
+        return None
+    return CastFailed(actor_id=actor_id, spell_id=intent.spell_id, reason="target_invalid")
 
 
 def _consume_action_budget(live: _LiveCombat, actor_id: str, cost: _ActionCost) -> Combatant:
@@ -5292,62 +5324,26 @@ async def submit_player_intent(
     is_bonus_action = action_cost.is_bonus_action
     is_reaction_cast = action_cost.is_reaction_cast
 
-    # SRD §Spell Range — out-of-range casts are a no-op: they consume
-    # neither budget nor slot. Validate BEFORE budget consumption. The
-    # typed ``Spell.range`` carries the band: feet-valued ranges gate at their
-    # distance, and ``touch`` gates at 5ft (the caster must be adjacent — the
-    # old wrapper carried ``range_ft=5`` for touch spells). ``self``/``special``
-    # carry no metric distance and skip the gate. ``_ZoneGraph.within_range`` is
-    # the canonical distance oracle keyed off ``live.actor_zone``.
-    if _spell_out_of_range(live, actor_id, intent, cast_spell_for_timing):
-        _emit(
-            live,
-            CastFailed(
-                actor_id=actor_id,
-                spell_id=intent.spell_id or "",
-                reason="out_of_range",
-            ),
-        )
-        return
-
-    # SRD §Weapon Reach / Range — out-of-reach melee attacks (and beyond-
-    # normal-range ranged attacks) reject pre-resolution: no action budget
-    # consumed, turn preserved. ``_pc_attack_out_of_range`` resolves the
-    # weapon's reach / normal range from the typed ``Weapon.range`` (via
-    # ``get_lib_loader().get_weapon``) and projects the distance over
-    # ``_ZoneGraph.within_range``. Long-range disadvantage is a follow-up;
-    # only the hard reject is enforced here.
-    if intent.intent_type == "attack" and _pc_attack_out_of_range(live, actor_id, intent):
-        _emit(
-            live,
-            AttackFailed(
-                actor_id=actor_id,
-                target_id=intent.target_id,
-                reason="out_of_range",
-            ),
-        )
-        return
-
-    # SRD 5.2 Charmed — "You can't attack the charmer or target the charmer
-    # with damaging abilities or magical effects." Reject pre-resolution: no
-    # budget consumed, turn preserved.
-    if _reject_charmed_target(live, actor_id, current, intent):
-        return
-
-    # SRD §Hellish Rebuke — *"the creature that damaged you"*. The legal
-    # target is the most-recent damager tracked on the caster as
-    # ``last_damaged_by``. Hard-coded for HR until a general trigger
-    # system lands. Reject BEFORE budget/slot consumption.
-    if _hellish_rebuke_target_invalid(current, intent):
-        _emit(
-            live,
-            CastFailed(
-                actor_id=actor_id,
-                spell_id=intent.spell_id,
-                reason="target_invalid",
-            ),
-        )
-        return
+    # Pre-resolution reject gates — each checked BEFORE any action budget is
+    # consumed, so a rejection spends no Action/Bonus Action/slot and leaves
+    # the turn untouched. Order matters and is preserved from the original
+    # sequential if-chain: spell range (SRD §Spell Range) -> weapon reach
+    # (SRD §Weapon Reach / Range) -> Charmed target (SRD 5.2 "You can't
+    # attack the charmer or target the charmer with damaging abilities or
+    # magical effects") -> Hellish Rebuke's fixed target (SRD §Hellish
+    # Rebuke). The first gate whose failure-builder returns a non-``None``
+    # event wins; that event is emitted and the intent is rejected.
+    pre_resolution_gates: tuple[Callable[[], CombatEvent | None], ...] = (
+        lambda: _spell_out_of_range_failure(live, actor_id, intent, cast_spell_for_timing),
+        lambda: _attack_out_of_range_failure(live, actor_id, intent),
+        lambda: _charmed_target_failure(live, actor_id, current, intent),
+        lambda: _hellish_rebuke_failure(actor_id, current, intent),
+    )
+    for build_pre_resolution_failure in pre_resolution_gates:
+        failure = build_pre_resolution_failure()
+        if failure is not None:
+            _emit(live, failure)
+            return
 
     if is_bonus_action:
         if not current.bonus_action_available:

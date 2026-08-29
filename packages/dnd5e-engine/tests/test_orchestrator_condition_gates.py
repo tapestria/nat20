@@ -579,6 +579,30 @@ def test_charmed_actor_cannot_target_the_charmer_with_a_harmful_spell() -> None:
     assert failed[-1].reason == "target_is_charmer"
 
 
+def test_charmed_actor_may_target_the_charmer_with_a_beneficial_spell() -> None:
+    # SRD 5.2 Charmed only bars "damaging abilities or magical effects" - a
+    # utility-only cantrip (no attack/damage/save activity) aimed at the
+    # charmer is exactly the carve-out the ruling preserves.
+    start = _start(
+        "c12-charm-beneficial",
+        [_hero(spells_known=["guidance"])],
+        [_foe()],
+        [_charm("char:hero", "mon:foe")],
+    )
+    run_async(
+        submit_player_intent(
+            start.handle,
+            actor_id="char:hero",
+            intent=PlayerIntent(intent_type="cast_spell", spell_id="guidance", target_id="mon:foe"),
+        )
+    )
+    live = _get_live(start.handle)
+    assert not events_of(live, CastFailed)
+    submitted = [e for e in events_of(live, IntentSubmitted) if e.intent_type == "cast_spell"]
+    assert submitted
+    assert submitted[-1].target_id == "mon:foe"
+
+
 def test_unknown_charmer_imposes_no_restriction() -> None:
     start = _start("c12-charm-unknown", [_hero()], [_foe()], [_status("char:hero", "charmed")])
     run_async(
