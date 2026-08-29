@@ -677,3 +677,51 @@ def test_forced_movement_ignores_the_concentration_save_of_a_target_that_saved()
     pushes = [e for e in live.event_log if isinstance(e, events_module.CombatantMoved)]
     assert len(pushes) == 1
     assert pushes[0].to_zone == cell(3, 0)
+
+
+# ── Task 10: zone-graph deprecation ──────────────────────────────────────
+
+
+def test_start_combat_with_scene_zones_warns_deprecation():
+    from dnd5e_srd_data import MemoryAssetLoader
+
+    from dnd5e_engine.specs import SceneTopology, ZoneEdge
+
+    set_lib_loader_for_tests(MemoryAssetLoader())
+    zones = SceneTopology(zones=["z"], edges=[ZoneEdge(a="z", b="z", distance_ft=0)])
+    party = [
+        PartyMemberSpec(
+            entity_id="char:hero", name="Hero", initiative=20, hp_current=20, hp_max=20, zone_id="z"
+        )
+    ]
+    encounter = [
+        _foe("mon:foe", "z", initiative=1),
+    ]
+    with pytest.warns(DeprecationWarning, match=r"scene_zones.*removed in 0\.7\.0"):
+        run_async(
+            start_combat(
+                session_id="c16-zones",
+                party=party,
+                encounter=encounter,
+                scene_zones=zones,
+                rng_seed=1,
+            )
+        )
+
+
+def test_start_combat_with_grid_scene_does_not_warn():
+    import warnings
+
+    from dnd5e_srd_data import MemoryAssetLoader
+
+    set_lib_loader_for_tests(MemoryAssetLoader())
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", DeprecationWarning)
+        run_async(
+            _move(
+                GridScene(width=3, height=3),
+                [_mover(cell(0, 0))],
+                [_foe("mon:foe", cell(2, 2))],
+                cell(1, 1),
+            )
+        )

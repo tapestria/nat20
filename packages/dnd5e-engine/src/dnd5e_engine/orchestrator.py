@@ -53,6 +53,7 @@ import itertools
 import logging
 import random
 import re
+import warnings
 from collections.abc import AsyncIterator, Collection, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal
@@ -3516,6 +3517,13 @@ def _resolve_topology(
                 )
         topology = grid
     elif scene_zones is not None:
+        warnings.warn(
+            "start_combat(scene_zones=...) is deprecated since 0.6.0 and will be "
+            "removed in 0.7.0; pass grid_scene=GridScene(...) instead "
+            "(docs/migration/v0.5-to-v0.6.md, 'Zone graph deprecated').",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         topology = _ZoneGraph(scene_zones)
     else:
         raise ValueError("start_combat: one of scene_zones or grid_scene is required")
@@ -3623,6 +3631,9 @@ async def start_combat(
     Returns a ``StartCombatResult`` envelope wrapping the ``CombatHandle``
     the caller threads through subsequent seam calls and the events emitted
     during open (round-start + first turn-start).
+
+    ``scene_zones`` is deprecated (0.6.0) and removed in 0.7.0 — use
+    ``grid_scene``.
     """
     if not party:
         raise ValueError("start_combat: party must be non-empty")
