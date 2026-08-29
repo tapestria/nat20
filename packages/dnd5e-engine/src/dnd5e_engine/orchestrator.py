@@ -638,7 +638,9 @@ def push_combatant(live: _LiveCombat, target_id: str, origin_cell: str, distance
     for the distance actually covered. Consumes no movement budget and
     provokes no opportunity attack (SRD 5.2 §Opportunity Attacks). Grid-only:
     the zone graph has no direction to push along (legacy backend, removed in
-    0.7) — a no-op there. A dead or untracked target is never moved."""
+    0.7) — a no-op there. A dead or untracked target is never moved, and a
+    target sharing ``origin_cell`` with the pusher has no direction to be
+    pushed along: no move and no event."""
     topology = live.topology
     target_cell = live.actor_zone.get(target_id)
     if not isinstance(topology, GridTopology) or target_cell is None or target_id in live.dead_ids:
@@ -664,21 +666,30 @@ def _apply_forced_movement_riders(
     live: _LiveCombat, caster: Combatant, intent: PlayerIntent, pre_event_count: int
 ) -> None:
     """After a cast resolves, apply the spell's typed forced-movement rider to
-    every target whose ``SaveRolled`` in this resolution FAILED (trigger
-    ``failed_save``). Pushes happen after all saves/damage so the rider never
-    perturbs the seeded roll order. Each target is pushed at most once — a
-    second failed ``SaveRolled`` in the same slice (e.g. the concentration
-    save the spell's own damage triggered) is not a second push."""
+    every target whose save against the SPELL failed (trigger ``failed_save``).
+
+    Only the FIRST ``SaveRolled`` per target in this resolution's event slice
+    is the spell's own save: damage application emits a second, transitional
+    ``SaveRolled(ability="con")`` alongside every ``ConcentrationCheck``
+    (removed in v0.7), and a concentrating creature that SAVED against the
+    spell must not be shoved because it later dropped concentration. The save
+    resolver always emits before ``DamageApplied``, so "first per target" is
+    well defined; keying on it also caps each target at one push.
+
+    Pushes happen after all saves/damage so the rider never perturbs the
+    seeded roll order."""
     rider = FORCED_MOVEMENT_RIDERS.get(intent.spell_id or "")
-    if rider is None or rider.trigger != "failed_save":
+    if rider is None or rider.trigger != "failed_save" or rider.direction != "away_from_caster":
         return
     origin_cell = live.actor_zone.get(caster.entity_id)
     if origin_cell is None:
         return
-    pushed: set[str] = set()
+    seen: set[str] = set()
     for ev in list(live.event_log[pre_event_count:]):
-        if isinstance(ev, SaveRolled) and not ev.succeeded and ev.target_id not in pushed:
-            pushed.add(ev.target_id)
+        if not isinstance(ev, SaveRolled) or ev.target_id in seen:
+            continue
+        seen.add(ev.target_id)
+        if not ev.succeeded:
             push_combatant(live, ev.target_id, origin_cell, rider.distance_ft)
 
 

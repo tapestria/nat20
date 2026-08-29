@@ -11,6 +11,7 @@ from pydantic import TypeAdapter, ValidationError
 
 from dnd5e_engine import events as events_module
 from dnd5e_engine.events import ALL_COMBAT_EVENT_TYPES, CombatEvent, MoveFailed
+from dnd5e_engine.lib_loader import set_lib_loader_for_tests
 from dnd5e_engine.orchestrator import (
     PlayerIntent,
     _get_live,
@@ -19,6 +20,15 @@ from dnd5e_engine.orchestrator import (
 )
 from dnd5e_engine.specs import EncounterMemberSpec, GridScene, PartyMemberSpec
 from tests.e2e.harness import cell, events_of, run_async
+
+
+@pytest.fixture(autouse=True)
+def _reset_lib_loader():
+    # Several helpers below install a MemoryAssetLoader (empty corpus); reset
+    # the process-global seam after every test so file/test order never leaks.
+    yield
+    set_lib_loader_for_tests(None)
+
 
 # ── Task 4: typed surface ────────────────────────────────────────────────
 
@@ -606,11 +616,6 @@ def test_push_combatant_into_a_wall_moves_as_far_as_possible_and_no_event_when_s
 
 def test_thunderwave_push_skips_a_creature_that_saved():
     # seed 3 → natural 12 vs DC 10 (verified on main): saved, damaged, not pushed
-    from dnd5e_engine.lib_loader import set_lib_loader_for_tests
-
-    # The move tests above install a MemoryAssetLoader; this one needs the
-    # real corpus (thunderwave's activities) regardless of file order.
-    set_lib_loader_for_tests(None)
     live = run_async(
         _cast(
             GridScene(width=10, height=10),
@@ -623,3 +628,52 @@ def test_thunderwave_push_skips_a_creature_that_saved():
     assert events_of(live, events_module.SaveRolled)[0].succeeded is True
     assert not [e for e in live.event_log if isinstance(e, events_module.CombatantMoved)]
     assert live.actor_zone["mon:foe"] == cell(1, 0)
+
+
+def test_forced_movement_ignores_the_concentration_save_of_a_target_that_saved():
+    """SRD 5.2 Thunderwave — "On a failed save … is pushed". Damage
+    application emits a transitional second ``SaveRolled(ability="con")``
+    beside every ``ConcentrationCheck``; a concentrating target that SAVED
+    against the spell and then dropped concentration must not be shoved."""
+    from dnd5e_engine.orchestrator import _apply_forced_movement_riders
+
+    live = run_async(
+        _move(
+            GridScene(width=10, height=10),
+            [_mover(cell(0, 0))],
+            [_foe("mon:foe", cell(1, 0))],
+            cell(0, 0),
+        )
+    )
+    caster = next(c for c in live.initiative if c.entity_id == "char:hero")
+    pre = len(live.event_log)
+
+    def _save(succeeded: bool) -> events_module.SaveRolled:
+        return events_module.SaveRolled(
+            target_id="mon:foe",
+            ability="con",
+            dc=10,
+            roll_total=12 if succeeded else 5,
+            succeeded=succeeded,
+            advantage="normal",
+            natural=12 if succeeded else 5,
+            modifier=0,
+            sources=[],
+        )
+
+    # Spell save SUCCEEDED, then the concentration save FAILED.
+    live.event_log.append(_save(True))
+    live.event_log.append(_save(False))
+    intent = PlayerIntent(intent_type="cast_spell", spell_id="thunderwave", target_id="mon:foe")
+    _apply_forced_movement_riders(live, caster, intent, pre)
+    assert not [e for e in live.event_log if isinstance(e, events_module.CombatantMoved)]
+    assert live.actor_zone["mon:foe"] == cell(1, 0)
+
+    # Spell save FAILED, then a second failed save in the same slice: one push.
+    pre = len(live.event_log)
+    live.event_log.append(_save(False))
+    live.event_log.append(_save(False))
+    _apply_forced_movement_riders(live, caster, intent, pre)
+    pushes = [e for e in live.event_log if isinstance(e, events_module.CombatantMoved)]
+    assert len(pushes) == 1
+    assert pushes[0].to_zone == cell(3, 0)
