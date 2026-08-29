@@ -506,8 +506,8 @@ footprints. Exploration-tier; revisit only if a host asks.
   exclusivity, AoE templates, Extra Attack-less action economy, opportunity
   attacks' "can see" check, ability-score/proficiency derivation). Corrected
   2026-08-26. Closed 2026-08-26: `test_capability_matrix.py::
-  test_status_rows_match_code_probes` now pins five representative rows to a
-  grep-level code probe in both directions. The probe set is a sample, not
+  test_status_rows_match_code_probes` now pins ten representative rows to a
+  grep-level code probe in both directions (five added by C16, 2026-08-27). The probe set is a sample, not
   exhaustive — **add a probe entry whenever a status row is flipped.**
 
 ## Catalog v2 scenarios without a prior entry (2026-08-26)

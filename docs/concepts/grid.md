@@ -37,25 +37,32 @@ To move, submit a `PlayerIntent` with `intent_type="move"` and a
 ### Pathing
 
 The destination may be **any** cell, not just an adjacent one. The engine routes
-with `GridTopology.shortest_path`, walks the route, and charges each leg's cost
-against the remaining movement budget; entering a `difficult_terrain_cells` cell
-costs double. The whole intent produces exactly **one** `ActorMoved`, carrying
-the total distance travelled.
+with `GridTopology.shortest_path` and prices the *whole* route up front — each
+leg's `edge_distance`, with a `difficult_terrain_cells` cell costing double — so
+a route the budget cannot pay for is rejected atomically without moving. A route
+it can pay for is walked, decrementing the budget cell by cell, and produces
+exactly **one** `ActorMoved` carrying the total distance.
 
-A step is legal when it stays on the map, does not cross a `wall_segments`
-entry, does not enter a `blocked_cells` square, and — for a diagonal — does not
-cut a wall's corner. Occupancy follows SRD 5.2 §Moving Around Other Creatures:
-**allies are passable, enemies are not**, and a move may not *end* on a cell
-another creature occupies. (Occupancy is grid-only; the zone backend ignores it.)
+A step is legal when it stays on the map, does not enter a `blocked_cells`
+square, does not cross a `wall_segments` entry, and — for a diagonal — does not
+cut an obstruction's corner. Occupancy follows SRD 5.2 §Moving Around Other
+Creatures: **allies are passable, enemies are not**, and a move may not *end* on
+a cell another creature occupies, ally or enemy. (Occupancy is grid-only; the
+zone backend keeps its pre-0.6 behaviour.)
+
+Opportunity attacks fire before the mover leaves each cell's reach; a mover
+dropped to 0 HP stops where the drop happened, and the `ActorMoved` reports the
+partial walk.
 
 A rejected move emits `MoveFailed` with one of:
 
 | Reason | Meaning |
 |---|---|
-| `not_adjacent` | no destination given, or it is the mover's own cell |
-| `unreachable` | no legal route, or the route costs more than the budget left |
-| `occupied` | the destination holds another creature |
-| `blocked_path` | every route is cut by a wall or a blocked cell |
+| `not_adjacent` | no destination given, an untracked position, or the destination is the mover's own cell (the legacy reason name is kept for hosts) |
+| `occupied` | the destination holds another creature — ally or enemy |
+| `blocked_path` | the destination is adjacent, but the single step crosses a wall or cuts a blocked corner |
+| `unreachable` | no legal route at all (enemy-occupied cells are impassable; allies may be passed through) |
+| `insufficient_movement` | a legal route exists but costs more than the remaining budget — atomic, nothing moves |
 
 The route search minimises the number of *squares*, not their cost, so a mover
 may be routed through difficult terrain when an equally long detour would be
