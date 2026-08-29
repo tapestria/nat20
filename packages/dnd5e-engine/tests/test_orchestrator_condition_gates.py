@@ -613,3 +613,146 @@ def test_unknown_charmer_imposes_no_restriction() -> None:
         )
     )
     assert events_of(_get_live(start.handle), AttackRolled)
+
+
+# ---------------------------------------------------------------------------
+# Condition immunity — the immune target never acquires the condition
+# ---------------------------------------------------------------------------
+
+
+def test_condition_immunity_keeps_an_effect_status_off_the_combatant() -> None:
+    """SRD §Condition Immunity — ``activities/effects.py`` already suppresses
+    the ``ConditionApplied`` for an immune target; the ``EffectApplied`` fold
+    must not smuggle the status onto ``Combatant.conditions`` behind it, or
+    every C12 gate (action block, Speed, save auto-fail, auto-crit) fires
+    against a creature that cannot have the condition at all."""
+    start = _start(
+        "c12-immune-fold",
+        [_hero(initiative=1)],
+        [
+            _foe(
+                initiative=20,
+                monster_template_slug="goblin-warrior",
+                condition_immunities=["paralyzed"],
+                base_speed=30,
+            )
+        ],
+        [_status("mon:foe", "paralyzed")],
+    )
+    live = _get_live(start.handle)
+    foe = _combatant(live, "mon:foe")
+    assert [ac.condition for ac in foe.conditions] == []
+    # Speed is untouched: the Paralyzed Speed-0 row never applies.
+    assert foe.movement_remaining == 30
+    # ...and it is free to take its turn.
+    run_async(advance_monster_turn(start.handle))
+    live = _get_live(start.handle)
+    assert events_of(live, AttackRolled)
+    submitted = [e for e in events_of(live, IntentSubmitted) if e.actor_id == "mon:foe"]
+    assert submitted[-1].intent_type != "pass"
+
+
+def test_condition_immunity_gates_the_runtime_effect_applied_fold() -> None:
+    """The mid-combat ``EffectApplied`` fold (not just the start_combat seed)
+    honours the immunity, so ``Combatant.conditions`` and the host-facing
+    ``live.active_conditions`` stay in agreement."""
+    from dnd5e_engine.events import EffectApplied
+    from dnd5e_engine.orchestrator import _emit
+
+    start = _start(
+        "c12-immune-runtime",
+        [_hero(condition_immunities=["paralyzed"])],
+        [_foe()],
+    )
+    live = _get_live(start.handle)
+    _emit(live, EffectApplied(effect=_status("char:hero", "paralyzed")))
+    assert [ac.condition for ac in _combatant(live, "char:hero").conditions] == []
+    assert live.active_conditions.get("char:hero", set()) == set()
+    assert _combatant(live, "char:hero").movement_remaining == 30
+
+
+def test_condition_immunity_does_not_auto_fail_saves() -> None:
+    """A creature immune to Paralyzed keeps rolling its STR/DEX saves — the
+    ``passive_save_auto_fail`` projection reads ``Combatant.conditions``."""
+    start = _start(
+        "c12-immune-save",
+        [_hero(condition_immunities=["paralyzed"])],
+        [_foe(zone_id=cell(5, 5))],
+        [_status("char:hero", "paralyzed")],
+    )
+    live = _get_live(start.handle)
+    live.repeat_save_on_turn_end[("char:hero", "effect:hold", "cast:hold-person:mon:foe")] = [
+        {"ability": "str", "dc": 13, "condition": "paralyzed", "caster_id": "mon:foe"}
+    ]
+    run_async(
+        submit_player_intent(
+            start.handle, actor_id="char:hero", intent=PlayerIntent(intent_type="pass")
+        )
+    )
+    strength = [e for e in events_of(live, SaveRolled) if e.target_id == "char:hero"][-1]
+    assert strength.natural is not None  # a real d20 was drawn, not an auto-fail
+
+
+# ---------------------------------------------------------------------------
+# Charmed — the monster turn path (symmetry with the player path)
+# ---------------------------------------------------------------------------
+
+
+def test_charmed_monster_will_not_attack_its_charmer() -> None:
+    start = _start(
+        "c12-charm-monster",
+        [_hero(initiative=1)],
+        [_foe(initiative=20, monster_template_slug="goblin-warrior")],
+        [_charm("mon:foe", "char:hero")],
+    )
+    run_async(advance_monster_turn(start.handle))
+    live = _get_live(start.handle)
+    assert not events_of(live, AttackRolled)
+    submitted = [e for e in events_of(live, IntentSubmitted) if e.actor_id == "mon:foe"]
+    assert submitted
+    assert submitted[-1].intent_type == "pass"
+
+
+def test_charmed_monster_still_attacks_someone_who_is_not_its_charmer() -> None:
+    other = _hero(entity_id="char:other", name="Other", initiative=1, zone_id=cell(1, 1))
+    start = _start(
+        "c12-charm-monster-other",
+        [_hero(initiative=1), other],
+        [_foe(initiative=20, monster_template_slug="goblin-warrior")],
+        [_charm("mon:foe", "char:hero")],
+    )
+    run_async(advance_monster_turn(start.handle))
+    live = _get_live(start.handle)
+    assert events_of(live, AttackRolled)
+    assert events_of(live, AttackRolled)[-1].target_id == "char:other"
+
+
+# ---------------------------------------------------------------------------
+# A Character hydrated into combat already at 0 HP
+# ---------------------------------------------------------------------------
+
+
+def test_character_hydrated_at_zero_hp_starts_unconscious() -> None:
+    """SRD 5.2 "Dropping to 0 Hit Points" — a host resuming a saved combat with
+    a downed PC must get a PC that is Unconscious (and therefore Incapacitated
+    and Prone), not one that can act."""
+    start = _start(
+        "c12-hydrate-zero-hp",
+        [_hero(hp_current=0)],
+        [_foe()],
+    )
+    live = _get_live(start.handle)
+    hero = _combatant(live, "char:hero")
+    assert "unconscious" in [ac.condition for ac in hero.conditions]
+    assert hero.movement_remaining == 0
+    with pytest.raises(IntentRejectedError) as exc:
+        run_async(
+            submit_player_intent(
+                start.handle,
+                actor_id="char:hero",
+                intent=PlayerIntent(
+                    intent_type="attack", weapon_id="longsword", target_id="mon:foe"
+                ),
+            )
+        )
+    assert exc.value.reason == "actor_incapacitated"

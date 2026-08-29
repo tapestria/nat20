@@ -1996,6 +1996,25 @@ def _emit_apply_effect_applied(live: _LiveCombat, event: EffectApplied) -> None:
         for status in applied.statuses:
             if status in existing_slugs:
                 continue
+            # SRD §Condition Immunity — an immune target never acquires the
+            # condition. ``activities/effects.py::apply_activity_effects``
+            # already SUPPRESSES the matching ``ConditionApplied``; without the
+            # same gate here the status would still land on
+            # ``Combatant.conditions`` and drive every C12 projection (the
+            # Incapacitated action block, ``project_speed``, the STR/DEX save
+            # auto-fail, the within-5-ft auto-crit) against a creature that
+            # cannot have the condition — and would diverge from
+            # ``live.active_conditions``, the store ``views.py`` shows the host.
+            # Compared as a bare slug, matching the emit-gate's convention
+            # (``passive_stats._CI_TOKEN_TO_CONDITION`` normalises the one
+            # irregular Foundry token at projection time).
+            if status in target_combatant.condition_immunities:
+                _LOGGER.info(
+                    "condition_immune_not_folded status=%s target_id=%s",
+                    status,
+                    applied.target_id,
+                )
+                continue
             # Derive source_entity_id from the origin tag when it
             # encodes one (e.g. "cast:bless:char:abc12"); otherwise
             # default to the canonical implied-source marker.
@@ -3672,27 +3691,40 @@ def _seed_active_effects(live: _LiveCombat, active_effects: Sequence[ActiveEffec
                         )
                     break
 
+        # SRD §Condition Immunity — the same gate the runtime
+        # ``EffectApplied`` fold and ``activities/effects.py`` apply: a status
+        # the target is immune to never attaches, on EITHER store. A seeded
+        # effect is the one path that writes ``live.active_conditions``
+        # directly, so without this the host-facing view (``views.py``) and
+        # ``Combatant.conditions`` would BOTH carry a condition the creature
+        # cannot suffer. The ActiveEffect itself is still seeded (its non-
+        # condition riders stay live), exactly as the emit-path keeps the
+        # ``EffectApplied`` and drops only the ``ConditionApplied``.
+        target_combatant = _find_combatant(live, eff.target_id)
+        immunities = set(target_combatant.condition_immunities) if target_combatant else set()
+        statuses = {s for s in eff.statuses if s not in immunities}
+
         # Conditions-by-effect: every status the effect imposes is
         # attributed to (target_id, id, origin), so expire/concentration
         # cascade can find them.
-        if eff.statuses:
+        if statuses:
             key = (eff.target_id, eff.id, eff.origin)
             existing = live.conditions_by_effect.get(key)
             if existing is None:
-                live.conditions_by_effect[key] = list(eff.statuses)
+                live.conditions_by_effect[key] = list(statuses)
             else:
-                for status in eff.statuses:
+                for status in statuses:
                     if status not in existing:
                         existing.append(status)
 
-        if not eff.statuses:
+        if not statuses:
             continue
         # Also project into live.active_conditions so orchestrator_bridge's
         # project_combat_state_to_redis sees the seeded statuses on the next
         # mirror tick. Without this, statuses only land on initiative[*]
         # .conditions (set below) and are silently dropped when the bridge
         # rebuilds host storage conditions from active_conditions. # .
-        live.active_conditions.setdefault(eff.target_id, set()).update(eff.statuses)
+        live.active_conditions.setdefault(eff.target_id, set()).update(statuses)
         for idx, c in enumerate(live.initiative):
             if c.entity_id != eff.target_id:
                 continue
@@ -3700,7 +3732,7 @@ def _seed_active_effects(live: _LiveCombat, active_effects: Sequence[ActiveEffec
             existing_keys = {(ac.condition, ac.source_effect_id) for ac in current_conditions}
             new_conditions = list(current_conditions)
             dirty = False
-            for status in eff.statuses:
+            for status in statuses:
                 if (status, eff.id) in existing_keys:
                     continue
                 new_conditions.append(
@@ -3813,6 +3845,19 @@ async def start_combat(
     # is NOT seeded here — it requires a failed-save record we don't have
     # at seed time; the next runtime save will repopulate as needed.
     _seed_active_effects(live, active_effects)
+
+    # C12 — a Character HYDRATED into combat already at 0 HP is Unconscious
+    # (SRD 5.2 "Dropping to 0 Hit Points"). The runtime fold hangs off the
+    # damage path, so without this a host resuming a saved combat with a downed
+    # PC would get a PC that can act. State-only, no event: this is hydration
+    # of a state the host already knows about, not a transition happening now —
+    # and the death-save state stays exactly as the host supplied it (the
+    # condition is what makes ``_maybe_roll_death_save`` fire on the PC's turn;
+    # no failure is charged here). Monsters are excluded — a monster at 0 HP is
+    # dead, never Unconscious.
+    for c in list(live.initiative):
+        if c.entity_id in live.party_ids and c.is_alive and c.hp_current <= 0:
+            _fold_condition_onto_combatant(live, c.entity_id, "unconscious")
 
     # C12 — the seeded conditions may already zero or reduce a Speed; project
     # every combatant's opening movement budget before the first turn opens.
@@ -5924,6 +5969,16 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
         for c in live.initiative
         if c.entity_id in live.party_ids and c.is_alive and c.hp_current > 0
     ]
+    # SRD 5.2 Charmed — "You can't attack the charmer or target the charmer
+    # with damaging abilities or magical effects." The player path enforces
+    # this as a pre-resolution reject gate (``_charmed_target_failure``); the
+    # monster path has no intent to reject, so the charmer is removed from the
+    # selectable targets instead. A charmed monster still attacks anyone else;
+    # with no other target left it passes the turn. Unknown charmer (no
+    # resolvable source) imposes no restriction, exactly as on the player path.
+    charmer_id = _condition_source_entity(live, current, "charmed")
+    if charmer_id is not None:
+        alive_pcs = [c for c in alive_pcs if c.entity_id != charmer_id]
     if not alive_pcs:
         skip_to_record_pass = True
 
