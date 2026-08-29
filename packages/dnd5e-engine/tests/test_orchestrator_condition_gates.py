@@ -7,7 +7,13 @@ from typing import Any
 import pytest
 
 from dnd5e_engine import ActiveEffect, PlayerIntent
-from dnd5e_engine.events import AttackRolled, IntentSubmitted, MoveFailed, TurnEnded
+from dnd5e_engine.events import (
+    ActorMoved,
+    AttackRolled,
+    IntentSubmitted,
+    MoveFailed,
+    TurnEnded,
+)
 from dnd5e_engine.orchestrator import (
     IntentRejectedError,
     _get_live,
@@ -211,3 +217,20 @@ def test_exhaustion_reduces_the_movement_budget_by_five_feet_per_level() -> None
 def test_unconditioned_actor_keeps_the_full_budget() -> None:
     start = _start("c12-speed-baseline", [_hero()], [_foe(zone_id=cell(5, 5))])
     assert _combatant(_get_live(start.handle), "char:hero").movement_remaining == 30
+
+
+def test_speed_zero_monster_cannot_dash_toward_its_target() -> None:
+    # SRD 5.2 Grappled: "Your Speed is 0 and can't increase." — the monster
+    # approach gambit Dashes to close a gap it cannot otherwise cross; a
+    # Speed-0 monster may not buy movement that way either.
+    start = _start(
+        "c12-speed0-monster-dash",
+        [_hero(initiative=1, zone_id=cell(0, 0))],
+        [_foe(initiative=20, zone_id=cell(3, 0), monster_template_slug="goblin-warrior")],
+        [_status("mon:foe", "grappled")],
+    )
+    run_async(advance_monster_turn(start.handle))
+    live = _get_live(start.handle)
+    assert live.actor_zone["mon:foe"] == cell(3, 0)
+    assert not [e for e in events_of(live, ActorMoved) if e.actor_id == "mon:foe"]
+    assert _combatant(live, "mon:foe").movement_remaining == 0

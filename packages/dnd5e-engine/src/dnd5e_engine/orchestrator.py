@@ -5773,7 +5773,10 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
             dashed_budget = _monster_dash_movement_budget(
                 _path_total_distance(live.topology, path),
                 current.movement_remaining,
-                current.base_speed,
+                # SRD 5.2 Dash adds the creature's EFFECTIVE Speed: a Speed-0
+                # monster (Grappled / Restrained / …) "can't increase" it, so
+                # the gambit is declined outright (budget <= 0 → None).
+                _effective_speed(current),
             )
             if dashed_budget is not None and current.action_available:
                 dashed_this_turn = True
