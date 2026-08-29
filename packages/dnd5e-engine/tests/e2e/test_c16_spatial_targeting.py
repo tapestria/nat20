@@ -292,7 +292,6 @@ def test_c16_s03_lightning_bolt_line_hits_every_cell_along_its_length():
     assert not offline_dmg
 
 
-@xfail_cluster(16, "spatial targeting")
 def test_c16_s04_creature_standing_between_attacker_and_target_grants_half_cover():
     """C16-S04: SRD 5.2 §Cover — "A target with half cover has a +2 bonus
     to AC and Dexterity saving throws." Offered By: "Another creature or

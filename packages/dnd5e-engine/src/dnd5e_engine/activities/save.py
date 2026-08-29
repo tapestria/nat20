@@ -92,7 +92,16 @@ def resolve_save(activity: SaveActivity, ctx: ActivityResolutionContext) -> None
     shared_parts = _roll_shared_damage(activity, ctx)
 
     for index, target in enumerate(ctx.targets):
-        roll = roll_save(ctx, target, ability, dc, target_index=index)
+        roll = roll_save(
+            ctx,
+            target,
+            ability,
+            dc,
+            target_index=index,
+            # C22 owns the dataset field; read defensively so this works both
+            # before and after ``SaveBlock.ignore_cover`` lands.
+            ignore_cover=bool(getattr(activity.save, "ignore_cover", False)),
+        )
         succeeded = roll.succeeded
 
         ctx.event_emitter(

@@ -541,20 +541,36 @@ def _in_range_with_los(topology: SpatialTopology, a: str, b: str, range_ft: int)
     )
 
 
+def _occupied_cells(live: _LiveCombat, *, exclude: Collection[str]) -> set[str]:
+    """Cells/zones currently occupied by alive combatants other than ``exclude``
+    (entity ids). SRD 5.2 §Cover — "another creature" is a half-cover source;
+    §Moving Around Other Creatures — an enemy's space blocks movement."""
+    excluded = set(exclude)
+    return {
+        zone
+        for c in live.initiative
+        if c.is_alive
+        and c.entity_id not in live.dead_ids
+        and c.entity_id not in excluded
+        and (zone := live.actor_zone.get(c.entity_id)) is not None
+    }
+
+
 def _target_cover_map(
     live: _LiveCombat, caster_id: str, targets: Sequence[Combatant]
 ) -> dict[str, str]:
     """SRD 5.2 §Cover — per-target cover degree between ``caster_id`` and each
-    target, computed once per activity resolution (cover doesn't vary
-    target-to-target for a fixed caster position).
+    target, from scene geometry AND creature occupancy (every other alive
+    combatant's cell grants half cover when it lies on the line; ally or enemy
+    makes no difference).
 
     Threaded into ``ActivityResolutionContext.target_cover`` so
-    ``activities/attack.py`` (AC) and ``activities/save.py`` (Dexterity
-    saves) can fold the SRD +2/+5 bonus without either resolver importing the
-    spatial seam directly. Absent zone tracking for the caster or a target
-    (e.g. a zone-graph combat with no positional data at all) contributes
-    ``"none"`` — mirrors ``_ZoneGraph.cover_between``'s permanent no-cover
-    behavior.
+    ``activities/attack.py`` (AC) and ``activities/save_primitive.py``
+    (Dexterity saves) can fold the SRD +2/+5 bonus without either resolver
+    importing the spatial seam directly. Absent zone tracking for the caster or
+    a target (e.g. a zone-graph combat with no positional data at all)
+    contributes ``"none"`` — mirrors ``_ZoneGraph.cover_between``'s permanent
+    no-cover behavior.
     """
     caster_zone = live.actor_zone.get(caster_id)
     if caster_zone is None:
@@ -564,7 +580,8 @@ def _target_cover_map(
         target_zone = live.actor_zone.get(target.entity_id)
         if target_zone is None:
             continue
-        out[target.entity_id] = live.topology.cover_between(caster_zone, target_zone)
+        occupied = _occupied_cells(live, exclude=(caster_id, target.entity_id))
+        out[target.entity_id] = live.topology.cover_between(caster_zone, target_zone, occupied)
     return out
 
 

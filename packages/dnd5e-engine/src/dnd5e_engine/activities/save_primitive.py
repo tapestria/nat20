@@ -89,6 +89,7 @@ def roll_save(
     dc: int,
     *,
     target_index: int = 0,
+    ignore_cover: bool = False,
 ) -> SaveRoll:
     """Roll ``target``'s ``ability`` save vs ``dc``; return the ``SaveRoll`` envelope.
 
@@ -112,6 +113,8 @@ def roll_save(
       (+5) cover adds directly to a **Dexterity** save's total (a bonus to
       the covered creature's OWN roll, not a DC adjustment — "a bonus to AC
       AND Dexterity saving throws"). Inert for any other ability.
+    * ``ignore_cover`` — SRD 5.2 Sacred Flame: the Half/Three-Quarters bonus is
+      skipped (data field ``SaveBlock.ignore_cover``, C22).
 
     The natural d20 honors ``ctx.variables["force_save_d20"]`` for the first
     target (``target_index == 0``) only. Success is ``total >= dc``. The caller
@@ -123,7 +126,7 @@ def roll_save(
             total=0, succeeded=False, natural=None, modifier=0, mode="normal", sources=()
         )
     modifier = _target_save_modifier(ctx, target, ability)
-    if ability == "dex":
+    if ability == "dex" and not ignore_cover:
         modifier += cover_bonus(ctx.target_cover.get(target.entity_id, "none"))
     # Draw ORDER matters for determinism: the d20 first, the Bless/Bane bonus
     # dice after (folding those dice into the primitive's flat modifier would

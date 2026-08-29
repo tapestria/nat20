@@ -245,3 +245,122 @@ def test_directional_template_without_target_or_direction_is_rejected():
     caster = next(c for c in live.initiative if c.entity_id == "char:wiz")
     assert caster.action_available is True
     assert live.initiative[live.current_turn_index].entity_id == "char:wiz"
+
+
+# ── Task 7: creature cover ───────────────────────────────────────────────
+
+
+def _hero(at: str, **kw: Any) -> PartyMemberSpec:
+    base: dict[str, Any] = dict(
+        entity_id="char:hero",
+        name="Hero",
+        initiative=20,
+        hp_current=20,
+        hp_max=20,
+        attack_bonus=5,
+        zone_id=at,
+    )
+    base.update(kw)
+    return PartyMemberSpec(**base)
+
+
+def _foe(eid: str, at: str, ac: int = 10, initiative: int = 1, **kw: Any) -> EncounterMemberSpec:
+    base: dict[str, Any] = dict(
+        entity_id=eid,
+        entity_type="Monster",
+        name=eid,
+        initiative=initiative,
+        hp_current=50,
+        hp_max=50,
+        ac=ac,
+        zone_id=at,
+    )
+    base.update(kw)
+    return EncounterMemberSpec(**base)
+
+
+def _longbow_loader() -> None:
+    from dnd5e_srd_data import MemoryAssetLoader
+
+    from dnd5e_engine.lib_loader import set_lib_loader_for_tests
+    from tests.test_orchestrator_gating_typed import _ranged_weapon
+
+    set_lib_loader_for_tests(
+        MemoryAssetLoader(items=[_ranged_weapon(slug="longbow", normal=30, long=120)])
+    )
+
+
+async def _shoot(
+    scene: GridScene,
+    encounter: list[EncounterMemberSpec],
+    seed: int = 1,
+    party: list[PartyMemberSpec] | None = None,
+) -> Any:
+    _longbow_loader()
+    start = await start_combat(
+        session_id="c16-cover",
+        party=party or [_hero(cell(0, 0))],
+        encounter=encounter,
+        scene_zones=None,
+        grid_scene=scene,
+        rng_seed=seed,
+    )
+    live = _get_live(start.handle)
+    await submit_player_intent(
+        start.handle,
+        actor_id="char:hero",
+        intent=PlayerIntent(intent_type="attack", weapon_id="longbow", target_id="mon:foe"),
+    )
+    return live
+
+
+def test_occupied_cells_lists_alive_combatants_minus_exclusions() -> None:
+    from dnd5e_engine.orchestrator import _occupied_cells
+
+    live = run_async(
+        _shoot(
+            GridScene(width=10, height=10),
+            [_foe("mon:foe", cell(2, 0)), _foe("mon:x", cell(5, 5), initiative=2)],
+        )
+    )
+    assert _occupied_cells(live, exclude=()) == {cell(0, 0), cell(2, 0), cell(5, 5)}
+    assert _occupied_cells(live, exclude=("char:hero", "mon:foe")) == {cell(5, 5)}
+    # A downed creature no longer occupies its space for cover purposes.
+    next(c for c in live.initiative if c.entity_id == "mon:x").is_alive = False
+    assert _occupied_cells(live, exclude=()) == {cell(0, 0), cell(2, 0)}
+    live.dead_ids.add("mon:foe")
+    assert _occupied_cells(live, exclude=()) == {cell(0, 0)}
+
+
+def test_ally_between_attacker_and_target_also_grants_half_cover() -> None:
+    ally = PartyMemberSpec(
+        entity_id="char:ally",
+        name="Ally",
+        initiative=19,
+        hp_current=20,
+        hp_max=20,
+        zone_id=cell(1, 0),
+    )
+    live = run_async(
+        _shoot(
+            GridScene(width=10, height=10),
+            [_foe("mon:foe", cell(2, 0))],
+            party=[_hero(cell(0, 0)), ally],
+        )
+    )
+    rolled = next(
+        e for e in events_of(live, events_module.AttackRolled) if e.target_id == "mon:foe"
+    )
+    assert rolled.roll_total == 10
+    assert rolled.is_hit is False  # AC 10 + 2 (half cover from the interposed ally)
+
+
+def test_interposed_creature_does_not_block_targeting() -> None:
+    live = run_async(
+        _shoot(
+            GridScene(width=10, height=10),
+            [_foe("mon:foe", cell(2, 0)), _foe("mon:blocker", cell(1, 0), initiative=2)],
+        )
+    )
+    assert not events_of(live, events_module.AttackFailed)
+    assert events_of(live, events_module.AttackRolled)
