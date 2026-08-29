@@ -87,6 +87,8 @@ from dnd5e_engine.build_party import granted_feature_slugs
 from dnd5e_engine.death_saves import roll_death_save
 from dnd5e_engine.events import (
     ActorMoved,
+    AdvantageMode,
+    AdvantageSource,
     AttackFailed,
     AttackRolled,
     CastFailed,
@@ -124,6 +126,7 @@ from dnd5e_engine.rules.conditions import (
     Condition,
     active_condition_names,
     conditions_block_actions,
+    d20_test_penalty,
     exhaustion_level_of,
     is_condition_active,
     project_passive_check_modifiers,
@@ -1678,7 +1681,12 @@ def _emit_apply_damage(live: _LiveCombat, event: DamageApplied) -> None:
         # because ``_emit_apply_damage`` is contractually non-throwing — a
         # missing combatant degrades to an unmodified save rather than
         # aborting damage application mid-flight.
-        modifier = save_modifier(concentrator, "con").total if concentrator else 0
+        # SRD 5.2 Exhaustion — the concentration CON save is a D20 Test.
+        modifier = (
+            save_modifier(concentrator, "con").total + d20_test_penalty(concentrator.conditions)
+            if concentrator
+            else 0
+        )
         roll = roll_d20_test(live.rng, modifier, AdvantageSources())
         roll_total = roll.total
         succeeded = roll_total >= dc
@@ -2468,6 +2476,15 @@ def _build_hydration_payload(live: _LiveCombat, caster: Combatant | None = None)
         save_modifiers[c.entity_id] = per_target_entry
         check_modifiers[c.entity_id] = check_entry
 
+    # ── C12 — SRD 5.2 Exhaustion ``-2 x level`` on every D20 Test, per entity ─
+    # Only exhausted entities get a row, so an unexhausted combat hands the
+    # resolvers an EMPTY dict and every d20 is byte-identical to before.
+    d20_penalty: dict[str, int] = {}
+    for c in live.initiative:
+        penalty = d20_test_penalty(c.conditions)
+        if penalty != 0:
+            d20_penalty[c.entity_id] = penalty
+
     # ── Per-combatant concentration map ─────────────────────────────────────
     # SRD §Concentration — surface ``{effect_name, effect_id}`` per the
     # spell-handler contract (it reads ``effect_name``). The orchestrator
@@ -2497,6 +2514,7 @@ def _build_hydration_payload(live: _LiveCombat, caster: Combatant | None = None)
         "passive_damage_modifiers": passive_damage_modifiers,
         "save_modifiers": save_modifiers,
         "check_modifiers": check_modifiers,
+        "d20_test_penalty": d20_penalty,
         "existing_temp_hp": existing_temp_hp,
         "counter_state": counter_state,
         "spell_book": spell_book,
@@ -3110,10 +3128,35 @@ def _run_end_of_turn_saves(live: _LiveCombat, actor_id: str) -> None:
             dc = int(spec["dc"])
             condition = str(spec["condition"])
             caster_id = str(spec["caster_id"])
-            modifier = save_modifier(target, ability).total if target else 0
-            roll = roll_d20_test(live.rng, modifier, AdvantageSources())
-            roll_total = roll.total
-            succeeded = roll_total >= dc
+            # SRD 5.2 Conditions on the repeat save: the same auto-fail /
+            # disadvantage projection the activity save path gets, plus the
+            # Exhaustion D20-Test penalty. An unconditioned target projects
+            # nothing, so the seeded stream is unmoved.
+            save_proj = project_passive_save_modifiers(_condition_names(target)) if target else {}
+            ability_upper = ability.upper()
+            if ability_upper in save_proj.get("passive_save_auto_fail", []):
+                # SRD 5.2 Paralyzed / Stunned / Petrified / Unconscious —
+                # automatic failure, no d20 drawn (mirrors save_primitive).
+                roll_total, succeeded = 0, False
+                mode: AdvantageMode = "normal"
+                natural: int | None = None
+                roll_modifier = 0
+                roll_sources: list[AdvantageSource] = []
+            else:
+                modifier = (
+                    save_modifier(target, ability).total + d20_test_penalty(target.conditions)
+                    if target
+                    else 0
+                )
+                dis: tuple[AdvantageSource, ...] = (
+                    ("condition:target",)
+                    if ability_upper in save_proj.get("passive_save_dis", [])
+                    else ()
+                )
+                roll = roll_d20_test(live.rng, modifier, AdvantageSources(disadvantage=dis))
+                roll_total, succeeded = roll.total, roll.total >= dc
+                mode, natural, roll_modifier = roll.mode, roll.kept, roll.modifier
+                roll_sources = list(roll.sources)
             _emit(
                 live,
                 SaveRolled(
@@ -3122,10 +3165,10 @@ def _run_end_of_turn_saves(live: _LiveCombat, actor_id: str) -> None:
                     dc=dc,
                     roll_total=roll_total,
                     succeeded=succeeded,
-                    advantage=roll.mode,
-                    natural=roll.kept,
-                    modifier=roll.modifier,
-                    sources=list(roll.sources),
+                    advantage=mode,
+                    natural=natural,
+                    modifier=roll_modifier,
+                    sources=roll_sources,
                 ),
             )
             if not succeeded:
@@ -4800,6 +4843,7 @@ def _resolve_readied_spell_cast(
         passive_damage_modifiers=payload["passive_damage_modifiers"],
         save_modifiers=payload["save_modifiers"],
         check_modifiers=payload["check_modifiers"],
+        d20_test_penalty=payload["d20_test_penalty"],
         target_distance_ft=_target_distance_map(live, reactor.entity_id, [reactor]),
         attacker_grappler_id=_condition_source_entity(live, reactor, "grappled"),
     )
@@ -4918,6 +4962,7 @@ def _drain_counterspell_reaction(
         passive_damage_modifiers=payload["passive_damage_modifiers"],
         save_modifiers=payload["save_modifiers"],
         check_modifiers=payload["check_modifiers"],
+        d20_test_penalty=payload["d20_test_penalty"],
         target_distance_ft=_target_distance_map(live, reactor.entity_id, [current]),
         attacker_grappler_id=_condition_source_entity(live, reactor, "grappled"),
     )
@@ -5306,6 +5351,7 @@ async def submit_player_intent(
             passive_damage_modifiers=payload["passive_damage_modifiers"],
             save_modifiers=payload["save_modifiers"],
             check_modifiers=payload["check_modifiers"],
+            d20_test_penalty=payload["d20_test_penalty"],
             target_cover=_target_cover_map(live, current.entity_id, targets),
             target_distance_ft=_target_distance_map(live, current.entity_id, targets),
             attacker_grappler_id=_condition_source_entity(live, current, "grappled"),
@@ -5923,6 +5969,7 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
             passive_damage_modifiers=payload["passive_damage_modifiers"],
             save_modifiers=payload["save_modifiers"],
             check_modifiers=payload["check_modifiers"],
+            d20_test_penalty=payload["d20_test_penalty"],
             target_cover=_target_cover_map(live, current.entity_id, target_list),
             target_distance_ft=_target_distance_map(live, current.entity_id, target_list),
             attacker_grappler_id=_condition_source_entity(live, current, "grappled"),

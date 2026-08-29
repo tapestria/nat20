@@ -178,6 +178,13 @@ class ActivityResolutionContext:
     # attack rolls against any target other than the grappler). ``None`` when
     # not grappled or the grappler is unknown -> row inert.
     attacker_grappler_id: str | None = None
+    # Per-ENTITY signed flat modifier applied to EVERY D20 Test the entity makes
+    # (SRD 5.2 Exhaustion: "the roll is reduced by 2 times your Exhaustion
+    # level" — ``rules.conditions.d20_test_penalty``). Keyed by entity_id; the
+    # attacker reads its own entry in ``attack.py``, the saving creature in
+    # ``save_primitive.py``, the checking actor in ``check.py``. Absent -> 0.
+    # A flat modifier never adds a draw, so seeded streams are unmoved.
+    d20_test_penalty: dict[str, int] = field(default_factory=dict)
     # Per-TARGET flat AC bonus from an active effect (Shield's +5, keyed
     # ``"system.attributes.ac.bonus"`` in the Foundry source data, aliased to
     # the engine's ``"ac.bonus"`` fold key). Mirrors ``passive_save_modifiers``'s

@@ -24,7 +24,7 @@ import random
 from dataclasses import dataclass
 from typing import Any
 
-from dnd5e_engine.activities.d20 import AdvantageSources, roll_d20_test
+from dnd5e_engine.activities.d20 import AdvantageSources, D20Result, roll_d20_test
 from dnd5e_engine.events import (
     CombatEvent,
     Death,
@@ -32,6 +32,7 @@ from dnd5e_engine.events import (
     DeathSaveStarted,
     Stabilized,
 )
+from dnd5e_engine.rules.conditions import d20_test_penalty
 from dnd5e_engine.types.combat import Combatant
 
 
@@ -147,16 +148,17 @@ class DeathSaveResult:
     outcome: DeathSaveOutcome
 
 
-def _roll_d20(rng: random.Random) -> int:
-    """The death save's D20 Test.
+def _roll_d20(rng: random.Random, modifier: int = 0) -> D20Result:
+    """The death save's D20 Test through the shared primitive (F2c).
 
-    SRD §Dying — a death saving throw is a d20 with NO modifier and no
-    advantage source the engine models today, so the shared
-    ``activities/d20.py::roll_d20_test`` primitive (F2c) is called with an
-    empty ``AdvantageSources`` and a +0 modifier: exactly one
-    ``rng.randint(1, 20)`` draw, identical to the pre-F2c stream.
+    SRD §Dying — a death saving throw draws one d20 with no advantage source
+    the engine models today, so ``activities/d20.py::roll_d20_test`` is called
+    with an empty ``AdvantageSources``: exactly one ``rng.randint(1, 20)``
+    draw, identical to the pre-F2c stream. ``modifier`` is the SRD 5.2
+    Exhaustion penalty (a death save is a saving throw, hence a D20 Test); a
+    flat modifier never adds a draw, so an unexhausted PC's stream is unmoved.
     """
-    return roll_d20_test(rng, 0, AdvantageSources()).kept
+    return roll_d20_test(rng, modifier, AdvantageSources())
 
 
 def roll_death_save(combatant: Combatant, rng: random.Random) -> DeathSaveResult:
@@ -177,9 +179,12 @@ def roll_death_save(combatant: Combatant, rng: random.Random) -> DeathSaveResult
         prior_state.successes == 0 and prior_state.failures == 0 and not prior_state.is_stable
     )
 
-    natural = _roll_d20(rng)
+    # The Exhaustion penalty reduces the TOTAL; the nat-1 / nat-20 special
+    # outcomes still read the KEPT die (SRD 5.2 Exhaustion + §Dying).
+    roll = _roll_d20(rng, d20_test_penalty(combatant.conditions))
+    natural = roll.kept
     is_critical = natural in (1, 20)
-    success = natural >= 10  # nat-20 satisfies this; nat-1 does not
+    success = natural == 20 or (natural != 1 and roll.total >= 10)
 
     # Mutate the state machine (in-place on a fresh copy via from_dict above).
     outcome = prior_state.apply_save(success, is_critical)
@@ -201,7 +206,7 @@ def roll_death_save(combatant: Combatant, rng: random.Random) -> DeathSaveResult
     events.append(
         DeathSaveRolled(
             target_id=combatant.entity_id,
-            roll_total=natural,
+            roll_total=roll.total,
             outcome=roll_outcome,
             running_successes=prior_state.successes,
             running_failures=prior_state.failures,

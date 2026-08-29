@@ -336,7 +336,6 @@ def test_c12_s04_grappled_actor_has_speed_zero():
     assert failed[0].reason == "speed_zero"
 
 
-@xfail_cluster(12, "conditions enforced")
 def test_c12_s05_exhaustion_applies_d20_and_speed_penalties():
     """C12-S05: SRD 5.2 Conditions, Exhaustion — D20 Tests are reduced by
     2 x Exhaustion level and Speed is reduced by 5 ft x Exhaustion level

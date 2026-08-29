@@ -55,6 +55,7 @@ def _swing(
     distance_ft: int | None = None,
     grappler_id: str | None = None,
     forced_d20: int | None = None,
+    d20_test_penalty: dict[str, int] | None = None,
 ) -> AttackRolled:
     weapon = BundledAssetLoader().get_weapon("dagger")
     assert weapon is not None
@@ -72,6 +73,7 @@ def _swing(
         target_conditions={target.entity_id: [c.condition for c in target.conditions]},
         target_distance_ft={} if distance_ft is None else {target.entity_id: distance_ft},
         attacker_grappler_id=grappler_id,
+        d20_test_penalty=d20_test_penalty or {},
         variables={} if forced_d20 is None else {"force_d20": forced_d20},
     )
     resolve_activity(activity, ctx, weapon=weapon)
@@ -149,3 +151,13 @@ def test_natural_one_still_misses_a_paralyzed_target() -> None:
 def test_stunned_target_within_5ft_does_not_auto_crit() -> None:
     e = _swing(_fighter(), _foe("mon:foe", "stunned"), distance_ft=5, forced_d20=10)
     assert e.is_crit is False
+
+
+def test_exhaustion_penalty_lowers_attack_modifier_and_total_without_extra_draws() -> None:
+    plain = _swing(_fighter(), _foe(), forced_d20=10)
+    tired = _swing(
+        _fighter("exhaustion"), _foe(), forced_d20=10, d20_test_penalty={"char:fighter": -4}
+    )
+    assert tired.modifier == plain.modifier - 4
+    assert tired.roll_total == plain.roll_total - 4
+    assert tired.advantage == "normal"

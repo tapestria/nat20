@@ -111,7 +111,11 @@ def resolve_attack(
     a HIT only — a miss applies no rider.
     """
     governing_ability = _governing_ability(activity, ctx, weapon)
-    attack_bonus = _attack_bonus(activity, ctx, weapon, governing_ability)
+    # SRD 5.2 Exhaustion — an attack roll is a D20 Test, so the flat
+    # ``-2 x level`` penalty rides on the attack bonus (no extra draw).
+    attack_bonus = _attack_bonus(
+        activity, ctx, weapon, governing_ability
+    ) + ctx.d20_test_penalty.get(ctx.caster.entity_id, 0)
     cast_level = ctx.slot_level or ctx.base_spell_level or 0
     # SRD §Bless / §Bane apply a signed d4 to the affected creature's OWN attack
     # rolls (keyed on the attacker). Rolled once per attack so each swing draws a

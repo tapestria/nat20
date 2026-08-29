@@ -291,12 +291,17 @@ def _check_modifier(
     first. The raw code is then tried as a fallback — LEGACY: it keeps a
     host-built sidecar that was keyed by code (the pre-F1d golden-fixture shape)
     working unchanged.
+
+    SRD 5.2 Exhaustion — an ability check is a D20 Test, so the flat
+    ``-2 x level`` penalty (``ctx.d20_test_penalty[actor]``) is folded on top of
+    whichever base the lookup resolved to. A flat modifier adds no draw.
     """
+    penalty = ctx.d20_test_penalty.get(actor.entity_id, 0)
     actor_mods = ctx.check_modifiers.get(actor.entity_id, {})
     if skill is not None:
         skills = actor_mods.get("skills", {})
         for key in (_SKILL_CODE_TO_SLUG.get(skill), skill):
             if key is not None and key in skills:
-                return int(skills[key])
+                return int(skills[key]) + penalty
     ability_mods = actor_mods.get("ability_mods", {})
-    return int(ability_mods.get(ability, 0))
+    return int(ability_mods.get(ability, 0)) + penalty

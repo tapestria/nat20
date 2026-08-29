@@ -12,6 +12,7 @@ from dnd5e_engine.events import (
     AttackRolled,
     IntentSubmitted,
     MoveFailed,
+    SaveRolled,
     TurnEnded,
 )
 from dnd5e_engine.orchestrator import (
@@ -234,3 +235,69 @@ def test_speed_zero_monster_cannot_dash_toward_its_target() -> None:
     assert live.actor_zone["mon:foe"] == cell(3, 0)
     assert not [e for e in events_of(live, ActorMoved) if e.actor_id == "mon:foe"]
     assert _combatant(live, "mon:foe").movement_remaining == 0
+
+
+def test_end_of_turn_repeat_save_honours_auto_fail_and_restrained_disadvantage() -> None:
+    """SRD 5.2 Conditions on the ORCHESTRATOR repeat-save path: a Paralyzed
+    creature auto-fails STR/DEX saves (no d20 drawn) while an unaffected
+    ability still rolls; a Restrained creature rolls DEX at disadvantage."""
+    start = _start(
+        "c12-repeat-save",
+        [_hero()],
+        [_foe(zone_id=cell(5, 5))],
+        [_status("char:hero", "paralyzed")],
+    )
+    live = _get_live(start.handle)
+    live.repeat_save_on_turn_end[("char:hero", "effect:hold", "cast:hold-person:mon:foe")] = [
+        {"ability": "wis", "dc": 13, "condition": "paralyzed", "caster_id": "mon:foe"}
+    ]
+    # ``pass`` is legal while Incapacitated and ends the turn.
+    run_async(
+        submit_player_intent(
+            start.handle, actor_id="char:hero", intent=PlayerIntent(intent_type="pass")
+        )
+    )
+    saves = [e for e in events_of(live, SaveRolled) if e.target_id == "char:hero"]
+    assert saves
+    assert saves[-1].ability == "wis"
+    # WIS is not auto-failed; the roll happened normally.
+    assert saves[-1].natural is not None
+
+    start2 = _start(
+        "c12-repeat-save-dex",
+        [_hero()],
+        [_foe(zone_id=cell(5, 5))],
+        [_status("char:hero", "restrained")],
+    )
+    live2 = _get_live(start2.handle)
+    live2.repeat_save_on_turn_end[("char:hero", "effect:web", "cast:web:mon:foe")] = [
+        {"ability": "dex", "dc": 13, "condition": "restrained", "caster_id": "mon:foe"}
+    ]
+    run_async(
+        submit_player_intent(
+            start2.handle, actor_id="char:hero", intent=PlayerIntent(intent_type="pass")
+        )
+    )
+    dex = [e for e in events_of(live2, SaveRolled) if e.target_id == "char:hero"][-1]
+    assert dex.advantage == "disadvantage"
+    assert "condition:target" in dex.sources
+
+    start3 = _start(
+        "c12-repeat-save-str",
+        [_hero()],
+        [_foe(zone_id=cell(5, 5))],
+        [_status("char:hero", "paralyzed")],
+    )
+    live3 = _get_live(start3.handle)
+    live3.repeat_save_on_turn_end[("char:hero", "effect:hold2", "cast:hold-person:mon:foe")] = [
+        {"ability": "str", "dc": 13, "condition": "paralyzed", "caster_id": "mon:foe"}
+    ]
+    run_async(
+        submit_player_intent(
+            start3.handle, actor_id="char:hero", intent=PlayerIntent(intent_type="pass")
+        )
+    )
+    strength = [e for e in events_of(live3, SaveRolled) if e.target_id == "char:hero"][-1]
+    assert strength.succeeded is False
+    assert strength.natural is None
+    assert strength.roll_total == 0

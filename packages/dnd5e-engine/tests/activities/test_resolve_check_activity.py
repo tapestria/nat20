@@ -36,6 +36,7 @@ from dnd5e_engine.activities.check import (
     resolve_check,
 )
 from dnd5e_engine.activities.context import ActivityResolutionContext
+from dnd5e_engine.activities.resolver import resolve_activity
 from dnd5e_engine.events import CheckRolled
 from dnd5e_engine.orchestrator import _build_hydration_payload, _get_live, start_combat
 from dnd5e_engine.rules.skills import SKILL_ABILITIES
@@ -753,3 +754,11 @@ def test_a_poisoned_pc_draws_two_dice_through_the_live_orchestrator() -> None:
     assert check.roll_total == expected + 2
     assert check.advantage == "disadvantage"
     assert check.sources == ["condition:attacker"]
+
+
+def test_exhaustion_penalty_is_folded_into_the_check_modifier() -> None:
+    """SRD 5.2 Exhaustion — an ability check is a D20 Test, so the flat
+    ``-2 x level`` penalty rides on the resolved check modifier."""
+    ctx, events = _ctx(forced_d20=10, d20_test_penalty={"char:hero": -2})
+    resolve_activity(_activity(ability="wis"), ctx)
+    assert _only_check(events).roll_total == 8

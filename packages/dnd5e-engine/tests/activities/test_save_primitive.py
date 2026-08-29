@@ -496,3 +496,13 @@ def test_a_forced_natural_draws_nothing_even_under_advantage() -> None:
 
     assert roll.natural == 17
     assert ctx.rng.randint(1, 20) == expected_next
+
+
+def test_exhaustion_penalty_is_folded_into_the_save_modifier() -> None:
+    """SRD 5.2 Exhaustion — a saving throw is a D20 Test, so the flat
+    ``-2 x level`` penalty rides on the save modifier (no extra draw)."""
+    ctx = _ctx(forced_d20=10, d20_test_penalty={"mon:foe": -6})
+    roll = roll_save(ctx, _target(), "wis", dc=10)
+    assert roll.modifier == -6
+    assert roll.total == 4
+    assert roll.succeeded is False
