@@ -4224,59 +4224,90 @@ def _validate_intent_preconditions(
 
 
 def _handle_move(live: _LiveCombat, current: Combatant, intent: PlayerIntent) -> None:
-    """SRD §Movement — phase-2 zone-shift primitive. The actor steps to an
-    adjacent zone, paying the edge's distance_ft from their per-turn movement
-    budget. Movement does NOT end the turn; the actor keeps initiative.
+    """SRD 5.2 §Movement and Position — move ``current`` to ``target_zone_id``
+    along the fewest-cells legal route (``shortest_path``), paying each leg's
+    ``edge_distance`` (difficult terrain doubles) out of ``movement_remaining``.
+    One ``ActorMoved`` per intent carries the total distance. Movement does
+    NOT end the turn.
 
-    Rejections (no target_zone_id, not adjacent, illegal grid step — wall
-    crossing or diagonal corner-cut, insufficient budget) emit ``MoveFailed``
-    and return without mutating budget or position.
+    Rejections (``MoveFailed``, nothing mutated): ``not_adjacent`` — no
+    destination / untracked position / destination is the current cell (the
+    legacy reason is retained for hosts); ``occupied`` — "You can't willingly
+    end a move in a space occupied by another creature"; ``blocked_path`` —
+    the destination is adjacent but the step crosses a wall or cuts a blocked
+    corner; ``unreachable`` — no legal route (enemy-occupied cells are
+    impassable, allies may be passed through); ``insufficient_movement`` — the
+    whole route costs more than the remaining budget, and nothing moves.
+
+    Opportunity attacks (monster reactor / PC mover) fire before each cell is
+    left; a mover dropped to 0 HP stops where the drop happened and the
+    ``ActorMoved`` (if any cells were crossed) reflects the partial walk.
     """
     actor_id = current.entity_id
-    target_zone_id = intent.target_zone_id
-    current_zone = live.actor_zone.get(actor_id)
-    if (
-        target_zone_id is None
-        or current_zone is None
-        or not live.topology.is_adjacent(current_zone, target_zone_id)
-    ):
+    destination = intent.target_zone_id
+    start_zone = live.actor_zone.get(actor_id)
+    if destination is None or start_zone is None or destination == start_zone:
         _emit(live, MoveFailed(actor_id=actor_id, reason="not_adjacent"))
         return
-    distance_ft = live.topology.edge_distance(current_zone, target_zone_id)
+    # SRD §Moving Around Other Creatures — a move may not END in another
+    # creature's space, ally or enemy alike.
+    if destination in _occupied_cells(live, exclude=(actor_id,)):
+        _emit(live, MoveFailed(actor_id=actor_id, reason="occupied"))
+        return
     # Grid backend: adjacency alone doesn't guarantee a legal step — a wall
-    # crossing the segment or a diagonal cutting a blocked corner also
-    # yields None here (SRD 5.2 "Corners"). Reject rather than crash.
-    if distance_ft is None:
-        _emit(live, MoveFailed(actor_id=actor_id, reason="not_adjacent"))
+    # crossing the segment or a diagonal cutting a blocked corner yields None
+    # from edge_distance (SRD 5.2 "Corners").
+    if (
+        live.topology.is_adjacent(start_zone, destination)
+        and live.topology.edge_distance(start_zone, destination) is None
+    ):
+        _emit(live, MoveFailed(actor_id=actor_id, reason="blocked_path"))
         return
-    if current.movement_remaining < distance_ft:
+    side = live.party_ids if actor_id in live.party_ids else live.encounter_ids
+    enemy_cells = _occupied_cells(live, exclude=side)
+    path = live.topology.shortest_path(start_zone, destination, avoid=enemy_cells)
+    if not path:
+        _emit(live, MoveFailed(actor_id=actor_id, reason="unreachable"))
+        return
+    # "To enter a square, you must have enough movement left to pay for
+    # entering" — the whole route is priced up front so a rejection is atomic.
+    total_cost = _path_total_distance(live.topology, path)
+    if total_cost is None or current.movement_remaining < total_cost:
         _emit(live, MoveFailed(actor_id=actor_id, reason="insufficient_movement"))
         return
-    # SRD §Opportunity Attacks — monster-reactor / PC-mover direction
-    # the mirror of the shipped PC-reactor / monster-mover path).
-    # Fires BEFORE the mover leaves reach; a mover that drops to 0 HP here
-    # cancels the move entirely (mirrors the shipped direction's
-    # mid-path-loop cancellation).
-    if _fire_monster_opportunity_attacks_on_move(
-        live, mover_id=actor_id, from_zone=current_zone, to_zone=target_zone_id
-    ):
-        return
-    # Decrement budget + update position. model_copy + slot-replace
-    # mirrors the C-1 action-economy mutation pattern.
-    for idx, c in enumerate(live.initiative):
-        if c.entity_id == actor_id:
-            live.initiative[idx] = c.model_copy(
-                update={"movement_remaining": c.movement_remaining - distance_ft}
-            )
+    spent = 0
+    position = start_zone
+    for next_zone in path[1:]:
+        step_distance = live.topology.edge_distance(position, next_zone)
+        if step_distance is None:  # pragma: no cover - route is legal by construction
             break
-    live.actor_zone[actor_id] = target_zone_id
+        # SRD §Opportunity Attacks — monster-reactor / PC-mover direction,
+        # fired before the mover leaves each cell's reach. A mover dropped to
+        # 0 HP stops where the drop happened.
+        if _fire_monster_opportunity_attacks_on_move(
+            live, mover_id=actor_id, from_zone=position, to_zone=next_zone
+        ):
+            break
+        spent += step_distance
+        position = next_zone
+        # Decrement budget + update position. model_copy + slot-replace
+        # mirrors the C-1 action-economy mutation pattern.
+        for idx, c in enumerate(live.initiative):
+            if c.entity_id == actor_id:
+                live.initiative[idx] = c.model_copy(
+                    update={"movement_remaining": c.movement_remaining - step_distance}
+                )
+                break
+        live.actor_zone[actor_id] = next_zone
+    if spent == 0:
+        return
     _emit(
         live,
         ActorMoved(
             actor_id=actor_id,
-            from_zone=current_zone,
-            to_zone=target_zone_id,
-            distance_ft=distance_ft,
+            from_zone=start_zone,
+            to_zone=position,
+            distance_ft=spent,
         ),
     )
     # Turn stays live — no TurnEnded, no current_turn_index advance.

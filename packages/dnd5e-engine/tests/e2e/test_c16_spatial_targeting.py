@@ -491,7 +491,6 @@ def test_c16_s05_blocked_cell_blocks_los_and_wall_blocks_corner_cutting():
     assert live_b.actor_zone["char:mover"] == cell(0, 0)
 
 
-@xfail_cluster(16, "spatial targeting")
 def test_c16_s06_multicell_move_succeeds_with_terrain_cost_or_fails_unreachable_or_occupied():
     """C16-S06: SRD 5.2 §Movement and Position, "Playing on a Grid" —
     "It costs 1 square of movement to enter an unoccupied square that's
@@ -567,7 +566,9 @@ def test_c16_s06_multicell_move_succeeds_with_terrain_cost_or_fails_unreachable_
     assert hero_a.movement_remaining == 10
     assert not events_of(live_a, MoveFailed)
 
-    # Run B — unreachable (no occupant; boxed in on all sides).
+    # Run B — unreachable (boxed in on all sides; the occupant sits outside
+    # the box and plays no part). ``start_combat`` requires a non-empty
+    # encounter, so the occupant is carried along as inert scenery.
     boxed = GridScene(
         width=10,
         height=10,
@@ -578,7 +579,7 @@ def test_c16_s06_multicell_move_succeeds_with_terrain_cost_or_fails_unreachable_
             {"x1": 3, "y1": -2, "x2": 3, "y2": 3},
         ],
     )
-    live_b = run_async(_run(boxed, [], cell(9, 9)))
+    live_b = run_async(_run(boxed, [_occupant()], cell(9, 9)))
     failed_b = events_of(live_b, MoveFailed)
     assert failed_b
     assert failed_b[0].reason == "unreachable"

@@ -232,14 +232,17 @@ def test_pc_single_cell_move_decrements_budget_and_updates_position():
     assert moved[-1].distance_ft == 5
 
 
-def test_pc_move_to_non_adjacent_cell_is_rejected():
+def test_pc_move_to_non_adjacent_cell_walks_the_path_in_one_intent():
+    """A non-adjacent destination is walked along the fewest-cells legal route
+    in a single intent, emitting one summarising ``ActorMoved`` (SRD 5.2
+    §Playing on a Grid)."""
     from dnd5e_engine.orchestrator import PlayerIntent, submit_player_intent
 
     set_lib_loader_for_tests(MemoryAssetLoader())
 
     async def _run():
         start = await start_combat(
-            session_id="sess-grid-badmove",
+            session_id="sess-grid-multimove",
             party=_party(cell_id(0, 0)),
             encounter=_encounter(cell_id(9, 9)),
             scene_zones=None,
@@ -255,10 +258,11 @@ def test_pc_move_to_non_adjacent_cell_is_rejected():
         return live
 
     live = asyncio.run(_run())
-    assert live.actor_zone["char:hero"] == "0,0"  # unchanged
-    failed = [e for e in live.event_log if type(e).__name__ == "MoveFailed"]
-    assert failed
-    assert failed[-1].reason == "not_adjacent"
+    assert live.actor_zone["char:hero"] == "5,5"
+    moved = [e for e in live.event_log if type(e).__name__ == "ActorMoved"]
+    assert len(moved) == 1
+    assert (moved[0].from_zone, moved[0].to_zone, moved[0].distance_ft) == ("0,0", "5,5", 25)
+    assert not [e for e in live.event_log if type(e).__name__ == "MoveFailed"]
 
 
 def test_pc_move_across_a_wall_between_adjacent_cells_is_rejected():
@@ -299,7 +303,7 @@ def test_pc_move_across_a_wall_between_adjacent_cells_is_rejected():
     assert not moved
     failed = [e for e in live.event_log if type(e).__name__ == "MoveFailed"]
     assert failed
-    assert failed[-1].reason == "not_adjacent"
+    assert failed[-1].reason == "blocked_path"
 
 
 def test_ranged_attack_out_of_range_is_gated_on_grid():

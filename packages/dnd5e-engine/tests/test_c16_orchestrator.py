@@ -364,3 +364,137 @@ def test_interposed_creature_does_not_block_targeting() -> None:
     )
     assert not events_of(live, events_module.AttackFailed)
     assert events_of(live, events_module.AttackRolled)
+
+
+# ── Task 8: multi-cell move ──────────────────────────────────────────────
+
+
+async def _move(
+    scene: GridScene,
+    party: list[PartyMemberSpec],
+    encounter: list[EncounterMemberSpec],
+    to: str,
+    actor: str = "char:hero",
+) -> Any:
+    from dnd5e_srd_data import MemoryAssetLoader
+
+    from dnd5e_engine.lib_loader import set_lib_loader_for_tests
+
+    set_lib_loader_for_tests(MemoryAssetLoader())
+    start = await start_combat(
+        session_id="c16-move",
+        party=party,
+        encounter=encounter,
+        scene_zones=None,
+        grid_scene=scene,
+        rng_seed=1,
+    )
+    live = _get_live(start.handle)
+    await submit_player_intent(
+        start.handle,
+        actor_id=actor,
+        intent=PlayerIntent(intent_type="move", target_zone_id=to),
+    )
+    return live
+
+
+def _mover(at: str, speed: int = 30) -> PartyMemberSpec:
+    return PartyMemberSpec(
+        entity_id="char:hero",
+        name="Hero",
+        initiative=20,
+        hp_current=20,
+        hp_max=20,
+        base_speed=speed,
+        zone_id=at,
+    )
+
+
+def test_move_route_too_expensive_is_rejected_atomically() -> None:
+    live = run_async(
+        _move(
+            GridScene(width=10, height=10),
+            [_mover(cell(0, 0), speed=10)],
+            [_foe("mon:foe", cell(9, 9))],
+            cell(3, 0),
+        )
+    )
+    failed = events_of(live, MoveFailed)
+    assert failed
+    assert failed[0].reason == "insufficient_movement"
+    assert live.actor_zone["char:hero"] == cell(0, 0)
+    assert not events_of(live, events_module.ActorMoved)
+    hero = next(c for c in live.initiative if c.entity_id == "char:hero")
+    assert hero.movement_remaining == 10
+
+
+def test_move_routes_around_an_enemy_but_through_an_ally() -> None:
+    def ally() -> PartyMemberSpec:
+        return PartyMemberSpec(
+            entity_id="char:ally",
+            name="Ally",
+            initiative=19,
+            hp_current=20,
+            hp_max=20,
+            zone_id=cell(1, 0),
+        )
+
+    # destination occupied by the enemy → occupied
+    live = run_async(
+        _move(
+            GridScene(width=3, height=1),
+            [_mover(cell(0, 0)), ally()],
+            [_foe("mon:foe", cell(2, 0))],
+            cell(2, 0),
+        )
+    )
+    assert events_of(live, MoveFailed)[0].reason == "occupied"
+
+    # passes THROUGH the ally at (1,0) on a 1-row grid
+    live2 = run_async(
+        _move(
+            GridScene(width=4, height=1),
+            [_mover(cell(0, 0)), ally()],
+            [_foe("mon:foe", cell(3, 0))],
+            cell(2, 0),
+        )
+    )
+    moved = events_of(live2, events_module.ActorMoved)
+    assert moved
+    assert moved[-1].to_zone == cell(2, 0)
+    assert moved[-1].distance_ft == 10
+
+    # an ENEMY at (1,0) on a 1-row grid boxes the mover in → unreachable
+    live3 = run_async(
+        _move(
+            GridScene(width=4, height=1),
+            [_mover(cell(0, 0))],
+            [_foe("mon:foe", cell(1, 0))],
+            cell(3, 0),
+        )
+    )
+    assert events_of(live3, MoveFailed)[0].reason == "unreachable"
+
+
+def test_single_illegal_step_reports_blocked_path() -> None:
+    scene = GridScene(
+        width=5,
+        height=5,
+        blocked_cells=[cell(1, 0)],
+        wall_segments=[{"x1": 1, "y1": 0, "x2": 1, "y2": 1}],
+    )
+    live = run_async(_move(scene, [_mover(cell(0, 0))], [_foe("mon:foe", cell(4, 4))], cell(1, 1)))
+    assert events_of(live, MoveFailed)[0].reason == "blocked_path"
+    assert live.actor_zone["char:hero"] == cell(0, 0)
+
+
+def test_move_to_own_cell_or_without_destination_keeps_not_adjacent() -> None:
+    live = run_async(
+        _move(
+            GridScene(width=5, height=5),
+            [_mover(cell(0, 0))],
+            [_foe("mon:foe", cell(4, 4))],
+            cell(0, 0),
+        )
+    )
+    assert events_of(live, MoveFailed)[0].reason == "not_adjacent"
