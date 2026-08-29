@@ -464,6 +464,18 @@ def test_move_routes_around_an_enemy_but_through_an_ally() -> None:
     assert moved[-1].to_zone == cell(2, 0)
     assert moved[-1].distance_ft == 10
 
+    # ending ON the ally is refused — the SRD rule the pass-through turns on
+    live_ally_dest = run_async(
+        _move(
+            GridScene(width=4, height=1),
+            [_mover(cell(0, 0)), ally()],
+            [_foe("mon:foe", cell(3, 0))],
+            cell(1, 0),
+        )
+    )
+    assert events_of(live_ally_dest, MoveFailed)[0].reason == "occupied"
+    assert live_ally_dest.actor_zone["char:hero"] == cell(0, 0)
+
     # an ENEMY at (1,0) on a 1-row grid boxes the mover in → unreachable
     live3 = run_async(
         _move(
@@ -498,3 +510,42 @@ def test_move_to_own_cell_or_without_destination_keeps_not_adjacent() -> None:
         )
     )
     assert events_of(live, MoveFailed)[0].reason == "not_adjacent"
+
+
+def test_zone_graph_move_into_an_occupied_zone_still_succeeds() -> None:
+    """Regression: occupancy is a GRID rule. A zone is an area, not a 5-ft
+    square, and ``_ZoneGraph`` does not model occupancy — a PC must still be
+    able to move into the zone an enemy holds in order to engage it."""
+    from dnd5e_srd_data import MemoryAssetLoader
+
+    from dnd5e_engine.lib_loader import set_lib_loader_for_tests
+    from dnd5e_engine.specs import SceneTopology, ZoneEdge
+
+    async def _run() -> Any:
+        set_lib_loader_for_tests(MemoryAssetLoader())
+        start = await start_combat(
+            session_id="c16-zone-move",
+            party=[_mover("zone:a")],
+            encounter=[_foe("mon:foe", "zone:b")],
+            scene_zones=SceneTopology(
+                zones=["zone:a", "zone:b"],
+                edges=[ZoneEdge(a="zone:a", b="zone:b", distance_ft=30)],
+            ),
+            grid_scene=None,
+            rng_seed=1,
+        )
+        live = _get_live(start.handle)
+        await submit_player_intent(
+            start.handle,
+            actor_id="char:hero",
+            intent=PlayerIntent(intent_type="move", target_zone_id="zone:b"),
+        )
+        return live
+
+    live = run_async(_run())
+    assert not events_of(live, MoveFailed)
+    assert live.actor_zone["char:hero"] == "zone:b"
+    moved = events_of(live, events_module.ActorMoved)
+    assert len(moved) == 1
+    assert moved[0].to_zone == "zone:b"
+    assert moved[0].distance_ft == 30

@@ -4239,6 +4239,11 @@ def _handle_move(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
     impassable, allies may be passed through); ``insufficient_movement`` — the
     whole route costs more than the remaining budget, and nothing moves.
 
+    ``occupied`` and the enemy-impassability rule are GRID-only: a zone is an
+    area rather than a 5-ft square and ``_ZoneGraph`` does not model occupancy,
+    so the zone backend keeps its pre-C16 behaviour (a PC may still move into a
+    zone an enemy holds, to engage it in melee).
+
     Opportunity attacks (monster reactor / PC mover) fire before each cell is
     left; a mover dropped to 0 HP stops where the drop happened and the
     ``ActorMoved`` (if any cells were crossed) reflects the partial walk.
@@ -4249,9 +4254,13 @@ def _handle_move(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
     if destination is None or start_zone is None or destination == start_zone:
         _emit(live, MoveFailed(actor_id=actor_id, reason="not_adjacent"))
         return
+    # Occupancy is a GRID rule: a zone is an area, not a 5-ft square, so the
+    # zone graph keeps its pre-C16 behaviour.
+    # zone graph: legacy behaviour until removal in 0.7
+    on_grid = isinstance(live.topology, GridTopology)
     # SRD §Moving Around Other Creatures — a move may not END in another
     # creature's space, ally or enemy alike.
-    if destination in _occupied_cells(live, exclude=(actor_id,)):
+    if on_grid and destination in _occupied_cells(live, exclude=(actor_id,)):
         _emit(live, MoveFailed(actor_id=actor_id, reason="occupied"))
         return
     # Grid backend: adjacency alone doesn't guarantee a legal step — a wall
@@ -4263,8 +4272,12 @@ def _handle_move(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
     ):
         _emit(live, MoveFailed(actor_id=actor_id, reason="blocked_path"))
         return
-    side = live.party_ids if actor_id in live.party_ids else live.encounter_ids
-    enemy_cells = _occupied_cells(live, exclude=side)
+    # Enemy spaces are impassable on the grid only, for the same reason.
+    if on_grid:
+        side = live.party_ids if actor_id in live.party_ids else live.encounter_ids
+        enemy_cells: Collection[str] = _occupied_cells(live, exclude=side)
+    else:
+        enemy_cells = ()
     path = live.topology.shortest_path(start_zone, destination, avoid=enemy_cells)
     if not path:
         _emit(live, MoveFailed(actor_id=actor_id, reason="unreachable"))
