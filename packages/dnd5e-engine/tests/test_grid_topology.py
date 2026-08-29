@@ -16,6 +16,9 @@ def test_grid_scene_defaults_to_no_blocked_cells():
     assert scene.wall_segments == []
     assert scene.cover_cells == {}
     assert scene.difficult_terrain_cells == []
+    assert scene.lighting == {}
+    assert scene.default_lighting == "bright"
+    assert scene.obscurement_cells == {}
 
 
 def test_grid_scene_rejects_extra_fields():

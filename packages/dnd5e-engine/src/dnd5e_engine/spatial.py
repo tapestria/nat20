@@ -13,7 +13,8 @@ from collections import deque
 from collections.abc import Collection
 from typing import Literal, Protocol, runtime_checkable
 
-from dnd5e_engine.specs import GridScene, WallSegment
+from dnd5e_engine.activities.passive_stats import CombatantSenses
+from dnd5e_engine.specs import GridScene, LightLevel, Obscurement, WallSegment
 
 CoverDegree = Literal["none", "half", "three_quarters", "total"]
 
@@ -148,6 +149,8 @@ class SpatialTopology(Protocol):
         self, a: str, b: str, occupied_cells: Collection[str] = ()
     ) -> CoverDegree: ...
 
+    def can_see(self, a: str, b: str, senses: CombatantSenses | None = None) -> bool: ...
+
 
 class GridTopology:
     """Chebyshev (8-direction, one cell = ``cell_size_ft``) grid backend.
@@ -167,6 +170,9 @@ class GridTopology:
         self._walls: list[WallSegment] = list(scene.wall_segments)
         self._cover_cells: dict[str, str] = dict(scene.cover_cells)
         self._difficult: set[str] = set(scene.difficult_terrain_cells)
+        self._lighting: dict[str, LightLevel] = dict(scene.lighting)
+        self._default_lighting: LightLevel = scene.default_lighting
+        self._obscurement: dict[str, Obscurement] = dict(scene.obscurement_cells)
 
     @property
     def cell_size_ft(self) -> int:
@@ -311,6 +317,44 @@ class GridTopology:
             if degree is not None and _COVER_RANK[degree] > _COVER_RANK[best]:
                 best = degree
         return best
+
+    def can_see(self, a: str, b: str, senses: CombatantSenses | None = None) -> bool:
+        """SRD 5.2 §Vision and Light — can a viewer in ``a`` with ``senses`` see
+        a creature standing in ``b``?
+
+        1. Line of sight (walls / blocked cells) is required for every sense —
+           Blindsight: "you can see anything that isn't behind Total Cover".
+        2. Blindsight or Truesight whose range reaches ``b`` sees through
+           Darkness and heavy obscurement.
+        3. A Heavily Obscured cell (``obscurement_cells == "heavy"``) is
+           opaque to sight; Darkvision does not help (it only re-grades light).
+        4. Bright or Dim Light in ``b`` is visible ("in a Lightly Obscured area
+           ... you have Disadvantage on Wisdom (Perception) checks" — attacks
+           are unaffected).
+        5. Darkness in ``b`` needs Darkvision reaching ``b`` ("in Darkness
+           within that range as if it were Dim Light").
+
+        Tremorsense is deliberately not consulted — "it doesn't count as a
+        form of sight" (SRD 5.2 glossary, Tremorsense). Conditions (Blinded)
+        are the caller's concern (``rules/conditions.py``).
+        """
+        if not self.has_line_of_sight(a, b):
+            return False
+        distance = self._chebyshev(a, b)
+        if distance is None:
+            return False
+        distance_ft = distance * self._cell_size_ft
+
+        def reaches(range_ft: int | None) -> bool:
+            return range_ft is not None and range_ft >= distance_ft
+
+        if senses is not None and (reaches(senses.blindsight) or reaches(senses.truesight)):
+            return True
+        if self._obscurement.get(b) == "heavy":
+            return False
+        if self._lighting.get(b, self._default_lighting) != "dark":
+            return True
+        return senses is not None and reaches(senses.darkvision)
 
     def is_valid_cell(self, cid: str) -> bool:
         """True iff ``cid`` is in bounds and not impassable — a legal occupancy."""

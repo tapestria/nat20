@@ -4,6 +4,7 @@ card in specs/rule-cards/c16-spatial-vision.md."""
 
 from __future__ import annotations
 
+from dnd5e_engine.activities.passive_stats import CombatantSenses
 from dnd5e_engine.spatial import GridTopology, cell_id
 from dnd5e_engine.specs import GridScene
 
@@ -171,3 +172,58 @@ def test_push_path_stops_at_obstacles_and_creatures():
     walled = _grid(wall_segments=[{"x1": 3, "y1": 0, "x2": 3, "y2": 1}])
     assert walled.push_path("0,0", "1,0", 15) == ["2,0"]
     assert _grid().push_path("0,0", "1,0", 15, occupied_cells={"3,0"}) == ["2,0"]
+
+
+# ── Task 11: vision & light ──────────────────────────────────────────────
+
+
+def test_grid_scene_lighting_fields_are_typed():
+    import pytest
+    from pydantic import ValidationError
+
+    GridScene(
+        width=3,
+        height=3,
+        lighting={"1,1": "dark"},
+        default_lighting="dim",
+        obscurement_cells={"2,2": "heavy"},
+    )
+    with pytest.raises(ValidationError):
+        GridScene(width=3, height=3, lighting={"1,1": "pitch"})
+    with pytest.raises(ValidationError):
+        GridScene(width=3, height=3, obscurement_cells={"1,1": "total"})
+
+
+def test_can_see_lit_target_and_default_lighting():
+    assert _grid().can_see("0,0", "4,0") is True
+    assert _grid(default_lighting="dim").can_see("0,0", "4,0") is True
+    assert _grid(default_lighting="dark").can_see("0,0", "4,0") is False
+    assert _grid(default_lighting="dark", lighting={"4,0": "bright"}).can_see("0,0", "4,0") is True
+
+
+def test_can_see_dark_target_needs_darkvision_in_range():
+    g = _grid(lighting={"4,0": "dark"})
+    assert g.can_see("0,0", "4,0") is False
+    assert g.can_see("0,0", "4,0", CombatantSenses(darkvision=60)) is True
+    assert g.can_see("0,0", "4,0", CombatantSenses(darkvision=15)) is False  # 20 ft away
+    assert g.can_see("0,0", "4,0", CombatantSenses(tremorsense=60)) is False  # not a form of sight
+
+
+def test_can_see_heavy_obscurement_beats_darkvision_but_not_blindsight():
+    g = _grid(obscurement_cells={"4,0": "heavy"})
+    assert g.can_see("0,0", "4,0", CombatantSenses(darkvision=60)) is False
+    assert g.can_see("0,0", "4,0", CombatantSenses(blindsight=30)) is True
+    assert g.can_see("0,0", "4,0", CombatantSenses(truesight=30)) is True
+    assert g.can_see("0,0", "4,0", CombatantSenses(blindsight=10)) is False
+    assert _grid(obscurement_cells={"4,0": "light"}).can_see("0,0", "4,0") is True
+
+
+def test_can_see_requires_line_of_sight_even_with_blindsight():
+    g = _grid(blocked_cells=["2,0"])
+    assert g.can_see("0,0", "4,0", CombatantSenses(blindsight=60)) is False
+
+
+def test_can_see_is_directional():
+    g = _grid(lighting={"4,0": "dark"})
+    assert g.can_see("0,0", "4,0") is False  # lit viewer → dark target: unseen
+    assert g.can_see("4,0", "0,0") is True  # dark viewer → lit target: seen

@@ -82,7 +82,7 @@ from dnd5e_engine.activities.monster_actions import (
     expand_action_to_activities,
     select_typed_monster_action,
 )
-from dnd5e_engine.activities.passive_stats import interpret_passive_stats
+from dnd5e_engine.activities.passive_stats import CombatantSenses, interpret_passive_stats
 from dnd5e_engine.activities.resolver import resolve_activity
 from dnd5e_engine.activities.scale import build_scale_values
 from dnd5e_engine.build_party import granted_feature_slugs
@@ -402,6 +402,11 @@ class _ZoneGraph:
         # behavior; documented, permanent backend split (not a gap) — see
         # docs/dev/spatial-geometry.md "Zone-backend decision".
         return "none"
+
+    def can_see(self, a: str, b: str, senses: CombatantSenses | None = None) -> bool:
+        # Zone graph has no lighting model — everything in a known zone is
+        # visible. Legacy backend, removed in 0.7.
+        return a in self._zones and b in self._zones
 
 
 def _weapon_attack_range_ft(weapon: Weapon | None) -> int | None:
