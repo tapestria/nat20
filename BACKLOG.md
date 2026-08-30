@@ -72,22 +72,9 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   is never read.
 - **Spell components are not enforced.** `components` / `materials` ship on
   every spell and are never checked.
-- **Vision, light and obscurement are not modelled.** `activities/passive_stats.py`
-  *projects* `darkvision`/`blindsight`/`tremorsense` onto the `Combatant`, but
-  nothing consumes them: there is no lighting model, so no attack is ever made
-  at disadvantage for being unable to see.
 
 ## Movement (2026-08-22)
 
-- **PC movement is one step per intent.** `orchestrator.py::_handle_move`
-  rejects any non-adjacent `target_zone_id` as `not_adjacent`, regardless of
-  remaining budget — crossing 30 ft on a grid takes six `submit_player_intent`
-  calls. The monster path is asymmetric: `_execute_flee_retreat` walks a full
-  `shortest_path` route via `_walk_zone_path`. Either give the PC path the same
-  multi-step walk, or add a distinct `MoveFailed` reason so a host can
-  distinguish "not adjacent" from "unreachable". Documented in
-  `docs/capabilities.md`.
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
 - **No elevation.** The grid is strictly 2-D, so flying creatures have no
   altitude and `movement_modes` beyond walk speed do not affect positioning.
 - **No multi-tile creature footprints.** Every creature occupies one cell
@@ -143,16 +130,58 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   `cover_between`, the AC fold, and the Dexterity-save fold all landed (see
   `packages/dnd5e-engine/src/dnd5e_engine/spatial.py::cover_between`,
   `activities/attack.py::resolve_attack`, `activities/save_primitive.py::roll_save`);
-  only this per-activity carve-out remains, and it is a DATA-schema addition
-  (`schema/feature.py`-style `advancement` field precedent — add a
-  `SaveBlock.ignore_cover: bool` + translator support), not an engine gap.
+  only this per-activity carve-out remains, and it is now purely a DATA-schema
+  addition (`schema/feature.py`-style `advancement` field precedent — add a
+  `SaveBlock.ignore_cover: bool` + translator support). The ENGINE half closed
+  in C16 (2026-08-27): `orchestrator.py` reads
+  `getattr(activity.save, "ignore_cover", False)` and
+  `activities/save_primitive.py::roll_save(..., ignore_cover=)` drops the cover
+  bonus, so the flag takes effect the day the dataset ships it.
   `packages/dnd5e-srd-data/src/dnd5e_srd_data/schema/common.py` (`SaveBlock`).
-- **Richer pathfinding.** `GridTopology.shortest_path` is uniform-cost BFS
-  (`spatial.py`) — no threat-aware routing or multi-tile creatures. (Terrain
-  COST is closed: `edge_distance` doubles entering a `difficult_terrain_cells`
-  cell, consumed by `_handle_move`'s single-step budget check; `shortest_path`
-  itself is not yet a cost-aware search over that cost, which is what
-  "richer" now refers to.)
+- **Route choice is fewest-squares, not cheapest.** `GridTopology.shortest_path`
+  (`spatial.py`) is BFS over legal steps — walls, diagonal corner-cutting and
+  enemy-occupied cells are all honoured (C16) — and `_handle_move` charges each
+  leg's `edge_distance` to the movement budget, but the SEARCH does not minimise
+  that cost. A mover is therefore routed straight through difficult terrain when
+  a same-length detour would be cheaper (pinned by C16-S06). No threat-aware
+  routing, no multi-tile creatures.
+  (`packages/dnd5e-engine/src/dnd5e_engine/spatial.py::GridTopology.shortest_path`)
+
+- **Thunderwave's push is an engine-side registry, not data** (2026-08-27).
+  `activities/forced_movement.py::FORCED_MOVEMENT_RIDERS` names the spell by
+  slug because the canonical activity carries the push only as prose. C22 seam:
+  a typed push field on the save activity + a translator rule, then delete the
+  registry.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/forced_movement.py`)
+- **Monster walks ignore occupancy; line width is not modelled** (2026-08-27).
+  `_walk_zone_path`, `_execute_flee_retreat` and the closing walk in
+  `advance_monster_turn` all call `shortest_path` without `avoid=`, so a monster
+  may path straight through a PC where a PC `"move"` intent may not — a
+  deliberate, documented asymmetry, not an oversight;
+  `cells_in_template("line")` is one cell wide, so a 5-ft-wide Lightning Bolt is
+  treated as a 1-cell ray and a wider `template.width` is ignored.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_walk_zone_path`,
+  `packages/dnd5e-engine/src/dnd5e_engine/spatial.py::cells_in_template`)
+- **Vision is scene-lit only** (2026-08-27). No light sources (torches, *Light*,
+  *Darkness*), no viewer-side obscurement, no Blinded emission from darkness;
+  `can_see` reads `GridScene.lighting` / `obscurement_cells` plus the viewer's
+  projected senses. Sunlight Sensitivity is C18.
+  (`packages/dnd5e-engine/src/dnd5e_engine/spatial.py::GridTopology.can_see`)
+- **Monster-cast AoE applies no forced-movement rider** (2026-08-27). Only the
+  player-intent cast path calls `activities/forced_movement.py`, so a monster
+  casting Thunderwave deals damage but pushes nobody.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::advance_monster_turn`)
+- **Mutual unseen is reported twice** (2026-08-27). When neither combatant can
+  see the other, `AttackRolled.sources` is `["unseen", "unseen"]` — one entry
+  for the disadvantage and one for the advantage — because an `AdvantageSource`
+  records presence only, not direction. A host rendering the source list shows
+  the same word twice.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py`)
+- **Opportunity attacks bypass the activity context** (2026-08-27). The AoO path
+  hardcodes `advantage="normal"` and never calls `build_activity_context`, so an
+  opportunity attack sees no cover, no conditions and no visibility — despite
+  SRD 5.2's "a hostile creature that *you can see*" trigger. C14 seam.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
 
 ## Reactions (2026-07-03)
 
@@ -352,9 +381,12 @@ zone + apply logic:
   (`orchestrator.py:5382`) yields victory / defeat_tpk / forced only.
 - **Movement rules beyond the budget are absent:** standing from prone (half
   speed), crawling, climb/swim cost, jumping; `Combatant.movement_modes` is
-  hydrated and never read; occupied cells are freely enterable (no
-  ally/enemy/squeeze rule); no forced-movement primitive (`push` mastery,
-  Thunderwave). (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_handle_move`)
+  hydrated and never read. Occupancy (C16) treats every enemy space as
+  impassable — the SRD's Tiny / two-sizes-larger pass-through and the "another
+  creature's space is Difficult Terrain" cost both need creature size, which is
+  not modelled; the forced-Prone consequence of ending a turn in a shared space
+  is not applied either.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_handle_move`)
 
 ## Audit 2026-08-26 — spellcasting & concentration
 
@@ -366,12 +398,6 @@ zone + apply logic:
   has one call site (`orchestrator.py:1552`). Caster death, unconscious,
   incapacitated and voluntary drop never end it; concentration-flagged effects
   are also skipped by the duration tick (`:2549`) so they never expire by time.
-- **AoE targeting on the grid hits a single cell.** `_expand_aoe_target_list`
-  (`orchestrator.py:2330`) selects "every combatant whose `actor_zone` equals
-  the anchor's". On `GridTopology` that string is a cell id, so Fireball hits
-  one 5-ft square. `spatial.py::cells_in_template` (sphere/cone/line) exists and
-  is called only by tests; cube/cylinder do not exist. Template size/shape is
-  used only as a boolean "is AoE" flag.
 - **Rests never restore spell slots.** `rest.py` has no slot handling; hosts
   must reset `spell_slots` themselves. Pact Magic and per-class slot tables do
   not exist — `spell_slots` is a host-supplied `dict[int, int]`.
@@ -449,7 +475,7 @@ stand-in, not an engine capability. Specifically:
 
 ## Not modelled by design (recorded so nobody re-audits them)
 
-Lighting/obscurement (senses projected, never consumed), hiding vs passive
+Hiding vs passive
 Perception, falling, suffocation/drowning, underwater, extreme weather,
 hazards/traps, objects as targets, mounted combat, elevation, multi-tile
 footprints. Exploration-tier; revisit only if a host asks.
@@ -461,8 +487,8 @@ footprints. Exploration-tier; revisit only if a host asks.
   exclusivity, AoE templates, Extra Attack-less action economy, opportunity
   attacks' "can see" check, ability-score/proficiency derivation). Corrected
   2026-08-26. Closed 2026-08-26: `test_capability_matrix.py::
-  test_status_rows_match_code_probes` now pins five representative rows to a
-  grep-level code probe in both directions. The probe set is a sample, not
+  test_status_rows_match_code_probes` now pins ten representative rows to a
+  grep-level code probe in both directions (five added by C16, 2026-08-27). The probe set is a sample, not
   exhaustive — **add a probe entry whenever a status row is flipped.**
 
 ## Catalog v2 scenarios without a prior entry (2026-08-26)

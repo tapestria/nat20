@@ -90,6 +90,9 @@ testpaths = ["tests"]
 filterwarnings = [
     # Any DeprecationWarning the engine itself raises is a bug.
     "error::DeprecationWarning:dnd5e_engine",
+    # The one sanctioned engine deprecation (spec D8): zone-graph combats keep
+    # running through 0.6.x while hosts migrate to GridScene; removed in 0.7.
+    "ignore:start_combat\\(scene_zones=:DeprecationWarning:dnd5e_engine",
 ]
 
 [tool.coverage.run]

@@ -254,6 +254,14 @@ class WallSegment(BaseModel):
     y2: float
 
 
+# SRD 5.2 §Vision and Light — the three light levels and the two obscurement
+# grades. Dim Light is a Lightly Obscured area (Perception disadvantage only);
+# Darkness is Heavily Obscured ("opaque ... you have the Blinded condition when
+# trying to see something there").
+LightLevel = Literal["bright", "dim", "dark"]
+Obscurement = Literal["light", "heavy"]
+
+
 class GridScene(BaseModel):
     """Wire-level shape for a 2-D grid battlefield.
 
@@ -287,11 +295,22 @@ class GridScene(BaseModel):
     # SRD 5.2 §Difficult Terrain — floor cells that cost double to enter.
     # Additive; empty preserves ``edge_distance``'s prior flat-cost behavior.
     difficult_terrain_cells: list[str] = Field(default_factory=list)
+    # C16b — SRD 5.2 §Vision and Light. ``lighting`` tags cells whose light
+    # level differs from ``default_lighting``; an empty map + the "bright"
+    # default reproduces pre-0.6 behaviour (everything visible).
+    lighting: dict[str, LightLevel] = Field(default_factory=dict)
+    default_lighting: LightLevel = "bright"
+    # Non-light obscurement (fog, foliage): "light" has no combat effect,
+    # "heavy" hides whatever stands in the cell from every sense but
+    # blindsight/truesight. Consumed by ``GridTopology.can_see``.
+    obscurement_cells: dict[str, Obscurement] = Field(default_factory=dict)
 
 
 __all__ = [
     "EncounterMemberSpec",
     "GridScene",
+    "LightLevel",
+    "Obscurement",
     "PartyMemberSpec",
     "SceneTopology",
     "WallSegment",

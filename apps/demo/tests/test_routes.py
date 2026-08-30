@@ -49,7 +49,9 @@ async def test_play_empty_log_renders_board(client) -> None:
 
 async def test_play_with_log_param_renders_replayed_state(client) -> None:
     scenario = get_scenario("goblin-ambush")
-    move_steps = [(2, 4), (3, 4), (4, 4), (5, 4), (6, 4), (7, 3)]
+    # Rounds the x=6 wall to the south: engine 0.6 walls block movement,
+    # not only sight (docs/migration/v0.5-to-v0.6.md).
+    move_steps = [(2, 5), (3, 5), (4, 5), (5, 5), (6, 5), (7, 4)]
     log = FightLog(
         scenario_id=scenario.id,
         seed=scenario.default_seed,

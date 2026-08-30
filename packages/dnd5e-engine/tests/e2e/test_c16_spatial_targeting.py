@@ -20,10 +20,9 @@ from dnd5e_engine.events import (
 )
 from dnd5e_engine.orchestrator import _get_live, start_combat, submit_player_intent
 from dnd5e_engine.specs import EncounterMemberSpec, GridScene, PartyMemberSpec
-from tests.e2e.harness import cell, events_of, grid_scene, run_async, xfail_cluster
+from tests.e2e.harness import cell, events_of, grid_scene, run_async
 
 
-@xfail_cluster(16, "spatial targeting")
 def test_c16_s01_fireball_sphere_hits_every_creature_within_radius():
     """C16-S01: SRD 5.2 §Areas of Effect, Sphere — "A Sphere is an area of
     effect that extends in straight lines from a point of origin outward
@@ -33,9 +32,13 @@ def test_c16_s01_fireball_sphere_hits_every_creature_within_radius():
     id npdEWb2egUPnB5Fa, heading "Sphere"); fireball's 20 ft radius:
     packages/dnd5e-srd-data/src/dnd5e_srd_data/canonical/spells/fireball.json
     (``target.template = {type: "sphere", size: "20", units: "ft"}``).
-    ``orchestrator._expand_aoe_target_list`` does zone-EQUALITY filtering
-    on a named target, not a ``cells_in_template`` radius walk — a
-    geometrically-in-radius ``mon:near2`` never takes damage today.
+    ``orchestrator._expand_aoe_target_list`` walks
+    ``GridTopology.cells_in_template("sphere", 20)`` from the point of
+    origin and keeps every alive combatant standing in a resulting cell
+    with line of effect, so the geometrically-in-radius but unnamed
+    ``mon:near2`` takes damage alongside the named target. Before C16 the
+    expansion was zone-EQUALITY filtering on the named target and
+    ``mon:near2`` was never hit.
     """
 
     async def _run():
@@ -115,7 +118,6 @@ def test_c16_s01_fireball_sphere_hits_every_creature_within_radius():
     assert not far_dmg
 
 
-@xfail_cluster(16, "spatial targeting")
 def test_c16_s02_burning_hands_cone_fires_from_casters_own_cell():
     """C16-S02: SRD 5.2 §Areas of Effect, Cone — "A Cone is an area of
     effect that extends in straight lines from a point of origin in a
@@ -126,18 +128,16 @@ def test_c16_s02_burning_hands_cone_fires_from_casters_own_cell():
     (``target.template = {type: "cone", size: "15", units: "ft"}``,
     ``range.units = "self"``).
 
-    With a real cone walk, ``mon:front`` (2 cells "ahead", inside a 3-cell
-    forward cone) should take ``DamageApplied(damage_type="fire")`` (bounded
-    ``[3, 18]``, 3d6) and ``mon:behind`` (2 cells "behind") should take
-    none. ``PlayerIntent`` has no ``direction`` field today to express
-    which of the 8 grid directions a self-centered cone fires along —
-    ``cells_in_template(shape="cone", ...)`` already requires it, but
-    nothing upstream populates one — so the scripted cast below (which
-    presumes the field, per the catalog's own script) fails at intent
-    construction (``extra="forbid"``) before the scripted assertions can
-    even run; they are pinned here so the scenario turns green once
-    ``direction`` lands and ``_expand_aoe_target_list`` gets the
-    ``cells_in_template`` rewiring from C16-S01.
+    ``mon:front`` (2 cells "ahead", inside the 3-cell forward cone) takes
+    ``DamageApplied(damage_type="fire")`` (bounded ``[3, 18]``, 3d6) and
+    ``mon:behind`` (2 cells "behind") takes none.
+    ``_expand_aoe_target_list`` (orchestrator.py) now walks
+    ``GridTopology.cells_in_template("cone", 15, direction=(1, 0))`` from
+    the caster's own cell (origin excluded per SRD) and keeps every alive
+    combatant standing in a resulting cell, so ``mon:behind`` is excluded
+    by geometry rather than by not being the named target. See
+    ``tests/test_c16_orchestrator.py::test_cone_hits_an_unnamed_creature_inside_the_cone``
+    for the companion unit that pins the "unnamed but in-cone" half.
     """
 
     async def _run():
@@ -184,9 +184,6 @@ def test_c16_s02_burning_hands_cone_fires_from_casters_own_cell():
             rng_seed=3,
         )
         live = _get_live(start.handle)
-        # API delta (C16): PlayerIntent.direction does not exist today —
-        # extra="forbid" rejects this before the cast can even resolve,
-        # which is the failure that drives this scenario's xfail.
         await submit_player_intent(
             start.handle,
             actor_id="char:wiz",
@@ -209,7 +206,6 @@ def test_c16_s02_burning_hands_cone_fires_from_casters_own_cell():
     assert not behind_dmg
 
 
-@xfail_cluster(16, "spatial targeting")
 def test_c16_s03_lightning_bolt_line_hits_every_cell_along_its_length():
     """C16-S03: SRD 5.2 §Areas of Effect, Line — "A Line is an area of
     effect that extends from a point of origin in a straight path along
@@ -217,12 +213,12 @@ def test_c16_s03_lightning_bolt_line_hits_every_cell_along_its_length():
     (packs/_source/content24/appendices/appendix-d-rule-references.yml,
     id 6DOoBgg7okm9gBc6, heading "Line"). Lightning Bolt's 100 ft line:
     packages/dnd5e-srd-data/src/dnd5e_srd_data/canonical/spells/lightning-bolt.json.
-    ``_expand_aoe_target_list``'s zone-equality gap means the named
-    target (the anchor cell) is always hit, but a DIFFERENT creature
-    sitting on the same line's path (``mon:near``, between the caster
-    and the named target) is never hit — the bolt degenerates to a
-    single terminal-point hit rather than traveling the full line; a
-    creature off the line's path (``mon:offline``) correctly takes none.
+    ``_expand_aoe_target_list`` enumerates the line's cells from the
+    caster's own point of origin, so every creature standing on the
+    bolt's path is hit — both the named target and ``mon:near``, which
+    sits between the caster and it — while a creature off the path
+    (``mon:offline``) takes none. Before C16 the zone-equality expansion
+    degenerated the bolt to a single terminal-point hit.
     """
 
     async def _run():
@@ -300,7 +296,6 @@ def test_c16_s03_lightning_bolt_line_hits_every_cell_along_its_length():
     assert not offline_dmg
 
 
-@xfail_cluster(16, "spatial targeting")
 def test_c16_s04_creature_standing_between_attacker_and_target_grants_half_cover():
     """C16-S04: SRD 5.2 §Cover — "A target with half cover has a +2 bonus
     to AC and Dexterity saving throws." Offered By: "Another creature or
@@ -384,7 +379,6 @@ def test_c16_s04_creature_standing_between_attacker_and_target_grants_half_cover
     assert rolled_b.is_hit is False
 
 
-@xfail_cluster(16, "spatial targeting")
 def test_c16_s05_blocked_cell_blocks_los_and_wall_blocks_corner_cutting():
     """C16-S05: SRD 5.2 §Areas of Effect / Point of Origin — "To block a
     line, an obstruction must provide Total Cover."
@@ -501,7 +495,6 @@ def test_c16_s05_blocked_cell_blocks_los_and_wall_blocks_corner_cutting():
     assert live_b.actor_zone["char:mover"] == cell(0, 0)
 
 
-@xfail_cluster(16, "spatial targeting")
 def test_c16_s06_multicell_move_succeeds_with_terrain_cost_or_fails_unreachable_or_occupied():
     """C16-S06: SRD 5.2 §Movement and Position, "Playing on a Grid" —
     "It costs 1 square of movement to enter an unoccupied square that's
@@ -577,7 +570,9 @@ def test_c16_s06_multicell_move_succeeds_with_terrain_cost_or_fails_unreachable_
     assert hero_a.movement_remaining == 10
     assert not events_of(live_a, MoveFailed)
 
-    # Run B — unreachable (no occupant; boxed in on all sides).
+    # Run B — unreachable (boxed in on all sides; the occupant sits outside
+    # the box and plays no part). ``start_combat`` requires a non-empty
+    # encounter, so the occupant is carried along as inert scenery.
     boxed = GridScene(
         width=10,
         height=10,
@@ -588,7 +583,7 @@ def test_c16_s06_multicell_move_succeeds_with_terrain_cost_or_fails_unreachable_
             {"x1": 3, "y1": -2, "x2": 3, "y2": 3},
         ],
     )
-    live_b = run_async(_run(boxed, [], cell(9, 9)))
+    live_b = run_async(_run(boxed, [_occupant()], cell(9, 9)))
     failed_b = events_of(live_b, MoveFailed)
     assert failed_b
     assert failed_b[0].reason == "unreachable"
@@ -602,21 +597,19 @@ def test_c16_s06_multicell_move_succeeds_with_terrain_cost_or_fails_unreachable_
     assert live_c.actor_zone["mon:occupant"] == cell(4, 0)
 
 
-@xfail_cluster(16, "spatial targeting")
 def test_c16_s07_thunderwave_pushes_failed_save_target_10ft_away():
     """C16-S07: SRD 5.2 §Spell Descriptions, Thunderwave — "On a failed
     save, a creature takes 2d8 Thunder damage and is pushed 10 feet away
     from you." (packs/_source/spells24/1st-level/thunderwave.yml,
-    phbsplThunderwav). No push/forced-movement primitive exists anywhere
-    in ``orchestrator.py`` and ``events.py`` has no ``CombatantMoved``
-    event — the save/damage resolve, but the target never moves.
+    phbsplThunderwav). Authored against a886f77, where no push/forced-movement
+    primitive existed anywhere in ``orchestrator.py`` and ``events.py`` had no
+    ``CombatantMoved`` event, so the save/damage resolved but the target never
+    moved. C16 ships both (``orchestrator.push_combatant`` +
+    ``events.CombatantMoved``); this scenario now passes unchanged.
 
-    Seed choice: ``rng_seed=7`` is the catalog's own placeholder,
-    empirically chosen so ``mon:foe``'s Constitution save (dexterity=8,
-    biasing a weak save) fails against the level-3 Thunderwave DC once
-    the cast pathway resolves the save roll deterministically off this
-    seed — verified against this repo's existing seeded-save convention
-    (cf. C05-S02's ``rng_seed=1`` -> natural roll of 10).
+    Seed choice: rng_seed=1 — verified on main a886f77: 2d8 drawn first,
+    then the Constitution d20 = 9 vs DC 10 (INT 10 wizard, +0 CON foe) →
+    failed save. Seed 7 (the catalog placeholder) rolls 13 and succeeds.
     """
 
     async def _run():
@@ -651,7 +644,7 @@ def test_c16_s07_thunderwave_pushes_failed_save_target_10ft_away():
             ],
             scene_zones=None,
             grid_scene=grid_scene(),
-            rng_seed=7,
+            rng_seed=1,
         )
         live = _get_live(start.handle)
         await submit_player_intent(
@@ -674,8 +667,9 @@ def test_c16_s07_thunderwave_pushes_failed_save_target_10ft_away():
     assert dmg[0].damage_type == "thunder"
     assert 2 <= dmg[0].amount <= 16
 
-    # API delta (C16): CombatantMoved(forced=True) does not exist today —
-    # look it up dynamically so the ImportError itself drives the xfail.
+    # API delta (C16): CombatantMoved(forced=True) did not exist on a886f77 —
+    # looked up dynamically so the AttributeError itself drove the xfail. C16
+    # added it; the dynamic lookup is kept so the scenario body is untouched.
     from dnd5e_engine import events as events_module
 
     combatant_moved_cls = events_module.CombatantMoved
@@ -687,7 +681,6 @@ def test_c16_s07_thunderwave_pushes_failed_save_target_10ft_away():
     assert pushes[0].to_zone == cell(3, 0)
 
 
-@xfail_cluster(16, "vision & light")
 def test_c16_s08_target_in_darkness_without_darkvision_grants_attack_disadvantage():
     """C16-S08 (C16b): SRD 5.2 §Vision and Light — "A Heavily Obscured
     area—such as an area with Darkness... is opaque. You have the
@@ -695,10 +688,13 @@ def test_c16_s08_target_in_darkness_without_darkvision_grants_attack_disadvantag
     (packs/_source/content24/chapter-1/exploration.yml, "Vision and
     Light"), combined with "an attack roll against a target you can't
     see is made at Disadvantage" (Unseen Attackers and Targets).
-    ``GridScene`` (specs.py) has exactly four geometry fields today —
-    no ``lighting``/``obscurement_cells`` field of any kind — and there
-    is no ``can_see`` predicate anywhere in the engine; both a lit and a
-    dark run resolve identically (single d20, no disadvantage).
+    ``GridScene`` (specs.py) carries ``lighting`` / ``default_lighting``
+    / ``obscurement_cells``, and ``GridTopology.can_see`` reads them
+    together with the viewer's senses; ``_target_visibility_maps``
+    (orchestrator.py) threads the result into the attack resolver as the
+    ``unseen`` advantage source. The lit run therefore resolves on a
+    single d20 and the dark run at Disadvantage. Before C16b the scene
+    had geometry fields only and both runs resolved identically.
     """
     from dnd5e_srd_data import MemoryAssetLoader
 
