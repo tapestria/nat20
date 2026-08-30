@@ -1353,9 +1353,12 @@ _BARE_ITEM_TOKEN = re.compile(r"\[\[/item \.(?P<id>[A-Za-z0-9]+)\]\](?!\{)")
 
 def _label_bare_item_tokens(description: str, item_names: Mapping[str, str]) -> str:
     """Rewrite ``[[/item .<id>]]`` → ``[[/item .<id>]]{<name>}`` when ``<id>``
-    is a sibling item of the same actor. Five SRD 5.2 monsters (bandit-captain,
-    doppelganger, chain-devil, scout, ettin) reference their attacks by opaque
-    key with no label; the engine's multiattack join reads the label (see
+    is a sibling item of the same actor. Applied corpus-wide: it labels every
+    bare sibling token in every embedded item description across the corpus
+    (139 monster/trait files), not just the five monsters that motivated it.
+    Five SRD 5.2 monsters (bandit-captain, doppelganger, chain-devil, scout,
+    ettin) reference their attacks by opaque key with no label and were the
+    motivating cases; the engine's multiattack join reads the label (see
     ``dnd5e_engine/activities/monster_actions.py``). Unknown ids pass through."""
 
     def _sub(match: re.Match[str]) -> str:

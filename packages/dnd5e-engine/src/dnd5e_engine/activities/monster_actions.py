@@ -24,7 +24,12 @@ to a typed sibling. Resolution, in order:
    ("It can replace one attack with …") and are deliberately ignored — they
    describe a substitution the engine does not model, not an extra attack.
 3. If every parsed name joins to a sibling, emit each sibling's first offensive
-   activity, repeated its own count — the *precise* path.
+   activity, repeated its own count — the *precise* path. Candidate order is
+   the PROSE order returned by ``_parse_item_counts`` (the order the names
+   appear in the description), not corpus/schema order. An "in any
+   combination" clause is the one exception to "repeated its own count": its
+   parsed count is instead distributed range-aware over the named siblings
+   (see ``_distribute_any_combination`` below) rather than joined 1:1.
 4. Otherwise repeat one chosen sibling ``count`` times and log
    ``multiattack_join_unresolved`` at WARNING (the loss is visible — never a
    silent normalization). This is correctness-preserving for the homogeneous

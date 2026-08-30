@@ -8,10 +8,14 @@ spec §6 D8 — ``GridScene`` + ``"col,row"`` cell ids
 assertions run against the bundled corpus via ``BundledAssetLoader``;
 compound scenarios (S01-S03) each pair a dataset-leg schema assertion
 with the grid-combat engine leg the catalog's own "Expected" block
-describes. C22-S05 is a PLAIN (non-xfail) regression —
-``Armor.strength_min`` / ``.stealth_disadvantage`` already ship and are
-already populated correctly; marking it strict-xfail would XPASS
-immediately.
+describes. C22 shipped all seven scenarios: the ``conditions``/``traits``
+categories, ``MonsterAction.mechanic``, ``SaveBlock.ignore_cover``,
+``Weapon.magical``, labelled multiattack tokens and
+``ActivationBlock.reaction_conditions`` all exist and every scenario below
+passes end-to-end, with no ``@xfail_cluster`` markers left in this file.
+C22-S05 is a PLAIN (non-xfail) regression — ``Armor.strength_min`` /
+``.stealth_disadvantage`` already shipped before C22 and are already
+populated correctly; marking it strict-xfail would XPASS immediately.
 """
 
 from __future__ import annotations
@@ -34,16 +38,14 @@ def test_c22_s01_prone_condition_dataset_entry_and_engine_leg():
     """C22-S01: SRD 5.2 rules-glossary, Prone — attack rolls against the
     creature have Advantage if the attacker is within 5 feet.
     (packs/_source/content24/appendices/rules-glossary.yml, Prone
-    entry). No ``canonical/conditions/`` directory ships today; the
-    engine's ``rules/conditions.py::CONDITION_EFFECTS["prone"]`` entry
-    is prose only, and no ``AssetLoader.get_condition`` method exists
-    on any loader.
+    entry). C22: ``canonical/conditions/`` ships (15 files) and
+    ``AssetLoader.get_condition`` exists; this scenario passes
+    end-to-end — the dataset leg below and the C12 engine leg both hold.
     """
     loader = BundledAssetLoader()
 
-    # API delta (C22): AssetLoader.get_condition does not exist today —
-    # this AttributeError drives the xfail before the engine leg below
-    # (S01b) ever runs, mirroring the C16-S02 "unreachable tail" idiom.
+    # C22: AssetLoader.get_condition ships; this dataset leg passes,
+    # letting the engine leg below (S01b) run.
     prone = loader.get_condition("prone")
 
     assert prone is not None
@@ -54,11 +56,10 @@ def test_c22_s01_prone_condition_dataset_entry_and_engine_leg():
     )
 
     # Engine leg (S01b, per catalog script step 3): the attack roll
-    # against a prone mon:foe, from an adjacent cell, should already be
-    # made with Advantage today — this half is expected to hold via the
-    # existing (data-independent) hard-coded conditions path; it's
-    # pinned here so the whole compound scenario is transcribed, even
-    # though the dataset leg above prevents it from ever running.
+    # against a prone mon:foe, from an adjacent cell, is made with
+    # Advantage via the (data-independent) hard-coded conditions path
+    # (C12); it's pinned here so the whole compound scenario is
+    # transcribed and both legs of the scenario are exercised.
     async def _run():
         start = await start_combat(
             session_id="e2e-c22-s01",
@@ -115,18 +116,17 @@ def test_c22_s02_magic_resistance_trait_is_typed_not_prose_only():
     """C22-S02: SRD 5.2 Monster stat-block special ability, Magic
     Resistance — "Advantage on saving throws against spells and other
     magical effects." (34 occurrences across the corpus per the rule
-    card's frequency count). ``canonical/monsters/*.json`` already
-    populates ``special_abilities`` structurally, but every entry is
-    prose-description only — nothing downstream can branch on "this is
-    Magic Resistance" without string-matching the ``name`` field.
+    card's frequency count). C22: ``MonsterAction.mechanic`` ships and
+    ``canonical/monsters/*.json`` typed traits let downstream code
+    branch on "this is Magic Resistance" without string-matching the
+    ``name`` field; this scenario passes end-to-end.
     """
     loader = BundledAssetLoader()
     pit_fiend = loader.get_monster("pit-fiend")
     magic_resistance = next(a for a in pit_fiend.special_abilities if a.name == "Magic Resistance")
 
-    # API delta (C22): MonsterAction.mechanic does not exist today — this
-    # AttributeError drives the xfail before the engine leg below (S02b)
-    # ever runs.
+    # C22: MonsterAction.mechanic ships; this dataset leg passes, letting
+    # the engine leg below (S02b) run.
     from dnd5e_srd_data.schema.monster import MonsterTraitMechanic
 
     assert magic_resistance.mechanic == MonsterTraitMechanic.MAGIC_RESISTANCE
@@ -195,18 +195,17 @@ def test_c22_s02_magic_resistance_trait_is_typed_not_prose_only():
 def test_c22_s03_sacred_flame_save_ignores_cover():
     """C22-S03: SRD 5.2 Sacred Flame — "The target gains no benefit
     from Half Cover or Three-Quarters Cover for this save."
-    (packs/_source/spells24/cantrips/sacred-flame.yml). ``SaveBlock``
-    has no ``ignore_cover`` field today (schema is ``{ability, dc}``
-    only) — Sacred Flame's save resolves identically to any other DEX
-    save against a half-cover target.
+    (packs/_source/spells24/cantrips/sacred-flame.yml). C22:
+    ``SaveBlock.ignore_cover`` ships (``true`` only on Sacred Flame) and
+    ``roll_save(..., ignore_cover=)`` strips the cover bonus — this
+    scenario passes end-to-end.
     """
     loader = BundledAssetLoader()
     sacred_flame = loader.get_spell("sacred-flame")
     save_activity = next(a for a in sacred_flame.activities if a.kind == "save")
 
-    # API delta (C22): SaveBlock.ignore_cover does not exist today — this
-    # AttributeError drives the xfail before the engine leg below (S03b)
-    # ever runs.
+    # C22: SaveBlock.ignore_cover ships; this dataset leg passes, letting
+    # the engine leg below (S03b) run.
     assert save_activity.save.ignore_cover is True
 
     # Engine leg (S03b, per catalog script steps 1-2): same-seed A/B — a
@@ -273,24 +272,24 @@ def test_c22_s03_sacred_flame_save_ignores_cover():
 def test_c22_s04_magic_weapon_flag_bypasses_nonmagical_bps_resistance():
     """C22-S04: SRD 5.2 "Overcoming Damage Resistance" — magic weapons
     overcome resistance to nonmagical bludgeoning/piercing/slashing.
-    ``Weapon`` has no ``magical`` field today; the translator's
-    ``_PROPERTY_CODE_TO_ENUM`` map has no ``mgc`` entry, so the flag is
-    silently filtered out. Substitution note: the catalog's own example
-    (Flame Tongue) is authored at translate-time as an ``enchant``-kind
-    rider item with no directly-resolvable ``AttackActivity``/
-    ``damage_parts`` of its own (verified live: ``get_weapon(
-    "flame-tongue").damage_parts == []``) — not directly attackable via
-    ``weapon_id``, so this scenario resolves against
-    ``dagger-of-venom`` instead, a real shipped ``+1`` piercing weapon
-    with its own ``AttackActivity`` (corpus-verified:
+    C22: ``Weapon.magical`` ships (the translator's
+    ``_PROPERTY_CODE_TO_ENUM`` map now carries the Foundry ``mgc``
+    entry) and ``apply_damage(..., magical=)`` bypasses resistance to
+    *nonmagical* B/P/S; this scenario passes end-to-end. Substitution
+    note: the catalog's own example (Flame Tongue) is authored at
+    translate-time as an ``enchant``-kind rider item with no
+    directly-resolvable ``AttackActivity``/``damage_parts`` of its own
+    (verified live: ``get_weapon("flame-tongue").damage_parts == []``)
+    — not directly attackable via ``weapon_id``, so this scenario
+    resolves against ``dagger-of-venom`` instead, a real shipped ``+1``
+    piercing weapon with its own ``AttackActivity`` (corpus-verified:
     ``magical_bonus=1``, ``damage_parts=[1d4 piercing]``).
     """
     loader = BundledAssetLoader()
     dagger_of_venom = loader.get_weapon("dagger-of-venom")
 
-    # API delta (C22): Weapon.magical does not exist today — this
-    # AttributeError drives the xfail before the engine leg below ever
-    # runs.
+    # C22: Weapon.magical ships; this dataset leg passes, letting the
+    # engine leg below run.
     assert dagger_of_venom.magical is True
 
     def _run(*, resistant: bool):
@@ -369,10 +368,11 @@ def test_c22_s05_chain_mail_strength_min_and_stealth_disadvantage():
 def test_c22_s06_bandit_captain_multiattack_resolves_scimitar_and_pistol():
     """C22-S06: SRD 5.2 Bandit Captain stat block, Multiattack — "makes
     two attacks, using its Scimitar and Pistol in any combination."
-    Its Multiattack description carries bare ``[[/item .<id>]]`` id
-    tokens with no ``{Label}`` suffix — the join fails and
-    ``monster_actions.py`` falls back to a homogeneous repeat, logging
-    ``multiattack_join_unresolved`` at WARNING.
+    C22: the translator now labels every bare ``[[/item .<id>]]`` id
+    token with a resolved ``{Label}`` corpus-wide, so the join succeeds
+    and ``monster_actions.py`` distributes the "in any combination"
+    multiattack range-aware instead of falling back to a homogeneous
+    repeat; this scenario passes end-to-end.
     """
     loader = BundledAssetLoader()
     bandit_captain = loader.get_monster("bandit-captain")
@@ -431,16 +431,18 @@ def test_c22_s06_bandit_captain_multiattack_resolves_scimitar_and_pistol():
 def test_c22_s07_shield_reaction_trigger_is_typed_not_free_text():
     """C22-S07: SRD 5.2 Shield — activation ``condition: "when you are
     hit by an attack roll or targeted by the Magic Missile spell"``
-    (packs/_source/spells24/1st-level/shield.yml). ``schema/common.py``
-    has no ``ReactionCondition``/``ReactionTriggerKind`` types today —
-    the activation block on Shield's cast activity carries only the
-    free-text Foundry ``condition`` string.
+    (packs/_source/spells24/1st-level/shield.yml). C22:
+    ``schema/common.py`` ships ``ReactionCondition``/
+    ``ReactionTriggerKind`` types, and the activation block on Shield's
+    cast activity carries the typed ``reaction_conditions`` list
+    alongside the free-text Foundry ``condition`` string; this scenario
+    passes end-to-end.
     """
     loader = BundledAssetLoader()
     shield = loader.get_spell("shield")
     cast_activity = next(a for a in shield.activities if a.kind == "utility")
 
-    # API delta (C22): ReactionCondition/reaction_conditions do not exist today.
+    # C22: ReactionCondition/reaction_conditions ship on ActivationBlock.
     from dnd5e_srd_data.schema.common import ReactionTriggerKind
 
     conditions = cast_activity.activation.reaction_conditions

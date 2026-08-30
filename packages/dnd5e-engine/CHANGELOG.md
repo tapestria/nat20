@@ -96,6 +96,18 @@ exhaustion on a combatant. Behavioural deltas
   / `attacker_unseen_by` feed the `unseen` `AdvantageSource` both directions.
 - `SaveBlock.ignore_cover` is honoured when present (`roll_save(...,
   ignore_cover=)`); the dataset field itself ships with C22.
+- **C22 dataset consumers.** `Combatant.trait_mechanics` (hydrated from the
+  monster template's typed `special_abilities[].mechanic`): **Magic
+  Resistance** now rolls saving throws against spells with Advantage
+  (`AdvantageSource` gains `"trait"`). `roll_save(..., ignore_cover=)` +
+  `SaveBlock.ignore_cover` — Sacred Flame's target gets no cover bonus.
+  `apply_damage(..., magical=)` — a magic weapon's (`Weapon.magical`) or a
+  spell's Bludgeoning/Piercing/Slashing damage overcomes resistance to
+  *nonmagical* B/P/S; `Combatant.physical_resistances_nonmagical_only`
+  (also on `EncounterMemberSpec`, default `True`) makes the qualifier explicit.
+  `GridTopology.cover_between` counts a `cover_cells` tag on the target's own
+  cell. Multiattacks for the five opaque-key monsters resolve to their exact
+  attack mix.
 
 ### Changed
 
