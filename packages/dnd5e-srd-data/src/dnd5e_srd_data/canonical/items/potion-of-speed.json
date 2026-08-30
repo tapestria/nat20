@@ -4,6 +4,7 @@
       "activation": {
         "condition": "",
         "override": true,
+        "reaction_conditions": [],
         "type": "bonus",
         "value": null
       },

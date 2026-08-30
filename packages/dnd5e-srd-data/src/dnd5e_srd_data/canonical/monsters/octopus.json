@@ -15,6 +15,7 @@
           "activation": {
             "condition": "a creature ends its turn within 5 feet of the octopus while underwater",
             "override": false,
+            "reaction_conditions": [],
             "type": "reaction",
             "value": 1
           },
@@ -118,6 +119,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -240,6 +242,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "special",
             "value": null
           },

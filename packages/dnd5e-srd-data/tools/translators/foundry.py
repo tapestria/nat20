@@ -87,6 +87,7 @@ from dnd5e_srd_data import (
     Weapon,
     WeaponProperty,
 )
+from dnd5e_srd_data.schema.common import ReactionCondition, ReactionTriggerKind
 from tools.translators.prose_cleanup import cleanup_prose
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -302,11 +303,64 @@ def _inherit_item_target(raw: dict[str, Any], item_target: dict[str, Any]) -> di
     return raw
 
 
+_WITHIN_FEET = re.compile(r"within (\d+) feet", re.IGNORECASE)
+_TARGETED_BY_SPELL = re.compile(r"targeted by the (?P<spell>[A-Za-z' ]+?) spell", re.IGNORECASE)
+
+#: Ordered phrase → trigger-kind table (Foundry ``activation.condition`` is
+#: free text; every SRD 5.2 reaction spell's phrase is quoted in
+#: ``ReactionTriggerKind``). Entries are emitted in table order; a phrase that
+#: matches nothing yields ``[]`` (catch-all — the prose is still shipped).
+_REACTION_TRIGGER_PATTERNS: tuple[tuple[re.Pattern[str], ReactionTriggerKind], ...] = (
+    (re.compile(r"\bhit by an attack roll\b", re.IGNORECASE), ReactionTriggerKind.HIT_BY_ATTACK),
+    (_TARGETED_BY_SPELL, ReactionTriggerKind.TARGETED_BY_SPELL),
+    (re.compile(r"\bcasting a spell\b", re.IGNORECASE), ReactionTriggerKind.SEES_SPELL_CAST),
+    (re.compile(r"\btak(?:ing|es?) damage\b", re.IGNORECASE), ReactionTriggerKind.TAKES_DAMAGE),
+    (re.compile(r"\bfalls\b", re.IGNORECASE), ReactionTriggerKind.CREATURE_FALLS),
+)
+
+
+def reaction_conditions_from_text(text: str) -> list[ReactionCondition]:
+    """Typed OR-list of triggers for one ``activation.condition`` string."""
+    condition = " ".join(str(text or "").split())
+    if not condition:
+        return []
+    range_match = _WITHIN_FEET.search(condition)
+    max_range_ft = int(range_match.group(1)) if range_match else None
+    out: list[ReactionCondition] = []
+    for pattern, kind in _REACTION_TRIGGER_PATTERNS:
+        match = pattern.search(condition)
+        if match is None:
+            continue
+        is_spell_trigger = kind is ReactionTriggerKind.TARGETED_BY_SPELL
+        target_spell_slug = _slug_from_name(match.group("spell")) if is_spell_trigger else None
+        out.append(
+            ReactionCondition(
+                kind=kind,
+                max_range_ft=max_range_ft if not is_spell_trigger else None,
+                target_spell_slug=target_spell_slug,
+                condition_text=condition,
+            )
+        )
+    return out
+
+
+def _effective_activation(
+    raw: dict[str, Any], item_activation: dict[str, Any] | None
+) -> dict[str, Any]:
+    """Foundry: an activity whose ``activation.override`` is false inherits the
+    owning item's ``system.activation``; ``override: true`` carries its own."""
+    own = raw.get("activation") if isinstance(raw.get("activation"), dict) else {}
+    if own.get("override") or not isinstance(item_activation, dict):
+        return own
+    return item_activation
+
+
 def _build_activity(
     activity_id: str,
     raw: dict[str, Any],
     *,
     item_target: dict[str, Any] | None = None,
+    item_activation: dict[str, Any] | None = None,
 ) -> Activity | None:
     """Build one per-kind Activity Pydantic model from a Foundry activity
     dict. Returns ``None`` if the discriminator is missing or maps to a kind
@@ -352,6 +406,14 @@ def _build_activity(
     # on the alias suffices when Foundry omits the inline ``_id`` field
     # (rare; the outer dict key carries the same value).
     normalized.setdefault("_id", activity_id)
+    effective = _effective_activation(raw, item_activation)
+    if str(effective.get("type") or "").strip().lower() == "reaction":
+        activation_block = normalized.setdefault("activation", {})
+        if isinstance(activation_block, dict):
+            condition_text = str(effective.get("condition") or "")
+            activation_block["reaction_conditions"] = [
+                c.model_dump(mode="json") for c in reaction_conditions_from_text(condition_text)
+            ]
     return cls.model_validate(normalized)  # type: ignore[return-value]
 
 
@@ -367,6 +429,7 @@ def _translate_activities(system: dict[str, Any]) -> list[Activity]:
     if not isinstance(activities_raw, dict):
         return []
     item_target = system.get("target") if isinstance(system, dict) else None
+    item_activation = system.get("activation") if isinstance(system, dict) else None
     out: list[Activity] = []
     for activity_id, raw in activities_raw.items():
         if not isinstance(raw, dict):
@@ -375,6 +438,7 @@ def _translate_activities(system: dict[str, Any]) -> list[Activity]:
             str(activity_id),
             raw,
             item_target=item_target if isinstance(item_target, dict) else None,
+            item_activation=item_activation if isinstance(item_activation, dict) else None,
         )
         if built is None:
             continue

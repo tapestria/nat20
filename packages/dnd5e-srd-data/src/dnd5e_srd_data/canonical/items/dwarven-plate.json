@@ -4,6 +4,7 @@
       "activation": {
         "condition": "an effect moves you against your will along the ground",
         "override": false,
+        "reaction_conditions": [],
         "type": "reaction",
         "value": null
       },
@@ -85,6 +86,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },

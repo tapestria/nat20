@@ -4,6 +4,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -93,6 +94,7 @@
       "activation": {
         "condition": "end of turn of initial casting",
         "override": true,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },
@@ -182,6 +184,7 @@
       "activation": {
         "condition": "when a structure drops to 0 Hit Points",
         "override": true,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },

@@ -4,6 +4,7 @@
       "activation": {
         "condition": "when you roll a 20 on an attack against a creature with fewer than 100 Hit Points",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -103,6 +104,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },

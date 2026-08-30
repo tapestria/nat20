@@ -4,6 +4,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -111,6 +112,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -218,6 +220,7 @@
       "activation": {
         "condition": "first time a creature enters or ends its turn in the wall",
         "override": true,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },

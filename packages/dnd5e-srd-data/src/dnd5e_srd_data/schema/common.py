@@ -156,6 +156,30 @@ class ActivityKind(StrEnum):
 # ---------------------------------------------------------------------------
 
 
+class ReactionTriggerKind(StrEnum):
+    """Trigger SHAPE of a reaction (not the spell identity). Derived by the
+    translator from Foundry's free-text ``activation.condition``; unmatched
+    phrases yield no entries (the prose stays in ``ActivationBlock.condition``)."""
+
+    HIT_BY_ATTACK = "hit_by_attack"  # Shield — "when you are hit by an attack roll"
+    TARGETED_BY_SPELL = "targeted_by_spell"  # Shield — "targeted by the Magic Missile spell"
+    SEES_SPELL_CAST = "sees_spell_cast"  # Counterspell — "you see a creature … casting a spell"
+    TAKES_DAMAGE = "takes_damage"
+    # Hellish Rebuke — "taking damage from a creature that you can see"
+    CREATURE_FALLS = "creature_falls"  # Feather Fall — "you or a creature you can see … falls"
+
+
+class ReactionCondition(BaseModel, frozen=True):
+    """One typed trigger. A reaction with several triggers (Shield) carries
+    several entries — OR semantics."""
+
+    kind: ReactionTriggerKind
+    max_range_ft: int | None = None
+    target_spell_slug: str | None = None
+    condition_text: str = ""
+    """The raw Foundry ``activation.condition`` the entry was derived from."""
+
+
 class ActivationBlock(BaseModel, frozen=True):
     """Foundry ``shared/activation-field.mjs``."""
 
@@ -163,6 +187,7 @@ class ActivationBlock(BaseModel, frozen=True):
     value: NonNegativeInt | None = None
     condition: str = ""
     override: bool = False
+    reaction_conditions: list[ReactionCondition] = Field(default_factory=list)
 
 
 class ScalingBlock(BaseModel, frozen=True):

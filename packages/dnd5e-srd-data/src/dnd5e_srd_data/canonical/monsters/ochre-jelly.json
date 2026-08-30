@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -139,6 +140,7 @@
           "activation": {
             "condition": "is Large or Medium and has 10+ Hit Points, it becomes Bloodied or is subjected to Lightning or Slashing damage.",
             "override": false,
+            "reaction_conditions": [],
             "type": "reaction",
             "value": null
           },

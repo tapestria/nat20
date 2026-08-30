@@ -15,6 +15,7 @@
           "activation": {
             "condition": "with Advantage if the target doesn't have all its Hit Points",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -127,6 +128,7 @@
           "activation": {
             "condition": "the swarm is &Reference[Bloodied]",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },

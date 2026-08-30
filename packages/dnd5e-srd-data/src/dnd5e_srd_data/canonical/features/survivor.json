@@ -4,6 +4,7 @@
       "activation": {
         "condition": "At the start of each of your turns",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },

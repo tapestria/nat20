@@ -4,6 +4,7 @@
       "activation": {
         "condition": "You or a creature within 30 feet of you fails a saving throw against an effect that applies the Charmed or Frightened condition",
         "override": false,
+        "reaction_conditions": [],
         "type": "reaction",
         "value": 1
       },

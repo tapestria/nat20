@@ -4,6 +4,7 @@
       "activation": {
         "condition": "Card's effect occurs immediately upon draw",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },

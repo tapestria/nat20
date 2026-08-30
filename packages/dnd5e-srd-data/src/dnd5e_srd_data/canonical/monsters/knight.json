@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": 1
           },
@@ -156,6 +157,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": 1
           },
@@ -297,6 +299,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -390,6 +393,7 @@
           "activation": {
             "condition": "hit by a melee attack roll while holding a weapon",
             "override": false,
+            "reaction_conditions": [],
             "type": "reaction",
             "value": null
           },

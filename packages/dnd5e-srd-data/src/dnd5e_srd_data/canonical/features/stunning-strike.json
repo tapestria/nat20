@@ -4,6 +4,7 @@
       "activation": {
         "condition": "Once per turn when you hit a creature with a Monk weapon or an Unarmed Strike",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },

@@ -4,6 +4,14 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [
+          {
+            "condition_text": "when you or a creature you can see within 60 feet of you falls",
+            "kind": "creature_falls",
+            "max_range_ft": 60,
+            "target_spell_slug": null
+          }
+        ],
         "type": "action",
         "value": null
       },

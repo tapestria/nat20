@@ -4,6 +4,7 @@
       "activation": {
         "condition": "when determining the number of cards in this Deck",
         "override": false,
+        "reaction_conditions": [],
         "type": "special",
         "value": null
       },
@@ -104,6 +105,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "special",
         "value": null
       },

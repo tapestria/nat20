@@ -4,6 +4,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -116,6 +117,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -220,6 +222,7 @@
       "activation": {
         "condition": "when you make a ranged attack with this weapon",
         "override": false,
+        "reaction_conditions": [],
         "type": "special",
         "value": null
       },

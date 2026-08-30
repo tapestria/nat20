@@ -4,6 +4,7 @@
       "activation": {
         "condition": "Hit a creature with your pact weapon",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },

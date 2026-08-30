@@ -15,6 +15,7 @@
           "activation": {
             "condition": "while underwater",
             "override": false,
+            "reaction_conditions": [],
             "type": "bonus",
             "value": null
           },

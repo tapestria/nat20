@@ -4,6 +4,7 @@
       "activation": {
         "condition": "When you cast a spell that has a range of at least 5 feet or when you cast a spell that has a range of Touch",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },

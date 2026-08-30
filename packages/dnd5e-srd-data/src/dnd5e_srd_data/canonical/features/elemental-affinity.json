@@ -4,6 +4,7 @@
       "activation": {
         "condition": "When you cast a spell that deals damage of your elemental affinity",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },
@@ -104,6 +105,7 @@
       "activation": {
         "condition": "When you cast a spell that deals damage of your elemental affinity",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },
@@ -204,6 +206,7 @@
       "activation": {
         "condition": "When you cast a spell that deals damage of your elemental affinity",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },
@@ -304,6 +307,7 @@
       "activation": {
         "condition": "When you cast a spell that deals damage of your elemental affinity",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },
@@ -404,6 +408,7 @@
       "activation": {
         "condition": "When you cast a spell that deals damage of your elemental affinity",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },

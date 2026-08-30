@@ -4,6 +4,7 @@
       "activation": {
         "condition": "Upon discovering the bag.",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },
@@ -104,6 +105,7 @@
       "activation": {
         "condition": "Object interaction",
         "override": false,
+        "reaction_conditions": [],
         "type": "special",
         "value": null
       },
@@ -221,6 +223,7 @@
       "activation": {
         "condition": "Object interaction",
         "override": false,
+        "reaction_conditions": [],
         "type": "special",
         "value": null
       },

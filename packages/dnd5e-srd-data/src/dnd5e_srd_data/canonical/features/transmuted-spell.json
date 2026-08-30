@@ -4,6 +4,7 @@
       "activation": {
         "condition": "When you cast a spell that deals Acid, Cold, Fire, Lightning, Poison, or Thunder damage",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },

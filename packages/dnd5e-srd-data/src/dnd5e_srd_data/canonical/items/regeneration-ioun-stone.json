@@ -4,6 +4,7 @@
       "activation": {
         "condition": "once per hour if you have at least 1 Hit Point",
         "override": false,
+        "reaction_conditions": [],
         "type": "special",
         "value": null
       },

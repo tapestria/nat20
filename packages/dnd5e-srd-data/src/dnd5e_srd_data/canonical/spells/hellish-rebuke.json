@@ -4,6 +4,14 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [
+          {
+            "condition_text": "taking damage from a creature that you can see within 60 feet of yourself",
+            "kind": "takes_damage",
+            "max_range_ft": 60,
+            "target_spell_slug": null
+          }
+        ],
         "type": "action",
         "value": null
       },

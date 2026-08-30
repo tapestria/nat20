@@ -4,6 +4,7 @@
       "activation": {
         "condition": "Sees its reflection",
         "override": false,
+        "reaction_conditions": [],
         "type": "special",
         "value": null
       },
@@ -93,6 +94,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },
@@ -184,6 +186,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },

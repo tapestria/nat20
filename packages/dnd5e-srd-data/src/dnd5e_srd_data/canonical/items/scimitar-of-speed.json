@@ -4,6 +4,7 @@
       "activation": {
         "condition": "Action or Bonus Action",
         "override": false,
+        "reaction_conditions": [],
         "type": "special",
         "value": null
       },

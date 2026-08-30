@@ -4,6 +4,7 @@
       "activation": {
         "condition": "Whenever you hit a creature with an attack granted by your Flurry of Blows",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },
@@ -95,6 +96,7 @@
       "activation": {
         "condition": "Whenever you hit a creature with an attack granted by your Flurry of Blows",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },
@@ -184,6 +186,7 @@
       "activation": {
         "condition": "Whenever you hit a creature with an attack granted by your Flurry of Blows",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },

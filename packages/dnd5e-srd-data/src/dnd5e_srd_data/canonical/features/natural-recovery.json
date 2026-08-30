@@ -4,6 +4,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },
@@ -101,6 +102,7 @@
       "activation": {
         "condition": "When you finish a Short Rest",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },

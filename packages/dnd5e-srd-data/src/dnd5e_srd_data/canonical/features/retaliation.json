@@ -4,6 +4,14 @@
       "activation": {
         "condition": "When you take damage from a creature within 5 feet of you",
         "override": false,
+        "reaction_conditions": [
+          {
+            "condition_text": "When you take damage from a creature within 5 feet of you",
+            "kind": "takes_damage",
+            "max_range_ft": 5,
+            "target_spell_slug": null
+          }
+        ],
         "type": "reaction",
         "value": 1
       },

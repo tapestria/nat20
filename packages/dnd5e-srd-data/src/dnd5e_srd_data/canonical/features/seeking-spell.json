@@ -4,6 +4,7 @@
       "activation": {
         "condition": "When you make an attack roll for a spell and miss",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },

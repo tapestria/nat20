@@ -4,6 +4,7 @@
       "activation": {
         "condition": "an attacker makes a ranged attack roll against a target within 5 feet of you",
         "override": false,
+        "reaction_conditions": [],
         "type": "reaction",
         "value": null
       },

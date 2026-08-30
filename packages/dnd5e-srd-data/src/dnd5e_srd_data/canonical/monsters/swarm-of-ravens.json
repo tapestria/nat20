@@ -15,6 +15,7 @@
           "activation": {
             "condition": "swarm is not Bloodied",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -127,6 +128,7 @@
           "activation": {
             "condition": "the swarm is &Reference[Bloodied apply=false]",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -251,6 +253,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
