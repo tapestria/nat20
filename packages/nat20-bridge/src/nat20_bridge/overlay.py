@@ -12,6 +12,7 @@ from __future__ import annotations
 from dnd5e_srd_data.loader import AssetLoader, Category, MemoryAssetLoader
 from dnd5e_srd_data.schema.background import Background
 from dnd5e_srd_data.schema.class_ import Class, Subclass
+from dnd5e_srd_data.schema.condition import Condition
 from dnd5e_srd_data.schema.feat import Feat
 from dnd5e_srd_data.schema.feature import Feature
 from dnd5e_srd_data.schema.item import Armor, Item, MagicItem, Weapon
@@ -78,6 +79,16 @@ class OverlayAssetLoader:
     def get_feature(self, slug: str) -> Feature | None:
         found = self._base.get_feature(slug)
         return found if found is not None else self._overlay.get_feature(slug)
+
+    def get_condition(self, slug: str) -> Condition | None:
+        found = self._base.get_condition(slug)
+        return found if found is not None else self._overlay.get_condition(slug)
+
+    def list_conditions(self) -> list[str]:
+        base_slugs = self._base.list_conditions()
+        overlay_slugs = self._overlay.list_conditions()
+        base_set = set(base_slugs)
+        return [*base_slugs, *(s for s in overlay_slugs if s not in base_set)]
 
     def list_slugs(self, category: Category) -> list[str]:
         base_slugs = self._base.list_slugs(category)

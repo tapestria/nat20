@@ -62,3 +62,20 @@ def test_every_item_cast_uuid_resolves_against_spell_corpus():
             if loader.get_spell_by_uuid(uuid) is None:
                 unresolved[slug] = uuid
     assert unresolved == {}
+
+
+def test_bundled_loader_reads_conditions_category(loader: BundledAssetLoader):
+    from dnd5e_srd_data.schema.condition import Condition, ConditionEffectKind
+
+    prone = loader.get_condition("test-prone")
+    assert isinstance(prone, Condition)
+    assert prone.effects[0].kind is ConditionEffectKind.ADVANTAGE_ATTACKS_AGAINST
+    assert loader.list_conditions() == ["test-prone"]
+    assert loader.get_condition("missing") is None
+    assert ("conditions", "test-prone") in loader
+
+
+def test_conditions_is_a_loader_category():
+    from dnd5e_srd_data.loader import _CATEGORIES
+
+    assert "conditions" in _CATEGORIES

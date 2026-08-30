@@ -6,13 +6,14 @@ Production `BundledAssetLoader` lives below; tests use `MemoryAssetLoader`.
 from __future__ import annotations
 
 import json
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from importlib import resources
 from pathlib import Path
 from typing import Any, Literal, Protocol, runtime_checkable
 
 from dnd5e_srd_data.schema.background import Background
 from dnd5e_srd_data.schema.class_ import Class, Subclass
+from dnd5e_srd_data.schema.condition import Condition
 from dnd5e_srd_data.schema.feat import Feat
 from dnd5e_srd_data.schema.feature import Feature
 from dnd5e_srd_data.schema.item import Armor, Item, MagicItem, Weapon
@@ -30,6 +31,7 @@ Category = Literal[
     "backgrounds",
     "feats",
     "features",
+    "conditions",
 ]
 
 _CATEGORIES: tuple[str, ...] = (
@@ -42,6 +44,7 @@ _CATEGORIES: tuple[str, ...] = (
     "backgrounds",
     "feats",
     "features",
+    "conditions",
 )
 
 
@@ -59,6 +62,8 @@ class AssetLoader(Protocol):
     def get_background(self, slug: str) -> Background | None: ...
     def get_feat(self, slug: str) -> Feat | None: ...
     def get_feature(self, slug: str) -> Feature | None: ...
+    def get_condition(self, slug: str) -> Condition | None: ...
+    def list_conditions(self) -> list[str]: ...
     def list_slugs(self, category: Category) -> list[str]: ...
     def __contains__(self, key: tuple[Category, str]) -> bool: ...
 
@@ -78,6 +83,7 @@ class MemoryAssetLoader:
         backgrounds: Sequence[Background] = (),
         feats: Sequence[Feat] = (),
         features: Sequence[Feature] = (),
+        conditions: Sequence[Condition] = (),
     ) -> None:
         self._items: dict[str, Item | Weapon | Armor | MagicItem] = {i.slug: i for i in items}
         self._monsters: dict[str, Monster] = {m.slug: m for m in monsters}
@@ -88,6 +94,7 @@ class MemoryAssetLoader:
         self._backgrounds: dict[str, Background] = {b.slug: b for b in backgrounds}
         self._feats: dict[str, Feat] = {f.slug: f for f in feats}
         self._features: dict[str, Feature] = {ft.slug: ft for ft in features}
+        self._conditions: dict[str, Condition] = {c.slug: c for c in conditions}
 
     def get_item(self, slug: str) -> Item | Weapon | Armor | MagicItem | None:
         return self._items.get(slug)
@@ -133,26 +140,26 @@ class MemoryAssetLoader:
     def get_feature(self, slug: str) -> Feature | None:
         return self._features.get(slug)
 
+    def get_condition(self, slug: str) -> Condition | None:
+        return self._conditions.get(slug)
+
+    def list_conditions(self) -> list[str]:
+        return sorted(self._conditions)
+
     def list_slugs(self, category: Category) -> list[str]:
-        if category == "items":
-            return sorted(self._items)
-        if category == "monsters":
-            return sorted(self._monsters)
-        if category == "spells":
-            return sorted(self._spells)
-        if category == "species":
-            return sorted(self._species)
-        if category == "classes":
-            return sorted(self._classes)
-        if category == "subclasses":
-            return sorted(self._subclasses)
-        if category == "backgrounds":
-            return sorted(self._backgrounds)
-        if category == "feats":
-            return sorted(self._feats)
-        if category == "features":
-            return sorted(self._features)
-        return []
+        by_category: dict[str, Mapping[str, object]] = {
+            "items": self._items,
+            "monsters": self._monsters,
+            "spells": self._spells,
+            "species": self._species,
+            "classes": self._classes,
+            "subclasses": self._subclasses,
+            "backgrounds": self._backgrounds,
+            "feats": self._feats,
+            "features": self._features,
+            "conditions": self._conditions,
+        }
+        return sorted(by_category.get(category, {}))
 
     def __contains__(self, key: object) -> bool:
         if not (isinstance(key, tuple) and len(key) == 2):
@@ -273,6 +280,15 @@ class BundledAssetLoader:
         if raw is None:
             return None
         return Feature.model_validate(raw)
+
+    def get_condition(self, slug: str) -> Condition | None:
+        raw = self._load_json("conditions", slug)
+        if raw is None:
+            return None
+        return Condition.model_validate(raw)
+
+    def list_conditions(self) -> list[str]:
+        return self.list_slugs("conditions")
 
     def list_slugs(self, category: Category) -> list[str]:
         d = self._category_dir(category)

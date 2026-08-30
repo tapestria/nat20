@@ -141,3 +141,29 @@ def test_get_spell_by_uuid_resolves_and_misses():
     loader = MemoryAssetLoader(spells=[tagged])
     assert loader.get_spell_by_uuid("Compendium.dnd5e.spells24.Item.phbsplFireball00") is not None
     assert loader.get_spell_by_uuid("Compendium.dnd5e.spells24.Item.nope") is None
+
+
+def test_memory_loader_serves_conditions():
+    from dnd5e_srd_data.schema.condition import Condition, ConditionEffect, ConditionEffectKind
+
+    prone = Condition(
+        slug="prone",
+        name="Prone",
+        description="",
+        effects=[ConditionEffect(kind=ConditionEffectKind.ADVANTAGE_ATTACKS_AGAINST, value=5)],
+        provenance=Provenance(
+            source="foundry",
+            source_url="x",
+            ingest_date=date(2026, 8, 27),
+            ingest_version="v1",
+            srd_version=frozenset({"5.2"}),
+        ),
+        review=ReviewState(),
+    )
+    loader = MemoryAssetLoader(conditions=[prone])
+    assert isinstance(loader, AssetLoader)
+    assert loader.get_condition("prone") is prone
+    assert loader.get_condition("nope") is None
+    assert loader.list_conditions() == ["prone"]
+    assert loader.list_slugs("conditions") == ["prone"]
+    assert ("conditions", "prone") in loader

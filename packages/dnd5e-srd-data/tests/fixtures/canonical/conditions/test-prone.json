@@ -1,0 +1,28 @@
+{
+  "description": "Fixture prone.",
+  "effects": [
+    {
+      "abilities": [],
+      "kind": "advantage_attacks_against",
+      "qualifier": "if the attacker is within 5 feet of you",
+      "value": 5
+    }
+  ],
+  "implies": [],
+  "name": "Test Prone",
+  "provenance": {
+    "ingest_date": "2026-08-27",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://example.invalid/rules-glossary.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "test-prone"
+}
