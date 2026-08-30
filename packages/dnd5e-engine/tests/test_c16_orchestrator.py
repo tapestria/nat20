@@ -893,3 +893,63 @@ def test_monster_attack_against_unseen_pc_has_advantage() -> None:
     assert rolled
     assert rolled[0].advantage == "advantage"
     assert "unseen" in rolled[0].sources
+
+
+@pytest.mark.parametrize(
+    ("restrained", "dark", "expected_mode", "expected_sources"),
+    [
+        (False, False, "normal", []),
+        (True, False, "advantage", ["condition:target"]),
+        (False, True, "disadvantage", ["unseen"]),
+        (True, True, "normal", ["condition:target", "unseen"]),
+    ],
+)
+def test_condition_advantage_and_unseen_disadvantage_compose(
+    restrained: bool, dark: bool, expected_mode: str, expected_sources: list[str]
+) -> None:
+    """C12 × C16 interaction: a Restrained target grants advantage
+    (``condition:target``) while darkness the attacker cannot see into imposes
+    ``unseen`` disadvantage. Both present cancel to ``normal`` per SRD 5.2
+    §Advantage and Disadvantage — and both sources stay on the event."""
+    from dnd5e_engine import ActiveEffect
+
+    async def _go() -> Any:
+        _longbow_loader()
+        effects = (
+            [
+                ActiveEffect(
+                    id="effect:restrained",
+                    name="Restrained",
+                    origin="test:restrained",
+                    target_id="mon:foe",
+                    statuses={"restrained"},
+                )
+            ]
+            if restrained
+            else []
+        )
+        start = await start_combat(
+            session_id=f"c12x16-{restrained}-{dark}",
+            party=[_hero(cell(0, 0))],
+            encounter=[_foe("mon:foe", cell(4, 0))],
+            scene_zones=None,
+            grid_scene=GridScene(
+                width=10, height=10, lighting={cell(4, 0): "dark"} if dark else {}
+            ),
+            active_effects=effects,
+            rng_seed=1,
+        )
+        live = _get_live(start.handle)
+        await submit_player_intent(
+            start.handle,
+            actor_id="char:hero",
+            intent=PlayerIntent(intent_type="attack", weapon_id="longbow", target_id="mon:foe"),
+        )
+        return live
+
+    live = run_async(_go())
+    rolled = next(
+        e for e in events_of(live, events_module.AttackRolled) if e.target_id == "mon:foe"
+    )
+    assert rolled.advantage == expected_mode
+    assert sorted(rolled.sources) == expected_sources

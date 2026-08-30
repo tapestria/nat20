@@ -109,6 +109,9 @@ CastFailedReason = Literal[
     # ``consumption.scaling`` contract (not allowed, below base cost, or
     # above the evaluated max). Emitted by the use_item charge gate.
     "invalid_charge_spend",
+    # SRD 5.2 Charmed — "You can't attack the charmer or target the
+    # charmer with damaging abilities or magical effects." (C12)
+    "target_is_charmer",
 ]
 
 IntentType = Literal[
@@ -472,6 +475,9 @@ class MoveFailed(BaseModel):
         "unreachable",  # no legal route (walls / blocked cells / enemies box the mover in)
         "occupied",  # "You can't willingly end a move in a space occupied by another creature."
         "blocked_path",  # the single requested step crosses a wall or cuts a blocked corner
+        # SRD 5.2 "Speed 0" conditions (Grappled / Restrained / Paralyzed /
+        # Petrified / Unconscious) or Exhaustion reducing Speed to 0 (C12).
+        "speed_zero",
     ]
 
 
@@ -490,7 +496,14 @@ class AttackFailed(BaseModel):
     type: Literal["attack_failed"] = "attack_failed"
     actor_id: str
     target_id: str | None
-    reason: Literal["out_of_range", "target_invalid", "no_action_economy"]
+    reason: Literal[
+        "out_of_range",
+        "target_invalid",
+        "no_action_economy",
+        # SRD 5.2 Charmed — "You can't attack the charmer or target the
+        # charmer with damaging abilities or magical effects." (C12)
+        "target_is_charmer",
+    ]
 
 
 # ── spell / reaction outcomes ───────────────────────────────────────────────

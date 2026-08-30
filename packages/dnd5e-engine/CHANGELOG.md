@@ -8,8 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 Core-mechanics **foundations** (F1 actor stat projection, F2 unified d20 test,
-F3 turn lifecycle). Nothing is removed and no signature changes shape — every
-new field is optional and defaults to the pre-0.6 behaviour. Behavioural deltas
+F3 turn lifecycle) and cluster **C12 — conditions enforced**. Nothing is removed
+and no signature changes shape — every new field is optional and defaults to the
+pre-0.6 behaviour. C12 does change *results* for hosts that carry conditions or
+exhaustion on a combatant. Behavioural deltas
 (and the fixtures they move) are enumerated in
 [`docs/migration/v0.5-to-v0.6.md`](../../docs/migration/v0.5-to-v0.6.md).
 
@@ -53,6 +55,18 @@ new field is optional and defaults to the pre-0.6 behaviour. Behavioural deltas
 - **`test_capability_matrix.py::test_status_rows_match_code_probes`** pins
   `docs/capabilities.md` status rows to grep-level code probes, in both
   directions.
+- **Conditions enforced (C12).** `rules/conditions.py` gains
+  `d20_test_penalty`, `exhaustion_level_of`, `project_speed`,
+  `conditions_block_actions`, `conditions_auto_crit_within_5ft`,
+  `SPEED_ZERO_CONDITIONS` and `AUTO_CRIT_WITHIN_5FT_CONDITIONS`;
+  `conditions_grant_advantage_on_attack` accepts keyword-only `distance_ft`,
+  `grappler_id` and `target_id` (the Prone and Grappled rows).
+  `SpatialTopology.distance_ft(a, b)` is a new Protocol method implemented by
+  both backends. `ActivityResolutionContext` gains `target_distance_ft`,
+  `attacker_grappler_id` and `d20_test_penalty`. New reasons on existing
+  closed sets: `IntentRejectedError` `"actor_incapacitated"`,
+  `MoveFailed.reason="speed_zero"`, `AttackFailed` / `CastFailed`
+  `"target_is_charmer"`. No new event class and no new top-level export.
 - **Grid AoE targeting (C16).** `_expand_aoe_target_list` enumerates the typed
   template (`sphere` / `cone` / `line` / `cube` / `cylinder`; Foundry `radius`
   = emanation, `circle`, `square` mapped) via `GridTopology.cells_in_template`
@@ -110,6 +124,37 @@ new field is optional and defaults to the pre-0.6 behaviour. Behavioural deltas
   crit / natural-1 fumble test reads).
 - Turn advancement runs through one shared path, so every boundary rule fires
   in a single, registration-ordered place.
+- **The SRD 5.2 conditions now have teeth (C12)** — the Incapacitated
+  action/bonus/reaction gate, Speed 0, exhaustion's `-2 × level` on every D20
+  Test (death saves included) and `-5 ft × level` Speed, the Prone and Grappled
+  attack rows, auto-crit within 5 ft of a Paralyzed/Unconscious target, the
+  Charmed target restriction (on the monster turn path as well as the player's
+  — a charmed monster will not select its charmer), and Unconscious at 0 HP —
+  including a Character *hydrated* into combat already at 0 HP — with
+  massive-damage instant death plus one death-save failure per damaging hit
+  while down. Four SRD condition rows remain unenforced and the capability row
+  stays `⚠️ Partial`; see `docs/capabilities.md` and `BACKLOG.md`.
+- **`conditions_grant_disadvantage_on_ability_checks` /
+  `project_passive_check_modifiers` changed their answer for two slugs**
+  (both PyPI-live): `exhaustion` no longer reports disadvantage (SRD 5.2
+  replaced the 2014 rule with the numeric penalty), and `frightened` now does.
+  See the migration guide.
+- **Condition immunity is honoured by the state folds, not only the event.**
+  A status on a creature listed in `Combatant.condition_immunities` no longer
+  lands on `Combatant.conditions` or `active_conditions` — neither through the
+  `start_combat` effect seed nor the runtime `EffectApplied` fold, which
+  previously unioned it in behind the already-suppressed `ConditionApplied`.
+  Before C12 that was near-cosmetic; with the gates above it decided whether an
+  immune creature could act at all.
+- **`ConditionApplied` / `ConditionRemoved` now materialise on
+  `Combatant.conditions`**, so a condition applied mid-combat reaches every
+  condition consumer (a Topple-proned target is attacked at advantage in
+  melee). Reviving from 0 HP leaves the creature Prone: `ConditionRemoved`
+  (`unconscious`) followed by `ConditionApplied` (`prone`).
+- **The two orchestrator-level save paths** (the concentration check and the
+  end-of-turn repeat save) now honour the condition projections: STR/DEX
+  auto-fail, Restrained DEX disadvantage and the exhaustion penalty.
+  Effect-derived `passive_save_bonus` (Bless/Bane) is still C13's.
 - Walls now block movement as well as sight; `edge_distance` returns `None` for
   an illegal step. On the grid, `ActorMoved` carries the whole intent's distance
   (one event per `move`); the zone backend still emits one per step.

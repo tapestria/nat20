@@ -23,10 +23,9 @@ from dnd5e_engine.orchestrator import (
     submit_player_intent,
 )
 from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
-from tests.e2e.harness import cell, events_of, grid_scene, run_async, xfail_cluster
+from tests.e2e.harness import cell, events_of, grid_scene, run_async
 
 
-@xfail_cluster(12, "conditions enforced")
 def test_c12_s01_incapacitated_blocks_attack_intent():
     """C12-S01: SRD 5.2 Conditions, Incapacitated — "You can't take any
     action, Bonus Action, or Reaction."
@@ -86,7 +85,6 @@ def test_c12_s01_incapacitated_blocks_attack_intent():
     assert exc_info.value.reason == "actor_incapacitated"
 
 
-@xfail_cluster(12, "conditions enforced")
 def test_c12_s02_paralyzed_target_grants_advantage_and_auto_crit_within_5ft():
     """C12-S02: SRD 5.2 Conditions, Paralyzed — attack rolls against you
     have Advantage, and any hit within 5 ft is an automatic Critical Hit
@@ -164,7 +162,6 @@ def test_c12_s02_paralyzed_target_grants_advantage_and_auto_crit_within_5ft():
     assert base.advantage == "normal"
 
 
-@xfail_cluster(12, "conditions enforced")
 def test_c12_s03_prone_target_melee_advantage_ranged_disadvantage():
     """C12-S03: SRD 5.2 Conditions, Prone — attack rolls against a Prone
     target have Advantage within 5 ft and Disadvantage otherwise
@@ -278,7 +275,6 @@ def test_c12_s03_prone_target_melee_advantage_ranged_disadvantage():
     assert base_ranged.advantage == "normal"
 
 
-@xfail_cluster(12, "conditions enforced")
 def test_c12_s04_grappled_actor_has_speed_zero():
     """C12-S04: SRD 5.2 Conditions, Grappled — "Your Speed is 0 and can't
     increase." (packs/_source/content24/appendices/rules-glossary.yml:1251).
@@ -340,7 +336,6 @@ def test_c12_s04_grappled_actor_has_speed_zero():
     assert failed[0].reason == "speed_zero"
 
 
-@xfail_cluster(12, "conditions enforced")
 def test_c12_s05_exhaustion_applies_d20_and_speed_penalties():
     """C12-S05: SRD 5.2 Conditions, Exhaustion — D20 Tests are reduced by
     2 x Exhaustion level and Speed is reduced by 5 ft x Exhaustion level
@@ -419,7 +414,6 @@ def test_c12_s05_exhaustion_applies_d20_and_speed_penalties():
     assert exh_hero.movement_remaining == base_hero.movement_remaining - 5
 
 
-@xfail_cluster(12, "conditions enforced")
 def test_c12_s06_dropping_to_zero_hp_applies_unconscious():
     """C12-S06: SRD 5.2 Damage and Healing, Dropping to 0 Hit Points —
     "If you reach 0 Hit Points and don't die instantly, you have the

@@ -107,6 +107,9 @@ def roll_save(
       and Disadvantage, the legacy evaluator ``reconcile_adv``).
     * ``ctx.passive_save_modifiers[id][ability]`` — the resolved per-ability
       integer modifier (absent → +0).
+    * ``ctx.d20_test_penalty[id]`` — SRD 5.2 Exhaustion's flat ``-2 x level``
+      on every D20 Test, folded into the modifier (absent → +0; a flat
+      modifier draws no dice, so an unexhausted stream is unmoved).
     * ``ctx.passive_save_bonus[id]`` — a signed dice-expression string (Bless
       ``"+1d4"`` / Bane ``"-1d4"``), rolled through ``ctx.rng`` (absent → +0).
     * ``ctx.target_cover[id]`` — SRD 5.2 §Cover: half (+2) / three-quarters
@@ -126,6 +129,8 @@ def roll_save(
             total=0, succeeded=False, natural=None, modifier=0, mode="normal", sources=()
         )
     modifier = _target_save_modifier(ctx, target, ability)
+    # SRD 5.2 Exhaustion — flat ``-2 x level`` on every D20 Test.
+    modifier += ctx.d20_test_penalty.get(target.entity_id, 0)
     if ability == "dex" and not ignore_cover:
         modifier += cover_bonus(ctx.target_cover.get(target.entity_id, "none"))
     # Draw ORDER matters for determinism: the d20 first, the Bless/Bane bonus

@@ -72,20 +72,23 @@ CONDITION_EFFECTS: dict[Condition, list[str]] = {
         "Cannot willingly move closer to source of fear",
     ],
     Condition.GRAPPLED: [
-        "Speed becomes 0",
-        "Ends if grappler becomes incapacitated",
-        "Ends if creature is moved out of reach of grappler",
+        "Speed is 0 and can't increase",
+        "Disadvantage on attack rolls against any target other than the grappler",
+        "The grappler can drag or carry this creature when it moves",
     ],
     Condition.INCAPACITATED: [
-        "Cannot take actions or reactions",
+        "Cannot take any action, Bonus Action, or Reaction",
+        "Concentration is broken",
+        "Cannot speak",
+        "Disadvantage on Initiative if Incapacitated when rolling it",
     ],
     Condition.INVISIBLE: [
-        "Impossible to see without special sense",
+        "Concealed: unaffected by effects that require the target to be seen",
         "Attacks by this creature have advantage",
         "Attacks against this creature have disadvantage",
     ],
     Condition.PARALYZED: [
-        "Incapacitated and cannot move or speak",
+        "Incapacitated; Speed is 0 and can't increase",
         "Automatically fails STR and DEX saving throws",
         "Attack rolls against this creature have advantage",
         "Any attack that hits is a critical hit if within 5 feet",
@@ -95,7 +98,7 @@ CONDITION_EFFECTS: dict[Condition, list[str]] = {
         "Attacks against this creature have advantage",
         "Automatically fails STR and DEX saving throws",
         "Resistance to all damage",
-        "Immune to poison and disease",
+        "Immune to the Poisoned condition",
     ],
     Condition.POISONED: [
         "Disadvantage on attack rolls and ability checks",
@@ -113,13 +116,13 @@ CONDITION_EFFECTS: dict[Condition, list[str]] = {
         "Disadvantage on DEX saving throws",
     ],
     Condition.STUNNED: [
-        "Incapacitated, cannot move, can only speak falteringly",
+        "Incapacitated",
         "Automatically fails STR and DEX saving throws",
         "Attack rolls against this creature have advantage",
     ],
     Condition.UNCONSCIOUS: [
-        "Incapacitated, cannot move or speak, unaware of surroundings",
-        "Drops whatever it's holding and falls prone",
+        "Incapacitated and Prone; remains Prone when the condition ends",
+        "Speed is 0 and can't increase; drops whatever it is holding",
         "Automatically fails STR and DEX saving throws",
         "Attacks against this creature have advantage",
         "Any attack that hits from within 5 feet is a critical hit",
@@ -264,32 +267,39 @@ def check_immunity(condition_name: str, immunities: list[str]) -> bool:
 def conditions_grant_disadvantage_on_ability_checks(conditions: list[str]) -> bool:
     """Return True if conditions impose disadvantage on ability checks.
 
-    Poisoned imposes disadvantage on ability checks in both SRD editions.
+    SRD 5.2 glossary: Poisoned — "You have Disadvantage on attack rolls and
+    ability checks."; Frightened — "You have Disadvantage on ability checks and
+    attack rolls while the source of fear is within line of sight" (the
+    line-of-sight gate is not modelled; C16b owns it).
 
-    Exhaustion is an **edition divergence**: this returns True for it, which is
-    the SRD 5.1 (2014) rule. SRD 5.2 replaced that with a numeric ``-2 x level``
-    penalty on all D20 Tests. Applying the 5.2 rule needs a numeric per-actor
-    check-modifier consumer, which does not exist yet — see BACKLOG.md
-    ("Exhaustion applies the 2014 rule"). Disadvantage is the closest available
-    approximation, not the correct 5.2 mechanic.
+    Exhaustion is deliberately NOT here: SRD 5.2 replaced the 2014 ladder with a
+    numeric ``-2 x level`` penalty on every D20 Test — see ``d20_test_penalty``.
+    (Behavioural change in 0.6.0; see docs/migration/v0.5-to-v0.6.md.)
     """
-    return "exhaustion" in conditions or "poisoned" in conditions
+    active = {c.lower() for c in conditions}
+    return bool(active & {"poisoned", "frightened"})
 
 
 def conditions_grant_advantage_on_attack(
     attacker_conditions: list[str],
     target_conditions: list[str],
+    *,
+    distance_ft: int | None = None,
+    grappler_id: str | None = None,
+    target_id: str | None = None,
 ) -> tuple[bool, bool]:
     """
     Returns (attacker_has_advantage, attacker_has_disadvantage) based on conditions.
     Does NOT account for ranged vs melee distinction (caller's responsibility).
 
-    Covers only the SRD 5.2 rows that need **no** distance or target-identity
-    information. Two rows are therefore still missing and are tracked in
-    ``BACKLOG.md`` ("Audit 2026-08-26 — rolls & modifiers"): Prone (advantage
-    only from within 5 ft, disadvantage otherwise) and a Grappled attacker
-    (disadvantage against any target other than the grappler). Both need the
-    reach/distance sidecar that lands with C12.
+    Keyword inputs (all optional — absent means "unknown" and the row that
+    needs it stays inert, so pre-0.6 callers are unaffected):
+
+    * ``distance_ft`` — attacker→target distance for the Prone target row
+      (SRD 5.2 Prone: advantage within 5 ft, disadvantage otherwise).
+    * ``grappler_id`` / ``target_id`` — identity of the creature grappling the
+      ATTACKER and of the target, for the Grappled attacker row (SRD 5.2
+      Grappled: disadvantage against any target other than the grappler).
     """
     advantage = False
     disadvantage = False
@@ -329,7 +339,93 @@ def conditions_grant_advantage_on_attack(
     if is_condition_active(Condition.INVISIBLE, target_conditions):
         disadvantage = True
 
+    # SRD 5.2 glossary, Prone: "You have Disadvantage on attack rolls."
+    if is_condition_active(Condition.PRONE, attacker_conditions):
+        disadvantage = True
+    # SRD 5.2 glossary, Prone: "An attack roll against you has Advantage if the
+    # attacker is within 5 feet of you. Otherwise, that attack roll has
+    # Disadvantage." Needs a distance; unknown distance → inert.
+    if is_condition_active(Condition.PRONE, target_conditions) and distance_ft is not None:
+        if distance_ft <= 5:
+            advantage = True
+        else:
+            disadvantage = True
+    # SRD 5.2 glossary, Grappled: "You have Disadvantage on attack rolls against
+    # any target other than the grappler." Unknown grappler → inert (never
+    # penalise a swing that might be at the grappler).
+    if (
+        is_condition_active(Condition.GRAPPLED, attacker_conditions)
+        and grappler_id is not None
+        and target_id != grappler_id
+    ):
+        disadvantage = True
+
     return advantage, disadvantage
+
+
+# ── SRD 5.2 condition predicates and numeric projections (C12) ──────────────
+
+#: SRD 5.2 glossary, "Speed 0. Your Speed is 0 and can't increase." — Grappled,
+#: Restrained, Paralyzed, Petrified, Unconscious. Stunned carries no Speed
+#: clause in SRD 5.2 (the 2014 "can't move" text was dropped), Prone restricts
+#: the movement MODE (crawl / stand up) rather than the Speed.
+SPEED_ZERO_CONDITIONS: frozenset[str] = frozenset(
+    {"grappled", "restrained", "paralyzed", "petrified", "unconscious"}
+)
+
+#: SRD 5.2 glossary, Paralyzed / Unconscious: "Any attack roll that hits you is
+#: a Critical Hit if the attacker is within 5 feet of you."
+AUTO_CRIT_WITHIN_5FT_CONDITIONS: frozenset[str] = frozenset({"paralyzed", "unconscious"})
+
+#: SRD 5.2 Exhaustion: "When you make a D20 Test, the roll is reduced by 2
+#: times your Exhaustion level." / "Your Speed is reduced by a number of feet
+#: equal to 5 times your Exhaustion level." (Foundry ``config.mjs``
+#: ``conditionTypes.exhaustion.reduction = {rolls: 2, speed: 5}``.)
+EXHAUSTION_D20_PENALTY_PER_LEVEL = 2
+EXHAUSTION_SPEED_PENALTY_PER_LEVEL = 5
+
+
+def exhaustion_level_of(conditions: list[ActiveCondition]) -> int:
+    """The creature's Exhaustion level: the highest ``exhaustion_level`` carried
+    by any ``exhaustion`` entry (0 when the condition is absent)."""
+    return max(
+        (ac.exhaustion_level for ac in conditions if ac.condition.lower() == "exhaustion"),
+        default=0,
+    )
+
+
+def d20_test_penalty(conditions: list[ActiveCondition]) -> int:
+    """The signed flat modifier SRD 5.2 Exhaustion applies to EVERY D20 Test
+    (attack rolls, saving throws — death saves included — and ability checks):
+    ``-2 x level``; ``0`` when not exhausted."""
+    return -EXHAUSTION_D20_PENALTY_PER_LEVEL * exhaustion_level_of(conditions)
+
+
+def project_speed(base_speed: int, condition_names: list[str], exhaustion_level: int = 0) -> int:
+    """The creature's effective walking Speed under its conditions.
+
+    A ``SPEED_ZERO_CONDITIONS`` member forces 0 ("and can't increase" — the
+    orchestrator's Dash adds THIS projection, not ``base_speed``); otherwise
+    Exhaustion subtracts ``5 x level``, floored at 0.
+    """
+    active = {c.lower() for c in condition_names}
+    if active & SPEED_ZERO_CONDITIONS:
+        return 0
+    return max(0, base_speed - EXHAUSTION_SPEED_PENALTY_PER_LEVEL * exhaustion_level)
+
+
+def conditions_block_actions(condition_names: list[str]) -> bool:
+    """SRD 5.2 Incapacitated: "You can't take any action, Bonus Action, or
+    Reaction." True when Incapacitated is active directly or via
+    ``CONDITION_IMPLIES`` (Paralyzed, Petrified, Stunned, Unconscious)."""
+    return is_condition_active(Condition.INCAPACITATED, condition_names)
+
+
+def conditions_auto_crit_within_5ft(target_condition_names: list[str]) -> bool:
+    """True when a hit on this target from within 5 ft is automatically a
+    Critical Hit (SRD 5.2 Paralyzed / Unconscious)."""
+    active = {c.lower() for c in target_condition_names}
+    return bool(active & AUTO_CRIT_WITHIN_5FT_CONDITIONS)
 
 
 # ── Per-effect sidecar projection (combat orchestrator hydration) ────────────
@@ -421,34 +517,40 @@ def project_passive_check_modifiers(conditions: list[str]) -> dict[str, list[str
       is in line of sight" (we project as ``all`` — the line-of-sight gate
       isn't carried on the live state today)
     * Poisoned — "disadvantage on attack rolls and ability checks"
-    * Exhaustion ≥ 1 — projected as disadvantage. NOTE: this is the SRD 5.1
-      (2014) rule. SRD 5.2 instead reduces every D20 Test by ``2 x level``,
-      which needs a numeric modifier path this projection cannot express. The
-      divergence is tracked in BACKLOG.md; the exhaustion LEVEL is carried on
-      ``ActiveCondition.exhaustion_level`` and is currently ignored here.
+    * Exhaustion — NOT projected here (SRD 5.2: numeric ``-2 x level`` penalty
+      on every D20 Test, see ``d20_test_penalty``).
     """
     out: dict[str, list[str]] = {"passive_check_adv": [], "passive_check_dis": []}
     active = {c.lower() for c in conditions}
-    if active & {"frightened", "poisoned", "exhaustion"}:
+    if active & {"frightened", "poisoned"}:
         out["passive_check_dis"].append("all")
     return out
 
 
 __all__ = [
+    "AUTO_CRIT_WITHIN_5FT_CONDITIONS",
     "CONDITION_EFFECTS",
     "CONDITION_IMPLIES",
+    "EXHAUSTION_D20_PENALTY_PER_LEVEL",
+    "EXHAUSTION_SPEED_PENALTY_PER_LEVEL",
+    "SPEED_ZERO_CONDITIONS",
     "Condition",
     "active_condition_names",
     "apply_condition",
     "apply_condition_with_implies",
     "check_immunity",
+    "conditions_auto_crit_within_5ft",
+    "conditions_block_actions",
     "conditions_grant_advantage_on_attack",
     "conditions_grant_disadvantage_on_ability_checks",
+    "d20_test_penalty",
+    "exhaustion_level_of",
     "get_condition_effects",
     "is_condition_active",
     "project_passive_check_modifiers",
     "project_passive_damage_modifiers",
     "project_passive_save_modifiers",
+    "project_speed",
     "remove_condition",
     "remove_condition_with_implies",
 ]

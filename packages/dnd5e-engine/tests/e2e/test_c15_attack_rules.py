@@ -403,7 +403,6 @@ def test_c15_s05_loading_weapon_second_shot_rejected_for_the_right_reason():
     assert rejections[-1].reason == "weapon_already_fired"
 
 
-@xfail_cluster(15, "attack rules")
 def test_c15_s06_massive_damage_triggers_instant_death_for_a_character():
     """C15-S06: SRD 5.2 (Dropping to 0 Hit Points, Instant Death) —
     "When damage reduces a character to 0 Hit Points and damage remains,

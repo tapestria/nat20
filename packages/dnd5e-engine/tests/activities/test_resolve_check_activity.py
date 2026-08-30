@@ -36,6 +36,7 @@ from dnd5e_engine.activities.check import (
     resolve_check,
 )
 from dnd5e_engine.activities.context import ActivityResolutionContext
+from dnd5e_engine.activities.resolver import resolve_activity
 from dnd5e_engine.events import CheckRolled
 from dnd5e_engine.orchestrator import _build_hydration_payload, _get_live, start_combat
 from dnd5e_engine.rules.skills import SKILL_ABILITIES
@@ -520,7 +521,7 @@ def test_per_ability_save_bonus_folds_into_that_save_only() -> None:
 
 @pytest.mark.parametrize(
     ("condition", "expected"),
-    [("poisoned", True), ("frightened", True), ("exhaustion", True), ("prone", False)],
+    [("poisoned", True), ("frightened", True), ("exhaustion", False), ("prone", False)],
 )
 def test_condition_disadvantage_merges_with_the_projected_modifiers(
     condition: str, expected: bool
@@ -541,15 +542,8 @@ def test_condition_disadvantage_merges_with_the_projected_modifiers(
     )
 
     entry = _build_hydration_payload(live, caster=None)["check_modifiers"]["char:a"]
-    # This pins the CURRENT projection, which F2 (Task 8/10) will consume when it
-    # routes checks through ``roll_d20_test``. Frightened and Poisoned are SRD
-    # 5.2 §Conditions ("disadvantage on ability checks"). Exhaustion is NOT:
-    # ``project_passive_check_modifiers`` still applies the SRD 5.1 (2014)
-    # Level-1 effect, whereas SRD 5.2 Appendix A gives exhaustion a numeric
-    # ``-2 x level`` penalty on every D20 Test and NO disadvantage. That
-    # divergence is the tracked BACKLOG entry ("Exhaustion applies the 2014 rule,
-    # not SRD 5.2's"); closing it (C12) replaces this flag for exhaustion with
-    # the numeric penalty, and THIS case is expected to flip to ``False``.
+    # SRD 5.2 §Exhaustion is a numeric -2 x level penalty on every D20 Test (C12,
+    # rules/conditions.py::d20_test_penalty); it no longer projects disadvantage.
     assert entry["disadvantage"] is expected
     assert entry["passive_check_dis"] == (["all"] if expected else [])
     assert entry["ability_mods"]["wis"] == 2
@@ -760,3 +754,31 @@ def test_a_poisoned_pc_draws_two_dice_through_the_live_orchestrator() -> None:
     assert check.roll_total == expected + 2
     assert check.advantage == "disadvantage"
     assert check.sources == ["condition:attacker"]
+
+
+def test_exhaustion_penalty_is_folded_into_the_check_modifier() -> None:
+    """SRD 5.2 Exhaustion — an ability check is a D20 Test, so the flat
+    ``-2 x level`` penalty rides on the resolved check modifier."""
+    ctx, events = _ctx(forced_d20=10, d20_test_penalty={"char:hero": -2})
+    resolve_activity(_activity(ability="wis"), ctx)
+    assert _only_check(events).roll_total == 8
+
+
+@pytest.mark.parametrize("condition", ["poisoned", "frightened"])
+def test_condition_check_disadvantage_reaches_the_roll_event(condition: str) -> None:
+    """SRD 5.2 §Frightened / §Poisoned — disadvantage on ability checks,
+    end-to-end from a live condition effect (F1d's projection) through the
+    hydration payload's ``check_modifiers`` sidecar (F2c's consumer)."""
+    payload = _f1d_payload(
+        party=_f1d_party(wisdom=14),
+        effects=(
+            ActiveEffect(id="e", name="c", origin="test", target_id="char:a", statuses={condition}),
+        ),
+    )
+    events: list[Any] = []
+    ctx = _f1d_ctx(payload, events)
+    ctx.variables.pop(FORCE_CHECK_D20)  # let the mode draw two dice
+    resolve_activity(_activity(ability="wis"), ctx)
+    rolled = _only_check(events)
+    assert rolled.advantage == "disadvantage"
+    assert "condition:attacker" in rolled.sources
