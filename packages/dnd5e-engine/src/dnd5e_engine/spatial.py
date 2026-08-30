@@ -149,6 +149,8 @@ class SpatialTopology(Protocol):
         self, a: str, b: str, occupied_cells: Collection[str] = ()
     ) -> CoverDegree: ...
 
+    def cover_on_cell(self, cell: str) -> CoverDegree: ...
+
     def can_see(self, a: str, b: str, senses: CombatantSenses | None = None) -> bool: ...
 
     def distance_ft(self, a: str, b: str) -> int | None: ...
@@ -325,6 +327,29 @@ class GridTopology:
             if degree is not None and _COVER_RANK[degree] > _COVER_RANK[best]:
                 best = degree
         return best
+
+    def cover_on_cell(self, cell: str) -> CoverDegree:
+        """SRD 5.2 §Cover — the ``cover_cells`` degree tagged directly on
+        ``cell`` itself, with NO line walk to another point.
+
+        ``cover_between`` always excludes its own ``a`` endpoint (an
+        obstacle in the point of origin's own space never shields anyone
+        else from that origin), so when an area of effect's point of origin
+        happens to coincide with the one creature it affects (a small
+        sphere centred on a lone target), the ordinary ``cover_between(a,
+        b)`` walk degenerates to a single excluded point and can never see a
+        tag on that shared cell. But §Cover ("an object that covers at
+        least half of the target") still shields a creature standing in or
+        behind an obstruction in its OWN space — this reads that tag
+        directly, independent of any origin/endpoint exclusion rule. A
+        blocked (impassable) cell counts as ``"total"``, matching
+        ``cover_between``'s treatment of ``blocked_cells``.
+        """
+        if not self._in_bounds(cell):
+            return "none"
+        if cell in self._blocked:
+            return "total"
+        return self._cover_cells.get(cell, "none")  # type: ignore[return-value]
 
     def can_see(self, a: str, b: str, senses: CombatantSenses | None = None) -> bool:
         """SRD 5.2 §Vision and Light — can a viewer in ``a`` with ``senses`` see

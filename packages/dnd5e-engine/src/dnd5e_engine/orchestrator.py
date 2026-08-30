@@ -421,6 +421,10 @@ class _ZoneGraph:
         # docs/dev/spatial-geometry.md "Zone-backend decision".
         return "none"
 
+    def cover_on_cell(self, cell: str) -> Literal["none", "half", "three_quarters", "total"]:
+        # Same permanent no-cover-model split as ``cover_between`` above.
+        return "none"
+
     def can_see(self, a: str, b: str, senses: CombatantSenses | None = None) -> bool:
         # Zone graph has no lighting model — everything in a known zone is
         # visible. Legacy backend, removed in 0.7.
@@ -605,6 +609,19 @@ def _target_cover_map(
     like any other creature. ``cover_between`` skips the origin cell itself, so
     a self-origin template (cone, Thunderwave's cube) is unaffected.
 
+    DEGENERATE CASE — the burst point coincides with the one creature it
+    affects (a small sphere centred on a lone target, e.g. Acid Splash cast
+    at a single foe): ``origin == target_zone``, so ``cover_between``'s line
+    walk (which always excludes its own ``a`` endpoint) would see nothing at
+    all and silently drop a cover tag sitting on that shared cell. SRD 5.2
+    §Cover ("an object that covers at least half of the target") still
+    shields a creature standing in or behind an obstruction in its own
+    space, so this case reads the tag directly off that cell
+    (``cover_on_cell``) instead of walking a line to itself. A genuine
+    multi-target burst (the origin differs from at least one victim's cell)
+    is unaffected — each OTHER target still measures cover from the true
+    burst point via the ordinary line walk.
+
     Threaded into ``ActivityResolutionContext.target_cover`` so
     ``activities/attack.py`` (AC) and ``activities/save_primitive.py``
     (Dexterity saves) can fold the SRD +2/+5 bonus without either resolver
@@ -620,6 +637,9 @@ def _target_cover_map(
     for target in targets:
         target_zone = live.actor_zone.get(target.entity_id)
         if target_zone is None:
+            continue
+        if origin_cell is not None and origin == target_zone:
+            out[target.entity_id] = live.topology.cover_on_cell(target_zone)
             continue
         exclude = (target.entity_id,) if origin_cell is not None else (caster_id, target.entity_id)
         occupied = _occupied_cells(live, exclude=exclude)
@@ -6035,29 +6055,18 @@ async def submit_player_intent(
             d20_test_penalty=payload["d20_test_penalty"],
             # SRD 5.2 §Cover — an area of effect measures cover from its point
             # of origin, which for a target-origin template is NOT the caster's
-            # cell. ``None`` for every non-AoE cast/attack ⇒ caster's cell.
-            #
-            # The burst-point shift only applies to a GENUINE broadcast — more
-            # than one resolved target (pinned by ``test_c16_orchestrator.py::
-            # test_aoe_cover_is_measured_from_the_point_of_origin_not_the_caster``,
-            # a 2-target Fireball). A templated spell that resolves to exactly
-            # one target (Acid Splash's Foundry data models its "one or two
-            # creatures within 5 ft of each other" targeting as a 5-ft sphere)
-            # degenerates the burst point to that target's own cell —
-            # ``cover_between(cell, cell)`` walks a single point and excludes
-            # it (the origin cell never counts), silently dropping a cover tag
-            # on that cell. Falling back to the caster's cell for the
-            # single-target case reads cover the ordinary caster→target way
-            # instead.
+            # cell. ``None`` for every non-AoE cast/attack ⇒ caster's cell. The
+            # degenerate case where that point of origin coincides with the
+            # target's own cell (a small sphere centred on the lone creature it
+            # affects) is handled inside ``_target_cover_map`` itself — see its
+            # docstring — rather than by special-casing the call here.
             target_cover=_target_cover_map(
                 live,
                 current.entity_id,
                 targets,
                 origin_cell=(
                     _aoe_cover_origin(live, current.entity_id, intent, activities)
-                    if intent.intent_type == "cast_spell"
-                    and _typed_spell_broadcasts(activities)
-                    and len(targets) > 1
+                    if intent.intent_type == "cast_spell" and _typed_spell_broadcasts(activities)
                     else None
                 ),
             ),
