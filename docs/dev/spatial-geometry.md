@@ -100,7 +100,16 @@ relitigated): `radius_cells = size_ft // cell_size_ft`.
   (Bresenham-exact for cardinal/diagonal directions), origin included. Models
   a 1-cell-wide line (Lightning Bolt's 5 ft width on a 5 ft grid); a
   variable-width line is not modeled (no SRD spell in the corpus needs it
-  today).
+  today; the ignored `template.width` is a recorded BACKLOG line).
+- **`"cube"`** — a `direction` unit vector is required. The cube's SRD point of
+  origin is a *face*, not the centre, so the cube is placed **adjacent to and
+  extending away from** the origin cell along `direction`: a `size_ft` cube is
+  the `n x n` block (`n = size_ft // cell_size_ft`) whose near face abuts the
+  origin, and the origin cell itself is **not** in the area.
+- **`"cylinder"`** — the grid is strictly 2-D, so a cylinder's height carries no
+  geometry: its footprint is exactly its `"sphere"` disc of the same radius,
+  origin included. This is a deliberate collapse, not an omission; modelling it
+  properly needs elevation, which is a separate recorded gap.
 - **`"cone"`** (unit-tested only — no e2e entry): a `direction` unit vector is
   required. A cell at grid offset `(dx, dy)` is in the cone iff its
   projection onto `direction` (`forward = dx*dir.x + dy*dir.y`) is within
@@ -113,10 +122,66 @@ relitigated): `radius_cells = size_ft // cell_size_ft`.
   and consistent with the Chebyshev metric governing every other spatial
   query.
 
-Obstruction-aware trimming (an obstruction providing Total Cover excludes a
-location from a template, per SRD 5.2 §Areas of Effect) is an explicit,
-recorded follow-up — `cells_in_template` does no `wall_segments`/`cover_cells`
-filtering today.
+**Line of effect.** `cells_in_template` itself is pure geometry and does no
+obstruction filtering — trimming happens one level up, in
+`orchestrator._expand_aoe_target_list`, which drops every produced cell for
+which `_has_line_of_effect(topology, origin, cell)` is false. Per SRD 5.2
+§Areas of Effect, "If all straight lines extending from the point of origin to a
+location ... are blocked, that location isn't included ... To block a line, an
+obstruction must provide **Total Cover**" — so the test is precisely
+`has_line_of_sight` (walls and `blocked_cells`) plus a `cover_between(...) ==
+"total"` check. Half and three-quarters cover do **not** exclude a cell; they
+only feed the covered creature's AC / Dexterity save.
+
+## Legal steps
+
+`GridTopology.edge_distance(a, b)` is the single legality oracle for one step:
+it returns `None` when the step is illegal and the cost in feet otherwise.
+A step is illegal when `b` is not Chebyshev-adjacent to `a`, `b` is off the map,
+`b` is in `blocked_cells`, the centre-to-centre segment `a → b` crosses (or
+touches) a `wall_segments` entry, or — for a **diagonal** — when either of the
+two orthogonal cells the step passes between is blocked. That last clause is the
+**corner rule** (SRD 5.2 §Playing on a Grid, "Corners"): a diagonal move may not
+cut the corner of an obstruction, even though the two cell centres are not
+themselves separated. Walls therefore block movement as well as sight, which was
+not true before C16.
+
+`shortest_path(a, b, *, avoid=())` is BFS over legal steps, skipping every cell
+in `avoid` (the caller passes enemy-occupied cells). The neighbour enumeration
+order is fixed and part of the determinism contract: every seeded monster walk
+must reproduce byte-identically across releases.
+
+## Visibility
+
+`GridTopology.can_see(a, b, senses=None) -> bool` is a five-step predicate,
+short-circuiting in order:
+
+1. No line of sight from `a` to `b` (walls, blocked cells) ⇒ **unseen** — this
+   gate applies to *every* sense, including blindsight, which sees "anything
+   that isn't behind Total Cover".
+2. Blindsight or truesight whose range reaches `b` ⇒ **seen**, whatever the
+   light.
+3. `b`'s cell is Heavily Obscured ⇒ **unseen**; darkvision does not help (it
+   re-grades light, not opacity).
+4. `b`'s cell is Bright or Dim ⇒ **seen**.
+5. `b`'s cell is Dark ⇒ **seen** only with darkvision reaching it.
+
+(A cell the engine has no position for never reaches the predicate:
+`_target_visibility_maps` treats an untracked combatant as seen, so a scene with
+no positional data can never silently impose disadvantage.)
+
+**Tremorsense is deliberately excluded** from steps 3–5. SRD 5.2: a creature
+with Tremorsense "can pinpoint the location of creatures and moving objects
+within a specific range, provided that the creature and the source of the
+vibrations are in contact with the same surface" — pinpointing a *location* is
+not seeing a *target*, so it does not defeat the Unseen Attackers and Targets
+disadvantage. A host that wants tremorsense to grant sight must say so; the
+engine will not infer it.
+
+`_target_visibility_maps` (orchestrator) evaluates the predicate in both
+directions per target and hands the two boolean maps to the activity context, so
+`activities/attack.py` can add the `unseen` `AdvantageSource` without importing
+the spatial seam.
 
 ## Terrain cost model
 

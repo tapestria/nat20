@@ -10,9 +10,11 @@ the zone graph (``_ZoneGraph`` in ``orchestrator.py``) and the grid
 from __future__ import annotations
 
 from collections import deque
+from collections.abc import Collection
 from typing import Literal, Protocol, runtime_checkable
 
-from dnd5e_engine.specs import GridScene, WallSegment
+from dnd5e_engine.activities.passive_stats import CombatantSenses
+from dnd5e_engine.specs import GridScene, LightLevel, Obscurement, WallSegment
 
 CoverDegree = Literal["none", "half", "three_quarters", "total"]
 
@@ -139,11 +141,15 @@ class SpatialTopology(Protocol):
 
     def within_range(self, caster: str, target: str, range_ft: int) -> bool: ...
 
-    def shortest_path(self, a: str, b: str) -> list[str]: ...
+    def shortest_path(self, a: str, b: str, *, avoid: Collection[str] = ()) -> list[str]: ...
 
     def has_line_of_sight(self, a: str, b: str) -> bool: ...
 
-    def cover_between(self, a: str, b: str) -> CoverDegree: ...
+    def cover_between(
+        self, a: str, b: str, occupied_cells: Collection[str] = ()
+    ) -> CoverDegree: ...
+
+    def can_see(self, a: str, b: str, senses: CombatantSenses | None = None) -> bool: ...
 
     def distance_ft(self, a: str, b: str) -> int | None: ...
 
@@ -166,6 +172,14 @@ class GridTopology:
         self._walls: list[WallSegment] = list(scene.wall_segments)
         self._cover_cells: dict[str, str] = dict(scene.cover_cells)
         self._difficult: set[str] = set(scene.difficult_terrain_cells)
+        self._lighting: dict[str, LightLevel] = dict(scene.lighting)
+        self._default_lighting: LightLevel = scene.default_lighting
+        self._obscurement: dict[str, Obscurement] = dict(scene.obscurement_cells)
+
+    @property
+    def cell_size_ft(self) -> int:
+        """Feet per cell — the scale every ``*_ft`` argument is divided by."""
+        return self._cell_size_ft
 
     def _in_bounds(self, cid: str) -> bool:
         try:
@@ -187,14 +201,35 @@ class GridTopology:
         dist = self._chebyshev(a, b)
         return dist == 1
 
-    def edge_distance(self, a: str, b: str) -> int | None:
-        """One step's movement cost, in feet, entering ``b`` from adjacent ``a``.
+    def _step_is_legal(self, a: str, b: str) -> bool:
+        """SRD 5.2 §Playing on a Grid, "Corners" — a single step ``a -> b``
+        (already Chebyshev-adjacent, ``b`` not blocked) is legal unless the
+        centre-to-centre segment crosses or touches a wall, or the step is a
+        diagonal whose orthogonal corner cells include a blocked cell."""
+        ac, ar = parse_cell(a)
+        bc, br = parse_cell(b)
+        dc, dr = bc - ac, br - ar
+        if (
+            dc != 0
+            and dr != 0
+            and (cell_id(ac + dc, ar) in self._blocked or cell_id(ac, ar + dr) in self._blocked)
+        ):
+            return False
+        if self._walls:
+            p1 = (ac + 0.5, ar + 0.5)
+            p2 = (bc + 0.5, br + 0.5)
+            for wall in self._walls:
+                if _segments_intersect(p1, p2, (wall.x1, wall.y1), (wall.x2, wall.y2)):
+                    return False
+        return True
 
-        SRD 5.2 §Difficult Terrain: entering a difficult-terrain cell costs
-        double. The cost keys off the cell being ENTERED (``b``), not ``a`` —
-        "every foot of movement IN Difficult Terrain."
-        """
-        if not self.is_adjacent(a, b):
+    def edge_distance(self, a: str, b: str) -> int | None:
+        """One step's movement cost, in feet, entering ``b`` from adjacent ``a``;
+        ``None`` when the step is illegal (not adjacent, ``b`` blocked, a wall
+        crosses the step, or a diagonal cuts a blocked corner — SRD 5.2
+        §Playing on a Grid "Corners"). SRD 5.2 §Difficult Terrain: entering a
+        difficult-terrain cell costs double (keyed on the cell ENTERED)."""
+        if not self.is_adjacent(a, b) or not self._step_is_legal(a, b):
             return None
         cost = self._cell_size_ft
         if b in self._difficult:
@@ -214,50 +249,120 @@ class GridTopology:
         return None if dist is None else dist * self._cell_size_ft
 
     def has_line_of_sight(self, a: str, b: str) -> bool:
-        """SRD 5.2 §Areas of Effect — a wall blocks sight between two cells.
+        """SRD 5.2 §Point of Origin — "To block a line, an obstruction must
+        provide Total Cover." Two obstruction sources share one walk:
 
-        Traces the straight segment between ``a``'s and ``b``'s CELL-CENTER
-        points against every ``wall_segments`` entry (grid-corner endpoints);
-        any proper intersection blocks the line. No walls ⇒ always True
-        (preserves prior behavior byte-for-byte).
+        * ``wall_segments`` — the straight segment between the two cells'
+          CENTER points is tested against every wall edge (grid-corner
+          endpoints); any intersection blocks.
+        * ``blocked_cells`` — a terrain feature that fills its space is Total
+          Cover: any cell strictly between ``a`` and ``b`` on the Bresenham
+          line that is blocked blocks sight. Endpoints never count.
+
+        No walls and no blocked cells ⇒ always True (unchanged behaviour).
         """
         if not self._in_bounds(a) or not self._in_bounds(b):
             return False
-        if not self._walls:
-            return True
         ac, ar = parse_cell(a)
         bc, br = parse_cell(b)
+        if self._blocked:
+            for cid in _bresenham_cells(ac, ar, bc, br):
+                if cid != a and cid != b and cid in self._blocked:
+                    return False
+        if not self._walls:
+            return True
         p1 = (ac + 0.5, ar + 0.5)
         p2 = (bc + 0.5, br + 0.5)
         for wall in self._walls:
-            p3 = (wall.x1, wall.y1)
-            p4 = (wall.x2, wall.y2)
-            if _segments_intersect(p1, p2, p3, p4):
+            if _segments_intersect(p1, p2, (wall.x1, wall.y1), (wall.x2, wall.y2)):
                 return False
         return True
 
-    def cover_between(self, a: str, b: str) -> CoverDegree:
-        """SRD 5.2 §Cover — the highest cover degree an obstruction cell
-        lying on the straight line between ``a`` and ``b`` grants.
+    def cover_between(self, a: str, b: str, occupied_cells: Collection[str] = ()) -> CoverDegree:
+        """SRD 5.2 §Cover — the highest cover degree an obstruction on the
+        straight line between ``a`` and ``b`` grants (``none < half <
+        three_quarters < total``). Three sources, one Bresenham walk over the
+        cells strictly between the endpoints:
 
-        Walks the Bresenham line of cells from ``a`` to ``b`` (excluding both
-        endpoints — a combatant's own/target's cell never grants itself
-        cover) and returns the HIGHEST tagged ``cover_cells`` degree among
-        them (``none < half < three_quarters < total``). No cover geometry ⇒
-        always ``"none"`` (preserves prior no-cover behavior).
+        * ``cover_cells`` — host-authored degree per cell. The TARGET's own
+          cell counts (an object in its space covers it); the ORIGIN cell
+          never does. Ruling shared with C22 Task 6 — keep at merge;
+        * ``blocked_cells`` — "an object that covers the whole target" ⇒ ``total``;
+        * ``occupied_cells`` — "another creature … that covers at least half
+          of the target" ⇒ ``half``. The caller passes the cells of every
+          OTHER live combatant (never the attacker's or the target's own cell —
+          those are skipped here defensively as well). Ally or enemy makes no
+          difference (rule card: creature cover ignores alignment).
+
+        Empty geometry and no occupants ⇒ ``"none"`` (unchanged behaviour).
         """
-        if not self._cover_cells or not self._in_bounds(a) or not self._in_bounds(b):
+        if not self._in_bounds(a) or not self._in_bounds(b):
+            return "none"
+        occupied = set(occupied_cells)
+        if not self._cover_cells and not self._blocked and not occupied:
             return "none"
         ac, ar = parse_cell(a)
         bc, br = parse_cell(b)
         best: CoverDegree = "none"
         for cid in _bresenham_cells(ac, ar, bc, br):
-            if cid in (a, b):
+            if cid == a:
                 continue
-            degree = self._cover_cells.get(cid)
+            degree: CoverDegree | None = None
+            if cid in self._blocked and cid != b:
+                degree = "total"
+            else:
+                tagged = self._cover_cells.get(cid)
+                if tagged is not None:
+                    degree = tagged  # type: ignore[assignment]
+                # Creature cover: the target's own cell is occupied by the
+                # target itself and never grants it cover.
+                if (
+                    cid != b
+                    and cid in occupied
+                    and (degree is None or _COVER_RANK[degree] < _COVER_RANK["half"])
+                ):
+                    degree = "half"
             if degree is not None and _COVER_RANK[degree] > _COVER_RANK[best]:
-                best = degree  # type: ignore[assignment]
+                best = degree
         return best
+
+    def can_see(self, a: str, b: str, senses: CombatantSenses | None = None) -> bool:
+        """SRD 5.2 §Vision and Light — can a viewer in ``a`` with ``senses`` see
+        a creature standing in ``b``?
+
+        1. Line of sight (walls / blocked cells) is required for every sense —
+           Blindsight: "you can see anything that isn't behind Total Cover".
+        2. Blindsight or Truesight whose range reaches ``b`` sees through
+           Darkness and heavy obscurement.
+        3. A Heavily Obscured cell (``obscurement_cells == "heavy"``) is
+           opaque to sight; Darkvision does not help (it only re-grades light).
+        4. Bright or Dim Light in ``b`` is visible ("in a Lightly Obscured area
+           ... you have Disadvantage on Wisdom (Perception) checks" — attacks
+           are unaffected).
+        5. Darkness in ``b`` needs Darkvision reaching ``b`` ("in Darkness
+           within that range as if it were Dim Light").
+
+        Tremorsense is deliberately not consulted — "it doesn't count as a
+        form of sight" (SRD 5.2 glossary, Tremorsense). Conditions (Blinded)
+        are the caller's concern (``rules/conditions.py``).
+        """
+        if not self.has_line_of_sight(a, b):
+            return False
+        distance = self._chebyshev(a, b)
+        if distance is None:
+            return False
+        distance_ft = distance * self._cell_size_ft
+
+        def reaches(range_ft: int | None) -> bool:
+            return range_ft is not None and range_ft >= distance_ft
+
+        if senses is not None and (reaches(senses.blindsight) or reaches(senses.truesight)):
+            return True
+        if self._obscurement.get(b) == "heavy":
+            return False
+        if self._lighting.get(b, self._default_lighting) != "dark":
+            return True
+        return senses is not None and reaches(senses.darkvision)
 
     def is_valid_cell(self, cid: str) -> bool:
         """True iff ``cid`` is in bounds and not impassable — a legal occupancy."""
@@ -266,7 +371,7 @@ class GridTopology:
     def cells_in_template(
         self,
         origin: str,
-        shape: Literal["sphere", "cone", "line"],
+        shape: Literal["sphere", "cone", "line", "cube", "cylinder"],
         size_ft: int,
         *,
         direction: tuple[int, int] | None = None,
@@ -279,17 +384,34 @@ class GridTopology:
         * ``"sphere"``: every cell with ``max(|dx|, |dy|) <= radius_cells``
           from ``origin`` (origin included — SRD: "a Sphere's point of origin
           is included in the Sphere's area of effect").
+        * ``"cylinder"``: the same cell set as ``"sphere"`` — SRD: "a
+          Cylinder's point of origin is included in the area of effect"; the
+          height dimension has no 2-D meaning on a grid template.
         * ``"line"``: requires ``direction`` (a nonzero grid-offset vector,
           normalized to one of the 8 unit grid directions); the
           ``radius_cells + 1`` cells stepping from the origin along that
-          direction, origin included.
+          direction, origin included. NOTE: SRD 5.2 says a Line's (and a
+          Cone's) point of origin "isn't included in the area of effect
+          unless its creator decides otherwise", so this primitive is
+          deliberately INCLUSIVE and the caller drops the origin. The only
+          in-engine caller, ``orchestrator._expand_aoe_target_list``, does
+          exactly that via the typed ``_AoeTemplate.include_origin``, so no
+          shipped behaviour is off-SRD; a host calling this directly must
+          discard ``origin`` itself. Behaviour is pinned by tests and is not
+          changing before the 0.7 template rework.
         * ``"cone"``: requires ``direction``; a cell at offset ``(dx, dy)``
           from the origin is included iff its projection onto the direction
           (``forward``) is in ``[0, radius_cells]`` and its perpendicular
           offset (``lateral``) does not exceed ``forward`` — a widening 45°
-          triangle from the origin. See ``docs/dev/spatial-geometry.md`` for
+          triangle from the origin, origin included (same SRD caveat as
+          ``"line"`` above: the caller excludes it). See ``docs/dev/spatial-geometry.md`` for
           the full rationale (an engine convention, not literal SRD prose
           geometry — squares have no single canonical cone rasterization).
+        * ``"cube"``: requires ``direction``; a face-anchored ``n x n`` block
+          (``n = radius_cells``) whose near face touches the origin cell —
+          SRD: "A Cube's point of origin isn't included in the area of
+          effect unless its creator decides otherwise" (origin excluded).
+          See ``docs/dev/spatial-geometry.md`` for the placement convention.
 
         See ``docs/dev/spatial-geometry.md``. Not part of the
         ``SpatialTopology`` Protocol — grid-only (the zone-graph backend has
@@ -300,7 +422,7 @@ class GridTopology:
         radius_cells = size_ft // self._cell_size_ft
         oc, orow = parse_cell(origin)
 
-        if shape == "sphere":
+        if shape in ("sphere", "cylinder"):
             cells: list[str] = []
             for dc in range(-radius_cells, radius_cells + 1):
                 for dr in range(-radius_cells, radius_cells + 1):
@@ -326,6 +448,11 @@ class GridTopology:
                     line_cells.append(cid)
             return line_cells
 
+        if shape == "cube":
+            # radius_cells = size_ft // cell_size_ft is already the cube's
+            # side length in cells (not a radius here) — see docstring.
+            return self._cube_cells(oc, orow, sdc, sdr, radius_cells)
+
         if shape == "cone":
             cone_cells: list[str] = []
             for dc in range(-radius_cells, radius_cells + 1):
@@ -342,6 +469,65 @@ class GridTopology:
 
         raise ValueError(f"unknown template shape: {shape!r}")
 
+    def push_path(
+        self,
+        origin: str,
+        target: str,
+        distance_ft: int,
+        *,
+        occupied_cells: Collection[str] = (),
+    ) -> list[str]:
+        """Forced movement "straight away from" ``origin``: the cells a creature
+        at ``target`` crosses when pushed ``distance_ft`` (SRD 5.2 Thunderwave
+        "pushed 10 feet away from you", Push mastery "straight away from
+        yourself"). Direction is the sign of ``target - origin`` per axis (one
+        of the 8 grid directions). The walk stops early at the grid edge, a
+        blocked cell, a wall, a corner cut (``edge_distance`` is ``None``) or an
+        occupied cell — the creature is moved as far as it can go. Grid-only;
+        not part of ``SpatialTopology``."""
+        if not self._in_bounds(origin) or not self._in_bounds(target) or origin == target:
+            return []
+        oc, orow = parse_cell(origin)
+        tc, tr = parse_cell(target)
+        sdc = (tc > oc) - (tc < oc)
+        sdr = (tr > orow) - (tr < orow)
+        occupied = set(occupied_cells)
+        out: list[str] = []
+        current = target
+        for _ in range(distance_ft // self._cell_size_ft):
+            cc, cr = parse_cell(current)
+            nxt = cell_id(cc + sdc, cr + sdr)
+            if (
+                not self._in_bounds(nxt)
+                or nxt in occupied
+                or self.edge_distance(current, nxt) is None
+            ):
+                break
+            out.append(nxt)
+            current = nxt
+        return out
+
+    def _cube_cells(self, oc: int, orow: int, sdc: int, sdr: int, side: int) -> list[str]:
+        """The face-anchored ``side x side`` block for ``"cube"`` — see the
+        placement convention in ``cells_in_template``'s docstring and
+        ``docs/dev/spatial-geometry.md``."""
+        if sdc != 0 and sdr != 0:
+            cols = [oc + sdc * k for k in range(1, side + 1)]
+            rows = [orow + sdr * k for k in range(1, side + 1)]
+        elif sdc != 0:
+            cols = [oc + sdc * k for k in range(1, side + 1)]
+            rows = [orow - side // 2 + k for k in range(side)]
+        else:
+            cols = [oc - side // 2 + k for k in range(side)]
+            rows = [orow + sdr * k for k in range(1, side + 1)]
+        cube_cells: list[str] = []
+        for c in cols:
+            for r in rows:
+                cid = cell_id(c, r)
+                if self._in_bounds(cid):
+                    cube_cells.append(cid)
+        return cube_cells
+
     def _neighbors(self, cid: str) -> list[str]:
         col, row = parse_cell(cid)
         out: list[str] = []
@@ -350,17 +536,26 @@ class GridTopology:
                 if dc == 0 and dr == 0:
                     continue
                 nid = cell_id(col + dc, row + dr)
-                if self._in_bounds(nid) and nid not in self._blocked:
+                if self._in_bounds(nid) and self.edge_distance(cid, nid) is not None:
                     out.append(nid)
         return out
 
-    def shortest_path(self, a: str, b: str) -> list[str]:
+    def shortest_path(self, a: str, b: str, *, avoid: Collection[str] = ()) -> list[str]:
+        """Fewest-cells path from ``a`` to ``b`` over LEGAL steps (BFS, 8
+        neighbours in fixed order — the tie-break is part of the seeded
+        contract). ``avoid`` cells are never entered (occupied-by-enemy cells,
+        SRD 5.2 §Moving Around Other Creatures); ``b`` in ``avoid`` ⇒ ``[]``.
+        Route cost is NOT minimised — callers charge each leg's
+        ``edge_distance`` against the budget."""
         if not self._in_bounds(a) or not self._in_bounds(b):
             return []
         if a == b:
             return [a]
-        # BFS over 8-neighbours (uniform 1-step cost ⇒ fewest cells). Blocked
-        # cells are never enqueued, so paths route around them.
+        avoid_set = set(avoid)
+        if b in avoid_set:
+            return []
+        # BFS over 8-neighbours (uniform 1-step cost ⇒ fewest cells). Illegal
+        # or avoided cells are never enqueued, so paths route around them.
         prev: dict[str, str] = {}
         seen: set[str] = {a}
         queue: deque[str] = deque([a])
@@ -373,7 +568,7 @@ class GridTopology:
                 path.reverse()
                 return path
             for nb in self._neighbors(node):
-                if nb not in seen:
+                if nb not in seen and nb not in avoid_set:
                     seen.add(nb)
                     prev[nb] = node
                     queue.append(nb)

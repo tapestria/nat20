@@ -168,6 +168,15 @@ class ActivityResolutionContext:
     # to AC and Dexterity saving throws"). Absent target -> "none" (+0).
     # Empty default keeps the golden corpus identical (no cover geometry).
     target_cover: dict[str, str] = field(default_factory=dict)
+    # C16b — SRD 5.2 "Unseen Attackers and Targets". Per-target visibility
+    # projected by the orchestrator (``_target_visibility_maps`` via
+    # ``SpatialTopology.can_see`` + ``Combatant.senses``). ``target_unseen[id]``
+    # True ⇒ the attacker cannot see that target ⇒ ``"unseen"`` disadvantage;
+    # ``attacker_unseen_by[id]`` True ⇒ that target cannot see the attacker ⇒
+    # ``"unseen"`` advantage. Both present cancel to normal (``resolve_mode``).
+    # Empty defaults ⇒ normal (golden corpus unchanged).
+    target_unseen: dict[str, bool] = field(default_factory=dict)
+    attacker_unseen_by: dict[str, bool] = field(default_factory=dict)
     # Per-TARGET attacker→target distance in feet (``SpatialTopology.distance_ft``),
     # computed once per resolution by the orchestrator (``_target_distance_map``).
     # Consumed by ``attack.py`` for the SRD 5.2 Prone target row (advantage

@@ -163,6 +163,14 @@ def resolve_attack(
             dis_sources.append("condition:attacker")
         if target_cond_dis:
             dis_sources.append("condition:target")
+        # C16b — SRD 5.2 "Unseen Attackers and Targets": "When you make an
+        # attack roll against a target you can't see, you have Disadvantage";
+        # "When a creature can't see you, you have Advantage on attack rolls
+        # against it." Both present cancel to normal in ``resolve_mode``.
+        if ctx.attacker_unseen_by.get(target.entity_id):
+            adv_sources.append("unseen")
+        if ctx.target_unseen.get(target.entity_id):
+            dis_sources.append("unseen")
         sources = AdvantageSources(advantage=tuple(adv_sources), disadvantage=tuple(dis_sources))
         roll = roll_d20_test(ctx.rng, attack_bonus, sources, forced_natural=_forced_d20(ctx, index))
         mode: AdvantageMode = roll.mode

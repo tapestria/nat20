@@ -121,7 +121,7 @@ async def test_move_candidates_only_on_pc_turn() -> None:
     script: list[Command] = [
         *[
             _move("char:brynn", cell_id(c, r))
-            for c, r in [(2, 4), (3, 4), (4, 4), (5, 4), (6, 4), (7, 3)]
+            for c, r in [(2, 5), (3, 5), (4, 5), (5, 5), (6, 5), (7, 4)]
         ],
         _attack("char:brynn", "longsword", "mon:gob1"),
         _attack("char:sera", "shortbow", "mon:gob2"),
@@ -219,7 +219,7 @@ async def test_actions_monster_turn_mode() -> None:
     script: list[Command] = [
         *[
             _move("char:brynn", cell_id(c, r))
-            for c, r in [(2, 4), (3, 4), (4, 4), (5, 4), (6, 4), (7, 3)]
+            for c, r in [(2, 5), (3, 5), (4, 5), (5, 5), (6, 5), (7, 4)]
         ],
         _attack("char:brynn", "longsword", "mon:gob1"),
         _attack("char:sera", "shortbow", "mon:gob2"),
@@ -246,7 +246,7 @@ async def test_tape_friendly_lines() -> None:
     script: list[Command] = [
         *[
             _move("char:brynn", cell_id(c, r))
-            for c, r in [(2, 4), (3, 4), (4, 4), (5, 4), (6, 4), (7, 3)]
+            for c, r in [(2, 5), (3, 5), (4, 5), (5, 5), (6, 5), (7, 4)]
         ],
         _attack("char:brynn", "longsword", "mon:gob1"),
     ]

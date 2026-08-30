@@ -67,6 +67,35 @@ exhaustion on a combatant. Behavioural deltas
   closed sets: `IntentRejectedError` `"actor_incapacitated"`,
   `MoveFailed.reason="speed_zero"`, `AttackFailed` / `CastFailed`
   `"target_is_charmer"`. No new event class and no new top-level export.
+- **Grid AoE targeting (C16).** `_expand_aoe_target_list` enumerates the typed
+  template (`sphere` / `cone` / `line` / `cube` / `cylinder`; Foundry `radius`
+  = emanation, `circle`, `square` mapped) via `GridTopology.cells_in_template`
+  and drops cells without line of effect from the point of origin (SRD 5.2
+  §Point of Origin). New `PlayerIntent.direction: tuple[int, int] | None`
+  aims cones, lines and cubes (defaults to caster → named target).
+- **Creature cover.** `GridTopology.cover_between(a, b, occupied_cells=())`
+  — every other live combatant on the line grants half cover; blocked cells
+  grant total cover and block sight (`has_line_of_sight`). A `cover_cells` tag
+  on the **target's own** cell now counts (the origin's still never does); a
+  creature on a `"total"` cover cell is therefore untargetable.
+- **AoE cover is measured from the point of origin** (SRD 5.2 §Cover), not from
+  the caster: the AoE cast path threads the resolved template origin
+  (`_aoe_cover_origin`) into the per-target cover map.
+- **Multi-cell `move` intent — grid backend only.** `_handle_move` paths with
+  `GridTopology.shortest_path` (walls block, no diagonal corner-cutting,
+  enemies impassable, allies passable, no ending in an occupied cell) and
+  charges each leg's `edge_distance`; new `MoveFailed.reason` members
+  `unreachable`, `occupied`, `blocked_path`. The legacy zone graph keeps its
+  pre-0.6 single-adjacent-step contract, `not_adjacent` rejection included.
+- **Forced movement.** `orchestrator.push_combatant(live, target_id,
+  origin_cell, distance_ft)` and the `CombatantMoved(forced=True)` event;
+  `activities/forced_movement.py` wires Thunderwave's push.
+- **Vision & light (C16b).** `GridScene.lighting`, `default_lighting`,
+  `obscurement_cells` (`LightLevel` / `Obscurement` Literals) and
+  `GridTopology.can_see(a, b, senses)`; `ActivityResolutionContext.target_unseen`
+  / `attacker_unseen_by` feed the `unseen` `AdvantageSource` both directions.
+- `SaveBlock.ignore_cover` is honoured when present (`roll_save(...,
+  ignore_cover=)`); the dataset field itself ships with C22.
 
 ### Changed
 
@@ -126,6 +155,17 @@ exhaustion on a combatant. Behavioural deltas
   end-of-turn repeat save) now honour the condition projections: STR/DEX
   auto-fail, Restrained DEX disadvantage and the exhaustion penalty.
   Effect-derived `passive_save_bonus` (Bless/Bane) is still C13's.
+- Walls now block movement as well as sight; `edge_distance` returns `None` for
+  an illegal step. On the grid, `ActorMoved` carries the whole intent's distance
+  (one event per `move`); the zone backend still emits one per step.
+- **`start_combat(grid_scene=...)` raises `ValueError`** when a combatant's
+  `zone_id` is out of bounds or blocked, instead of silently seating them on an
+  unusable cell.
+
+### Deprecated
+
+- `start_combat(scene_zones=...)` — `DeprecationWarning` since 0.6.0, removed in
+  0.7.0. Pass `grid_scene=GridScene(...)` instead.
 
 ## [0.5.0]
 

@@ -16,6 +16,9 @@ def test_grid_scene_defaults_to_no_blocked_cells():
     assert scene.wall_segments == []
     assert scene.cover_cells == {}
     assert scene.difficult_terrain_cells == []
+    assert scene.lighting == {}
+    assert scene.default_lighting == "bright"
+    assert scene.obscurement_cells == {}
 
 
 def test_grid_scene_rejects_extra_fields():
@@ -67,11 +70,12 @@ def test_within_range_uses_chebyshev_feet():
     assert g.within_range("0,0", "4,0", 15) is False  # 4 cells = 20ft > 15
 
 
-def test_has_line_of_sight_ignores_blocked_cells_not_walls():
-    # blocked_cells gates MOVEMENT only, not sight — a wall (wall_segments) is
-    # the only thing that blocks LoS. See docs/dev/spatial-geometry.md.
-    g = _grid(blocked=["1,0"])
-    assert g.has_line_of_sight("0,0", "2,0") is True
+def test_has_line_of_sight_false_through_a_blocked_cell():
+    # C16: "one obstruction model" — a blocked cell is Total Cover and blocks sight.
+    g = _grid(blocked=["2,0"])
+    assert g.has_line_of_sight("0,0", "4,0") is False
+    assert g.has_line_of_sight("0,0", "1,0") is True  # obstacle not between
+    assert g.has_line_of_sight("0,1", "4,1") is True  # parallel row is clear
 
 
 def test_has_line_of_sight_false_when_wall_crosses_the_sightline():
@@ -117,12 +121,13 @@ def test_cover_between_returns_highest_degree_on_the_line():
     assert g.cover_between("0,5", "2,5") == "none"
 
 
-def test_cover_between_ignores_cover_on_the_endpoints_themselves():
-    # A cover tag on the attacker's OR the target's own cell doesn't count —
-    # only an obstruction BETWEEN the two grants cover.
+def test_cover_between_ignores_cover_on_the_origin_cell():
+    # A cover tag on the attacker's own cell never counts; the TARGET's own
+    # cell DOES count (an object in its own space shields it) — see
+    # tests/test_c16_spatial.py::test_cover_between_target_own_cover_cell_counts_but_origin_does_not.
     scene = GridScene(width=10, height=10, cover_cells={"0,0": "total", "2,0": "total"})
     g = GridTopology(scene)
-    assert g.cover_between("0,0", "2,0") == "none"
+    assert g.cover_between("0,0", "2,0") == "total"
 
 
 def test_cover_between_total_beats_half_when_both_lie_on_the_line():

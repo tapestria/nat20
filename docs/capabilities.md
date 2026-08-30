@@ -42,23 +42,25 @@ without failing CI.
 | Surprise | ❌ Not modelled | |
 | Grapple / Shove | ❌ Not modelled | The `grappled` condition exists, but no contest resolves it |
 | Two-weapon fighting | ❌ Not modelled | |
-| Cover, line of sight | ✅ Resolved | Grid backend only — see below |
+| Cover, line of sight | ✅ Resolved | Grid backend only; walls, blocked cells and interposed creatures — see below |
 | Flanking | ❌ Not modelled | Not an SRD rule (optional variant) |
 
 ## Spatial
 
 | Mechanic | Status | Notes |
 |---|---|---|
-| Zone-graph topology | ✅ Resolved | Weighted, undirected; shortest-path distance |
+| Zone-graph topology | ⚠️ Deprecated | Weighted, undirected; shortest-path distance. `start_combat(scene_zones=...)` warns since 0.6.0 and is removed in 0.7.0 — migrate to `GridScene` |
 | 2-D grid, Chebyshev distance | ✅ Resolved | `GridScene`; one cell = `cell_size_ft` |
 | Blocked cells, difficult terrain | ✅ Resolved | Difficult terrain doubles entry cost |
-| Walls / line of sight | ✅ Resolved | Grid only; the zone backend always has clear sight |
-| Cover (half / three-quarters / total) | ✅ Resolved | Grid only; folds into AC and Dexterity saves |
-| AoE templates (sphere / cone / line) | ⚠️ Partial | Geometry helper exists but is **not wired to spell targeting**: AoE spells hit every creature in the anchor's zone — on a grid, that is a single cell. |
-| **Multi-cell movement in one intent** | ❌ Not modelled | A `"move"` intent must name an **adjacent** cell. Crossing 30 ft = six `submit_player_intent` calls. `GridTopology.shortest_path` exists but the PC move handler does not use it. |
+| Walls / line of sight | ✅ Resolved | Grid only; walls and blocked cells block sight and movement; the zone backend always has clear sight |
+| Cover (half / three-quarters / total) | ✅ Resolved | Grid only; scene cover cells, blocked cells (total) and interposed creatures (half); folds into AC and Dexterity saves |
+| AoE templates (sphere / cone / line / cube / cylinder) | ✅ Resolved | Grid only; `cells_in_template` with line of effect from the point of origin (walls / blocked cells exclude cells); `PlayerIntent.direction` aims cones, lines and cubes |
+| **Multi-cell movement in one intent** | ✅ Resolved | A `"move"` intent paths to any reachable cell within budget (allies passable, enemies block, no ending in an occupied cell); one `ActorMoved` per intent; `MoveFailed` reasons `unreachable` / `occupied` / `blocked_path` |
 | Elevation / flying altitude | ❌ Not modelled | The grid is strictly 2-D |
 | Multi-tile (Large+) creature footprints | ❌ Not modelled | Every creature occupies one cell |
-| Threat-aware or cost-aware pathfinding | ❌ Not modelled | `shortest_path` is uniform-cost BFS |
+| Threat-aware or cost-aware pathfinding | ❌ Not modelled | `shortest_path` is fewest-squares BFS; the route's terrain cost is charged but not minimised |
+| Forced movement (push) | ✅ Resolved | `push_combatant` → `CombatantMoved(forced=True)`; wired for Thunderwave; Push mastery / Shove land in C15 / C14 |
+| Vision and light (darkness, darkvision, blindsight, truesight, obscurement) | ⚠️ Partial | Grid only; `GridScene.lighting` / `obscurement_cells` + `GridTopology.can_see` feed the `unseen` attack advantage/disadvantage both ways; no light sources, no Blinded emission |
 
 ## Spells
 
@@ -138,9 +140,8 @@ Reactions work, with one constraint that shapes any host integration:
 ## Environment & exploration
 
 Deliberately out of scope for a combat engine, and not modelled: falling damage,
-suffocation, light/vision and obscurement (darkvision *is* projected onto
-combatants but never consumed), mounted combat, underwater combat, improvised
-weapons, object interaction, and encumbrance.
+suffocation, mounted combat, underwater combat, improvised weapons, object
+interaction, and encumbrance.
 
 ## Event stream
 
