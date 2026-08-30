@@ -518,3 +518,14 @@ def test_sacred_flame_is_the_only_save_that_ignores_cover():
         )
     )
     assert ignoring == ["sacred-flame"]
+
+
+def test_magic_weapons_carry_the_magical_flag_independent_of_bonus():
+    """Foundry ``system.properties: [mgc]`` (rule card C22 §4): Dagger of Venom
+    is +1 AND magical; Flame Tongue is magical with no bonus; a Dagger is neither."""
+    loader = BundledAssetLoader()
+    assert loader.get_weapon("dagger-of-venom").magical is True
+    flame_tongue = loader.get_weapon("flame-tongue")
+    assert flame_tongue.magical is True and flame_tongue.magical_bonus == 0
+    assert loader.get_weapon("dagger").magical is False
+    assert loader.get_armor("chain-mail").magical is False

@@ -501,6 +501,7 @@
   ],
   "description": "Staff, Very Rare (Requires Attunement by a Druid, Sorcerer, Warlock, or Wizard)\n\nYou have Resistance to Cold damage while you hold this staff.\n\nSpells. The staff has 10 charges. While holding the staff, you can cast one of the spells on the following table from it, using your spell save DC. The table indicates how many charges you must expend to cast the spell.\n\nSpellCharge Cost\n\nCone of Cold\n\n5\n\nIce Storm\n\n4\n\nFog Cloud\n\n1\n\nWall of Ice\n\n4\n\nRegaining Charges. The staff regains 1d6 + 4 expended charges daily at dawn. If you expend the last charge, roll [[/r 1d20]]. On a 1, the staff turns to water and is destroyed.",
   "item_kind": "weapon",
+  "magical": true,
   "magical_bonus": 0,
   "mastery": "topple",
   "name": "Staff of Frost",

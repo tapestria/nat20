@@ -7,6 +7,7 @@
   "description": "Armor (Shield), Uncommon\n\nWhile holding this Shield, you have Advantage on Initiative rolls and Wisdom (Perception) checks. The Shield is emblazoned with a symbol of an eye.",
   "dex_bonus_max": null,
   "item_kind": "armor",
+  "magical": true,
   "magical_bonus": 0,
   "name": "Sentinel Shield",
   "passive_effects": [

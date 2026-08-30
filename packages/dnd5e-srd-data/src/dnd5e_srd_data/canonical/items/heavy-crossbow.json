@@ -105,6 +105,7 @@
   ],
   "description": "",
   "item_kind": "weapon",
+  "magical": false,
   "magical_bonus": 0,
   "mastery": "push",
   "name": "Heavy Crossbow",

@@ -113,6 +113,11 @@ class Weapon(Item):
     ``damage_parts`` stay mundane (e.g. 1d8 slashing for a Longsword +3);
     consumers fold this bonus into attack and damage rolls at resolve time
     (Phase 7b engine). Zero for non-magic weapons."""
+    magical: bool = False
+    """Foundry item property ``mgc`` (``system.properties``). Independent of
+    ``magical_bonus`` — Flame Tongue is magical with a +0 bonus. Consumed by
+    the engine's damage application: a magical weapon's Bludgeoning /
+    Piercing / Slashing damage overcomes resistance to *nonmagical* B/P/S."""
     mastery: str | None = None
     """2024 SRD weapon mastery property (Foundry ``system.mastery.value``, e.g.
     "sap", "vex", "topple"). A distinct axis from ``properties`` — never a
@@ -137,6 +142,8 @@ class Armor(Item):
     """Foundry ``system.armor.magicalBonus`` preserved structurally. ``base_ac``
     keeps the mundane base (e.g. 18 for plate); consumers add this bonus at
     resolve time. Zero for non-magic armor."""
+    magical: bool = False
+    """Foundry item property ``mgc`` — parity with ``Weapon.magical``."""
 
 
 class MagicItem(Item):

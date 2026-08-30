@@ -105,6 +105,7 @@
   ],
   "description": "A Druidic Focus takes one of the forms in the Druidic Focuses table and is carved, tied with ribbon, or painted to channel primal magic. A Druid or Ranger can use such an object as a Spellcasting Focus.\n\nThis item also functions as a Quarterstaff\n\nFoundry Note\n\nThis item has been configured with the additional properties of a Quarterstaff.",
   "item_kind": "weapon",
+  "magical": false,
   "magical_bonus": 0,
   "mastery": "topple",
   "name": "Wooden staff",

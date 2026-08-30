@@ -105,6 +105,7 @@
   ],
   "description": "An Arcane Focus is bejeweled or carved to channel arcane magic. A Sorcerer, Warlock, or Wizard can use such an item as a Spellcasting Focus.\n\nThis item also functions as a Quarterstaff\n\nFoundry Note\n\nThis item has been configured with the additional properties of a Quarterstaff.",
   "item_kind": "weapon",
+  "magical": false,
   "magical_bonus": 0,
   "mastery": "topple",
   "name": "Staff",

@@ -787,6 +787,9 @@ def translate_weapon_yaml(
         # Newer Foundry sometimes uses {"ver": true, "fin": true, ...}
         raw_props = [k for k, v in raw_props.items() if v]
     props = frozenset(_WEAPON_PROPERTY_MAP[p] for p in raw_props if p in _WEAPON_PROPERTY_MAP)
+    # ``mgc`` is an item-level property, not a WeaponProperty member: read it
+    # straight off the raw list (it was silently filtered out before C22).
+    magical = "mgc" in raw_props
     if versatile_damage is None and WeaponProperty.VERSATILE in props:
         # Foundry didn't structurally encode the upgraded die — fall back to
         # the SRD table.
@@ -858,6 +861,7 @@ def translate_weapon_yaml(
         properties=props,
         range=rng,
         magical_bonus=max(0, magical_bonus),
+        magical=magical,
         mastery=mastery,
         uses=_item_uses(system),
         activities=_translate_activities(system),
@@ -882,6 +886,10 @@ def translate_armor_yaml(
         armor_magical_bonus = int(armor_magical_bonus_raw or 0)
     except (TypeError, ValueError):
         armor_magical_bonus = 0
+    armor_props = system.get("properties") or []
+    if isinstance(armor_props, dict):
+        armor_props = [k for k, v in armor_props.items() if v]
+    armor_magical = "mgc" in armor_props
     return Armor(
         slug=_slug(doc, yaml_path),
         name=doc["name"],
@@ -903,6 +911,7 @@ def translate_armor_yaml(
         ),
         strength_min=system.get("strength"),
         magical_bonus=max(0, armor_magical_bonus),
+        magical=armor_magical,
         uses=_item_uses(system),
         activities=_translate_activities(system),
         passive_effects=_passive_effects(doc),

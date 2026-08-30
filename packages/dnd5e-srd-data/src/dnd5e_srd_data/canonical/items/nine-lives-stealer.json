@@ -208,6 +208,7 @@
   "damage_parts": [],
   "description": "Weapon (Any Simple or Martial), Very Rare (Requires Attunement)\n\nYou gain a +2 bonus to attack rolls and damage rolls made with this magic weapon.\n\nLife Stealing. The weapon has [[/r 1d8 + 1]] charges. When you attack a creature that has fewer than 100 Hit Points with this weapon and roll a 20 on the d20 for the attack roll, the creature must succeed on a DC 15 Constitution saving throw or be slain instantly as the sword tears its life force from its body. Constructs and Undead succeed on the save automatically. The weapon loses 1 charge if the creature is slain. When the weapon has no charges remaining, it loses this property.\n\nFoundry Note\n\nThe Life Stealing activity should be updated with its max uses set to the number of charges rolled.\n\n@Embed[Compendium.dnd5e.content24.JournalEntry.dmgFoundryRefere.JournalEntryPage.Ok4iCgD25ENgoRxE cite=false caption=false classes=\"hide-in-embed\"]",
   "item_kind": "weapon",
+  "magical": true,
   "magical_bonus": 2,
   "mastery": null,
   "name": "Nine Lives Stealer",
