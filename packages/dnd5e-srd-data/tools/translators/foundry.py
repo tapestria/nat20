@@ -7,7 +7,7 @@ import json
 import math
 import re
 import sys
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import date
 from pathlib import Path
 from typing import Any, Literal, TypeVar
@@ -1283,7 +1283,27 @@ def substitute_lookup_labels(text: str) -> str:
     return _LOOKUP_ENRICHER.sub(r"\1", text)
 
 
-def _build_monster_action(item: dict[str, Any]) -> tuple[MonsterAction, MonsterActionKind]:
+# A bare Foundry item enricher ``[[/item .<id>]]`` NOT followed by ``{Label}``.
+_BARE_ITEM_TOKEN = re.compile(r"\[\[/item \.(?P<id>[A-Za-z0-9]+)\]\](?!\{)")
+
+
+def _label_bare_item_tokens(description: str, item_names: Mapping[str, str]) -> str:
+    """Rewrite ``[[/item .<id>]]`` → ``[[/item .<id>]]{<name>}`` when ``<id>``
+    is a sibling item of the same actor. Five SRD 5.2 monsters (bandit-captain,
+    doppelganger, chain-devil, scout, ettin) reference their attacks by opaque
+    key with no label; the engine's multiattack join reads the label (see
+    ``dnd5e_engine/activities/monster_actions.py``). Unknown ids pass through."""
+
+    def _sub(match: re.Match[str]) -> str:
+        name = item_names.get(match.group("id"))
+        return f"{match.group(0)}{{{name}}}" if name else match.group(0)
+
+    return _BARE_ITEM_TOKEN.sub(_sub, description)
+
+
+def _build_monster_action(
+    item: dict[str, Any], *, item_names: Mapping[str, str] | None = None
+) -> tuple[MonsterAction, MonsterActionKind]:
     """Translate one embedded item document into a ``MonsterAction``. Returns
     the action plus its resolved kind so the caller can bucket it."""
     name = str(item.get("name") or "Unnamed")
@@ -1291,7 +1311,10 @@ def _build_monster_action(item: dict[str, Any]) -> tuple[MonsterAction, MonsterA
     activation = _first_activation(system.get("activities")) or {}
     raw_type = str(activation.get("type") or "").strip().lower()
     kind = _ACTIVATION_TYPE_TO_KIND.get(raw_type, MonsterActionKind.SPECIAL)
-    description = cleanup_prose(((system.get("description") or {}).get("value")) or "")
+    raw_description = ((system.get("description") or {}).get("value")) or ""
+    if item_names:
+        raw_description = _label_bare_item_tokens(str(raw_description), item_names)
+    description = cleanup_prose(raw_description)
     identifier = system.get("identifier") or _slug_from_name(name)
     uses = system.get("uses") or {}
     recharge = _recharge_formula(uses)
@@ -1335,6 +1358,11 @@ def _monster_actions(
     raw_items = doc.get("items")
     if not isinstance(raw_items, list):
         return actions, legendary_actions, lair_actions, special_abilities
+    item_names: dict[str, str] = {
+        str(item["_id"]): str(item["name"])
+        for item in raw_items
+        if isinstance(item, dict) and item.get("_id") and item.get("name")
+    }
     for item in raw_items:
         if not isinstance(item, dict):
             continue
@@ -1345,7 +1373,7 @@ def _monster_actions(
             continue
         if item_type not in {"weapon", "feat"}:
             continue
-        action, kind = _build_monster_action(item)
+        action, kind = _build_monster_action(item, item_names=item_names)
         if kind is MonsterActionKind.LEGENDARY:
             legendary_actions.append(action)
         elif kind is MonsterActionKind.LAIR or kind is MonsterActionKind.REGIONAL:

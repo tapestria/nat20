@@ -385,7 +385,7 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes three attacks, using [[/item .jLa5l9pntsTVrMKH]] or [[/item .dL4668G7zXeC5zyY]] in any combination.",
+      "description": "The [[lookup @name lowercase]]{monster} makes three attacks, using [[/item .jLa5l9pntsTVrMKH]]{Shortsword} or [[/item .dL4668G7zXeC5zyY]]{Light Crossbow} in any combination.",
       "kind": "action",
       "legendary_cost": null,
       "mechanic": null,

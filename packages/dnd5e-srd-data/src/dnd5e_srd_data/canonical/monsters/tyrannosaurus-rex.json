@@ -93,7 +93,7 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes one [[/item .mmBite0000000000]] attack and one [[/item .mmTail0000000000]] attack.",
+      "description": "The [[lookup @name lowercase]]{monster} makes one [[/item .mmBite0000000000]]{Bite} attack and one [[/item .mmTail0000000000]]{Tail} attack.",
       "kind": "action",
       "legendary_cost": null,
       "mechanic": null,

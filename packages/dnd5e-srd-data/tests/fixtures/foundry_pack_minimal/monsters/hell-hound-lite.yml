@@ -68,6 +68,54 @@ items:
           damage:
             includeBase: true
             parts: []
+  - _id: mmClaw0000000000
+    name: Claw
+    type: weapon
+    system:
+      identifier: claw
+      description:
+        value: "<p>Melee Attack Roll.</p>"
+      source:
+        license: CC-BY-4.0
+        rules: '2024'
+      damage:
+        base:
+          number: 1
+          denomination: 6
+          bonus: ''
+          types: [slashing]
+      activities:
+        attk00000000000b:
+          type: attack
+          _id: attk00000000000b
+          activation:
+            type: action
+          attack:
+            ability: str
+            type:
+              value: melee
+              classification: weapon
+          damage:
+            includeBase: true
+            parts: []
+  - _id: mmMultiattack000
+    name: Multiattack
+    type: feat
+    system:
+      type:
+        value: monster
+      identifier: multiattack
+      source:
+        license: CC-BY-4.0
+        rules: '2024'
+      activities:
+        util000000000000:
+          type: utility
+          _id: util000000000000
+          activation:
+            type: action
+      description:
+        value: "<p>The [[lookup @name lowercase]]{monster} makes one [[/item .mmBite0000000000]] attack and one [[/item .mmClaw0000000000]] attack, or two [[/item .zzzzUnknownId000]] attacks.</p>"
   - _id: mmPackTactics000
     name: Pack Tactics
     type: feat

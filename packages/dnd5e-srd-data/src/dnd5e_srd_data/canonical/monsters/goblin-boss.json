@@ -599,7 +599,7 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes two attacks, using [[/item .8gwXLDcYj3mk6Kr3]] or [[/item .XbNHC5OBGT6VQF40]] in any combination.",
+      "description": "The [[lookup @name lowercase]]{monster} makes two attacks, using [[/item .8gwXLDcYj3mk6Kr3]]{Scimitar} or [[/item .XbNHC5OBGT6VQF40]]{Shortbow} in any combination.",
       "kind": "action",
       "legendary_cost": null,
       "mechanic": null,

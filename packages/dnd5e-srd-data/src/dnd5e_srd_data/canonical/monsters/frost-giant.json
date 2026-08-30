@@ -93,7 +93,7 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes two attacks, using [[/item .mmFrostAxe000000]] or [[/item .mmGreatBow000000]] in any combination.",
+      "description": "The [[lookup @name lowercase]]{monster} makes two attacks, using [[/item .mmFrostAxe000000]]{Frost Axe} or [[/item .mmGreatBow000000]]{Great Bow} in any combination.",
       "kind": "action",
       "legendary_cost": null,
       "mechanic": null,

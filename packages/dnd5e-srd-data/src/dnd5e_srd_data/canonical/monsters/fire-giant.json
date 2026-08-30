@@ -93,7 +93,7 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes two attacks, using [[/item .mmFlameSword0000]] or [[/item .mmHammerThrow000]]in any combination.",
+      "description": "The [[lookup @name lowercase]]{monster} makes two attacks, using [[/item .mmFlameSword0000]]{Flame Sword} or [[/item .mmHammerThrow000]]{Hammer Throw}in any combination.",
       "kind": "action",
       "legendary_cost": null,
       "mechanic": null,

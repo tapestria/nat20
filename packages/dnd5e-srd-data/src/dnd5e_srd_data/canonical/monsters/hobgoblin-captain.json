@@ -375,7 +375,7 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes two attacks, using [[/item .OZvhmmUFMgHZWnGB]] or [[/item .cryc72bvanyjmNdX]] in any combination.",
+      "description": "The [[lookup @name lowercase]]{monster} makes two attacks, using [[/item .OZvhmmUFMgHZWnGB]]{Greatsword} or [[/item .cryc72bvanyjmNdX]]{Longbow} in any combination.",
       "kind": "action",
       "legendary_cost": null,
       "mechanic": null,

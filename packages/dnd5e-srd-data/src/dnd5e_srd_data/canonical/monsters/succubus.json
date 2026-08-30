@@ -217,7 +217,7 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes one [[/item .mmFiendishTouch0]] attack and uses [[/item .mmCharm000000000]] or [[/item .mmDrainingKiss00]].",
+      "description": "The [[lookup @name lowercase]]{monster} makes one [[/item .mmFiendishTouch0]]{Fiendish Touch} attack and uses [[/item .mmCharm000000000]]{Charm} or [[/item .mmDrainingKiss00]]{Draining Kiss}.",
       "kind": "action",
       "legendary_cost": null,
       "mechanic": null,

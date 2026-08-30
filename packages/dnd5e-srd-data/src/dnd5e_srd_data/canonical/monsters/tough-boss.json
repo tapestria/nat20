@@ -341,7 +341,7 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes two attacks, using [[/item .iD5121TXziB6ZcSt]] or [[/item .7MS7v84QoTYESVax]] in any combination.",
+      "description": "The [[lookup @name lowercase]]{monster} makes two attacks, using [[/item .iD5121TXziB6ZcSt]]{Warhammer} or [[/item .7MS7v84QoTYESVax]]{Heavy Crossbow} in any combination.",
       "kind": "action",
       "legendary_cost": null,
       "mechanic": null,

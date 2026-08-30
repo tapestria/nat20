@@ -62,3 +62,14 @@ def test_substitute_lookup_labels_keeps_the_label_text():
 def test_every_mechanic_member_has_at_least_one_identifier_row():
     covered = set(_TRAIT_MECHANICS.values())
     assert covered == set(MonsterTraitMechanic)
+
+
+def test_bare_item_id_tokens_are_labelled_with_the_sibling_name():
+    m = translate_monster_yaml(yaml_path=FIXTURE / "hell-hound-lite.yml", **INGEST)
+    multiattack = next(a for a in m.actions if a.slug == "multiattack")
+    assert "[[/item .mmBite0000000000]]{Bite}" in multiattack.description
+    assert "[[/item .mmClaw0000000000]]{Claw}" in multiattack.description
+    # Unknown ids are left untouched (the engine's fallback still handles them).
+    assert "[[/item .zzzzUnknownId000]] attacks" in multiattack.description
+    # Already-labelled tokens are never double-labelled.
+    assert "{Bite}{Bite}" not in multiattack.description

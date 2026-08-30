@@ -93,7 +93,7 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes two attacks, using [[/item .mmSlam0000000000]] or [[/item .mmRockLaunch0000]] in any combination.",
+      "description": "The [[lookup @name lowercase]]{monster} makes two attacks, using [[/item .mmSlam0000000000]]{Slam} or [[/item .mmRockLaunch0000]]{Rock Launch} in any combination.",
       "kind": "action",
       "legendary_cost": null,
       "mechanic": null,

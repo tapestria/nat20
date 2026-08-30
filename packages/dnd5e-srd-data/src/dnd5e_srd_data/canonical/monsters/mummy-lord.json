@@ -325,7 +325,7 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes one [[/item .mmRottingFist000]] or [[/item .d6GVHcFrHv83C7eS]] attack, and it uses [[/item .mmDreadfulGlare0]].",
+      "description": "The [[lookup @name lowercase]]{monster} makes one [[/item .mmRottingFist000]]{Rotting Fist} or [[/item .d6GVHcFrHv83C7eS]]{Channel Negative Energy} attack, and it uses [[/item .mmDreadfulGlare0]]{Dreadful Glare}.",
       "kind": "action",
       "legendary_cost": null,
       "mechanic": null,
@@ -1306,7 +1306,7 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} uses [[/item .mmDreadfulGlare0]].",
+      "description": "The [[lookup @name lowercase]]{monster} uses [[/item .mmDreadfulGlare0]]{Dreadful Glare}.",
       "kind": "legendary",
       "legendary_cost": 1,
       "mechanic": null,
@@ -1496,7 +1496,7 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes one [[/item .mmRottingFist000]] or [[/item .d6GVHcFrHv83C7eS]] attack.",
+      "description": "The [[lookup @name lowercase]]{monster} makes one [[/item .mmRottingFist000]]{Rotting Fist} or [[/item .d6GVHcFrHv83C7eS]]{Channel Negative Energy} attack.",
       "kind": "legendary",
       "legendary_cost": 1,
       "mechanic": null,

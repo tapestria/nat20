@@ -93,7 +93,7 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes two [[/item .mmRottingTouch00]] attacks.",
+      "description": "The [[lookup @name lowercase]]{monster} makes two [[/item .mmRottingTouch00]]{Rotting Touch} attacks.",
       "kind": "action",
       "legendary_cost": null,
       "mechanic": null,

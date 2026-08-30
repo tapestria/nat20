@@ -93,7 +93,7 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes three [[/item .mmWindSwipe00000]] attacks. It can replace one attack with a use of [[/item .mmVortex00000000]].",
+      "description": "The [[lookup @name lowercase]]{monster} makes three [[/item .mmWindSwipe00000]]{Wind Swipe} attacks. It can replace one attack with a use of [[/item .mmVortex00000000]]{Vortex}.",
       "kind": "action",
       "legendary_cost": null,
       "mechanic": null,

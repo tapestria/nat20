@@ -93,7 +93,7 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes two attacks, using [[/item .mmNecroticSword0]] or [[/item .mmNecroticBow000]] in any combination. It can replace one attack with a use of [[/item .mmLifeDrain00000]].",
+      "description": "The [[lookup @name lowercase]]{monster} makes two attacks, using [[/item .mmNecroticSword0]]{Necrotic Sword} or [[/item .mmNecroticBow000]]{Necrotic Bow} in any combination. It can replace one attack with a use of [[/item .mmLifeDrain00000]]{Life Drain}.",
       "kind": "action",
       "legendary_cost": null,
       "mechanic": null,

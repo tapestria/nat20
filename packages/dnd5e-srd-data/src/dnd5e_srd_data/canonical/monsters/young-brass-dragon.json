@@ -93,7 +93,7 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes three [[/item .mmRend0000000000]] attacks. It can replace two attacks with a use of [[/item .mmSleepBreath000]].",
+      "description": "The [[lookup @name lowercase]]{monster} makes three [[/item .mmRend0000000000]]{Rend} attacks. It can replace two attacks with a use of [[/item .mmSleepBreath000]]{Sleep Breath}.",
       "kind": "action",
       "legendary_cost": null,
       "mechanic": null,

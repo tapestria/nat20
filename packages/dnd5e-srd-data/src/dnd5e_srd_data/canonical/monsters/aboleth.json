@@ -406,7 +406,7 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes two [[/item .mmTentacle000000]] attacks and uses either [[/item .7gP0oX3L1RKRaBGH]] or [[/item .yiiKNaJ2svcUWqLi]] if available.",
+      "description": "The [[lookup @name lowercase]]{monster} makes two [[/item .mmTentacle000000]]{Tentacle} attacks and uses either [[/item .7gP0oX3L1RKRaBGH]]{Consume Memories} or [[/item .yiiKNaJ2svcUWqLi]]{Dominate Mind} if available.",
       "kind": "action",
       "legendary_cost": null,
       "mechanic": null,
@@ -851,7 +851,7 @@
           }
         }
       ],
-      "description": "If the [[lookup @name lowercase]]{monster} has at least one creature Charmed or Grappled, it uses [[/item .7gP0oX3L1RKRaBGH]] and regains [[/healing average]].",
+      "description": "If the [[lookup @name lowercase]]{monster} has at least one creature Charmed or Grappled, it uses [[/item .7gP0oX3L1RKRaBGH]]{Consume Memories} and regains [[/healing average]].",
       "kind": "legendary",
       "legendary_cost": 1,
       "mechanic": null,

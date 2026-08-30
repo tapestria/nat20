@@ -93,7 +93,7 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes one [[/item .mmBite0000000000]] attack and three other attacks, using [[/item .mmClaw0000000000]] or [[/item .mmTail0000000000]] in any combination.",
+      "description": "The [[lookup @name lowercase]]{monster} makes one [[/item .mmBite0000000000]]{Bite} attack and three other attacks, using [[/item .mmClaw0000000000]]{Claw} or [[/item .mmTail0000000000]]{Tail} in any combination.",
       "kind": "action",
       "legendary_cost": null,
       "mechanic": null,
@@ -1141,7 +1141,7 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} moves up to half its Speed, and it makes one [[/item .mmClaw0000000000]] or [[/item .mmTail0000000000]] attack.",
+      "description": "The [[lookup @name lowercase]]{monster} moves up to half its Speed, and it makes one [[/item .mmClaw0000000000]]{Claw} or [[/item .mmTail0000000000]]{Tail} attack.",
       "kind": "legendary",
       "legendary_cost": 1,
       "mechanic": null,

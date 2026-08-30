@@ -93,7 +93,7 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes one [[/item .mmClaws000000000]] attack and one [[/item .mmTail0000000000]] attack, or it makes two [[/item .mmHurlFlame00000]] attacks.",
+      "description": "The [[lookup @name lowercase]]{monster} makes one [[/item .mmClaws000000000]]{Claws} attack and one [[/item .mmTail0000000000]]{Tail} attack, or it makes two [[/item .mmHurlFlame00000]]{Hurl Flame} attacks.",
       "kind": "action",
       "legendary_cost": null,
       "mechanic": null,

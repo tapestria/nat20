@@ -366,7 +366,6 @@ def test_c22_s05_chain_mail_strength_min_and_stealth_disadvantage():
     assert armor.stealth_disadvantage is True
 
 
-@xfail_cluster(22, "dataset")
 def test_c22_s06_bandit_captain_multiattack_resolves_scimitar_and_pistol():
     """C22-S06: SRD 5.2 Bandit Captain stat block, Multiattack — "makes
     two attacks, using its Scimitar and Pistol in any combination."

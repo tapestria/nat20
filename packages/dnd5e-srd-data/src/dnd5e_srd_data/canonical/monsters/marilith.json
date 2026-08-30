@@ -93,7 +93,7 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes six [[/item .mmPactBlade00000]] attacks and uses [[/item .mmConstrict00000]].",
+      "description": "The [[lookup @name lowercase]]{monster} makes six [[/item .mmPactBlade00000]]{Pact Blade} attacks and uses [[/item .mmConstrict00000]]{Constrict}.",
       "kind": "action",
       "legendary_cost": null,
       "mechanic": null,

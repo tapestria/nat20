@@ -1,5 +1,5 @@
 {
-  "description": "The monster has a magic rope. While bearing it, the monster can use the [[/item .mmEntanglingRope]] action. The rope has AC 20, HP 90, and Immunity to Poison and Psychic damage. The rope turns to dust if reduced to 0 Hit Points, if it is 5+ feet away from the monster for 1 hour or more, or if the monster dies. If the rope is damaged or destroyed, the monster can fully restore it when finishing a Short or Long Rest.",
+  "description": "The monster has a magic rope. While bearing it, the monster can use the [[/item .mmEntanglingRope]]{Entangling Rope} action. The rope has AC 20, HP 90, and Immunity to Poison and Psychic damage. The rope turns to dust if reduced to 0 Hit Points, if it is 5+ feet away from the monster for 1 hour or more, or if the monster dies. If the rope is damaged or destroyed, the monster can fully restore it when finishing a Short or Long Rest.",
   "mechanic": null,
   "name": "Magic Rope",
   "provenance": {

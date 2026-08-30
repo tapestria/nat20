@@ -93,7 +93,7 @@
           }
         }
       ],
-      "description": "The mummy makes two [[/item .mmRottingFist000]] attacks and uses [[/item .mmDreadfulGlare0]].",
+      "description": "The mummy makes two [[/item .mmRottingFist000]]{Rotting Fist} attacks and uses [[/item .mmDreadfulGlare0]]{Dreadful Glare}.",
       "kind": "action",
       "legendary_cost": null,
       "mechanic": null,

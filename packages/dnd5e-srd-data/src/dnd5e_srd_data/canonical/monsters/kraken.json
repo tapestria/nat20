@@ -93,7 +93,7 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes two [[/item .mmTentacle000000]] attacks and uses [[/item .mmFling000000000]], [[/item .mmLightningStrik]], or [[/item .mmSwallow0000000]].",
+      "description": "The [[lookup @name lowercase]]{monster} makes two [[/item .mmTentacle000000]]{Tentacle} attacks and uses [[/item .mmFling000000000]]{Fling}, [[/item .mmLightningStrik]]{Lightning Strike}, or [[/item .mmSwallow0000000]]{Swallow}.",
       "kind": "action",
       "legendary_cost": null,
       "mechanic": null,
@@ -1102,7 +1102,7 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} uses [[/item .mmLightningStrik]].",
+      "description": "The [[lookup @name lowercase]]{monster} uses [[/item .mmLightningStrik]]{Lightning Strike}.",
       "kind": "legendary",
       "legendary_cost": 1,
       "mechanic": null,

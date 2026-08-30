@@ -93,7 +93,7 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes three attacks, using [[/item .mmRend0000000000]] or [[/item .mmTailSpike00000]] in any combination.",
+      "description": "The [[lookup @name lowercase]]{monster} makes three attacks, using [[/item .mmRend0000000000]]{Rend} or [[/item .mmTailSpike00000]]{Tail Spike} in any combination.",
       "kind": "action",
       "legendary_cost": null,
       "mechanic": null,

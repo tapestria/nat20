@@ -227,7 +227,7 @@
           }
         }
       ],
-      "description": "Immediately after dealing damage to a creature that is already &amp;Reference[Bloodied], the [[lookup @name lowercase]]{monster} moves up to half its Speed, and it makes one [[/item .mmBite0000000000]] attack.",
+      "description": "Immediately after dealing damage to a creature that is already &amp;Reference[Bloodied], the [[lookup @name lowercase]]{monster} moves up to half its Speed, and it makes one [[/item .mmBite0000000000]]{Bite} attack.",
       "kind": "bonus_action",
       "legendary_cost": null,
       "mechanic": null,

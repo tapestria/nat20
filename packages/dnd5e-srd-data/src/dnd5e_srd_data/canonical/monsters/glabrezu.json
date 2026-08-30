@@ -93,7 +93,7 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes two [[/item .mmPincer00000000]] attacks and uses [[/item .mmPummel00000000]] or [[/item .mmSpellcasting00]].",
+      "description": "The [[lookup @name lowercase]]{monster} makes two [[/item .mmPincer00000000]]{Pincer} attacks and uses [[/item .mmPummel00000000]]{Pummel} or [[/item .mmSpellcasting00]]{Spellcasting}.",
       "kind": "action",
       "legendary_cost": null,
       "mechanic": null,

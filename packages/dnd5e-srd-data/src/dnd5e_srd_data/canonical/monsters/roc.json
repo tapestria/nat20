@@ -93,7 +93,7 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes two [[/item .mmBeak0000000000]] attacks. It can replace one attack with a [[/item .mmTalons00000000]] attack.",
+      "description": "The [[lookup @name lowercase]]{monster} makes two [[/item .mmBeak0000000000]]{Beak} attacks. It can replace one attack with a [[/item .mmTalons00000000]]{Talons} attack.",
       "kind": "action",
       "legendary_cost": null,
       "mechanic": null,

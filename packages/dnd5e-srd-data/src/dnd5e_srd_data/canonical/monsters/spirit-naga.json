@@ -93,7 +93,7 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes three attacks, using [[/item .mmBite0000000000]] or [[/item .mmNecroticRay000]] in any combination.",
+      "description": "The [[lookup @name lowercase]]{monster} makes three attacks, using [[/item .mmBite0000000000]]{Bite} or [[/item .mmNecroticRay000]]{Necrotic Ray} in any combination.",
       "kind": "action",
       "legendary_cost": null,
       "mechanic": null,

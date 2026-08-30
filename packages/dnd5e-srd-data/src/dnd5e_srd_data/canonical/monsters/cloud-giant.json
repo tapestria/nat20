@@ -93,7 +93,7 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes two attacks, using [[/item .mmThunderousMace]] or [[/item .mmThundercloud00]] in any combination. It can replace one attack with a use of Spellcasting to cast [[/item .mmSpellcasting00.Activity.NdueMCpXRc7fLDFa]].",
+      "description": "The [[lookup @name lowercase]]{monster} makes two attacks, using [[/item .mmThunderousMace]]{Thunderous Mace} or [[/item .mmThundercloud00]]{Thundercloud} in any combination. It can replace one attack with a use of Spellcasting to cast [[/item .mmSpellcasting00.Activity.NdueMCpXRc7fLDFa]].",
       "kind": "action",
       "legendary_cost": null,
       "mechanic": null,
