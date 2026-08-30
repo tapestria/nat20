@@ -82,3 +82,24 @@ def test_default_call_is_nonmagical():
     )
     apply_damage(target, {"slashing": 9}, ctx)
     assert events[0].amount == 4
+
+
+def test_effect_granted_physical_resistance_is_never_bypassed():
+    """Rage-style sidecar resistance is unconditional; ``magical`` never bypasses it."""
+    events: list[DamageApplied] = []
+    caster = Combatant(
+        entity_id="c", entity_type="Character", name="C", initiative=10, hp_current=10, hp_max=10
+    )
+    target = Combatant(
+        entity_id="t", entity_type="Monster", name="T", initiative=1, hp_current=50, hp_max=50
+    )
+    ctx = ActivityResolutionContext(
+        rng=random.Random(1),
+        caster=caster,
+        targets=[target],
+        event_emitter=events.append,
+        caster_abilities={"str": 10, "dex": 10, "con": 10, "int": 10, "wis": 10, "cha": 10},
+        passive_damage_modifiers={"t": {"resistances": ["slashing"]}},
+    )
+    apply_damage(target, {"slashing": 10}, ctx, magical=True)
+    assert events[0].amount == 5

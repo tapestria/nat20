@@ -52,12 +52,30 @@ _PHYSICAL_TYPES: Final[frozenset[str]] = frozenset({"bludgeoning", "piercing", "
 def _effective_resistances(
     target: Combatant, sidecar: dict[str, list[str]], *, magical: bool
 ) -> set[str]:
-    """Static + sidecar resistances, minus the B/P/S entries a magical source
-    overcomes when the target's B/P/S resistance is the "nonmagical" kind."""
-    resistances = set(target.damage_resistances) | set(sidecar.get("resistances", ()))
+    """Static ``Combatant.damage_resistances`` + sidecar (effect-granted)
+    resistances, minus the B/P/S entries a magical source overcomes.
+
+    The nonmagical-only qualifier (``Combatant.physical_resistances_nonmagical_only``)
+    applies ONLY to the static stat-block list. Effect-granted resistances
+    (e.g. Rage's unconditional resistance to Bludgeoning / Piercing /
+    Slashing) are always unconditional and are never bypassed by ``magical``.
+
+    The orchestrator's ``_project_target_modifiers`` ALSO copies
+    ``Combatant.damage_resistances`` into the sidecar's ``"resistances"``
+    entry as a convenience (so a single sidecar dict carries every passive
+    damage modifier). That copy is not itself effect-granted — it is the
+    same static entry appearing twice — so it must not defeat the bypass.
+    The genuinely effect-granted sidecar entries are therefore isolated by
+    subtracting the target's own static list from the sidecar list BEFORE
+    unioning back in; only what remains (added by an active effect, not by
+    the stat block) is treated as unconditional.
+    """
+    static_resistances = set(target.damage_resistances)
+    sidecar_resistances = set(sidecar.get("resistances", ()))
+    effect_granted = sidecar_resistances - static_resistances
     if magical and target.physical_resistances_nonmagical_only:
-        resistances -= _PHYSICAL_TYPES
-    return resistances
+        static_resistances -= _PHYSICAL_TYPES
+    return static_resistances | effect_granted
 
 
 def apply_damage(
@@ -79,7 +97,10 @@ def apply_damage(
     a spell. SRD "resistance to Bludgeoning, Piercing, and Slashing from
     nonmagical attacks" does not apply to it (see
     ``Combatant.physical_resistances_nonmagical_only``); the ``"all"``
-    wildcard (Petrified) and non-physical types are unaffected.
+    wildcard (Petrified) and non-physical types are unaffected. This qualifier
+    applies ONLY to the static stat-block resistance list — effect-granted
+    (sidecar) resistances, such as Rage's, are always unconditional and are
+    never bypassed by ``magical`` (see ``_effective_resistances``).
     """
     sidecar = ctx.passive_damage_modifiers.get(target.entity_id, {})
     resistances = _effective_resistances(target, sidecar, magical=magical)
