@@ -428,7 +428,6 @@ def test_c22_s06_bandit_captain_multiattack_resolves_scimitar_and_pistol():
     assert damage_types == {"slashing", "piercing"}
 
 
-@xfail_cluster(22, "dataset")
 def test_c22_s07_shield_reaction_trigger_is_typed_not_free_text():
     """C22-S07: SRD 5.2 Shield — activation ``condition: "when you are
     hit by an attack roll or targeted by the Magic Missile spell"``
@@ -478,6 +477,7 @@ def test_c22_s07_shield_reaction_trigger_is_typed_not_free_text():
                     hp_current=30,
                     hp_max=30,
                     attack_bonus=5,
+                    monster_template_slug="goblin-warrior",
                     zone_id=cell(1, 0),
                 )
             ],
