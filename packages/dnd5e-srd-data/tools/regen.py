@@ -402,7 +402,7 @@ def main() -> int:
     print(f"  accepted={len(condition_entries)}")
 
     # De-duplicated SRD 5.2 monster traits (C22). Sourced from the SRD-gated
-    # actors' embedded trait items (monsterfeatures24 carries no license tag).
+    # actors' embedded CC-BY feat items (monsterfeatures24 carries no license tag).
     print("[regen] traits …")
     actor_paths = [
         p

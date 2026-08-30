@@ -1249,7 +1249,7 @@ _TRAIT_MECHANICS: dict[str, MonsterTraitMechanic] = {
     "undead-restoration": MonsterTraitMechanic.RESTORATION,
     # "doesn't provoke an Opportunity Attack when it flies out of an enemy's reach."
     "flyby": MonsterTraitMechanic.FLYBY,
-    # "can hold its breath for N minutes."
+    # "can hold its breath for a period (minutes or hours)."
     "hold-breath": MonsterTraitMechanic.HOLD_BREATH,
     # "While in sunlight, the <monster> has Disadvantage on ability checks and attack rolls."
     "sunlight-sensitivity": MonsterTraitMechanic.SUNLIGHT_SENSITIVITY,

@@ -142,7 +142,7 @@ class MonsterAction(BaseModel):
 
 class MonsterTrait(BaseModel):
     """One de-duplicated SRD 5.2 monster trait (``canonical/traits/``), built
-    from the embedded ``[trait]`` feat items of the SRD actor documents."""
+    from the embedded CC-BY feat items of the SRD actor documents."""
 
     slug: str
     name: str

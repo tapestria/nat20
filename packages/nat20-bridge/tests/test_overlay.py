@@ -65,7 +65,7 @@ def test_overlay_covers_traits_get_and_fallthrough() -> None:
     assert ("traits", "nope") not in loader
 
 
-def test_overlay_list_traits_merges_base_first_no_duplicates() -> None:
+def test_overlay_list_slugs_traits_merges_base_first_no_duplicates() -> None:
     shared = _trait("magic-resistance")
     overlay_shadow = _trait("magic-resistance")  # same slug — must not duplicate, base wins on get
     overlay_extra = _trait("hb-frenzy")

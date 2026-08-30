@@ -112,3 +112,30 @@ items:
       activities: {}
       description:
         value: "<p>Prose only.</p>"
+  - _id: mmUnlicensed0000
+    name: Unlicensed Trait
+    type: feat
+    system:
+      type:
+        value: monster
+      identifier: unlicensed-trait
+      properties: []
+      source:
+        rules: '2024'
+      activities: {}
+      description:
+        value: "<p>Not licensed.</p>"
+  - _id: mmNewFeature0000
+    name: New Feature
+    type: feat
+    system:
+      type:
+        value: monster
+      identifier: new-feature
+      properties: []
+      source:
+        license: CC-BY-4.0
+        rules: '2024'
+      activities: {}
+      description:
+        value: "<p>Placeholder.</p>"

@@ -40,6 +40,17 @@ def test_translate_monster_traits_dedupes_by_identifier_and_keeps_first_path():
     assert mr.provenance.source_url.endswith("monsters/hell-hound-lite.yml")
 
 
+def test_unlicensed_and_placeholder_items_are_rejected_from_traits_but_kept_as_special_abilities():
+    m = translate_monster_yaml(yaml_path=FIXTURE / "hell-hound-lite.yml", **INGEST)
+    special_slugs = {a.slug for a in m.special_abilities}
+    assert {"unlicensed-trait", "new-feature"} <= special_slugs
+
+    traits = translate_monster_traits([FIXTURE / "hell-hound-lite.yml"], **INGEST)
+    trait_slugs = {t.slug for t in traits}
+    assert "unlicensed-trait" not in trait_slugs
+    assert "new-feature" not in trait_slugs
+
+
 def test_substitute_lookup_labels_keeps_the_label_text():
     assert (
         substitute_lookup_labels("The [[lookup @name lowercase]]{monster} bites.")
