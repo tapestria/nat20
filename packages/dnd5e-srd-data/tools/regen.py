@@ -22,6 +22,7 @@ from tools.audit.cross_check import (
     diff_spell_flat_fields,
     diff_subclass_flat_fields,
 )
+from tools.translators.conditions import translate_condition_pages
 from tools.translators.foundry import (
     translate_armor_yaml,
     translate_background_yaml,
@@ -244,6 +245,7 @@ def _prune_stale_canonical() -> None:
         "backgrounds",
         "feats",
         "features",
+        "conditions",
     ):
         dst = CANONICAL / canonical_subdir
         if not dst.is_dir():
@@ -382,6 +384,20 @@ def main() -> int:
     )
     non_srd_excluded.extend(e)
     print(f"  accepted={a}, quarantined={q}")
+
+    # SRD 5.2 rules-glossary conditions (C22). One journal doc → 15 entries;
+    # the SRD gate is the translator's explicit allowlist (journal pages have
+    # no license field — see tools/translators/conditions.py).
+    print("[regen] conditions …")
+    glossary = FOUNDRY_PACKS / "content24" / "appendices" / "rules-glossary.yml"
+    conditions_dst = CANONICAL / "conditions"
+    conditions_dst.mkdir(parents=True, exist_ok=True)
+    condition_entries = translate_condition_pages(
+        yaml_path=glossary, ingest_date=ingest_date, ingest_version=INGEST_VERSION
+    )
+    for condition in condition_entries:
+        write_canonical_with_overrides(condition, conditions_dst)
+    print(f"  accepted={len(condition_entries)}")
 
     # Post-process: populate Class.subclass_identifiers from the subclass
     # forward references. Foundry's Subclass-type advancement entries on the

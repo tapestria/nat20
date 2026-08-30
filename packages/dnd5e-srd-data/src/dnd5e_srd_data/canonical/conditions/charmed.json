@@ -1,0 +1,34 @@
+{
+  "description": "While you have the Charmed condition, you experience the following effects.\n\nCan\u2019t Harm the Charmer. You can\u2019t attack the charmer or target the charmer with damaging abilities or magical effects.\n\nSocial Advantage. The charmer has Advantage on any ability check to interact with you socially.",
+  "effects": [
+    {
+      "abilities": [],
+      "kind": "cant_attack_charmer",
+      "qualifier": "",
+      "value": null
+    },
+    {
+      "abilities": [],
+      "kind": "charmer_social_advantage",
+      "qualifier": "",
+      "value": null
+    }
+  ],
+  "implies": [],
+  "name": "Charmed",
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/content24/appendices/rules-glossary.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "charmed"
+}

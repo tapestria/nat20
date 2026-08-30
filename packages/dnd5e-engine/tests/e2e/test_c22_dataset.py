@@ -30,7 +30,6 @@ from dnd5e_engine.specs import EncounterMemberSpec, GridScene, PartyMemberSpec
 from tests.e2e.harness import cell, events_of, grid_scene, run_async, xfail_cluster
 
 
-@xfail_cluster(22, "dataset")
 def test_c22_s01_prone_condition_dataset_entry_and_engine_leg():
     """C22-S01: SRD 5.2 rules-glossary, Prone — attack rolls against the
     creature have Advantage if the attacker is within 5 feet.

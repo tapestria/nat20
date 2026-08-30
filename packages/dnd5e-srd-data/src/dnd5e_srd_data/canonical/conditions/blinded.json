@@ -1,0 +1,40 @@
+{
+  "description": "Can\u2019t See. You can\u2019t see and automatically fail any ability check that requires sight.\n\nAttacks Affected. Attack rolls against you have Advantage, and your attack rolls have Disadvantage.",
+  "effects": [
+    {
+      "abilities": [],
+      "kind": "auto_fail_sight_checks",
+      "qualifier": "",
+      "value": null
+    },
+    {
+      "abilities": [],
+      "kind": "advantage_attacks_against",
+      "qualifier": "",
+      "value": null
+    },
+    {
+      "abilities": [],
+      "kind": "disadvantage_own_attacks",
+      "qualifier": "",
+      "value": null
+    }
+  ],
+  "implies": [],
+  "name": "Blinded",
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/content24/appendices/rules-glossary.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "blinded"
+}

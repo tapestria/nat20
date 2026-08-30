@@ -1,0 +1,46 @@
+{
+  "description": "While you have the Invisible condition, you experience the following effects.\n\nSurprise. If you\u2019re Invisible when you roll Initiative, you have Advantage on the roll.\n\nConcealed. You aren\u2019t affected by any effect that requires its target to be seen unless the effect\u2019s creator can somehow see you. Any equipment you are wearing or carrying is also concealed.\n\nAttacks Affected. Attack rolls against you have Disadvantage, and your attack rolls have Advantage. If a creature can somehow see you, you don\u2019t gain this benefit against that creature.",
+  "effects": [
+    {
+      "abilities": [],
+      "kind": "advantage_initiative",
+      "qualifier": "if you're Invisible when you roll Initiative",
+      "value": null
+    },
+    {
+      "abilities": [],
+      "kind": "unseen",
+      "qualifier": "unless the effect's creator can somehow see you",
+      "value": null
+    },
+    {
+      "abilities": [],
+      "kind": "disadvantage_attacks_against",
+      "qualifier": "if a creature can somehow see you, you don't gain this benefit against that creature",
+      "value": null
+    },
+    {
+      "abilities": [],
+      "kind": "advantage_own_attacks",
+      "qualifier": "if a creature can somehow see you, you don't gain this benefit against that creature",
+      "value": null
+    }
+  ],
+  "implies": [],
+  "name": "Invisible",
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/content24/appendices/rules-glossary.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "invisible"
+}
