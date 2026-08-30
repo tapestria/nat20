@@ -382,12 +382,21 @@ class GridTopology:
         * ``"line"``: requires ``direction`` (a nonzero grid-offset vector,
           normalized to one of the 8 unit grid directions); the
           ``radius_cells + 1`` cells stepping from the origin along that
-          direction, origin included.
+          direction, origin included. NOTE: SRD 5.2 says a Line's (and a
+          Cone's) point of origin "isn't included in the area of effect
+          unless its creator decides otherwise", so this primitive is
+          deliberately INCLUSIVE and the caller drops the origin. The only
+          in-engine caller, ``orchestrator._expand_aoe_target_list``, does
+          exactly that via the typed ``_AoeTemplate.include_origin``, so no
+          shipped behaviour is off-SRD; a host calling this directly must
+          discard ``origin`` itself. Behaviour is pinned by tests and is not
+          changing before the 0.7 template rework.
         * ``"cone"``: requires ``direction``; a cell at offset ``(dx, dy)``
           from the origin is included iff its projection onto the direction
           (``forward``) is in ``[0, radius_cells]`` and its perpendicular
           offset (``lateral``) does not exceed ``forward`` — a widening 45°
-          triangle from the origin. See ``docs/dev/spatial-geometry.md`` for
+          triangle from the origin, origin included (same SRD caveat as
+          ``"line"`` above: the caller excludes it). See ``docs/dev/spatial-geometry.md`` for
           the full rationale (an engine convention, not literal SRD prose
           geometry — squares have no single canonical cone rasterization).
         * ``"cube"``: requires ``direction``; a face-anchored ``n x n`` block

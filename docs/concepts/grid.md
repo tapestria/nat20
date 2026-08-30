@@ -47,8 +47,11 @@ A step is legal when it stays on the map, does not enter a `blocked_cells`
 square, does not cross a `wall_segments` entry, and — for a diagonal — does not
 cut an obstruction's corner. Occupancy follows SRD 5.2 §Moving Around Other
 Creatures: **allies are passable, enemies are not**, and a move may not *end* on
-a cell another creature occupies, ally or enemy. (Occupancy is grid-only; the
-zone backend keeps its pre-0.6 behaviour.)
+a cell another creature occupies, ally or enemy.
+
+Multi-cell routing and occupancy are both **grid-only**: on the legacy zone
+graph a `"move"` intent is still a single step to an *adjacent* zone, and a
+non-adjacent destination is still `MoveFailed(reason="not_adjacent")`.
 
 Opportunity attacks fire before the mover leaves each cell's reach; a mover
 dropped to 0 HP stops where the drop happened, and the `ActorMoved` reports the

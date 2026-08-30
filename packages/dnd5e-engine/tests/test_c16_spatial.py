@@ -126,8 +126,12 @@ def test_cell_size_ft_property():
 
 def test_cells_in_template_cylinder_matches_sphere_and_includes_origin():
     g = _grid()
-    assert g.cells_in_template("5,5", "cylinder", 10) == g.cells_in_template("5,5", "sphere", 10)
-    assert "5,5" in g.cells_in_template("5,5", "cylinder", 10)
+    cylinder = g.cells_in_template("5,5", "cylinder", 10)
+    # Pinned against the geometry itself, not against the sibling branch of the
+    # same ``if`` arm: the Chebyshev disc of radius 10 ft // 5 ft = 2 cells.
+    assert set(cylinder) == {cell_id(c, r) for c in range(3, 8) for r in range(3, 8)}
+    assert cylinder == g.cells_in_template("5,5", "sphere", 10)
+    assert "5,5" in cylinder
 
 
 def test_cells_in_template_cube_cardinal_is_face_anchored_and_excludes_origin():

@@ -601,9 +601,11 @@ def test_c16_s07_thunderwave_pushes_failed_save_target_10ft_away():
     """C16-S07: SRD 5.2 §Spell Descriptions, Thunderwave — "On a failed
     save, a creature takes 2d8 Thunder damage and is pushed 10 feet away
     from you." (packs/_source/spells24/1st-level/thunderwave.yml,
-    phbsplThunderwav). No push/forced-movement primitive exists anywhere
-    in ``orchestrator.py`` and ``events.py`` has no ``CombatantMoved``
-    event — the save/damage resolve, but the target never moves.
+    phbsplThunderwav). Authored against a886f77, where no push/forced-movement
+    primitive existed anywhere in ``orchestrator.py`` and ``events.py`` had no
+    ``CombatantMoved`` event, so the save/damage resolved but the target never
+    moved. C16 ships both (``orchestrator.push_combatant`` +
+    ``events.CombatantMoved``); this scenario now passes unchanged.
 
     Seed choice: rng_seed=1 — verified on main a886f77: 2d8 drawn first,
     then the Constitution d20 = 9 vs DC 10 (INT 10 wizard, +0 CON foe) →
@@ -665,8 +667,9 @@ def test_c16_s07_thunderwave_pushes_failed_save_target_10ft_away():
     assert dmg[0].damage_type == "thunder"
     assert 2 <= dmg[0].amount <= 16
 
-    # API delta (C16): CombatantMoved(forced=True) does not exist today —
-    # look it up dynamically so the ImportError itself drives the xfail.
+    # API delta (C16): CombatantMoved(forced=True) did not exist on a886f77 —
+    # looked up dynamically so the AttributeError itself drove the xfail. C16
+    # added it; the dynamic lookup is kept so the scenario body is untouched.
     from dnd5e_engine import events as events_module
 
     combatant_moved_cls = events_module.CombatantMoved

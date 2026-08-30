@@ -174,8 +174,10 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   registry.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/forced_movement.py`)
 - **Monster walks ignore occupancy; line width is not modelled** (2026-08-27).
-  `_walk_zone_path` and the closing walk in `advance_monster_turn` call
-  `shortest_path` without `avoid=`, so a monster may path straight through a PC;
+  `_walk_zone_path`, `_execute_flee_retreat` and the closing walk in
+  `advance_monster_turn` all call `shortest_path` without `avoid=`, so a monster
+  may path straight through a PC where a PC `"move"` intent may not — a
+  deliberate, documented asymmetry, not an oversight;
   `cells_in_template("line")` is one cell wide, so a 5-ft-wide Lightning Bolt is
   treated as a 1-cell ray and a wider `template.width` is ignored.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_walk_zone_path`,

@@ -61,12 +61,18 @@ new field is optional and defaults to the pre-0.6 behaviour. Behavioural deltas
   aims cones, lines and cubes (defaults to caster → named target).
 - **Creature cover.** `GridTopology.cover_between(a, b, occupied_cells=())`
   — every other live combatant on the line grants half cover; blocked cells
-  grant total cover and block sight (`has_line_of_sight`).
-- **Multi-cell `move` intent.** `_handle_move` paths with `shortest_path`
-  (walls block, no diagonal corner-cutting, enemies impassable, allies
-  passable, no ending in an occupied cell) and charges each leg's
-  `edge_distance`; new `MoveFailed.reason` members `unreachable`, `occupied`,
-  `blocked_path`.
+  grant total cover and block sight (`has_line_of_sight`). A `cover_cells` tag
+  on the **target's own** cell now counts (the origin's still never does); a
+  creature on a `"total"` cover cell is therefore untargetable.
+- **AoE cover is measured from the point of origin** (SRD 5.2 §Cover), not from
+  the caster: the AoE cast path threads the resolved template origin
+  (`_aoe_cover_origin`) into the per-target cover map.
+- **Multi-cell `move` intent — grid backend only.** `_handle_move` paths with
+  `GridTopology.shortest_path` (walls block, no diagonal corner-cutting,
+  enemies impassable, allies passable, no ending in an occupied cell) and
+  charges each leg's `edge_distance`; new `MoveFailed.reason` members
+  `unreachable`, `occupied`, `blocked_path`. The legacy zone graph keeps its
+  pre-0.6 single-adjacent-step contract, `not_adjacent` rejection included.
 - **Forced movement.** `orchestrator.push_combatant(live, target_id,
   origin_cell, distance_ft)` and the `CombatantMoved(forced=True)` event;
   `activities/forced_movement.py` wires Thunderwave's push.
@@ -105,8 +111,11 @@ new field is optional and defaults to the pre-0.6 behaviour. Behavioural deltas
 - Turn advancement runs through one shared path, so every boundary rule fires
   in a single, registration-ordered place.
 - Walls now block movement as well as sight; `edge_distance` returns `None` for
-  an illegal step. `ActorMoved` carries the whole intent's distance (one event
-  per `move`).
+  an illegal step. On the grid, `ActorMoved` carries the whole intent's distance
+  (one event per `move`); the zone backend still emits one per step.
+- **`start_combat(grid_scene=...)` raises `ValueError`** when a combatant's
+  `zone_id` is out of bounds or blocked, instead of silently seating them on an
+  unusable cell.
 
 ### Deprecated
 
