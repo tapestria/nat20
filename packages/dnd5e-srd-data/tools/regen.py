@@ -409,6 +409,10 @@ def main() -> int:
         for p in sorted((FOUNDRY_PACKS / "actors24").rglob("*.yml"))
         if p.name != "_folder.yml" and _gate_for_yaml(p).is_srd
     ]
+    # Traits mirror the shipped monster corpus; SRD-gated summon/companion
+    # templates are excluded (their abilities return with C21).
+    monster_slugs = {p.stem for p in (CANONICAL / "monsters").glob("*.json")}
+    actor_paths = [p for p in actor_paths if p.stem in monster_slugs]
     traits_dst = CANONICAL / "traits"
     traits_dst.mkdir(parents=True, exist_ok=True)
     trait_entries = translate_monster_traits(

@@ -1349,14 +1349,17 @@ def _monster_actions(
 
 
 def _licensed_trait_identifiers(doc: dict[str, Any]) -> set[str]:
-    """``system.identifier`` values of embedded ``[trait]`` feat items that
-    carry the SRD ``CC-BY-4.0`` license tag on this actor document."""
+    """``system.identifier`` values of embedded ``feat`` items that carry the
+    SRD ``CC-BY-4.0`` license tag on this actor document. Not every embedded
+    special ability tags ``system.properties: [trait]`` (e.g.
+    ``demonic-restoration``, ``swallow``), so the license + item-type gate is
+    the sole admission test — ``_monster_actions`` already does the real
+    "is this a trait" classification via activation type."""
     return {
         str((item.get("system") or {}).get("identifier") or "")
         for item in (doc.get("items") or [])
         if isinstance(item, dict)
         and item.get("type") == "feat"
-        and "trait" in ((item.get("system") or {}).get("properties") or [])
         and (((item.get("system") or {}).get("source") or {}).get("license")) == "CC-BY-4.0"
     }
 
@@ -1368,15 +1371,20 @@ def translate_monster_traits(
     ingest_version: str,
 ) -> list[MonsterTrait]:
     """Build the de-duplicated ``traits/`` category from the SRD actors'
-    embedded ``[trait]`` feat items. First occurrence (by the caller's path
-    order — regen passes a sorted list) wins, so output is deterministic.
-    Items without ``system.source.license == "CC-BY-4.0"`` are skipped."""
+    embedded special-ability feat items. First occurrence (by the caller's
+    path order — regen passes a sorted list) wins, so output is
+    deterministic. Items without ``system.source.license == "CC-BY-4.0"``
+    are skipped."""
     by_slug: dict[str, MonsterTrait] = {}
     for yaml_path in actor_yaml_paths:
         doc = _load_yaml(yaml_path)
         _, _, _, special_abilities = _monster_actions(doc)
         licensed = _licensed_trait_identifiers(doc)
         for ability in special_abilities:
+            if ability.slug == "new-feature":
+                # Foundry authoring placeholder identifier; never a real
+                # trait (seen on apparatus-of-the-crab items).
+                continue
             if ability.slug in by_slug or ability.slug not in licensed:
                 continue
             by_slug[ability.slug] = MonsterTrait(

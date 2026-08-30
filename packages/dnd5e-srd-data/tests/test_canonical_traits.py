@@ -29,7 +29,8 @@ def test_magic_resistance_frequency_matches_the_rule_card():
 def test_traits_category_is_deduplicated_and_typed():
     loader = BundledAssetLoader()
     slugs = loader.list_slugs("traits")
-    assert len(slugs) == len(set(slugs)) and len(slugs) >= 100
+    # = every distinct special_abilities slug across the shipped SRD monsters (2026-08-30 corpus)
+    assert len(slugs) == len(set(slugs)) and len(slugs) == 102
     mr = loader.get_trait("magic-resistance")
     assert mr is not None
     assert mr.mechanic is MonsterTraitMechanic.MAGIC_RESISTANCE
@@ -37,3 +38,4 @@ def test_traits_category_is_deduplicated_and_typed():
     assert mr.provenance.license_tag == "CC-BY-4.0"
     assert loader.get_trait("amphibious").mechanic is MonsterTraitMechanic.AMPHIBIOUS
     assert loader.get_trait("fear-aura").mechanic is None  # prose fallback
+    assert loader.get_trait("demonic-restoration").mechanic is MonsterTraitMechanic.RESTORATION
