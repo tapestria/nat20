@@ -85,10 +85,7 @@ class OverlayAssetLoader:
         return found if found is not None else self._overlay.get_condition(slug)
 
     def list_conditions(self) -> list[str]:
-        base_slugs = self._base.list_conditions()
-        overlay_slugs = self._overlay.list_conditions()
-        base_set = set(base_slugs)
-        return [*base_slugs, *(s for s in overlay_slugs if s not in base_set)]
+        return self.list_slugs("conditions")
 
     def list_slugs(self, category: Category) -> list[str]:
         base_slugs = self._base.list_slugs(category)
