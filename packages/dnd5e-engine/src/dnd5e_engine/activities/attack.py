@@ -25,8 +25,9 @@ MIRRORS, does not import from, ``effects/attack.py`` + ``effects/damage.py``:
   only ever active when a source exists, so a scenario with no advantage
   producer still consumes exactly ONE d20 draw per target and its seeded stream
   is unchanged. The same flags additionally GATE the SRD §Sneak Attack trigger
-  below. Prone/reach and other distance-derived sources are still deferred (see
-  ``BACKLOG.md``).
+  below. Prone (distance-aware via ``ctx.target_distance_ft``) and Grappled (via
+  ``ctx.attacker_grappler_id``) are live since C12; unseen / long-range sources
+  are C15/C16b.
 * Hit / crit / miss mirrors ``effects/attack.py:_resolve_hit_outcome``: natural
   20 → auto crit+hit, natural 1 → auto miss, else ``total >= AC`` (SRD §Rolling
   1 or 20 / §Making an Attack). The crit threshold is ``attack.critical.threshold
@@ -73,7 +74,10 @@ from dnd5e_engine.activities.effects import apply_activity_effects
 from dnd5e_engine.activities.formula import resolve_damage_block, resolve_roll_data
 from dnd5e_engine.activities.mastery import apply_mastery_on_hit, apply_mastery_on_miss
 from dnd5e_engine.events import AdvantageMode, AdvantageSource, AttackRolled
-from dnd5e_engine.rules.conditions import conditions_grant_advantage_on_attack
+from dnd5e_engine.rules.conditions import (
+    conditions_auto_crit_within_5ft,
+    conditions_grant_advantage_on_attack,
+)
 from dnd5e_engine.spatial import cover_bonus
 
 if TYPE_CHECKING:
@@ -107,7 +111,11 @@ def resolve_attack(
     a HIT only — a miss applies no rider.
     """
     governing_ability = _governing_ability(activity, ctx, weapon)
-    attack_bonus = _attack_bonus(activity, ctx, weapon, governing_ability)
+    # SRD 5.2 Exhaustion — an attack roll is a D20 Test, so the flat
+    # ``-2 x level`` penalty rides on the attack bonus (no extra draw).
+    attack_bonus = _attack_bonus(
+        activity, ctx, weapon, governing_ability
+    ) + ctx.d20_test_penalty.get(ctx.caster.entity_id, 0)
     cast_level = ctx.slot_level or ctx.base_spell_level or 0
     # SRD §Bless / §Bane apply a signed d4 to the affected creature's OWN attack
     # rolls (keyed on the attacker). Rolled once per attack so each swing draws a
@@ -129,11 +137,17 @@ def resolve_attack(
         # disadvantage, and a Restrained attacker takes disadvantage while a
         # Restrained TARGET grants advantage. Every row in the helper reads
         # exactly one of its two arguments, so the split is exact.
+        distance_ft = ctx.target_distance_ft.get(target.entity_id)
         attacker_cond_adv, attacker_cond_dis = conditions_grant_advantage_on_attack(
-            ctx.attacker_conditions, []
+            ctx.attacker_conditions,
+            [],
+            grappler_id=ctx.attacker_grappler_id,
+            target_id=target.entity_id,
         )
         target_cond_adv, target_cond_dis = conditions_grant_advantage_on_attack(
-            [], ctx.target_conditions.get(target.entity_id, [])
+            [],
+            ctx.target_conditions.get(target.entity_id, []),
+            distance_ft=distance_ft,
         )
         adv_sources: list[AdvantageSource] = []
         dis_sources: list[AdvantageSource] = []
@@ -167,7 +181,14 @@ def resolve_attack(
             + cover_bonus(ctx.target_cover.get(target.entity_id, "none"))
             + ctx.passive_ac_bonus.get(target.entity_id, 0)
         )
-        is_crit, is_hit = _resolve_hit_outcome(natural, total, effective_ac, activity)
+        auto_crit = (
+            distance_ft is not None
+            and distance_ft <= 5
+            and conditions_auto_crit_within_5ft(ctx.target_conditions.get(target.entity_id, []))
+        )
+        is_crit, is_hit = _resolve_hit_outcome(
+            natural, total, effective_ac, activity, auto_crit_on_hit=auto_crit
+        )
 
         ctx.event_emitter(
             AttackRolled(
@@ -426,21 +447,30 @@ def _forced_d20(ctx: ActivityResolutionContext, target_index: int) -> int | None
 
 
 def _resolve_hit_outcome(
-    natural: int, total: int, target_ac: int, activity: AttackActivity
+    natural: int,
+    total: int,
+    target_ac: int,
+    activity: AttackActivity,
+    *,
+    auto_crit_on_hit: bool = False,
 ) -> tuple[bool, bool]:
     """Derive ``(is_crit, is_hit)`` per SRD §Rolling 1 or 20 / §Making an Attack.
 
     Precedence: a natural 1 is ALWAYS an auto-miss (and never a crit), even when a
     degenerate ``critical.threshold`` of 1 would otherwise classify it as a crit —
     the SRD nat-1 rule wins. Then natural ≥ crit threshold
-    (``attack.critical.threshold or 20``) → crit + hit; else ``total >= AC``.
+    (``attack.critical.threshold or 20``) → crit + hit; else ``total >= AC``, and
+    a hit is upgraded to a crit when ``auto_crit_on_hit`` (SRD 5.2 Paralyzed /
+    Unconscious: "Any attack roll that hits you is a Critical Hit if the attacker
+    is within 5 feet of you").
     """
     if natural == 1:
         return False, False
     threshold = activity.attack.critical.threshold or 20
     if natural >= threshold:
         return True, True
-    return False, total >= target_ac
+    is_hit = total >= target_ac
+    return (is_hit and auto_crit_on_hit), is_hit
 
 
 # ── on-hit damage ────────────────────────────────────────────────────────────

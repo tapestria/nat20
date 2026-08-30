@@ -61,26 +61,6 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
 
 ## Core combat rules not modelled (2026-08-22)
 
-- **Exhaustion applies the 2014 rule, not SRD 5.2's.** What the engine
-  *enforces* is "disadvantage on ability checks for any exhaustion level"
-  (`rules/conditions.py::project_passive_check_modifiers` /
-  `conditions_grant_disadvantage_on_ability_checks`) — the SRD 5.1 Level-1
-  effect. SRD 5.2 replaced the six-tier ladder with two scaling penalties:
-  every D20 Test reduced by `2 × level`, and Speed reduced by `5 ft × level`.
-  Neither is applied, and `ActiveCondition.exhaustion_level` is ignored by the
-  projection. Closing this needs a **numeric** per-actor check/save/attack
-  modifier path; the check and save sides now exist (F1a-F1d —
-  `activities/actor_stats.py` feeding `check_modifiers` / `save_modifiers`), so
-  the remaining work is subtracting `2 × level` through them. The descriptive
-  strings in
-  `CONDITION_EFFECTS` were corrected to 5.2 wording (2026-08-22) and are labelled
-  as not-enforced. Closing this must also drop the `disadvantage` projection for
-  exhaustion in `project_passive_check_modifiers` (pinned by
-  `test_resolve_check_activity.py`).
-  (`packages/dnd5e-engine/src/dnd5e_engine/rules/conditions.py`)
-- **Speed reduction from conditions is not applied** — `grappled` and
-  `restrained` ("Speed becomes 0") and exhaustion's per-level reduction are
-  descriptive only; `Combatant.movement_remaining` is not touched.
 - **Surprise is not modelled.** SRD 5.2 gives a surprised creature disadvantage
   on its initiative roll; `start_combat` has no surprise input.
 - **Grapple and Shove are not modelled.** The `grappled` condition exists and
@@ -310,11 +290,13 @@ zone + apply logic:
   ~5107) emit `AttackRolled(advantage="normal")` without consulting
   `roll_d20_test` sources; route them through `resolve_attack`'s primitive in
   C14. (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
-- **Distance/identity-dependent attack adv/dis rows missing** — Prone (within
-  5 ft → advantage, else disadvantage) and Grappled attacker (disadvantage vs
-  any target other than the grappler) are not in
-  `conditions_grant_advantage_on_attack`; C12 lands them with the reach/distance
-  sidecar. (`packages/dnd5e-engine/src/dnd5e_engine/rules/conditions.py`)
+- **Standalone out-of-combat `resolve_check` has no exhaustion seam**
+  (2026-08-27) — the in-combat activity path folds `ctx.d20_test_penalty`, but
+  the host-facing `CheckSpec` carries no conditions/exhaustion field, so a
+  library consumer rolling a check outside combat cannot express the SRD 5.2
+  `-2 x level` D20 Test penalty. Additive fix: an `exhaustion_level: int = 0`
+  (or projected `modifier`) on `CheckSpec`.
+  (`packages/dnd5e-engine/src/dnd5e_engine/check.py:36`)
 - **Attack proficiency is assumed.** `build_context.py:278` hard-codes
   `is_proficient_attack=True`; a wizard swinging a greatsword adds PB.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/build_context.py`)
@@ -348,10 +330,6 @@ zone + apply logic:
   (`orchestrator.py:604`). The generic-action tail calls `_advance_turn`, so a
   turn cannot hold two actions today.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
-- **Incapacitated does not block actions.** `_validate_intent_preconditions`
-  (`orchestrator.py:3568`) checks only ended / in-initiative / your-turn; a
-  paralyzed or stunned PC may still attack. Paralyzed auto-crit within 5 ft is
-  applied only on death-save damage (`death_saves.py:81`), not in combat.
 - **No ongoing-damage / regeneration / recharge producers.** (2026-08-26) F3a
   gave them a place to land — `turn_lifecycle.py` runs `round_start` /
   `turn_start` / `turn_end` hooks off the single `_end_turn_and_advance` path —
@@ -361,11 +339,12 @@ zone + apply logic:
   producer.
   (`packages/dnd5e-engine/src/dnd5e_engine/turn_lifecycle.py`,
   `packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_register_default_turn_hooks`)
-- **Instant death from massive damage is not applied.** `activities/apply.py:79`
-  computes `is_overkill` purely to decorate the event. A PC dropping to 0 also
-  never receives an `unconscious` `ConditionApplied` (the heal path only
-  removes one that was never applied), and `death_saves.apply_damage_while_unconscious`
-  has no caller. (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
+- **Opportunity attacks ignore the exhaustion penalty and the condition attack
+  rows** (2026-08-27) — the two OA paths still roll
+  `live.rng.randint(1, 20) + attack_bonus` outside `resolve_attack`, so
+  `d20_test_penalty`, Prone and Grappled do not reach them. C14 routes them
+  through the shared primitive and inherits all three.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
 - **Initiative is host-supplied, not rolled.** `start_combat` orders the
   `initiative` values from the specs; no DEX-mod roll, no surprise, no delay.
   (`packages/dnd5e-engine/src/dnd5e_engine/specs.py`)
@@ -488,20 +467,10 @@ footprints. Exploration-tier; revisit only if a host asks.
 
 ## Catalog v2 scenarios without a prior entry (2026-08-26)
 
-Nine e2e catalog-v2 scenarios (`specs/catalog-v2/c12.md`, `c13.md`, `c17.md`)
+Seven e2e catalog-v2 scenarios (`specs/catalog-v2/c12.md`, `c13.md`, `c17.md`)
 name a gap with no standalone bullet filed anywhere above — recorded here so
 the close-gap protocol (delete-on-close) has an entry to delete.
 
-- **C12-S01 — Incapacitated does not block an attack intent.**
-  `_validate_intent_preconditions` reads no conditions today, so an
-  Incapacitated actor's `attack` intent silently resolves instead of being
-  rejected. (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
-- **C12-S06 — A PC dropping to 0 HP receives no `unconscious` condition.**
-  `apply_damage` computes `is_overkill` but never checks `hp_current`
-  reaching 0 to emit `ConditionApplied(condition="unconscious")` or start
-  death saves; `death_saves.py::apply_damage_while_unconscious` has no
-  caller from the normal combat-damage path.
-  (`packages/dnd5e-engine/src/dnd5e_engine/activities/apply.py`)
 - **C13-S01 — Casting a second concentration spell doesn't end the first.**
   `existing_concentration` is built in the orchestrator but nothing
   consumes it before `_record_effect_lifecycle_links` appends to
@@ -571,12 +540,104 @@ a cluster; they are consolidated here so they are not re-discovered.
   single `current_turn_start_index` computed once in `_begin_turn` and have
   both hooks read it.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_begin_turn`)
-- **The two orchestrator-level save paths bypass effect/condition save
-  projections.** F1c gave the concentration check and the end-of-turn repeat
-  save their real ability + proficiency modifier, but neither folds the
-  effect-derived `passive_save_bonus` (Bless/Bane) nor the condition-derived
-  save advantage / auto-fail projections the IR-level save handler honours.
-  Owned by C12.
+- **The two orchestrator-level save paths skip effect-derived save bonuses.**
+  The concentration check and the end-of-turn repeat save now honour the
+  condition projections (auto-fail, Restrained DEX disadvantage, exhaustion)
+  but still not the effect-derived `passive_save_bonus` (Bless/Bane). The
+  repeat-save path also honours `passive_save_dis` but not `passive_save_adv`.
+  Owned by C13.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
+
+## Damage at 0 Hit Points (2026-08-29)
+
+Surfaced while landing C12-S06 (Characters fall Unconscious at 0 HP).
+
+The first two entries are **ACCEPTED KNOWINGLY** by the C12 controller ruling
+(2026-08-29): both are halves of the same missing seam — per-damage-instance
+attribution on `DamageApplied` (a shared `source_id` / instance id, plus the
+crit flag). **C15 (attack rules) owns that seam and therefore owns both fixes**;
+neither is repairable inside C12 without inventing the event field C15 will add.
+
+- **A multi-type hit inflicts one death-save failure PER DAMAGE TYPE.** SRD 5.2
+  "Damage at 0 Hit Points" charges one failure per instance of damage, but
+  `activities/apply.py` emits one `DamageApplied` per damage type and the 0-HP
+  fold counts a failure per event, so a fire+slashing hit on a downed Character
+  costs two failures. Needs per-event attribution (a shared `source_id` /
+  instance id on `DamageApplied`) so the fold can collapse the events of one
+  attack — the same seam the Critical-Hit entry below needs. Owner: **C15**.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py:1877`
+  `_apply_zero_hp_to_character`,
+  `packages/dnd5e-engine/src/dnd5e_engine/activities/apply.py:75`)
+- **Two death-save failures on a Critical Hit at 0 HP are not applied.** SRD 5.2
+  "Damage at 0 Hit Points": a Critical Hit inflicts two failures. C12 landed the
+  auto-crit itself (Paralyzed/Unconscious target within 5 ft), so the engine now
+  produces exactly the situation the rule covers — but `DamageApplied` carries
+  no crit flag, so `_apply_zero_hp_to_character` calls
+  `state.apply_damage_while_unconscious(False)` with the argument hard-coded and
+  always records one failure. Same `DamageApplied` attribution seam as the
+  multi-type entry above; fixing either alone would be guesswork. Owner: **C15**.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py:1920`
+  `_apply_zero_hp_to_character`)
+- **A death-save failure from damage at 0 HP surfaces no event.** The failure is
+  written straight onto `Combatant.death_saves`; hosts narrating from the event
+  stream see the `DamageApplied` but never learn a failure landed (only
+  `DeathSaveRolled`, from the turn-start roll, carries counters). The fix needs
+  a new `CombatEvent` member (or a counters payload on an existing one), which
+  the C12 constraints forbid mid-cluster.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py:1877`)
+
+## Conditions — SRD 5.2 rows not enforced (2026-08-27)
+
+C12 gave all 15 conditions teeth on the live combat path (see
+`docs/capabilities.md`). These rows are what is left; each needs a seam another
+cluster owns.
+
+- **Frightened's line-of-sight gate and "can't approach the source of fear".**
+  The disadvantage applies unconditionally (no `can_see` check) and movement
+  toward the fear source is not blocked. Needs C16b's `can_see`.
+  (`packages/dnd5e-engine/src/dnd5e_engine/rules/conditions.py`)
+- **Blinded / Deafened "automatically fail ability checks that require
+  sight/hearing".** There is no per-check sense vocabulary on `CheckSpec` /
+  `CheckActivity`, so a check cannot declare it requires sight or hearing.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/check.py`)
+- **Incapacitated breaks Concentration and imposes Initiative disadvantage.**
+  The concentration break lands with C13's one-concentration-at-a-time rules;
+  initiative is host-supplied until C14 rolls it.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
+- **Invisible's "unless a creature can somehow see you" carve-out.** Both
+  attack directions apply unconditionally; the per-observer sense check is
+  C16b. (`packages/dnd5e-engine/src/dnd5e_engine/rules/conditions.py`)
+- **Charmed grants the charmer advantage on social ability checks.** The
+  engine has no social-interaction check surface to attach it to (no
+  `influence` intent, no interaction DC), so the row is unrepresentable rather
+  than merely unimplemented.
+  (`packages/dnd5e-engine/src/dnd5e_engine/rules/conditions.py`)
+- **Petrified's "immunity to the Poisoned condition".** The shipped projection
+  gives poison *damage* immunity; SRD 5.2 grants immunity to poison damage AND
+  to the Poisoned condition, and condition immunity is keyed off
+  `Combatant.condition_immunities`, which no projection writes.
+  (`packages/dnd5e-engine/src/dnd5e_engine/rules/conditions.py`)
+
+## C12 deferred minors (2026-08-27)
+
+Small, real and deliberately not worth their own task; recorded so they are not
+re-discovered.
+
+- **`_condition_source_entity`'s effect-origin fallback is untested.** The
+  `ActiveCondition.source_entity_id` branch is covered; the branch that walks
+  `live.active_effects` for a `cast:<slug>:<id>` origin has no test.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py:600`)
+- **`activities/check.py::_check_modifier`'s skill-branch penalty fold is
+  untested.** The exhaustion penalty is pinned on the ability branch only; the
+  `return int(skills[key]) + penalty` line has no direct test.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/check.py`)
+- **`_monster_dash_movement_budget`'s parameter is still named `base_speed`**
+  although its caller now passes the condition/exhaustion-PROJECTED speed. A
+  rename to `effective_speed` is cosmetic but removes a real reading trap.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py:736`)
+- **The `enumerate(live.initiative)` → `model_copy` → slot-replace loop is
+  open-coded 32 times** (four of them added by C12). A single
+  `_update_combatant(live, entity_id, **update)` helper would collapse them.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
 
 ## Blocked

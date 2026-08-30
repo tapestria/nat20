@@ -53,7 +53,7 @@ import itertools
 import logging
 import random
 import re
-from collections.abc import AsyncIterator, Mapping, Sequence
+from collections.abc import AsyncIterator, Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -84,9 +84,11 @@ from dnd5e_engine.activities.passive_stats import interpret_passive_stats
 from dnd5e_engine.activities.resolver import resolve_activity
 from dnd5e_engine.activities.scale import build_scale_values
 from dnd5e_engine.build_party import granted_feature_slugs
-from dnd5e_engine.death_saves import roll_death_save
+from dnd5e_engine.death_saves import DeathSaveState, roll_death_save
 from dnd5e_engine.events import (
     ActorMoved,
+    AdvantageMode,
+    AdvantageSource,
     AttackFailed,
     AttackRolled,
     CastFailed,
@@ -112,6 +114,7 @@ from dnd5e_engine.events import (
     TurnEnded,
     TurnPhase,
     TurnStarted,
+    Unconscious,
 )
 from dnd5e_engine.lib_loader import get_lib_loader
 from dnd5e_engine.outcome import (
@@ -123,10 +126,14 @@ from dnd5e_engine.rest import FEATURE_USE_COUNTER_PREFIX, ITEM_USE_COUNTER_PREFI
 from dnd5e_engine.rules.conditions import (
     Condition,
     active_condition_names,
+    conditions_block_actions,
+    d20_test_penalty,
+    exhaustion_level_of,
     is_condition_active,
     project_passive_check_modifiers,
     project_passive_damage_modifiers,
     project_passive_save_modifiers,
+    project_speed,
 )
 from dnd5e_engine.spatial import GridTopology, SpatialTopology
 from dnd5e_engine.specs import (
@@ -249,6 +256,7 @@ class IntentRejectedError(CombatSeamError):
         "not_actor_turn",
         "combat_ended",
         "no_action_economy",
+        "actor_incapacitated",
     ]
 
     def __init__(self, reason: RejectionReason, detail: str) -> None:
@@ -326,6 +334,16 @@ class _ZoneGraph:
                     best[neighbour] = new_dist
                     frontier.append((new_dist, neighbour))
         return False
+
+    def distance_ft(self, a: str, b: str) -> int | None:
+        """Shortest-path distance in feet over the zone graph; ``None`` when
+        unreachable or unknown. (Zone graph is deprecated in 0.6 — parity only.)"""
+        if a == b and a in self._zones:
+            return 0
+        path = self.shortest_path(a, b)
+        if not path:
+            return None
+        return _path_total_distance(self, path)
 
     def shortest_path(self, a: str, b: str) -> list[str]:
         """Return the sequence of zones from ``a`` to ``b`` (inclusive), or ``[]``.
@@ -548,6 +566,59 @@ def _target_cover_map(
             continue
         out[target.entity_id] = live.topology.cover_between(caster_zone, target_zone)
     return out
+
+
+def _target_distance_map(
+    live: _LiveCombat, caster_id: str, targets: Sequence[Combatant]
+) -> dict[str, int]:
+    """Per-target attacker→target distance in feet (``SpatialTopology.distance_ft``),
+    threaded into ``ActivityResolutionContext.target_distance_ft`` for the
+    distance-aware condition rows (SRD 5.2 Prone). A participant without a
+    tracked position, or an unreachable pair, is simply absent (the rows stay
+    inert) — mirrors ``_target_cover_map``.
+    """
+    caster_zone = live.actor_zone.get(caster_id)
+    if caster_zone is None:
+        return {}
+    out: dict[str, int] = {}
+    for target in targets:
+        target_zone = live.actor_zone.get(target.entity_id)
+        if target_zone is None:
+            continue
+        distance = live.topology.distance_ft(caster_zone, target_zone)
+        if distance is not None:
+            out[target.entity_id] = distance
+    return out
+
+
+#: ``ActiveEffect.origin`` prefixes whose THIRD ``:``-segment is the entity that
+#: created the effect (``cast:<slug>:<caster_id>`` is the shipped convention;
+#: ``grapple:<slug>:<grappler_id>`` is reserved for C14's grapple contest).
+_ENTITY_ORIGIN_PREFIXES: frozenset[str] = frozenset({"cast", "grapple"})
+
+
+def _condition_source_entity(live: _LiveCombat, combatant: Combatant, condition: str) -> str | None:
+    """Who imposed ``condition`` on ``combatant`` (the grappler, the charmer)?
+
+    Resolution order: an ``ActiveCondition.source_entity_id`` that is a real
+    entity id (not an ``implied:*`` marker); else the imposing ``ActiveEffect``
+    (via ``source_effect_id``) whose ``origin`` encodes its creator. ``None``
+    when unknown — every consumer treats unknown as "no restriction".
+    """
+    for ac in combatant.conditions:
+        if ac.condition != condition:
+            continue
+        if not ac.source_entity_id.startswith("implied:"):
+            return ac.source_entity_id
+        if ac.source_effect_id is None:
+            continue
+        for eff in live.active_effects.get(combatant.entity_id, []):
+            if eff.id != ac.source_effect_id:
+                continue
+            parts = (eff.origin or "").split(":", 2)
+            if len(parts) == 3 and parts[0] in _ENTITY_ORIGIN_PREFIXES and parts[2]:
+                return parts[2]
+    return None
 
 
 def _sneak_ally_adjacent_map(
@@ -846,6 +917,66 @@ def _pc_attack_out_of_range(live: _LiveCombat, actor_id: str, intent: PlayerInte
     return not _in_range_with_los(live.topology, attacker_zone, target_zone, weapon_reach)
 
 
+def _attack_out_of_range_failure(
+    live: _LiveCombat, actor_id: str, intent: PlayerIntent
+) -> CombatEvent | None:
+    """``AttackFailed(reason="out_of_range")`` when ``intent`` is a
+    weapon-reach-gated attack; ``None`` otherwise. One of the
+    ``pre_resolution_gates`` failure-builders consumed by
+    ``submit_player_intent``."""
+    if intent.intent_type != "attack" or not _pc_attack_out_of_range(live, actor_id, intent):
+        return None
+    return AttackFailed(actor_id=actor_id, target_id=intent.target_id, reason="out_of_range")
+
+
+_HARMFUL_ACTIVITY_KINDS: frozenset[str] = frozenset({"attack", "damage", "save"})
+
+
+def _spell_is_harmful(spell: Spell) -> bool:
+    """SRD 5.2 Charmed's "damaging abilities or magical effects" — a spell with
+    any attack / damage / save activity. Heal- and utility-only spells are
+    not restricted."""
+    return any(a.kind in _HARMFUL_ACTIVITY_KINDS for a in spell.activities)
+
+
+def _charmed_target_violation(
+    live: _LiveCombat, current: Combatant, intent: PlayerIntent
+) -> str | None:
+    """The charmer's id when ``intent`` would attack / harmfully target the
+    creature that charmed ``current``; ``None`` otherwise (not charmed, unknown
+    charmer, other target, beneficial spell, non-targeting intent)."""
+    if intent.target_id is None or not is_condition_active(
+        Condition.CHARMED, _condition_names(current)
+    ):
+        return None
+    charmer = _condition_source_entity(live, current, "charmed")
+    if charmer is None or charmer != intent.target_id:
+        return None
+    if intent.intent_type == "attack":
+        return charmer
+    if intent.intent_type == "cast_spell" and intent.spell_id:
+        spell = get_lib_loader().get_spell(intent.spell_id)
+        if spell is not None and _spell_is_harmful(spell):
+            return charmer
+    return None
+
+
+def _charmed_target_failure(
+    live: _LiveCombat, actor_id: str, current: Combatant, intent: PlayerIntent
+) -> CombatEvent | None:
+    """The typed Charmed-target rejection (``AttackFailed`` / ``CastFailed``,
+    reason ``target_is_charmer``) when ``intent`` would attack or harmfully
+    target the charmer; ``None`` when the gate doesn't apply. One of the
+    ``pre_resolution_gates`` failure-builders consumed by
+    ``submit_player_intent``."""
+    charmer = _charmed_target_violation(live, current, intent)
+    if charmer is None:
+        return None
+    if intent.intent_type == "attack":
+        return AttackFailed(actor_id=actor_id, target_id=charmer, reason="target_is_charmer")
+    return CastFailed(actor_id=actor_id, spell_id=intent.spell_id or "", reason="target_is_charmer")
+
+
 def _synthesize_attack_from_weapon(weapon: Weapon) -> AttackActivity:
     """Build a base-weapon ``AttackActivity`` for a weapon with no
     activities of its own.
@@ -1048,12 +1179,119 @@ def _current_actor(live: _LiveCombat) -> Combatant:
     return live.initiative[live.current_turn_index]
 
 
+def _condition_names(c: Combatant) -> list[str]:
+    """The combatant's active condition slugs (``is_condition_active`` resolves
+    ``CONDITION_IMPLIES`` from the names, so implied conditions need not be
+    materialised on ``Combatant.conditions``)."""
+    return active_condition_names(c.conditions)
+
+
+def _effective_speed(c: Combatant) -> int:
+    """SRD 5.2 walking Speed under the combatant's conditions
+    (``rules.conditions.project_speed``): 0 under a Speed-0 condition, else
+    ``base_speed - 5 x exhaustion level``."""
+    return project_speed(c.base_speed, _condition_names(c), exhaustion_level_of(c.conditions))
+
+
+def _clamp_movement_budget(live: _LiveCombat, entity_id: str) -> None:
+    """Re-project one combatant's ``movement_remaining`` after its conditions
+    changed mid-turn: never above the effective Speed (a creature grappled
+    mid-move loses the rest of its budget; the budget is never RAISED here —
+    only the turn-start reset and Dash add movement)."""
+    for idx, c in enumerate(live.initiative):
+        if c.entity_id != entity_id:
+            continue
+        cap = _effective_speed(c)
+        if c.movement_remaining > cap:
+            live.initiative[idx] = c.model_copy(update={"movement_remaining": cap})
+        break
+
+
+#: SRD 5.2 Incapacitated — intents that spend NO action, Bonus Action or
+#: Reaction and therefore stay legal: ending the turn, and plain movement
+#: (Speed is governed separately — see ``_handle_move``'s speed gate).
+_INCAPACITATED_ALLOWED_INTENTS: frozenset[str] = frozenset({"pass", "move"})
+
+
 def _find_combatant(live: _LiveCombat, entity_id: str) -> Combatant | None:
     """Locate a combatant in the live initiative by entity id."""
     for c in live.initiative:
         if c.entity_id == entity_id:
             return c
     return None
+
+
+def _fold_condition_onto_combatant(live: _LiveCombat, entity_id: str, condition: str) -> None:
+    """Materialise a condition on **both** condition stores: the coarse
+    ``live.active_conditions`` name set (what ``views.py`` shows the host and
+    what the bridge rebuilds host storage from) and ``Combatant.conditions``,
+    the typed list every projection reads (speed, incapacitated gate, save
+    auto-fail, attack rows).
+
+    Writing both here — rather than leaving ``active_conditions`` to each
+    caller — is what makes this helper safe to call from OUTSIDE the
+    ``ConditionApplied`` fold (``start_combat``'s 0-HP hydration is one such
+    caller). A caller that set only one store would leave the two views
+    disagreeing, which is exactly the class of bug the condition-immunity gates
+    exist to prevent. The ``active_conditions`` write is deliberately BEFORE the
+    idempotence guard, so it still lands for a combatant that is unknown or
+    already carries the typed entry — preserving the pre-existing
+    unconditional-write semantics of the ``ConditionApplied`` branch of
+    ``_emit``.
+
+    Idempotent per condition name; implied conditions are NOT materialised —
+    ``is_condition_active`` resolves ``CONDITION_IMPLIES`` from the names.
+    """
+    live.active_conditions.setdefault(entity_id, set()).add(condition)
+    c = _find_combatant(live, entity_id)
+    if c is None or any(ac.condition == condition for ac in c.conditions):
+        return
+    new = [
+        *c.conditions,
+        ActiveCondition(
+            condition=condition,
+            source_entity_id="implied:event",
+            scope="combat",
+            applied_round=live.round_number,
+        ),
+    ]
+    for idx, slot in enumerate(live.initiative):
+        if slot.entity_id == entity_id:
+            live.initiative[idx] = slot.model_copy(update={"conditions": new})
+            break
+    _clamp_movement_budget(live, entity_id)
+
+
+def _strip_condition_from_combatant(live: _LiveCombat, entity_id: str, condition: str) -> None:
+    """Drop the ``Combatant.conditions`` entries named ``condition`` after a
+    ``ConditionRemoved``.
+
+    Multi-source stacking guard (same rule ``_emit_apply_effect_expired``
+    honours): an entry bridged from an effect that is STILL active is kept —
+    ``_drop_concentration`` emits one ``ConditionRemoved`` per condition its
+    dropped effect installed, and that must not clear a condition another live
+    effect keeps imposing. When such an entry survives, the coarse
+    ``live.active_conditions`` name (discarded by the ``_emit`` fold before we
+    are called) is restored so both views agree.
+    """
+    c = _find_combatant(live, entity_id)
+    if c is None or not any(ac.condition == condition for ac in c.conditions):
+        return
+    live_effect_ids = {eff.id for eff in live.active_effects.get(entity_id, [])}
+    new = [
+        ac
+        for ac in c.conditions
+        if ac.condition != condition
+        or (ac.source_effect_id is not None and ac.source_effect_id in live_effect_ids)
+    ]
+    if len(new) == len(c.conditions):
+        return
+    for idx, slot in enumerate(live.initiative):
+        if slot.entity_id == entity_id:
+            live.initiative[idx] = slot.model_copy(update={"conditions": new})
+            break
+    if any(ac.condition == condition for ac in new):
+        live.active_conditions.setdefault(entity_id, set()).add(condition)
 
 
 def _drop_concentration(live: _LiveCombat, caster_id: str) -> None:
@@ -1158,7 +1396,8 @@ def _handle_dash(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
     else:
         budget_consumed = "action"
 
-    new_movement = current.movement_remaining + current.base_speed
+    # SRD 5.2 Dash adds the creature's (current) Speed; a Speed of 0 "can't increase".
+    new_movement = current.movement_remaining + _effective_speed(current)
     budget_field = (
         "bonus_action_available" if budget_consumed == "bonus_action" else "action_available"
     )
@@ -1427,11 +1666,13 @@ def _emit(live: _LiveCombat, event: CombatEvent) -> None:
         return
 
     if isinstance(event, ConditionApplied):
-        live.active_conditions.setdefault(event.target_id, set()).add(event.condition)
+        # Both stores are written by the helper — see its docstring.
+        _fold_condition_onto_combatant(live, event.target_id, event.condition)
         return
 
     if isinstance(event, ConditionRemoved):
         live.active_conditions.get(event.target_id, set()).discard(event.condition)
+        _strip_condition_from_combatant(live, event.target_id, event.condition)
         return
 
     if isinstance(event, EffectApplied):
@@ -1466,11 +1707,11 @@ def _emit_apply_turn_started(live: _LiveCombat, event: TurnStarted) -> None:
                     "action_available": True,
                     "bonus_action_available": True,
                     "reaction_available": True,
-                    # SRD §Movement — movement budget refreshes to the
-                    # actor's full walking speed at the start of their
-                    # own turn. Per-MOVE-intent decrement is the only
-                    # writer; this is the only reset.
-                    "movement_remaining": c.base_speed,
+                    # SRD §Movement — the budget refreshes to the actor's
+                    # EFFECTIVE Speed (Speed-0 conditions, Exhaustion) at the
+                    # start of their turn. Per-MOVE-intent decrement is the
+                    # only other writer; this is the only reset.
+                    "movement_remaining": _effective_speed(c),
                     # SRD §Disengage — "for the rest of the turn"; this is
                     # the start of a NEW turn, so the suppression lapses.
                     "disengaging_this_turn": False,
@@ -1576,7 +1817,12 @@ def _emit_apply_damage(live: _LiveCombat, event: DamageApplied) -> None:
         # because ``_emit_apply_damage`` is contractually non-throwing — a
         # missing combatant degrades to an unmodified save rather than
         # aborting damage application mid-flight.
-        modifier = save_modifier(concentrator, "con").total if concentrator else 0
+        # SRD 5.2 Exhaustion — the concentration CON save is a D20 Test.
+        modifier = (
+            save_modifier(concentrator, "con").total + d20_test_penalty(concentrator.conditions)
+            if concentrator
+            else 0
+        )
         roll = roll_d20_test(live.rng, modifier, AdvantageSources())
         roll_total = roll.total
         succeeded = roll_total >= dc
@@ -1613,18 +1859,75 @@ def _emit_apply_damage(live: _LiveCombat, event: DamageApplied) -> None:
         )
         if not succeeded:
             _drop_concentration(live, event.target_id)
-    if (
-        new_hp <= 0
-        and event.target_id not in live.party_ids
-        and event.target_id not in live.dead_ids
-    ):
-        # Synthesize a Death(damage) for the non-PC. Recursion guard:
-        # _emit re-enters here for the Death, but the dead_ids set blocks
-        # double-recording, and Death's only running-state effect is to
-        # record the death (no further HP arithmetic).
-        killer = live.current_actor_id
-        death_event = Death(target_id=event.target_id, reason="damage")
-        _record_death(live, death_event, killer_id=killer)
+    if new_hp <= 0 and event.target_id not in live.dead_ids:
+        if event.target_id in live.party_ids:
+            _apply_zero_hp_to_character(live, event, hp_before=tracked, damage_after_temp=remaining)
+        else:
+            # SRD 5.2 "Monster Death" — a monster dies the instant it drops to
+            # 0 HP. Recursion guard: _emit re-enters here for the Death, but
+            # the dead_ids set blocks double-recording, and Death's only
+            # running-state effect is to record the death.
+            killer = live.current_actor_id
+            death_event = Death(target_id=event.target_id, reason="damage")
+            _record_death(live, death_event, killer_id=killer)
+            live.event_log.append(death_event)
+            live.event_queue.put_nowait(death_event)
+
+
+def _apply_zero_hp_to_character(
+    live: _LiveCombat, event: DamageApplied, *, hp_before: int, damage_after_temp: int
+) -> None:
+    """SRD 5.2 "Dropping to 0 Hit Points" for a Character.
+
+    * Massive Damage: "When damage reduces a character to 0 Hit Points and
+      damage remains, the character dies if the remainder equals or exceeds
+      their Hit Point maximum." -> ``Death(reason="instant_kill")``.
+    * Falling Unconscious: otherwise the character gains the Unconscious
+      condition (``ConditionApplied``; the legacy ``Unconscious`` marker is
+      emitted first for hosts that narrate it) and death saves begin on their
+      next turn (``_maybe_roll_death_save``).
+    * Damage at 0 Hit Points: "If you take any damage while you have 0 Hit
+      Points, you suffer a Death Saving Throw failure. ... If the damage
+      equals or exceeds your Hit Point maximum, you die." (The Critical-Hit
+      two-failure clause needs a crit flag on ``DamageApplied`` — C15 seam.)
+    """
+    target = _find_combatant(live, event.target_id)
+    if target is None:
+        return
+    hp_max = _hp_max_for(live, event.target_id)
+    remainder = damage_after_temp - hp_before if hp_before > 0 else damage_after_temp
+    if remainder >= hp_max:
+        death_event = Death(target_id=event.target_id, reason="instant_kill")
+        _record_death(live, death_event, killer_id=live.current_actor_id)
+        live.event_log.append(death_event)
+        live.event_queue.put_nowait(death_event)
+        for idx, c in enumerate(live.initiative):
+            if c.entity_id == event.target_id:
+                live.initiative[idx] = c.model_copy(update={"is_alive": False})
+                break
+        return
+    if hp_before > 0:
+        if "unconscious" not in _condition_names(target):
+            _emit(live, Unconscious(target_id=event.target_id))
+            _emit(live, ConditionApplied(target_id=event.target_id, condition="unconscious"))
+        return
+    # SRD 5.2 charges a failure for damage TAKEN: an immune damage type (or a
+    # hit fully absorbed by temp HP) reaches this fold with nothing left, and
+    # ``activities/apply.py`` emits ``DamageApplied`` unconditionally.
+    if damage_after_temp <= 0:
+        return
+    state = DeathSaveState.from_dict(target.death_saves) if target.death_saves else DeathSaveState()
+    outcome = state.apply_damage_while_unconscious(False)
+    update: dict[str, Any] = {"death_saves": state.to_dict()}
+    if outcome == "dead":
+        update["is_alive"] = False
+    for idx, c in enumerate(live.initiative):
+        if c.entity_id == event.target_id:
+            live.initiative[idx] = c.model_copy(update=update)
+            break
+    if outcome == "dead":
+        death_event = Death(target_id=event.target_id, reason="death_saves")
+        _record_death(live, death_event, killer_id=live.current_actor_id)
         live.event_log.append(death_event)
         live.event_queue.put_nowait(death_event)
 
@@ -1648,17 +1951,31 @@ def _emit_apply_healing(live: _LiveCombat, event: HealingApplied) -> None:
     # the post-heal state even when the heal didn't cross the 0->1
     # revive boundary.
     revived = tracked == 0 and new_hp > 0
+    revived_ids: list[str] = []
     for idx, c in enumerate(live.initiative):
         if c.entity_id == event.target_id:
             heal_update: dict[str, Any] = {"hp_current": new_hp}
             if revived:
                 heal_update["is_alive"] = True
                 heal_update["death_saves"] = {}
-                heal_update["conditions"] = [
-                    cond for cond in c.conditions if cond.condition != "unconscious"
-                ]
+                # SRD 5.2 Unconscious: "When this condition ends, you remain Prone."
+                kept = [cond for cond in c.conditions if cond.condition != "unconscious"]
+                if not any(cond.condition == "prone" for cond in kept):
+                    kept.append(
+                        ActiveCondition(
+                            condition="prone",
+                            source_entity_id="implied:revive",
+                            scope="combat",
+                            applied_round=live.round_number,
+                        )
+                    )
+                heal_update["conditions"] = kept
+                revived_ids.append(c.entity_id)
             live.initiative[idx] = c.model_copy(update=heal_update)
             break
+    for entity_id in revived_ids:
+        _emit(live, ConditionRemoved(target_id=entity_id, condition="unconscious"))
+        _emit(live, ConditionApplied(target_id=entity_id, condition="prone"))
 
 
 def _emit_apply_temp_hp(live: _LiveCombat, event: TempHpApplied) -> None:
@@ -1694,6 +2011,25 @@ def _emit_apply_effect_applied(live: _LiveCombat, event: EffectApplied) -> None:
         for status in applied.statuses:
             if status in existing_slugs:
                 continue
+            # SRD §Condition Immunity — an immune target never acquires the
+            # condition. ``activities/effects.py::apply_activity_effects``
+            # already SUPPRESSES the matching ``ConditionApplied``; without the
+            # same gate here the status would still land on
+            # ``Combatant.conditions`` and drive every C12 projection (the
+            # Incapacitated action block, ``project_speed``, the STR/DEX save
+            # auto-fail, the within-5-ft auto-crit) against a creature that
+            # cannot have the condition — and would diverge from
+            # ``live.active_conditions``, the store ``views.py`` shows the host.
+            # Compared as a bare slug, matching the emit-gate's convention
+            # (``passive_stats._CI_TOKEN_TO_CONDITION`` normalises the one
+            # irregular Foundry token at projection time).
+            if status in target_combatant.condition_immunities:
+                _LOGGER.info(
+                    "condition_immune_not_folded status=%s target_id=%s",
+                    status,
+                    applied.target_id,
+                )
+                continue
             # Derive source_entity_id from the origin tag when it
             # encodes one (e.g. "cast:bless:char:abc12"); otherwise
             # default to the canonical implied-source marker.
@@ -1712,6 +2048,9 @@ def _emit_apply_effect_applied(live: _LiveCombat, event: EffectApplied) -> None:
                 if c.entity_id == applied.target_id:
                     live.initiative[idx] = c.model_copy(update={"conditions": new_conditions})
                     break
+        # C12 — a newly applied Speed-0 / Exhaustion condition immediately
+        # caps whatever movement the target had left this turn.
+        _clamp_movement_budget(live, applied.target_id)
     # SRD spell-slot consumption: spell effects with concentration imply
     # a slot was spent. The slot level is not on the event today (follow-up
     # in the cutover); we record under a coarse "slots" label keyed by name.
@@ -1805,9 +2144,14 @@ def _maybe_roll_death_save(live: _LiveCombat) -> None:
             live.initiative[idx] = result.combatant
             break
     # On crit_success (nat-20), HP resets to 1 — sync the tracker so the
-    # PC can act on their next turn.
+    # PC can act on their next turn, and mirror the healing revive's condition
+    # events so ``live.active_conditions`` (read by ``views.py`` and by effect
+    # expiry) does not keep a stale ``unconscious``. SRD 5.2 Unconscious:
+    # "When this condition ends, you remain Prone."
     if result.outcome == "critical_success":
         live.tracked_hp[actor.entity_id] = result.combatant.hp_current
+        _emit(live, ConditionRemoved(target_id=actor.entity_id, condition="unconscious"))
+        _emit(live, ConditionApplied(target_id=actor.entity_id, condition="prone"))
 
 
 def _hp_max_for(live: _LiveCombat, entity_id: str) -> int:
@@ -2363,6 +2707,15 @@ def _build_hydration_payload(live: _LiveCombat, caster: Combatant | None = None)
         save_modifiers[c.entity_id] = per_target_entry
         check_modifiers[c.entity_id] = check_entry
 
+    # ── C12 — SRD 5.2 Exhaustion ``-2 x level`` on every D20 Test, per entity ─
+    # Only exhausted entities get a row, so an unexhausted combat hands the
+    # resolvers an EMPTY dict and every d20 is byte-identical to before.
+    d20_penalty: dict[str, int] = {}
+    for c in live.initiative:
+        penalty = d20_test_penalty(c.conditions)
+        if penalty != 0:
+            d20_penalty[c.entity_id] = penalty
+
     # ── Per-combatant concentration map ─────────────────────────────────────
     # SRD §Concentration — surface ``{effect_name, effect_id}`` per the
     # spell-handler contract (it reads ``effect_name``). The orchestrator
@@ -2392,6 +2745,7 @@ def _build_hydration_payload(live: _LiveCombat, caster: Combatant | None = None)
         "passive_damage_modifiers": passive_damage_modifiers,
         "save_modifiers": save_modifiers,
         "check_modifiers": check_modifiers,
+        "d20_test_penalty": d20_penalty,
         "existing_temp_hp": existing_temp_hp,
         "counter_state": counter_state,
         "spell_book": spell_book,
@@ -3005,10 +3359,35 @@ def _run_end_of_turn_saves(live: _LiveCombat, actor_id: str) -> None:
             dc = int(spec["dc"])
             condition = str(spec["condition"])
             caster_id = str(spec["caster_id"])
-            modifier = save_modifier(target, ability).total if target else 0
-            roll = roll_d20_test(live.rng, modifier, AdvantageSources())
-            roll_total = roll.total
-            succeeded = roll_total >= dc
+            # SRD 5.2 Conditions on the repeat save: the same auto-fail /
+            # disadvantage projection the activity save path gets, plus the
+            # Exhaustion D20-Test penalty. An unconditioned target projects
+            # nothing, so the seeded stream is unmoved.
+            save_proj = project_passive_save_modifiers(_condition_names(target)) if target else {}
+            ability_upper = ability.upper()
+            if ability_upper in save_proj.get("passive_save_auto_fail", []):
+                # SRD 5.2 Paralyzed / Stunned / Petrified / Unconscious —
+                # automatic failure, no d20 drawn (mirrors save_primitive).
+                roll_total, succeeded = 0, False
+                mode: AdvantageMode = "normal"
+                natural: int | None = None
+                roll_modifier = 0
+                roll_sources: list[AdvantageSource] = []
+            else:
+                modifier = (
+                    save_modifier(target, ability).total + d20_test_penalty(target.conditions)
+                    if target
+                    else 0
+                )
+                dis: tuple[AdvantageSource, ...] = (
+                    ("condition:target",)
+                    if ability_upper in save_proj.get("passive_save_dis", [])
+                    else ()
+                )
+                roll = roll_d20_test(live.rng, modifier, AdvantageSources(disadvantage=dis))
+                roll_total, succeeded = roll.total, roll.total >= dc
+                mode, natural, roll_modifier = roll.mode, roll.kept, roll.modifier
+                roll_sources = list(roll.sources)
             _emit(
                 live,
                 SaveRolled(
@@ -3017,10 +3396,10 @@ def _run_end_of_turn_saves(live: _LiveCombat, actor_id: str) -> None:
                     dc=dc,
                     roll_total=roll_total,
                     succeeded=succeeded,
-                    advantage=roll.mode,
-                    natural=roll.kept,
-                    modifier=roll.modifier,
-                    sources=list(roll.sources),
+                    advantage=mode,
+                    natural=natural,
+                    modifier=roll_modifier,
+                    sources=roll_sources,
                 ),
             )
             if not succeeded:
@@ -3327,27 +3706,40 @@ def _seed_active_effects(live: _LiveCombat, active_effects: Sequence[ActiveEffec
                         )
                     break
 
+        # SRD §Condition Immunity — the same gate the runtime
+        # ``EffectApplied`` fold and ``activities/effects.py`` apply: a status
+        # the target is immune to never attaches, on EITHER store. A seeded
+        # effect is the one path that writes ``live.active_conditions``
+        # directly, so without this the host-facing view (``views.py``) and
+        # ``Combatant.conditions`` would BOTH carry a condition the creature
+        # cannot suffer. The ActiveEffect itself is still seeded (its non-
+        # condition riders stay live), exactly as the emit-path keeps the
+        # ``EffectApplied`` and drops only the ``ConditionApplied``.
+        target_combatant = _find_combatant(live, eff.target_id)
+        immunities = set(target_combatant.condition_immunities) if target_combatant else set()
+        statuses = {s for s in eff.statuses if s not in immunities}
+
         # Conditions-by-effect: every status the effect imposes is
         # attributed to (target_id, id, origin), so expire/concentration
         # cascade can find them.
-        if eff.statuses:
+        if statuses:
             key = (eff.target_id, eff.id, eff.origin)
             existing = live.conditions_by_effect.get(key)
             if existing is None:
-                live.conditions_by_effect[key] = list(eff.statuses)
+                live.conditions_by_effect[key] = list(statuses)
             else:
-                for status in eff.statuses:
+                for status in statuses:
                     if status not in existing:
                         existing.append(status)
 
-        if not eff.statuses:
+        if not statuses:
             continue
         # Also project into live.active_conditions so orchestrator_bridge's
         # project_combat_state_to_redis sees the seeded statuses on the next
         # mirror tick. Without this, statuses only land on initiative[*]
         # .conditions (set below) and are silently dropped when the bridge
         # rebuilds host storage conditions from active_conditions. # .
-        live.active_conditions.setdefault(eff.target_id, set()).update(eff.statuses)
+        live.active_conditions.setdefault(eff.target_id, set()).update(statuses)
         for idx, c in enumerate(live.initiative):
             if c.entity_id != eff.target_id:
                 continue
@@ -3355,7 +3747,7 @@ def _seed_active_effects(live: _LiveCombat, active_effects: Sequence[ActiveEffec
             existing_keys = {(ac.condition, ac.source_effect_id) for ac in current_conditions}
             new_conditions = list(current_conditions)
             dirty = False
-            for status in eff.statuses:
+            for status in statuses:
                 if (status, eff.id) in existing_keys:
                     continue
                 new_conditions.append(
@@ -3468,6 +3860,26 @@ async def start_combat(
     # is NOT seeded here — it requires a failed-save record we don't have
     # at seed time; the next runtime save will repopulate as needed.
     _seed_active_effects(live, active_effects)
+
+    # C12 — a Character HYDRATED into combat already at 0 HP is Unconscious
+    # (SRD 5.2 "Dropping to 0 Hit Points"). The runtime fold hangs off the
+    # damage path, so without this a host resuming a saved combat with a downed
+    # PC would get a PC that can act. ``_fold_condition_onto_combatant`` writes
+    # BOTH condition stores, so the host-facing ``active_conditions`` view
+    # agrees with ``Combatant.conditions``. State-only, no event: this is
+    # hydration of a state the host already knows about, not a transition now —
+    # and the death-save state stays exactly as the host supplied it (the
+    # condition is what makes ``_maybe_roll_death_save`` fire on the PC's turn;
+    # no failure is charged here). Monsters are excluded — a monster at 0 HP is
+    # dead, never Unconscious.
+    for c in list(live.initiative):
+        if c.entity_id in live.party_ids and c.is_alive and c.hp_current <= 0:
+            _fold_condition_onto_combatant(live, c.entity_id, "unconscious")
+
+    # C12 — the seeded conditions may already zero or reduce a Speed; project
+    # every combatant's opening movement budget before the first turn opens.
+    for c in list(live.initiative):
+        _clamp_movement_budget(live, c.entity_id)
 
     # Emit the round-start + first turn-start so a consumer of
     # ``narration_events`` sees combat actually open. The evaluator
@@ -4027,11 +4439,17 @@ def _end_turn_and_advance(live: _LiveCombat, actor_id: str) -> None:
 
 
 def _validate_intent_preconditions(
-    live: _LiveCombat, handle: CombatHandle, actor_id: str
+    live: _LiveCombat,
+    handle: CombatHandle,
+    actor_id: str,
+    *,
+    intent: PlayerIntent | None = None,
 ) -> Combatant:
-    """Validate that combat is live, ``actor_id`` is in initiative, and it is
-    currently ``actor_id``'s turn. Raises ``IntentRejectedError`` on any
-    failure; returns the current actor's ``Combatant`` on success."""
+    """Validate that combat is live, ``actor_id`` is in initiative, it is
+    currently ``actor_id``'s turn, and — when ``intent`` is given — the actor
+    is not Incapacitated for an action/bonus/reaction-shaped intent. Raises
+    ``IntentRejectedError`` on any failure; returns the current actor's
+    ``Combatant`` on success."""
     if live.ended:
         raise IntentRejectedError("combat_ended", f"handle={handle.handle_id}")
 
@@ -4048,6 +4466,18 @@ def _validate_intent_preconditions(
             "not_actor_turn",
             f"current_turn={current.entity_id!r}, submitted={actor_id!r}",
         )
+
+    # SRD 5.2 Incapacitated: "You can't take any action, Bonus Action, or
+    # Reaction." (implied by Paralyzed / Petrified / Stunned / Unconscious).
+    if (
+        intent is not None
+        and intent.intent_type not in _INCAPACITATED_ALLOWED_INTENTS
+        and conditions_block_actions(_condition_names(current))
+    ):
+        raise IntentRejectedError(
+            "actor_incapacitated",
+            f"actor_id={actor_id!r} is Incapacitated and cannot take {intent.intent_type!r}",
+        )
     return current
 
 
@@ -4060,6 +4490,13 @@ def _handle_move(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
     ``MoveFailed`` and return without mutating budget or position.
     """
     actor_id = current.entity_id
+    # SRD 5.2 "Speed 0. Your Speed is 0 and can't increase." (Grappled /
+    # Restrained / Paralyzed / Petrified / Unconscious) and Exhaustion's
+    # ``-5 ft x level``: a creature whose effective Speed is 0 cannot move at
+    # all — distinct from ``insufficient_movement`` (budget spent this turn).
+    if _effective_speed(current) == 0:
+        _emit(live, MoveFailed(actor_id=actor_id, reason="speed_zero"))
+        return
     target_zone_id = intent.target_zone_id
     current_zone = live.actor_zone.get(actor_id)
     if (
@@ -4182,6 +4619,20 @@ def _spell_out_of_range(
     return False
 
 
+def _spell_out_of_range_failure(
+    live: _LiveCombat,
+    actor_id: str,
+    intent: PlayerIntent,
+    cast_spell_for_timing: Spell | None,
+) -> CombatEvent | None:
+    """``CastFailed(reason="out_of_range")`` when ``intent`` is a spell-range-
+    gated cast; ``None`` otherwise. One of the ``pre_resolution_gates``
+    failure-builders consumed by ``submit_player_intent``."""
+    if not _spell_out_of_range(live, actor_id, intent, cast_spell_for_timing):
+        return None
+    return CastFailed(actor_id=actor_id, spell_id=intent.spell_id or "", reason="out_of_range")
+
+
 def _hellish_rebuke_target_invalid(current: Combatant, intent: PlayerIntent) -> bool:
     """SRD §Hellish Rebuke — return ``True`` if this is a Hellish Rebuke cast
     whose target is not the most-recent damager tracked on the caster."""
@@ -4190,6 +4641,18 @@ def _hellish_rebuke_target_invalid(current: Combatant, intent: PlayerIntent) -> 
         and intent.spell_id == "hellish-rebuke"
         and (current.last_damaged_by is None or intent.target_id != current.last_damaged_by)
     )
+
+
+def _hellish_rebuke_failure(
+    actor_id: str, current: Combatant, intent: PlayerIntent
+) -> CombatEvent | None:
+    """``CastFailed(reason="target_invalid")`` when ``intent`` is a Hellish
+    Rebuke cast at the wrong target; ``None`` otherwise. One of the
+    ``pre_resolution_gates`` failure-builders consumed by
+    ``submit_player_intent``."""
+    if not _hellish_rebuke_target_invalid(current, intent):
+        return None
+    return CastFailed(actor_id=actor_id, spell_id=intent.spell_id, reason="target_invalid")
 
 
 def _consume_action_budget(live: _LiveCombat, actor_id: str, cost: _ActionCost) -> Combatant:
@@ -4589,6 +5052,9 @@ def _pop_pending_reaction(
             continue
         if not reactor.is_alive or reactor.hp_current <= 0:
             continue
+        # SRD 5.2 Incapacitated — no Reaction (so no opportunity attack either).
+        if conditions_block_actions(_condition_names(reactor)):
+            continue
         if not reactor.reaction_available:
             continue
         match = next(
@@ -4662,6 +5128,9 @@ def _resolve_readied_spell_cast(
         passive_damage_modifiers=payload["passive_damage_modifiers"],
         save_modifiers=payload["save_modifiers"],
         check_modifiers=payload["check_modifiers"],
+        d20_test_penalty=payload["d20_test_penalty"],
+        target_distance_ft=_target_distance_map(live, reactor.entity_id, [reactor]),
+        attacker_grappler_id=_condition_source_entity(live, reactor, "grappled"),
     )
     pre_event_count = len(live.event_log)
     for activity in spell.activities:
@@ -4778,6 +5247,9 @@ def _drain_counterspell_reaction(
         passive_damage_modifiers=payload["passive_damage_modifiers"],
         save_modifiers=payload["save_modifiers"],
         check_modifiers=payload["check_modifiers"],
+        d20_test_penalty=payload["d20_test_penalty"],
+        target_distance_ft=_target_distance_map(live, reactor.entity_id, [current]),
+        attacker_grappler_id=_condition_source_entity(live, reactor, "grappled"),
     )
     pre_event_count = len(live.event_log)
     resolve_activity(save_activity, actx, weapon=None)
@@ -4861,7 +5333,7 @@ async def submit_player_intent(
     ``CombatEvent`` stream.
     """
     live = _get_live(handle)
-    current = _validate_intent_preconditions(live, handle, actor_id)
+    current = _validate_intent_preconditions(live, handle, actor_id, intent=intent)
 
     # Turn-non-ending intents (move_mark / move / dash) dispatch through
     # their dedicated handlers and keep the actor on turn — see
@@ -4914,56 +5386,26 @@ async def submit_player_intent(
     is_bonus_action = action_cost.is_bonus_action
     is_reaction_cast = action_cost.is_reaction_cast
 
-    # SRD §Spell Range — out-of-range casts are a no-op: they consume
-    # neither budget nor slot. Validate BEFORE budget consumption. The
-    # typed ``Spell.range`` carries the band: feet-valued ranges gate at their
-    # distance, and ``touch`` gates at 5ft (the caster must be adjacent — the
-    # old wrapper carried ``range_ft=5`` for touch spells). ``self``/``special``
-    # carry no metric distance and skip the gate. ``_ZoneGraph.within_range`` is
-    # the canonical distance oracle keyed off ``live.actor_zone``.
-    if _spell_out_of_range(live, actor_id, intent, cast_spell_for_timing):
-        _emit(
-            live,
-            CastFailed(
-                actor_id=actor_id,
-                spell_id=intent.spell_id or "",
-                reason="out_of_range",
-            ),
-        )
-        return
-
-    # SRD §Weapon Reach / Range — out-of-reach melee attacks (and beyond-
-    # normal-range ranged attacks) reject pre-resolution: no action budget
-    # consumed, turn preserved. ``_pc_attack_out_of_range`` resolves the
-    # weapon's reach / normal range from the typed ``Weapon.range`` (via
-    # ``get_lib_loader().get_weapon``) and projects the distance over
-    # ``_ZoneGraph.within_range``. Long-range disadvantage is a follow-up;
-    # only the hard reject is enforced here.
-    if intent.intent_type == "attack" and _pc_attack_out_of_range(live, actor_id, intent):
-        _emit(
-            live,
-            AttackFailed(
-                actor_id=actor_id,
-                target_id=intent.target_id,
-                reason="out_of_range",
-            ),
-        )
-        return
-
-    # SRD §Hellish Rebuke — *"the creature that damaged you"*. The legal
-    # target is the most-recent damager tracked on the caster as
-    # ``last_damaged_by``. Hard-coded for HR until a general trigger
-    # system lands. Reject BEFORE budget/slot consumption.
-    if _hellish_rebuke_target_invalid(current, intent):
-        _emit(
-            live,
-            CastFailed(
-                actor_id=actor_id,
-                spell_id=intent.spell_id,
-                reason="target_invalid",
-            ),
-        )
-        return
+    # Pre-resolution reject gates — each checked BEFORE any action budget is
+    # consumed, so a rejection spends no Action/Bonus Action/slot and leaves
+    # the turn untouched. Order matters and is preserved from the original
+    # sequential if-chain: spell range (SRD §Spell Range) -> weapon reach
+    # (SRD §Weapon Reach / Range) -> Charmed target (SRD 5.2 "You can't
+    # attack the charmer or target the charmer with damaging abilities or
+    # magical effects") -> Hellish Rebuke's fixed target (SRD §Hellish
+    # Rebuke). The first gate whose failure-builder returns a non-``None``
+    # event wins; that event is emitted and the intent is rejected.
+    pre_resolution_gates: tuple[Callable[[], CombatEvent | None], ...] = (
+        lambda: _spell_out_of_range_failure(live, actor_id, intent, cast_spell_for_timing),
+        lambda: _attack_out_of_range_failure(live, actor_id, intent),
+        lambda: _charmed_target_failure(live, actor_id, current, intent),
+        lambda: _hellish_rebuke_failure(actor_id, current, intent),
+    )
+    for build_pre_resolution_failure in pre_resolution_gates:
+        failure = build_pre_resolution_failure()
+        if failure is not None:
+            _emit(live, failure)
+            return
 
     if is_bonus_action:
         if not current.bonus_action_available:
@@ -5164,7 +5606,10 @@ async def submit_player_intent(
             passive_damage_modifiers=payload["passive_damage_modifiers"],
             save_modifiers=payload["save_modifiers"],
             check_modifiers=payload["check_modifiers"],
+            d20_test_penalty=payload["d20_test_penalty"],
             target_cover=_target_cover_map(live, current.entity_id, targets),
+            target_distance_ft=_target_distance_map(live, current.entity_id, targets),
+            attacker_grappler_id=_condition_source_entity(live, current, "grappled"),
             scale_values=scale_values,
             class_levels=class_levels,
             # A FEATURE invocation must not inherit the blanket spell
@@ -5281,6 +5726,9 @@ def _fire_pc_opportunity_attacks_on_move(
             continue
         if not reactor.is_alive or reactor.hp_current <= 0:
             continue
+        # SRD 5.2 Incapacitated — no Reaction (so no opportunity attack either).
+        if conditions_block_actions(_condition_names(reactor)):
+            continue
         if not reactor.reaction_available:
             continue
         if live.actor_zone.get(reactor.entity_id) != from_zone:
@@ -5382,6 +5830,9 @@ def _fire_monster_opportunity_attacks_on_move(
         if reactor.entity_id not in live.encounter_ids:
             continue
         if not reactor.is_alive or reactor.hp_current <= 0:
+            continue
+        # SRD 5.2 Incapacitated — no Reaction (so no opportunity attack either).
+        if conditions_block_actions(_condition_names(reactor)):
             continue
         if not reactor.reaction_available:
             continue
@@ -5521,7 +5972,11 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
     # attacking instead of fleeing. A fleeing monster takes the same no-action /
     # pass path dead monsters take.
     skip_to_record_pass = (
-        not current.is_alive or current.hp_current <= 0 or _monster_is_fleeing(current)
+        not current.is_alive
+        or current.hp_current <= 0
+        or _monster_is_fleeing(current)
+        # SRD 5.2 Incapacitated — the monster takes no action this turn.
+        or conditions_block_actions(_condition_names(current))
     )
 
     # Build alive-PC target list (lowest_hp priority — the legacy
@@ -5531,6 +5986,21 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
         for c in live.initiative
         if c.entity_id in live.party_ids and c.is_alive and c.hp_current > 0
     ]
+    # SRD 5.2 Charmed — "You can't attack the charmer or target the charmer
+    # with damaging abilities or magical effects." The player path enforces
+    # this as a pre-resolution reject gate (``_charmed_target_failure``); the
+    # monster path has no intent to reject, so the charmer is removed from the
+    # selectable targets instead. A charmed monster still attacks anyone else;
+    # with no other target left it passes the turn. Unknown charmer (no
+    # resolvable source) imposes no restriction, exactly as on the player path.
+    charmer_id = _condition_source_entity(live, current, "charmed")
+    if charmer_id is not None:
+        alive_pcs = [c for c in alive_pcs if c.entity_id != charmer_id]
+        # Knock-on, accepted deliberately: ``alive_pcs`` is also the threat list
+        # ``_execute_flee_retreat`` measures distance against, so a charmed
+        # FLEEING monster no longer counts its charmer as someone to run from.
+        # Flavour-defensible (you do not flee the creature that has charmed you)
+        # and SRD-silent, but it is a second consequence of this one filter.
     if not alive_pcs:
         skip_to_record_pass = True
 
@@ -5619,7 +6089,10 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
             dashed_budget = _monster_dash_movement_budget(
                 _path_total_distance(live.topology, path),
                 current.movement_remaining,
-                current.base_speed,
+                # SRD 5.2 Dash adds the creature's EFFECTIVE Speed: a Speed-0
+                # monster (Grappled / Restrained / …) "can't increase" it, so
+                # the gambit is declined outright (budget <= 0 → None).
+                _effective_speed(current),
             )
             if dashed_budget is not None and current.action_available:
                 dashed_this_turn = True
@@ -5766,7 +6239,10 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
             passive_damage_modifiers=payload["passive_damage_modifiers"],
             save_modifiers=payload["save_modifiers"],
             check_modifiers=payload["check_modifiers"],
+            d20_test_penalty=payload["d20_test_penalty"],
             target_cover=_target_cover_map(live, current.entity_id, target_list),
+            target_distance_ft=_target_distance_map(live, current.entity_id, target_list),
+            attacker_grappler_id=_condition_source_entity(live, current, "grappled"),
         )
         for activity in monster_activities:
             # Monster attacks carry their damage on the AttackActivity itself,
