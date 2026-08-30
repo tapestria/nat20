@@ -613,7 +613,7 @@ def _apply_on_hit_damage(
             if sneak_dice:
                 by_type[first_type] += roll_expr(sneak_dice, ctx.rng, crit=is_crit)
 
-        apply_damage(target, dict(by_type), ctx)
+        apply_damage(target, dict(by_type), ctx, magical=weapon is not None and weapon.magical)
     finally:
         if is_crit:
             if previous is None:

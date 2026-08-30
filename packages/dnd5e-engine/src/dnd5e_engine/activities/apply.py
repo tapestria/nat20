@@ -42,11 +42,30 @@ _LOGGER = logging.getLogger(__name__)
 # Literal so the two never drift. Mirrors ``effects/damage.py:120``.
 _SRD_DAMAGE_TYPES: Final[frozenset[str]] = frozenset(get_args(DamageType))
 
+# C22 — the SRD Bludgeoning / Piercing / Slashing triple. A magical source
+# (``Weapon.magical`` or a spell) overcomes a target's B/P/S resistance when
+# that resistance is the "nonmagical attacks" flavor (see
+# ``Combatant.physical_resistances_nonmagical_only``).
+_PHYSICAL_TYPES: Final[frozenset[str]] = frozenset({"bludgeoning", "piercing", "slashing"})
+
+
+def _effective_resistances(
+    target: Combatant, sidecar: dict[str, list[str]], *, magical: bool
+) -> set[str]:
+    """Static + sidecar resistances, minus the B/P/S entries a magical source
+    overcomes when the target's B/P/S resistance is the "nonmagical" kind."""
+    resistances = set(target.damage_resistances) | set(sidecar.get("resistances", ()))
+    if magical and target.physical_resistances_nonmagical_only:
+        resistances -= _PHYSICAL_TYPES
+    return resistances
+
 
 def apply_damage(
     target: Combatant,
     rolled_by_type: dict[str, int],
     ctx: ActivityResolutionContext,
+    *,
+    magical: bool = False,
 ) -> None:
     """Apply a per-damage-type rolled amount to ``target`` and emit one
     ``DamageApplied`` per valid type.
@@ -55,9 +74,15 @@ def apply_damage(
     (skip + log ``damage_type_invalid`` on miss), merge the static ``Combatant``
     resist/immune lists with the sidecar resist/immune/vuln lists, apply
     vuln→resist→immune, compute ``is_overkill``, and emit ``DamageApplied``.
+
+    ``magical`` — the damage comes from a magic weapon (``Weapon.magical``) or
+    a spell. SRD "resistance to Bludgeoning, Piercing, and Slashing from
+    nonmagical attacks" does not apply to it (see
+    ``Combatant.physical_resistances_nonmagical_only``); the ``"all"``
+    wildcard (Petrified) and non-physical types are unaffected.
     """
     sidecar = ctx.passive_damage_modifiers.get(target.entity_id, {})
-    resistances = set(target.damage_resistances) | set(sidecar.get("resistances", ()))
+    resistances = _effective_resistances(target, sidecar, magical=magical)
     immunities = set(target.damage_immunities) | set(sidecar.get("immunities", ()))
     vulnerabilities = set(sidecar.get("vulnerabilities", ()))
 

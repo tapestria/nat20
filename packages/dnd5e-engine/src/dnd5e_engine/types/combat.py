@@ -184,6 +184,14 @@ class Combatant(BaseModel):
     # Tactics / Sunlight Sensitivity / Undead Fortitude / Regeneration …).
     # Empty for PCs and template-less foes.
     trait_mechanics: list[MonsterTraitMechanic] = Field(default_factory=list)
+    # C22: how to read B/P/S entries in ``damage_resistances``. True (default
+    # for host-authored specs) = SRD 5.1 stat-block convention "… from
+    # nonmagical attacks": a magical weapon's or a spell's Bludgeoning /
+    # Piercing / Slashing damage bypasses the resistance. False = the
+    # resistance is unconditional (SRD 5.2 stat blocks; Foundry
+    # ``dr.bypasses == []``). C18's corpus hydration sets it from
+    # ``dr.bypasses``.
+    physical_resistances_nonmagical_only: bool = True
 
     @model_validator(mode="before")
     @classmethod

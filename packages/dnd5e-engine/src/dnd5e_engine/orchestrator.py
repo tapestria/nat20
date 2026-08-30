@@ -3965,6 +3965,7 @@ def _build_foe_combatants(
                 damage_immunities=list(foe.damage_immunities),
                 damage_vulnerabilities=vulnerabilities,
                 condition_immunities=list(foe.condition_immunities),
+                physical_resistances_nonmagical_only=foe.physical_resistances_nonmagical_only,
                 base_speed=foe.base_speed,
                 movement_remaining=foe.base_speed,
                 **template_kw,

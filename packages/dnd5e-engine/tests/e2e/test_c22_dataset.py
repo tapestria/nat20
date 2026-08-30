@@ -270,7 +270,6 @@ def test_c22_s03_sacred_flame_save_ignores_cover():
     )
 
 
-@xfail_cluster(22, "dataset")
 def test_c22_s04_magic_weapon_flag_bypasses_nonmagical_bps_resistance():
     """C22-S04: SRD 5.2 "Overcoming Damage Resistance" — magic weapons
     overcome resistance to nonmagical bludgeoning/piercing/slashing.

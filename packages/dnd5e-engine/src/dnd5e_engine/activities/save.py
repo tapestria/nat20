@@ -239,7 +239,7 @@ def _apply_save_damage(
             raw_part, activity.damage.on_save, succeeded=succeeded
         )
 
-    apply_damage(target, dict(by_type), ctx)
+    apply_damage(target, dict(by_type), ctx, magical=ctx.base_spell_level is not None)
 
 
 def _scale_on_save(raw_part: int, on_save: str, *, succeeded: bool) -> int:
