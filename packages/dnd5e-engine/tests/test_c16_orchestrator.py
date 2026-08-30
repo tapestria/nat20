@@ -203,6 +203,38 @@ def test_fireball_hits_every_creature_in_a_row_inside_the_radius():
     assert {"mon:a", "mon:b", "mon:c"} <= _damaged(live)
 
 
+def test_aoe_cover_is_measured_from_the_point_of_origin_not_the_caster():
+    """SRD 5.2 §Cover — "an area of effect ... measure cover from the point of
+    origin". Fireball bursts on ``mon:a`` at (10,10) forty feet from the wizard
+    at (0,10); ``mon:b`` at (10,12) sits behind a half-cover cell at (10,11)
+    that lies on the BURST → victim line but not on the CASTER → victim line.
+    So the +2 Dexterity-save bonus must appear only when cover is measured
+    from the burst point.
+    """
+
+    def _save_modifier(cover_cells: dict[str, str], target_id: str) -> int:
+        live = run_async(
+            _cast(
+                GridScene(width=21, height=21, cover_cells=cover_cells),
+                [_wiz(["fireball"], {3: 1}, cell(0, 10))],
+                [_mon("mon:a", cell(10, 10)), _mon("mon:b", cell(10, 12))],
+                PlayerIntent(intent_type="cast_spell", spell_id="fireball", target_id="mon:a"),
+            )
+        )
+        rolled = [e for e in events_of(live, events_module.SaveRolled) if e.target_id == target_id]
+        assert rolled, f"no save rolled for {target_id}"
+        assert rolled[0].modifier is not None
+        return rolled[0].modifier
+
+    bare_b = _save_modifier({}, "mon:b")
+    bare_a = _save_modifier({}, "mon:a")
+    covered = {cell(10, 11): "half"}
+    # The victim shielded from the BURST POINT gains SRD Half Cover (+2)...
+    assert _save_modifier(covered, "mon:b") == bare_b + 2
+    # ...while the creature standing on the point of origin is unaffected.
+    assert _save_modifier(covered, "mon:a") == bare_a
+
+
 def test_cone_direction_defaults_to_the_named_target_and_excludes_caster():
     scene = GridScene(width=11, height=11)
     live = run_async(
@@ -559,6 +591,77 @@ def test_zone_graph_move_into_an_occupied_zone_still_succeeds() -> None:
     assert len(moved) == 1
     assert moved[0].to_zone == "zone:b"
     assert moved[0].distance_ft == 30
+
+
+def _zone_move(zones: list[str], edges: Any, start_zone: str, to: str) -> Any:
+    """Run one MOVE intent on the ZONE backend (no grid scene)."""
+    from dnd5e_srd_data import MemoryAssetLoader
+
+    from dnd5e_engine.specs import SceneTopology
+
+    async def _run() -> Any:
+        set_lib_loader_for_tests(MemoryAssetLoader())
+        start = await start_combat(
+            session_id="c16-zone-move-hops",
+            party=[_mover(start_zone, speed=120)],
+            encounter=[_foe("mon:foe", zones[-1])],
+            scene_zones=SceneTopology(zones=zones, edges=edges),
+            grid_scene=None,
+            rng_seed=1,
+        )
+        live = _get_live(start.handle)
+        await submit_player_intent(
+            start.handle,
+            actor_id="char:hero",
+            intent=PlayerIntent(intent_type="move", target_zone_id=to),
+        )
+        return live
+
+    return run_async(_run())
+
+
+def _chain_edges() -> Any:
+    from dnd5e_engine.specs import ZoneEdge
+
+    return [
+        ZoneEdge(a="zone:a", b="zone:b", distance_ft=5),
+        ZoneEdge(a="zone:b", b="zone:c", distance_ft=5),
+        ZoneEdge(a="zone:c", b="zone:d", distance_ft=5),
+    ]
+
+
+def test_zone_graph_move_to_a_non_adjacent_zone_is_still_rejected() -> None:
+    """Regression (C16 final review): multi-hop pathing is GRID-only. On the
+    zone graph a MOVE to a non-adjacent zone must keep the pre-C16 contract —
+    ``MoveFailed(reason="not_adjacent")``, nothing mutated — even though
+    ``_ZoneGraph.shortest_path`` could route there in two hops."""
+    zones = ["zone:a", "zone:b", "zone:c", "zone:d"]
+    live = _zone_move(zones, _chain_edges(), "zone:a", "zone:c")
+    failed = events_of(live, MoveFailed)
+    assert failed
+    assert failed[0].reason == "not_adjacent"
+    assert not events_of(live, events_module.ActorMoved)
+    assert live.actor_zone["char:hero"] == "zone:a"
+    hero = next(c for c in live.initiative if c.entity_id == "char:hero")
+    assert hero.movement_remaining == 120
+
+
+def test_zone_graph_adjacent_move_keeps_the_pre_c16_event_shape() -> None:
+    """The other half of the same contract: a single-hop zone move still
+    succeeds with exactly one ``ActorMoved`` carrying the edge distance."""
+    zones = ["zone:a", "zone:b", "zone:c", "zone:d"]
+    live = _zone_move(zones, _chain_edges(), "zone:a", "zone:b")
+    assert not events_of(live, MoveFailed)
+    moved = events_of(live, events_module.ActorMoved)
+    assert len(moved) == 1
+    assert (moved[0].from_zone, moved[0].to_zone, moved[0].distance_ft) == (
+        "zone:a",
+        "zone:b",
+        5,
+    )
+    assert live.actor_zone["char:hero"] == "zone:b"
+    hero = next(c for c in live.initiative if c.entity_id == "char:hero")
+    assert hero.movement_remaining == 115
 
 
 # ── Task 9: forced movement ──────────────────────────────────────────────

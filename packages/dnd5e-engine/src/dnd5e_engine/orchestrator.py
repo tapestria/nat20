@@ -565,12 +565,27 @@ def _occupied_cells(live: _LiveCombat, *, exclude: Collection[str]) -> set[str]:
 
 
 def _target_cover_map(
-    live: _LiveCombat, caster_id: str, targets: Sequence[Combatant]
+    live: _LiveCombat,
+    caster_id: str,
+    targets: Sequence[Combatant],
+    *,
+    origin_cell: str | None = None,
 ) -> dict[str, str]:
-    """SRD 5.2 §Cover — per-target cover degree between ``caster_id`` and each
-    target, from scene geometry AND creature occupancy (every other alive
+    """SRD 5.2 §Cover — per-target cover degree between the point of origin and
+    each target, from scene geometry AND creature occupancy (every other alive
     combatant's cell grants half cover when it lies on the line; ally or enemy
     makes no difference).
+
+    The origin is ``caster_id``'s own cell for an attack or a single-target
+    cast. For an AREA of effect the SRD measures cover from the area's point of
+    origin instead — a Fireball centred forty feet away shields its victims
+    from the BURST POINT, not from the wizard — so the AoE cast path passes the
+    resolved template origin as ``origin_cell`` (see ``_aoe_cover_origin``).
+    When ``origin_cell`` is given the caster is no longer assumed to stand on
+    the origin, so it is no longer excluded from the occupancy sweep: a caster
+    standing between the burst point and a victim grants that victim half cover
+    like any other creature. ``cover_between`` skips the origin cell itself, so
+    a self-origin template (cone, Thunderwave's cube) is unaffected.
 
     Threaded into ``ActivityResolutionContext.target_cover`` so
     ``activities/attack.py`` (AC) and ``activities/save_primitive.py``
@@ -580,16 +595,17 @@ def _target_cover_map(
     contributes ``"none"`` — mirrors ``_ZoneGraph.cover_between``'s permanent
     no-cover behavior.
     """
-    caster_zone = live.actor_zone.get(caster_id)
-    if caster_zone is None:
+    origin = origin_cell if origin_cell is not None else live.actor_zone.get(caster_id)
+    if origin is None:
         return {}
     out: dict[str, str] = {}
     for target in targets:
         target_zone = live.actor_zone.get(target.entity_id)
         if target_zone is None:
             continue
-        occupied = _occupied_cells(live, exclude=(caster_id, target.entity_id))
-        out[target.entity_id] = live.topology.cover_between(caster_zone, target_zone, occupied)
+        exclude = (target.entity_id,) if origin_cell is not None else (caster_id, target.entity_id)
+        occupied = _occupied_cells(live, exclude=exclude)
+        out[target.entity_id] = live.topology.cover_between(origin, target_zone, occupied)
     return out
 
 
@@ -2744,6 +2760,37 @@ def _spell_is_self_or_targetless(cast_spell: Spell | None, named_target_id: str 
     return named_target_id is None
 
 
+def _aoe_cover_origin(
+    live: _LiveCombat,
+    caster_id: str,
+    intent: PlayerIntent,
+    activities: Sequence[Any],
+) -> str | None:
+    """The cell an AoE's template is centred on — its SRD 5.2 point of origin —
+    or ``None`` when this cast is not a grid AoE (no grid backend, no mappable
+    template, or no tracked caster cell).
+
+    Single source of truth for two consumers that must agree: the template walk
+    in ``_expand_aoe_target_list`` (which cells are in the area, and which have
+    line of effect) and the cover sweep in ``_target_cover_map`` (§Cover — "if
+    a target is behind an area of effect's point of origin, measure cover from
+    that point"). A ``target``-origin template (Fireball) centres on the named
+    target's cell; a ``caster``-origin one (Burning Hands, Thunderwave) on the
+    caster's.
+    """
+    if not isinstance(live.topology, GridTopology):
+        return None
+    caster_cell = live.actor_zone.get(caster_id)
+    if caster_cell is None:
+        return None
+    template = _aoe_template(activities)
+    if template is None:
+        return None
+    if template.origin == "target" and intent.target_id:
+        return live.actor_zone.get(intent.target_id, caster_cell)
+    return caster_cell
+
+
 def _expand_aoe_target_list(
     live: _LiveCombat,
     caster: Combatant,
@@ -2772,9 +2819,7 @@ def _expand_aoe_target_list(
     if isinstance(topology, GridTopology) and caster_cell is not None:
         template = _aoe_template(activities)
         if template is not None:
-            origin = caster_cell
-            if template.origin == "target" and named_target_id:
-                origin = live.actor_zone.get(named_target_id, caster_cell)
+            origin = _aoe_cover_origin(live, caster.entity_id, intent, activities) or caster_cell
             direction: tuple[int, int] | None = None
             if template.shape in _DIRECTIONAL_AOE_SHAPES:
                 direction = _aoe_direction(live, caster.entity_id, intent)
@@ -4347,17 +4392,21 @@ def _handle_move(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
 
     Rejections (``MoveFailed``, nothing mutated): ``not_adjacent`` — no
     destination / untracked position / destination is the current cell (the
-    legacy reason is retained for hosts); ``occupied`` — "You can't willingly
+    legacy reason is retained for hosts), or, on the zone backend, a
+    destination that is not an adjacent zone; ``occupied`` — "You can't willingly
     end a move in a space occupied by another creature"; ``blocked_path`` —
     the destination is adjacent but the step crosses a wall or cuts a blocked
     corner; ``unreachable`` — no legal route (enemy-occupied cells are
     impassable, allies may be passed through); ``insufficient_movement`` — the
     whole route costs more than the remaining budget, and nothing moves.
 
-    ``occupied`` and the enemy-impassability rule are GRID-only: a zone is an
-    area rather than a 5-ft square and ``_ZoneGraph`` does not model occupancy,
-    so the zone backend keeps its pre-C16 behaviour (a PC may still move into a
-    zone an enemy holds, to engage it in melee).
+    Multi-hop routing, ``occupied`` and the enemy-impassability rule are all
+    GRID-only: a zone is an area rather than a 5-ft square and ``_ZoneGraph``
+    does not model occupancy, so the zone backend keeps its pre-C16 behaviour
+    byte-for-byte — a single step to an ADJACENT zone (a non-adjacent
+    destination is rejected ``not_adjacent``, never routed through
+    intermediate zones), and a PC may still move into a zone an enemy holds to
+    engage it in melee.
 
     Opportunity attacks (monster reactor / PC mover) fire before each cell is
     left; a mover dropped to 0 HP stops where the drop happened and the
@@ -4387,16 +4436,23 @@ def _handle_move(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
     ):
         _emit(live, MoveFailed(actor_id=actor_id, reason="blocked_path"))
         return
-    # Enemy spaces are impassable on the grid only, for the same reason.
     if on_grid:
+        # Enemy spaces are impassable on the grid only, for the same reason.
         side = live.party_ids if actor_id in live.party_ids else live.encounter_ids
         enemy_cells: Collection[str] = _occupied_cells(live, exclude=side)
+        path = live.topology.shortest_path(start_zone, destination, avoid=enemy_cells)
+        if not path:
+            _emit(live, MoveFailed(actor_id=actor_id, reason="unreachable"))
+            return
     else:
-        enemy_cells = ()
-    path = live.topology.shortest_path(start_zone, destination, avoid=enemy_cells)
-    if not path:
-        _emit(live, MoveFailed(actor_id=actor_id, reason="unreachable"))
-        return
+        # zone graph: legacy behaviour until removal in 0.7 — multi-hop
+        # routing is GRID-only. A zone is an area, not a 5-ft square, so a
+        # zone MOVE stays the pre-C16 single-hop step to an ADJACENT zone and
+        # a non-adjacent destination keeps its ``not_adjacent`` rejection.
+        if not live.topology.is_adjacent(start_zone, destination):
+            _emit(live, MoveFailed(actor_id=actor_id, reason="not_adjacent"))
+            return
+        path = [start_zone, destination]
     # "To enter a square, you must have enough movement left to pay for
     # entering" — the whole route is priced up front so a rejection is atomic.
     total_cost = _path_total_distance(live.topology, path)
@@ -5523,7 +5579,19 @@ async def submit_player_intent(
             passive_damage_modifiers=payload["passive_damage_modifiers"],
             save_modifiers=payload["save_modifiers"],
             check_modifiers=payload["check_modifiers"],
-            target_cover=_target_cover_map(live, current.entity_id, targets),
+            # SRD 5.2 §Cover — an area of effect measures cover from its point
+            # of origin, which for a target-origin template is NOT the caster's
+            # cell. ``None`` for every non-AoE cast/attack ⇒ caster's cell.
+            target_cover=_target_cover_map(
+                live,
+                current.entity_id,
+                targets,
+                origin_cell=(
+                    _aoe_cover_origin(live, current.entity_id, intent, activities)
+                    if intent.intent_type == "cast_spell" and _typed_spell_broadcasts(activities)
+                    else None
+                ),
+            ),
             target_unseen=target_unseen,
             attacker_unseen_by=attacker_unseen_by,
             scale_values=scale_values,
