@@ -743,7 +743,13 @@ def test_character_hydrated_at_zero_hp_starts_unconscious() -> None:
     )
     live = _get_live(start.handle)
     hero = _combatant(live, "char:hero")
+    # BOTH condition stores must agree: the typed list every projection reads,
+    # and the coarse name set ``views.py`` shows the host (and the bridge
+    # rebuilds host storage from). A hydration that set only the former would
+    # leave a host mirroring via ``active_conditions`` with a downed PC that
+    # looks fine.
     assert "unconscious" in [ac.condition for ac in hero.conditions]
+    assert "unconscious" in live.active_conditions.get("char:hero", set())
     assert hero.movement_remaining == 0
     with pytest.raises(IntentRejectedError) as exc:
         run_async(

@@ -1222,12 +1222,27 @@ def _find_combatant(live: _LiveCombat, entity_id: str) -> Combatant | None:
 
 
 def _fold_condition_onto_combatant(live: _LiveCombat, entity_id: str, condition: str) -> None:
-    """Materialise a ``ConditionApplied`` on ``Combatant.conditions`` so every
-    projection (speed, incapacitated gate, save auto-fail, attack rows) sees it.
+    """Materialise a condition on **both** condition stores: the coarse
+    ``live.active_conditions`` name set (what ``views.py`` shows the host and
+    what the bridge rebuilds host storage from) and ``Combatant.conditions``,
+    the typed list every projection reads (speed, incapacitated gate, save
+    auto-fail, attack rows).
+
+    Writing both here — rather than leaving ``active_conditions`` to each
+    caller — is what makes this helper safe to call from OUTSIDE the
+    ``ConditionApplied`` fold (``start_combat``'s 0-HP hydration is one such
+    caller). A caller that set only one store would leave the two views
+    disagreeing, which is exactly the class of bug the condition-immunity gates
+    exist to prevent. The ``active_conditions`` write is deliberately BEFORE the
+    idempotence guard, so it still lands for a combatant that is unknown or
+    already carries the typed entry — preserving the pre-existing
+    unconditional-write semantics of the ``ConditionApplied`` branch of
+    ``_emit``.
 
     Idempotent per condition name; implied conditions are NOT materialised —
     ``is_condition_active`` resolves ``CONDITION_IMPLIES`` from the names.
     """
+    live.active_conditions.setdefault(entity_id, set()).add(condition)
     c = _find_combatant(live, entity_id)
     if c is None or any(ac.condition == condition for ac in c.conditions):
         return
@@ -1651,7 +1666,7 @@ def _emit(live: _LiveCombat, event: CombatEvent) -> None:
         return
 
     if isinstance(event, ConditionApplied):
-        live.active_conditions.setdefault(event.target_id, set()).add(event.condition)
+        # Both stores are written by the helper — see its docstring.
         _fold_condition_onto_combatant(live, event.target_id, event.condition)
         return
 
@@ -3849,8 +3864,10 @@ async def start_combat(
     # C12 — a Character HYDRATED into combat already at 0 HP is Unconscious
     # (SRD 5.2 "Dropping to 0 Hit Points"). The runtime fold hangs off the
     # damage path, so without this a host resuming a saved combat with a downed
-    # PC would get a PC that can act. State-only, no event: this is hydration
-    # of a state the host already knows about, not a transition happening now —
+    # PC would get a PC that can act. ``_fold_condition_onto_combatant`` writes
+    # BOTH condition stores, so the host-facing ``active_conditions`` view
+    # agrees with ``Combatant.conditions``. State-only, no event: this is
+    # hydration of a state the host already knows about, not a transition now —
     # and the death-save state stays exactly as the host supplied it (the
     # condition is what makes ``_maybe_roll_death_save`` fire on the PC's turn;
     # no failure is charged here). Monsters are excluded — a monster at 0 HP is
@@ -5979,6 +5996,11 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
     charmer_id = _condition_source_entity(live, current, "charmed")
     if charmer_id is not None:
         alive_pcs = [c for c in alive_pcs if c.entity_id != charmer_id]
+        # Knock-on, accepted deliberately: ``alive_pcs`` is also the threat list
+        # ``_execute_flee_retreat`` measures distance against, so a charmed
+        # FLEEING monster no longer counts its charmer as someone to run from.
+        # Flavour-defensible (you do not flee the creature that has charmed you)
+        # and SRD-silent, but it is a second consequence of this one filter.
     if not alive_pcs:
         skip_to_record_pass = True
 

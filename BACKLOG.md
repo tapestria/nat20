@@ -565,7 +565,7 @@ neither is repairable inside C12 without inventing the event field C15 will add.
   costs two failures. Needs per-event attribution (a shared `source_id` /
   instance id on `DamageApplied`) so the fold can collapse the events of one
   attack — the same seam the Critical-Hit entry below needs. Owner: **C15**.
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py:1845`
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py:1877`
   `_apply_zero_hp_to_character`,
   `packages/dnd5e-engine/src/dnd5e_engine/activities/apply.py:75`)
 - **Two death-save failures on a Critical Hit at 0 HP are not applied.** SRD 5.2
@@ -576,7 +576,7 @@ neither is repairable inside C12 without inventing the event field C15 will add.
   `state.apply_damage_while_unconscious(False)` with the argument hard-coded and
   always records one failure. Same `DamageApplied` attribution seam as the
   multi-type entry above; fixing either alone would be guesswork. Owner: **C15**.
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py:1905`
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py:1920`
   `_apply_zero_hp_to_character`)
 - **A death-save failure from damage at 0 HP surfaces no event.** The failure is
   written straight onto `Combatant.death_saves`; hosts narrating from the event
@@ -584,7 +584,7 @@ neither is repairable inside C12 without inventing the event field C15 will add.
   `DeathSaveRolled`, from the turn-start roll, carries counters). The fix needs
   a new `CombatEvent` member (or a counters payload on an existing one), which
   the C12 constraints forbid mid-cluster.
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py:1845`)
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py:1877`)
 
 ## Conditions — SRD 5.2 rows not enforced (2026-08-27)
 
