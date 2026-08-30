@@ -1,0 +1,20 @@
+{
+  "description": "The monster can enter a creature's space and stop there. It can move through a space as narrow as 1 inch without expending extra movement to do so.",
+  "mechanic": null,
+  "name": "Air Form",
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/actors24/elemental/air-elemental.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "air-form"
+}

@@ -17,7 +17,7 @@ from dnd5e_srd_data.schema.condition import Condition
 from dnd5e_srd_data.schema.feat import Feat
 from dnd5e_srd_data.schema.feature import Feature
 from dnd5e_srd_data.schema.item import Armor, Item, MagicItem, Weapon
-from dnd5e_srd_data.schema.monster import Monster
+from dnd5e_srd_data.schema.monster import Monster, MonsterTrait
 from dnd5e_srd_data.schema.species import Species
 from dnd5e_srd_data.schema.spell import Spell
 
@@ -32,6 +32,7 @@ Category = Literal[
     "feats",
     "features",
     "conditions",
+    "traits",
 ]
 
 _CATEGORIES: tuple[str, ...] = (
@@ -45,6 +46,7 @@ _CATEGORIES: tuple[str, ...] = (
     "feats",
     "features",
     "conditions",
+    "traits",
 )
 
 
@@ -64,6 +66,7 @@ class AssetLoader(Protocol):
     def get_feature(self, slug: str) -> Feature | None: ...
     def get_condition(self, slug: str) -> Condition | None: ...
     def list_conditions(self) -> list[str]: ...
+    def get_trait(self, slug: str) -> MonsterTrait | None: ...
     def list_slugs(self, category: Category) -> list[str]: ...
     def __contains__(self, key: tuple[Category, str]) -> bool: ...
 
@@ -84,6 +87,7 @@ class MemoryAssetLoader:
         feats: Sequence[Feat] = (),
         features: Sequence[Feature] = (),
         conditions: Sequence[Condition] = (),
+        traits: Sequence[MonsterTrait] = (),
     ) -> None:
         self._items: dict[str, Item | Weapon | Armor | MagicItem] = {i.slug: i for i in items}
         self._monsters: dict[str, Monster] = {m.slug: m for m in monsters}
@@ -95,6 +99,7 @@ class MemoryAssetLoader:
         self._feats: dict[str, Feat] = {f.slug: f for f in feats}
         self._features: dict[str, Feature] = {ft.slug: ft for ft in features}
         self._conditions: dict[str, Condition] = {c.slug: c for c in conditions}
+        self._traits: dict[str, MonsterTrait] = {t.slug: t for t in traits}
 
     def get_item(self, slug: str) -> Item | Weapon | Armor | MagicItem | None:
         return self._items.get(slug)
@@ -146,6 +151,9 @@ class MemoryAssetLoader:
     def list_conditions(self) -> list[str]:
         return sorted(self._conditions)
 
+    def get_trait(self, slug: str) -> MonsterTrait | None:
+        return self._traits.get(slug)
+
     def list_slugs(self, category: Category) -> list[str]:
         by_category: dict[str, Mapping[str, object]] = {
             "items": self._items,
@@ -158,6 +166,7 @@ class MemoryAssetLoader:
             "feats": self._feats,
             "features": self._features,
             "conditions": self._conditions,
+            "traits": self._traits,
         }
         return sorted(by_category.get(category, {}))
 
@@ -289,6 +298,12 @@ class BundledAssetLoader:
 
     def list_conditions(self) -> list[str]:
         return self.list_slugs("conditions")
+
+    def get_trait(self, slug: str) -> MonsterTrait | None:
+        raw = self._load_json("traits", slug)
+        if raw is None:
+            return None
+        return MonsterTrait.model_validate(raw)
 
     def list_slugs(self, category: Category) -> list[str]:
         d = self._category_dir(category)

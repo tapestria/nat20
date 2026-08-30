@@ -1,0 +1,20 @@
+{
+  "description": "At the start of each of its turns, the monster deals [[/damage average]] damage to any creature [[lookup @target.affects.special activity=1O5eyc72vPW0UxYZ]].",
+  "mechanic": null,
+  "name": "Barbed Hide",
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/actors24/fiend/barbed-devil.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "barbed-hide"
+}

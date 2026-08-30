@@ -235,6 +235,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]]. If the target is a Medium or smaller creature, the [[lookup @name lowercase]]{monster} can give it the &amp;Reference[Grappled apply=false] condition (escape DC [[lookup @skills.ath.passive]]) instead of dealing damage. Until the grapple ends, the target has the &amp;Reference[Blinded apply=false] and &amp;Reference[Restrained apply=false] conditions, is &amp;Reference[Suffocating]{suffocating}, and takes [[/damage average]] damage at the start of each of its turns. [[lookup @name lowercase]]{monster} rug can smother only one creature at a time.\n\nWhile grappling the target, the [[lookup @name lowercase]]{monster} can't take this action, the [[lookup @name lowercase]]{monster} halves the damage it takes (round down), and the target takes the same amount of damage.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Smother",
       "recharge": null,
       "slug": "smother",

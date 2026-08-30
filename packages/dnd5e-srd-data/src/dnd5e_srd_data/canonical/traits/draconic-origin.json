@@ -1,0 +1,20 @@
+{
+  "description": "The monster is related to a type of dragon associated with one of the following damage types (DM's choice): Acid, Cold, Fire, Lightning, or Poison. This choice affects other aspects of the stat block.\n\nFoundry Note\n\nThis feature provides an Active Effect to manage Damage Resistances in the character sheet's Effects tab. The resistances outlined will need to be manually enabled/disabled.",
+  "mechanic": null,
+  "name": "Draconic Origin",
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/actors24/dragon/half-dragon.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "draconic-origin"
+}

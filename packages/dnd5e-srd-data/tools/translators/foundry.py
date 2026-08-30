@@ -7,6 +7,7 @@ import json
 import math
 import re
 import sys
+from collections.abc import Sequence
 from datetime import date
 from pathlib import Path
 from typing import Any, Literal, TypeVar
@@ -52,6 +53,8 @@ from dnd5e_srd_data import (
     Monster,
     MonsterAction,
     MonsterActionKind,
+    MonsterTrait,
+    MonsterTraitMechanic,
     Movement,
     PassiveEffect,
     PassiveEffectChange,
@@ -1212,6 +1215,65 @@ def _resolve_monster_activities(system: dict[str, Any]) -> list[Activity]:
     return out
 
 
+#: Embedded-trait ``system.identifier`` → typed mechanic. Rows quote the SRD
+#: 5.2 trait text (identical across every carrier; ``[[lookup @name]]`` is
+#: the creature's name). Names not listed keep ``mechanic=None`` (prose).
+_TRAIT_MECHANICS: dict[str, MonsterTraitMechanic] = {
+    # "has Advantage on saving throws against spells and other magical effects."
+    "magic-resistance": MonsterTraitMechanic.MAGIC_RESISTANCE,
+    # "If the <monster> fails a saving throw, it can choose to succeed instead …"
+    "legendary-resistance": MonsterTraitMechanic.LEGENDARY_RESISTANCE,
+    # "can breathe air and water."
+    "amphibious": MonsterTraitMechanic.AMPHIBIOUS,
+    # "has Advantage on an attack roll against a creature if at least one of
+    # the <monster>'s allies is within 5 feet of the creature and the ally
+    # doesn't have the Incapacitated condition."
+    "pack-tactics": MonsterTraitMechanic.PACK_TACTICS,
+    # "can climb difficult surfaces, including along ceilings, without needing
+    # to make an ability check."
+    "spider-climb": MonsterTraitMechanic.SPIDER_CLIMB,
+    # "can breathe only underwater." / "can breathe underwater."
+    "water-breathing": MonsterTraitMechanic.WATER_BREATHING,
+    # "The swarm can occupy another creature's space and vice versa …"
+    "swarm": MonsterTraitMechanic.SWARM,
+    # "If the <monster> dies outside the Nine Hells, its body dissolves … a new
+    # body in 1d10 days" — one mechanic, several plane-flavoured names.
+    "diabolical-restoration": MonsterTraitMechanic.RESTORATION,
+    "demonic-restoration": MonsterTraitMechanic.RESTORATION,
+    "celestial-restoration": MonsterTraitMechanic.RESTORATION,
+    "eldritch-restoration": MonsterTraitMechanic.RESTORATION,
+    "elemental-restoration": MonsterTraitMechanic.RESTORATION,
+    "exalted-restoration": MonsterTraitMechanic.RESTORATION,
+    "fiendish-restoration": MonsterTraitMechanic.RESTORATION,
+    "hellish-restoration": MonsterTraitMechanic.RESTORATION,
+    "undead-restoration": MonsterTraitMechanic.RESTORATION,
+    # "doesn't provoke an Opportunity Attack when it flies out of an enemy's reach."
+    "flyby": MonsterTraitMechanic.FLYBY,
+    # "can hold its breath for N minutes."
+    "hold-breath": MonsterTraitMechanic.HOLD_BREATH,
+    # "While in sunlight, the <monster> has Disadvantage on ability checks and attack rolls."
+    "sunlight-sensitivity": MonsterTraitMechanic.SUNLIGHT_SENSITIVITY,
+    # "If damage reduces the <monster> to 0 Hit Points, it makes a Constitution
+    # saving throw (DC 5 plus the damage taken) unless the damage is Radiant or
+    # from a Critical Hit. On a successful save, the <monster> drops to 1 Hit Point instead."
+    "undead-fortitude": MonsterTraitMechanic.UNDEAD_FORTITUDE,
+    # "regains N Hit Points at the start of each of its turns …"
+    "regeneration": MonsterTraitMechanic.REGENERATION,
+    # "can move through other creatures and objects as if they were Difficult Terrain …"
+    "incorporeal-movement": MonsterTraitMechanic.INCORPOREAL_MOVEMENT,
+}
+
+# ``[[lookup @name lowercase]]{monster}`` — Foundry's name enricher. Monster
+# action prose keeps the token (the engine's multiattack join tolerates it);
+# the de-duplicated ``traits/`` entries have no owning creature, so the label
+# text is substituted there.
+_LOOKUP_ENRICHER = re.compile(r"\[\[lookup[^\]]*\]\]\{([^}]*)\}")
+
+
+def substitute_lookup_labels(text: str) -> str:
+    return _LOOKUP_ENRICHER.sub(r"\1", text)
+
+
 def _build_monster_action(item: dict[str, Any]) -> tuple[MonsterAction, MonsterActionKind]:
     """Translate one embedded item document into a ``MonsterAction``. Returns
     the action plus its resolved kind so the caller can bucket it."""
@@ -1233,6 +1295,7 @@ def _build_monster_action(item: dict[str, Any]) -> tuple[MonsterAction, MonsterA
         except (TypeError, ValueError):
             cost_int = 1
         legendary_cost = max(1, cost_int)
+    mechanic = _TRAIT_MECHANICS.get(str(identifier)) if kind is MonsterActionKind.SPECIAL else None
     action = MonsterAction(
         slug=str(identifier),
         name=name,
@@ -1242,6 +1305,7 @@ def _build_monster_action(item: dict[str, Any]) -> tuple[MonsterAction, MonsterA
         recharge=recharge,
         uses_per_day=uses_per_day,
         legendary_cost=legendary_cost,
+        mechanic=mechanic,
     )
     return action, kind
 
@@ -1282,6 +1346,48 @@ def _monster_actions(
         else:
             actions.append(action)
     return actions, legendary_actions, lair_actions, special_abilities
+
+
+def _licensed_trait_identifiers(doc: dict[str, Any]) -> set[str]:
+    """``system.identifier`` values of embedded ``[trait]`` feat items that
+    carry the SRD ``CC-BY-4.0`` license tag on this actor document."""
+    return {
+        str((item.get("system") or {}).get("identifier") or "")
+        for item in (doc.get("items") or [])
+        if isinstance(item, dict)
+        and item.get("type") == "feat"
+        and "trait" in ((item.get("system") or {}).get("properties") or [])
+        and (((item.get("system") or {}).get("source") or {}).get("license")) == "CC-BY-4.0"
+    }
+
+
+def translate_monster_traits(
+    actor_yaml_paths: Sequence[Path],
+    *,
+    ingest_date: date,
+    ingest_version: str,
+) -> list[MonsterTrait]:
+    """Build the de-duplicated ``traits/`` category from the SRD actors'
+    embedded ``[trait]`` feat items. First occurrence (by the caller's path
+    order — regen passes a sorted list) wins, so output is deterministic.
+    Items without ``system.source.license == "CC-BY-4.0"`` are skipped."""
+    by_slug: dict[str, MonsterTrait] = {}
+    for yaml_path in actor_yaml_paths:
+        doc = _load_yaml(yaml_path)
+        _, _, _, special_abilities = _monster_actions(doc)
+        licensed = _licensed_trait_identifiers(doc)
+        for ability in special_abilities:
+            if ability.slug in by_slug or ability.slug not in licensed:
+                continue
+            by_slug[ability.slug] = MonsterTrait(
+                slug=ability.slug,
+                name=ability.name,
+                description=substitute_lookup_labels(ability.description),
+                mechanic=ability.mechanic,
+                provenance=_provenance(yaml_path, ingest_date, ingest_version),
+                review=ReviewState(),
+            )
+    return [by_slug[slug] for slug in sorted(by_slug)]
 
 
 def translate_monster_yaml(

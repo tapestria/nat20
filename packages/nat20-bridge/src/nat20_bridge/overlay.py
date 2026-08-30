@@ -16,7 +16,7 @@ from dnd5e_srd_data.schema.condition import Condition
 from dnd5e_srd_data.schema.feat import Feat
 from dnd5e_srd_data.schema.feature import Feature
 from dnd5e_srd_data.schema.item import Armor, Item, MagicItem, Weapon
-from dnd5e_srd_data.schema.monster import Monster
+from dnd5e_srd_data.schema.monster import Monster, MonsterTrait
 from dnd5e_srd_data.schema.species import Species
 from dnd5e_srd_data.schema.spell import Spell
 
@@ -86,6 +86,10 @@ class OverlayAssetLoader:
 
     def list_conditions(self) -> list[str]:
         return self.list_slugs("conditions")
+
+    def get_trait(self, slug: str) -> MonsterTrait | None:
+        found = self._base.get_trait(slug)
+        return found if found is not None else self._overlay.get_trait(slug)
 
     def list_slugs(self, category: Category) -> list[str]:
         base_slugs = self._base.list_slugs(category)

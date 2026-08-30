@@ -127,6 +127,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]], and the next attack roll made against the target before the start of the [[lookup @name lowercase]]{monster}'s next turn has Advantage.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Bite",
       "recharge": null,
       "slug": "bite",

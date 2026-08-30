@@ -1,0 +1,20 @@
+{
+  "description": "The monster babbles incoherently while it doesn't have the Incapacitated condition.\n\nWisdom Saving Throw: DC [[lookup @save.dc.value activity=PyGOI84k0PPYrru8]], any [[lookup @target.affects.type activity=PyGOI84k0PPYrru8]] that starts its turn within [[lookup @target.template.size activity=PyGOI84k0PPYrru8]] feet of the monster while it is babbling.\n\nFailure: The target rolls [[/r 1d8]] to determine what it does during the current turn:\n\n1\u20134. The target does nothing.\n\n5\u20136. The target takes no action or Bonus Action and uses all its movement to move in a random direction.\n\n7\u20138. The target makes a melee attack against a randomly determined creature within its reach or does nothing if it can't make such an attack.",
+  "mechanic": null,
+  "name": "Gibbering",
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/actors24/aberration/gibbering-mouther.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "gibbering"
+}

@@ -127,6 +127,7 @@
       "description": "[[/attack extended]]. [[/damage extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Rake",
       "recharge": null,
       "slug": "rake",

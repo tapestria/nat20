@@ -1,0 +1,20 @@
+{
+  "description": "The monster has five heads. Whenever the monster takes 25 damage or more on a single turn, one of its heads dies. The monster dies if all its heads are dead. At the end of each of its turns when it has at least one living head, the monster grows two heads for each of its heads that died since its last turn, unless it has taken Fire damage since its last turn. The monster regains 20 Hit Points when it grows new heads.",
+  "mechanic": null,
+  "name": "Multiple Heads",
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/actors24/monstrosity/hydra.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "multiple-heads"
+}

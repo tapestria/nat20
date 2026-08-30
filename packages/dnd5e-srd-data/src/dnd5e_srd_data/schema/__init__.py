@@ -107,6 +107,8 @@ from dnd5e_srd_data.schema.monster import (
     Monster,
     MonsterAction,
     MonsterActionKind,
+    MonsterTrait,
+    MonsterTraitMechanic,
     SavingThrowProficiencies,
     SkillProficiencies,
 )
@@ -194,6 +196,8 @@ __all__ = [
     "Monster",
     "MonsterAction",
     "MonsterActionKind",
+    "MonsterTrait",
+    "MonsterTraitMechanic",
     "Movement",
     "PassiveEffect",
     "PassiveEffectChange",

@@ -144,6 +144,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Hooves",
       "recharge": null,
       "slug": "hooves",

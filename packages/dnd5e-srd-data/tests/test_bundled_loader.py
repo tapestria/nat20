@@ -79,3 +79,9 @@ def test_conditions_is_a_loader_category():
     from dnd5e_srd_data.loader import _CATEGORIES
 
     assert "conditions" in _CATEGORIES
+
+
+def test_traits_is_a_loader_category():
+    from dnd5e_srd_data.loader import _CATEGORIES
+
+    assert "traits" in _CATEGORIES

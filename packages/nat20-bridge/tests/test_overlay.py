@@ -4,6 +4,7 @@ from dnd5e_srd_data.loader import BundledAssetLoader, MemoryAssetLoader
 from dnd5e_srd_data.schema.common import Provenance, ReviewState
 from dnd5e_srd_data.schema.condition import Condition, ConditionEffect, ConditionEffectKind
 from dnd5e_srd_data.schema.item import Weapon
+from dnd5e_srd_data.schema.monster import MonsterTrait
 
 from nat20_bridge.overlay import OverlayAssetLoader
 
@@ -30,6 +31,50 @@ def _condition(slug: str) -> Condition:
         ),
         review=ReviewState(),
     )
+
+
+def _trait(slug: str) -> MonsterTrait:
+    return MonsterTrait(
+        slug=slug,
+        name=slug,
+        description="",
+        mechanic=None,
+        provenance=Provenance(
+            source="foundry",
+            source_url="x",
+            ingest_date=date(2026, 8, 27),
+            ingest_version="v1",
+            srd_version=frozenset({"5.2"}),
+        ),
+        review=ReviewState(),
+    )
+
+
+def test_overlay_covers_traits_get_and_fallthrough() -> None:
+    base_mr = _trait("magic-resistance")
+    overlay_hb = _trait("hb-frenzy")
+    loader = OverlayAssetLoader(
+        base=MemoryAssetLoader(traits=[base_mr]),
+        overlay=MemoryAssetLoader(traits=[overlay_hb]),
+    )
+    assert loader.get_trait("magic-resistance") is base_mr  # base hit
+    assert loader.get_trait("hb-frenzy") is overlay_hb  # base miss -> overlay fallthrough
+    assert loader.get_trait("nope") is None  # unknown slug
+    assert ("traits", "magic-resistance") in loader
+    assert ("traits", "hb-frenzy") in loader
+    assert ("traits", "nope") not in loader
+
+
+def test_overlay_list_traits_merges_base_first_no_duplicates() -> None:
+    shared = _trait("magic-resistance")
+    overlay_shadow = _trait("magic-resistance")  # same slug — must not duplicate, base wins on get
+    overlay_extra = _trait("hb-frenzy")
+    loader = OverlayAssetLoader(
+        base=MemoryAssetLoader(traits=[shared, _trait("amphibious")]),
+        overlay=MemoryAssetLoader(traits=[overlay_shadow, overlay_extra]),
+    )
+    assert loader.list_slugs("traits") == ["amphibious", "magic-resistance", "hb-frenzy"]
+    assert loader.get_trait("magic-resistance") is shared
 
 
 def test_overlay_serves_homebrew_and_falls_through() -> None:

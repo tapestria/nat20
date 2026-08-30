@@ -169,3 +169,27 @@ def test_aoe_action_carries_template():
 def test_ability_scores_rejects_zero():
     with pytest.raises(ValidationError):
         AbilityScores(str=0, dex=10, con=10, int=10, wis=10, cha=10)
+
+
+def test_monster_action_mechanic_is_optional_and_typed():
+    from dnd5e_srd_data.schema.monster import MonsterTraitMechanic
+
+    action = MonsterAction(
+        slug="magic-resistance",
+        name="Magic Resistance",
+        kind=MonsterActionKind.SPECIAL,
+        description=(
+            "The fiend has Advantage on saving throws against spells and other magical effects."
+        ),
+        mechanic=MonsterTraitMechanic.MAGIC_RESISTANCE,
+    )
+    assert action.model_dump(mode="json")["mechanic"] == "magic_resistance"
+    # Pre-C22 canonical JSON (no key) still validates.
+    legacy = MonsterAction.model_validate(
+        {"slug": "x", "name": "X", "kind": "special", "description": ""}
+    )
+    assert legacy.mechanic is None
+    with pytest.raises(ValidationError):
+        MonsterAction.model_validate(
+            {"slug": "x", "name": "X", "kind": "special", "description": "", "mechanic": "nope"}
+        )

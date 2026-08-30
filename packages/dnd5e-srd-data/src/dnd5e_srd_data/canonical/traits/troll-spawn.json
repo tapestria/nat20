@@ -1,0 +1,20 @@
+{
+  "description": "The limb uncannily has the same senses as a whole monster. If the limb isn't destroyed within 24 hours, roll [[/r 1d12#On a 12, the limb turns into a troll]]{roll 1d12}. On a 12, the limb turns into a Troll. Otherwise, the limb withers away.",
+  "mechanic": null,
+  "name": "Troll Spawn",
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/actors24/giant/troll-limb.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "troll-spawn"
+}

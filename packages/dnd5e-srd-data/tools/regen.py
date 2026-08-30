@@ -30,6 +30,7 @@ from tools.translators.foundry import (
     translate_feat_yaml,
     translate_feature_yaml,
     translate_generic_item_yaml,
+    translate_monster_traits,
     translate_monster_yaml,
     translate_species_yaml,
     translate_spell_yaml,
@@ -246,6 +247,7 @@ def _prune_stale_canonical() -> None:
         "feats",
         "features",
         "conditions",
+        "traits",
     ):
         dst = CANONICAL / canonical_subdir
         if not dst.is_dir():
@@ -398,6 +400,23 @@ def main() -> int:
     for condition in condition_entries:
         write_canonical_with_overrides(condition, conditions_dst)
     print(f"  accepted={len(condition_entries)}")
+
+    # De-duplicated SRD 5.2 monster traits (C22). Sourced from the SRD-gated
+    # actors' embedded trait items (monsterfeatures24 carries no license tag).
+    print("[regen] traits …")
+    actor_paths = [
+        p
+        for p in sorted((FOUNDRY_PACKS / "actors24").rglob("*.yml"))
+        if p.name != "_folder.yml" and _gate_for_yaml(p).is_srd
+    ]
+    traits_dst = CANONICAL / "traits"
+    traits_dst.mkdir(parents=True, exist_ok=True)
+    trait_entries = translate_monster_traits(
+        actor_paths, ingest_date=ingest_date, ingest_version=INGEST_VERSION
+    )
+    for trait in trait_entries:
+        write_canonical_with_overrides(trait, traits_dst)
+    print(f"  accepted={len(trait_entries)}")
 
     # Post-process: populate Class.subclass_identifiers from the subclass
     # forward references. Foundry's Subclass-type advancement entries on the

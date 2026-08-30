@@ -1,0 +1,115 @@
+_id: hell-hound-lite
+name: Hell Hound Lite
+type: npc
+system:
+  description:
+    value: "A small humanoid."
+  details:
+    type:
+      value: fiend
+    cr: 0.25
+    alignment: "neutral evil"
+  abilities:
+    str: {value: 8, proficient: 0, save: null}
+    dex: {value: 14, proficient: 0, save: null}
+    con: {value: 10, proficient: 0, save: null}
+    int: {value: 10, proficient: 0, save: null}
+    wis: {value: 8, proficient: 0, save: null}
+    cha: {value: 8, proficient: 0, save: null}
+  attributes:
+    ac:
+      flat: 15
+    hp:
+      value: 7
+      max: 7
+      formula: "2d6"
+    movement:
+      walk: 30
+      units: "ft"
+    senses:
+      darkvision: 60
+    prof: 2
+  traits:
+    size: "sm"
+    languages:
+      value: ["common", "goblin"]
+  skills:
+    ste: {value: 1, bonus: 0}
+flags:
+  srd: true
+items:
+  - _id: mmBite0000000000
+    name: Bite
+    type: weapon
+    system:
+      identifier: bite
+      description:
+        value: "<p>Melee Attack Roll.</p>"
+      source:
+        license: CC-BY-4.0
+        rules: '2024'
+      damage:
+        base:
+          number: 1
+          denomination: 8
+          bonus: ''
+          types: [piercing]
+      activities:
+        attk00000000000a:
+          type: attack
+          _id: attk00000000000a
+          activation:
+            type: action
+          attack:
+            ability: str
+            type:
+              value: melee
+              classification: weapon
+          damage:
+            includeBase: true
+            parts: []
+  - _id: mmPackTactics000
+    name: Pack Tactics
+    type: feat
+    system:
+      type:
+        value: monster
+      identifier: pack-tactics
+      properties:
+        - trait
+      source:
+        license: CC-BY-4.0
+        rules: '2024'
+      activities: {}
+      description:
+        value: "<p>The [[lookup @name lowercase]]{monster} has Advantage on an attack roll against a creature if at least one of the [[lookup @name lowercase]]{monster}'s allies is within 5 feet of the creature and the ally doesn't have the Incapacitated condition.</p>"
+  - _id: mmMagicResistanc
+    name: Magic Resistance
+    type: feat
+    system:
+      type:
+        value: monster
+      identifier: magic-resistance
+      properties:
+        - trait
+      source:
+        license: CC-BY-4.0
+        rules: '2024'
+      activities: {}
+      description:
+        value: "<p>The [[lookup @name lowercase]]{monster} has Advantage on saving throws against spells and other magical effects.</p>"
+  - _id: mmOddTrait000000
+    name: Odd Trait
+    type: feat
+    system:
+      type:
+        value: monster
+      identifier: odd-trait
+      properties:
+        - trait
+      source:
+        license: CC-BY-4.0
+        rules: '2024'
+      activities: {}
+      description:
+        value: "<p>Prose only.</p>"

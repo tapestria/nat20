@@ -1,0 +1,20 @@
+{
+  "description": "If the monster is targeted by a Magic Missile spell or a spell that requires a ranged attack roll, roll [[/r 1d6]].\n\nOn a 1\u20135, the monster is unaffected.\n\nOn a 6, the monster is unaffected and reflects the spell, turning the caster into the target.",
+  "mechanic": null,
+  "name": "Reflective Carapace",
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/actors24/monstrosity/tarrasque.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "reflective-carapace"
+}

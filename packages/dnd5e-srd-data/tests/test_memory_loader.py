@@ -167,3 +167,28 @@ def test_memory_loader_serves_conditions():
     assert loader.list_conditions() == ["prone"]
     assert loader.list_slugs("conditions") == ["prone"]
     assert ("conditions", "prone") in loader
+
+
+def test_memory_loader_serves_traits():
+    from dnd5e_srd_data.schema.monster import MonsterTrait, MonsterTraitMechanic
+
+    magic_resistance = MonsterTrait(
+        slug="magic-resistance",
+        name="Magic Resistance",
+        description="Advantage on saving throws against spells and other magical effects.",
+        mechanic=MonsterTraitMechanic.MAGIC_RESISTANCE,
+        provenance=Provenance(
+            source="foundry",
+            source_url="x",
+            ingest_date=date(2026, 8, 27),
+            ingest_version="v1",
+            srd_version=frozenset({"5.2"}),
+        ),
+        review=ReviewState(),
+    )
+    loader = MemoryAssetLoader(traits=[magic_resistance])
+    assert isinstance(loader, AssetLoader)
+    assert loader.get_trait("magic-resistance") is magic_resistance
+    assert loader.get_trait("nope") is None
+    assert loader.list_slugs("traits") == ["magic-resistance"]
+    assert ("traits", "magic-resistance") in loader
