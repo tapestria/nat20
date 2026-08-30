@@ -181,8 +181,10 @@ _PROBES: dict[str, tuple[Any, str]] = {
     # halves hold, the row is ⚠️ Partial; implementing the gate (which means
     # deleting that sentence) flips the probe and forces the row up to ✅.
     "Conditions (the 15 SRD conditions)": (
-        lambda: '"actor_incapacitated"' in _src("orchestrator.py")
-        and "line-of-sight gate is not modelled" in _src("rules/conditions.py"),
+        lambda: (
+            '"actor_incapacitated"' in _src("orchestrator.py")
+            and "line-of-sight gate is not modelled" in _src("rules/conditions.py")
+        ),
         "⚠️ Partial",
     ),
     # C12: the SRD 5.2 exhaustion penalty is a real projection, not prose.
