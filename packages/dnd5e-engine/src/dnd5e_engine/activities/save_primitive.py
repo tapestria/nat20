@@ -37,6 +37,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Final
 
 import d20
+from dnd5e_srd_data.schema.monster import MonsterTraitMechanic
 
 from dnd5e_engine.activities.d20 import AdvantageSources, D20Result, roll_d20_test
 from dnd5e_engine.events import AdvantageMode, AdvantageSource
@@ -201,8 +202,19 @@ def _roll_save_d20(
     ability_upper = ability.upper()
     has_adv = ability_upper in ctx.passive_save_adv.get(target.entity_id, [])
     has_dis = ability_upper in ctx.passive_save_dis.get(target.entity_id, [])
+    # SRD 5.2 stat-block trait "Magic Resistance": "has Advantage on saving
+    # throws against spells and other magical effects". ``base_spell_level``
+    # is set by every spell-cast path (cantrips included, level 0) and is
+    # ``None`` for weapon attacks and features — the engine's "this save is
+    # spell-sourced" signal. Adds a draw ONLY when the trait is present.
+    advantage: tuple[AdvantageSource, ...] = ("condition:target",) if has_adv else ()
+    if (
+        ctx.base_spell_level is not None
+        and MonsterTraitMechanic.MAGIC_RESISTANCE in target.trait_mechanics
+    ):
+        advantage = (*advantage, "trait")
     sources = AdvantageSources(
-        advantage=("condition:target",) if has_adv else (),
+        advantage=advantage,
         disadvantage=("condition:target",) if has_dis else (),
     )
     return roll_d20_test(ctx.rng, modifier, sources, forced_natural=forced_natural)

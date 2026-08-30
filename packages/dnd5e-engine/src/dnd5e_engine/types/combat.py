@@ -10,6 +10,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Any
 
+from dnd5e_srd_data.schema.monster import MonsterTraitMechanic
 from pydantic import BaseModel, Field, model_validator
 
 from dnd5e_engine.activities.passive_stats import CombatantMovementModes, CombatantSenses
@@ -177,6 +178,12 @@ class Combatant(BaseModel):
     # / reaction_available / disengaging_this_turn. Defaults False (rider may
     # fire) for every combatant.
     sneak_attack_spent_this_turn: bool = False
+    # C22: typed SRD 5.2 monster traits hydrated from the template's
+    # ``special_abilities[].mechanic`` (Magic Resistance → advantage on saves
+    # against spells in ``activities/save_primitive.py``; C18 consumes Pack
+    # Tactics / Sunlight Sensitivity / Undead Fortitude / Regeneration …).
+    # Empty for PCs and template-less foes.
+    trait_mechanics: list[MonsterTraitMechanic] = Field(default_factory=list)
 
     @model_validator(mode="before")
     @classmethod

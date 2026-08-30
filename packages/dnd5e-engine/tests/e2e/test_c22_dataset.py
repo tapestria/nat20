@@ -111,7 +111,6 @@ def test_c22_s01_prone_condition_dataset_entry_and_engine_leg():
     assert rolled.advantage == "advantage"
 
 
-@xfail_cluster(22, "dataset")
 def test_c22_s02_magic_resistance_trait_is_typed_not_prose_only():
     """C22-S02: SRD 5.2 Monster stat-block special ability, Magic
     Resistance — "Advantage on saving throws against spells and other

@@ -3920,6 +3920,9 @@ def _build_foe_combatants(
                     "skill_proficiencies": [
                         k for k, v in monster.skills.model_dump().items() if v is not None
                     ],
+                    "trait_mechanics": [
+                        a.mechanic for a in monster.special_abilities if a.mechanic is not None
+                    ],
                 }
                 if foe.dexterity == 10:
                     template_kw["dexterity"] = sc.dex
