@@ -212,7 +212,8 @@
             "dc": {
               "calculation": "con",
               "formula": ""
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -322,7 +323,8 @@
             "dc": {
               "calculation": "con",
               "formula": "8 + @mod + @prof"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {

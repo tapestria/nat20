@@ -2073,7 +2073,8 @@
         "dc": {
           "calculation": "",
           "formula": "17"
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 250000,
       "target": {

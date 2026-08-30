@@ -49,7 +49,8 @@
         "dc": {
           "calculation": "",
           "formula": "11"
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 0,
       "target": {
@@ -137,7 +138,8 @@
         "dc": {
           "calculation": "",
           "formula": "15"
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 0,
       "target": {

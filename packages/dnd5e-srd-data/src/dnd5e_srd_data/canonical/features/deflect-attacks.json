@@ -171,7 +171,8 @@
         "dc": {
           "calculation": "wis",
           "formula": ""
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 0,
       "target": {

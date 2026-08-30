@@ -81,7 +81,8 @@
         "dc": {
           "calculation": "spellcasting",
           "formula": ""
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 0,
       "target": {
@@ -201,7 +202,8 @@
         "dc": {
           "calculation": "spellcasting",
           "formula": ""
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 0,
       "target": {

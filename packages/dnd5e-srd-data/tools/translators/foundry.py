@@ -1799,6 +1799,30 @@ def _apply_spell_damage_type_corrections(slug: str, activities: list[Activity]) 
     return out
 
 
+#: Spell slug → the SRD 5.2 sentence that removes cover from the save. Foundry
+#: has no field for this; the sentence is the only source. Re-verify with
+#: ``grep -rl "benefit from" packs/_source/spells24`` when refreshing upstream.
+_SPELL_SAVE_IGNORE_COVER: dict[str, str] = {
+    "sacred-flame": (
+        "The target gains no benefit from Half Cover or Three-Quarters Cover for this save."
+    ),
+}
+
+
+def _apply_spell_save_cover_overrides(slug: str, activities: list[Activity]) -> list[Activity]:
+    """Set ``save.ignore_cover`` on every save activity of an allowlisted spell.
+    Copy-on-write like ``_apply_spell_damage_type_corrections``."""
+    if slug not in _SPELL_SAVE_IGNORE_COVER:
+        return activities
+    out: list[Activity] = []
+    for act in activities:
+        if isinstance(act, SaveActivity):
+            new_save = act.save.model_copy(update={"ignore_cover": True})
+            act = act.model_copy(update={"save": new_save})
+        out.append(act)
+    return out
+
+
 def translate_spell_yaml(
     yaml_path: Path,
     *,
@@ -1835,7 +1859,9 @@ def translate_spell_yaml(
         duration=_spell_duration(system.get("duration") or {}),
         materials=_spell_materials(system.get("materials") or {}),
         preparation=_spell_preparation(system.get("preparation") or {}),
-        activities=_apply_spell_damage_type_corrections(slug, _translate_activities(system)),
+        activities=_apply_spell_save_cover_overrides(
+            slug, _apply_spell_damage_type_corrections(slug, _translate_activities(system))
+        ),
         passive_effects=_passive_effects(doc),
         provenance=_provenance(yaml_path, ingest_date, ingest_version),
         review=ReviewState(),

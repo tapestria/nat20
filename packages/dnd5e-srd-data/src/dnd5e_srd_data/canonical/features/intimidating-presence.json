@@ -69,7 +69,8 @@
         "dc": {
           "calculation": "",
           "formula": "8 + @abilities.str.mod + @prof"
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 0,
       "target": {

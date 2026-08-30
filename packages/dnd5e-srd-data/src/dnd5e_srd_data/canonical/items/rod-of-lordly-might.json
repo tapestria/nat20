@@ -507,7 +507,8 @@
         "dc": {
           "calculation": "",
           "formula": "17"
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 600000,
       "target": {
@@ -623,7 +624,8 @@
         "dc": {
           "calculation": "",
           "formula": "17"
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 700000,
       "target": {
@@ -739,7 +741,8 @@
         "dc": {
           "calculation": "",
           "formula": "17"
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 800000,
       "target": {

@@ -413,10 +413,16 @@ class SaveDcBlock(BaseModel, frozen=True):
 
 
 class SaveBlock(BaseModel, frozen=True):
-    """Foundry ``save-data.mjs`` ``save`` schema."""
+    """Foundry ``save-data.mjs`` ``save`` schema, plus one SRD carve-out
+    Foundry keeps only in prose."""
 
     ability: list[str] = Field(default_factory=list)
     dc: SaveDcBlock = Field(default_factory=SaveDcBlock)
+    ignore_cover: bool = False
+    """SRD 5.2 Sacred Flame: "The target gains no benefit from Half Cover or
+    Three-Quarters Cover for this save." Set by the translator's slug
+    allowlist (``_SPELL_SAVE_IGNORE_COVER``); the engine's Dexterity-save
+    cover fold skips the +2/+5 when True."""
 
 
 class SaveDamageCriticalBlock(BaseModel, frozen=True):

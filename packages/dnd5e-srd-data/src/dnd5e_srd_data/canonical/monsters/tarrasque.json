@@ -669,7 +669,8 @@
             "dc": {
               "calculation": "",
               "formula": "8 + @mod + @prof"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -779,7 +780,8 @@
             "dc": {
               "calculation": "str",
               "formula": "8 + @mod + @prof"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -977,7 +979,8 @@
             "dc": {
               "calculation": "",
               "formula": "20"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {

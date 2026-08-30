@@ -304,7 +304,8 @@
             "dc": {
               "calculation": "str",
               "formula": "23"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {

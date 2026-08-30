@@ -77,7 +77,8 @@
         "dc": {
           "calculation": "",
           "formula": "16"
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 0,
       "target": {

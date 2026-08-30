@@ -305,7 +305,8 @@
             "dc": {
               "calculation": "str",
               "formula": ""
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {

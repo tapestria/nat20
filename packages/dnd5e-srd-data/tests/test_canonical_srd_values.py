@@ -501,3 +501,20 @@ def test_monster_action_carries_inline_activities():
     assert any(act.kind == "attack" for act in tentacle.activities), (
         f"expected an attack activity; got {[act.kind for act in tentacle.activities]}"
     )
+
+
+def test_sacred_flame_is_the_only_save_that_ignores_cover():
+    """SRD 5.2 Sacred Flame: "The target gains no benefit from Half Cover or
+    Three-Quarters Cover for this save." No other SRD spell carries the clause."""
+    from dnd5e_srd_data.schema.common import SaveActivity
+
+    loader = BundledAssetLoader()
+    ignoring = sorted(
+        slug
+        for slug in loader.list_slugs("spells")
+        if any(
+            isinstance(a, SaveActivity) and a.save.ignore_cover
+            for a in loader.get_spell(slug).activities
+        )
+    )
+    assert ignoring == ["sacred-flame"]

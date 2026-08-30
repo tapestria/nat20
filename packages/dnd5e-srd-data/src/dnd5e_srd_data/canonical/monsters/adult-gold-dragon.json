@@ -322,7 +322,8 @@
             "dc": {
               "calculation": "con",
               "formula": "11"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -912,7 +913,8 @@
             "dc": {
               "calculation": "",
               "formula": "13"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -1060,7 +1062,8 @@
             "dc": {
               "calculation": "cha",
               "formula": ""
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {

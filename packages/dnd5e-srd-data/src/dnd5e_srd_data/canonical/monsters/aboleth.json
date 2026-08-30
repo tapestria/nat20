@@ -476,7 +476,8 @@
             "dc": {
               "calculation": "",
               "formula": "16"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -594,7 +595,8 @@
             "dc": {
               "calculation": "",
               "formula": "16"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -1095,7 +1097,8 @@
             "dc": {
               "calculation": "",
               "formula": "14"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {

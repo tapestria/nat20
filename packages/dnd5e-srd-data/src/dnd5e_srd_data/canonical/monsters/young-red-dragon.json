@@ -322,7 +322,8 @@
             "dc": {
               "calculation": "con",
               "formula": "11"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {

@@ -165,7 +165,8 @@
         "dc": {
           "calculation": "",
           "formula": "17"
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 300000,
       "target": {
@@ -430,7 +431,8 @@
         "dc": {
           "calculation": "",
           "formula": "17"
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 400000,
       "target": {
@@ -552,7 +554,8 @@
         "dc": {
           "calculation": "",
           "formula": "17"
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 500000,
       "target": {
@@ -686,7 +689,8 @@
         "dc": {
           "calculation": "",
           "formula": "17"
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 600000,
       "target": {

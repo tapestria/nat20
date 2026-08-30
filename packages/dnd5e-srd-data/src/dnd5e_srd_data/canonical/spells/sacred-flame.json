@@ -67,7 +67,8 @@
         "dc": {
           "calculation": "spellcasting",
           "formula": ""
-        }
+        },
+        "ignore_cover": true
       },
       "sort": 0,
       "target": {

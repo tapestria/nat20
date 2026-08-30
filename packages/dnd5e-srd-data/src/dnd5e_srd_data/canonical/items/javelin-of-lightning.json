@@ -171,7 +171,8 @@
         "dc": {
           "calculation": "",
           "formula": "13"
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 0,
       "target": {

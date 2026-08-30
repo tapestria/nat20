@@ -49,7 +49,8 @@
         "dc": {
           "calculation": "",
           "formula": "@attributes.spell.dc - 5 + 2"
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 0,
       "target": {
@@ -137,7 +138,8 @@
         "dc": {
           "calculation": "",
           "formula": "@attributes.spell.dc - 5 + 4"
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 0,
       "target": {
@@ -225,7 +227,8 @@
         "dc": {
           "calculation": "",
           "formula": "@attributes.spell.dc - 5 + 10"
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 0,
       "target": {
@@ -313,7 +316,8 @@
         "dc": {
           "calculation": "",
           "formula": "@attributes.spell.dc - 0 + 2"
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 0,
       "target": {
@@ -401,7 +405,8 @@
         "dc": {
           "calculation": "",
           "formula": "@attributes.spell.dc - 0 + 4"
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 0,
       "target": {
@@ -489,7 +494,8 @@
         "dc": {
           "calculation": "",
           "formula": "@attributes.spell.dc - 0 + 10"
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 0,
       "target": {
@@ -577,7 +583,8 @@
         "dc": {
           "calculation": "",
           "formula": "@attributes.spell.dc + 5 + 2"
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 0,
       "target": {
@@ -665,7 +672,8 @@
         "dc": {
           "calculation": "",
           "formula": "@attributes.spell.dc + 5 + 4"
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 0,
       "target": {
@@ -753,7 +761,8 @@
         "dc": {
           "calculation": "",
           "formula": "@attributes.spell.dc + 5 + 10"
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 0,
       "target": {

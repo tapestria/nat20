@@ -425,7 +425,8 @@
             "dc": {
               "calculation": "cha",
               "formula": "15"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {

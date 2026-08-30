@@ -347,3 +347,11 @@ def test_spell_foundry_uuid_defaults_empty():
     fields = Spell.model_fields
     assert "foundry_uuid" in fields
     assert fields["foundry_uuid"].default == ""
+
+
+def test_save_block_ignore_cover_defaults_false_and_round_trips():
+    from dnd5e_srd_data.schema.common import SaveBlock
+
+    assert SaveBlock().ignore_cover is False
+    block = SaveBlock(ability=["dex"], ignore_cover=True)
+    assert SaveBlock.model_validate(block.model_dump(mode="json")).ignore_cover is True

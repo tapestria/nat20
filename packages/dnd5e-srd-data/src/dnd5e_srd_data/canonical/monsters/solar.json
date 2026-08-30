@@ -188,7 +188,8 @@
             "dc": {
               "calculation": "",
               "formula": "21"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -1279,7 +1280,8 @@
             "dc": {
               "calculation": "cha",
               "formula": ""
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -1397,7 +1399,8 @@
             "dc": {
               "calculation": "",
               "formula": "25"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
