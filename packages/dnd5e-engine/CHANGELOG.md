@@ -95,14 +95,28 @@ exhaustion on a combatant. Behavioural deltas
   crit / natural-1 fumble test reads).
 - Turn advancement runs through one shared path, so every boundary rule fires
   in a single, registration-ordered place.
-- **All 15 SRD 5.2 conditions now have teeth (C12)** — the Incapacitated
+- **The SRD 5.2 conditions now have teeth (C12)** — the Incapacitated
   action/bonus/reaction gate, Speed 0, exhaustion's `-2 × level` on every D20
   Test (death saves included) and `-5 ft × level` Speed, the Prone and Grappled
   attack rows, auto-crit within 5 ft of a Paralyzed/Unconscious target, the
-  Charmed target restriction, and Unconscious at 0 HP with massive-damage
-  instant death plus one death-save failure per damaging hit while down.
-  Exhaustion no longer projects ability-check *disadvantage* (that was the 2014
-  rule). See the migration guide.
+  Charmed target restriction (on the monster turn path as well as the player's
+  — a charmed monster will not select its charmer), and Unconscious at 0 HP —
+  including a Character *hydrated* into combat already at 0 HP — with
+  massive-damage instant death plus one death-save failure per damaging hit
+  while down. Four SRD condition rows remain unenforced and the capability row
+  stays `⚠️ Partial`; see `docs/capabilities.md` and `BACKLOG.md`.
+- **`conditions_grant_disadvantage_on_ability_checks` /
+  `project_passive_check_modifiers` changed their answer for two slugs**
+  (both PyPI-live): `exhaustion` no longer reports disadvantage (SRD 5.2
+  replaced the 2014 rule with the numeric penalty), and `frightened` now does.
+  See the migration guide.
+- **Condition immunity is honoured by the state folds, not only the event.**
+  A status on a creature listed in `Combatant.condition_immunities` no longer
+  lands on `Combatant.conditions` or `active_conditions` — neither through the
+  `start_combat` effect seed nor the runtime `EffectApplied` fold, which
+  previously unioned it in behind the already-suppressed `ConditionApplied`.
+  Before C12 that was near-cosmetic; with the gates above it decided whether an
+  immune creature could act at all.
 - **`ConditionApplied` / `ConditionRemoved` now materialise on
   `Combatant.conditions`**, so a condition applied mid-combat reaches every
   condition consumer (a Topple-proned target is attacked at advantage in

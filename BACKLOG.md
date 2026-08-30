@@ -345,11 +345,6 @@ zone + apply logic:
   `d20_test_penalty`, Prone and Grappled do not reach them. C14 routes them
   through the shared primitive and inherits all three.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
-- **Two death-save failures on a Critical Hit at 0 HP are not applied.**
-  SRD 5.2 "Damage at 0 Hit Points": a Critical Hit inflicts two failures.
-  `DamageApplied` carries no crit flag, so `_apply_zero_hp_to_character`
-  always records one. Needs the C15 `DamageApplied.source_id` / crit
-  attribution. (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
 - **Initiative is host-supplied, not rolled.** `start_combat` orders the
   `initiative` values from the specs; no DEX-mod roll, no surprise, no delay.
   (`packages/dnd5e-engine/src/dnd5e_engine/specs.py`)
@@ -555,8 +550,13 @@ a cluster; they are consolidated here so they are not re-discovered.
 
 ## Damage at 0 Hit Points (2026-08-29)
 
-Surfaced while landing C12-S06 (Characters fall Unconscious at 0 HP). Both need
-the C15 `DamageApplied` attribution seam, so neither is fixable in isolation.
+Surfaced while landing C12-S06 (Characters fall Unconscious at 0 HP).
+
+The first two entries are **ACCEPTED KNOWINGLY** by the C12 controller ruling
+(2026-08-29): both are halves of the same missing seam — per-damage-instance
+attribution on `DamageApplied` (a shared `source_id` / instance id, plus the
+crit flag). **C15 (attack rules) owns that seam and therefore owns both fixes**;
+neither is repairable inside C12 without inventing the event field C15 will add.
 
 - **A multi-type hit inflicts one death-save failure PER DAMAGE TYPE.** SRD 5.2
   "Damage at 0 Hit Points" charges one failure per instance of damage, but
@@ -564,10 +564,20 @@ the C15 `DamageApplied` attribution seam, so neither is fixable in isolation.
   fold counts a failure per event, so a fire+slashing hit on a downed Character
   costs two failures. Needs per-event attribution (a shared `source_id` /
   instance id on `DamageApplied`) so the fold can collapse the events of one
-  attack — the same seam C15 needs for the Critical-Hit two-failure clause.
+  attack — the same seam the Critical-Hit entry below needs. Owner: **C15**.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py:1845`
   `_apply_zero_hp_to_character`,
   `packages/dnd5e-engine/src/dnd5e_engine/activities/apply.py:75`)
+- **Two death-save failures on a Critical Hit at 0 HP are not applied.** SRD 5.2
+  "Damage at 0 Hit Points": a Critical Hit inflicts two failures. C12 landed the
+  auto-crit itself (Paralyzed/Unconscious target within 5 ft), so the engine now
+  produces exactly the situation the rule covers — but `DamageApplied` carries
+  no crit flag, so `_apply_zero_hp_to_character` calls
+  `state.apply_damage_while_unconscious(False)` with the argument hard-coded and
+  always records one failure. Same `DamageApplied` attribution seam as the
+  multi-type entry above; fixing either alone would be guesswork. Owner: **C15**.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py:1905`
+  `_apply_zero_hp_to_character`)
 - **A death-save failure from damage at 0 HP surfaces no event.** The failure is
   written straight onto `Combatant.death_saves`; hosts narrating from the event
   stream see the `DamageApplied` but never learn a failure landed (only
@@ -625,10 +635,6 @@ re-discovered.
   although its caller now passes the condition/exhaustion-PROJECTED speed. A
   rename to `effective_speed` is cosmetic but removes a real reading trap.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py:736`)
-- **A Character hydrated into combat already at 0 HP gets no `unconscious`
-  condition.** The 0-HP fold hangs off the damage path, so a host that starts a
-  combat with a downed PC sees no `Unconscious` and no death saves until the PC
-  is hit again. (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
 - **The `enumerate(live.initiative)` → `model_copy` → slot-replace loop is
   open-coded 32 times** (four of them added by C12). A single
   `_update_combatant(live, entity_id, **update)` helper would collapse them.
