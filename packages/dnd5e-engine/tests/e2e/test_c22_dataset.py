@@ -192,7 +192,6 @@ def test_c22_s02_magic_resistance_trait_is_typed_not_prose_only():
     )
 
 
-@xfail_cluster(22, "dataset")
 def test_c22_s03_sacred_flame_save_ignores_cover():
     """C22-S03: SRD 5.2 Sacred Flame — "The target gains no benefit
     from Half Cover or Three-Quarters Cover for this save."

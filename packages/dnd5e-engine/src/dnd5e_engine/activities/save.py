@@ -98,9 +98,10 @@ def resolve_save(activity: SaveActivity, ctx: ActivityResolutionContext) -> None
             ability,
             dc,
             target_index=index,
-            # C22 owns the dataset field; read defensively so this works both
-            # before and after ``SaveBlock.ignore_cover`` lands.
-            ignore_cover=bool(getattr(activity.save, "ignore_cover", False)),
+            # SRD 5.2 Sacred Flame: "The target gains no benefit from Half
+            # Cover or Three-Quarters Cover for this save." ``SaveBlock.
+            # ignore_cover`` is a shipped schema field (C22) — read directly.
+            ignore_cover=bool(activity.save.ignore_cover),
         )
         succeeded = roll.succeeded
 

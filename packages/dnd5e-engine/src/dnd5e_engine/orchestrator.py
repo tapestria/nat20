@@ -6036,13 +6036,28 @@ async def submit_player_intent(
             # SRD 5.2 §Cover — an area of effect measures cover from its point
             # of origin, which for a target-origin template is NOT the caster's
             # cell. ``None`` for every non-AoE cast/attack ⇒ caster's cell.
+            #
+            # The burst-point shift only applies to a GENUINE broadcast — more
+            # than one resolved target (pinned by ``test_c16_orchestrator.py::
+            # test_aoe_cover_is_measured_from_the_point_of_origin_not_the_caster``,
+            # a 2-target Fireball). A templated spell that resolves to exactly
+            # one target (Acid Splash's Foundry data models its "one or two
+            # creatures within 5 ft of each other" targeting as a 5-ft sphere)
+            # degenerates the burst point to that target's own cell —
+            # ``cover_between(cell, cell)`` walks a single point and excludes
+            # it (the origin cell never counts), silently dropping a cover tag
+            # on that cell. Falling back to the caster's cell for the
+            # single-target case reads cover the ordinary caster→target way
+            # instead.
             target_cover=_target_cover_map(
                 live,
                 current.entity_id,
                 targets,
                 origin_cell=(
                     _aoe_cover_origin(live, current.entity_id, intent, activities)
-                    if intent.intent_type == "cast_spell" and _typed_spell_broadcasts(activities)
+                    if intent.intent_type == "cast_spell"
+                    and _typed_spell_broadcasts(activities)
+                    and len(targets) > 1
                     else None
                 ),
             ),
