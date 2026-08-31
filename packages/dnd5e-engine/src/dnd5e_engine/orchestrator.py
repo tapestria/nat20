@@ -1520,6 +1520,14 @@ def _fold_condition_onto_combatant(live: _LiveCombat, entity_id: str, condition:
             live.initiative[idx] = slot.model_copy(update={"conditions": new})
             break
     _clamp_movement_budget(live, entity_id)
+    # SRD 5.2 Incapacitated — "No Concentration. Your Concentration is
+    # broken." Applies when the condition is Incapacitated directly or
+    # implies it (Paralyzed / Petrified / Stunned / Unconscious via
+    # CONDITION_IMPLIES). Keyed to the state TRANSITION (this is the
+    # first materialisation of the condition on the combatant), not a raw
+    # HP threshold — see the rule card's 0-HP edge note.
+    if is_condition_active(Condition.INCAPACITATED, [condition]):
+        _drop_concentration(live, entity_id)
 
 
 def _strip_condition_from_combatant(live: _LiveCombat, entity_id: str, condition: str) -> None:
@@ -2454,6 +2462,11 @@ def _record_death(live: _LiveCombat, event: Death, *, killer_id: str | None) -> 
             killer_id=killer_id if killer_id != event.target_id else None,
         )
     )
+    # SRD 5.2 §Concentration — "Your Concentration ends if ... you die."
+    # Idempotent for non-concentrating dead (empty-chain no-op), and safe
+    # inside the _emit fold: the cascade emits no DamageApplied/Death, so
+    # it cannot recurse into death synthesis.
+    _drop_concentration(live, event.target_id)
 
 
 # ── Sidecar hydration (per-evaluation projection of session state) ──────────

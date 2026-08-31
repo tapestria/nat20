@@ -209,7 +209,6 @@ def test_c13_s02_damage_triggers_concentration_check_with_con_modifier():
     assert check_b.roll_total > check_a.roll_total
 
 
-@xfail_cluster(13, "concentration lifecycle")
 def test_c13_s03_caster_reduced_to_zero_hp_ends_concentration():
     """C13-S03: SRD 5.2 — "Your Concentration ends if you have the
     Incapacitated condition or you die."
