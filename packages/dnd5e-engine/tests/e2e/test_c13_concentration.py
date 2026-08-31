@@ -26,7 +26,7 @@ from dnd5e_engine.orchestrator import (
     submit_player_intent,
 )
 from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
-from tests.e2e.harness import cell, events_of, grid_scene, run_async, xfail_cluster
+from tests.e2e.harness import cell, events_of, grid_scene, run_async
 
 
 def test_c13_s01_second_concentration_spell_ends_the_first():
@@ -284,7 +284,6 @@ def test_c13_s03_caster_reduced_to_zero_hp_ends_concentration():
     assert chain == []
 
 
-@xfail_cluster(13, "concentration lifecycle")
 def test_c13_s04_voluntary_drop_costs_no_action():
     """C13-S04: SRD 5.2 — "The creator can end Concentration at any time
     (no action required)."
@@ -292,6 +291,11 @@ def test_c13_s04_voluntary_drop_costs_no_action():
     There is no ``drop_concentration`` ``IntentType`` member and no public
     entry point that calls ``_drop_concentration`` outside the failed
     CON-save path.
+
+    Script repair (assertions untouched): the concentration spell is the
+    bonus-action Shield of Faith (Bless is an Action cast and would end the
+    turn), and the cleric steps to cell(3,0) before the mace swing (melee
+    reach) — recorded in docs/migration/v0.5-to-v0.6.md.
     """
     from dnd5e_engine.events import AttackRolled
     from dnd5e_engine.testing import registry
@@ -307,7 +311,7 @@ def test_c13_s04_voluntary_drop_costs_no_action():
                     hp_current=20,
                     hp_max=20,
                     spell_slots={1: 1},
-                    spells_known=["bless"],
+                    spells_known=["shield-of-faith"],
                     zone_id=cell(0, 0),
                 ),
                 PartyMemberSpec(
@@ -341,7 +345,7 @@ def test_c13_s04_voluntary_drop_costs_no_action():
             start.handle,
             actor_id="char:cleric",
             intent=PlayerIntent(
-                intent_type="cast_spell", spell_id="bless", target_id="char:fighter"
+                intent_type="cast_spell", spell_id="shield-of-faith", target_id="char:fighter"
             ),
         )
         # API delta (C13): "drop_concentration" is not a member of
@@ -350,6 +354,11 @@ def test_c13_s04_voluntary_drop_costs_no_action():
             start.handle,
             actor_id="char:cleric",
             intent=PlayerIntent(intent_type="drop_concentration"),
+        )
+        await submit_player_intent(
+            start.handle,
+            actor_id="char:cleric",
+            intent=PlayerIntent(intent_type="move", target_zone_id=cell(3, 0)),
         )
         await submit_player_intent(
             start.handle,

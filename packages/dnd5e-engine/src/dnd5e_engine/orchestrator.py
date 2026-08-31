@@ -1470,7 +1470,7 @@ def _clamp_movement_budget(live: _LiveCombat, entity_id: str) -> None:
 #: SRD 5.2 Incapacitated — intents that spend NO action, Bonus Action or
 #: Reaction and therefore stay legal: ending the turn, and plain movement
 #: (Speed is governed separately — see ``_handle_move``'s speed gate).
-_INCAPACITATED_ALLOWED_INTENTS: frozenset[str] = frozenset({"pass", "move"})
+_INCAPACITATED_ALLOWED_INTENTS: frozenset[str] = frozenset({"pass", "move", "drop_concentration"})
 
 
 def _find_combatant(live: _LiveCombat, entity_id: str) -> Combatant | None:
@@ -1683,6 +1683,23 @@ def _handle_dash(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
             budget_consumed=budget_consumed,
         ),
     )
+
+
+def _handle_drop_concentration(live: _LiveCombat, current: Combatant, intent: PlayerIntent) -> None:
+    """SRD 5.2 §Concentration — "The creator can end Concentration at any
+    time (no action required)." (Foundry actor.mjs:1065-1108
+    ``endConcentration``: callable at any time, no action-economy gate.)
+
+    Emits ``IntentSubmitted`` then cascades the drop via
+    ``_drop_concentration``. Touches NO Action / Bonus Action / Reaction /
+    movement budget and keeps the actor on turn. Idempotent: a caster with
+    no active concentration gets only the ``IntentSubmitted`` marker.
+    """
+    _emit(
+        live,
+        IntentSubmitted(actor_id=current.entity_id, intent_type="drop_concentration"),
+    )
+    _drop_concentration(live, current.entity_id)
 
 
 def _handle_disengage(live: _LiveCombat, current: Combatant, intent: PlayerIntent) -> None:
@@ -5882,6 +5899,9 @@ async def _dispatch_turn_nonending_intent(
       ; closes the discovered turn-ending fall-through where
       "disengage" fell through to the generic Action tail that
       unconditionally calls ``_end_turn_and_advance``).
+    * ``drop_concentration`` — SRD §Concentration: end Concentration
+      voluntarily at any time, no action required. Touches no budget and
+      keeps the actor on turn.
     """
     if intent.intent_type == "move_mark":
         await _handle_move_mark(live, current, intent)
@@ -5894,6 +5914,9 @@ async def _dispatch_turn_nonending_intent(
         return True
     if intent.intent_type == "disengage":
         _handle_disengage(live, current, intent)
+        return True
+    if intent.intent_type == "drop_concentration":
+        _handle_drop_concentration(live, current, intent)
         return True
     return False
 

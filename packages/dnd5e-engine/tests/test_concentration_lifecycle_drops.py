@@ -213,3 +213,49 @@ def test_non_concentration_cast_leaves_existing_concentration_alone() -> None:
     dropped, _ = _drop_events(live)
     assert not dropped
     assert [e[1] for e in live.concentration_chain["char:a"]] == ["effect:bless"]
+
+
+def test_drop_concentration_is_a_valid_intent_type() -> None:
+    from dnd5e_engine import PlayerIntent
+
+    intent = PlayerIntent(intent_type="drop_concentration")
+    assert intent.intent_type == "drop_concentration"
+
+
+def test_voluntary_drop_keeps_turn_and_spends_no_budget() -> None:
+    import random
+
+    from dnd5e_engine.events import IntentSubmitted
+
+    live = _concentrating_live()
+    live.rng = random.Random(0)
+    caster = live.initiative[0]
+    live.current_actor_id = caster.entity_id
+    from dnd5e_engine import PlayerIntent
+
+    orch._handle_drop_concentration(live, caster, PlayerIntent(intent_type="drop_concentration"))
+    dropped, expired = _drop_events(live)
+    assert dropped
+    assert expired
+    assert "char:a" not in live.concentration_chain
+    submitted = [e for e in live.event_log if isinstance(e, IntentSubmitted)]
+    assert submitted
+    assert submitted[0].intent_type == "drop_concentration"
+    # No budget was touched on the initiative slot.
+    slot = live.initiative[0]
+    assert slot.action_available
+    assert slot.bonus_action_available
+    assert slot.reaction_available
+
+
+def test_voluntary_drop_without_concentration_is_a_marked_noop() -> None:
+    from dnd5e_engine import PlayerIntent
+    from dnd5e_engine.events import IntentSubmitted
+
+    live = _fake_live()
+    caster = _caster()
+    live.initiative.append(caster)
+    orch._handle_drop_concentration(live, caster, PlayerIntent(intent_type="drop_concentration"))
+    dropped, _ = _drop_events(live)
+    assert not dropped
+    assert [e for e in live.event_log if isinstance(e, IntentSubmitted)]
