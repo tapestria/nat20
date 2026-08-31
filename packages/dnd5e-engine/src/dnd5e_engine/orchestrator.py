@@ -58,7 +58,13 @@ from collections.abc import AsyncIterator, Callable, Collection, Mapping, Sequen
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal
 
-from dnd5e_srd_data.schema.common import ActivationBlock, AttackActivity, SaveActivity
+from dnd5e_srd_data.schema.common import (
+    ActivationBlock,
+    AttackActivity,
+    AttackDamageBlock,
+    DamagePartBlock,
+    SaveActivity,
+)
 from dnd5e_srd_data.schema.item import Weapon, WeaponProperty
 from dnd5e_srd_data.schema.spell import CastingTimeUnit, Spell, SpellRangeUnits
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -1163,6 +1169,42 @@ def _synthesize_attack_from_weapon(weapon: Weapon) -> AttackActivity:
     return AttackActivity(
         id=f"synth:{weapon.slug}",
         activation=ActivationBlock(type="action", value=1),
+    )
+
+
+_LEGACY_DICE_RE = re.compile(r"(\d+)d(\d+)([+-]\d+)?$")
+
+
+def _synthesize_attack_from_legacy_fields(current: Combatant) -> AttackActivity | None:
+    """Legacy-fixture fallback (SRD §Attack Rolls / §Damage Rolls): one typed
+    ``AttackActivity`` built from the spec-supplied ``attack_bonus`` /
+    ``damage_dice`` / ``damage_type`` for a monster with no
+    ``monster_template_slug``. ``specs.py`` has always documented this
+    fallback on the field; the typed-activity cutover dropped it and
+    template-less foes silently no-opped every turn. The synthesized
+    activity flows through the normal gambit (movement, range gate,
+    condition rows, concentration checks): to-hit magnitude comes from
+    ``build_activity_context``'s Monster branch (``attack_bonus``), damage
+    from the parsed dice parts. ``None`` when ``damage_dice`` doesn't parse
+    — the turn stays the pre-existing no-op pass.
+    """
+    m = _LEGACY_DICE_RE.match((current.damage_dice or "").replace(" ", ""))
+    if m is None:
+        return None
+    return AttackActivity(
+        id="synth:legacy-swing",
+        activation=ActivationBlock(type="action", value=1),
+        damage=AttackDamageBlock(
+            include_base=False,
+            parts=[
+                DamagePartBlock(
+                    number=int(m.group(1)),
+                    denomination=int(m.group(2)),
+                    bonus=m.group(3) or "",
+                    types=[current.damage_type or "bludgeoning"],
+                )
+            ],
+        ),
     )
 
 
@@ -6500,6 +6542,11 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
     # path was retired in .
     monster_slug = live.monster_slug_by_entity.get(current.entity_id)
     monster_activities: list[Any] = []
+    if not skip_to_record_pass and monster_slug is None:
+        # Legacy-fixture fallback — see _synthesize_attack_from_legacy_fields.
+        synthesized = _synthesize_attack_from_legacy_fields(current)
+        if synthesized is not None:
+            monster_activities = [synthesized]
     if not skip_to_record_pass and monster_slug is not None:
         monster = get_lib_loader().get_monster(monster_slug)
         if monster is None:
