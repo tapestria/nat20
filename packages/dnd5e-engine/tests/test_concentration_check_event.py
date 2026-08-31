@@ -188,6 +188,6 @@ def test_concentration_dc_clamps_at_srd_maximum_30() -> None:
 
 
 def test_concentration_dc_floor_and_midband_unchanged() -> None:
-    assert [e for e in _damage(8).event_log if isinstance(e, ConcentrationCheck)][0].dc == 10
-    assert [e for e in _damage(44).event_log if isinstance(e, ConcentrationCheck)][0].dc == 22
-    assert [e for e in _damage(60).event_log if isinstance(e, ConcentrationCheck)][0].dc == 30
+    assert next(e for e in _damage(8).event_log if isinstance(e, ConcentrationCheck)).dc == 10
+    assert next(e for e in _damage(44).event_log if isinstance(e, ConcentrationCheck)).dc == 22
+    assert next(e for e in _damage(60).event_log if isinstance(e, ConcentrationCheck)).dc == 30
