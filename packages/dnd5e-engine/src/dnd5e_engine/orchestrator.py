@@ -1976,11 +1976,13 @@ def _emit_apply_damage(live: _LiveCombat, event: DamageApplied) -> None:
     # modifier + proficiency bonus (F1c, via ``actor_stats``) and goes
     # through the shared ``roll_d20_test`` primitive (F2c) with no
     # advantage source, so it is still a single draw.
+    # Capped at 30 — SRD 5.2 "up to a maximum DC of 30" (2024-specific; the 2014
+    # formula has no cap).
     # Done BEFORE death synthesis so a dropped-conc + slain caster
     # still surface the cascade before the Death event.
     caster_chain = live.concentration_chain.get(event.target_id)
     if caster_chain:
-        dc = max(10, event.amount // 2)
+        dc = min(30, max(10, event.amount // 2))
         concentrator = _find_combatant(live, event.target_id)
         # The ``else 0`` cannot fire in practice: ``concentration_chain`` is
         # only ever keyed by an entity that is in ``live.initiative``, and the

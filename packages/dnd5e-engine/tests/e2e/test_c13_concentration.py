@@ -116,7 +116,6 @@ def test_c13_s01_second_concentration_spell_ends_the_first():
     assert [e for e in events_of(live, EffectExpired) if e.reason == "concentration_drop"]
 
 
-@xfail_cluster(13, "concentration lifecycle")
 def test_c13_s02_damage_triggers_concentration_check_with_con_modifier():
     """C13-S02: SRD 5.2 — "If you take damage, you must succeed on a
     Constitution saving throw to maintain Concentration. The DC equals 10
@@ -360,7 +359,6 @@ def test_c13_s04_voluntary_drop_costs_no_action():
     assert attacks
 
 
-@xfail_cluster(13, "concentration lifecycle")
 def test_c13_s05_concentration_dc_caps_at_30():
     """C13-S05: SRD 5.2 — "...up to a maximum DC of 30."
     (packs/_source/content24/appendices/appendix-d-rule-references.yml:5261-5266).
