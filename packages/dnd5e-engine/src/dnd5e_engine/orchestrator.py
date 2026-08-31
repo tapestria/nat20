@@ -1208,6 +1208,53 @@ def _synthesize_attack_from_legacy_fields(current: Combatant) -> AttackActivity 
     )
 
 
+def _resolve_monster_activities(
+    live: _LiveCombat,
+    current: Combatant,
+    monster_slug: str | None,
+    skip_to_record_pass: bool,
+    chosen_target: Combatant | None,
+) -> list[Any]:
+    """Resolve monster activities: legacy-fallback when no template, or typed
+    activity selection from a ``Monster`` template.
+
+    Returns a list of ``Activity`` objects (typically empty or one element,
+    expanded to multiple on multiattack). Empty list when the monster has
+    no template and ``damage_dice`` doesn't parse, or when a slug is
+    unresolvable from the lib.
+    """
+    monster_activities: list[Any] = []
+    if not skip_to_record_pass and monster_slug is None:
+        # Legacy-fixture fallback — see _synthesize_attack_from_legacy_fields.
+        synthesized = _synthesize_attack_from_legacy_fields(current)
+        if synthesized is not None:
+            monster_activities = [synthesized]
+    if not skip_to_record_pass and monster_slug is not None:
+        monster = get_lib_loader().get_monster(monster_slug)
+        if monster is None:
+            # Slug absent from the lib — no action this turn. Loud, never
+            # silent; the turn still advances through the pass shape below.
+            _LOGGER.warning("monster_unresolved slug=%s", monster_slug)
+        else:
+            monster_action = select_typed_monster_action(monster)
+            if monster_action is not None:
+                # hand the labelless-multiattack fallback the live
+                # distance + profile so it can prefer a sibling whose own range
+                # already covers the target (scout → longbow at 100 ft) instead
+                # of the first-listed melee weapon. Distance is the same zone-path
+                # cost the movement gate below reads, so the two agree.
+                monster_activities = expand_action_to_activities(
+                    monster,
+                    monster_action,
+                    target_distance_ft=_monster_target_distance_ft(
+                        live, current.entity_id, chosen_target
+                    ),
+                    behavior_profile=current.behavior_profile,
+                    melee_reach_ft=current.melee_reach_ft,
+                )
+    return monster_activities
+
+
 # ── Internal live-combat state ──────────────────────────────────────────────
 
 
@@ -6541,35 +6588,9 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
     # out multiattack. This is the sole monster-turn path; the old the legacy evaluator IR
     # path was retired in .
     monster_slug = live.monster_slug_by_entity.get(current.entity_id)
-    monster_activities: list[Any] = []
-    if not skip_to_record_pass and monster_slug is None:
-        # Legacy-fixture fallback — see _synthesize_attack_from_legacy_fields.
-        synthesized = _synthesize_attack_from_legacy_fields(current)
-        if synthesized is not None:
-            monster_activities = [synthesized]
-    if not skip_to_record_pass and monster_slug is not None:
-        monster = get_lib_loader().get_monster(monster_slug)
-        if monster is None:
-            # Slug absent from the lib — no action this turn. Loud, never
-            # silent; the turn still advances through the pass shape below.
-            _LOGGER.warning("monster_unresolved slug=%s", monster_slug)
-        else:
-            monster_action = select_typed_monster_action(monster)
-            if monster_action is not None:
-                # hand the labelless-multiattack fallback the live
-                # distance + profile so it can prefer a sibling whose own range
-                # already covers the target (scout → longbow at 100 ft) instead
-                # of the first-listed melee weapon. Distance is the same zone-path
-                # cost the movement gate below reads, so the two agree.
-                monster_activities = expand_action_to_activities(
-                    monster,
-                    monster_action,
-                    target_distance_ft=_monster_target_distance_ft(
-                        live, current.entity_id, chosen_target
-                    ),
-                    behavior_profile=current.behavior_profile,
-                    melee_reach_ft=current.melee_reach_ft,
-                )
+    monster_activities = _resolve_monster_activities(
+        live, current, monster_slug, skip_to_record_pass, chosen_target
+    )
     has_action = bool(monster_activities)
 
     # Phase-5: monster gambit zone awareness. When the chosen attack is
