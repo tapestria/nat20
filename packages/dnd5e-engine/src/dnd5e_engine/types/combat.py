@@ -1,8 +1,10 @@
 """Combat participant types — ``Combatant`` and ``BehaviorProfile``.
 
 Host-agnostic value types: stdlib + pydantic + the engine's own
-``ActiveCondition``. ``Combatant`` is the engine's per-creature runtime combat
-state; hosts read it through ``dnd5e_engine.views.LiveCombatView``.
+``ActiveCondition``, plus the dataset schema import
+``dnd5e_srd_data.schema.monster.MonsterTraitMechanic``. ``Combatant`` is the
+engine's per-creature runtime combat state; hosts read it through
+``dnd5e_engine.views.LiveCombatView``.
 """
 
 from __future__ import annotations

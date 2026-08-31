@@ -177,7 +177,7 @@ class ReactionCondition(BaseModel, frozen=True):
     max_range_ft: int | None = None
     target_spell_slug: str | None = None
     condition_text: str = ""
-    """The raw Foundry ``activation.condition`` the entry was derived from."""
+    """The whitespace-normalized Foundry ``activation.condition`` the entry was derived from."""
 
 
 class ActivationBlock(BaseModel, frozen=True):

@@ -105,9 +105,11 @@ exhaustion on a combatant. Behavioural deltas
   spell's Bludgeoning/Piercing/Slashing damage overcomes resistance to
   *nonmagical* B/P/S; `Combatant.physical_resistances_nonmagical_only`
   (also on `EncounterMemberSpec`, default `True`) makes the qualifier explicit.
-  `GridTopology.cover_between` counts a `cover_cells` tag on the target's own
-  cell. Multiattacks for the five opaque-key monsters resolve to their exact
-  attack mix.
+  Save-path target cover is hydrated for templated spell casts; when an AoE's
+  origin cell IS the target's cell, the new `GridTopology.cover_on_cell` reads
+  the tag on that cell (`cover_between` itself is unchanged — its target-cell
+  walk shipped with C16). Multiattacks for the five opaque-key monsters
+  resolve to their exact attack mix.
 
 ### Changed
 

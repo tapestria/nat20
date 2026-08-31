@@ -58,7 +58,6 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   `expand_action_to_activities` never reads `MonsterAction.recharge`/
   `uses_per_day`. Recharge/limited-use gating is C18's
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/monster_actions.py`).
-  (`packages/dnd5e-engine/src/dnd5e_engine/activities/monster_actions.py`)
 
 ## Core combat rules not modelled (2026-08-22)
 

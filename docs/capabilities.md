@@ -97,7 +97,7 @@ combat engine by nature.
 | Mechanic | Status | Notes |
 |---|---|---|
 | Typed action selection + built-in AI | ✅ Resolved | Targets lowest-HP living PC; three behavior profiles |
-| Multiattack fan-out | ⚠️ Mostly | **119 of 180** multiattacks resolve to the exact SRD attack mix. The other 61 fall back to repeating one attack N times, logged at WARNING; 5 of those are heterogeneous and therefore wrong. |
+| Multiattack fan-out | ⚠️ Partial | Multiattacks with named/labelled tokens resolve precisely (C22 labelled every bare sibling token, fixing the five opaque-key monsters — bandit captain, doppelganger, chain devil, scout, ettin); "in any combination" clauses distribute range-aware. Conditional clauses ("uses X if …") and recharge/limited-use gating are not modelled (BACKLOG, C18). |
 | Monster spellcasting | ❌ Not modelled | The monster AI never selects a `cast` action and its context carries an empty spell book |
 | Flee / retreat behaviour | ⚠️ Partial | Zone-graph only; on a grid the monster holds still |
 | **Legendary actions** | ❌ Not modelled | 30 monsters carry them in the data; no legendary action economy exists |
