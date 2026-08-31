@@ -4,6 +4,7 @@
       "activation": {
         "condition": "When you cast a spell that can be upcast to target an additional creature",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },

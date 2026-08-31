@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -96,6 +97,7 @@
       "description": "The [[lookup @name lowercase]]{monster} makes two [[/item Fist]] attacks.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Multiattack",
       "recharge": null,
       "slug": "multiattack",
@@ -107,6 +109,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -236,6 +239,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Fist",
       "recharge": null,
       "slug": "fist",
@@ -247,6 +251,7 @@
           "activation": {
             "condition": "An attack roll hits the wearer of the guardian's amulet while the wearer is within 5 feet of the guardian",
             "override": false,
+            "reaction_conditions": [],
             "type": "reaction",
             "value": null
           },
@@ -338,6 +343,7 @@
       "description": "Trigger: An attack roll hits the wearer of the [[lookup @name lowercase]]{monster}'s amulet while the wearer is within 5 feet of the [[lookup @name lowercase]]{monster}.\n\nResponse: The wearer gains a +5 bonus to AC, including against the triggering attack and possibly causing it to miss, until the start of the [[lookup @name lowercase]]{monster}'s next turn.",
       "kind": "reaction",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Protection",
       "recharge": null,
       "slug": "protection",
@@ -433,6 +439,7 @@
       "description": "The [[lookup @name lowercase]]{monster} is magically bound to an amulet. While the [[lookup @name lowercase]]{monster} and its amulet are on the same plane of existence, the amulet's wearer can telepathically call the [[lookup @name lowercase]]{monster} to travel to it, and the [[lookup @name lowercase]]{monster} knows the distance and direction to the amulet. If the [[lookup @name lowercase]]{monster} is within 60 feet of the amulet's wearer, half of any damage the wearer takes (round up) is transferred to the [[lookup @name lowercase]]{monster}.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Bound",
       "recharge": null,
       "slug": "bound",
@@ -444,6 +451,7 @@
           "activation": {
             "condition": "starts its turn with at least 1 Hit Point",
             "override": false,
+            "reaction_conditions": [],
             "type": "special",
             "value": null
           },
@@ -536,6 +544,7 @@
       "description": "The [[lookup @name lowercase]]{monster} regains [[lookup @healing.formula activity=5cGvjZJIJVicjJ3d]] Hit Points at the start of each of its turns if it has at least 1 Hit Point.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "regeneration",
       "name": "Regeneration",
       "recharge": null,
       "slug": "regeneration",
@@ -546,6 +555,7 @@
       "description": "A spellcaster who wears the [[lookup @name lowercase]]{monster}'s amulet can cause the [[lookup @name lowercase]]{monster} to store one spell of level 4 or lower. To do so, the wearer must cast the spell on the [[lookup @name lowercase]]{monster} while within 5 feet of it. The spell has no effect but is stored within the [[lookup @name lowercase]]{monster}. Any previously stored spell is lost when a new spell is stored. The [[lookup @name lowercase]]{monster} can cast the spell stored with any parameters set by the original caster, requiring no spell components and using the caster's spellcasting ability. The stored spell is then lost.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Spell Storing",
       "recharge": null,
       "slug": "spell-storing",

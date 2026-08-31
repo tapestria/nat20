@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -96,6 +97,7 @@
       "description": "The [[lookup @name lowercase]]{monster} makes {count} [[/item]] attacks and uses [[/item]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Multiattack",
       "recharge": null,
       "slug": "multiattack",
@@ -107,6 +109,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -236,6 +239,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Rend",
       "recharge": null,
       "slug": "rend",
@@ -247,6 +251,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -320,7 +325,8 @@
             "dc": {
               "calculation": "con",
               "formula": "11"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -363,6 +369,7 @@
       "description": "Dexterity Saving Throw: DC [[lookup @save.dc.value activity=bDqgmtLG3zcVuqdi]], each [[lookup @target.affects.type activity=bDqgmtLG3zcVuqdi]] in a [[lookup @target.template.size activity=bDqgmtLG3zcVuqdi]]-foot-long, [[lookup @target.template.width activity=bDqgmtLG3zcVuqdi]]-foot-wide Line.\n\nFailure: [[/damage average]] damage.\n\nSuccess: Half damage.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Fire Breath",
       "recharge": null,
       "slug": "fire-breath",
@@ -374,6 +381,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -461,6 +469,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -548,6 +557,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -635,6 +645,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -738,6 +749,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -841,6 +853,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -944,6 +957,7 @@
       "description": "The [[lookup @name lowercase]]{monster} casts one of the following spells, requiring no Material components and using Charisma as the spellcasting ability (spell save DC [[lookup @attributes.spell.dc]]):\n\nAt Will: Detect Magic, Guiding Bolt (level 4 version), Shapechange (Beast or Humanoid form only, no Temporary Hit Points gained from the spell, and no Concentration or Temporary Hit Points required to maintain the spell)\n\n1/Day Each: Flame Strike (level 6 version), Word of Recall, Zone of Truth",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Spellcasting",
       "recharge": null,
       "slug": "spellcasting",
@@ -955,6 +969,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -1010,7 +1025,8 @@
             "dc": {
               "calculation": "con",
               "formula": "8 + @mod + @prof"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -1053,6 +1069,7 @@
       "description": "Strength Saving Throw: DC [[lookup @save.dc.value activity=EGZ4bS4HpJkfNG9s]], each creature that isn't currently affected by this breath in a [[lookup @target.template.size activity=EGZ4bS4HpJkfNG9s]]-foot Cone.\n\nFailure: The target has Disadvantage on Strength-based D20 Tests and subtracts 5 ([[/r 1d10]]) from its damage rolls. It repeats the save at the end of each of its turns, ending the effect on itself on a success. After [[lookup @duration.value activity=EGZ4bS4HpJkfNG9s]] minute, it succeeds automatically.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Weakening Breath",
       "recharge": null,
       "slug": "weakening-breath",
@@ -1084,6 +1101,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "legendary",
             "value": 1
           },
@@ -1157,7 +1175,8 @@
             "dc": {
               "calculation": "cha",
               "formula": ""
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -1200,6 +1219,7 @@
       "description": "Charisma Saving Throw: DC [[lookup @save.dc.value activity=kWKwiAYgyeKBLMNJ]], one creature the [[lookup @name lowercase]]{monster} can see within [[lookup @range.value activity=kWKwiAYgyeKBLMNJ]] feet.\n\nFailure: [[/damage average]] damage, and the target has the &amp;Reference[Incapacitated apply=false] condition and is transported to a harmless demiplane until the start of the [[lookup @name lowercase]]{monster}'s next turn, at which point it re\u00adappears in an unoccupied space of the [[lookup @name lowercase]]{monster}'s choice within [[lookup @range.value activity=kWKwiAYgyeKBLMNJ]] feet of the [[lookup @name lowercase]]{monster}.\n\nFailure or Success: The [[lookup @name lowercase]]{monster} can't take this action again [[lookup @duration.special activity=kWKwiAYgyeKBLMNJ]].",
       "kind": "legendary",
       "legendary_cost": 1,
+      "mechanic": null,
       "name": "Banish",
       "recharge": null,
       "slug": "banish",
@@ -1211,6 +1231,7 @@
           "activation": {
             "condition": "",
             "override": true,
+            "reaction_conditions": [],
             "type": "legendary",
             "value": 1
           },
@@ -1296,6 +1317,7 @@
       "description": "The [[lookup @name lowercase]]{monster} uses Spellcasting to cast Guiding Bolt (level 2 version).",
       "kind": "legendary",
       "legendary_cost": 1,
+      "mechanic": null,
       "name": "Guiding Light",
       "recharge": null,
       "slug": "guiding-light",
@@ -1307,6 +1329,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "legendary",
             "value": 1
           },
@@ -1398,6 +1421,7 @@
       "description": "The [[lookup @name lowercase]]{monster} moves up to half its Speed, and it makes one [[/item Rend]] attack.",
       "kind": "legendary",
       "legendary_cost": 1,
+      "mechanic": null,
       "name": "Pounce",
       "recharge": null,
       "slug": "pounce",
@@ -1470,6 +1494,7 @@
       "description": "The [[lookup @name lowercase]]{monster} can breathe air and water.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "amphibious",
       "name": "Amphibious",
       "recharge": null,
       "slug": "amphibious",
@@ -1481,6 +1506,7 @@
           "activation": {
             "condition": "fails a saving throw",
             "override": false,
+            "reaction_conditions": [],
             "type": "special",
             "value": null
           },
@@ -1572,6 +1598,7 @@
       "description": "If the [[lookup @name lowercase]]{monster} fails a saving throw, it can choose to succeed instead.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "legendary_resistance",
       "name": "Legendary Resistance",
       "recharge": null,
       "slug": "legendary-resistance",

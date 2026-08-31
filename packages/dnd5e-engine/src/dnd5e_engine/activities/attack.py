@@ -613,7 +613,13 @@ def _apply_on_hit_damage(
             if sneak_dice:
                 by_type[first_type] += roll_expr(sneak_dice, ctx.rng, crit=is_crit)
 
-        apply_damage(target, dict(by_type), ctx)
+        # spell-delivered attack rolls are magical too (spells are magical effects)
+        apply_damage(
+            target,
+            dict(by_type),
+            ctx,
+            magical=(weapon is not None and weapon.magical) or ctx.base_spell_level is not None,
+        )
     finally:
         if is_crit:
             if previous is None:

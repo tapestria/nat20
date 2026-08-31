@@ -4,6 +4,7 @@
       "activation": {
         "condition": "When you fail an ability check",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },

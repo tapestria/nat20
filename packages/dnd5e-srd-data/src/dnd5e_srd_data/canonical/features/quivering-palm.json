@@ -4,6 +4,7 @@
       "activation": {
         "condition": "When you take the Attack action on your turn",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -67,7 +68,8 @@
         "dc": {
           "calculation": "wis",
           "formula": ""
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 0,
       "target": {
@@ -110,6 +112,7 @@
       "activation": {
         "condition": "When you hit a creature with an Unarmed Strike",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },

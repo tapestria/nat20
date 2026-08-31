@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -127,6 +128,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -237,6 +239,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]], or [[/damage average activity=YI7aqJ7iiFSYAT7z]] damage if the seahorse moved 20+ feet straight toward the target immediately before the hit.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Ram",
       "recharge": null,
       "slug": "ram",
@@ -248,6 +251,7 @@
           "activation": {
             "condition": "while underwater",
             "override": false,
+            "reaction_conditions": [],
             "type": "bonus",
             "value": null
           },
@@ -329,6 +333,7 @@
       "description": "While underwater, the [[lookup @name lowercase]]{monster} moves up to half its Swim Speed without provoking &amp;Reference[Opportunity Attacks].",
       "kind": "bonus_action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Bubble Dash",
       "recharge": null,
       "slug": "bubble-dash",
@@ -415,6 +420,7 @@
       "description": "The [[lookup @name lowercase]]{monster} can breathe only underwater.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "water_breathing",
       "name": "Water Breathing",
       "recharge": null,
       "slug": "water-breathing",

@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -93,9 +94,10 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes two [[/item .mmClaw0000000000]] attacks and uses [[/item .mmBite0000000000]].",
+      "description": "The [[lookup @name lowercase]]{monster} makes two [[/item .mmClaw0000000000]]{Claw} attacks and uses [[/item .mmBite0000000000]]{Bite}.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Multiattack",
       "recharge": null,
       "slug": "multiattack",
@@ -107,6 +109,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -229,6 +232,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "special",
             "value": null
           },
@@ -315,6 +319,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]]. If the target is a Medium or smaller creature, it has the &amp;Reference[Grappled apply=false] condition (escape DC [[lookup @skills.ath.passive]]) from one of two claws.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Claw",
       "recharge": null,
       "slug": "claw",
@@ -326,6 +331,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -406,7 +412,8 @@
             "dc": {
               "calculation": "con",
               "formula": "8 + @mod + @prof"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -449,6 +456,7 @@
       "description": "Constitution Saving Throw: DC [[lookup @save.dc.value activity=7mBlINHfcabm0DAr]], one creature within [[lookup @range.value activity=7mBlINHfcabm0DAr]] feet that is willing or that has the Grappled, Incapacitated, or Restrained condition.\n\nFailure: [[/damage average]] damage. The target's Hit Point maximum decreases by an amount equal to the Necrotic damage taken, and the vampire regains Hit Points equal to that amount.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Bite",
       "recharge": null,
       "slug": "bite",
@@ -460,6 +468,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "bonus",
             "value": null
           },
@@ -541,6 +550,7 @@
       "description": "The [[lookup @name lowercase]]{monster} takes the &amp;Reference[Dash] or &amp;Reference[Disengage] action.",
       "kind": "bonus_action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Deathless Agility",
       "recharge": null,
       "slug": "deathless-agility",
@@ -631,6 +641,7 @@
       "description": "The [[lookup @name lowercase]]{monster} can climb difficult surfaces, including along ceilings, without needing to make an ability check.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "spider_climb",
       "name": "Spider Climb",
       "recharge": null,
       "slug": "spider-climb",
@@ -642,6 +653,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "",
             "value": null
           },
@@ -742,6 +754,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "",
             "value": null
           },
@@ -852,6 +865,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "",
             "value": null
           },
@@ -933,6 +947,7 @@
       "description": "The [[lookup @name lowercase]]{monster} has these weaknesses:\n\nForbiddance. The [[lookup @name lowercase]]{monster} can't enter a residence without an invitation from an occupant.\n\nRunning Water. The [[lookup @name lowercase]]{monster} takes 20 Acid damage if it ends its turn in running water.\n\nStake to the Heart. The [[lookup @name lowercase]]{monster} is destroyed if a weapon that deals Piercing damage is driven into the [[lookup @name lowercase]]{monster}'s heart while the [[lookup @name lowercase]]{monster} has the Incapacitated condition.\n\nSunlight. The [[lookup @name lowercase]]{monster} takes 20 Radiant damage if it starts its turn in sunlight. While in sunlight, it has Disadvantage on attack rolls and ability checks.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Vampire Weakness",
       "recharge": null,
       "slug": "vampire-weakness",

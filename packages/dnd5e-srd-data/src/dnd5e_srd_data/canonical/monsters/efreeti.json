@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -114,6 +115,7 @@
       "description": "The [[lookup @name lowercase]]{monster} has a [[/r 1d100cs&lt;31#Knows Wish on 1]]{30 percent} chance of knowing the Wish spell. If the [[lookup @name lowercase]]{monster} knows it, the [[lookup @name lowercase]]{monster} can cast it only on behalf of a non-genie creature who communicates a wish in a way the [[lookup @name lowercase]]{monster} can understand. If the [[lookup @name lowercase]]{monster} casts the spell for the creature, the [[lookup @name lowercase]]{monster} suffers none of the spell's stress. Once the [[lookup @name lowercase]]{monster} has cast it three times, the [[lookup @name lowercase]]{monster} can't do so again for 365 days.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Wishes",
       "recharge": null,
       "slug": "wishes",
@@ -125,6 +127,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -203,9 +206,10 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes three attacks, using [[/item .mmHeatedBlade000]] or [[/item .mmHurlFlame00000]] in any combination.",
+      "description": "The [[lookup @name lowercase]]{monster} makes three attacks, using [[/item .mmHeatedBlade000]]{Heated Blade} or [[/item .mmHurlFlame00000]]{Hurl Flame} in any combination.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Multiattack",
       "recharge": null,
       "slug": "multiattack",
@@ -217,6 +221,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -346,6 +351,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Heated Blade",
       "recharge": null,
       "slug": "heated-blade",
@@ -357,6 +363,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -484,6 +491,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Hurl Flame",
       "recharge": null,
       "slug": "hurl-flame",
@@ -495,6 +503,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -582,6 +591,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -669,6 +679,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -772,6 +783,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -875,6 +887,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -978,6 +991,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -1081,6 +1095,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -1184,6 +1199,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -1287,6 +1303,7 @@
       "description": "The [[lookup @name lowercase]]{monster} casts one of the following spells, requiring no Material components and using Charisma as the spellcasting ability (spell save DC [[lookup @attributes.spell.dc]]):\n\nAt Will: Detect Magic, Elementalism\n\n1/Day Each: Gaseous Form, Invisibility, Major Image, Plane Shift, Tongues, Wall of Fire (level 7 version)",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Spellcasting",
       "recharge": null,
       "slug": "spellcasting",
@@ -1377,6 +1394,7 @@
       "description": "If the [[lookup @name lowercase]]{monster} [[lookup @item.requirements]], its body dissolves into dirt, and it gains a new body in [[/r 1d4#Days]] days, reviving with all its Hit Points somewhere on the Plane of Fire.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "restoration",
       "name": "Elemental Restoration",
       "recharge": null,
       "slug": "elemental-restoration",
@@ -1387,6 +1405,7 @@
       "description": "The [[lookup @name lowercase]]{monster} has Advantage on saving throws against spells and other magical effects.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "magic_resistance",
       "name": "Magic Resistance",
       "recharge": null,
       "slug": "magic-resistance",

@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -93,9 +94,10 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes three [[/item .mmRend0000000000]] attacks.",
+      "description": "The [[lookup @name lowercase]]{monster} makes three [[/item .mmRend0000000000]]{Rend} attacks.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Multiattack",
       "recharge": null,
       "slug": "multiattack",
@@ -107,6 +109,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -236,6 +239,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Rend",
       "recharge": null,
       "slug": "rend",
@@ -247,6 +251,7 @@
           "activation": {
             "condition": "spending 10 feet of movement",
             "override": false,
+            "reaction_conditions": [],
             "type": "bonus",
             "value": null
           },
@@ -328,6 +333,7 @@
       "description": "The [[lookup @name lowercase]]{monster} jumps up to [[lookup @range.value activity=C28C43DeD8iFtZMe]] feet by [[lookup @activation.condition activity=C28C43DeD8iFtZMe]].",
       "kind": "bonus_action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Leap",
       "recharge": null,
       "slug": "leap",
@@ -425,6 +431,7 @@
       "description": "If the [[lookup @name lowercase]]{monster} dies outside the Abyss, its body dissolves into ichor, and it gains a new body instantly, reviving with all its Hit Points somewhere in the Abyss.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "restoration",
       "name": "Demonic Restoration",
       "recharge": null,
       "slug": "demonic-restoration",
@@ -435,6 +442,7 @@
       "description": "The [[lookup @name lowercase]]{monster} has Advantage on saving throws against spells and other magical effects.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "magic_resistance",
       "name": "Magic Resistance",
       "recharge": null,
       "slug": "magic-resistance",
@@ -446,6 +454,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "",
             "value": null
           },
@@ -501,7 +510,8 @@
             "dc": {
               "calculation": "con",
               "formula": "8 + @mod + @prof"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -544,6 +554,7 @@
       "description": "Constitution Saving Throw: DC [[lookup @save.dc.value activity=mJbwhj3beOIB3Jgj]], any creature (other than a [[lookup @name lowercase]]{monster}) that starts its turn in a [[lookup @target.template.size activity=mJbwhj3beOIB3Jgj]]-foot Emanation originating from the [[lookup @name lowercase]]{monster}.\n\nFailure: The target has the &amp;Reference[Poisoned apply=false] condition until the start of its next turn.\n\nSuccess: The target is immune to the Stench of all [[lookup @name lowercase]]{monster} for 1 hour.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Stench",
       "recharge": null,
       "slug": "stench",

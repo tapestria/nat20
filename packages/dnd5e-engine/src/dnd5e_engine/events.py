@@ -73,6 +73,7 @@ AdvantageSource = Literal[
     "unseen",
     "dodge",
     "help",
+    "trait",
 ]
 
 EffectExpiryReason = Literal[

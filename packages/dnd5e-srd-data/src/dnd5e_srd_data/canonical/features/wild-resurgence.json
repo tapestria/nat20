@@ -4,6 +4,7 @@
       "activation": {
         "condition": "Once on each of your turns",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },
@@ -113,6 +114,7 @@
       "activation": {
         "condition": "Once on each of your turns",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },

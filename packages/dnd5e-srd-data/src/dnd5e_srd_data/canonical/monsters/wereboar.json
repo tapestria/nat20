@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": 1
           },
@@ -127,6 +128,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Javelin (Humanoid or Hybrid Form Only)",
       "recharge": null,
       "slug": "javelin",
@@ -138,6 +140,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -219,6 +222,7 @@
       "description": "The [[lookup @name lowercase]]{monster} makes two attacks, using [[/item .hhfnX7eT1ZFun8oQ]]{Javelin} or [[/item .mmTusk0000000000]]{Tusk} in any combination. It can replace one attack with a [[/item .mmGore0000000000]]{Gore} attack.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Multiattack",
       "recharge": null,
       "slug": "multiattack",
@@ -230,6 +234,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -342,6 +347,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -397,7 +403,8 @@
             "dc": {
               "calculation": "",
               "formula": "8 + @mod + @prof"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -440,6 +447,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -552,6 +560,7 @@
       "description": "[[/attack extended]]. [[/damage extended average]]. If the target is a Humanoid, it is subjected to the following effect.\n\nConstitution Saving Throw: DC [[lookup @save.dc.value activity=lS5miercc4WPdVfN]].\n\nFailure: The target is cursed. If the cursed target drops to 0 Hit Points, it instead becomes a Wereboar under the DM's control and has 10 Hit Points.\n\nSuccess: The target is immune to this [[lookup @name lowercase]]{monster}'s curse for 24 hours.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Gore  (Boar or Hybrid Form Only)",
       "recharge": null,
       "slug": "gore",
@@ -563,6 +572,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -685,6 +695,7 @@
           "activation": {
             "condition": "Boar or Hybrid Form Only",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -824,6 +835,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]]. If the target is a Medium or smaller creature and the [[lookup @name lowercase]]{monster} moved 20+ feet straight toward it immediately before the hit, the target takes an extra 7 (2d6)\u00a0damage and has the &amp;Reference[Prone apply=false] condition.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Tusk (Boar or Hybrid Form Only)",
       "recharge": null,
       "slug": "tusk",
@@ -835,6 +847,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "bonus",
             "value": null
           },
@@ -916,6 +929,7 @@
       "description": "The [[lookup @name lowercase]]{monster} shape-shifts into a Medium boar-humanoid hybrid form or a Medium boar, or it returns to its true humanoid form, or it returns to its true form. Its game statistics, other than its size, are the same in each form. Any equipment it is wearing or carrying isn't transformed.",
       "kind": "bonus_action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Shape-Shift",
       "recharge": null,
       "slug": "shape-shift",

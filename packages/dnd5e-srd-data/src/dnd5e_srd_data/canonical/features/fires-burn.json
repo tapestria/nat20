@@ -4,6 +4,7 @@
       "activation": {
         "condition": "When you hit a target with an attack roll and deal damage to it",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },

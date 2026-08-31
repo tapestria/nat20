@@ -4,6 +4,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -49,7 +50,8 @@
         "dc": {
           "calculation": "",
           "formula": "@attributes.spell.dc - 5 + 2"
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 0,
       "target": {
@@ -92,6 +94,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -137,7 +140,8 @@
         "dc": {
           "calculation": "",
           "formula": "@attributes.spell.dc - 5 + 4"
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 0,
       "target": {
@@ -180,6 +184,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -225,7 +230,8 @@
         "dc": {
           "calculation": "",
           "formula": "@attributes.spell.dc - 5 + 10"
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 0,
       "target": {
@@ -268,6 +274,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -313,7 +320,8 @@
         "dc": {
           "calculation": "",
           "formula": "@attributes.spell.dc - 0 + 2"
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 0,
       "target": {
@@ -356,6 +364,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -401,7 +410,8 @@
         "dc": {
           "calculation": "",
           "formula": "@attributes.spell.dc - 0 + 4"
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 0,
       "target": {
@@ -444,6 +454,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -489,7 +500,8 @@
         "dc": {
           "calculation": "",
           "formula": "@attributes.spell.dc - 0 + 10"
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 0,
       "target": {
@@ -532,6 +544,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -577,7 +590,8 @@
         "dc": {
           "calculation": "",
           "formula": "@attributes.spell.dc + 5 + 2"
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 0,
       "target": {
@@ -620,6 +634,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -665,7 +680,8 @@
         "dc": {
           "calculation": "",
           "formula": "@attributes.spell.dc + 5 + 4"
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 0,
       "target": {
@@ -708,6 +724,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -753,7 +770,8 @@
         "dc": {
           "calculation": "",
           "formula": "@attributes.spell.dc + 5 + 10"
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 0,
       "target": {
@@ -796,6 +814,7 @@
       "activation": {
         "condition": "",
         "override": true,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },

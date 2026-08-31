@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -144,6 +145,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Abyssal Glaive",
       "recharge": null,
       "slug": "abyssal-glaive",
@@ -155,6 +157,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -277,6 +280,7 @@
           "activation": {
             "condition": "moved 10+ feet",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -426,6 +430,7 @@
       "description": "[[/attack extended]]. [[/damage extended average]]. If the target is a [[lookup @target.affects.special activity=iBenqFiBu40bUxkH]] creature and the [[lookup @name lowercase]]{monster} [[lookup @activation.condition activity=iBenqFiBu40bUxkH]] straight toward it immediately before the hit, the target takes an extra [[/damage 3d6 type=piercing average]] damage and has the &amp;Reference[Prone apply=false] condition.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Gore",
       "recharge": "6",
       "slug": "gore",

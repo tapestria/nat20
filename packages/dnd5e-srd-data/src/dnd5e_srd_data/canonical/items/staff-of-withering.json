@@ -4,6 +4,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -98,6 +99,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },
@@ -183,7 +185,8 @@
         "dc": {
           "calculation": "",
           "formula": "15"
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 0,
       "target": {
@@ -233,6 +236,7 @@
   ],
   "description": "Staff, Rare (Requires Attunement)\n\nThis staff has 3 charges and regains 1d3 expended charges daily at dawn.\n\nThe staff can be wielded as a magic Quarterstaff. On a hit, it deals damage as a normal Quarterstaff, and you can expend 1 charge to deal an extra 2d10 Necrotic damage to the target and force it to make a DC 15 Constitution saving throw. On a failed save, the target has Disadvantage for 1 hour on any ability check or saving throw that uses Strength or Constitution.\n\nFoundry Note\n\nThe Save activity includes an Active Effect for tracking the disadvantage.",
   "item_kind": "weapon",
+  "magical": true,
   "magical_bonus": 0,
   "mastery": "topple",
   "name": "Staff of Withering",

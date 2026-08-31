@@ -4,6 +4,7 @@
       "activation": {
         "condition": "Card's effect occurs upon draw or at any other time before you die",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },

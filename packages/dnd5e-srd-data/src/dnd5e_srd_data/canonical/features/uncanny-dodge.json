@@ -4,6 +4,7 @@
       "activation": {
         "condition": "When an attacker that you can see hits you with an attack roll",
         "override": false,
+        "reaction_conditions": [],
         "type": "reaction",
         "value": null
       },

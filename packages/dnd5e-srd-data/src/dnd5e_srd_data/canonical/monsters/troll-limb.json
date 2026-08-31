@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -127,6 +128,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Rend",
       "recharge": null,
       "slug": "rend",
@@ -214,6 +216,7 @@
           "activation": {
             "condition": "starts its turn with at least 1 Hit Point",
             "override": false,
+            "reaction_conditions": [],
             "type": "special",
             "value": null
           },
@@ -306,6 +309,7 @@
       "description": "The [[lookup @name lowercase]]{monster} regains [[lookup @healing.formula activity=5cGvjZJIJVicjJ3d]] Hit Points at the start of each of its turns if it has at least 1 Hit Point.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "regeneration",
       "name": "Regeneration",
       "recharge": null,
       "slug": "regeneration",
@@ -317,6 +321,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "",
             "value": null
           },
@@ -429,6 +434,7 @@
       "description": "The limb uncannily has the same senses as a whole [[lookup @name lowercase]]{monster}. If the limb isn't destroyed within 24 hours, roll [[/r 1d12#On a 12, the limb turns into a troll]]{roll 1d12}. On a 12, the limb turns into a Troll. Otherwise, the limb withers away.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Troll Spawn",
       "recharge": null,
       "slug": "troll-spawn",

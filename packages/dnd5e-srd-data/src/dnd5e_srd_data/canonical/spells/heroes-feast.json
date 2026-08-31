@@ -4,6 +4,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "hour",
         "value": 1
       },
@@ -95,6 +96,7 @@
       "activation": {
         "condition": "",
         "override": true,
+        "reaction_conditions": [],
         "type": "hour",
         "value": 1
       },

@@ -22,6 +22,7 @@ from tools.audit.cross_check import (
     diff_spell_flat_fields,
     diff_subclass_flat_fields,
 )
+from tools.translators.conditions import translate_condition_pages
 from tools.translators.foundry import (
     translate_armor_yaml,
     translate_background_yaml,
@@ -29,6 +30,7 @@ from tools.translators.foundry import (
     translate_feat_yaml,
     translate_feature_yaml,
     translate_generic_item_yaml,
+    translate_monster_traits,
     translate_monster_yaml,
     translate_species_yaml,
     translate_spell_yaml,
@@ -244,6 +246,8 @@ def _prune_stale_canonical() -> None:
         "backgrounds",
         "feats",
         "features",
+        "conditions",
+        "traits",
     ):
         dst = CANONICAL / canonical_subdir
         if not dst.is_dir():
@@ -382,6 +386,41 @@ def main() -> int:
     )
     non_srd_excluded.extend(e)
     print(f"  accepted={a}, quarantined={q}")
+
+    # SRD 5.2 rules-glossary conditions (C22). One journal doc → 15 entries;
+    # the SRD gate is the translator's explicit allowlist (journal pages have
+    # no license field — see tools/translators/conditions.py).
+    print("[regen] conditions …")
+    glossary = FOUNDRY_PACKS / "content24" / "appendices" / "rules-glossary.yml"
+    conditions_dst = CANONICAL / "conditions"
+    conditions_dst.mkdir(parents=True, exist_ok=True)
+    condition_entries = translate_condition_pages(
+        yaml_path=glossary, ingest_date=ingest_date, ingest_version=INGEST_VERSION
+    )
+    for condition in condition_entries:
+        write_canonical_with_overrides(condition, conditions_dst)
+    print(f"  accepted={len(condition_entries)}")
+
+    # De-duplicated SRD 5.2 monster traits (C22). Sourced from the SRD-gated
+    # actors' embedded CC-BY feat items (monsterfeatures24 carries no license tag).
+    print("[regen] traits …")
+    actor_paths = [
+        p
+        for p in sorted((FOUNDRY_PACKS / "actors24").rglob("*.yml"))
+        if p.name != "_folder.yml" and _gate_for_yaml(p).is_srd
+    ]
+    # Traits mirror the shipped monster corpus; SRD-gated summon/companion
+    # templates are excluded (their abilities return with C21).
+    monster_slugs = {p.stem for p in (CANONICAL / "monsters").glob("*.json")}
+    actor_paths = [p for p in actor_paths if p.stem in monster_slugs]
+    traits_dst = CANONICAL / "traits"
+    traits_dst.mkdir(parents=True, exist_ok=True)
+    trait_entries = translate_monster_traits(
+        actor_paths, ingest_date=ingest_date, ingest_version=INGEST_VERSION
+    )
+    for trait in trait_entries:
+        write_canonical_with_overrides(trait, traits_dst)
+    print(f"  accepted={len(trait_entries)}")
 
     # Post-process: populate Class.subclass_identifiers from the subclass
     # forward references. Foundry's Subclass-type advancement entries on the

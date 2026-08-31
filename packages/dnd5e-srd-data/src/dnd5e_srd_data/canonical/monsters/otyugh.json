@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -96,6 +97,7 @@
       "description": "The [[lookup @name lowercase]]{monster} makes one [[/item Bite]] attack and two [[/item Tentacle]] attacks.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Multiattack",
       "recharge": null,
       "slug": "multiattack",
@@ -107,6 +109,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -229,6 +232,7 @@
           "activation": {
             "condition": "Whenever the Poisoned target finishes a Long Rest",
             "override": false,
+            "reaction_conditions": [],
             "type": "special",
             "value": null
           },
@@ -290,7 +294,8 @@
             "dc": {
               "calculation": "",
               "formula": "15"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -333,6 +338,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]], and the target has the &amp;Reference[Poisoned apply=false] condition. Whenever the Poisoned target finishes a Long Rest, it is subjected to the following effect.\n\nConstitution Saving Throw: DC [[lookup @save.dc.formula activity=tKShuY4vDM7tn9aC]].\n\nFailure: The target's Hit Point maximum decreases by [[/damage 1d10 average]] and doesn't return to normal until the Poisoned condition ends on the target.\n\nSuccess: The Poisoned condition ends.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Bite",
       "recharge": null,
       "slug": "bite",
@@ -344,6 +350,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -466,6 +473,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "special",
             "value": null
           },
@@ -552,6 +560,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]]. If the target is a Medium or smaller creature, it has the &amp;Reference[Grappled apply=false] condition (escape DC [[lookup @skills.ath.passive]]) from one of two tentacles.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Tentacle",
       "recharge": null,
       "slug": "tentacle",
@@ -563,6 +572,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -634,7 +644,8 @@
             "dc": {
               "calculation": "",
               "formula": "14"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -677,6 +688,7 @@
       "description": "Constitution Saving Throw: DC [[lookup @save.dc.value activity=VC2iSwNPNaZ7M2bT]], [[lookup @target.affects.special activity=VC2iSwNPNaZ7M2bT]] by the [[lookup @name lowercase]]{monster}.\n\nFailure: [[/damage average]] damage, and the target has the &amp;Reference[Stunned apply=false] condition until the start of the [[lookup @name lowercase]]{monster}'s next turn.\n\nSuccess: Half damage only.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Tentacle Slam",
       "recharge": null,
       "slug": "tentacle-slam",

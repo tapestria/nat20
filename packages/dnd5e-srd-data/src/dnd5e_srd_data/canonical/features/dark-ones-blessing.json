@@ -4,6 +4,7 @@
       "activation": {
         "condition": "When you reduce an enemy to 0 Hit Points or  an enemy within 10 feet of you is reduced to 0 Hit Points",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },

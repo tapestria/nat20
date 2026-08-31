@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -93,9 +94,10 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes two attacks, using [[/item .mmNecroticSword0]] or [[/item .mmNecroticBow000]] in any combination. It can replace one attack with a use of [[/item .mmLifeDrain00000]].",
+      "description": "The [[lookup @name lowercase]]{monster} makes two attacks, using [[/item .mmNecroticSword0]]{Necrotic Sword} or [[/item .mmNecroticBow000]]{Necrotic Bow} in any combination. It can replace one attack with a use of [[/item .mmLifeDrain00000]]{Life Drain}.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Multiattack",
       "recharge": null,
       "slug": "multiattack",
@@ -107,6 +109,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -236,6 +239,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Necrotic Sword",
       "recharge": null,
       "slug": "necrotic-sword",
@@ -247,6 +251,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -308,7 +313,8 @@
             "dc": {
               "calculation": "con",
               "formula": "8 + @mod + @prof"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -351,6 +357,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "",
             "value": null
           },
@@ -463,6 +470,7 @@
       "description": "Life Drain.\n\nConstitution Saving Throw: DC [[lookup @save.dc.value activity=FA4Mt9cXsYfHDDcs]], one [[lookup @target.affects.type activity=FA4Mt9cXsYfHDDcs]] within [[lookup @range.value activity=FA4Mt9cXsYfHDDcs]] feet.\n\nFailure: [[/damage average]] damage, and the target's Hit Point maximum decreases by an amount equal to the damage taken.\n\nA Humanoid slain by this attack rises 24 hours later as a Zombie under the [[lookup @name lowercase]]{monster}'s control, unless the Humanoid is restored to life or its body is destroyed. The [[lookup @name lowercase]]{monster} can have no more than twelve zombies under its control at a time.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Life Drain",
       "recharge": null,
       "slug": "life-drain",
@@ -474,6 +482,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -603,6 +612,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Necrotic Bow",
       "recharge": null,
       "slug": "necrotic-bow",
@@ -698,6 +708,7 @@
       "description": "While in sunlight, the [[lookup @name lowercase]]{monster} has Disadvantage on ability checks and attack rolls.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "sunlight_sensitivity",
       "name": "Sunlight Sensitivity",
       "recharge": null,
       "slug": "sunlight-sensitivity",

@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -93,9 +94,10 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes one [[/item .mmBite0000000000]] attack, two [[/item .mmDevilishClaw00]] attacks, and one [[/item .mmFieryMace00000]] attack.",
+      "description": "The [[lookup @name lowercase]]{monster} makes one [[/item .mmBite0000000000]]{Bite} attack, two [[/item .mmDevilishClaw00]]{Devilish Claw} attacks, and one [[/item .mmFieryMace00000]]{Fiery Mace} attack.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Multiattack",
       "recharge": null,
       "slug": "multiattack",
@@ -107,6 +109,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -219,6 +222,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "",
             "value": null
           },
@@ -272,7 +276,8 @@
             "dc": {
               "calculation": "cha",
               "formula": "8 + @mod + @prof"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -315,6 +320,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "turnStart",
             "value": null
           },
@@ -415,6 +421,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]]. If the target is a creature, it must make the following saving throw.\n\nConstitution Saving Throw: DC [[lookup @save.dc.value activity=fM7YmQ4hBtRXJkMe]].\n\nFailure: The target has the &amp;Reference[Poisoned apply=false] condition. While Poisoned, the target can't regain Hit Points and takes [[/damage average activity=aa2GUeTEVLOdmfrB]] damage at the start of each of its turns, and it repeats the save at the end of each of its turns, ending the effect on itself on a success. After 1 minute, it succeeds automatically.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Bite",
       "recharge": null,
       "slug": "bite",
@@ -426,6 +433,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -538,6 +546,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Devilish Claw",
       "recharge": null,
       "slug": "devilish-claw",
@@ -549,6 +558,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -678,6 +688,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Fiery Mace",
       "recharge": null,
       "slug": "fiery-mace",
@@ -689,6 +700,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -786,6 +798,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -883,6 +896,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -980,6 +994,7 @@
       "description": "The pit fiend casts Fireball (level 5 version) twice, requiring no Material components and using Charisma as the spellcasting ability (spell save DC [[lookup @abilities.cha.dc]]).. It can replace one Fireball with Hold Monster (level 7 version) or Wall of Fire.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Hellfire Spellcasting",
       "recharge": "4-6",
       "slug": "hellfire-spellcasting",
@@ -1076,6 +1091,7 @@
       "description": "If the [[lookup @name lowercase]]{monster} dies outside the Nine Hells, its body disappears in sulfurous smoke, and it gains a new body instantly, reviving with all its Hit Points somewhere in the Nine Hells.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "restoration",
       "name": "Diabolical Restoration",
       "recharge": null,
       "slug": "diabolical-restoration",
@@ -1087,6 +1103,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "",
             "value": null
           },
@@ -1142,7 +1159,8 @@
             "dc": {
               "calculation": "cha",
               "formula": "8 + @mod + @prof"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -1185,6 +1203,7 @@
       "description": "The [[lookup @name lowercase]]{monster} emanates an aura in a [[lookup @target.template.size activity=oT8238p9jXwVy76c]]-foot Emanation while it doesn't have the Incapacitated condition.\n\nWisdom Saving Throw: DC [[lookup @save.dc.value activity=oT8238p9jXwVy76c]], [[lookup @target.affects.special activity=oT8238p9jXwVy76c]].\n\nFailure: The target has the &amp;Reference[Frightened apply=false] condition until the start of its next turn.\n\nSuccess: The target is immune to this [[lookup @name lowercase]]{monster}'s aura for 24 hours.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Fear Aura",
       "recharge": null,
       "slug": "fear-aura",
@@ -1195,6 +1214,7 @@
       "description": "The [[lookup @name lowercase]]{monster} has Advantage on saving throws against spells and other magical effects.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "magic_resistance",
       "name": "Magic Resistance",
       "recharge": null,
       "slug": "magic-resistance",
@@ -1206,6 +1226,7 @@
           "activation": {
             "condition": "fails a saving throw",
             "override": false,
+            "reaction_conditions": [],
             "type": "special",
             "value": null
           },
@@ -1297,6 +1318,7 @@
       "description": "If the [[lookup @name lowercase]]{monster} fails a saving throw, it can choose to succeed instead.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "legendary_resistance",
       "name": "Legendary Resistance",
       "recharge": null,
       "slug": "legendary-resistance",

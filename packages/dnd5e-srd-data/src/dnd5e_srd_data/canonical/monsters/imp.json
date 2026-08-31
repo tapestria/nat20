@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -144,6 +145,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Sting",
       "recharge": null,
       "slug": "sting",
@@ -155,6 +157,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -244,6 +247,7 @@
       "description": "The [[lookup @name lowercase]]{monster} casts Invisibility on itself, requiring no spell components and using Charisma as the spellcasting ability.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Invisibility",
       "recharge": null,
       "slug": "invisibility",
@@ -255,6 +259,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": 1
           },
@@ -364,6 +369,7 @@
       "description": "The [[lookup @name lowercase]]{monster} shape-shifts to resemble a rat (Speed 20 ft.), a raven (20 ft., Fly 60 ft.), or a spider (20 ft., Climb 20 ft.), or it returns to its true form. Its game statistics are the same in each form, except for its Speed. Any equipment it is wearing or carrying isn't transformed.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Shape-Shift",
       "recharge": null,
       "slug": "shape-shift",
@@ -460,6 +466,7 @@
       "description": "The [[lookup @name lowercase]]{monster} has Advantage on saving throws against spells and other magical effects.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "magic_resistance",
       "name": "Magic Resistance",
       "recharge": null,
       "slug": "magic-resistance",

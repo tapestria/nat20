@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": 1
           },
@@ -144,6 +145,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Greatsword",
       "recharge": null,
       "slug": "greatsword",
@@ -155,6 +157,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": 1
           },
@@ -284,6 +287,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Heavy Crossbow",
       "recharge": null,
       "slug": "heavy-crossbow",
@@ -295,6 +299,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -373,9 +378,10 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes two attacks, using [[/item .qFzUqCv1LU1T2l9W]] or [[/item .iqOpigRADMF7BFDu]] in any combination.",
+      "description": "The [[lookup @name lowercase]]{monster} makes two attacks, using [[/item .qFzUqCv1LU1T2l9W]]{Greatsword} or [[/item .iqOpigRADMF7BFDu]]{Heavy Crossbow} in any combination.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Multiattack",
       "recharge": null,
       "slug": "multiattack",
@@ -387,6 +393,7 @@
           "activation": {
             "condition": "hit by a melee attack roll while holding a weapon",
             "override": false,
+            "reaction_conditions": [],
             "type": "reaction",
             "value": null
           },
@@ -468,6 +475,7 @@
       "description": "Trigger: The [[lookup @name lowercase]]{monster} is [[lookup @activation.condition activity=aLG3BRZL7P6OEjwd]]. Response: The [[lookup @name lowercase]]{monster} adds [[lookup @roll.formula activity=aLG3BRZL7P6OEjwd]] to its AC against that attack, possibly causing it to miss.",
       "kind": "reaction",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Parry",
       "recharge": null,
       "slug": "parry",

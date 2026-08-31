@@ -4,6 +4,7 @@
       "activation": {
         "condition": "Action or Bonus Action",
         "override": false,
+        "reaction_conditions": [],
         "type": "special",
         "value": null
       },
@@ -105,6 +106,7 @@
   ],
   "description": "Weapon (Scimitar), Very Rare (Requires Attunement)\n\nYou gain a +2 bonus to attack rolls and damage rolls made with this magic weapon. In addition, you can make one attack with it as a Bonus Action on each of your turns.",
   "item_kind": "weapon",
+  "magical": true,
   "magical_bonus": 2,
   "mastery": "nick",
   "name": "Scimitar of Speed",

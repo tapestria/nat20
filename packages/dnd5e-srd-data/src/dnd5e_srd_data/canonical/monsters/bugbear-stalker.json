@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": 1
           },
@@ -127,6 +128,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Javelin",
       "recharge": null,
       "slug": "javelin",
@@ -138,6 +140,7 @@
           "activation": {
             "condition": "with Advantage if the target is Grappled by the bugbear",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": 1
           },
@@ -250,6 +253,7 @@
       "description": "Melee Attack Roll: [[/attack]] ([[lookup @activation.condition activity=QIpweawAzbt4xw5h]]), reach [[lookup @range.value activity=QIpweawAzbt4xw5h]] ft. [[/damage average extended]]",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Morningstar",
       "recharge": null,
       "slug": "morningstar",
@@ -261,6 +265,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -339,9 +344,10 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes two [[/item .dN1CML4smcRrUkzD]] or [[/item .YFpjAATelvlz5oyb]] attacks.",
+      "description": "The [[lookup @name lowercase]]{monster} makes two [[/item .dN1CML4smcRrUkzD]]{Javelin} or [[/item .YFpjAATelvlz5oyb]]{Morningstar} attacks.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Multiattack",
       "recharge": null,
       "slug": "multiattack",
@@ -353,6 +359,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "bonus",
             "value": null
           },
@@ -408,7 +415,8 @@
             "dc": {
               "calculation": "dex",
               "formula": "8 + @mod + @prof"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -451,6 +459,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "special",
             "value": null
           },
@@ -537,6 +546,7 @@
       "description": "Dexterity Saving Throw: DC [[lookup @save.dc.value activity=aDWVHpJgsNPPNrDs]], [[lookup @target.affects.special activity=aDWVHpJgsNPPNrDs]] the [[lookup @name lowercase]]{monster} can see within [[lookup @target.template.size activity=aDWVHpJgsNPPNrDs]] [[lookup @target.template.units activity=aDWVHpJgsNPPNrDs]].\n\nFailure: The target has the &amp;Reference[Grappled] condition (escape DC [[lookup @skills.ath.passive]]).",
       "kind": "bonus_action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Quick Grapple",
       "recharge": null,
       "slug": "quick-grapple",
@@ -626,6 +636,7 @@
       "description": "The [[lookup @name lowercase]]{monster} needn't spend extra movement to move a creature it is grappling.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Abduct",
       "recharge": null,
       "slug": "abduct",

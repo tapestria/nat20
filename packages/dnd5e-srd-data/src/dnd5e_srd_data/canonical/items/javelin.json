@@ -4,6 +4,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": 1
       },
@@ -105,6 +106,7 @@
   ],
   "description": "[[/attack extended]]. [[/damage extended]].",
   "item_kind": "weapon",
+  "magical": false,
   "magical_bonus": 0,
   "mastery": "slow",
   "name": "Javelin",

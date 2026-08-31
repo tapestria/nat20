@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -127,6 +128,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Bite",
       "recharge": null,
       "slug": "bite",
@@ -213,6 +215,7 @@
       "description": "The [[lookup @name lowercase]]{monster} can climb difficult surfaces, including along ceilings, without needing to make an ability check.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "spider_climb",
       "name": "Spider Climb",
       "recharge": null,
       "slug": "spider-climb",
@@ -223,6 +226,7 @@
       "description": "The [[lookup @name lowercase]]{monster} ignores movement restrictions caused by webs, and the [[lookup @name lowercase]]{monster} knows the location of any other creature in contact with the same web.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Web Walker",
       "recharge": null,
       "slug": "web-walker",

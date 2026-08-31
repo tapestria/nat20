@@ -4,6 +4,7 @@
       "activation": {
         "condition": "when a creature you can see casts a spell of 8th level or lower",
         "override": false,
+        "reaction_conditions": [],
         "type": "reaction",
         "value": null
       },

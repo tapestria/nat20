@@ -1,0 +1,20 @@
+{
+  "description": "When you summon the spirit, choose one of its Resistances. You have &amp;Reference[damageresistance]{Resistance} to the chosen damage type until the spell ends.\n\nFoundry Note\n\nActive effects and activities applying those effects on this item are provided for optional application of the chosen resistance.",
+  "mechanic": null,
+  "name": "Shared Resistances",
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/actors24/summons/draconic-spirit.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "shared-resistances"
+}

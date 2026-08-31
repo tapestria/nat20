@@ -4,6 +4,7 @@
       "activation": {
         "condition": "When you fail an ability check or attack roll",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },

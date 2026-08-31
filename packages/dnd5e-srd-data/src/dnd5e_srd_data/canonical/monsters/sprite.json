@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -127,6 +128,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Needle Sword",
       "recharge": null,
       "slug": "needle-sword",
@@ -138,6 +140,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -260,6 +263,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]], and the target has the &amp;Reference[Charmed apply=false] condition until the start of the [[lookup @name lowercase]]{monster}'s next turn.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Enchanting Bow",
       "recharge": null,
       "slug": "enchanting-bow",
@@ -271,6 +275,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -316,7 +321,8 @@
             "dc": {
               "calculation": "cha",
               "formula": "8 + @mod + @prof"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -359,6 +365,7 @@
       "description": "Charisma Saving Throw: DC [[lookup @save.dc.value activity=NqVrZShDV1L3zBA3]], one [[lookup @target.affects.type activity=NqVrZShDV1L3zBA3]] within [[lookup @range.value activity=NqVrZShDV1L3zBA3]] feet the [[lookup @name lowercase]]{monster} can see (Celestials, Fiends, and Undead automatically fail the save).\n\nFailure: The [[lookup @name lowercase]]{monster} knows the target's emotions and alignment.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Heart Sight",
       "recharge": null,
       "slug": "heart-sight",
@@ -370,6 +377,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -459,6 +467,7 @@
       "description": "The [[lookup @name lowercase]]{monster} casts Invisibility on itself, requiring no spell components and using Charisma as the spellcasting ability.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Invisibility",
       "recharge": null,
       "slug": "invisibility",

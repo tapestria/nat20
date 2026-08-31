@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -96,6 +97,7 @@
       "description": "The [[lookup @name lowercase]]{monster} makes one [[/item Attach]] attack and two [[/item Tail]] attacks.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Multiattack",
       "recharge": null,
       "slug": "multiattack",
@@ -107,6 +109,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -229,6 +232,7 @@
           "activation": {
             "condition": "Action taken by the target or creature within range of it",
             "override": false,
+            "reaction_conditions": [],
             "type": "special",
             "value": null
           },
@@ -314,6 +318,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]]. If the target is a Large or smaller creature, the [[lookup @name lowercase]]{monster} attaches to it. While the [[lookup @name lowercase]]{monster} is attached, the target has the &amp;Reference[Blinded apply=false] condition, and the [[lookup @name lowercase]]{monster} can't make Attach attacks against other targets. In addition, the [[lookup @name lowercase]]{monster} halves the damage it takes (round down), and the target takes the same amount of damage.\n\nThe [[lookup @name lowercase]]{monster} can detach itself by spending 5 feet of movement. The target or a creature within [[lookup @range.value activity=6iLqAufAeEqDOlGs]] feet of it can take an action to try to detach the [[lookup @name lowercase]]{monster}, doing so by succeeding on a DC [[lookup @check.dc.value activity=6iLqAufAeEqDOlGs]] Strength (Athletics) check.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Attach",
       "recharge": null,
       "slug": "attach",
@@ -325,6 +330,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -437,6 +443,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Tail",
       "recharge": null,
       "slug": "tail",
@@ -448,6 +455,7 @@
           "activation": {
             "condition": "",
             "override": true,
+            "reaction_conditions": [],
             "type": "bonus",
             "value": null
           },
@@ -547,6 +555,7 @@
       "description": "The [[lookup @name lowercase]]{monster} casts the Mirror Image spell, requiring no spell components and using Wisdom as the spellcasting ability. The spell ends early if the [[lookup @name lowercase]]{monster} starts or ends its turn in Bright Light.",
       "kind": "bonus_action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Phantasms",
       "recharge": null,
       "slug": "phantasms",
@@ -558,6 +567,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "bonus",
             "value": null
           },
@@ -613,7 +623,8 @@
             "dc": {
               "calculation": "",
               "formula": "13"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -656,6 +667,7 @@
       "description": "Wisdom Saving Throw: DC [[lookup @save.dc.value activity=Mng39fcFDc4I1AzY]], each [[lookup @target.affects.type activity=Mng39fcFDc4I1AzY]] in a [[lookup @target.template.size activity=Mng39fcFDc4I1AzY]]-[[lookup @target.template.units activity=Mng39fcFDc4I1AzY]]. Emanation originating from the [[lookup @name lowercase]]{monster}.\n\nFailure: The target has the &amp;Reference[Frightened apply=false] condition until the end of the [[lookup @name lowercase]]{monster}'s next turn.\n\nSuccess: The target is immune to this [[lookup @name lowercase]]{monster}'s Moan for the next 24 hours.",
       "kind": "bonus_action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Moan",
       "recharge": null,
       "slug": "moan",
@@ -745,6 +757,7 @@
       "description": "While in Bright Light, the [[lookup @name lowercase]]{monster} has Disadvantage on attack rolls.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Light Sensitivity",
       "recharge": null,
       "slug": "light-sensitivity",

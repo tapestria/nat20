@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -93,9 +94,10 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes two [[/item .mmChain000000000]] attacks and uses [[/item .mmConjureInferna]].",
+      "description": "The [[lookup @name lowercase]]{monster} makes two [[/item .mmChain000000000]]{Chain} attacks and uses [[/item .mmConjureInferna]]{Conjure Infernal Chain}.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Multiattack",
       "recharge": null,
       "slug": "multiattack",
@@ -107,6 +109,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -180,7 +183,8 @@
             "dc": {
               "calculation": "str",
               "formula": "8 + @mod + @prof"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -223,6 +227,7 @@
       "description": "The devil conjures a fiery chain to bind a creature.\n\nDexterity Saving Throw: DC [[lookup @save.dc.value activity=9vCVJrzUZL0ra4w2]], [[lookup @target.affects.labels.statblock activity=9vCVJrzUZL0ra4w2]] the [[lookup @name lowercase]]{monster} can see within [[lookup @range.value activity=9vCVJrzUZL0ra4w2]] feet.\n\nFailure: [[/damage average]] damage, and the target has the &amp;Reference[Restrained apply=false] condition until the end of the [[lookup @name lowercase]]{monster}'s next turn, at which point the chain disappears. If the target is Large or smaller, the devil moves the target up to 30 feet straight toward itself.\n\nSuccess: The chain disappears.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Conjure Infernal Chain",
       "recharge": null,
       "slug": "conjure-infernal-chain",
@@ -234,6 +239,7 @@
           "activation": {
             "condition": "A creature the devil can see",
             "override": false,
+            "reaction_conditions": [],
             "type": "reaction",
             "value": null
           },
@@ -289,7 +295,8 @@
             "dc": {
               "calculation": "str",
               "formula": "8 + @mod + @prof"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -332,6 +339,7 @@
       "description": "Trigger: A [[lookup @target.affects.type activity=btp6NZvx465nxWTF]] the [[lookup @name lowercase]]{monster} can see starts its turn within [[lookup @target.template.size activity=btp6NZvx465nxWTF]] feet of the [[lookup @name lowercase]]{monster} and can see the [[lookup @name lowercase]]{monster}.\n\nResponse\u2014Wisdom Saving Throw: DC [[lookup @save.dc.value activity=btp6NZvx465nxWTF]], the triggering [[lookup @target.affects.type activity=btp6NZvx465nxWTF]].\n\nFailure: The target has the &amp;Reference[Frightened apply=false] condition until the end of its turn.\n\nSuccess: The target is immune to this [[lookup @name lowercase]]{monster}'s Unnerving Gaze for 24 hours.",
       "kind": "reaction",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Unnerving Gaze",
       "recharge": null,
       "slug": "unnerving-gaze",
@@ -343,6 +351,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -465,6 +474,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "special",
             "value": null
           },
@@ -551,6 +561,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]]. If the target is a Large or smaller creature, it has the &amp;Reference[Grappled apply=false] condition (escape DC [[lookup @skills.ath.passive]]) from one of two chains, and it has the &amp;Reference[Restrained apply=false] condition until the grapple ends.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Chain",
       "recharge": null,
       "slug": "chain",
@@ -650,6 +661,7 @@
       "description": "If the [[lookup @name lowercase]]{monster} dies outside the Nine Hells, its body disappears in sulfurous smoke, and it gains a new body instantly, reviving with all its Hit Points somewhere in the Nine Hells.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "restoration",
       "name": "Diabolical Restoration",
       "recharge": null,
       "slug": "diabolical-restoration",
@@ -660,6 +672,7 @@
       "description": "The [[lookup @name lowercase]]{monster} has Advantage on saving throws against spells and other magical effects.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "magic_resistance",
       "name": "Magic Resistance",
       "recharge": null,
       "slug": "magic-resistance",

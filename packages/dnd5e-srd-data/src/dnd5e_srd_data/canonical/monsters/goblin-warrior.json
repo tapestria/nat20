@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": 1
           },
@@ -127,6 +128,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": 1
           },
@@ -256,6 +258,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]], plus [[/damage 1d4 slashing average]] damage if the attack roll had Advantage.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Scimitar",
       "recharge": null,
       "slug": "scimitar",
@@ -267,6 +270,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": 1
           },
@@ -379,6 +383,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": 1
           },
@@ -508,6 +513,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]], plus [[/damage 1d4 piercing average]] damage if the attack roll had Advantage.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Shortbow",
       "recharge": null,
       "slug": "shortbow",
@@ -519,6 +525,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "bonus",
             "value": null
           },
@@ -610,6 +617,7 @@
       "description": "The [[lookup @name lowercase]]{monster} takes the &amp;Reference[Disengage] or &amp;Reference[Hide] action.",
       "kind": "bonus_action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Nimble Escape",
       "recharge": null,
       "slug": "nimble-escape",

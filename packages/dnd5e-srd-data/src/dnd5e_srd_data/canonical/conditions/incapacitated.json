@@ -1,0 +1,46 @@
+{
+  "description": "While you have the incapacitated condition, you experience the following effects.\n\nInactive. You can\u2019t take any action, Bonus Action, or Reaction.\n\nNo Concentration. Your Concentration is broken.\n\nSpeechless. You can\u2019t speak.\n\nSurprised. If you\u2019re Incapacitated when you roll Initiative, you have Disadvantage on the roll.",
+  "effects": [
+    {
+      "abilities": [],
+      "kind": "cannot_take_actions",
+      "qualifier": "",
+      "value": null
+    },
+    {
+      "abilities": [],
+      "kind": "breaks_concentration",
+      "qualifier": "",
+      "value": null
+    },
+    {
+      "abilities": [],
+      "kind": "cannot_speak",
+      "qualifier": "",
+      "value": null
+    },
+    {
+      "abilities": [],
+      "kind": "disadvantage_initiative",
+      "qualifier": "if you're Incapacitated when you roll Initiative",
+      "value": null
+    }
+  ],
+  "implies": [],
+  "name": "Incapacitated",
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/content24/appendices/rules-glossary.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "incapacitated"
+}

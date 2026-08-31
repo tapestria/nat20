@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -137,6 +138,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -249,6 +251,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]], or [[/damage average activity=kJRbpcMr4MaYs4JL]] damage if the goat moved 20+ feet straight toward the target immediately before the hit.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Ram",
       "recharge": null,
       "slug": "ram",

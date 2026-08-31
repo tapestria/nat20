@@ -195,6 +195,10 @@ class EncounterMemberSpec(BaseModel):
     # Empty by default; populated from MonsterTemplate at the session layer.
     # Copied onto the live ``Combatant`` at start_combat.
     condition_immunities: list[str] = Field(default_factory=list)
+    # C22 — see ``Combatant.physical_resistances_nonmagical_only``. Leave True
+    # for the common "resistant to nonmagical B/P/S" profile; set False for
+    # a creature whose B/P/S resistance also applies to magical damage.
+    physical_resistances_nonmagical_only: bool = True
     # SRD §Movement — walking speed in feet. See PartyMemberSpec.base_speed.
     # Defaults to 30; monster speed lookup at the session layer threads
     # MonsterTemplate.speed["walk"] in here.

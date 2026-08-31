@@ -4,6 +4,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -97,6 +98,7 @@
       "activation": {
         "condition": "your soul inhabits the container",
         "override": true,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -154,7 +156,8 @@
         "dc": {
           "calculation": "spellcasting",
           "formula": ""
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 0,
       "target": {
@@ -197,6 +200,7 @@
       "activation": {
         "condition": "",
         "override": true,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },

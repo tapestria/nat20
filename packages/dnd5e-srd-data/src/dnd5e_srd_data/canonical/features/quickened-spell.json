@@ -4,6 +4,7 @@
       "activation": {
         "condition": "When you cast a spell that has a casting time of an action",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },

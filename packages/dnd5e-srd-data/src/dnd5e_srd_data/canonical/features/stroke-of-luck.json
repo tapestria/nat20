@@ -4,6 +4,7 @@
       "activation": {
         "condition": "When you fail a D20 Test",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },

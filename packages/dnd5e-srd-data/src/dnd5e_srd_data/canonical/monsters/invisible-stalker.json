@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -93,9 +94,10 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes three [[/item .mmWindSwipe00000]] attacks. It can replace one attack with a use of [[/item .mmVortex00000000]].",
+      "description": "The [[lookup @name lowercase]]{monster} makes three [[/item .mmWindSwipe00000]]{Wind Swipe} attacks. It can replace one attack with a use of [[/item .mmVortex00000000]]{Vortex}.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Multiattack",
       "recharge": null,
       "slug": "multiattack",
@@ -107,6 +109,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -219,6 +222,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Wind Swipe",
       "recharge": null,
       "slug": "wind-swipe",
@@ -230,6 +234,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -303,7 +308,8 @@
             "dc": {
               "calculation": "",
               "formula": "14"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -346,6 +352,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "turnStart",
             "value": null
           },
@@ -446,6 +453,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "special",
             "value": null
           },
@@ -532,6 +540,7 @@
       "description": "Constitution Saving Throw: DC [[lookup @save.dc.value activity=cZy0VYbCVY8aRB4z]], one [[lookup @target.affects.special activity=cZy0VYbCVY8aRB4z]] in the [[lookup @name lowercase]]{monster}'s space.\n\nFailure: [[/damage average activity=cZy0VYbCVY8aRB4z]] damage, and the target has the &amp;Reference[Grappled apply=false] condition (escape DC [[lookup @skills.ath.passive]]). Until the grapple ends, the target can't cast spells with a Verbal component and takes [[/damage average activity=kDz92inkRCjGrPiz]] damage at the start of each of the [[lookup @name lowercase]]{monster}'s turns.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Vortex",
       "recharge": null,
       "slug": "vortex",
@@ -636,6 +645,7 @@
       "description": "The [[lookup @name lowercase]]{monster} can enter an enemy's space and stop there. It can move through a space as narrow as 1 inch without expending extra movement to do so.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Air Form",
       "recharge": null,
       "slug": "air-form",
@@ -646,6 +656,7 @@
       "description": "The [[lookup @name lowercase]]{monster} has the &amp;Reference[Invisible apply=false] condition.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Invisibility",
       "recharge": null,
       "slug": "invisibility",

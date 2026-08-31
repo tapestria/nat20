@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -144,6 +145,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]]. Hit or Miss: The spear magically returns to the [[lookup @name lowercase]]{monster}'s hand immediately after a ranged attack.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Flame Spear",
       "recharge": null,
       "slug": "flame-spear",
@@ -155,6 +157,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -233,9 +236,10 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes two [[/item .mmFlameSpear0000]] attacks. It can replace one attack with a use of [[/item .mmConstrict00000]].",
+      "description": "The [[lookup @name lowercase]]{monster} makes two [[/item .mmFlameSpear0000]]{Flame Spear} attacks. It can replace one attack with a use of [[/item .mmConstrict00000]]{Constrict}.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Multiattack",
       "recharge": null,
       "slug": "multiattack",
@@ -247,6 +251,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -337,7 +342,8 @@
             "dc": {
               "calculation": "str",
               "formula": ""
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -380,6 +386,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "special",
             "value": null
           },
@@ -466,6 +473,7 @@
       "description": "Strength Saving Throw: DC [[lookup @save.dc.value activity=IgOMjRxAt7UISkJq]], one [[lookup @target.affects.special activity=IgOMjRxAt7UISkJq]] creature the [[lookup @name lowercase]]{monster} can see within [[lookup @range.value activity=IgOMjRxAt7UISkJq]] feet.\n\nFailure: [[/damage average]] damage. The target has the &amp;Reference[Grappled apply=false] condition (escape DC [[lookup @skills.ath.passive]]), and it has the &amp;Reference[Restrained apply=false] condition until the grapple ends.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Constrict",
       "recharge": null,
       "slug": "constrict",
@@ -559,6 +567,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "turnEnd",
             "value": null
           },
@@ -659,6 +668,7 @@
       "description": "At the end of each of the [[lookup @name lowercase]]{monster}'s turns, each [[lookup @target.affects.type activity=15VgJKVXwYBOFSqJ]] of the [[lookup @name lowercase]]{monster}'s choice in a [[lookup @target.template.size activity=15VgJKVXwYBOFSqJ]]-foot Emanation originating from the [[lookup @name lowercase]]{monster} takes [[/damage average]] damage.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Fire Aura",
       "recharge": null,
       "slug": "fire-aura",

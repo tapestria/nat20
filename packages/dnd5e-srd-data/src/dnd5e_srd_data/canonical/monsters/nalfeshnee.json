@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -93,9 +94,10 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes three [[/item .mmRend0000000000]] attacks.",
+      "description": "The [[lookup @name lowercase]]{monster} makes three [[/item .mmRend0000000000]]{Rend} attacks.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Multiattack",
       "recharge": null,
       "slug": "multiattack",
@@ -107,6 +109,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -188,6 +191,7 @@
       "description": "The [[lookup @name lowercase]]{monster} teleports up to [[lookup @range.value activity=dnoRMdFzhUUku26D]] feet to an unoccupied space it can see.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Teleport",
       "recharge": null,
       "slug": "teleport",
@@ -199,6 +203,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -328,6 +333,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Rend",
       "recharge": null,
       "slug": "rend",
@@ -339,6 +345,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "bonus",
             "value": null
           },
@@ -422,7 +429,8 @@
             "dc": {
               "calculation": "cha",
               "formula": "15"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -465,6 +473,7 @@
       "description": "Wisdom Saving Throw: DC [[lookup @save.dc.value activity=GP5MnIyXCVZ4ZMTQ]], each [[lookup @target.affects.type activity=GP5MnIyXCVZ4ZMTQ]] in a [[lookup @target.template.size activity=GP5MnIyXCVZ4ZMTQ]]-foot Emanation originating from the [[lookup @name lowercase]]{monster}.\n\nFailure: [[/damage average]] damage, and the target has the &amp;Reference[Frightened apply=false] condition for [[lookup @duration.value activity=GP5MnIyXCVZ4ZMTQ]] [[lookup @duration.units activity=GP5MnIyXCVZ4ZMTQ]], until it takes damage, or until it ends its turn with the [[lookup @name lowercase]]{monster} out of line of sight.\n\nSuccess: The target is immune to this [[lookup @name lowercase]]{monster}'s Horror Nimbus for 24 hours.",
       "kind": "bonus_action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Horror Nimbus",
       "recharge": "5-6",
       "slug": "horror-nimbus",
@@ -476,6 +485,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "reaction",
             "value": null
           },
@@ -557,6 +567,7 @@
       "description": "Trigger: Another creature the [[lookup @name lowercase]]{monster} can see ends its move within [[lookup @range.value activity=blUXkjLhs9kD2ofo]] feet of the [[lookup @name lowercase]]{monster}. Response: The [[lookup @name lowercase]]{monster} uses Teleport, but its destination space must be [[lookup @target.affects.special activity=blUXkjLhs9kD2ofo]].",
       "kind": "reaction",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Pursuit",
       "recharge": null,
       "slug": "pursuit",
@@ -655,6 +666,7 @@
       "description": "If the [[lookup @name lowercase]]{monster} dies outside the Abyss, its body dissolves into ichor, and it gains a new body instantly, reviving with all its Hit Points somewhere in the Abyss.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "restoration",
       "name": "Demonic Restoration",
       "recharge": null,
       "slug": "demonic-restoration",
@@ -665,6 +677,7 @@
       "description": "The [[lookup @name lowercase]]{monster} has Advantage on saving throws against spells and other magical effects.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "magic_resistance",
       "name": "Magic Resistance",
       "recharge": null,
       "slug": "magic-resistance",

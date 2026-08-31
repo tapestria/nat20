@@ -77,3 +77,29 @@ def test_longsword_has_no_uses():
         ingest_version="foundry-translator-v1",
     )
     assert w.uses is None
+
+
+def test_mgc_property_sets_weapon_magical_without_touching_properties():
+    w = translate_weapon_yaml(
+        yaml_path=FIXTURE / "weapons" / "dagger-of-venom-lite.yml",
+        ingest_date=date(2026, 5, 30),
+        ingest_version="foundry-translator-v1",
+    )
+    assert w.magical is True
+    assert w.magical_bonus == 1
+    assert WeaponProperty.FINESSE in w.properties
+    assert "mgc" not in {p.value for p in w.properties}  # never a WeaponProperty member
+
+
+def test_mundane_weapon_and_armor_are_not_magical():
+    w = translate_weapon_yaml(
+        yaml_path=FIXTURE / "weapons" / "longsword.yml",
+        ingest_date=date(2026, 5, 30),
+        ingest_version="foundry-translator-v1",
+    )
+    a = translate_armor_yaml(
+        yaml_path=FIXTURE / "armor" / "chain-shirt.yml",
+        ingest_date=date(2026, 5, 30),
+        ingest_version="foundry-translator-v1",
+    )
+    assert w.magical is False and a.magical is False

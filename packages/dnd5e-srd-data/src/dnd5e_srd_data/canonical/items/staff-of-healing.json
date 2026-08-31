@@ -4,6 +4,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -98,6 +99,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -197,6 +199,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -296,6 +299,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -402,6 +406,7 @@
   ],
   "description": "Staff, Rare (Requires Attunement by a Bard, Cleric, or Druid)\n\nThis staff has 10 charges. While holding the staff, you can cast one of the spells on the following table from it, using your spellcasting ability modifier. The table indicates how many charges you must expend to cast the spell.\n\nSpell\n\nCharge Cost\n\nCure Wounds\n\n1 charge per spell level (maximum 4 for a level 4 spell)\n\nLesser Restoration\n\n2\n\nMass Cure Wounds\n\n5\n\nRegaining Charges. The staff regains 1d6 + 4 expended charges daily at dawn. If you expend the last charge, roll [[/r 1d20]]. On a 1, the staff vanishes in a flash of light, lost forever.",
   "item_kind": "weapon",
+  "magical": true,
   "magical_bonus": 0,
   "mastery": "topple",
   "name": "Staff of Healing",

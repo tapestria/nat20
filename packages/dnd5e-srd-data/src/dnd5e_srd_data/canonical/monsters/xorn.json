@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -93,9 +94,10 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes one [[/item .mmBite0000000000]] attack and three [[/item .mmClaw0000000000]] attacks.",
+      "description": "The [[lookup @name lowercase]]{monster} makes one [[/item .mmBite0000000000]]{Bite} attack and three [[/item .mmClaw0000000000]]{Claw} attacks.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Multiattack",
       "recharge": null,
       "slug": "multiattack",
@@ -107,6 +109,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -219,6 +222,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Bite",
       "recharge": null,
       "slug": "bite",
@@ -230,6 +234,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -342,6 +347,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Claw",
       "recharge": null,
       "slug": "claw",
@@ -353,6 +359,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "bonus",
             "value": null
           },
@@ -434,6 +441,7 @@
       "description": "The [[lookup @name lowercase]]{monster} moves up to [[lookup @range.special activity=Y2IncZu5BjB42z7l]] straight toward an enemy it can sense.",
       "kind": "bonus_action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Charge",
       "recharge": null,
       "slug": "charge",
@@ -528,6 +536,7 @@
       "description": "The [[lookup @name lowercase]]{monster} can burrow through nonmagical, unworked earth and stone. While doing so, the [[lookup @name lowercase]]{monster} doesn't disturb the material it moves through.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Earth Glide",
       "recharge": null,
       "slug": "earth-glide",
@@ -538,6 +547,7 @@
       "description": "The [[lookup @name lowercase]]{monster} can pinpoint the location of precious metals and stones within 60 feet of itself.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Treasure Sense",
       "recharge": null,
       "slug": "treasure-sense",

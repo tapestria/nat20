@@ -4,6 +4,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -98,6 +99,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "reaction",
         "value": null
       },
@@ -189,6 +191,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -278,6 +281,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -377,6 +381,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -466,6 +471,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -565,6 +571,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -654,6 +661,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -753,6 +761,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -852,6 +861,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -951,6 +961,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -1050,6 +1061,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -1149,6 +1161,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -1238,6 +1251,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -1337,6 +1351,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -1426,6 +1441,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -1525,6 +1541,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -1624,6 +1641,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -1713,6 +1731,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -1812,6 +1831,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -1911,6 +1931,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -2010,6 +2031,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },
@@ -2073,7 +2095,8 @@
         "dc": {
           "calculation": "",
           "formula": "17"
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 250000,
       "target": {
@@ -2116,6 +2139,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -2223,6 +2247,7 @@
   ],
   "description": "Staff, Legendary (Requires Attunement by a Sorcerer, Warlock, or Wizard)\n\nThis staff has 50 charges and can be wielded as a magic Quarterstaff that grants a +2 bonus to attack rolls and damage rolls made with it. While you hold it, you gain a +2 bonus to spell attack rolls.\n\nSpell Absorption. While holding the staff, you have Advantage on saving throws against spells. In addition, you can take a Reaction when another creature casts a spell that targets only you. If you do, the staff absorbs the magic of the spell, canceling its effect and gaining a number of charges equal to the absorbed spell's level. However, if doing so brings the staff's total number of charges above 50, the staff explodes as if you activated its Retributive Strike (see below).\n\nSpells. While holding the staff, you can cast one of the spells on the following table from it, using your spell save DC. The table indicates how many charges you must expend to cast the spell. Spell Cost Table\n\nSpell\n\nCharge Cost\n\nArcane Lock\n\n0\n\nConjure Elemental\n\n7\n\nDetect Magic\n\n0\n\nDispel Magic\n\n3\n\nEnlarge/Reduce\n\n0\n\nFireball (level 7 version)\n\n7\n\nFlaming Sphere\n\n2\n\nIce Storm\n\n4\n\nInvisibility\n\n2\n\nKnock\n\n2\n\nLight\n\n0\n\nLightning Bolt (level 7 version)\n\n7\n\nMage Hand\n\n0\n\nPasswall\n\n5\n\nPlane Shift\n\n7\n\nProtection from Evil and Good\n\n0\n\nTelekinesis\n\n5\n\nWall of Fire\n\n4\n\nWeb\n\n2\n\nRegaining Charges. The staff regains 4d6 + 2 expended charges daily at dawn. If you expend the last charge, roll [[/r 1d20]]. On a 20, the staff regains [[/r 1d12 + 1]] charges.\n\nRetributive Strike. You can take a Magic action to break the staff over your knee or against a solid surface. The staff is destroyed and releases its magic in an explosion that fills a 30-foot Emanation originating from itself. You have a 50 percent chance to instantly travel to a random plane of existence, avoiding the explosion ([[/r 1d2]], teleported on a 1). If you fail to avoid the effect, you take Force damage equal to 16 times the number of charges in the staff. Each other creature in the area makes a DC 17 Dexterity saving throw. On a failed save, a creature takes Force damage equal to 6 times the number of charges in the staff. On a successful save, a creature takes half as much damage.\n\nFoundry Note\n\nThe Spell Absorption activity allows you to select the level of the cast spell and restores that number of charges.",
   "item_kind": "weapon",
+  "magical": true,
   "magical_bonus": 2,
   "mastery": "topple",
   "name": "Staff of the Magi",

@@ -4,6 +4,7 @@
       "activation": {
         "condition": "when taking the Attack action",
         "override": false,
+        "reaction_conditions": [],
         "type": "special",
         "value": null
       },

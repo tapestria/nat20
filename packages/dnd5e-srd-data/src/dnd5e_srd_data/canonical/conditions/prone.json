@@ -1,0 +1,46 @@
+{
+  "description": "While you have the Prone condition, you experience the following effects.\n\nRestricted Movement. Your only movement options are to crawl or to spend an amount of movement equal to half your Speed (round down) to right yourself and thereby end the condition. If your Speed is 0, you can\u2019t right yourself.\n\nAttacks Affected. You have Disadvantage on attack rolls. An attack roll against you has Advantage if the attacker is within 5 feet of you. Otherwise, that attack roll has Disadvantage.",
+  "effects": [
+    {
+      "abilities": [],
+      "kind": "restricted_movement_crawl",
+      "qualifier": "spend an amount of movement equal to half your Speed (round down) to right yourself",
+      "value": null
+    },
+    {
+      "abilities": [],
+      "kind": "disadvantage_own_attacks",
+      "qualifier": "",
+      "value": null
+    },
+    {
+      "abilities": [],
+      "kind": "advantage_attacks_against",
+      "qualifier": "if the attacker is within 5 feet of you",
+      "value": 5
+    },
+    {
+      "abilities": [],
+      "kind": "disadvantage_attacks_against",
+      "qualifier": "otherwise (the attacker is more than 5 feet from you)",
+      "value": 5
+    }
+  ],
+  "implies": [],
+  "name": "Prone",
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/content24/appendices/rules-glossary.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "prone"
+}

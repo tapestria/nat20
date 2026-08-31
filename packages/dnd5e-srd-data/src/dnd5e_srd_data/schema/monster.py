@@ -99,6 +99,32 @@ class MonsterActionKind(StrEnum):
     SPECIAL = "special"  # traits, abilities
 
 
+class MonsterTraitMechanic(StrEnum):
+    """Typed vocabulary for the most common SRD 5.2 monster traits.
+
+    Foundry ships traits as prose-only ``type: feat`` items; this enum is the
+    translator's name→mechanic table (``tools/translators/foundry.py::
+    _TRAIT_MECHANICS``). Every other trait keeps ``mechanic=None`` and only
+    its ``description`` (campaign design C22: typed vocabulary for the top
+    traits, prose fallback for the rest).
+    """
+
+    MAGIC_RESISTANCE = "magic_resistance"
+    LEGENDARY_RESISTANCE = "legendary_resistance"
+    AMPHIBIOUS = "amphibious"
+    PACK_TACTICS = "pack_tactics"
+    SPIDER_CLIMB = "spider_climb"
+    WATER_BREATHING = "water_breathing"
+    SWARM = "swarm"
+    RESTORATION = "restoration"  # Diabolical / Demonic / … Restoration variants
+    FLYBY = "flyby"
+    HOLD_BREATH = "hold_breath"
+    SUNLIGHT_SENSITIVITY = "sunlight_sensitivity"
+    UNDEAD_FORTITUDE = "undead_fortitude"
+    REGENERATION = "regeneration"
+    INCORPOREAL_MOVEMENT = "incorporeal_movement"
+
+
 class MonsterAction(BaseModel):
     slug: str
     name: str
@@ -108,6 +134,22 @@ class MonsterAction(BaseModel):
     recharge: str | None = None  # "5-6" for recharge actions
     legendary_cost: PositiveInt | None = None  # cost in legendary action points
     uses_per_day: PositiveInt | None = None
+    mechanic: MonsterTraitMechanic | None = None
+    """Typed trait mechanic for ``special_abilities`` entries the translator
+    recognises (SRD 5.2 stat-block traits); ``None`` for actions and for
+    prose-only traits."""
+
+
+class MonsterTrait(BaseModel):
+    """One de-duplicated SRD 5.2 monster trait (``canonical/traits/``), built
+    from the embedded CC-BY feat items of the SRD actor documents."""
+
+    slug: str
+    name: str
+    description: str
+    mechanic: MonsterTraitMechanic | None = None
+    provenance: Provenance
+    review: ReviewState
 
 
 class Monster(BaseModel):

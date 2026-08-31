@@ -24,13 +24,21 @@ to a typed sibling. Resolution, in order:
    ("It can replace one attack with …") and are deliberately ignored — they
    describe a substitution the engine does not model, not an extra attack.
 3. If every parsed name joins to a sibling, emit each sibling's first offensive
-   activity, repeated its own count — the *precise* path.
+   activity, repeated its own count — the *precise* path. Candidate order is
+   the PROSE order returned by ``_parse_item_counts`` (the order the names
+   appear in the description), not corpus/schema order. An "in any
+   combination" clause is the one exception to "repeated its own count": its
+   parsed count is instead distributed range-aware over the named siblings
+   (see ``_distribute_any_combination`` below) rather than joined 1:1.
 4. Otherwise repeat one chosen sibling ``count`` times and log
    ``multiattack_join_unresolved`` at WARNING (the loss is visible — never a
    silent normalization). This is correctness-preserving for the homogeneous
    ("three Rend attacks") and free-choice ("two attacks, using Slam or Force
    Bolt in any combination") shapes, and lossy only for a heterogeneous
    multiattack whose tokens are bare ids.
+
+"in any combination" clauses distribute the parsed count over the named
+siblings range-aware (see ``_distribute_any_combination``).
 """
 
 from __future__ import annotations
@@ -281,6 +289,45 @@ def select_typed_monster_action(monster: Monster) -> MonsterAction | None:
     return None
 
 
+_ANY_COMBINATION_RE = re.compile(r"\bin any combination\b", re.IGNORECASE)
+
+
+def _distribute_any_combination(
+    named: list[MonsterAction],
+    count: int,
+    target_distance_ft: int | None,
+    behavior_profile: str | None,
+    melee_reach_ft: int,
+) -> list[Activity]:
+    """SRD "makes N attacks, using A and B in any combination": the monster
+    chooses the mix. Candidates are the named siblings whose reach covers the
+    live distance (all of them when the distance is unknown or none covers);
+    one candidate ⇒ repeat it; a ``RANGED`` monster repeats its longest-reach
+    candidate; otherwise alternate over the candidates in list order."""
+
+    def _reach(sibling: MonsterAction) -> int | None:
+        activity = _first_offensive_activity(sibling)
+        return _activity_range_ft(activity, melee_reach_ft) if activity is not None else None
+
+    candidates = [s for s in named if _first_offensive_activity(s) is not None]
+    if target_distance_ft is not None:
+        covering = [
+            s for s in candidates if (_reach(s) is None or (_reach(s) or 0) >= target_distance_ft)
+        ]
+        if covering:
+            candidates = covering
+    if not candidates:
+        return []
+    if len(candidates) > 1 and behavior_profile == "RANGED":
+        candidates = [max(candidates, key=lambda s: _reach(s) or 0)]
+    out: list[Activity] = []
+    for index in range(count):
+        activity = _first_offensive_activity(candidates[index % len(candidates)])
+        assert activity is not None  # filtered above
+        out.append(activity)
+    return out
+
+
 def expand_action_to_activities(
     monster: Monster,
     action: MonsterAction,
@@ -336,6 +383,13 @@ def expand_action_to_activities(
         by_name = {sibling.name.casefold(): sibling for sibling in siblings}
         matched = [(by_name.get(name.casefold()), name_count) for name, name_count in parsed]
         if all(sibling is not None for sibling, _ in matched):
+            named = [sibling for sibling, _ in matched if sibling is not None]
+            if _ANY_COMBINATION_RE.search(_multiattack_clause(action.description)):
+                distributed = _distribute_any_combination(
+                    named, count, target_distance_ft, behavior_profile, melee_reach_ft
+                )
+                if distributed:
+                    return distributed
             matched_resolved: list[Activity] = []
             for sibling, name_count in matched:
                 assert sibling is not None  # narrowed by the all(...) guard

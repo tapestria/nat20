@@ -4,6 +4,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -97,6 +98,7 @@
       "activation": {
         "condition": "is bound by Dimensional Shackles",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },

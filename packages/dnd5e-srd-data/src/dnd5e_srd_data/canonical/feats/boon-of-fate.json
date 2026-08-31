@@ -4,6 +4,7 @@
       "activation": {
         "condition": "When you or another creature within 60 feet of you succeeds or fails a D20 Test",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },

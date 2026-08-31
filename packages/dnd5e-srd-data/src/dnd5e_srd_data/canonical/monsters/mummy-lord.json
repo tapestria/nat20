@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -154,6 +155,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -235,6 +237,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]]. If the target is a creature, it is cursed. While cursed, the target can't regain Hit Points, its Hit Point maximum doesn't return to normal when finishing a Long Rest, and its Hit Point maximum decreases by [[/r 3d6#HP Max Decrease]]{10 (3d6)} every 24 hours that elapse. A creature dies and turns to dust if reduced to 0 Hit Points by this attack.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Rotting Fist",
       "recharge": null,
       "slug": "rotting-fist",
@@ -246,6 +249,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -324,9 +328,10 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes one [[/item .mmRottingFist000]] or [[/item .d6GVHcFrHv83C7eS]] attack, and it uses [[/item .mmDreadfulGlare0]].",
+      "description": "The [[lookup @name lowercase]]{monster} makes one [[/item .mmRottingFist000]]{Rotting Fist} or [[/item .d6GVHcFrHv83C7eS]]{Channel Negative Energy} attack, and it uses [[/item .mmDreadfulGlare0]]{Dreadful Glare}.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Multiattack",
       "recharge": null,
       "slug": "multiattack",
@@ -338,6 +343,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -425,6 +431,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -512,6 +519,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -615,6 +623,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -718,6 +727,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -821,6 +831,7 @@
       "description": "The [[lookup @name lowercase]]{monster} casts one of the following spells, requiring no Material components and using Wisdom as the spellcasting ability (spell save DC [[lookup @attributes.spell.dc]], +9 to hit with spell attacks):\n\nAt Will: Dispel Magic, Thaumaturgy\n\n1/Day Each: Animate Dead, Harm, Insect Plague (level 7 version)",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Spellcasting",
       "recharge": null,
       "slug": "spellcasting",
@@ -832,6 +843,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -944,6 +956,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Channel Negative Energy",
       "recharge": null,
       "slug": "channel-negative-energy",
@@ -955,6 +968,14 @@
           "activation": {
             "condition": "The attacking creature is hit by an attack roll",
             "override": false,
+            "reaction_conditions": [
+              {
+                "condition_text": "The attacking creature is hit by an attack roll",
+                "kind": "hit_by_attack",
+                "max_range_ft": null,
+                "target_spell_slug": null
+              }
+            ],
             "type": "reaction",
             "value": null
           },
@@ -1055,6 +1076,7 @@
       "description": "Trigger: The [[lookup @name lowercase]]{monster} is hit by an attack roll. Response: The [[lookup @name lowercase]]{monster} adds 2 to its AC against the attack, possibly causing the attack to miss, and the [[lookup @name lowercase]]{monster} teleports up to [[lookup @range.value activity=EsBmMUQMO4b0g6Yw]] [[lookup @range.units activity=EsBmMUQMO4b0g6Yw]]. [[lookup @target.affects.special activity=EsBmMUQMO4b0g6Yw]]. Each creature of its choice that it can see within [[lookup @target.template.size activity=EsBmMUQMO4b0g6Yw]] [[lookup @target.template.units activity=EsBmMUQMO4b0g6Yw]]. of its destination space has the &amp;Reference[Blinded apply=false] condition until the end of the [[lookup @name lowercase]]{monster}'s next turn.",
       "kind": "reaction",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Whirlwind of Sand",
       "recharge": null,
       "slug": "whirlwind-of-sand",
@@ -1066,6 +1088,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -1139,7 +1162,8 @@
             "dc": {
               "calculation": "wis",
               "formula": "8 + @mod + @prof"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -1182,6 +1206,7 @@
       "description": "Wisdom Saving Throw: DC [[lookup @save.dc.value activity=8LmlZfevSQkOxGSN]], one [[lookup @target.affects.type activity=8LmlZfevSQkOxGSN]] the [[lookup @name lowercase]]{monster} can see within [[lookup @range.value activity=8LmlZfevSQkOxGSN]] feet.\n\nFailure: [[/damage average]] damage, and the target has the &amp;Reference[Paralyzed apply=false] condition until the end of the [[lookup @name lowercase]]{monster}'s next turn.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Dreadful Glare",
       "recharge": null,
       "slug": "dreadful-glare",
@@ -1221,6 +1246,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "legendary",
             "value": 1
           },
@@ -1299,9 +1325,10 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} uses [[/item .mmDreadfulGlare0]].",
+      "description": "The [[lookup @name lowercase]]{monster} uses [[/item .mmDreadfulGlare0]]{Dreadful Glare}.",
       "kind": "legendary",
       "legendary_cost": 1,
+      "mechanic": null,
       "name": "Glare",
       "recharge": null,
       "slug": "glare",
@@ -1313,6 +1340,7 @@
           "activation": {
             "condition": "",
             "override": true,
+            "reaction_conditions": [],
             "type": "legendary",
             "value": 1
           },
@@ -1398,6 +1426,7 @@
       "description": "The [[lookup @name lowercase]]{monster} casts Command (level 2 version), using the same spellcasting ability as Spellcasting. The [[lookup @name lowercase]]{monster} can't take this action again until the start of its next turn.",
       "kind": "legendary",
       "legendary_cost": 1,
+      "mechanic": null,
       "name": "Dread Command",
       "recharge": null,
       "slug": "dread-command",
@@ -1409,6 +1438,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "legendary",
             "value": 1
           },
@@ -1487,9 +1517,10 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes one [[/item .mmRottingFist000]] or [[/item .d6GVHcFrHv83C7eS]] attack.",
+      "description": "The [[lookup @name lowercase]]{monster} makes one [[/item .mmRottingFist000]]{Rotting Fist} or [[/item .d6GVHcFrHv83C7eS]]{Channel Negative Energy} attack.",
       "kind": "legendary",
       "legendary_cost": 1,
+      "mechanic": null,
       "name": "Necrotic Strike",
       "recharge": null,
       "slug": "necrotic-strike",
@@ -1563,6 +1594,7 @@
           "activation": {
             "condition": "fails a saving throw",
             "override": false,
+            "reaction_conditions": [],
             "type": "special",
             "value": null
           },
@@ -1654,6 +1686,7 @@
       "description": "If the [[lookup @name lowercase]]{monster} fails a saving throw, it can choose to succeed instead.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "legendary_resistance",
       "name": "Legendary Resistance",
       "recharge": null,
       "slug": "legendary-resistance",
@@ -1664,6 +1697,7 @@
       "description": "If destroyed, the [[lookup @name lowercase]]{monster} gains a new body in 24 hours if its heart is intact, reviving with all its Hit Points. The new body appears in an unoccupied space within the [[lookup @name lowercase]]{monster}'s lair. The heart is a Tiny object that has AC 17, HP 10, and Immunity to all damage except Fire.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "restoration",
       "name": "Undead Restoration",
       "recharge": null,
       "slug": "undead-restoration",
@@ -1674,6 +1708,7 @@
       "description": "The [[lookup @name lowercase]]{monster} has Advantage on saving throws against spells and other magical effects.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "magic_resistance",
       "name": "Magic Resistance",
       "recharge": null,
       "slug": "magic-resistance",

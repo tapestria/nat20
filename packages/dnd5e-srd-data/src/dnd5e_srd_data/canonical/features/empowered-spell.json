@@ -4,6 +4,7 @@
       "activation": {
         "condition": "When you roll damage for a spell",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },
