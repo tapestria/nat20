@@ -210,3 +210,37 @@ def test_item_rarity_default_when_unknown():
             provenance=_provenance(),
             review=ReviewState(),
         )
+
+
+def test_weapon_and_armor_magical_default_false():
+    from dnd5e_srd_data.schema.common import Range
+    from dnd5e_srd_data.schema.item import Armor, ArmorCategory, ItemRarity, Weapon
+
+    w = Weapon(
+        slug="w",
+        name="W",
+        description="",
+        weight=1.0,
+        cost_gp=1.0,
+        rarity=ItemRarity.COMMON,
+        weapon_category="simple_melee",
+        damage_parts=[],
+        range=Range(kind="melee"),
+        provenance=_provenance(),
+        review=ReviewState(),
+    )
+    assert w.magical is False
+    a = Armor(
+        slug="a",
+        name="A",
+        description="",
+        weight=1.0,
+        cost_gp=1.0,
+        rarity=ItemRarity.RARE,
+        armor_category=ArmorCategory.LIGHT,
+        base_ac=11,
+        magical=True,
+        provenance=_provenance(),
+        review=ReviewState(),
+    )
+    assert Armor.model_validate(a.model_dump(mode="json")).magical is True

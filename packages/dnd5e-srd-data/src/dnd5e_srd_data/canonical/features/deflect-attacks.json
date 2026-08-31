@@ -4,6 +4,7 @@
       "activation": {
         "condition": "When an attack roll hits you and its damage includes Bludgeoning, Piercing, or Slashing damage",
         "override": false,
+        "reaction_conditions": [],
         "type": "reaction",
         "value": null
       },
@@ -96,6 +97,7 @@
       "activation": {
         "condition": "If you reduce the damage to 0",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },
@@ -171,7 +173,8 @@
         "dc": {
           "calculation": "wis",
           "formula": ""
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 0,
       "target": {

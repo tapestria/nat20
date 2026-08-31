@@ -121,3 +121,22 @@ def test_known_prose_defects_are_still_real() -> None:
         "these entries are registered in known_prose_defects.json but are now "
         f"clean -- delete their entries: {stale}"
     )
+
+
+def test_opaque_key_multiattacks_are_labelled() -> None:
+    """C22-S06: the five multiattacks that reference siblings by opaque Foundry
+    key now carry the sibling name as a ``{Label}`` (rule card C22 §6 table)."""
+    expected = {
+        "bandit-captain": {"Scimitar", "Pistol"},
+        "doppelganger": {"Slam", "Unsettling Visage"},
+        "chain-devil": {"Chain", "Conjure Infernal Chain"},
+        "scout": {"Shortsword", "Longbow"},
+        "ettin": {"Battleaxe", "Morningstar"},
+    }
+    for slug, labels in expected.items():
+        blob = json.loads((CANONICAL / "monsters" / f"{slug}.json").read_text(encoding="utf-8"))
+        multiattack = next(a for a in blob["actions"] if a["slug"] == "multiattack")
+        found = set(
+            re.findall(r"\[\[/item \.[A-Za-z0-9]+\]\]\{([^}]+)\}", multiattack["description"])
+        )
+        assert labels <= found, f"{slug}: {multiattack['description']!r}"

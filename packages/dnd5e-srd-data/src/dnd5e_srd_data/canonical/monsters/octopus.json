@@ -15,6 +15,7 @@
           "activation": {
             "condition": "a creature ends its turn within 5 feet of the octopus while underwater",
             "override": false,
+            "reaction_conditions": [],
             "type": "reaction",
             "value": 1
           },
@@ -106,6 +107,7 @@
       "description": "Trigger: A creature ends its turn within 5 feet of the octopus while underwater. Response: The octopus releases ink that fills a 5-foot Cube centered on itself, and the octopus moves up to its Swim Speed. The Cube is &amp;Reference[heavilyobscured] for 1 minute or until a strong current or similar effect disperses the ink.",
       "kind": "reaction",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Ink Cloud",
       "recharge": null,
       "slug": "ink-cloud",
@@ -117,6 +119,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -239,6 +242,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "special",
             "value": null
           },
@@ -325,6 +329,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]]. If the target is a Medium or smaller creature, it has the &amp;Reference[Grappled apply=false] condition (escape DC [[lookup @skills.ath.passive]]) from all four tentacles.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Tentacles",
       "recharge": null,
       "slug": "tentacles",
@@ -411,6 +416,7 @@
       "description": "The [[lookup @name lowercase]]{monster} can move through a space as narrow as 1 inch without expending extra movement to do so.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Compression",
       "recharge": null,
       "slug": "compression",
@@ -421,6 +427,7 @@
       "description": "The [[lookup @name lowercase]]{monster} can breathe only underwater.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "water_breathing",
       "name": "Water Breathing",
       "recharge": null,
       "slug": "water-breathing",

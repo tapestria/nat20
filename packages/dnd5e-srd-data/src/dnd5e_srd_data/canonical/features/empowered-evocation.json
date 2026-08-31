@@ -4,6 +4,7 @@
       "activation": {
         "condition": "Whenever you cast a Wizard spell from the Evocation school",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },

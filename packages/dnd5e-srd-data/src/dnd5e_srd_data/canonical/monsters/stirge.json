@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -127,6 +128,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "turnStart",
             "value": null
           },
@@ -227,6 +229,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]]. If the target is a creature, and the [[lookup @name lowercase]]{monster} attaches to the target. While attached, the [[lookup @name lowercase]]{monster} can't make Proboscis attacks, and the target takes [[/damage average activity=5xwoPMBiaRBqjFav]] damage at the start of each of the [[lookup @name lowercase]]{monster}'s turns.\n\nThe [[lookup @name lowercase]]{monster} can detach itself by spending 5 feet of its movement. The target or a creature within 5 feet of it can detach the [[lookup @name lowercase]]{monster} as an action.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Proboscis",
       "recharge": null,
       "slug": "proboscis",

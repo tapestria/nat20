@@ -1,0 +1,44 @@
+_id: phbAppendixCRule
+name: Rules Glossary
+pages:
+  - sort: 9200000
+    name: Heavily Obscured
+    type: rule
+    _id: YkuKTIH2YaYW8lTS
+    system:
+      tooltip: ''
+      type: rule
+    text:
+      format: 1
+      content: <p>You have the &amp;Reference[Blinded] condition while trying to see something in a Heavily Obscured space.</p>
+  - sort: 5600000
+    name: Prone
+    type: rule
+    _id: QxCrRcgMdUd3gfzz
+    system:
+      tooltip: ''
+      type: condition
+    text:
+      format: 1
+      content: >-
+        <p>While you have the Prone condition, you experience the following
+        effects.</p><p><strong>Restricted Movement.</strong> Your only movement
+        options are to crawl or to spend an amount of movement equal to half
+        your Speed (round down) to right yourself and thereby end the
+        condition. If your Speed is 0, you can't right yourself.</p><p><strong>Attacks
+        Affected.</strong> You have Disadvantage on attack rolls. An attack roll
+        against you has Advantage if the attacker is within 5 feet of you.
+        Otherwise, that attack roll has Disadvantage.</p>
+  - sort: 4400000
+    name: Unconscious
+    type: rule
+    _id: fZCRaKEJd4KoQCqH
+    system:
+      tooltip: ''
+      type: condition
+    text:
+      format: 1
+      content: >-
+        <p><strong>Inert.</strong> You have the &amp;Reference[Incapacitated] and
+        &amp;Reference[Prone] conditions, and you drop whatever you're holding.</p>
+flags: {}

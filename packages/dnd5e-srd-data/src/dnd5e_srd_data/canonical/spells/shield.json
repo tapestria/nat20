@@ -4,6 +4,20 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [
+          {
+            "condition_text": "when you are hit by an attack roll or targeted by the Magic Missile spell",
+            "kind": "hit_by_attack",
+            "max_range_ft": null,
+            "target_spell_slug": null
+          },
+          {
+            "condition_text": "when you are hit by an attack roll or targeted by the Magic Missile spell",
+            "kind": "targeted_by_spell",
+            "max_range_ft": null,
+            "target_spell_slug": "magic-missile"
+          }
+        ],
         "type": "action",
         "value": null
       },

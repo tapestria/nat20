@@ -4,6 +4,7 @@
       "activation": {
         "condition": "Whenever you cast a spell with a level 1-4 spell slot",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },

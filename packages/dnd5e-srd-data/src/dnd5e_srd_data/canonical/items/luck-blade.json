@@ -4,6 +4,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },
@@ -110,6 +111,7 @@
       "activation": {
         "condition": "failed D20 Test",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },
@@ -207,6 +209,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -323,6 +326,7 @@
   "damage_parts": [],
   "description": "Weapon (Glaive, Greatsword, Longsword, Rapier, Scimitar, Sickle, or Shortsword), Legendary (Requires Attunement)\n\nYou gain a +1 bonus to attack rolls and damage rolls made with this magic weapon. While the weapon is on your person, you also gain a +1 bonus to saving throws.\n\nLuck. If the weapon is on your person, you can call on its luck (no action required) to reroll one failed D20 Test if you don't have the Incapacitated condition. You must use the second roll. Once used, this property can't be used again until the next dawn.\n\nWish. The weapon has [[/r 1d3#Initial Charges]] charges. While holding it, you can expend 1 charge and cast Wish from it. Once used, this property can't be used again until the next dawn. The weapon loses this property if it has no charges.\n\n@Embed[Compendium.dnd5e.content24.JournalEntry.dmgFoundryRefere.JournalEntryPage.Ok4iCgD25ENgoRxE cite=false caption=false classes=\"hide-in-embed\"]",
   "item_kind": "weapon",
+  "magical": true,
   "magical_bonus": 1,
   "mastery": null,
   "name": "Luck Blade",

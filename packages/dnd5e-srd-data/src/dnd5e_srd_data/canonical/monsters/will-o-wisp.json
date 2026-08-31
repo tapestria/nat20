@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "bonus",
             "value": null
           },
@@ -106,6 +107,7 @@
       "description": "The [[lookup @name lowercase]]{monster} and its light have the &amp;Reference[Invisible apply=false] condition until the [[lookup @name lowercase]]{monster}'s &amp;Reference[Concentration] ends on this effect, which ends early immediately after the [[lookup @name lowercase]]{monster} makes an attack roll or uses Consume Life.",
       "kind": "bonus_action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Vanish",
       "recharge": null,
       "slug": "vanish",
@@ -117,6 +119,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "bonus",
             "value": null
           },
@@ -172,7 +175,8 @@
             "dc": {
               "calculation": "con",
               "formula": "8 + @mod + @prof"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -215,6 +219,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "",
             "value": null
           },
@@ -307,6 +312,7 @@
       "description": "Constitution Saving Throw: DC [[lookup @save.dc.value activity=1Hy8CdhpwQlLxDPq]], [[lookup @target.affects.special activity=1Hy8CdhpwQlLxDPq]] the [[lookup @name lowercase]]{monster} can see within [[lookup @range.value activity=1Hy8CdhpwQlLxDPq]] feet. that has 0 Hit Points.\n\nFailure: The target dies, and the [[lookup @name lowercase]]{monster} regains [[/healing average activity=1waYTjY3NAIGZgrI]].",
       "kind": "bonus_action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Consume Life",
       "recharge": null,
       "slug": "consume-life",
@@ -318,6 +324,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -430,6 +437,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Shock",
       "recharge": null,
       "slug": "shock",
@@ -538,6 +546,7 @@
       "description": "The [[lookup @name lowercase]]{monster} can't wear or carry anything.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Ephemeral",
       "recharge": null,
       "slug": "ephemeral",
@@ -548,6 +557,7 @@
       "description": "The [[lookup @name lowercase]]{monster} sheds Bright Light in a 20-foot radius and Dim Light for an additional 20 feet.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Illumination",
       "recharge": null,
       "slug": "illumination",
@@ -558,6 +568,7 @@
       "description": "The [[lookup @name lowercase]]{monster} can move through other creatures and objects as if they were &amp;Reference[Difficult Terrain]. It takes [[/damage 1d10 average type=force]] damage if it ends its turn inside an object.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "incorporeal_movement",
       "name": "Incorporeal Movement",
       "recharge": null,
       "slug": "incorporeal-movement",

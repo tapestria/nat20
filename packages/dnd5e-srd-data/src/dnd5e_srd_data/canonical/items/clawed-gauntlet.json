@@ -4,6 +4,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -105,6 +106,7 @@
   ],
   "description": "See: dmgDemonArmor000\n\nThe armor's clawed gauntlets allow your Unarmed Strikes to deal 1d8 Slashing damage instead of the usual Bludgeoning damage, and you gain a +1 bonus to the attack and damage rolls of your Unarmed Strikes.",
   "item_kind": "weapon",
+  "magical": true,
   "magical_bonus": 1,
   "mastery": null,
   "name": "Clawed Gauntlet",

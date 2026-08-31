@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -96,6 +97,7 @@
       "description": "The [[lookup @name lowercase]]{monster} makes two [[/item Tentacle]] attacks, uses [[/item Reel]], and makes two [[/item Bite]] attacks.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Multiattack",
       "recharge": null,
       "slug": "multiattack",
@@ -107,6 +109,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -219,6 +222,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Bite",
       "recharge": null,
       "slug": "bite",
@@ -230,6 +234,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -350,6 +355,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "special",
             "value": null
           },
@@ -436,6 +442,7 @@
       "description": "[[/attack extended]]. Hit: The target has the &amp;Reference[Grappled apply=false] condition (escape DC [[lookup @skills.ath.passive]]) from one of six tentacles, and the target has the &amp;Reference[Poisoned apply=false] condition until the grapple ends.\n\nThe tentacle can be damaged, freeing a creature it has Grappled when destroyed (AC 20, HP 10, Immunity to Poison and Psychic damage). Damaging the tentacle deals no damage to the [[lookup @name lowercase]]{monster}, and a destroyed tentacle regrows at the start of the [[lookup @name lowercase]]{monster}'s next turn.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Tentacle",
       "recharge": null,
       "slug": "tentacle",
@@ -447,6 +454,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "bonus",
             "value": null
           },
@@ -528,6 +536,7 @@
       "description": "The [[lookup @name lowercase]]{monster} pulls each creature Grappled by it up to 30 feet straight toward it.",
       "kind": "bonus_action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Reel",
       "recharge": null,
       "slug": "reel",
@@ -614,6 +623,7 @@
       "description": "The [[lookup @name lowercase]]{monster} can climb difficult surfaces, including along ceilings, without needing to make an ability check.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "spider_climb",
       "name": "Spider Climb",
       "recharge": null,
       "slug": "spider-climb",

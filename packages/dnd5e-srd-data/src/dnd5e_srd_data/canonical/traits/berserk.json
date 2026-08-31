@@ -1,0 +1,20 @@
+{
+  "description": "Whenever the monster starts its turn &amp;Reference[Bloodied], roll [[/r 1d6]]. On a 6, the monster goes berserk. On each of its turns while berserk, the monster attacks the nearest creature it can see. If no creature is near enough to move to and attack, the monster attacks an object. Once the monster goes berserk, it remains so until it is destroyed or it is no longer Bloodied.",
+  "mechanic": null,
+  "name": "Berserk",
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/actors24/construct/clay-golem.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "berserk"
+}

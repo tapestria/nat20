@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -144,6 +145,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Claw",
       "recharge": null,
       "slug": "claw",
@@ -155,6 +157,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -228,7 +231,8 @@
             "dc": {
               "calculation": "con",
               "formula": "11"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -271,6 +275,7 @@
       "description": "Dexterity Saving Throw: DC [[lookup @save.dc.value activity=bDqgmtLG3zcVuqdi]], each [[lookup @target.affects.type activity=bDqgmtLG3zcVuqdi]] in a [[lookup @target.template.size activity=bDqgmtLG3zcVuqdi]]-foot-long, [[lookup @target.template.width activity=bDqgmtLG3zcVuqdi]]-foot-wide Cone.\n\nFailure: [[/damage average]] damage.\n\nSuccess: Half damage.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Fire Breath",
       "recharge": "6",
       "slug": "fire-breath",
@@ -369,6 +374,7 @@
           "activation": {
             "condition": "when it dies",
             "override": false,
+            "reaction_conditions": [],
             "type": "special",
             "value": null
           },
@@ -432,7 +438,8 @@
             "dc": {
               "calculation": "con",
               "formula": ""
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -475,6 +482,7 @@
       "description": "The [[lookup @name lowercase]]{monster} explodes [[lookup @activation.condition activity=1SfqWSp7RSyHgG4b]].\n\nDexterity Saving Throw: DC [[lookup @save.dc.value activity=1SfqWSp7RSyHgG4b]], each [[lookup @target.affects.type activity=1SfqWSp7RSyHgG4b]] in a [[lookup @target.template.size activity=1SfqWSp7RSyHgG4b]]-foot Emanation originating from the [[lookup @name lowercase]]{monster}.\n\nFailure: [[/damage average]] damage.\n\nSuccess: Half damage.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Death Burst",
       "recharge": null,
       "slug": "death-burst",

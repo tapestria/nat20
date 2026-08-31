@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -93,9 +94,10 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes two [[/item .mmRend0000000000]] attacks. It can replace one attack with a use of [[/item .mmRoar0000000000]].",
+      "description": "The [[lookup @name lowercase]]{monster} makes two [[/item .mmRend0000000000]]{Rend} attacks. It can replace one attack with a use of [[/item .mmRoar0000000000]]{Roar}.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Multiattack",
       "recharge": null,
       "slug": "multiattack",
@@ -107,6 +109,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -219,6 +222,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Rend",
       "recharge": null,
       "slug": "rend",
@@ -230,6 +234,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -285,7 +290,8 @@
             "dc": {
               "calculation": "wis",
               "formula": "8 + @mod + @prof"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -328,6 +334,7 @@
       "description": "Wisdom Saving Throw: DC [[lookup @save.dc.value activity=Igeu89TALGlNPXDg]], one creature within [[lookup @range.value activity=Igeu89TALGlNPXDg]] feet.\n\nFailure: The target has the &amp;Reference[Frightened apply=false] condition until the start of the [[lookup @name lowercase]]{monster}'s next turn.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Roar",
       "recharge": null,
       "slug": "roar",
@@ -414,6 +421,7 @@
       "description": "The [[lookup @name lowercase]]{monster} has Advantage on an attack roll against a creature if at least one of the [[lookup @name lowercase]]{monster}'s allies is within 5 feet of the creature and the ally doesn't have the Incapacitated condition.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "pack_tactics",
       "name": "Pack Tactics",
       "recharge": null,
       "slug": "pack-tactics",
@@ -424,6 +432,7 @@
       "description": "With a 10-foot running start, the [[lookup @name lowercase]]{monster} can Long Jump up to 25 feet.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Running Leap",
       "recharge": null,
       "slug": "running-leap",

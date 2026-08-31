@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -137,6 +138,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]]. If the target is a Medium or smaller creature, it has the &amp;Reference[Prone apply=false] condition. The target dies if it is reduced to 0 Hit Points by this attack. Its body is then absorbed into the [[lookup @name]]{monster}, leaving only equipment behind.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Bite",
       "recharge": null,
       "slug": "bite",
@@ -148,6 +150,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -221,7 +224,8 @@
             "dc": {
               "calculation": "str",
               "formula": ""
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -264,6 +268,7 @@
       "description": "Dexterity Saving Throw: DC [[lookup @save.dc.value activity=JfU8KFZkAJxWtrhk]], each creature in a [[lookup @target.template.size activity=JfU8KFZkAJxWtrhk]]-foot-radius Sphere centered on a point within [[lookup @range.value activity=JfU8KFZkAJxWtrhk]] feet.\n\nFailure: [[/damage average]] damage, and the target has the &amp;Reference[Blinded apply=false] condition until the end of the [[lookup @name lowercase]]{monster}'s next turn.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Blinding Spittle",
       "recharge": "5-6",
       "slug": "blinding-spittle",
@@ -351,6 +356,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "special",
             "value": null
           },
@@ -432,6 +438,7 @@
       "description": "The ground in a [[lookup @target.template.size activity=zVznqPXgYjETqpQz]]-foot Emanation originating from the [[lookup @name]]{monster} is &amp;Reference[Difficult Terrain].",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Aberrant Ground",
       "recharge": null,
       "slug": "aberrant-ground",
@@ -443,6 +450,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "",
             "value": null
           },
@@ -488,7 +496,8 @@
             "dc": {
               "calculation": "",
               "formula": "10"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -531,6 +540,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "",
             "value": null
           },
@@ -612,6 +622,7 @@
       "description": "The [[lookup @name lowercase]]{monster} babbles incoherently while it doesn't have the Incapacitated condition.\n\nWisdom Saving Throw: DC [[lookup @save.dc.value activity=PyGOI84k0PPYrru8]], any [[lookup @target.affects.type activity=PyGOI84k0PPYrru8]] that starts its turn within [[lookup @target.template.size activity=PyGOI84k0PPYrru8]] feet of the [[lookup @name lowercase]]{monster} while it is babbling.\n\nFailure: The target rolls [[/r 1d8]] to determine what it does during the current turn:\n\n1\u20134. The target does nothing.\n\n5\u20136. The target takes no action or Bonus Action and uses all its movement to move in a random direction.\n\n7\u20138. The target makes a melee attack against a randomly determined creature within its reach or does nothing if it can't make such an attack.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Gibbering",
       "recharge": null,
       "slug": "gibbering",

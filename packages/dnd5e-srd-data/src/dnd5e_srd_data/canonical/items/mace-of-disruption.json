@@ -4,6 +4,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -116,6 +117,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },
@@ -173,7 +175,8 @@
         "dc": {
           "calculation": "",
           "formula": "15"
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 0,
       "target": {
@@ -223,6 +226,7 @@
   ],
   "description": "Weapon (Mace), Rare (Requires Attunement)\n\nWhen you hit a Fiend or an Undead with this magic weapon, that creature takes an extra 2d6 Radiant damage. If the target has 25 Hit Points or fewer after taking this damage, it must succeed on a DC 15 Wisdom saving throw or be destroyed. On a successful save, the creature has the &amp;Reference[Frightened apply=false] condition until the end of your next turn.\n\nLight. While you hold this weapon, it sheds Bright Light in a 20-foot radius and Dim Light for an additional 20 feet.",
   "item_kind": "weapon",
+  "magical": true,
   "magical_bonus": 0,
   "mastery": "sap",
   "name": "Mace of Disruption",

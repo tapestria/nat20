@@ -15,6 +15,7 @@
           "activation": {
             "condition": "swarm is not Bloodied",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -127,6 +128,7 @@
           "activation": {
             "condition": "the swarm is &Reference[Bloodied apply=false]",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -239,6 +241,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]], or [[/damage average activity=3m1SLqBeMGQF3UaQ]] if [[lookup @activation.condition activity=3m1SLqBeMGQF3UaQ]]",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Beaks",
       "recharge": null,
       "slug": "beaks",
@@ -250,6 +253,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -315,7 +319,8 @@
             "dc": {
               "calculation": "",
               "formula": "8 + @prof"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -358,6 +363,7 @@
       "description": "Wisdom Saving Throw: DC [[lookup @save.dc.value activity=pyvvXqoxJsjkkP38]], one creature in the [[lookup @name lowercase]]{monster}'s space.\n\nFailure: The target has the &amp;Reference[Deafened apply=false] condition until the start of the [[lookup @name lowercase]]{monster}'s next turn. While Deafened, the target also has Disadvantage on ability checks and attack rolls.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Cacophony",
       "recharge": "6",
       "slug": "cacophony",
@@ -457,6 +463,7 @@
       "description": "The swarm can occupy another creature's space and vice versa, and the swarm can move through any opening large enough for a Tiny creature. The swarm can't regain Hit Points or gain Temporary Hit Points.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "swarm",
       "name": "Swarm",
       "recharge": null,
       "slug": "swarm",

@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -96,6 +97,7 @@
       "description": "The avatar makes a number of [[/item .dmgaoiReapingScy]]{Reaping Scythe} attacks equal to half the summoner's Proficiency Bonus (rounded up).\n\n[[ceil(@prof/2)]]{Number of Attacks}",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Multiattack",
       "recharge": null,
       "slug": "multiattack",
@@ -107,6 +109,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -224,6 +227,7 @@
       "description": "Melee Attack Roll: Automatic hit, reach 5 ft. Hit: 7 ( 1d8 + 3 ) Slashing damage plus 4 (1d8) Necrotic damage.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Reaping Scythe",
       "recharge": null,
       "slug": "reaping-scythe",
@@ -324,6 +328,7 @@
           "activation": {
             "condition": "the Avatarends its turn inside an object.",
             "override": false,
+            "reaction_conditions": [],
             "type": "",
             "value": null
           },
@@ -424,6 +429,7 @@
       "description": "The avatar can move through other creatures and objects as if they were &amp;Reference[DifficultTerrain]. It takes 5 (1d10) Force damage if it ends its turn inside an object.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "incorporeal_movement",
       "name": "Incorporeal Movement",
       "recharge": null,
       "slug": "incorporeal-movement",

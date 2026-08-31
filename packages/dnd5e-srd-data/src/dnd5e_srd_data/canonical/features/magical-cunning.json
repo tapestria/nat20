@@ -4,6 +4,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "minute",
         "value": 1
       },

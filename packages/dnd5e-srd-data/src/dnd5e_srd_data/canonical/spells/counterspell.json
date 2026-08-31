@@ -4,6 +4,14 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [
+          {
+            "condition_text": "when you see a creature within range casting a spell with Verbal, Somatic, or Material components",
+            "kind": "sees_spell_cast",
+            "max_range_ft": null,
+            "target_spell_slug": null
+          }
+        ],
         "type": "action",
         "value": null
       },
@@ -49,7 +57,8 @@
         "dc": {
           "calculation": "spellcasting",
           "formula": ""
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 0,
       "target": {

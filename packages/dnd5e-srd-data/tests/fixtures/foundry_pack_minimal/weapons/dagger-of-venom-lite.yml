@@ -1,0 +1,33 @@
+_id: dagger-of-venom-lite
+name: Dagger of Venom (lite)
+type: weapon
+system:
+  identifier: dagger-of-venom-lite
+  description:
+    value: "A dagger that drips poison."
+  weight: 1
+  price:
+    value: 4000
+    denomination: "gp"
+  rarity: "rare"
+  damage:
+    base:
+      number: 1
+      denomination: 4
+      types: ["piercing"]
+  range:
+    value: null
+    long: null
+    units: ""
+  properties:
+    - fin
+    - lgt
+    - thr
+    - mgc
+  type:
+    value: simpleM
+  magicalBonus: 1
+  source:
+    custom: "SRD 5.1"
+flags:
+  srd: true

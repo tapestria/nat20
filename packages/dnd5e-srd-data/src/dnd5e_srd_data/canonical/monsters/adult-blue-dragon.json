@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -96,6 +97,7 @@
       "description": "The [[lookup @name lowercase]]{monster} makes three [[/item Rend]] attacks. It can replace one attack with a use of [[/item Spellcasting]] to cast Shatter.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Multiattack",
       "recharge": null,
       "slug": "multiattack",
@@ -107,6 +109,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -236,6 +239,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Rend",
       "recharge": null,
       "slug": "rend",
@@ -247,6 +251,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -320,7 +325,8 @@
             "dc": {
               "calculation": "con",
               "formula": ""
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -363,6 +369,7 @@
       "description": "Dexterity Saving Throw: DC [[lookup @save.dc.value activity=LpjgVwftzGNMgTUJ]], each [[lookup @target.affects.type activity=LpjgVwftzGNMgTUJ]] in a [[lookup @target.template.size activity=LpjgVwftzGNMgTUJ]]-foot-long, [[lookup @target.template.width activity=LpjgVwftzGNMgTUJ]]-foot-wide [[lookup @target.template.type capitalize activity=LpjgVwftzGNMgTUJ]].\n\nFailure: [[/damage average]] damage.\n\nSuccess: Half damage.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Lightning Breath",
       "recharge": null,
       "slug": "lightning-breath",
@@ -374,6 +381,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -461,6 +469,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -548,6 +557,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -635,6 +645,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -722,6 +733,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -825,6 +837,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -928,6 +941,7 @@
       "description": "The [[lookup @name lowercase]]{monster} casts one of the following spells, requiring no Material components and using Charisma as the spellcasting ability (spell save DC [[lookup @attributes.spell.dc]]):\n\nAt Will: Detect Magic, Invisibility, Mage Hand, Shatter\n\n1/Day Each: Scrying, Sending",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Spellcasting",
       "recharge": null,
       "slug": "spellcasting",
@@ -959,6 +973,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "legendary",
             "value": 1
           },
@@ -1040,6 +1055,7 @@
       "description": "The [[lookup @name lowercase]]{monster} uses [[/item Spellcasting]] to cast phbsplInvisibili on itself, and it can fly up to [[lookup @range.special activity=a3NfcMs8zHADx7zs]]. The dragon can't take this action again until the start of its next turn.",
       "kind": "legendary",
       "legendary_cost": 1,
+      "mechanic": null,
       "name": "Cloaked Flight",
       "recharge": null,
       "slug": "cloaked-flight",
@@ -1051,6 +1067,7 @@
           "activation": {
             "condition": "",
             "override": true,
+            "reaction_conditions": [],
             "type": "legendary",
             "value": 1
           },
@@ -1140,6 +1157,7 @@
       "description": "The [[lookup @name lowercase]]{monster} uses Spellcasting to cast Shatter. The [[lookup @name lowercase]]{monster} can't take this action again until the start of its next turn.",
       "kind": "legendary",
       "legendary_cost": 1,
+      "mechanic": null,
       "name": "Sonic Boom",
       "recharge": null,
       "slug": "sonic-boom",
@@ -1151,6 +1169,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "legendary",
             "value": 1
           },
@@ -1232,6 +1251,7 @@
       "description": "The [[lookup @name lowercase]]{monster} makes one [[/item Rend]] attack.",
       "kind": "legendary",
       "legendary_cost": 1,
+      "mechanic": null,
       "name": "Tail Swipe",
       "recharge": null,
       "slug": "tail-swipe",
@@ -1305,6 +1325,7 @@
           "activation": {
             "condition": "fails a saving throw",
             "override": false,
+            "reaction_conditions": [],
             "type": "special",
             "value": null
           },
@@ -1396,6 +1417,7 @@
       "description": "If the [[lookup @name lowercase]]{monster} fails a saving throw, it can choose to succeed instead.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "legendary_resistance",
       "name": "Legendary Resistance",
       "recharge": null,
       "slug": "legendary-resistance",

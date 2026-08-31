@@ -4,6 +4,7 @@
       "activation": {
         "condition": "When you cast a spell that has a duration of 1 minute or longer",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },

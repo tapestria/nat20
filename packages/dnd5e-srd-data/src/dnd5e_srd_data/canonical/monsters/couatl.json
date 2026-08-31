@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -137,6 +138,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]], and the target has the &amp;Reference[Poisoned apply=false] condition until the end of the [[lookup @name lowercase]]{monster}'s next turn.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Bite",
       "recharge": null,
       "slug": "bite",
@@ -148,6 +150,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -221,7 +224,8 @@
             "dc": {
               "calculation": "dex",
               "formula": ""
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -264,6 +268,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "special",
             "value": null
           },
@@ -350,6 +355,7 @@
       "description": "Strength Saving Throw: DC [[lookup @save.dc.value activity=IgOMjRxAt7UISkJq]], one [[lookup @target.affects.special activity=IgOMjRxAt7UISkJq]] creature the [[lookup @name lowercase]]{monster} can see within [[lookup @range.value activity=IgOMjRxAt7UISkJq]] feet.\n\nFailure: [[/damage average]] damage. The target has the &amp;Reference[Grappled apply=false] condition (escape DC [[lookup @skills.ath.passive]]), and it has the &amp;Reference[Restrained apply=false] condition until the grapple ends.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Constrict",
       "recharge": null,
       "slug": "constrict",
@@ -361,6 +367,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -450,6 +457,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -539,6 +547,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -628,6 +637,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -718,6 +728,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -823,6 +834,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -928,6 +940,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -1033,6 +1046,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -1138,6 +1152,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -1243,6 +1258,7 @@
       "description": "The [[lookup @name lowercase]]{monster} casts one of the following spells, requiring no spell components and using Wisdom as the spellcasting ability (spell save DC [[lookup @attributes.spell.dc]]):\n\nAt Will: Detect Evil and Good, Detect Magic, Detect Thoughts, Shapechange (Beast or Humanoid form only, no Temporary Hit Points gained from the spell, and no Concentration or Temporary Hit Points required to maintain the spell)\n\n1/Day Each: Create Food and Water, Dream, Greater Restoration, Scrying, Sleep",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Spellcasting",
       "recharge": null,
       "slug": "spellcasting",
@@ -1339,6 +1355,7 @@
       "description": "The [[lookup @name lowercase]]{monster}'s thoughts can't be read by any means, and other creatures can communicate with it telepathically only if it allows them.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Shielded Mind",
       "recharge": null,
       "slug": "shielded-mind",

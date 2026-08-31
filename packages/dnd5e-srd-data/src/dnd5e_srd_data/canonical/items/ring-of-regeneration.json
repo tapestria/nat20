@@ -4,6 +4,7 @@
       "activation": {
         "condition": "Every 10 minutes",
         "override": false,
+        "reaction_conditions": [],
         "type": "special",
         "value": null
       },

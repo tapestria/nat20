@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -93,9 +94,10 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes two attacks, using [[/item .mmStormSword0000]] or [[/item .mmThunderbolt000]] in any combination.",
+      "description": "The [[lookup @name lowercase]]{monster} makes two attacks, using [[/item .mmStormSword0000]]{Storm Sword} or [[/item .mmThunderbolt000]]{Thunderbolt} in any combination.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Multiattack",
       "recharge": null,
       "slug": "multiattack",
@@ -107,6 +109,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -236,6 +239,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Storm Sword",
       "recharge": null,
       "slug": "storm-sword",
@@ -247,6 +251,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -369,6 +374,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]], and the target has the &amp;Reference[Blinded apply=false] and &amp;Reference[Deafened apply=false] conditions until the start of the [[lookup @name lowercase]]{monster}'s next turn.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Thunderbolt",
       "recharge": null,
       "slug": "thunderbolt",
@@ -380,6 +386,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -453,7 +460,8 @@
             "dc": {
               "calculation": "wis",
               "formula": "8 + @mod + @prof"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -496,6 +504,7 @@
       "description": "Dexterity Saving Throw: DC [[lookup @save.dc.value activity=YVri6iuieFUUiO1d]], each creature in a [[lookup @target.template.size activity=YVri6iuieFUUiO1d]]-foot-radius, [[lookup @target.template.height activity=YVri6iuieFUUiO1d]]-feet-high Cylinder originating from a point the [[lookup @name lowercase]]{monster} can see within [[lookup @range.value activity=YVri6iuieFUUiO1d]] feet.\n\nFailure: [[/damage average]] damage.\n\nSuccess: Half damage.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Lightning Storm",
       "recharge": "5-6",
       "slug": "lightning-storm",
@@ -507,6 +516,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -594,6 +604,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -681,6 +692,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -784,6 +796,7 @@
       "description": "The [[lookup @name lowercase]]{monster} casts one of the following spells, requiring no Material components and using Wisdom as the spellcasting ability (spell save DC [[lookup @attributes.spell.dc]]):\n\nAt Will: Detect Magic, Light\n\n1/Day: Control Weather",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Spellcasting",
       "recharge": null,
       "slug": "spellcasting",
@@ -878,6 +891,7 @@
       "description": "The [[lookup @name lowercase]]{monster} can breathe air and water.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "amphibious",
       "name": "Amphibious",
       "recharge": null,
       "slug": "amphibious",

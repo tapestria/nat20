@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -96,6 +97,7 @@
       "description": "The [[lookup @name lowercase]]{monster} makes two [[/item Holy Mace]] attacks.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Multiattack",
       "recharge": null,
       "slug": "multiattack",
@@ -107,6 +109,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -236,6 +239,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Holy Mace",
       "recharge": null,
       "slug": "holy-mace",
@@ -247,6 +251,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -334,6 +339,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -422,6 +428,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -525,6 +532,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -628,6 +636,7 @@
       "description": "The [[lookup @name lowercase]]{monster} casts one of the following spells, requiring no Material components and using Charisma as the spellcasting ability (spell save DC [[lookup @attributes.spell.dc]]):\n\nAt Will: Detect Evil and Good, Shapechange (Beast or Humanoid form only, no Temporary Hit Points gained from the spell, and no Concentration or Temporary Hit Points required to maintain the spell)\n\n1/Day Each: Commune, Raise Dead",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Spellcasting",
       "recharge": null,
       "slug": "spellcasting",
@@ -639,6 +648,7 @@
           "activation": {
             "condition": "",
             "override": true,
+            "reaction_conditions": [],
             "type": "bonus",
             "value": null
           },
@@ -734,6 +744,7 @@
           "activation": {
             "condition": "",
             "override": true,
+            "reaction_conditions": [],
             "type": "bonus",
             "value": null
           },
@@ -829,6 +840,7 @@
           "activation": {
             "condition": "",
             "override": true,
+            "reaction_conditions": [],
             "type": "bonus",
             "value": null
           },
@@ -924,6 +936,7 @@
       "description": "The [[lookup @name lowercase]]{monster} casts Cure Wounds, Lesser Restoration, or Remove Curse using the same spellcasting ability as Spellcasting.",
       "kind": "bonus_action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Divine Aid",
       "recharge": null,
       "slug": "divine-aid",
@@ -1015,6 +1028,7 @@
       "description": "If the [[lookup @name lowercase]]{monster} dies outside Mount Celestia, its body disappears, and it gains a new body instantly, reviving with all its Hit Points somewhere in Mount Celestia.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "restoration",
       "name": "Exalted Restoration",
       "recharge": null,
       "slug": "exalted-restoration",
@@ -1025,6 +1039,7 @@
       "description": "The [[lookup @name lowercase]]{monster} has Advantage on saving throws against spells and other magical effects.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "magic_resistance",
       "name": "Magic Resistance",
       "recharge": null,
       "slug": "magic-resistance",

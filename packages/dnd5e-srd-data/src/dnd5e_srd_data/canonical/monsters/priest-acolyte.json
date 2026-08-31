@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": 1
           },
@@ -144,6 +145,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Mace",
       "recharge": null,
       "slug": "mace",
@@ -155,6 +157,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -267,6 +270,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Radiant Flame",
       "recharge": null,
       "slug": "radiant-flame",
@@ -278,6 +282,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -363,6 +368,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -448,6 +454,7 @@
       "description": "The [[lookup @name lowercase]]{monster} casts one of the following spells, using Wisdom as the spellcasting ability:\n\nAt Will: Light, Thaumaturgy",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Spellcasting",
       "recharge": null,
       "slug": "spellcasting",
@@ -459,6 +466,7 @@
           "activation": {
             "condition": "",
             "override": true,
+            "reaction_conditions": [],
             "type": "bonus",
             "value": null
           },
@@ -554,6 +562,7 @@
           "activation": {
             "condition": "",
             "override": true,
+            "reaction_conditions": [],
             "type": "bonus",
             "value": null
           },
@@ -649,6 +658,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -744,6 +754,7 @@
       "description": "The [[lookup @name lowercase]]{monster} casts Bless, Dispel Magic, Healing Word, or Lesser Restoration, using the same spellcasting ability as Spellcasting.",
       "kind": "bonus_action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Divine Aid",
       "recharge": null,
       "slug": "divine-aid",

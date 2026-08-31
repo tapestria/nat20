@@ -1,0 +1,40 @@
+{
+  "description": "While you have the Frightened condition, you experience the following effects.\n\nAbility Checks and Attacks Affected. You have Disadvantage on ability checks and attack rolls while the source of fear is within line of sight.\n\nCan\u2019t Approach. You can\u2019t willingly move closer to the source of fear.",
+  "effects": [
+    {
+      "abilities": [],
+      "kind": "disadvantage_ability_checks",
+      "qualifier": "while the source of fear is within line of sight",
+      "value": null
+    },
+    {
+      "abilities": [],
+      "kind": "disadvantage_own_attacks",
+      "qualifier": "while the source of fear is within line of sight",
+      "value": null
+    },
+    {
+      "abilities": [],
+      "kind": "cant_move_toward_fear_source",
+      "qualifier": "",
+      "value": null
+    }
+  ],
+  "implies": [],
+  "name": "Frightened",
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/content24/appendices/rules-glossary.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "frightened"
+}

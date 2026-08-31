@@ -1,0 +1,20 @@
+{
+  "description": "The monster is magically bound to an amulet. While the monster and its amulet are on the same plane of existence, the amulet's wearer can telepathically call the monster to travel to it, and the monster knows the distance and direction to the amulet. If the monster is within 60 feet of the amulet's wearer, half of any damage the wearer takes (round up) is transferred to the monster.",
+  "mechanic": null,
+  "name": "Bound",
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/actors24/construct/shield-guardian.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "bound"
+}

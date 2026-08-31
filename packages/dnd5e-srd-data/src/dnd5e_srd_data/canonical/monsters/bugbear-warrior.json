@@ -15,6 +15,7 @@
           "activation": {
             "condition": "with Advantage if the target is Grappled by the bugbear",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": 1
           },
@@ -127,6 +128,7 @@
       "description": "Melee or Ranged Attack Roll: [[/attack]] ([[lookup @activation.condition activity=FHmD55OJjrFoBkHr]]), reach [[lookup @item.range.reach item=ST0XpSUdRn52jAF0]] ft. or range [[lookup @item.range.value item=ST0XpSUdRn52jAF0]]/[[lookup @item.range.long item=ST0XpSUdRn52jAF0]] ft. [[/damage average extended]]",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Light Hammer",
       "recharge": null,
       "slug": "light-hammer",
@@ -138,6 +140,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -260,6 +263,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "special",
             "value": null
           },
@@ -346,6 +350,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]]. If the target is a Medium or smaller creature, it has the &amp;Reference[Grappled apply=false] condition (escape DC [[lookup @skills.ath.passive]]).",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Grab",
       "recharge": null,
       "slug": "grab",
@@ -435,6 +440,7 @@
       "description": "The [[lookup @name lowercase]]{monster} needn't spend extra movement to move a creature it is grappling.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Abduct",
       "recharge": null,
       "slug": "abduct",

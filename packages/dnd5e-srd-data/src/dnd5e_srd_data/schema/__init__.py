@@ -53,6 +53,8 @@ from dnd5e_srd_data.schema.common import (
     Range,
     RangeBlock,
     RangeUnits,
+    ReactionCondition,
+    ReactionTriggerKind,
     ReviewState,
     RollBlock,
     SaveActivity,
@@ -82,6 +84,7 @@ from dnd5e_srd_data.schema.common import (
     VisibilityBlock,
     VisibilityLevelBlock,
 )
+from dnd5e_srd_data.schema.condition import Condition, ConditionEffect, ConditionEffectKind
 from dnd5e_srd_data.schema.feat import Feat, FeatCategory, FeatPrerequisite
 from dnd5e_srd_data.schema.feature import (
     Feature,
@@ -106,6 +109,8 @@ from dnd5e_srd_data.schema.monster import (
     Monster,
     MonsterAction,
     MonsterActionKind,
+    MonsterTrait,
+    MonsterTraitMechanic,
     SavingThrowProficiencies,
     SkillProficiencies,
 )
@@ -152,6 +157,9 @@ __all__ = [
     "CheckBlock",
     "ChoiceLevel",
     "Class",
+    "Condition",
+    "ConditionEffect",
+    "ConditionEffectKind",
     "ConsumptionBlock",
     "ConsumptionScalingBlock",
     "ConsumptionTargetEntry",
@@ -190,6 +198,8 @@ __all__ = [
     "Monster",
     "MonsterAction",
     "MonsterActionKind",
+    "MonsterTrait",
+    "MonsterTraitMechanic",
     "Movement",
     "PassiveEffect",
     "PassiveEffectChange",
@@ -198,6 +208,8 @@ __all__ = [
     "Range",
     "RangeBlock",
     "RangeUnits",
+    "ReactionCondition",
+    "ReactionTriggerKind",
     "RecoveryRule",
     "ReviewState",
     "RollBlock",

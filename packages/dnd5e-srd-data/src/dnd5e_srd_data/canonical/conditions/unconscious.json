@@ -1,0 +1,58 @@
+{
+  "description": "While you have the Unconscious condition, you experience the following effects.\n\nInert. You have the Incapacitated and Prone conditions, and you drop whatever you\u2019re holding. When this condition ends, you remain Prone.\n\nSpeed 0. Your Speed is 0 and can\u2019t increase.\n\nAttacks Affected. Attack rolls against you have Advantage.\n\nSaving Throws Affected. You automatically fail Strength and Dexterity saving throws.\n\nAutomatic Critical Hits. Any attack roll that hits you is a Critical Hit if the attacker is within 5 feet of you.",
+  "effects": [
+    {
+      "abilities": [],
+      "kind": "drops_held_items",
+      "qualifier": "",
+      "value": null
+    },
+    {
+      "abilities": [],
+      "kind": "speed_zero",
+      "qualifier": "",
+      "value": null
+    },
+    {
+      "abilities": [],
+      "kind": "advantage_attacks_against",
+      "qualifier": "",
+      "value": null
+    },
+    {
+      "abilities": [
+        "str",
+        "dex"
+      ],
+      "kind": "auto_fail_save",
+      "qualifier": "",
+      "value": null
+    },
+    {
+      "abilities": [],
+      "kind": "auto_crit_within_5ft",
+      "qualifier": "",
+      "value": 5
+    }
+  ],
+  "implies": [
+    "incapacitated",
+    "prone"
+  ],
+  "name": "Unconscious",
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/content24/appendices/rules-glossary.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "unconscious"
+}

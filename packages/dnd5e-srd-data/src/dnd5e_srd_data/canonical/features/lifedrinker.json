@@ -4,6 +4,7 @@
       "activation": {
         "condition": "Once per turn when you hit a creature with your pact weapon",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },
@@ -106,6 +107,7 @@
       "activation": {
         "condition": "Once per turn when you hit a creature with your pact weapon",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },
@@ -208,6 +210,7 @@
       "activation": {
         "condition": "Once per turn when you hit a creature with your pact weapon",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },

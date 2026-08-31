@@ -1,0 +1,20 @@
+{
+  "description": "A spellcaster who wears the monster's amulet can cause the monster to store one spell of level 4 or lower. To do so, the wearer must cast the spell on the monster while within 5 feet of it. The spell has no effect but is stored within the monster. Any previously stored spell is lost when a new spell is stored. The monster can cast the spell stored with any parameters set by the original caster, requiring no spell components and using the caster's spellcasting ability. The stored spell is then lost.",
+  "mechanic": null,
+  "name": "Spell Storing",
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/actors24/construct/shield-guardian.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "spell-storing"
+}

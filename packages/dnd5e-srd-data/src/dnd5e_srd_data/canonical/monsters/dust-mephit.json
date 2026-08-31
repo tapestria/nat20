@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -127,6 +128,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Claw",
       "recharge": null,
       "slug": "claw",
@@ -138,6 +140,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -203,7 +206,8 @@
             "dc": {
               "calculation": "con",
               "formula": ""
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -246,6 +250,7 @@
       "description": "Dexterity Saving Throw: DC [[lookup @save.dc.value activity=soAO2jRWos8FsxeU]], each creature in a [[lookup @target.template.size activity=soAO2jRWos8FsxeU]]-foot Cone.\n\nFailure: The target has the &amp;Reference[Blinded apply=false] condition until the end of the [[lookup @name lowercase]]{monster}'s next turn.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Blinding Breath",
       "recharge": "6",
       "slug": "blinding-breath",
@@ -257,6 +262,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -356,6 +362,7 @@
       "description": "The [[lookup @name lowercase]]{monster} casts the phbsplSleep00000 spell, requiring no spell components and using Charisma as the spellcasting ability (spell save DC [[lookup @attributes.spell.dc]]).",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Sleep",
       "recharge": null,
       "slug": "sleep",
@@ -453,6 +460,7 @@
           "activation": {
             "condition": "when it dies",
             "override": false,
+            "reaction_conditions": [],
             "type": "special",
             "value": null
           },
@@ -516,7 +524,8 @@
             "dc": {
               "calculation": "con",
               "formula": ""
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -559,6 +568,7 @@
       "description": "The [[lookup @name lowercase]]{monster} explodes [[lookup @activation.condition activity=1SfqWSp7RSyHgG4b]].\n\nDexterity Saving Throw: DC [[lookup @save.dc.value activity=1SfqWSp7RSyHgG4b]], each [[lookup @target.affects.type activity=1SfqWSp7RSyHgG4b]] in a [[lookup @target.template.size activity=1SfqWSp7RSyHgG4b]]-foot Emanation originating from the [[lookup @name lowercase]]{monster}.\n\nFailure: [[/damage average]] damage.\n\nSuccess: Half damage.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Death Burst",
       "recharge": null,
       "slug": "death-burst",

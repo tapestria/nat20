@@ -15,6 +15,7 @@
           "activation": {
             "condition": "while underwater",
             "override": false,
+            "reaction_conditions": [],
             "type": "bonus",
             "value": null
           },
@@ -96,6 +97,7 @@
       "description": "While underwater, the [[lookup @name lowercase]]{monster} moves up to its Swim Speed without provoking &amp;Reference[Opportunity Attacks].",
       "kind": "bonus_action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Bubble Dash",
       "recharge": null,
       "slug": "bubble-dash",
@@ -182,6 +184,7 @@
       "description": "The [[lookup @name lowercase]]{monster} can breathe only underwater.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "water_breathing",
       "name": "Water Breathing",
       "recharge": null,
       "slug": "water-breathing",

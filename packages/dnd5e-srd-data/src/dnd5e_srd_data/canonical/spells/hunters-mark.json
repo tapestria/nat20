@@ -4,6 +4,7 @@
       "activation": {
         "condition": "",
         "override": true,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },
@@ -106,6 +107,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -199,6 +201,7 @@
       "activation": {
         "condition": "when the currently marked target drops to 0 Hit Points",
         "override": true,
+        "reaction_conditions": [],
         "type": "bonus",
         "value": null
       },

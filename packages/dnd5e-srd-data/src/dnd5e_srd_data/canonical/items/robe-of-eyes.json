@@ -4,6 +4,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },
@@ -49,7 +50,8 @@
         "dc": {
           "calculation": "",
           "formula": "11"
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 0,
       "target": {
@@ -92,6 +94,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },
@@ -137,7 +140,8 @@
         "dc": {
           "calculation": "",
           "formula": "15"
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 0,
       "target": {

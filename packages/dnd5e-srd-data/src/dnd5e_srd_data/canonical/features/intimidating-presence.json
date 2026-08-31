@@ -4,6 +4,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "bonus",
         "value": null
       },
@@ -69,7 +70,8 @@
         "dc": {
           "calculation": "",
           "formula": "8 + @abilities.str.mod + @prof"
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 0,
       "target": {
@@ -112,6 +114,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },

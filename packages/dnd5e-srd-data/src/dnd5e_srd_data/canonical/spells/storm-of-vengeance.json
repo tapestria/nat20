@@ -4,6 +4,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -79,7 +80,8 @@
         "dc": {
           "calculation": "spellcasting",
           "formula": ""
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 0,
       "target": {
@@ -122,6 +124,7 @@
       "activation": {
         "condition": "at the start of your turn",
         "override": true,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },
@@ -222,6 +225,7 @@
       "activation": {
         "condition": "at the start of your turn",
         "override": true,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },
@@ -285,7 +289,8 @@
         "dc": {
           "calculation": "spellcasting",
           "formula": ""
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 0,
       "target": {
@@ -328,6 +333,7 @@
       "activation": {
         "condition": "at the start of your turn",
         "override": true,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },
@@ -428,6 +434,7 @@
       "activation": {
         "condition": "at the start of your turn",
         "override": true,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },

@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -127,6 +128,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -239,6 +241,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -357,6 +360,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]], and the target's Strength score decreases by [[/r 1d4]]. The target dies if this reduces that score to 0. If a Humanoid is slain by this attack, a Shadow rises from the corpse [[/r 1d4]] hours later.\n\nFoundry Note\n\nThis feature also provides an Active Effect (AE) to modify the target's Strength Score. When the target roll's their d4 to determine the loss, you can apply the respective AE to the target's sheet.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Draining Swipe",
       "recharge": null,
       "slug": "draining-swipe",
@@ -368,6 +372,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "bonus",
             "value": null
           },
@@ -459,6 +464,7 @@
       "description": "While in Dim Light or Darkness, the [[lookup @name lowercase]]{monster} takes the &amp;Reference[Hide] action.",
       "kind": "bonus_action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Shadow Stealth",
       "recharge": null,
       "slug": "shadow-stealth",
@@ -566,6 +572,7 @@
       "description": "The [[lookup @name lowercase]]{monster} can move through a space as narrow as 1 inch without expending extra movement to do so.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Amorphous",
       "recharge": null,
       "slug": "amorphous",
@@ -576,6 +583,7 @@
       "description": "While in sunlight, the [[lookup @name lowercase]]{monster} has Disadvantage on D20 Tests.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Sunlight Weakness",
       "recharge": null,
       "slug": "sunlight-weakness",

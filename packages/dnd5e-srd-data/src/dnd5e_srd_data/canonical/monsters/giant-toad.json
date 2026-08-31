@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -154,6 +155,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]]. If the target is a Medium or smaller creature, it has the &amp;Reference[Grappled apply=false] condition (escape DC [[lookup @skills.ath.passive]]).",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Bite",
       "recharge": null,
       "slug": "bite",
@@ -165,6 +167,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -265,6 +268,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "special",
             "value": null
           },
@@ -356,6 +360,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -437,6 +442,7 @@
       "description": "The [[lookup @name lowercase]]{monster} swallows a Medium or smaller target it is grappling.\n\nWhile swallowed, the target isn't Grappled but has the &amp;Reference[Blinded apply=false] and &amp;Reference[Restrained apply=false] conditions, and it has &amp;Reference[Total Cover] against attacks and other effects outside the [[lookup @name lowercase]]{monster}.\n\nIn addition, the target takes [[/damage average]] damage at the end of each of the [[lookup @name lowercase]]{monster}'s turns. The [[lookup @name lowercase]]{monster} can have only one target swallowed at a time, and it can't use Bite while it has a swallowed target.\n\nIf the [[lookup @name lowercase]]{monster} dies, a swallowed creature is no longer Restrained and can escape from the corpse using 5 feet of movement, exiting with the &amp;Reference[Prone apply=false] condition.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Swallow",
       "recharge": null,
       "slug": "swallow",
@@ -523,6 +529,7 @@
       "description": "The [[lookup @name lowercase]]{monster} can breathe air and water.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "amphibious",
       "name": "Amphibious",
       "recharge": null,
       "slug": "amphibious",
@@ -533,6 +540,7 @@
       "description": "The [[lookup @name lowercase]]{monster}'s Long Jump is up to 20 feet and its High Jump is up to 10 feet with or without a running start.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Standing Leap",
       "recharge": null,
       "slug": "standing-leap",

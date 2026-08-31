@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -93,9 +94,10 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes two [[/item .mmPincer00000000]] attacks and uses [[/item .mmPummel00000000]] or [[/item .mmSpellcasting00]].",
+      "description": "The [[lookup @name lowercase]]{monster} makes two [[/item .mmPincer00000000]]{Pincer} attacks and uses [[/item .mmPummel00000000]]{Pummel} or [[/item .mmSpellcasting00]]{Spellcasting}.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Multiattack",
       "recharge": null,
       "slug": "multiattack",
@@ -107,6 +109,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -229,6 +232,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "special",
             "value": null
           },
@@ -315,6 +319,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]]. If the target is a Medium or smaller creature, it has the &amp;Reference[Grappled apply=false] condition (escape DC [[lookup @skills.ath.passive]]) from one of two pincers.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Pincer",
       "recharge": null,
       "slug": "pincer",
@@ -326,6 +331,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -389,7 +395,8 @@
             "dc": {
               "calculation": "str",
               "formula": "8 + @mod + @prof"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -432,6 +439,7 @@
       "description": "Dexterity Saving Throw: DC [[lookup @save.dc.value activity=aae828c0Hue0XOMP]], one creature Grappled by the [[lookup @name lowercase]]{monster}.\n\nFailure: [[/damage average]] damage.\n\nSuccess: Half damage.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Pummel",
       "recharge": null,
       "slug": "pummel",
@@ -443,6 +451,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -530,6 +539,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -617,6 +627,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -704,6 +715,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -807,6 +819,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -910,6 +923,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -1013,6 +1027,7 @@
       "description": "The [[lookup @name lowercase]]{monster} casts one of the following spells, requiring no Material components and using Intelligence as the spellcasting ability (spell save DC [[lookup @attributes.spell.dc]]):\n\nAt Will: Darkness, Detect Magic, Dispel Magic\n\n1/Day Each: Confusion, Fly, Power Word Stun",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Spellcasting",
       "recharge": null,
       "slug": "spellcasting",
@@ -1110,6 +1125,7 @@
       "description": "If the [[lookup @name lowercase]]{monster} dies outside the Abyss, its body dissolves into ichor, and it gains a new body instantly, reviving with all its Hit Points somewhere in the Abyss.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "restoration",
       "name": "Demonic Restoration",
       "recharge": null,
       "slug": "demonic-restoration",
@@ -1120,6 +1136,7 @@
       "description": "The [[lookup @name lowercase]]{monster} has Advantage on saving throws against spells and other magical effects.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "magic_resistance",
       "name": "Magic Resistance",
       "recharge": null,
       "slug": "magic-resistance",

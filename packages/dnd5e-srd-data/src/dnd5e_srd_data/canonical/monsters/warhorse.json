@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -127,6 +128,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -266,6 +268,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]]. If the target is a Large or smaller creature and the horse moved 20+ feet straight toward it immediately before the hit, the target takes an extra 5 (2d4) Bludgeoning damage and has the &amp;Reference[Prone apply=false] condition.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Hooves",
       "recharge": null,
       "slug": "hooves",

@@ -4,6 +4,7 @@
       "activation": {
         "condition": "When you cast a Cleric cantrip and deal damage to a creature with it",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },

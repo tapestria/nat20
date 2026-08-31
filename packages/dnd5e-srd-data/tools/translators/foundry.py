@@ -7,6 +7,7 @@ import json
 import math
 import re
 import sys
+from collections.abc import Mapping, Sequence
 from datetime import date
 from pathlib import Path
 from typing import Any, Literal, TypeVar
@@ -52,6 +53,8 @@ from dnd5e_srd_data import (
     Monster,
     MonsterAction,
     MonsterActionKind,
+    MonsterTrait,
+    MonsterTraitMechanic,
     Movement,
     PassiveEffect,
     PassiveEffectChange,
@@ -84,6 +87,7 @@ from dnd5e_srd_data import (
     Weapon,
     WeaponProperty,
 )
+from dnd5e_srd_data.schema.common import ReactionCondition, ReactionTriggerKind
 from tools.translators.prose_cleanup import cleanup_prose
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -299,11 +303,64 @@ def _inherit_item_target(raw: dict[str, Any], item_target: dict[str, Any]) -> di
     return raw
 
 
+_WITHIN_FEET = re.compile(r"within (\d+) feet", re.IGNORECASE)
+_TARGETED_BY_SPELL = re.compile(r"targeted by the (?P<spell>[A-Za-z' ]+?) spell", re.IGNORECASE)
+
+#: Ordered phrase → trigger-kind table (Foundry ``activation.condition`` is
+#: free text; every SRD 5.2 reaction spell's phrase is quoted in
+#: ``ReactionTriggerKind``). Entries are emitted in table order; a phrase that
+#: matches nothing yields ``[]`` (catch-all — the prose is still shipped).
+_REACTION_TRIGGER_PATTERNS: tuple[tuple[re.Pattern[str], ReactionTriggerKind], ...] = (
+    (re.compile(r"\bhit by an attack roll\b", re.IGNORECASE), ReactionTriggerKind.HIT_BY_ATTACK),
+    (_TARGETED_BY_SPELL, ReactionTriggerKind.TARGETED_BY_SPELL),
+    (re.compile(r"\bcasting a spell\b", re.IGNORECASE), ReactionTriggerKind.SEES_SPELL_CAST),
+    (re.compile(r"\btak(?:ing|es?) damage\b", re.IGNORECASE), ReactionTriggerKind.TAKES_DAMAGE),
+    (re.compile(r"\bfalls\b", re.IGNORECASE), ReactionTriggerKind.CREATURE_FALLS),
+)
+
+
+def reaction_conditions_from_text(text: str) -> list[ReactionCondition]:
+    """Typed OR-list of triggers for one ``activation.condition`` string."""
+    condition = " ".join(str(text or "").split())
+    if not condition:
+        return []
+    range_match = _WITHIN_FEET.search(condition)
+    max_range_ft = int(range_match.group(1)) if range_match else None
+    out: list[ReactionCondition] = []
+    for pattern, kind in _REACTION_TRIGGER_PATTERNS:
+        match = pattern.search(condition)
+        if match is None:
+            continue
+        is_spell_trigger = kind is ReactionTriggerKind.TARGETED_BY_SPELL
+        target_spell_slug = _slug_from_name(match.group("spell")) if is_spell_trigger else None
+        out.append(
+            ReactionCondition(
+                kind=kind,
+                max_range_ft=max_range_ft if not is_spell_trigger else None,
+                target_spell_slug=target_spell_slug,
+                condition_text=condition,
+            )
+        )
+    return out
+
+
+def _effective_activation(
+    raw: dict[str, Any], item_activation: dict[str, Any] | None
+) -> dict[str, Any]:
+    """Foundry: an activity whose ``activation.override`` is false inherits the
+    owning item's ``system.activation``; ``override: true`` carries its own."""
+    own = raw.get("activation") if isinstance(raw.get("activation"), dict) else {}
+    if own.get("override") or not isinstance(item_activation, dict):
+        return own
+    return item_activation
+
+
 def _build_activity(
     activity_id: str,
     raw: dict[str, Any],
     *,
     item_target: dict[str, Any] | None = None,
+    item_activation: dict[str, Any] | None = None,
 ) -> Activity | None:
     """Build one per-kind Activity Pydantic model from a Foundry activity
     dict. Returns ``None`` if the discriminator is missing or maps to a kind
@@ -349,6 +406,14 @@ def _build_activity(
     # on the alias suffices when Foundry omits the inline ``_id`` field
     # (rare; the outer dict key carries the same value).
     normalized.setdefault("_id", activity_id)
+    effective = _effective_activation(raw, item_activation)
+    if str(effective.get("type") or "").strip().lower() == "reaction":
+        activation_block = normalized.setdefault("activation", {})
+        if isinstance(activation_block, dict):
+            condition_text = str(effective.get("condition") or "")
+            activation_block["reaction_conditions"] = [
+                c.model_dump(mode="json") for c in reaction_conditions_from_text(condition_text)
+            ]
     return cls.model_validate(normalized)  # type: ignore[return-value]
 
 
@@ -364,6 +429,7 @@ def _translate_activities(system: dict[str, Any]) -> list[Activity]:
     if not isinstance(activities_raw, dict):
         return []
     item_target = system.get("target") if isinstance(system, dict) else None
+    item_activation = system.get("activation") if isinstance(system, dict) else None
     out: list[Activity] = []
     for activity_id, raw in activities_raw.items():
         if not isinstance(raw, dict):
@@ -372,6 +438,7 @@ def _translate_activities(system: dict[str, Any]) -> list[Activity]:
             str(activity_id),
             raw,
             item_target=item_target if isinstance(item_target, dict) else None,
+            item_activation=item_activation if isinstance(item_activation, dict) else None,
         )
         if built is None:
             continue
@@ -784,6 +851,9 @@ def translate_weapon_yaml(
         # Newer Foundry sometimes uses {"ver": true, "fin": true, ...}
         raw_props = [k for k, v in raw_props.items() if v]
     props = frozenset(_WEAPON_PROPERTY_MAP[p] for p in raw_props if p in _WEAPON_PROPERTY_MAP)
+    # ``mgc`` is an item-level property, not a WeaponProperty member: read it
+    # straight off the raw list (it was silently filtered out before C22).
+    magical = "mgc" in raw_props
     if versatile_damage is None and WeaponProperty.VERSATILE in props:
         # Foundry didn't structurally encode the upgraded die — fall back to
         # the SRD table.
@@ -855,6 +925,7 @@ def translate_weapon_yaml(
         properties=props,
         range=rng,
         magical_bonus=max(0, magical_bonus),
+        magical=magical,
         mastery=mastery,
         uses=_item_uses(system),
         activities=_translate_activities(system),
@@ -879,6 +950,10 @@ def translate_armor_yaml(
         armor_magical_bonus = int(armor_magical_bonus_raw or 0)
     except (TypeError, ValueError):
         armor_magical_bonus = 0
+    armor_props = system.get("properties") or []
+    if isinstance(armor_props, dict):
+        armor_props = [k for k, v in armor_props.items() if v]
+    armor_magical = "mgc" in armor_props
     return Armor(
         slug=_slug(doc, yaml_path),
         name=doc["name"],
@@ -900,6 +975,7 @@ def translate_armor_yaml(
         ),
         strength_min=system.get("strength"),
         magical_bonus=max(0, armor_magical_bonus),
+        magical=armor_magical,
         uses=_item_uses(system),
         activities=_translate_activities(system),
         passive_effects=_passive_effects(doc),
@@ -1212,7 +1288,89 @@ def _resolve_monster_activities(system: dict[str, Any]) -> list[Activity]:
     return out
 
 
-def _build_monster_action(item: dict[str, Any]) -> tuple[MonsterAction, MonsterActionKind]:
+#: Embedded-trait ``system.identifier`` → typed mechanic. Rows quote the SRD
+#: 5.2 trait text (identical across every carrier; ``[[lookup @name]]`` is
+#: the creature's name). Names not listed keep ``mechanic=None`` (prose).
+_TRAIT_MECHANICS: dict[str, MonsterTraitMechanic] = {
+    # "has Advantage on saving throws against spells and other magical effects."
+    "magic-resistance": MonsterTraitMechanic.MAGIC_RESISTANCE,
+    # "If the <monster> fails a saving throw, it can choose to succeed instead …"
+    "legendary-resistance": MonsterTraitMechanic.LEGENDARY_RESISTANCE,
+    # "can breathe air and water."
+    "amphibious": MonsterTraitMechanic.AMPHIBIOUS,
+    # "has Advantage on an attack roll against a creature if at least one of
+    # the <monster>'s allies is within 5 feet of the creature and the ally
+    # doesn't have the Incapacitated condition."
+    "pack-tactics": MonsterTraitMechanic.PACK_TACTICS,
+    # "can climb difficult surfaces, including along ceilings, without needing
+    # to make an ability check."
+    "spider-climb": MonsterTraitMechanic.SPIDER_CLIMB,
+    # "can breathe only underwater." / "can breathe underwater."
+    "water-breathing": MonsterTraitMechanic.WATER_BREATHING,
+    # "The swarm can occupy another creature's space and vice versa …"
+    "swarm": MonsterTraitMechanic.SWARM,
+    # "If the <monster> dies outside the Nine Hells, its body dissolves … a new
+    # body in 1d10 days" — one mechanic, several plane-flavoured names.
+    "diabolical-restoration": MonsterTraitMechanic.RESTORATION,
+    "demonic-restoration": MonsterTraitMechanic.RESTORATION,
+    "celestial-restoration": MonsterTraitMechanic.RESTORATION,
+    "eldritch-restoration": MonsterTraitMechanic.RESTORATION,
+    "elemental-restoration": MonsterTraitMechanic.RESTORATION,
+    "exalted-restoration": MonsterTraitMechanic.RESTORATION,
+    "fiendish-restoration": MonsterTraitMechanic.RESTORATION,
+    "hellish-restoration": MonsterTraitMechanic.RESTORATION,
+    "undead-restoration": MonsterTraitMechanic.RESTORATION,
+    # "doesn't provoke an Opportunity Attack when it flies out of an enemy's reach."
+    "flyby": MonsterTraitMechanic.FLYBY,
+    # "can hold its breath for a period (minutes or hours)."
+    "hold-breath": MonsterTraitMechanic.HOLD_BREATH,
+    # "While in sunlight, the <monster> has Disadvantage on ability checks and attack rolls."
+    "sunlight-sensitivity": MonsterTraitMechanic.SUNLIGHT_SENSITIVITY,
+    # "If damage reduces the <monster> to 0 Hit Points, it makes a Constitution
+    # saving throw (DC 5 plus the damage taken) unless the damage is Radiant or
+    # from a Critical Hit. On a successful save, the <monster> drops to 1 Hit Point instead."
+    "undead-fortitude": MonsterTraitMechanic.UNDEAD_FORTITUDE,
+    # "regains N Hit Points at the start of each of its turns …"
+    "regeneration": MonsterTraitMechanic.REGENERATION,
+    # "can move through other creatures and objects as if they were Difficult Terrain …"
+    "incorporeal-movement": MonsterTraitMechanic.INCORPOREAL_MOVEMENT,
+}
+
+# ``[[lookup @name lowercase]]{monster}`` — Foundry's name enricher. Monster
+# action prose keeps the token (the engine's multiattack join tolerates it);
+# the de-duplicated ``traits/`` entries have no owning creature, so the label
+# text is substituted there.
+_LOOKUP_ENRICHER = re.compile(r"\[\[lookup[^\]]*\]\]\{([^}]*)\}")
+
+
+def substitute_lookup_labels(text: str) -> str:
+    return _LOOKUP_ENRICHER.sub(r"\1", text)
+
+
+# A bare Foundry item enricher ``[[/item .<id>]]`` NOT followed by ``{Label}``.
+_BARE_ITEM_TOKEN = re.compile(r"\[\[/item \.(?P<id>[A-Za-z0-9]+)\]\](?!\{)")
+
+
+def _label_bare_item_tokens(description: str, item_names: Mapping[str, str]) -> str:
+    """Rewrite ``[[/item .<id>]]`` → ``[[/item .<id>]]{<name>}`` when ``<id>``
+    is a sibling item of the same actor. Applied corpus-wide: it labels every
+    bare sibling token in every embedded item description across the corpus
+    (139 monster/trait files), not just the five monsters that motivated it.
+    Five SRD 5.2 monsters (bandit-captain, doppelganger, chain-devil, scout,
+    ettin) reference their attacks by opaque key with no label and were the
+    motivating cases; the engine's multiattack join reads the label (see
+    ``dnd5e_engine/activities/monster_actions.py``). Unknown ids pass through."""
+
+    def _sub(match: re.Match[str]) -> str:
+        name = item_names.get(match.group("id"))
+        return f"{match.group(0)}{{{name}}}" if name else match.group(0)
+
+    return _BARE_ITEM_TOKEN.sub(_sub, description)
+
+
+def _build_monster_action(
+    item: dict[str, Any], *, item_names: Mapping[str, str] | None = None
+) -> tuple[MonsterAction, MonsterActionKind]:
     """Translate one embedded item document into a ``MonsterAction``. Returns
     the action plus its resolved kind so the caller can bucket it."""
     name = str(item.get("name") or "Unnamed")
@@ -1220,7 +1378,10 @@ def _build_monster_action(item: dict[str, Any]) -> tuple[MonsterAction, MonsterA
     activation = _first_activation(system.get("activities")) or {}
     raw_type = str(activation.get("type") or "").strip().lower()
     kind = _ACTIVATION_TYPE_TO_KIND.get(raw_type, MonsterActionKind.SPECIAL)
-    description = cleanup_prose(((system.get("description") or {}).get("value")) or "")
+    raw_description = ((system.get("description") or {}).get("value")) or ""
+    if item_names:
+        raw_description = _label_bare_item_tokens(str(raw_description), item_names)
+    description = cleanup_prose(raw_description)
     identifier = system.get("identifier") or _slug_from_name(name)
     uses = system.get("uses") or {}
     recharge = _recharge_formula(uses)
@@ -1233,6 +1394,7 @@ def _build_monster_action(item: dict[str, Any]) -> tuple[MonsterAction, MonsterA
         except (TypeError, ValueError):
             cost_int = 1
         legendary_cost = max(1, cost_int)
+    mechanic = _TRAIT_MECHANICS.get(str(identifier)) if kind is MonsterActionKind.SPECIAL else None
     action = MonsterAction(
         slug=str(identifier),
         name=name,
@@ -1242,6 +1404,7 @@ def _build_monster_action(item: dict[str, Any]) -> tuple[MonsterAction, MonsterA
         recharge=recharge,
         uses_per_day=uses_per_day,
         legendary_cost=legendary_cost,
+        mechanic=mechanic,
     )
     return action, kind
 
@@ -1262,6 +1425,11 @@ def _monster_actions(
     raw_items = doc.get("items")
     if not isinstance(raw_items, list):
         return actions, legendary_actions, lair_actions, special_abilities
+    item_names: dict[str, str] = {
+        str(item["_id"]): str(item["name"])
+        for item in raw_items
+        if isinstance(item, dict) and item.get("_id") and item.get("name")
+    }
     for item in raw_items:
         if not isinstance(item, dict):
             continue
@@ -1272,7 +1440,7 @@ def _monster_actions(
             continue
         if item_type not in {"weapon", "feat"}:
             continue
-        action, kind = _build_monster_action(item)
+        action, kind = _build_monster_action(item, item_names=item_names)
         if kind is MonsterActionKind.LEGENDARY:
             legendary_actions.append(action)
         elif kind is MonsterActionKind.LAIR or kind is MonsterActionKind.REGIONAL:
@@ -1282,6 +1450,56 @@ def _monster_actions(
         else:
             actions.append(action)
     return actions, legendary_actions, lair_actions, special_abilities
+
+
+def _licensed_trait_identifiers(doc: dict[str, Any]) -> set[str]:
+    """``system.identifier`` values of embedded ``feat`` items that carry the
+    SRD ``CC-BY-4.0`` license tag on this actor document. Not every embedded
+    special ability tags ``system.properties: [trait]`` (e.g.
+    ``demonic-restoration``, ``swallow``), so the license + item-type gate is
+    the sole admission test — ``_monster_actions`` already does the real
+    "is this a trait" classification via activation type."""
+    return {
+        str((item.get("system") or {}).get("identifier") or "")
+        for item in (doc.get("items") or [])
+        if isinstance(item, dict)
+        and item.get("type") == "feat"
+        and (((item.get("system") or {}).get("source") or {}).get("license")) == "CC-BY-4.0"
+    }
+
+
+def translate_monster_traits(
+    actor_yaml_paths: Sequence[Path],
+    *,
+    ingest_date: date,
+    ingest_version: str,
+) -> list[MonsterTrait]:
+    """Build the de-duplicated ``traits/`` category from the SRD actors'
+    embedded special-ability feat items. First occurrence (by the caller's
+    path order — regen passes a sorted list) wins, so output is
+    deterministic. Items without ``system.source.license == "CC-BY-4.0"``
+    are skipped."""
+    by_slug: dict[str, MonsterTrait] = {}
+    for yaml_path in actor_yaml_paths:
+        doc = _load_yaml(yaml_path)
+        _, _, _, special_abilities = _monster_actions(doc)
+        licensed = _licensed_trait_identifiers(doc)
+        for ability in special_abilities:
+            if ability.slug == "new-feature":
+                # Foundry authoring placeholder identifier; never a real
+                # trait (seen on apparatus-of-the-crab items).
+                continue
+            if ability.slug in by_slug or ability.slug not in licensed:
+                continue
+            by_slug[ability.slug] = MonsterTrait(
+                slug=ability.slug,
+                name=ability.name,
+                description=substitute_lookup_labels(ability.description),
+                mechanic=ability.mechanic,
+                provenance=_provenance(yaml_path, ingest_date, ingest_version),
+                review=ReviewState(),
+            )
+    return [by_slug[slug] for slug in sorted(by_slug)]
 
 
 def translate_monster_yaml(
@@ -1685,6 +1903,30 @@ def _apply_spell_damage_type_corrections(slug: str, activities: list[Activity]) 
     return out
 
 
+#: Spell slug → the SRD 5.2 sentence that removes cover from the save. Foundry
+#: has no field for this; the sentence is the only source. Re-verify with
+#: ``grep -rl "benefit from" packs/_source/spells24`` when refreshing upstream.
+_SPELL_SAVE_IGNORE_COVER: dict[str, str] = {
+    "sacred-flame": (
+        "The target gains no benefit from Half Cover or Three-Quarters Cover for this save."
+    ),
+}
+
+
+def _apply_spell_save_cover_overrides(slug: str, activities: list[Activity]) -> list[Activity]:
+    """Set ``save.ignore_cover`` on every save activity of an allowlisted spell.
+    Copy-on-write like ``_apply_spell_damage_type_corrections``."""
+    if slug not in _SPELL_SAVE_IGNORE_COVER:
+        return activities
+    out: list[Activity] = []
+    for act in activities:
+        if isinstance(act, SaveActivity):
+            new_save = act.save.model_copy(update={"ignore_cover": True})
+            act = act.model_copy(update={"save": new_save})
+        out.append(act)
+    return out
+
+
 def translate_spell_yaml(
     yaml_path: Path,
     *,
@@ -1721,7 +1963,9 @@ def translate_spell_yaml(
         duration=_spell_duration(system.get("duration") or {}),
         materials=_spell_materials(system.get("materials") or {}),
         preparation=_spell_preparation(system.get("preparation") or {}),
-        activities=_apply_spell_damage_type_corrections(slug, _translate_activities(system)),
+        activities=_apply_spell_save_cover_overrides(
+            slug, _apply_spell_damage_type_corrections(slug, _translate_activities(system))
+        ),
         passive_effects=_passive_effects(doc),
         provenance=_provenance(yaml_path, ingest_date, ingest_version),
         review=ReviewState(),

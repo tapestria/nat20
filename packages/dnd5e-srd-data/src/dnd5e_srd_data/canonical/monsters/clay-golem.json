@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -96,6 +97,7 @@
       "description": "The [[lookup @name lowercase]]{monster} makes two [[/item Slam]] attacks, or it makes three Slam attacks if it used Hasten this turn.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Multiattack",
       "recharge": null,
       "slug": "multiattack",
@@ -107,6 +109,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -236,6 +239,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]], and the target's Hit Point maximum decreases by an amount equal to the Acid damage taken.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Slam",
       "recharge": null,
       "slug": "slam",
@@ -247,6 +251,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "bonus",
             "value": null
           },
@@ -338,6 +343,7 @@
       "description": "The [[lookup @name lowercase]]{monster} takes the &amp;Reference[Dash] and &amp;Reference[Disengage] actions.",
       "kind": "bonus_action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Hasten",
       "recharge": "5-6",
       "slug": "hasten",
@@ -442,6 +448,7 @@
       "description": "Whenever the [[lookup @name lowercase]]{monster} is subjected to &amp;Reference[Acid] damage, it takes no damage and instead regains a number of Hit Points equal to the Acid damage dealt.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Acid Absorption",
       "recharge": null,
       "slug": "acid-absorption",
@@ -453,6 +460,7 @@
           "activation": {
             "condition": "starts its turn &Reference[Bloodied]",
             "override": false,
+            "reaction_conditions": [],
             "type": "special",
             "value": null
           },
@@ -544,6 +552,7 @@
       "description": "Whenever the [[lookup @name lowercase]]{monster} starts its turn &amp;Reference[Bloodied], roll [[/r 1d6]]. On a 6, the [[lookup @name lowercase]]{monster} goes berserk. On each of its turns while berserk, the [[lookup @name lowercase]]{monster} attacks the nearest creature it can see. If no creature is near enough to move to and attack, the [[lookup @name lowercase]]{monster} attacks an object. Once the [[lookup @name lowercase]]{monster} goes berserk, it remains so until it is destroyed or it is no longer Bloodied.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Berserk",
       "recharge": null,
       "slug": "berserk",
@@ -554,6 +563,7 @@
       "description": "The [[lookup @name lowercase]]{monster} can't shape-shift.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Immutable Form",
       "recharge": null,
       "slug": "immutable-form",
@@ -564,6 +574,7 @@
       "description": "The [[lookup @name lowercase]]{monster} has Advantage on saving throws against spells and other magical effects.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "magic_resistance",
       "name": "Magic Resistance",
       "recharge": null,
       "slug": "magic-resistance",

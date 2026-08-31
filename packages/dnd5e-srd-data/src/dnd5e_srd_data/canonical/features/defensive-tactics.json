@@ -4,6 +4,7 @@
       "activation": {
         "condition": "When a creature hits you with an attack roll",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },

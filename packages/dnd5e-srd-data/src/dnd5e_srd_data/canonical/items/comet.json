@@ -4,6 +4,7 @@
       "activation": {
         "condition": "The next time you enter combat against one or more Hostile creatures",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },
@@ -107,6 +108,7 @@
       "activation": {
         "condition": "when the selected Hostile creature dies during this combat",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },

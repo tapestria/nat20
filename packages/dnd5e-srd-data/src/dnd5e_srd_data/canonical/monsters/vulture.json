@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -127,6 +128,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Beak",
       "recharge": null,
       "slug": "beak",
@@ -213,6 +215,7 @@
       "description": "The [[lookup @name lowercase]]{monster} has Advantage on an attack roll against a creature if at least one of the [[lookup @name lowercase]]{monster}'s allies is within 5 feet of the creature and the ally doesn't have the Incapacitated condition.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "pack_tactics",
       "name": "Pack Tactics",
       "recharge": null,
       "slug": "pack-tactics",

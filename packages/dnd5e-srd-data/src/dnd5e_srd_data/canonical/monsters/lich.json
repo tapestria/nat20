@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -93,9 +94,10 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes three attacks, using [[/item .6qvUZeTimud7ekV8]] or [[/item .9p8yotv4r7nt3NWl]] in any combination.",
+      "description": "The [[lookup @name lowercase]]{monster} makes three attacks, using [[/item .6qvUZeTimud7ekV8]]{Eldritch Burst} or [[/item .9p8yotv4r7nt3NWl]]{Paralyzing Touch} in any combination.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Multiattack",
       "recharge": null,
       "slug": "multiattack",
@@ -107,6 +109,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -192,6 +195,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -277,6 +281,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -362,6 +367,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -447,6 +453,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -532,6 +539,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -617,6 +625,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -702,6 +711,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -787,6 +797,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -888,6 +899,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -989,6 +1001,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -1090,6 +1103,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -1191,6 +1205,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -1292,6 +1307,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -1393,6 +1409,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -1494,6 +1511,7 @@
       "description": "The [[lookup @name lowercase]]{monster} casts one of the following spells, using Intelligence as the spellcasting ability (spell save DC [[lookup @attributes.spell.dc]]):\n\nAt Will: Detect Magic, Detect Thoughts, Dispel Magic, Fireball (level 5 version), Invisibility, Lightning Bolt (level 5 version), Mage Hand, Prestidigitation\n\n2/Day Each: Animate Dead, Dimension Door, Plane Shift\n\n1/Day Each: Chain Lightning, Finger of Death, Power Word Kill, Scrying",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Spellcasting",
       "recharge": null,
       "slug": "spellcasting",
@@ -1505,6 +1523,7 @@
           "activation": {
             "condition": "",
             "override": true,
+            "reaction_conditions": [],
             "type": "reaction",
             "value": null
           },
@@ -1590,6 +1609,7 @@
           "activation": {
             "condition": "",
             "override": true,
+            "reaction_conditions": [],
             "type": "reaction",
             "value": null
           },
@@ -1675,6 +1695,7 @@
       "description": "The [[lookup @name lowercase]]{monster} casts Counterspell or Shield in response to the spell's trigger, using the same spellcasting ability as Spellcasting.",
       "kind": "reaction",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Protective Magic",
       "recharge": null,
       "slug": "protective-magic",
@@ -1686,6 +1707,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -1798,6 +1820,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Eldritch Burst",
       "recharge": null,
       "slug": "eldritch-burst",
@@ -1809,6 +1832,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -1931,6 +1955,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]], and the target has the &amp;Reference[Paralyzed apply=false] condition until the start of the [[lookup @name lowercase]]{monster}'s next turn.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Paralyzing Touch",
       "recharge": null,
       "slug": "paralyzing-touch",
@@ -1971,6 +1996,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "legendary",
             "value": 1
           },
@@ -2071,6 +2097,7 @@
       "description": "The [[lookup @name lowercase]]{monster} teleports up to [[lookup @range.value activity=zvj61Na7MlcIN2xw]] [[lookup @range.units activity=zvj61Na7MlcIN2xw]]. [[lookup @range.special activity=zvj61Na7MlcIN2xw]], and each [[lookup @target.affects.type activity=zvj61Na7MlcIN2xw]] within [[lookup @target.template.size activity=zvj61Na7MlcIN2xw]] [[lookup @target.template.units activity=zvj61Na7MlcIN2xw]]. of the space it left takes [[/damage average]] damage.",
       "kind": "legendary",
       "legendary_cost": 1,
+      "mechanic": null,
       "name": "Deathly Teleport",
       "recharge": null,
       "slug": "deathly-teleport",
@@ -2082,6 +2109,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "legendary",
             "value": 1
           },
@@ -2145,7 +2173,8 @@
             "dc": {
               "calculation": "int",
               "formula": "8 + @mod + @prof"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -2188,6 +2217,7 @@
       "description": "Constitution Saving Throw: DC [[lookup @save.dc.value activity=qSz7l1czwIc5j9gP]], each [[lookup @target.affects.type activity=qSz7l1czwIc5j9gP]] that isn't an Undead in a [[lookup @target.template.size activity=qSz7l1czwIc5j9gP]]-foot Emanation originating from the [[lookup @name lowercase]]{monster}.\n\nFailure: [[/damage average]] damage.\n\nSuccess: Half damage.\n\nFailure or Success: The [[lookup @name lowercase]]{monster} can't take this action again until the start of its next turn.",
       "kind": "legendary",
       "legendary_cost": 1,
+      "mechanic": null,
       "name": "Disrupt Life",
       "recharge": null,
       "slug": "disrupt-life",
@@ -2199,6 +2229,7 @@
           "activation": {
             "condition": "",
             "override": true,
+            "reaction_conditions": [],
             "type": "legendary",
             "value": 1
           },
@@ -2284,6 +2315,7 @@
       "description": "The [[lookup @name lowercase]]{monster} casts Fear, using the same spellcasting ability as Spellcasting. The [[lookup @name lowercase]]{monster} can't take this action again until the start of its next turn.",
       "kind": "legendary",
       "legendary_cost": 1,
+      "mechanic": null,
       "name": "Frightening Gaze",
       "recharge": null,
       "slug": "frightening-gaze",
@@ -2357,6 +2389,7 @@
           "activation": {
             "condition": "fails a saving throw",
             "override": false,
+            "reaction_conditions": [],
             "type": "special",
             "value": null
           },
@@ -2448,6 +2481,7 @@
       "description": "If the [[lookup @name lowercase]]{monster} fails a saving throw, it can choose to succeed instead.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "legendary_resistance",
       "name": "Legendary Resistance",
       "recharge": null,
       "slug": "legendary-resistance",
@@ -2459,6 +2493,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "",
             "value": null
           },
@@ -2540,6 +2575,7 @@
       "description": "If destroyed, the [[lookup @name lowercase]]{monster} reforms in [[/r 1d10]] days if it has a spirit jar, reviving with all its Hit Points. The new body appears in an unoccupied space within the [[lookup @name lowercase]]{monster}'s lair.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Spirit Jar",
       "recharge": null,
       "slug": "spirit-jar",

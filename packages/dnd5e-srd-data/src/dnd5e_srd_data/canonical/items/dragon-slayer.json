@@ -4,6 +4,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -109,6 +110,7 @@
   "damage_parts": [],
   "description": "Weapon (Any Simple or Martial), Rare\n\nYou gain a +1 bonus to attack rolls and damage rolls made with this magic weapon.\n\nThe weapon deals an extra 3d6 damage of the weapon's type if the target is a Dragon.\n\n@Embed[Compendium.dnd5e.content24.JournalEntry.dmgFoundryRefere.JournalEntryPage.Ok4iCgD25ENgoRxE cite=false caption=false classes=\"hide-in-embed\"]",
   "item_kind": "weapon",
+  "magical": true,
   "magical_bonus": 1,
   "mastery": null,
   "name": "Dragon Slayer",

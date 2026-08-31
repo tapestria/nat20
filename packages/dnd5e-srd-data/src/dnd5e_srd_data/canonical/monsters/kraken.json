@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -93,9 +94,10 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes two [[/item .mmTentacle000000]] attacks and uses [[/item .mmFling000000000]], [[/item .mmLightningStrik]], or [[/item .mmSwallow0000000]].",
+      "description": "The [[lookup @name lowercase]]{monster} makes two [[/item .mmTentacle000000]]{Tentacle} attacks and uses [[/item .mmFling000000000]]{Fling}, [[/item .mmLightningStrik]]{Lightning Strike}, or [[/item .mmSwallow0000000]]{Swallow}.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Multiattack",
       "recharge": null,
       "slug": "multiattack",
@@ -107,6 +109,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -229,6 +232,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "special",
             "value": null
           },
@@ -315,6 +319,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]]. The target has the &amp;Reference[Grappled apply=false] condition (escape DC [[lookup @skills.ath.passive]]) from one of ten tentacles, and it has the &amp;Reference[Restrained apply=false] condition until the grapple ends.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Tentacle",
       "recharge": null,
       "slug": "tentacle",
@@ -326,6 +331,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -399,7 +405,8 @@
             "dc": {
               "calculation": "str",
               "formula": "8 + @mod + @prof"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -442,6 +449,7 @@
       "description": "The [[lookup @name lowercase]]{monster} throws a [[lookup @target.affects.special activity=E7YKnUIWsavrnNzK]] Grappled by it to a space it can see within [[lookup @range.value activity=E7YKnUIWsavrnNzK]] feet of itself [[lookup @range.special activity=E7YKnUIWsavrnNzK]].\n\nDexterity Saving Throw: DC [[lookup @save.dc.value activity=E7YKnUIWsavrnNzK]], the creature thrown and each creature in the destination space.\n\nFailure: [[/damage average]] damage, and the target has the &amp;Reference[Prone apply=false] condition.\n\nSuccess: Half damage.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Fling",
       "recharge": null,
       "slug": "fling",
@@ -453,6 +461,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -516,7 +525,8 @@
             "dc": {
               "calculation": "con",
               "formula": "8 + @mod + @prof"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -559,6 +569,7 @@
       "description": "Dexterity Saving Throw: DC [[lookup @save.dc.value activity=v39JwGqgfaKiA4vc]], one [[lookup @target.affects.type activity=v39JwGqgfaKiA4vc]] the [[lookup @name lowercase]]{monster} can see within [[lookup @range.value activity=v39JwGqgfaKiA4vc]] feet.\n\nFailure: [[/damage average]] damage.\n\nSuccess: Half damage.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Lightning Strike",
       "recharge": null,
       "slug": "lightning-strike",
@@ -570,6 +581,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "bonus",
             "value": null
           },
@@ -643,7 +655,8 @@
             "dc": {
               "calculation": "str",
               "formula": "8 + @mod + @prof"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -686,6 +699,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "",
             "value": null
           },
@@ -786,6 +800,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "",
             "value": null
           },
@@ -841,7 +856,8 @@
             "dc": {
               "calculation": "",
               "formula": "25"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -884,6 +900,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -975,6 +992,7 @@
       "description": "Dexterity Saving Throw: DC [[lookup @save.dc.value activity=YorssyWMumAsvzx3]], [[lookup @target.affects.labels.statblock activity=YorssyWMumAsvzx3]] Grappled by the [[lookup @name lowercase]]{monster} (it can have up to four creatures swallowed at a time).\n\nFailure: [[/damage average activity=YorssyWMumAsvzx3]] damage. If the target is Large or smaller, it is swallowed and no longer Grappled. A swallowed creature has the &amp;Reference[Restrained apply=false] condition, has &amp;Reference[Total Cover] against attacks and other effects outside the [[lookup @name lowercase]]{monster}, and takes [[/damage average activity=zrWNjO9mkbN28spL]] damage at the start of each of its turns.\n\nIf the [[lookup @name lowercase]]{monster} takes 50 damage or more on a single turn from a creature inside it, the [[lookup @name lowercase]]{monster} must succeed on a [[/save format=long activity=rGeGukkm2t2fXsoy]] at the end of that turn or regurgitate all swallowed creatures, each of which falls in a space within 10 feet of the [[lookup @name lowercase]]{monster} with the &amp;Reference[Prone apply=false] condition. If the [[lookup @name lowercase]]{monster} dies, any swallowed creature no longer has the Restrained condition and can escape from the corpse using 15 feet of movement, exiting Prone.",
       "kind": "bonus_action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Swallow",
       "recharge": null,
       "slug": "swallow",
@@ -1015,6 +1033,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "legendary",
             "value": 1
           },
@@ -1093,9 +1112,10 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} uses [[/item .mmLightningStrik]].",
+      "description": "The [[lookup @name lowercase]]{monster} uses [[/item .mmLightningStrik]]{Lightning Strike}.",
       "kind": "legendary",
       "legendary_cost": 1,
+      "mechanic": null,
       "name": "Storm Bolt",
       "recharge": null,
       "slug": "storm-bolt",
@@ -1107,6 +1127,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "legendary",
             "value": 1
           },
@@ -1162,7 +1183,8 @@
             "dc": {
               "calculation": "con",
               "formula": "8 + @mod + @prof"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -1205,6 +1227,7 @@
       "description": "Constitution Saving Throw: DC [[lookup @save.dc.value activity=Kquf9zADg0jtKBqw]], each [[lookup @target.affects.type activity=Kquf9zADg0jtKBqw]] in a [[lookup @target.template.size activity=Kquf9zADg0jtKBqw]]-foot Emanation originating from the [[lookup @name lowercase]]{monster} while it is underwater.\n\nFailure: The target has the &amp;Reference[Blinded apply=false] and &amp;Reference[Poisoned apply=false] conditions until the end of the [[lookup @name lowercase]]{monster}'s next turn. The [[lookup @name lowercase]]{monster} then moves up to its Speed.\n\nFailure or Success: The [[lookup @name lowercase]]{monster} can't take this action again until the start of its next turn.",
       "kind": "legendary",
       "legendary_cost": 1,
+      "mechanic": null,
       "name": "Toxic Ink",
       "recharge": null,
       "slug": "toxic-ink",
@@ -1277,6 +1300,7 @@
       "description": "The [[lookup @name lowercase]]{monster} can breathe air and water.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "amphibious",
       "name": "Amphibious",
       "recharge": null,
       "slug": "amphibious",
@@ -1288,6 +1312,7 @@
           "activation": {
             "condition": "fails a saving throw",
             "override": false,
+            "reaction_conditions": [],
             "type": "special",
             "value": null
           },
@@ -1379,6 +1404,7 @@
       "description": "If the [[lookup @name lowercase]]{monster} fails a saving throw, it can choose to succeed instead.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "legendary_resistance",
       "name": "Legendary Resistance",
       "recharge": null,
       "slug": "legendary-resistance",
@@ -1389,6 +1415,7 @@
       "description": "The [[lookup @name lowercase]]{monster} deals double damage to objects and structures.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Siege Monster",
       "recharge": null,
       "slug": "siege-monster",

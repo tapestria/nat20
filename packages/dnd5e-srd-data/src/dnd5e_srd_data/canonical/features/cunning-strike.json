@@ -4,6 +4,7 @@
       "activation": {
         "condition": "When you deal Sneak Attack damage",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },
@@ -59,7 +60,8 @@
         "dc": {
           "calculation": "dex",
           "formula": ""
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 100000,
       "target": {
@@ -102,6 +104,7 @@
       "activation": {
         "condition": "When you deal Snack Attack damage",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },
@@ -157,7 +160,8 @@
         "dc": {
           "calculation": "dex",
           "formula": ""
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 200000,
       "target": {
@@ -200,6 +204,7 @@
       "activation": {
         "condition": "When you deal Sneak Attack damage",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },
@@ -312,6 +317,7 @@
       "activation": {
         "condition": "When you deal Sneak Attack damage",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },

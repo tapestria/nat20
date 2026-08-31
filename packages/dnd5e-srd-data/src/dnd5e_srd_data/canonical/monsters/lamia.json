@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -93,9 +94,10 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes two [[/item .mmClaw0000000000]] attacks. It can replace one attack with a use of [[/item .mmCorruptingTouc]].",
+      "description": "The [[lookup @name lowercase]]{monster} makes two [[/item .mmClaw0000000000]]{Claw} attacks. It can replace one attack with a use of [[/item .mmCorruptingTouc]]{Corrupting Touch}.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Multiattack",
       "recharge": null,
       "slug": "multiattack",
@@ -107,6 +109,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -236,6 +239,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Claw",
       "recharge": null,
       "slug": "claw",
@@ -247,6 +251,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -320,7 +325,8 @@
             "dc": {
               "calculation": "str",
               "formula": "8 + @mod + @prof"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -363,6 +369,7 @@
       "description": "Wisdom Saving Throw: DC [[lookup @save.dc.value activity=F4cByCi1IEouN08a]], [[lookup @target.affects.labels.statblock activity=F4cByCi1IEouN08a]] the [[lookup @name lowercase]]{monster} can see within [[lookup @range.value activity=F4cByCi1IEouN08a]] feet.\n\nFailure: [[/damage average]] damage, and the target is cursed for 1 hour. Until the curse ends, the target has the &amp;Reference[Charmed apply=false] and &amp;Reference[Poisoned apply=false] conditions.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Corrupting Touch",
       "recharge": null,
       "slug": "corrupting-touch",
@@ -374,6 +381,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -461,6 +469,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -548,6 +557,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -651,6 +661,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -754,6 +765,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -857,6 +869,7 @@
       "description": "The [[lookup @name lowercase]]{monster} casts one of the following spells, requiring no Material components and using Charisma as the spellcasting ability (spell save DC [[lookup @attributes.spell.dc]]):\n\nAt Will: Disguise Self (can appear as a Large or Medium biped), Minor Illusion\n\n1/Day Each: Geas, Major Image, Scrying",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Spellcasting",
       "recharge": null,
       "slug": "spellcasting",
@@ -868,6 +881,7 @@
           "activation": {
             "condition": "spending 10 feet of movement",
             "override": false,
+            "reaction_conditions": [],
             "type": "bonus",
             "value": null
           },
@@ -949,6 +963,7 @@
       "description": "The [[lookup @name lowercase]]{monster} jumps up to [[lookup @range.value activity=C28C43DeD8iFtZMe]] feet by [[lookup @activation.condition activity=C28C43DeD8iFtZMe]].",
       "kind": "bonus_action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Leap",
       "recharge": null,
       "slug": "leap",

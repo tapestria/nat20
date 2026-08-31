@@ -4,6 +4,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -98,6 +99,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -197,6 +199,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -296,6 +299,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -402,6 +406,7 @@
   ],
   "description": "Staff, Very Rare (Requires Attunement by a Druid, Sorcerer, Warlock, or Wizard)\n\nYou have Resistance to Fire damage while you hold this staff.\n\nSpells. The staff has 10 charges. While holding the staff, you can cast one of the spells on the following table from it, using your spell save DC. The table indicates how many charges you must expend to cast the spell.\n\nSpellCharge Cost\n\nBurning Hands\n\n1\n\nFireball\n\n3\n\nWall of Fire\n\n4\n\nRegaining Charges. The staff regains 1d6 + 4 expended charges daily at dawn. If you expend the last charge, roll [[/r 1d20]]. On a 1, the staff crumbles into cinders and is destroyed.",
   "item_kind": "weapon",
+  "magical": true,
   "magical_bonus": 0,
   "mastery": "topple",
   "name": "Staff of Fire",

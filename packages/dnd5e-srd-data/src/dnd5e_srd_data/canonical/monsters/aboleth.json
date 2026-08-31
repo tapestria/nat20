@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -96,6 +97,7 @@
       "description": "If destroyed, the [[lookup @name lowercase]]{monster} gains a new body in [[/r 5d10]] days, reviving with all its Hit Points in the Far Realm or another location chosen by the DM.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Eldritch Restoration",
       "recharge": null,
       "slug": "eldritch-restoration",
@@ -107,6 +109,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -229,6 +232,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "special",
             "value": null
           },
@@ -315,6 +319,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]]. If the target is a Large or smaller creature, it has the &amp;Reference[Grappled apply=false] condition (escape DC [[lookup @skills.ath.passive]]) from one of four tentacles.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Tentacle",
       "recharge": null,
       "slug": "tentacle",
@@ -326,6 +331,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -404,9 +410,10 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes two [[/item .mmTentacle000000]] attacks and uses either [[/item .7gP0oX3L1RKRaBGH]] or [[/item .yiiKNaJ2svcUWqLi]] if available.",
+      "description": "The [[lookup @name lowercase]]{monster} makes two [[/item .mmTentacle000000]]{Tentacle} attacks and uses either [[/item .7gP0oX3L1RKRaBGH]]{Consume Memories} or [[/item .yiiKNaJ2svcUWqLi]]{Dominate Mind} if available.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Multiattack",
       "recharge": null,
       "slug": "multiattack",
@@ -418,6 +425,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -473,7 +481,8 @@
             "dc": {
               "calculation": "",
               "formula": "16"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -516,6 +525,7 @@
       "description": "Wisdom Saving Throw: DC [[lookup @save.dc.value activity=zdXAMnjaOcsVmLZP]], one [[lookup @target.affects.type activity=zdXAMnjaOcsVmLZP]] the [[lookup @name lowercase]]{monster} can see within [[lookup @range.value activity=zdXAMnjaOcsVmLZP]] feet.\n\nFailure: The target has the &amp;Reference[Charmed apply=false] condition until the [[lookup @name lowercase]]{monster} dies or is on a different plane of existence from the target. While Charmed, the target acts as an ally to the [[lookup @name lowercase]]{monster} and is under its control while within [[lookup @target.template.size activity=zdXAMnjaOcsVmLZP]] feet of it. In addition, the [[lookup @name lowercase]]{monster} and the target can communicate telepathically with each other over any distance.\n\nThe target repeats the save whenever it takes damage as well as after every 24 hours it spends at least 1 mile away from the [[lookup @name lowercase]]{monster}, ending the effect on itself on a success.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Dominate Mind",
       "recharge": null,
       "slug": "dominate-mind",
@@ -527,6 +537,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -590,7 +601,8 @@
             "dc": {
               "calculation": "",
               "formula": "16"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -633,6 +645,7 @@
       "description": "Intelligence Saving Throw: DC [[lookup @save.dc.value activity=uI3HDQ1grN123Or3]], [[lookup @target.affects.labels.statblock activity=uI3HDQ1grN123Or3]] within [[lookup @range.value activity=uI3HDQ1grN123Or3]] feet. [[lookup @target.affects.special activity=uI3HDQ1grN123Or3]] by the [[lookup @name lowercase]]{monster}.\n\nFailure: [[/damage average]] damage.\n\nSuccess: [[lookup @damage.onSave capitalize activity=uI3HDQ1grN123Or3]] damage.\n\nFailure or Success: The [[lookup @name lowercase]]{monster} gains the target's memories if the target is a Humanoid and is reduced to 0 Hit Points by this action.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Consume Memories",
       "recharge": null,
       "slug": "consume-memories",
@@ -662,6 +675,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "legendary",
             "value": 1
           },
@@ -743,6 +757,7 @@
       "description": "The [[lookup @name lowercase]]{monster} makes one Tentacle attack.",
       "kind": "legendary",
       "legendary_cost": 1,
+      "mechanic": null,
       "name": "Lash",
       "recharge": null,
       "slug": "lash",
@@ -754,6 +769,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "legendary",
             "value": 1
           },
@@ -843,9 +859,10 @@
           }
         }
       ],
-      "description": "If the [[lookup @name lowercase]]{monster} has at least one creature Charmed or Grappled, it uses [[/item .7gP0oX3L1RKRaBGH]] and regains [[/healing average]].",
+      "description": "If the [[lookup @name lowercase]]{monster} has at least one creature Charmed or Grappled, it uses [[/item .7gP0oX3L1RKRaBGH]]{Consume Memories} and regains [[/healing average]].",
       "kind": "legendary",
       "legendary_cost": 1,
+      "mechanic": null,
       "name": "Psychic Drain",
       "recharge": null,
       "slug": "psychic-drain",
@@ -918,6 +935,7 @@
       "description": "The [[lookup @name lowercase]]{monster} can breathe air and water.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "amphibious",
       "name": "Amphibious",
       "recharge": null,
       "slug": "amphibious",
@@ -929,6 +947,7 @@
           "activation": {
             "condition": "fails a saving throw",
             "override": false,
+            "reaction_conditions": [],
             "type": "special",
             "value": null
           },
@@ -1020,6 +1039,7 @@
       "description": "If the [[lookup @name lowercase]]{monster} fails a saving throw, it can choose to succeed instead.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "legendary_resistance",
       "name": "Legendary Resistance",
       "recharge": null,
       "slug": "legendary-resistance",
@@ -1031,6 +1051,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "",
             "value": null
           },
@@ -1086,7 +1107,8 @@
             "dc": {
               "calculation": "",
               "formula": "14"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -1129,6 +1151,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "",
             "value": null
           },
@@ -1229,6 +1252,7 @@
       "description": "While underwater, the [[lookup @name lowercase]]{monster} is surrounded by mucus.\n\nConstitution Saving Throw: DC 14, each [[lookup @target.affects.type activity=clFFG8uDBSFzxIo8]] in a [[lookup @target.template.size activity=clFFG8uDBSFzxIo8]]-[[lookup @target.template.units activity=clFFG8uDBSFzxIo8]] Emanation originating from the [[lookup @name lowercase]]{monster} at the end of the [[lookup @name lowercase]]{monster}'s turn.\n\nFailure: The target is cursed. Until the curse ends, the target's skin becomes slimy, the target can breathe air and water, and it can't regain Hit Points unless it is underwater.\n\nWhile the cursed creature is outside a body of water, the creature takes [[/damage average activity=JrxCVyCOsBAMVZS7]] damage at the end of every 10 minutes unless moisture is applied to its skin before those minutes have passed.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Mucus Cloud",
       "recharge": null,
       "slug": "mucus-cloud",
@@ -1239,6 +1263,7 @@
       "description": "If a creature the [[lookup @name lowercase]]{monster} can see communicates telepathically with the [[lookup @name lowercase]]{monster}, the [[lookup @name lowercase]]{monster} learns the creature's greatest desires.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Probing Telepathy",
       "recharge": null,
       "slug": "probing-telepathy",

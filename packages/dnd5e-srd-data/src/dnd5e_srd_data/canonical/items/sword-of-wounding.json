@@ -4,6 +4,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },
@@ -107,6 +108,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },
@@ -164,7 +166,8 @@
         "dc": {
           "calculation": "",
           "formula": "15"
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 0,
       "target": {
@@ -209,6 +212,7 @@
   "damage_parts": [],
   "description": "Weapon (Glaive, Greatsword, Longsword, Rapier, Scimitar, or Shortsword), Rare (Requires Attunement)\n\nWhen you hit a creature with an attack using this magic weapon, the target takes an extra 2d6 Necrotic damage and must succeed on a DC 15 Constitution saving throw or be unable to regain Hit Points for 1 hour. The target repeats the save at the end of each of its turns, ending the effect on itself on a success.\n\n@Embed[Compendium.dnd5e.content24.JournalEntry.dmgFoundryRefere.JournalEntryPage.Ok4iCgD25ENgoRxE cite=false caption=false classes=\"hide-in-embed\"]",
   "item_kind": "weapon",
+  "magical": true,
   "magical_bonus": 0,
   "mastery": null,
   "name": "Sword of Wounding",

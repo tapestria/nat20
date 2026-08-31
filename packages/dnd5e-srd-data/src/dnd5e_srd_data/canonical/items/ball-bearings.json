@@ -4,6 +4,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": 1
       },
@@ -69,7 +70,8 @@
         "dc": {
           "calculation": "",
           "formula": "10"
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 0,
       "target": {
@@ -112,6 +114,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "minute",
         "value": 10
       },

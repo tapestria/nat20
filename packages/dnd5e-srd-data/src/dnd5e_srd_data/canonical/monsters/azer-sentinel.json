@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -144,6 +145,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Burning Hammer",
       "recharge": null,
       "slug": "burning-hammer",
@@ -238,6 +240,7 @@
           "activation": {
             "condition": "at the end of each of this creature's turns",
             "override": false,
+            "reaction_conditions": [],
             "type": "special",
             "value": null
           },
@@ -338,6 +341,7 @@
       "description": "At the end of each of the [[lookup @name lowercase]]{monster}'s turns, each [[lookup @target.affects.type activity=15VgJKVXwYBOFSqJ]] of the [[lookup @name lowercase]]{monster}'s choice in a [[lookup @target.template.size activity=15VgJKVXwYBOFSqJ]]-foot Emanation originating from the [[lookup @name lowercase]]{monster} takes [[/damage average]] damage unless the [[lookup @name lowercase]]{monster} has the Incapacitated condition.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Fire Aura",
       "recharge": null,
       "slug": "fire-aura",
@@ -348,6 +352,7 @@
       "description": "The [[lookup @name lowercase]]{monster} sheds Bright Light in a 10-foot radius and Dim Light for an additional 10 feet.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Illumination",
       "recharge": null,
       "slug": "illumination",

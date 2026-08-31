@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -154,6 +155,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]], and the target has the &amp;Reference[Poisoned apply=false] condition until the start of the [[lookup @name lowercase]]{monster}'s next turn.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Bite",
       "recharge": null,
       "slug": "bite",
@@ -165,6 +167,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -230,7 +233,8 @@
             "dc": {
               "calculation": "str",
               "formula": "8 + @mod + @prof"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -273,6 +277,7 @@
       "description": "Dexterity Saving Throw: DC [[lookup @save.dc.value activity=Ln5NXBaHGKlwdoiP]], one Large or smaller [[lookup @target.affects.type activity=Ln5NXBaHGKlwdoiP]] the [[lookup @name lowercase]]{monster} can see within [[lookup @range.value activity=Ln5NXBaHGKlwdoiP]] feet.\n\nFailure: The target has the &amp;Reference[Restrained apply=false] condition until the web is destroyed (AC 10; HP 5; Vulnerability to Fire damage; Immunity to Bludgeoning, Poison, and Psychic damage).",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Web Strand",
       "recharge": "5-6",
       "slug": "web-strand",
@@ -284,6 +289,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -362,9 +368,10 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes one [[/item .mmBite0000000000]] attack and one [[/item .mmClaw0000000000]] attack.",
+      "description": "The [[lookup @name lowercase]]{monster} makes one [[/item .mmBite0000000000]]{Bite} attack and one [[/item .mmClaw0000000000]]{Claw} attack.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Multiattack",
       "recharge": null,
       "slug": "multiattack",
@@ -376,6 +383,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -488,6 +496,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Claw",
       "recharge": null,
       "slug": "claw",
@@ -499,6 +508,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "bonus",
             "value": null
           },
@@ -580,6 +590,7 @@
       "description": "The [[lookup @name lowercase]]{monster} pulls [[lookup @target.affects.labels.statblock activity=jWkEQYHBd7aht1kG]] within [[lookup @range.value activity=jWkEQYHBd7aht1kG]] feet of itself that is Restrained by its Web Strand up to 25 feet straight toward itself.",
       "kind": "bonus_action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Reel",
       "recharge": null,
       "slug": "reel",
@@ -666,6 +677,7 @@
       "description": "The [[lookup @name lowercase]]{monster} can climb difficult surfaces, including along ceilings, without needing to make an ability check.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "spider_climb",
       "name": "Spider Climb",
       "recharge": null,
       "slug": "spider-climb",
@@ -676,6 +688,7 @@
       "description": "The [[lookup @name lowercase]]{monster} ignores movement restrictions caused by webs, and the [[lookup @name lowercase]]{monster} knows the location of any other creature in contact with the same web.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Web Walker",
       "recharge": null,
       "slug": "web-walker",

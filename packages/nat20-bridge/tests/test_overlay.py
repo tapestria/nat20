@@ -1,5 +1,10 @@
+from datetime import date
+
 from dnd5e_srd_data.loader import BundledAssetLoader, MemoryAssetLoader
+from dnd5e_srd_data.schema.common import Provenance, ReviewState
+from dnd5e_srd_data.schema.condition import Condition, ConditionEffect, ConditionEffectKind
 from dnd5e_srd_data.schema.item import Weapon
+from dnd5e_srd_data.schema.monster import MonsterTrait
 
 from nat20_bridge.overlay import OverlayAssetLoader
 
@@ -8,6 +13,68 @@ def _hb_weapon(slug: str = "hb-frost-brand") -> Weapon:
     base = BundledAssetLoader().get_weapon("longsword")
     assert base is not None
     return base.model_copy(update={"slug": slug, "name": "Frost Brand"})
+
+
+def _condition(slug: str) -> Condition:
+    return Condition(
+        slug=slug,
+        name=slug,
+        description="",
+        effects=[ConditionEffect(kind=ConditionEffectKind.ADVANTAGE_ATTACKS_AGAINST, value=5)],
+        implies=[],
+        provenance=Provenance(
+            source="foundry",
+            source_url="x",
+            ingest_date=date(2026, 8, 27),
+            ingest_version="v1",
+            srd_version=frozenset({"5.2"}),
+        ),
+        review=ReviewState(),
+    )
+
+
+def _trait(slug: str) -> MonsterTrait:
+    return MonsterTrait(
+        slug=slug,
+        name=slug,
+        description="",
+        mechanic=None,
+        provenance=Provenance(
+            source="foundry",
+            source_url="x",
+            ingest_date=date(2026, 8, 27),
+            ingest_version="v1",
+            srd_version=frozenset({"5.2"}),
+        ),
+        review=ReviewState(),
+    )
+
+
+def test_overlay_covers_traits_get_and_fallthrough() -> None:
+    base_mr = _trait("magic-resistance")
+    overlay_hb = _trait("hb-frenzy")
+    loader = OverlayAssetLoader(
+        base=MemoryAssetLoader(traits=[base_mr]),
+        overlay=MemoryAssetLoader(traits=[overlay_hb]),
+    )
+    assert loader.get_trait("magic-resistance") is base_mr  # base hit
+    assert loader.get_trait("hb-frenzy") is overlay_hb  # base miss -> overlay fallthrough
+    assert loader.get_trait("nope") is None  # unknown slug
+    assert ("traits", "magic-resistance") in loader
+    assert ("traits", "hb-frenzy") in loader
+    assert ("traits", "nope") not in loader
+
+
+def test_overlay_list_slugs_traits_merges_base_first_no_duplicates() -> None:
+    shared = _trait("magic-resistance")
+    overlay_shadow = _trait("magic-resistance")  # same slug — must not duplicate, base wins on get
+    overlay_extra = _trait("hb-frenzy")
+    loader = OverlayAssetLoader(
+        base=MemoryAssetLoader(traits=[shared, _trait("amphibious")]),
+        overlay=MemoryAssetLoader(traits=[overlay_shadow, overlay_extra]),
+    )
+    assert loader.list_slugs("traits") == ["amphibious", "magic-resistance", "hb-frenzy"]
+    assert loader.get_trait("magic-resistance") is shared
 
 
 def test_overlay_serves_homebrew_and_falls_through() -> None:
@@ -108,3 +175,30 @@ def test_overlay_covers_every_category() -> None:
     assert loader.get_feature("hb-nope") is None
     assert ("monsters", "hb-goblin") in loader
     assert ("monsters", "hb-nope") not in loader
+
+
+def test_overlay_covers_conditions_get_and_fallthrough() -> None:
+    base_prone = _condition("prone")
+    overlay_hb = _condition("hb-blinded")
+    loader = OverlayAssetLoader(
+        base=MemoryAssetLoader(conditions=[base_prone]),
+        overlay=MemoryAssetLoader(conditions=[overlay_hb]),
+    )
+    assert loader.get_condition("prone") is base_prone  # base hit
+    assert loader.get_condition("hb-blinded") is overlay_hb  # base miss -> overlay fallthrough
+    assert loader.get_condition("nope") is None  # unknown slug
+    assert ("conditions", "prone") in loader
+    assert ("conditions", "hb-blinded") in loader
+    assert ("conditions", "nope") not in loader
+
+
+def test_overlay_list_conditions_merges_base_first_no_duplicates() -> None:
+    shared = _condition("prone")
+    overlay_shadow = _condition("prone")  # same slug — must not duplicate, base wins on get
+    overlay_extra = _condition("hb-blinded")
+    loader = OverlayAssetLoader(
+        base=MemoryAssetLoader(conditions=[shared, _condition("unconscious")]),
+        overlay=MemoryAssetLoader(conditions=[overlay_shadow, overlay_extra]),
+    )
+    assert loader.list_conditions() == ["prone", "unconscious", "hb-blinded"]
+    assert loader.get_condition("prone") is shared

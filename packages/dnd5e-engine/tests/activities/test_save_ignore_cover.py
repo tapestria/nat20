@@ -1,6 +1,7 @@
 """C22 seam: ``SaveBlock.ignore_cover`` (Sacred Flame — "The target gains no
-benefit from Half Cover or Three-Quarters Cover for this save"). The engine
-reads it via getattr so it works before and after the dataset field lands."""
+benefit from Half Cover or Three-Quarters Cover for this save"). The shipped
+dataset field is read directly off ``activity.save.ignore_cover``; this suite
+exercises the ``roll_save`` primitive's fold in isolation."""
 
 from __future__ import annotations
 

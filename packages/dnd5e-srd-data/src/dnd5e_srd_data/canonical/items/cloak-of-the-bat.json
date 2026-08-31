@@ -4,6 +4,7 @@
       "activation": {
         "condition": "in an area of Dim Light or Darkness",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },
@@ -97,6 +98,7 @@
       "activation": {
         "condition": "in an area of Dim Light or Darkness",
         "override": true,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },

@@ -4,6 +4,14 @@
       "activation": {
         "condition": "When you take damage",
         "override": false,
+        "reaction_conditions": [
+          {
+            "condition_text": "When you take damage",
+            "kind": "takes_damage",
+            "max_range_ft": null,
+            "target_spell_slug": null
+          }
+        ],
         "type": "reaction",
         "value": null
       },

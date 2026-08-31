@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -137,6 +138,7 @@
           "activation": {
             "condition": "the swarm is &Reference[Bloodied]",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -259,6 +261,7 @@
       "description": "[[/attack extended activity=rO8NirkWF6w9GXTc]]. [[/damage average extended activity=rO8NirkWF6w9GXTc]], or [[/damage average activity=hzeHzcSKHC4AvIJQ]] damage if [[lookup @activation.condition activity=hzeHzcSKHC4AvIJQ]]. If the target is a Medium or smaller creature, it has the &amp;Reference[Prone apply=false] condition.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Swarm of Grasping Hands",
       "recharge": null,
       "slug": "swarm-of-grasping-hands",
@@ -366,6 +369,7 @@
       "description": "The swarm can occupy another creature's space and vice versa, and the swarm can move through any opening large enough for a Tiny creature. The swarm can't regain Hit Points or gain Temporary Hit Points.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "swarm",
       "name": "Swarm",
       "recharge": null,
       "slug": "swarm",

@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -93,9 +94,10 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes two [[/item .mmUmbralDagger00]] attacks.",
+      "description": "The [[lookup @name lowercase]]{monster} makes two [[/item .mmUmbralDagger00]]{Umbral Dagger} attacks.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Multiattack",
       "recharge": null,
       "slug": "multiattack",
@@ -107,6 +109,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -244,6 +247,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]]. If the target is reduced to 0 Hit Points by this attack, the target becomes Stable but has the &amp;Reference[Poisoned apply=false] condition for 1 hour. While it has the Poisoned condition, the target has the &amp;Reference[Paralyzed apply=false] condition.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Umbral Dagger",
       "recharge": null,
       "slug": "umbral-dagger",
@@ -255,6 +259,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "bonus",
             "value": null
           },
@@ -336,6 +341,7 @@
       "description": "The [[lookup @name lowercase]]{monster} takes the &amp;Reference[Dash] or &amp;Reference[Disengage] action.",
       "kind": "bonus_action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Deathless Agility",
       "recharge": null,
       "slug": "deathless-agility",
@@ -428,6 +434,7 @@
       "description": "While the [[lookup @name lowercase]]{monster} and its vampire master are on the same plane of existence, the vampire can communicate with the [[lookup @name lowercase]]{monster} telepathically, and the vampire can perceive through the [[lookup @name lowercase]]{monster}'s senses.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Vampiric Connection",
       "recharge": null,
       "slug": "vampiric-connection",

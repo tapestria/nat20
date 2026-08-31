@@ -1,8 +1,10 @@
 """Combat participant types — ``Combatant`` and ``BehaviorProfile``.
 
 Host-agnostic value types: stdlib + pydantic + the engine's own
-``ActiveCondition``. ``Combatant`` is the engine's per-creature runtime combat
-state; hosts read it through ``dnd5e_engine.views.LiveCombatView``.
+``ActiveCondition``, plus the dataset schema import
+``dnd5e_srd_data.schema.monster.MonsterTraitMechanic``. ``Combatant`` is the
+engine's per-creature runtime combat state; hosts read it through
+``dnd5e_engine.views.LiveCombatView``.
 """
 
 from __future__ import annotations
@@ -10,6 +12,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Any
 
+from dnd5e_srd_data.schema.monster import MonsterTraitMechanic
 from pydantic import BaseModel, Field, model_validator
 
 from dnd5e_engine.activities.passive_stats import CombatantMovementModes, CombatantSenses
@@ -177,6 +180,20 @@ class Combatant(BaseModel):
     # / reaction_available / disengaging_this_turn. Defaults False (rider may
     # fire) for every combatant.
     sneak_attack_spent_this_turn: bool = False
+    # C22: typed SRD 5.2 monster traits hydrated from the template's
+    # ``special_abilities[].mechanic`` (Magic Resistance → advantage on saves
+    # against spells in ``activities/save_primitive.py``; C18 consumes Pack
+    # Tactics / Sunlight Sensitivity / Undead Fortitude / Regeneration …).
+    # Empty for PCs and template-less foes.
+    trait_mechanics: list[MonsterTraitMechanic] = Field(default_factory=list)
+    # C22: how to read B/P/S entries in ``damage_resistances``. True (default
+    # for host-authored specs) = SRD 5.1 stat-block convention "… from
+    # nonmagical attacks": a magical weapon's or a spell's Bludgeoning /
+    # Piercing / Slashing damage bypasses the resistance. False = the
+    # resistance is unconditional (SRD 5.2 stat blocks; Foundry
+    # ``dr.bypasses == []``). C18's corpus hydration sets it from
+    # ``dr.bypasses``.
+    physical_resistances_nonmagical_only: bool = True
 
     @model_validator(mode="before")
     @classmethod

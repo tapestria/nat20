@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -142,6 +143,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Bite",
       "recharge": null,
       "slug": "bite",
@@ -228,6 +230,7 @@
       "description": "The [[lookup @name lowercase]]{monster} doesn't provoke an &amp;Reference[opportunityattacks]{Opportunity Attack} when it moves out of an enemy's reach.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Agile",
       "recharge": null,
       "slug": "agile",

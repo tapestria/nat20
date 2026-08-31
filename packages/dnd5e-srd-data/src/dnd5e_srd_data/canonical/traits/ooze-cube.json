@@ -1,0 +1,20 @@
+{
+  "description": "The monster fills its entire space and is transparent. Other creatures can enter that space, but a creature that does so is subjected to the monster's Engulf and has Disadvantage on the saving throw.\n\nCreatures inside the monster have &amp;Reference[Total Cover], and the monster can hold one Large creature or up to four Medium or Small creatures inside itself at a time.\n\nAs an action, a creature within [[lookup @range.value activity=EcTOfXWsDJRHLydy]] [[lookup @range.units activity=EcTOfXWsDJRHLydy]]. of the monster can pull a creature or an object out of the monster by succeeding on a [[/check dc=12 ability=str skill=ath format=long]], and the puller takes [[/damage average activity=PMCvyqxfUYiPzNK8]] damage.",
+  "mechanic": null,
+  "name": "Ooze Cube",
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/actors24/ooze/gelatinous-cube.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "ooze-cube"
+}

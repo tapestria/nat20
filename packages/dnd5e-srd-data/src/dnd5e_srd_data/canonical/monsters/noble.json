@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": 1
           },
@@ -127,6 +128,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Rapier",
       "recharge": null,
       "slug": "rapier",
@@ -138,6 +140,7 @@
           "activation": {
             "condition": "hit by a melee attack roll while holding a weapon",
             "override": false,
+            "reaction_conditions": [],
             "type": "reaction",
             "value": null
           },
@@ -219,6 +222,7 @@
       "description": "Trigger: The [[lookup @name lowercase]]{monster} is [[lookup @activation.condition activity=aLG3BRZL7P6OEjwd]]. Response: The [[lookup @name lowercase]]{monster} adds [[lookup @roll.formula activity=aLG3BRZL7P6OEjwd]] to its AC against that attack, possibly causing it to miss.",
       "kind": "reaction",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Parry",
       "recharge": null,
       "slug": "parry",

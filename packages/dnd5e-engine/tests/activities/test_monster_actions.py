@@ -101,13 +101,10 @@ def test_precise_multiattack_repeats_matched_sibling_per_prose_count() -> None:
     assert all(isinstance(a, AttackActivity) and a.name == "Claw" for a in activities)
 
 
-def test_scout_multiattack_fallback_defaults_to_first_sibling() -> None:
-    """With no live distance supplied, the fallback keeps the historical order.
-
-    The Scout's labelless multiattack repeats ``siblings[0]`` — the shortsword,
-    first in ``Monster.actions`` — exactly as before C10-S02 when no
-    ``target_distance_ft`` is passed.
-    """
+def test_scout_multiattack_any_combination_without_distance_uses_one_of_each() -> None:
+    """C22: the Scout's tokens are now labelled, so "Shortsword and Longbow in
+    any combination" joins precisely; with no live distance the two swings are
+    distributed one-of-each in list order (SRD: any combination)."""
     scout = BundledAssetLoader().get_monster("scout")
     assert scout is not None
     action = select_typed_monster_action(scout)
@@ -116,8 +113,7 @@ def test_scout_multiattack_fallback_defaults_to_first_sibling() -> None:
     activities = expand_action_to_activities(scout, action)
     assert len(activities) == 2
     assert all(isinstance(a, AttackActivity) for a in activities)
-    # shortsword is melee (5 ft) — the first-listed sibling.
-    assert all(a.range.units == "ft" and a.range.value == "5" for a in activities)
+    assert [a.range.value for a in activities] == ["5", "150"]
 
 
 def test_scout_multiattack_fallback_prefers_in_range_longbow() -> None:
@@ -153,15 +149,64 @@ def test_scout_multiattack_fallback_ranged_profile_breaks_tie_to_longbow() -> No
     assert all(isinstance(a, AttackActivity) and a.range.value == "150" for a in activities)
 
 
-def test_scout_multiattack_fallback_non_ranged_keeps_list_order_on_tie() -> None:
-    """Both in range but no RANGED profile ⇒ preserve dict order (shortsword)."""
-    scout = BundledAssetLoader().get_monster("scout")
-    assert scout is not None
-    action = select_typed_monster_action(scout)
-    assert action is not None
-    activities = expand_action_to_activities(
-        scout, action, target_distance_ft=5, behavior_profile="AGGRESSIVE", melee_reach_ft=5
+def _melee_and_ranged_siblings() -> tuple[MonsterAction, MonsterAction]:
+    melee = MonsterAction(
+        slug="claw",
+        name="Claw",
+        kind=MonsterActionKind.ACTION,
+        description="Melee Weapon Attack. Claw.",
+        activities=[
+            AttackActivity(
+                name="Claw",
+                range=RangeBlock(units="ft", value="5"),
+                damage=AttackDamageBlock(
+                    parts=[DamagePartBlock(number=1, denomination=6, types=["slashing"])]
+                ),
+            )
+        ],
     )
+    ranged = MonsterAction(
+        slug="sling",
+        name="Sling",
+        kind=MonsterActionKind.ACTION,
+        description="Ranged Weapon Attack. Sling.",
+        activities=[
+            AttackActivity(
+                name="Sling",
+                range=RangeBlock(units="ft", value="150"),
+                damage=AttackDamageBlock(
+                    parts=[DamagePartBlock(number=1, denomination=4, types=["bludgeoning"])]
+                ),
+            )
+        ],
+    )
+    return melee, ranged
+
+
+def test_multiattack_fallback_non_ranged_keeps_list_order_on_tie() -> None:
+    """C22: Scout's tokens now join precisely; this pins the labelless-fallback
+    tie-break with a synthetic monster.
+
+    Both siblings are in range but the profile is not RANGED, so the fallback
+    keeps list order (the first-listed sibling) on the tie — a bare, unjoinable
+    multiattack description ("makes two attacks") cannot take the precise path.
+    """
+    base = BundledAssetLoader().get_monster("owlbear")
+    assert base is not None
+    melee, ranged = _melee_and_ranged_siblings()
+    multiattack = MonsterAction(
+        slug="multiattack",
+        name="Multiattack",
+        kind=MonsterActionKind.ACTION,
+        description="The creature makes two attacks.",
+        activities=[],
+    )
+    monster = base.model_copy(update={"actions": [multiattack, melee, ranged]})
+
+    activities = expand_action_to_activities(
+        monster, multiattack, target_distance_ft=5, behavior_profile="AGGRESSIVE", melee_reach_ft=5
+    )
+
     assert all(isinstance(a, AttackActivity) and a.range.value == "5" for a in activities)
 
 

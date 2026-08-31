@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -93,9 +94,10 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes one [[/item .mmClaws000000000]] attack and one [[/item .mmTail0000000000]] attack, or it makes two [[/item .mmHurlFlame00000]] attacks.",
+      "description": "The [[lookup @name lowercase]]{monster} makes one [[/item .mmClaws000000000]]{Claws} attack and one [[/item .mmTail0000000000]]{Tail} attack, or it makes two [[/item .mmHurlFlame00000]]{Hurl Flame} attacks.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Multiattack",
       "recharge": null,
       "slug": "multiattack",
@@ -107,6 +109,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -229,6 +232,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "special",
             "value": null
           },
@@ -315,6 +319,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]]. If the target is a Large or smaller creature, it has the &amp;Reference[Grappled apply=false] condition (escape DC [[lookup @skills.ath.passive]]) from both claws.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Claws",
       "recharge": null,
       "slug": "claws",
@@ -326,6 +331,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -438,6 +444,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Tail",
       "recharge": null,
       "slug": "tail",
@@ -449,6 +456,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -576,6 +584,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]]. If the target is a flammable object that isn't being worn or carried, it starts burning.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Hurl Flame",
       "recharge": null,
       "slug": "hurl-flame",
@@ -673,6 +682,7 @@
           "activation": {
             "condition": "start of each of its turns",
             "override": false,
+            "reaction_conditions": [],
             "type": "turnStart",
             "value": null
           },
@@ -773,6 +783,7 @@
       "description": "At the start of each of its turns, the [[lookup @name lowercase]]{monster} deals [[/damage average]] damage to any creature [[lookup @target.affects.special activity=1O5eyc72vPW0UxYZ]].",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Barbed Hide",
       "recharge": null,
       "slug": "barbed-hide",
@@ -783,6 +794,7 @@
       "description": "If the [[lookup @name lowercase]]{monster} dies outside the Nine Hells, its body disappears in sulfurous smoke, and it gains a new body instantly, reviving with all its Hit Points somewhere in the Nine Hells.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "restoration",
       "name": "Diabolical Restoration",
       "recharge": null,
       "slug": "diabolical-restoration",
@@ -793,6 +805,7 @@
       "description": "The [[lookup @name lowercase]]{monster} has Advantage on saving throws against spells and other magical effects.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "magic_resistance",
       "name": "Magic Resistance",
       "recharge": null,
       "slug": "magic-resistance",

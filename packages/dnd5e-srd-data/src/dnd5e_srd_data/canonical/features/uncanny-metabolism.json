@@ -4,6 +4,7 @@
       "activation": {
         "condition": "When you roll initiative",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },

@@ -4,6 +4,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -67,7 +68,8 @@
         "dc": {
           "calculation": "spellcasting",
           "formula": ""
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 100000,
       "target": {
@@ -110,6 +112,7 @@
       "activation": {
         "condition": "if the globe strikes a body of water",
         "override": true,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },
@@ -201,6 +204,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -292,6 +296,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -365,7 +370,8 @@
         "dc": {
           "calculation": "spellcasting",
           "formula": ""
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 400000,
       "target": {

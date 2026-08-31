@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -93,9 +94,10 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes two [[/item .mmClaw0000000000]] attacks and one [[/item .mmInfernalSting0]] attack.",
+      "description": "The [[lookup @name lowercase]]{monster} makes two [[/item .mmClaw0000000000]]{Claw} attacks and one [[/item .mmInfernalSting0]]{Infernal Sting} attack.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Multiattack",
       "recharge": null,
       "slug": "multiattack",
@@ -107,6 +109,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -219,6 +222,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Claw",
       "recharge": null,
       "slug": "claw",
@@ -230,6 +234,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -369,6 +374,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]], and the target has the &amp;Reference[Poisoned apply=false] condition until the start of the [[lookup @name lowercase]]{monster}'s next turn. While Poisoned, the target can't regain Hit Points.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Infernal Sting",
       "recharge": null,
       "slug": "infernal-sting",
@@ -465,6 +471,7 @@
       "description": "If the [[lookup @name lowercase]]{monster} dies outside the Nine Hells, its body disappears in sulfurous smoke, and it gains a new body instantly, reviving with all its Hit Points somewhere in the Nine Hells.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "restoration",
       "name": "Diabolical Restoration",
       "recharge": null,
       "slug": "diabolical-restoration",
@@ -475,6 +482,7 @@
       "description": "The [[lookup @name lowercase]]{monster} has Advantage on saving throws against spells and other magical effects.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "magic_resistance",
       "name": "Magic Resistance",
       "recharge": null,
       "slug": "magic-resistance",

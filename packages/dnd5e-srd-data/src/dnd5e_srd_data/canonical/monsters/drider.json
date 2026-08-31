@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -93,9 +94,10 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes three attacks, using [[/item .mmForeleg0000000]] or [[/item .mmPoisonBurst000]] in any combination.",
+      "description": "The [[lookup @name lowercase]]{monster} makes three attacks, using [[/item .mmForeleg0000000]]{Foreleg} or [[/item .mmPoisonBurst000]]{Poison Burst} in any combination.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Multiattack",
       "recharge": null,
       "slug": "multiattack",
@@ -107,6 +109,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -219,6 +222,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Foreleg",
       "recharge": null,
       "slug": "foreleg",
@@ -230,6 +234,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -342,6 +347,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Poison Burst",
       "recharge": null,
       "slug": "poison-burst",
@@ -353,6 +359,7 @@
           "activation": {
             "condition": "",
             "override": true,
+            "reaction_conditions": [],
             "type": "bonus",
             "value": null
           },
@@ -452,6 +459,7 @@
           "activation": {
             "condition": "",
             "override": true,
+            "reaction_conditions": [],
             "type": "bonus",
             "value": null
           },
@@ -551,6 +559,7 @@
           "activation": {
             "condition": "",
             "override": true,
+            "reaction_conditions": [],
             "type": "bonus",
             "value": null
           },
@@ -650,6 +659,7 @@
       "description": "The [[lookup @name lowercase]]{monster} casts Darkness, Faerie Fire, or Web, requiring no Material components and using Wisdom as the spellcasting ability (spell save DC [[lookup @attributes.spell.dc]]).",
       "kind": "bonus_action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Magic of the Spider Queen",
       "recharge": "5-6",
       "slug": "magic-of-the-spider-queen",
@@ -739,6 +749,7 @@
       "description": "The [[lookup @name lowercase]]{monster} can climb difficult surfaces, including along ceilings, without needing to make an ability check.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "spider_climb",
       "name": "Spider Climb",
       "recharge": null,
       "slug": "spider-climb",
@@ -749,6 +760,7 @@
       "description": "While in sunlight, the [[lookup @name lowercase]]{monster} has Disadvantage on ability checks and attack rolls.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "sunlight_sensitivity",
       "name": "Sunlight Sensitivity",
       "recharge": null,
       "slug": "sunlight-sensitivity",
@@ -759,6 +771,7 @@
       "description": "The [[lookup @name lowercase]]{monster} ignores movement restrictions caused by webs, and the [[lookup @name lowercase]]{monster} knows the location of any other creature in contact with the same web.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Web Walker",
       "recharge": null,
       "slug": "web-walker",

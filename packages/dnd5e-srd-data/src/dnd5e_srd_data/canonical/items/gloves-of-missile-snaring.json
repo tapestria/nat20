@@ -4,6 +4,14 @@
       "activation": {
         "condition": "Hit by an attack roll with a Ranged or Thrown weapon",
         "override": false,
+        "reaction_conditions": [
+          {
+            "condition_text": "Hit by an attack roll with a Ranged or Thrown weapon",
+            "kind": "hit_by_attack",
+            "max_range_ft": null,
+            "target_spell_slug": null
+          }
+        ],
         "type": "reaction",
         "value": null
       },

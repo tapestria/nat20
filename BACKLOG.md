@@ -48,16 +48,16 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
 - **Monster `recharge` (5–6) abilities are not gated.** A breath weapon can be
   used every turn. Needs a per-creature recharge roll at turn start.
 - **Regeneration is not modelled.**
-- **Residual multiattack imprecision.** The prose join now resolves 119 of 180
-  multiattacks precisely (was 6). The remaining 61 fall back to repeating one
-  sibling N times, logged at `multiattack_join_unresolved`. That is correct for
-  homogeneous and "any combination" multiattacks; **5 are heterogeneous and
-  therefore produce the wrong attack mix** — `bandit-captain`, `doppelganger`,
-  `chain-devil`, `scout`, `ettin`. Each uses an opaque Foundry document key
-  (`[[/item .w3cX0piuU875Hc2M]]`) rather than the mnemonic `mm…` convention, so
-  the token cannot be joined to a typed sibling. Closing this needs the
-  translator to emit a resolved action name alongside the id.
-  (`packages/dnd5e-engine/src/dnd5e_engine/activities/monster_actions.py`)
+- **Multiattack conditional clauses are not modelled.** Since C22 every
+  multiattack token is labelled, so the five opaque-key monsters join
+  precisely; doppelganger and chain-devil now ALSO count their conditional
+  feat use ("uses Unsettling Visage if…") as one fixed use per turn. The
+  "if …" clause needs a carve-out in `_parse_item_counts`. More important: the
+  precise join emits limited-use special abilities unconditionally —
+  doppelganger's Recharge-6 Unsettling Visage now fires every round because
+  `expand_action_to_activities` never reads `MonsterAction.recharge`/
+  `uses_per_day`. Recharge/limited-use gating is C18's
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/monster_actions.py`).
 
 ## Core combat rules not modelled (2026-08-22)
 
@@ -106,15 +106,22 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   (`"targeted_by_magic_missile"`), plus per-spell branches
   (`_apply_magic_missile_shield_carveout`, `_hellish_rebuke_target_invalid`,
   `_drain_counterspell_reaction`). This contradicts the project's central design
-  claim that new content is a data change, not an engine change: adding a new
-  reaction spell today requires editing the orchestrator. Needs a typed
-  trigger/condition vocabulary on the activity schema.
+  claim that new content is a data change, not an engine change: The typed
+  vocabulary now ships (`ActivationBlock.reaction_conditions` /
+  `ReactionTriggerKind`, C22); the orchestrator's `ReactionTrigger` Literal and
+  the per-spell branches still need to read it (C13/C14 follow-up). Note the
+  shipped canonical still stores the inheriting activity's own `type` (e.g.
+  Shield's utility activity says `action` while carrying populated
+  `reaction_conditions`) — consumers must not gate on
+  `activation.type == "reaction"` until the inheritance regen lands; also, an
+  empty `reaction_conditions` does not mean "not a reaction" (only the four
+  SRD spell phrasings plus exact shape matches are typed).
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
-- **Conditions are hard-coded, not data-driven.** `rules/conditions.py` owns the
-  SRD condition list and their effects as Python literals; the dataset has no
-  `conditions` category to source them from. Same architectural inconsistency
-  as above. Closing it needs a data-side rules-glossary category (see the
-  `dnd5e-srd-data` section).
+- **Engine does not yet read `canonical/conditions/`.** The dataset category
+  exists (C22, `AssetLoader.get_condition`), mirroring `rules/conditions.py`;
+  per campaign design D3 the engine should prefer the data when present and
+  fall back to the Python registry. Owner: C12/C18 follow-up.
+  (`packages/dnd5e-engine/src/dnd5e_engine/rules/conditions.py`)
 - **`orchestrator.py` is ~5.5k lines**, about a third of the engine, holding the
   reaction queue, item/feature charge accounting, the monster turn, the effect
   lifecycle and the turn loop. Each is a coherent module; splitting them would
@@ -122,22 +129,6 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
 
 ## Spatial mechanics (grid backend is in place; these are additive)
 
-- **Per-activity "ignores cover for save" flag.** SRD 5.2's Sacred Flame text
-  ("The target gains no benefit from Half Cover or Three-Quarters Cover for
-  this save") names a per-activity override that no canonical field backs
-  today: `dnd5e_srd_data.schema.common.SaveBlock` carries only `ability`/`dc`,
-  no boolean. Narrowed 2026-07-02 from the former "Cover model" entry —
-  `cover_between`, the AC fold, and the Dexterity-save fold all landed (see
-  `packages/dnd5e-engine/src/dnd5e_engine/spatial.py::cover_between`,
-  `activities/attack.py::resolve_attack`, `activities/save_primitive.py::roll_save`);
-  only this per-activity carve-out remains, and it is now purely a DATA-schema
-  addition (`schema/feature.py`-style `advancement` field precedent — add a
-  `SaveBlock.ignore_cover: bool` + translator support). The ENGINE half closed
-  in C16 (2026-08-27): `orchestrator.py` reads
-  `getattr(activity.save, "ignore_cover", False)` and
-  `activities/save_primitive.py::roll_save(..., ignore_cover=)` drops the cover
-  bonus, so the flag takes effect the day the dataset ships it.
-  `packages/dnd5e-srd-data/src/dnd5e_srd_data/schema/common.py` (`SaveBlock`).
 - **Route choice is fewest-squares, not cheapest.** `GridTopology.shortest_path`
   (`spatial.py`) is BFS over legal steps — walls, diagonal corner-cutting and
   enemy-occupied cells are all honoured (C16) — and `_handle_move` charges each
@@ -336,10 +327,6 @@ zone + apply logic:
 - **Weapon mastery: 2 of 8 resolve.** Only `graze` and `topple` are
   implemented; `sap`/`vex`/`slow`/`push`/`nick`/`cleave` log `mastery_deferred`
   and apply nothing. (`packages/dnd5e-engine/src/dnd5e_engine/activities/mastery.py`)
-- **Magical vs nonmagical B/P/S is unrepresentable.** `DamageType` is a flat
-  13-value Literal with no magical flag; "resistance to nonmagical attacks" —
-  the most common monster resistance — cannot be expressed or applied.
-  (`packages/dnd5e-engine/src/dnd5e_engine/events.py`)
 - **Upcasting scales dice only, never target count** (Magic Missile darts,
   Hold Person extra targets). (`packages/dnd5e-engine/src/dnd5e_engine/activities/dice.py`)
 
@@ -454,12 +441,14 @@ stand-in, not an engine capability. Specifically:
 
 ## Audit 2026-08-26 — monsters
 
-- **322 `special_abilities` across 102 distinct trait names, zero parsed.**
-  Magic Resistance ×34, Legendary Resistance ×32, Pack Tactics ×17, Sunlight
-  Sensitivity ×5, Regeneration ×4, Undead Fortitude ×2.
-  `tests/test_capability_matrix.py:115` actively pins `legendary_actions` /
-  `lair_actions` / `special_abilities` as unread — relax it when implementing.
-  (`packages/dnd5e-engine/src/dnd5e_engine/activities/monster_actions.py`)
+- **Typed traits are hydrated but only Magic Resistance is consumed.**
+  `Combatant.trait_mechanics` carries the 14 `MonsterTraitMechanic` values
+  (C22); Magic Resistance grants save advantage against spell-sourced saves
+  only ("other magical effects" — magic-item and spell-like monster saves —
+  are not yet recognised, and the two orchestrator-level save paths (repeat
+  save, concentration) do not read it). Pack Tactics, Legendary Resistance,
+  Sunlight Sensitivity, Undead Fortitude, Regeneration, Flyby, … are C18.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/save_primitive.py`)
 - **79 monster actions carry `recharge`; zero `.recharge` reads** (sharpens
   the "recharge not gated" entry above).
 - **Monster damage resistances/immunities are never hydrated** onto `Combatant`
@@ -472,6 +461,22 @@ stand-in, not an engine capability. Specifically:
   grid (`_plan_flee_destination:695`) so a fleeing monster holds still.
 - **Concentration is not dropped in `_record_death`** — only via the damage
   path — so any death that bypasses `_emit_apply_damage` leaves it standing.
+- **Corpus damage resistances must carry their magical-bypass qualifier when
+  hydrated** (2026-08-27). `Combatant.physical_resistances_nonmagical_only`
+  defaults True (host-authored "…from nonmagical attacks" convention, C22-S04).
+  When C18 hydrates `Monster.damage_resistances`, it must set the flag from
+  Foundry `dr.bypasses` (`"mgc" in bypasses`), which is empty for every 2024
+  SRD actor — otherwise SRD 5.2 unconditional B/P/S resistances would be
+  bypassed by magic weapons. Immunities have no bypass axis at all.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/apply.py`)
+- **`PartyMemberSpec` has no `physical_resistances_nonmagical_only`
+  counterpart** (2026-08-30). PCs are pinned to the nonmagical-only reading of
+  host-authored B/P/S resistances; a PC whose resistance should be
+  unconditional cannot express it.
+  (`packages/dnd5e-engine/src/dnd5e_engine/specs.py`)
+- **Bridge does not serve the `conditions` / `traits` categories**
+  (2026-08-27) — `routes_content._CATEGORIES` predates C22.
+  (`packages/nat20-bridge/src/nat20_bridge/routes_content.py`)
 
 ## Not modelled by design (recorded so nobody re-audits them)
 
@@ -757,14 +762,16 @@ layer over the engine — see `docs/bridge.md`. Gaps found while shipping it:
   `tests/oracle/known_prose_defects.json` and gated by
   `tests/test_corpus_prose_integrity.py`; re-check on the next
   `make refresh-upstream` and de-register if upstream has fixed it.
+- **Inherited activation `type` is not resolved** (2026-08-27). An activity
+  with `activation.override: false` inherits the item-level activation in
+  Foundry (Shield's utility activity is a Reaction, but canonical stores the
+  activity's own `type: action`). C22 derives `reaction_conditions` from the
+  effective block but leaves `type` as shipped. Resolving it changes bytes on
+  every inheriting activity — do it as its own regen PR.
+  (`packages/dnd5e-srd-data/tools/translators/foundry.py::_effective_activation`)
 
 ## Missing categories (2026-08-22)
 
-- **No `conditions` / rules-glossary category.** The 15 SRD conditions and their
-  mechanical effects exist only as Python literals in the engine
-  (`rules/conditions.py`), which is why conditions cannot be extended as data.
-  A canonical `conditions/` category would let the engine source them the way it
-  sources spells. Needs a schema and translator support.
 - **`lair_actions` is empty for all 341 monsters** even though SRD 5.2 defines
   them for several creatures, and the schema field exists.
 

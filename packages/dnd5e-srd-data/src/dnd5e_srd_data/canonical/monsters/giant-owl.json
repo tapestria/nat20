@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -127,6 +128,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Talons",
       "recharge": null,
       "slug": "talons",
@@ -138,6 +140,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -227,6 +230,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -316,6 +320,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -421,6 +426,7 @@
       "description": "The [[lookup @name lowercase]]{monster} casts one of the following spells, requiring no spell components and using Wisdom as the spellcasting ability:\n\nAt Will: Detect Evil and Good, Detect Magic\n\n1/Day Each: Clairvoyance",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Spellcasting",
       "recharge": null,
       "slug": "spellcasting",
@@ -512,6 +518,7 @@
       "description": "The [[lookup @name lowercase]]{monster} doesn't provoke an &amp;Reference[OpportunityAttacks]{Opportunity Attack} when it flies out of an enemy's reach.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "flyby",
       "name": "Flyby",
       "recharge": null,
       "slug": "flyby",

@@ -7,9 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No schema or canonical-content changes. The `dnd5e-engine` core-mechanics
-foundations (F1–F3) read the existing corpus unchanged — see
-[`docs/migration/v0.5-to-v0.6.md`](../../docs/migration/v0.5-to-v0.6.md).
+Core-mechanics C22 — the dataset now carries the mechanics the engine used to
+keep only in Python. Every change is additive; old canonical JSON without the
+new keys still validates.
+
+### Added
+
+- **`canonical/conditions/`** (15 files) — the SRD 5.2 rules-glossary
+  conditions as typed data: `schema/condition.py::Condition` with
+  `effects: list[ConditionEffect]` (`ConditionEffectKind`, 29 kinds) and
+  `implies`. `AssetLoader.get_condition(slug)` / `list_conditions()`;
+  `Category` gains `"conditions"`. Mechanics are authored in
+  `tools/translators/conditions.py` with the SRD sentence per row (Foundry
+  ships no structured condition mechanics).
+- **`canonical/traits/`** — de-duplicated SRD monster traits
+  (`schema/monster.py::MonsterTrait`, `AssetLoader.get_trait`, `Category`
+  `"traits"`), sourced from the SRD actors' embedded trait items.
+- **`MonsterAction.mechanic: MonsterTraitMechanic | None`** on
+  `special_abilities` entries (14 typed traits: Magic Resistance ×34,
+  Legendary Resistance ×32, Amphibious ×31, Pack Tactics ×17, …).
+- **`SaveBlock.ignore_cover`** — `true` only on Sacred Flame ("The target
+  gains no benefit from Half Cover or Three-Quarters Cover for this save").
+- **`Weapon.magical` / `Armor.magical`** — Foundry's `mgc` item property,
+  previously dropped by the translator; independent of `magical_bonus`.
+- **`ActivationBlock.reaction_conditions: list[ReactionCondition]`** —
+  typed reaction triggers (`ReactionTriggerKind`: hit_by_attack,
+  targeted_by_spell, sees_spell_cast, takes_damage, creature_falls) derived
+  from Foundry's free-text `activation.condition`; populated for Shield,
+  Counterspell, Hellish Rebuke and Feather Fall (and the monsters that embed
+  them), empty everywhere else. Also populated for six non-spell reactions
+  whose trigger text matches the shapes: Superior Hunter's Defense,
+  Retaliation, Stone's Endurance, Storm's Thunder, Mummy Lord's Whirlwind of
+  Sand, Gloves of Missile Snaring.
+
+### Changed
+
+- The translator now labels bare sibling-item tokens corpus-wide (139
+  monster/trait files); the five multiattacks that referenced sibling
+  attacks by opaque Foundry key (bandit-captain, doppelganger, chain-devil,
+  scout, ettin) — which could not be joined to a typed sibling before — are
+  the motivating fix, and now carry the sibling name as a `{Label}` on the
+  `[[/item .<id>]]` token.
 
 ## [0.5.0]
 

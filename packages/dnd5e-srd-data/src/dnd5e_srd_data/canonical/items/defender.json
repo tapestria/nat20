@@ -4,6 +4,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -111,6 +112,7 @@
   "damage_parts": [],
   "description": "Weapon (Any Melee Weapon), Legendary (Requires Attunement)\n\nYou gain a +3 bonus to attack rolls and damage rolls made with this magic weapon.\n\nThe first time you attack with the weapon on each of your turns, you can transfer some or all of the weapon's bonus to your Armor Class. For example, you could reduce the bonus to your attack rolls and damage rolls to +1 and gain a +2 bonus to Armor Class. The adjusted bonuses remain in effect until the start of your next turn, although you must hold the weapon to gain a bonus to AC from it.\n\n@Embed[Compendium.dnd5e.content24.JournalEntry.dmgFoundryRefere.JournalEntryPage.Ok4iCgD25ENgoRxE cite=false caption=false classes=\"hide-in-embed\"]",
   "item_kind": "weapon",
+  "magical": true,
   "magical_bonus": 3,
   "mastery": null,
   "name": "Defender",

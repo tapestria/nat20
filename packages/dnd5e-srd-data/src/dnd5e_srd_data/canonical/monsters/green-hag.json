@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -118,6 +119,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -221,6 +223,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -324,6 +327,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -427,6 +431,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -530,6 +535,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -633,6 +639,7 @@
       "description": "While within 30 feet of at least two hag allies, the [[lookup @name lowercase]]{monster} can cast one of the following spells, requiring no Material components, using the spell's normal casting time, and using Intelligence as the spellcasting ability (spell save DC [[lookup @abilities.int.dc]]): Augury, Find Familiar, Identify, Locate Object, Scrying, or Unseen Servant. The [[lookup @name lowercase]]{monster} must finish a Long Rest before using this trait to cast that spell again.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Coven Magic",
       "recharge": null,
       "slug": "coven-magic",
@@ -644,6 +651,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -729,6 +737,7 @@
       "description": "The [[lookup @name lowercase]]{monster} can mimic animal sounds and humanoid voices. A creature that hears the sounds can tell they are imitations only with a successful [[/check format=long]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Mimicry",
       "recharge": null,
       "slug": "mimicry",
@@ -740,6 +749,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -818,9 +828,10 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes two [[/item .mmClaw0000000000]] attacks.",
+      "description": "The [[lookup @name lowercase]]{monster} makes two [[/item .mmClaw0000000000]]{Claw} attacks.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Multiattack",
       "recharge": null,
       "slug": "multiattack",
@@ -832,6 +843,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -961,6 +973,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Claw",
       "recharge": null,
       "slug": "claw",
@@ -972,6 +985,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -1059,6 +1073,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -1146,6 +1161,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -1233,6 +1249,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -1320,6 +1337,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -1407,6 +1425,7 @@
       "description": "The [[lookup @name lowercase]]{monster} casts one of the following spells, requiring no Material components and using Wisdom as the spellcasting ability (spell save DC [[lookup @attributes.spell.dc]], +4 to hit with spell attacks):\n\nAt Will: Dancing Lights, Disguise Self (24-hour duration), Invisibility (self only, and the hag leaves no tracks while Invisible), Minor Illusion, Ray of Sickness (level 3 version)",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Spellcasting",
       "recharge": null,
       "slug": "spellcasting",
@@ -1497,6 +1516,7 @@
       "description": "The [[lookup @name lowercase]]{monster} can breathe air and water.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "amphibious",
       "name": "Amphibious",
       "recharge": null,
       "slug": "amphibious",

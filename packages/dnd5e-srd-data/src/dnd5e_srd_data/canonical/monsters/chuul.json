@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -96,6 +97,7 @@
       "description": "The [[lookup @name lowercase]]{monster} makes 2 [[/item Pincer]] attacks and uses [[/item Paralyzing Tentacles]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Multiattack",
       "recharge": null,
       "slug": "multiattack",
@@ -107,6 +109,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -162,7 +165,8 @@
             "dc": {
               "calculation": "",
               "formula": "13"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -205,6 +209,7 @@
       "description": "Constitution Saving Throw: DC [[lookup @save.dc.value activity=p157Iqz8s0M0VilW]], one [[lookup @target.affects.type activity=p157Iqz8s0M0VilW]] Grappled by the [[lookup @name lowercase]]{monster}.\n\nFailure: The target has the &amp;Reference[Poisoned apply=false] condition and repeats the save at the end of each of its turns, ending the effect on itself on a success. After 1 minute, it succeeds automatically. While Poisoned, the target has the &amp;Reference[Paralyzed apply=false] condition.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Paralyzing Tentacles",
       "recharge": null,
       "slug": "paralyzing-tentacles",
@@ -216,6 +221,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -338,6 +344,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "special",
             "value": null
           },
@@ -424,6 +431,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]]. If the target is a Large or smaller creature, it has the &amp;Reference[Grappled apply=false] condition (escape DC [[lookup @skills.ath.passive]]) from one of two pincers.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Pincer",
       "recharge": null,
       "slug": "pincer",
@@ -516,6 +524,7 @@
       "description": "The [[lookup @name lowercase]]{monster} can breathe air and water.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "amphibious",
       "name": "Amphibious",
       "recharge": null,
       "slug": "amphibious",
@@ -526,6 +535,7 @@
       "description": "The [[lookup @name lowercase]]{monster} senses magic within 120 feet of itself. This trait otherwise works like the Detect Magic spell but isn't itself magical.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Sense Magic",
       "recharge": null,
       "slug": "sense-magic",

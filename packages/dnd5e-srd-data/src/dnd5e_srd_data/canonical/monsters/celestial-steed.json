@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": 1
           },
@@ -127,6 +128,7 @@
       "description": "Melee Attack Roll: Bonus equals your spell attack modifier, reach 5 ft. Hit: 1d8 plus the spell's level of Radiant damage.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Otherworldly Slam",
       "recharge": null,
       "slug": "otherworldly-slam",
@@ -138,6 +140,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "bonus",
             "value": 1
           },
@@ -240,6 +243,7 @@
       "description": "One creature within 5 feet of the steed regains a number of Hit Points equal to 2d8 plus the spell's level.",
       "kind": "bonus_action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Healing Touch",
       "recharge": null,
       "slug": "healing-touch",
@@ -328,6 +332,7 @@
       "description": "When you regain Hit Points from a level 1+ spell, the steed regains the same number of Hit Points if you're within 5 feet of it.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Life Bond",
       "recharge": null,
       "slug": "life-bond",

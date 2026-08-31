@@ -1,0 +1,20 @@
+{
+  "description": "At the end of each of the monster's turns, each [[lookup @target.affects.type activity=15VgJKVXwYBOFSqJ]] of the monster's choice in a [[lookup @target.template.size activity=15VgJKVXwYBOFSqJ]]-foot Emanation originating from the monster takes [[/damage average]] damage unless the monster has the Incapacitated condition.",
+  "mechanic": null,
+  "name": "Fire Aura",
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/actors24/elemental/azer-sentinel.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "fire-aura"
+}

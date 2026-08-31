@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": 1
           },
@@ -154,6 +155,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]], and the target has the &amp;Reference[Poisoned apply=false] condition until the start of the assassin's next turn.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Shortsword",
       "recharge": null,
       "slug": "shortsword",
@@ -165,6 +167,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": 1
           },
@@ -294,6 +297,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Light Crossbow",
       "recharge": null,
       "slug": "light-crossbow",
@@ -305,6 +309,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -383,9 +388,10 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes three attacks, using [[/item .jLa5l9pntsTVrMKH]] or [[/item .dL4668G7zXeC5zyY]] in any combination.",
+      "description": "The [[lookup @name lowercase]]{monster} makes three attacks, using [[/item .jLa5l9pntsTVrMKH]]{Shortsword} or [[/item .dL4668G7zXeC5zyY]]{Light Crossbow} in any combination.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Multiattack",
       "recharge": null,
       "slug": "multiattack",
@@ -397,6 +403,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "bonus",
             "value": null
           },
@@ -478,6 +485,7 @@
       "description": "The [[lookup @name lowercase]]{monster} takes the &amp;Reference[Dash apply=false], the &amp;Reference[Disengage apply=false], or &amp;Reference[Hide apply=false] action.",
       "kind": "bonus_action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Cunning Action",
       "recharge": null,
       "slug": "cunning-action",
@@ -569,6 +577,7 @@
       "description": "If the [[lookup @name lowercase]]{monster} is subjected to an effect that allows it to make a Dexterity saving throw to take only half damage, the [[lookup @name lowercase]]{monster} instead takes no damage if it succeeds on the save and only half damage if it fails. It can't use this trait if it has the Incapacitated condition.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Evasion",
       "recharge": null,
       "slug": "evasion",

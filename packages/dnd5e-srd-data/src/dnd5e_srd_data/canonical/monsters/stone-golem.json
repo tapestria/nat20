@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -96,6 +97,7 @@
       "description": "The [[lookup @name lowercase]]{monster} makes two attacks, using [[/item Slam]] or [[/item Force Bolt]] in any combination.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Multiattack",
       "recharge": null,
       "slug": "multiattack",
@@ -107,6 +109,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -236,6 +239,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Slam",
       "recharge": null,
       "slug": "slam",
@@ -247,6 +251,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -359,6 +364,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Force Bolt",
       "recharge": null,
       "slug": "force-bolt",
@@ -370,6 +376,7 @@
           "activation": {
             "condition": "",
             "override": true,
+            "reaction_conditions": [],
             "type": "bonus",
             "value": null
           },
@@ -469,6 +476,7 @@
       "description": "The [[lookup @name lowercase]]{monster} casts the Slow spell, requiring no spell components and using Constitution as the spellcasting ability (spell save DC [[lookup @attributes.spell.dc]]).",
       "kind": "bonus_action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Slow",
       "recharge": "5-6",
       "slug": "slow",
@@ -568,6 +576,7 @@
       "description": "The [[lookup @name lowercase]]{monster} can't shape-shift.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Immutable Form",
       "recharge": null,
       "slug": "immutable-form",
@@ -578,6 +587,7 @@
       "description": "The [[lookup @name lowercase]]{monster} has Advantage on saving throws against spells and other magical effects.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": "magic_resistance",
       "name": "Magic Resistance",
       "recharge": null,
       "slug": "magic-resistance",

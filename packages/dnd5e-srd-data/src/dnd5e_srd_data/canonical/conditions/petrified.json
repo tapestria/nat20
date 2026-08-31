@@ -1,0 +1,57 @@
+{
+  "description": "While you have the Petrified condition, you experience the following effects.\n\nTurned to Inanimate Substance. You are transformed, along with any nonmagical objects you are wearing and carrying, into a solid inanimate substance (usually stone). Your weight increases by a factor of ten, and you cease aging.\n\nIncapacitated. You have the Incapacitated condition.\n\nSpeed 0. Your Speed is 0 and can\u2019t increase.\n\nAttacks Affected. Attack rolls against you have Advantage.\n\nSaving Throws Affected. You automatically fail Strength and Dexterity saving throws.\n\nResist Damage. You have Resistance to all damage.\n\nPoison Immunity. You have Immunity to the Poisoned condition.",
+  "effects": [
+    {
+      "abilities": [],
+      "kind": "speed_zero",
+      "qualifier": "",
+      "value": null
+    },
+    {
+      "abilities": [],
+      "kind": "advantage_attacks_against",
+      "qualifier": "",
+      "value": null
+    },
+    {
+      "abilities": [
+        "str",
+        "dex"
+      ],
+      "kind": "auto_fail_save",
+      "qualifier": "",
+      "value": null
+    },
+    {
+      "abilities": [],
+      "kind": "resist_all_damage",
+      "qualifier": "",
+      "value": null
+    },
+    {
+      "abilities": [],
+      "kind": "immune_to_condition",
+      "qualifier": "poisoned",
+      "value": null
+    }
+  ],
+  "implies": [
+    "incapacitated"
+  ],
+  "name": "Petrified",
+  "provenance": {
+    "ingest_date": "2026-05-30",
+    "ingest_version": "foundry-translator-v1",
+    "license_tag": "CC-BY-4.0",
+    "source": "foundry",
+    "source_url": "https://github.com/foundryvtt/dnd5e/blob/965ad2d0cf5d063dac675ba078b5bd3c3c0dd449/packs/_source/content24/appendices/rules-glossary.yml",
+    "srd_version": [
+      "5.2"
+    ]
+  },
+  "review": {
+    "known_divergence": null,
+    "requires_user_decision": false
+  },
+  "slug": "petrified"
+}

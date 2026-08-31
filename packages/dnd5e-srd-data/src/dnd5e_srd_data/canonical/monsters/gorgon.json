@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -137,6 +138,7 @@
       "description": "[[/attack extended]]. [[/damage extended average]]. If the target is a Large or smaller creature and the [[lookup @name lowercase]]{monster} moved 20+ feet straight toward it immediately before the hit, the target has the &amp;Reference[Prone apply=false] condition.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Gore",
       "recharge": null,
       "slug": "gore",
@@ -148,6 +150,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -222,7 +225,8 @@
             "dc": {
               "calculation": "",
               "formula": "15"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -265,6 +269,7 @@
       "description": "Constitution Saving Throw: DC [[lookup @save.dc.value activity=reU3RXAk0MdPmKCl]], each [[lookup @target.affects.type activity=reU3RXAk0MdPmKCl]] in a [[lookup @target.template.size activity=reU3RXAk0MdPmKCl]]-foot Cone.\n\nFirst Failure: The target has the &amp;Reference[Restrained apply=false] condition and repeats the save at the end of its next turn if it is still Restrained, ending the effect on itself on a success.\n\nSecond Failure: The target has the &amp;Reference[Petrified apply=false] condition instead of the Restrained condition.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Petrifying Breath",
       "recharge": "5-6",
       "slug": "petrifying-breath",
@@ -276,6 +281,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "bonus",
             "value": null
           },
@@ -339,7 +345,8 @@
             "dc": {
               "calculation": "",
               "formula": "16"
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -382,6 +389,7 @@
       "description": "Dexterity Saving Throw: DC [[lookup @save.dc.value activity=QckCIpsC3BdEHycI]], [[lookup @target.affects.labels.statblock activity=QckCIpsC3BdEHycI]] within [[lookup @range.value activity=QckCIpsC3BdEHycI]] feet that has the Prone condition.\n\nFailure: [[/damage average]] damage.\n\nSuccess: [[lookup @damage.onSave capitalize activity=QckCIpsC3BdEHycI]] damage.",
       "kind": "bonus_action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Trample",
       "recharge": null,
       "slug": "trample",

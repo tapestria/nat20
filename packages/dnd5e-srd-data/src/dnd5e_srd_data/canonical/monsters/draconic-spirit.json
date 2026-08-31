@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": 1
           },
@@ -96,6 +97,7 @@
       "description": "The spirit makes a number of [[/item Rend]] attacks equal to half the spell's level (round down), and it uses [[/item Breath Weapon]].\n\n[[floor(@flags.dnd5e.summon.level / 2)]]{Number of attacks}",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Multiattack",
       "recharge": null,
       "slug": "multiattack",
@@ -107,6 +109,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": 1
           },
@@ -219,6 +222,7 @@
       "description": "Melee Attack: Bonus equals your spell attack modifier, reach 10 feet. Hit: 1d6 + 4 + the spell's level Piercing damage.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Rend",
       "recharge": null,
       "slug": "rend",
@@ -230,6 +234,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": 1
           },
@@ -297,7 +302,8 @@
             "dc": {
               "calculation": "spellcasting",
               "formula": ""
-            }
+            },
+            "ignore_cover": false
           },
           "sort": 0,
           "target": {
@@ -340,6 +346,7 @@
       "description": "Dexterity Saving Throw: DC equals your spell save DC, each creature in a 30-foot Cone. Failure: 2d6 damage of a type this spirit has Resistance to (your choice when you cast the spell). Success: Half damage.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Breath Weapon",
       "recharge": null,
       "slug": "breath-weapon",
@@ -440,6 +447,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "",
             "value": null
           },
@@ -531,6 +539,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "",
             "value": null
           },
@@ -622,6 +631,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "",
             "value": null
           },
@@ -713,6 +723,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "",
             "value": null
           },
@@ -804,6 +815,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "",
             "value": null
           },
@@ -895,6 +907,7 @@
       "description": "When you summon the spirit, choose one of its Resistances. You have &amp;Reference[damageresistance]{Resistance} to the chosen damage type until the spell ends.\n\nFoundry Note\n\nActive effects and activities applying those effects on this item are provided for optional application of the chosen resistance.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Shared Resistances",
       "recharge": null,
       "slug": "shared-resistances",

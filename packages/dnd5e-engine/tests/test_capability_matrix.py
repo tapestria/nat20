@@ -232,6 +232,24 @@ _PROBES: dict[str, tuple[Any, str]] = {
         lambda: "DeprecationWarning" in _src("orchestrator.py"),
         "Deprecated",
     ),
+    # C22: Magic Resistance is read from the hydrated trait list.
+    "`special_abilities`": (
+        lambda: (
+            "trait_mechanics" in _src("orchestrator.py")
+            and "MAGIC_RESISTANCE" in _src("activities/save_primitive.py")
+        ),
+        "Magic Resistance",
+    ),
+    # C22: magical damage bypasses nonmagical-only B/P/S resistance.
+    "resistances/immunities/vulnerabilities": (
+        lambda: "physical_resistances_nonmagical_only" in _src("activities/apply.py"),
+        "overcome resistance",
+    ),
+    # C22: Sacred Flame's save carve-out is honoured.
+    "Cover (half / three-quarters / total)": (
+        lambda: "ignore_cover" in _src("activities/save_primitive.py"),
+        "ignore_cover",
+    ),
 }
 
 

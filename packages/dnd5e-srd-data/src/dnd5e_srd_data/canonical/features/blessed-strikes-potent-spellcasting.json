@@ -4,6 +4,7 @@
       "activation": {
         "condition": "Deal damage with any Cleric cantrip",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },

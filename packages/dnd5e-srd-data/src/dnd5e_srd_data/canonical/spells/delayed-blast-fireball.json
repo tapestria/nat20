@@ -4,6 +4,7 @@
       "activation": {
         "condition": "",
         "override": false,
+        "reaction_conditions": [],
         "type": "action",
         "value": null
       },
@@ -95,6 +96,7 @@
       "activation": {
         "condition": "a creature touches the glowing bead before the spell ends",
         "override": true,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },
@@ -140,7 +142,8 @@
         "dc": {
           "calculation": "spellcasting",
           "formula": ""
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 0,
       "target": {
@@ -183,6 +186,7 @@
       "activation": {
         "condition": "whenever your turn ends",
         "override": true,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },
@@ -274,6 +278,7 @@
       "activation": {
         "condition": "when the spell ends",
         "override": true,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },
@@ -337,7 +342,8 @@
         "dc": {
           "calculation": "spellcasting",
           "formula": ""
-        }
+        },
+        "ignore_cover": false
       },
       "sort": 250000,
       "target": {

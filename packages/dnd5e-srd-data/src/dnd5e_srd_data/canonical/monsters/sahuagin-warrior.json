@@ -15,6 +15,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -93,9 +94,10 @@
           }
         }
       ],
-      "description": "The [[lookup @name lowercase]]{monster} makes two [[/item .mmClaw0000000000]] attacks.",
+      "description": "The [[lookup @name lowercase]]{monster} makes two [[/item .mmClaw0000000000]]{Claw} attacks.",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Multiattack",
       "recharge": null,
       "slug": "multiattack",
@@ -107,6 +109,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "action",
             "value": null
           },
@@ -219,6 +222,7 @@
       "description": "[[/attack extended]]. [[/damage average extended]].",
       "kind": "action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Claw",
       "recharge": null,
       "slug": "claw",
@@ -230,6 +234,7 @@
           "activation": {
             "condition": "",
             "override": false,
+            "reaction_conditions": [],
             "type": "bonus",
             "value": null
           },
@@ -311,6 +316,7 @@
       "description": "The [[lookup @name lowercase]]{monster} swims up to its Swim Speed straight toward an enemy it can see.",
       "kind": "bonus_action",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Aquatic Charge",
       "recharge": null,
       "slug": "aquatic-charge",
@@ -402,6 +408,7 @@
       "description": "The [[lookup @name lowercase]]{monster} has Advantage on attack rolls against any creature that doesn't have all its Hit Points.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Blood Frenzy",
       "recharge": null,
       "slug": "blood-frenzy",
@@ -412,6 +419,7 @@
       "description": "The [[lookup @name lowercase]]{monster} can breathe air and water, but it must be submerged at least once every 4 hours to avoid suffocating outside water.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Limited Amphibiousness",
       "recharge": null,
       "slug": "limited-amphibiousness",
@@ -422,6 +430,7 @@
       "description": "The [[lookup @name lowercase]]{monster} can magically control sharks within 120 feet of itself, using a special telepathy.",
       "kind": "special",
       "legendary_cost": null,
+      "mechanic": null,
       "name": "Shark Telepathy",
       "recharge": null,
       "slug": "shark-telepathy",

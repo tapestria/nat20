@@ -4,6 +4,7 @@
       "activation": {
         "condition": "When you cast a Wizard spell with a spell slot of levels 1-5 that deals damage",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },
@@ -114,6 +115,7 @@
       "activation": {
         "condition": "When you cast a Wizard spell with a spell slot of levels 1-5 that deals damage",
         "override": false,
+        "reaction_conditions": [],
         "type": "",
         "value": null
       },
