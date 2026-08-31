@@ -29,7 +29,6 @@ from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
 from tests.e2e.harness import cell, events_of, grid_scene, run_async, xfail_cluster
 
 
-@xfail_cluster(13, "concentration lifecycle")
 def test_c13_s01_second_concentration_spell_ends_the_first():
     """C13-S01: SRD 5.2 — "You lose Concentration on an effect the moment
     you start casting a spell that requires Concentration or activate
@@ -39,6 +38,11 @@ def test_c13_s01_second_concentration_spell_ends_the_first():
     consumes it before ``_record_effect_lifecycle_links`` appends to
     ``concentration_chain`` — the caster's chain grows unbounded instead
     of dropping the prior effect.
+
+    Script repair (assertions untouched): Bless is an Action cast and ends
+    the turn, so the second cast happens on the cleric's round-2 turn
+    (fighter passes, foe acts from out of reach) — recorded in
+    docs/migration/v0.5-to-v0.6.md.
     """
     from dnd5e_engine.testing import registry
 
@@ -76,7 +80,7 @@ def test_c13_s01_second_concentration_spell_ends_the_first():
                     hp_current=30,
                     hp_max=30,
                     ac=12,
-                    zone_id=cell(4, 0),
+                    zone_id=cell(9, 9),
                 )
             ],
             scene_zones=None,
@@ -94,6 +98,12 @@ def test_c13_s01_second_concentration_spell_ends_the_first():
         chain_after_bless = list(
             registry[start.handle.handle_id].concentration_chain.get("char:cleric") or []
         )
+        await submit_player_intent(
+            start.handle,
+            actor_id="char:fighter",
+            intent=PlayerIntent(intent_type="pass"),
+        )
+        await advance_monster_turn(start.handle)
         await submit_player_intent(
             start.handle,
             actor_id="char:cleric",

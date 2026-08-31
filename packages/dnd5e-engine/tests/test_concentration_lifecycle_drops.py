@@ -15,6 +15,7 @@ from dnd5e_engine import orchestrator as orch
 from dnd5e_engine.events import (
     ConcentrationDropped,
     Death,
+    EffectApplied,
     EffectExpired,
 )
 from dnd5e_engine.orchestrator import _LiveCombat
@@ -118,3 +119,97 @@ def test_drop_cascades_once_for_simultaneous_condition_and_death() -> None:
     dropped, expired = _drop_events(live)
     assert len(dropped) == 1  # second call is an idempotent no-op
     assert len(expired) == 1
+
+
+def _links_with_new_conc_effect(live: _LiveCombat, caster: Combatant, effect_id: str) -> None:
+    """Simulate this turn's evaluator slice: one new concentration EffectApplied."""
+    pre = len(live.event_log)
+    live.event_log.append(
+        EffectApplied(
+            effect=ActiveEffect(
+                id=effect_id,
+                name=effect_id.removeprefix("effect:"),
+                origin=f"cast:{effect_id.removeprefix('effect:')}:{caster.entity_id}",
+                target_id=caster.entity_id,
+                duration=ActiveEffectDuration(seconds=60),
+                flags={"concentration": True},
+            )
+        )
+    )
+    orch._record_effect_lifecycle_links(live, caster, pre)
+
+
+# SRD 5.2: "You lose Concentration on an effect the moment you start casting a
+# spell that requires Concentration..."
+def test_second_concentration_cast_drops_the_first() -> None:
+    live = _concentrating_live()  # bless already in the chain
+    caster = live.initiative[0]
+    _links_with_new_conc_effect(live, caster, "effect:shield-of-faith")
+    dropped, expired = _drop_events(live)
+    assert dropped
+    assert dropped[0].effect_name == "effect:bless"
+    assert expired
+    assert expired[0].effect_id == "effect:bless"
+    chain = live.concentration_chain["char:a"]
+    assert [e[1] for e in chain] == ["effect:shield-of-faith"]
+
+
+def test_new_concentration_cast_restores_the_writeback_effect_id() -> None:
+    # _writeback_concentration runs BEFORE the links fold and has already set
+    # concentration_effect_id to the NEW effect; the one-at-a-time drop's
+    # inline clear must not leave it None.
+    live = _concentrating_live()
+    caster = live.initiative[0].model_copy(
+        update={"concentration_effect_id": "effect:shield-of-faith"}
+    )
+    live.initiative[0] = caster
+    _links_with_new_conc_effect(live, caster, "effect:shield-of-faith")
+    assert live.initiative[0].concentration_effect_id == "effect:shield-of-faith"
+
+
+def test_multi_target_single_cast_keeps_all_identities() -> None:
+    # Bless on three allies = three identities from ONE cast — never dropped
+    # against each other.
+    live = _fake_live()
+    caster = _caster()
+    live.initiative.append(caster)
+    pre = len(live.event_log)
+    for tid in ("char:a", "char:b", "char:c"):
+        live.event_log.append(
+            EffectApplied(
+                effect=ActiveEffect(
+                    id="effect:bless",
+                    name="bless",
+                    origin="cast:bless:char:a",
+                    target_id=tid,
+                    duration=ActiveEffectDuration(seconds=60),
+                    flags={"concentration": True},
+                )
+            )
+        )
+    orch._record_effect_lifecycle_links(live, caster, pre)
+    dropped, _ = _drop_events(live)
+    assert not dropped
+    assert len(live.concentration_chain["char:a"]) == 3
+
+
+def test_non_concentration_cast_leaves_existing_concentration_alone() -> None:
+    live = _concentrating_live()
+    caster = live.initiative[0]
+    pre = len(live.event_log)
+    live.event_log.append(
+        EffectApplied(
+            effect=ActiveEffect(
+                id="effect:shield",
+                name="shield",
+                origin="cast:shield:char:a",
+                target_id="char:a",
+                duration=ActiveEffectDuration(rounds=1),
+                flags={},
+            )
+        )
+    )
+    orch._record_effect_lifecycle_links(live, caster, pre)
+    dropped, _ = _drop_events(live)
+    assert not dropped
+    assert [e[1] for e in live.concentration_chain["char:a"]] == ["effect:bless"]

@@ -3427,6 +3427,30 @@ def _record_effect_lifecycle_links(
     been folded in; re-walking them would double-count.
     """
     new_events = live.event_log[pre_event_count:]
+    # SRD 5.2 §Concentration — "You lose Concentration on an effect the
+    # moment you start casting a spell that requires Concentration."
+    # (Foundry mixin.mjs:470-476 ends the oldest effect before beginning
+    # the new one; attributes.concentration.limit is 1 for every SRD
+    # creature.) When THIS resolution applied a new concentration effect
+    # and the caster already had a chain from a PRIOR resolution, cascade
+    # the old drop first. Identities applied within this same slice (one
+    # multi-target cast) are never dropped against each other, and a
+    # same-spell/same-target recast (identical identity tuple) is a
+    # silent refresh rather than a drop-and-reapply.
+    new_conc_identities = [
+        (ev.effect.target_id, ev.effect.id, ev.effect.origin)
+        for ev in new_events
+        if isinstance(ev, EffectApplied) and ev.effect.flags.get("concentration")
+    ]
+    if new_conc_identities:
+        prior = [
+            entry
+            for entry in live.concentration_chain.get(caster.entity_id, [])
+            if entry not in new_conc_identities
+        ]
+        if prior:
+            live.concentration_chain[caster.entity_id] = prior
+            _drop_concentration(live, caster.entity_id)
     # Per-target tracking within this slice.
     last_failed_save_by_target: dict[str, SaveRolled] = {}
     last_effect_by_target: dict[str, ActiveEffect] = {}
@@ -3471,6 +3495,18 @@ def _record_effect_lifecycle_links(
                     }
                 )
             continue
+    # _writeback_concentration ran before this fold and pointed
+    # concentration_effect_id at the new effect; _drop_concentration's
+    # inline clear (correct for every other drop path) wiped it. Restore.
+    if new_conc_identities:
+        new_effect_id = new_conc_identities[-1][1]
+        for idx, c in enumerate(live.initiative):
+            if c.entity_id == caster.entity_id:
+                if c.concentration_effect_id != new_effect_id:
+                    live.initiative[idx] = c.model_copy(
+                        update={"concentration_effect_id": new_effect_id}
+                    )
+                break
 
 
 def _hook_run_end_of_turn_saves(live: _LiveCombat, actor_id: str | None) -> None:
