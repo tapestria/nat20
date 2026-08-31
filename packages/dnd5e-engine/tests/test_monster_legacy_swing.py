@@ -73,11 +73,15 @@ def test_template_less_monster_attacks_with_legacy_fields() -> None:
     attacks = [e for e in live.event_log if isinstance(e, AttackRolled)]
     assert attacks
     assert attacks[0].attacker_id == "mon:foe"
-    intents = [e for e in live.event_log if isinstance(e, IntentSubmitted) and e.actor_id == "mon:foe"]
+    intents = [
+        e for e in live.event_log if isinstance(e, IntentSubmitted) and e.actor_id == "mon:foe"
+    ]
     assert intents
     assert intents[-1].intent_type == "attack"
     # AC 1 + attack_bonus 10 ⇒ only a natural 1 misses; under seed 3 the hit lands.
-    damage = [e for e in live.event_log if isinstance(e, DamageApplied) and e.target_id == "char:hero"]
+    damage = [
+        e for e in live.event_log if isinstance(e, DamageApplied) and e.target_id == "char:hero"
+    ]
     assert damage
     assert damage[0].damage_type == "fire"
     assert damage[0].amount >= 2
@@ -87,7 +91,9 @@ def test_unparseable_damage_dice_still_noops() -> None:
     live = _run("banana")
     attacks = [e for e in live.event_log if isinstance(e, AttackRolled)]
     assert not attacks
-    intents = [e for e in live.event_log if isinstance(e, IntentSubmitted) and e.actor_id == "mon:foe"]
+    intents = [
+        e for e in live.event_log if isinstance(e, IntentSubmitted) and e.actor_id == "mon:foe"
+    ]
     assert intents
     assert intents[-1].intent_type == "pass"
 
@@ -110,6 +116,6 @@ def test_synthesize_helper_parses_bonus() -> None:
     assert act is not None
     part = act.damage.parts[0]
     assert (part.number, part.denomination, part.bonus, part.types) == (2, 8, "+3", ["cold"])
-    assert orch._synthesize_attack_from_legacy_fields(
-        c.model_copy(update={"damage_dice": ""})
-    ) is None
+    assert (
+        orch._synthesize_attack_from_legacy_fields(c.model_copy(update={"damage_dice": ""})) is None
+    )
