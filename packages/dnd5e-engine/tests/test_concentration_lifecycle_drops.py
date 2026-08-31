@@ -15,7 +15,6 @@ from dnd5e_engine import orchestrator as orch
 from dnd5e_engine.events import (
     ConcentrationDropped,
     Death,
-    EffectApplied,
     EffectExpired,
 )
 from dnd5e_engine.orchestrator import _LiveCombat
@@ -86,8 +85,10 @@ def test_record_death_drops_the_dying_casters_concentration() -> None:
     live = _concentrating_live()
     orch._record_death(live, Death(target_id="char:a", reason="damage"), killer_id=None)
     dropped, expired = _drop_events(live)
-    assert dropped and dropped[0].target_id == "char:a"
-    assert expired and expired[0].effect_id == "effect:bless"
+    assert dropped
+    assert dropped[0].target_id == "char:a"
+    assert expired
+    assert expired[0].effect_id == "effect:bless"
     assert "char:a" not in live.concentration_chain
 
 
