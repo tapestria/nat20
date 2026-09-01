@@ -220,9 +220,10 @@ def test_c13_s03_caster_reduced_to_zero_hp_ends_concentration():
     """C13-S03: SRD 5.2 — "Your Concentration ends if you have the
     Incapacitated condition or you die."
     (packs/_source/content24/appendices/appendix-d-rule-references.yml:5266-5268).
-    ``_record_death`` now calls ``_drop_concentration`` before recording the
-    kill, so a caster's death drops their concentration effect even when it
-    bypasses the failed-CON-save path.
+    ``_record_death`` now calls ``_drop_concentration`` after recording the
+    kill (``Death`` is emitted, then ``ConcentrationDropped``), so a caster's
+    death drops their concentration effect even when it bypasses the
+    failed-CON-save path.
     """
     from dnd5e_engine.testing import registry
 
