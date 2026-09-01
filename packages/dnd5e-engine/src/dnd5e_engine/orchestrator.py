@@ -5514,6 +5514,61 @@ def _consume_attack_budget(live: _LiveCombat, actor_id: str, current: Combatant)
     return _current_actor(live)
 
 
+def _is_offhand_attack_swing(
+    current: Combatant, intent: PlayerIntent, weapon: Weapon | None
+) -> bool:
+    """SRD 5.2 §Two-Weapon Fighting — True when THIS attack intent is the
+    off-hand Bonus Action swing that follows a Light main-hand weapon
+    attack this same turn: the actor has already engaged its Attack action,
+    swung a Light weapon (``light_weapon_swing_slug``), the off-hand swing
+    hasn't already fired, the Bonus Action is still available, the weapon
+    now being swung is Light, and it is a DIFFERENT weapon slug than the
+    main-hand swing (SRD: "you can make an attack with a different light
+    melee weapon"). ``weapon`` is the intent's resolved ``Weapon`` (``None``
+    for a missing/non-weapon slug -> never Light -> never off-hand)."""
+    return (
+        intent.intent_type == "attack"
+        and current.attack_action_engaged
+        and current.light_weapon_swing_slug is not None
+        and intent.weapon_id != current.light_weapon_swing_slug
+        and not current.offhand_attack_spent
+        and current.bonus_action_available
+        and weapon is not None
+        and WeaponProperty.LIGHT in weapon.properties
+    )
+
+
+def _consume_offhand_attack_budget(
+    live: _LiveCombat, actor_id: str, current: Combatant
+) -> Combatant:
+    """SRD 5.2 §Two-Weapon Fighting — the off-hand swing spends the Bonus
+    Action, NOT the per-Action attack budget: ``attacks_remaining`` is left
+    untouched (the main-hand swing already decremented it) and
+    ``attack_action_engaged`` stays as-is. Marks ``offhand_attack_spent``
+    so ``_twf_window_open`` closes and a second off-hand swing this turn
+    is rejected."""
+    for idx, c in enumerate(live.initiative):
+        if c.entity_id == actor_id:
+            live.initiative[idx] = c.model_copy(
+                update={"bonus_action_available": False, "offhand_attack_spent": True}
+            )
+            break
+    return _current_actor(live)
+
+
+def _record_light_weapon_swing(
+    live: _LiveCombat, actor_id: str, current: Combatant, weapon_slug: str
+) -> Combatant:
+    """Record ``weapon_slug`` as this turn's main-hand Light-weapon swing so
+    ``_twf_window_open`` opens for a same-turn off-hand Bonus Action swing
+    (SRD 5.2 §Two-Weapon Fighting)."""
+    for idx, c in enumerate(live.initiative):
+        if c.entity_id == actor_id:
+            live.initiative[idx] = c.model_copy(update={"light_weapon_swing_slug": weapon_slug})
+            break
+    return _current_actor(live)
+
+
 def _consume_spell_slot(
     live: _LiveCombat, current: Combatant, actor_id: str, intent: PlayerIntent
 ) -> bool:
@@ -6261,8 +6316,30 @@ async def submit_player_intent(
             _emit(live, failure)
             return
 
-    action_economy_failure = _action_economy_gate_failure(
-        current, intent, is_bonus_action=is_bonus_action, is_reaction_cast=is_reaction_cast
+    # SRD 5.2 §Two-Weapon Fighting — classify BEFORE the action-economy gate:
+    # an off-hand swing spends the Bonus Action (already gated by
+    # ``bonus_action_available`` inside the classifier itself), not the
+    # per-Action attack budget, so it must bypass the attack branch of
+    # ``_action_economy_gate_failure`` / ``_consume_attack_budget`` entirely.
+    # An attack-shaped intent that LOOKS like an off-hand swing but fails one
+    # of the classifier's gates (same weapon slug, no open window, Bonus
+    # Action already spent) falls through to the normal attack economy gate
+    # below — with ``attacks_remaining`` already exhausted by the main-hand
+    # swing, that gate's ``AttackFailed(reason="no_action_economy")`` covers
+    # the rejection (turn-keeping, per R2).
+    offhand_weapon = (
+        get_lib_loader().get_weapon(intent.weapon_id)
+        if intent.intent_type == "attack" and intent.weapon_id
+        else None
+    )
+    is_offhand_swing = _is_offhand_attack_swing(current, intent, offhand_weapon)
+
+    action_economy_failure = (
+        None
+        if is_offhand_swing
+        else _action_economy_gate_failure(
+            current, intent, is_bonus_action=is_bonus_action, is_reaction_cast=is_reaction_cast
+        )
     )
     if action_economy_failure is not None:
         _emit(live, action_economy_failure)
@@ -6273,12 +6350,14 @@ async def submit_player_intent(
     # turn-advance branch below) see the updated state. Attack intents use
     # their own soft-consume path (R2): the Action is only spent by the
     # FIRST swing of a multi-attack sequence; every swing decrements the
-    # per-Action attack budget.
-    current = (
-        _consume_attack_budget(live, actor_id, current)
-        if intent.intent_type == "attack"
-        else _consume_action_budget(live, actor_id, action_cost)
-    )
+    # per-Action attack budget. An off-hand swing (Task 2) spends the Bonus
+    # Action via its own dedicated consume path instead.
+    if intent.intent_type == "attack" and is_offhand_swing:
+        current = _consume_offhand_attack_budget(live, actor_id, current)
+    elif intent.intent_type == "attack":
+        current = _consume_attack_budget(live, actor_id, current)
+    else:
+        current = _consume_action_budget(live, actor_id, action_cost)
 
     _emit(
         live,
@@ -6471,6 +6550,12 @@ async def submit_player_intent(
             active_effects=tuple(live.active_effects.get(current.entity_id, [])),
             sneak_attack_spent={current.entity_id: current.sneak_attack_spent_this_turn},
             sneak_attack_ally_adjacent=_sneak_ally_adjacent_map(live, current, targets),
+            # SRD 5.2 §Two-Weapon Fighting / Light property — an off-hand
+            # swing (Task 2) never adds a POSITIVE governing-ability
+            # modifier to its damage; a negative modifier still applies.
+            # False (the default) for every main-hand / monster / spell
+            # swing keeps their damage byte-identical to before this field.
+            suppress_positive_ability_damage_mod=is_offhand_swing,
         )
         for activity in activities:
             resolve_activity(activity, actx, weapon=fetched_weapon)
@@ -6490,6 +6575,21 @@ async def submit_player_intent(
         # save/damage resolution so the push never perturbs the seeded roll
         # order and a target that died is left where it fell.
         _apply_forced_movement_riders(live, current, intent, pre_event_count)
+
+        # SRD 5.2 §Two-Weapon Fighting — after a resolved MAIN-HAND swing
+        # (never the off-hand swing itself) with a Light weapon, record its
+        # slug so a same-turn different-Light-weapon attack opens the
+        # off-hand Bonus Action window (``_twf_window_open``). Recorded
+        # unconditionally on hit-or-miss (SRD: the option is "when you take
+        # the Attack action... you can use a Bonus Action", not gated on
+        # the main-hand swing landing).
+        if (
+            intent.intent_type == "attack"
+            and not is_offhand_swing
+            and fetched_weapon is not None
+            and WeaponProperty.LIGHT in fetched_weapon.properties
+        ):
+            current = _record_light_weapon_swing(live, actor_id, current, fetched_weapon.slug)
 
     # SRD §Concentration — fold any emitted ``EffectApplied(is_concentration=True)``
     # back onto the caster's ``Combatant.concentration_effect_id`` so the

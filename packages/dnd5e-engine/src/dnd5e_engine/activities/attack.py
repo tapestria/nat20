@@ -647,7 +647,12 @@ def _roll_base_weapon_damage(
     first_type: str | None = None
     flat_addition = weapon.magical_bonus
     if governing_ability is not None:
-        flat_addition += ctx.ability_mod(governing_ability)
+        mod = ctx.ability_mod(governing_ability)
+        # SRD 5.2 Light property: "you don't add your ability modifier to the
+        # extra attack's damage unless that modifier is negative."
+        if ctx.suppress_positive_ability_damage_mod and mod > 0:
+            mod = 0
+        flat_addition += mod
 
     for index, part in enumerate(weapon.damage_parts):
         rolled = roll_damage_part(part, ctx.rng, crit=is_crit)

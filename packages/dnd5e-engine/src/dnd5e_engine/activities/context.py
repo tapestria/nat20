@@ -291,6 +291,14 @@ class ActivityResolutionContext:
     # Test-determinism seams (our own code): variables["force_d20"],
     # variables["force_save_d20"], variables["in_crit"].
     variables: dict[str, int] = field(default_factory=dict)
+    # SRD 5.2 §Two-Weapon Fighting / Light property — "you don't add your
+    # ability modifier to the extra attack's damage unless that modifier is
+    # negative." Set True by the orchestrator only for an off-hand swing
+    # (Task 2); ``_roll_base_weapon_damage`` (attack.py) zeroes a POSITIVE
+    # governing-ability mod when this is set — a negative mod still applies.
+    # False default keeps every other swing (main-hand, monster, spell)
+    # byte-identical to before this field existed.
+    suppress_positive_ability_damage_mod: bool = False
 
     def ability_mod(self, ability: str) -> int:
         return (self.caster_abilities.get(ability, 10) - 10) // 2

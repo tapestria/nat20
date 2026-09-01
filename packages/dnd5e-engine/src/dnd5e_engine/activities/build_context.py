@@ -152,6 +152,7 @@ def build_activity_context(
     sneak_attack_ally_adjacent: dict[str, bool] | None = None,
     target_unseen: dict[str, bool] | None = None,
     attacker_unseen_by: dict[str, bool] | None = None,
+    suppress_positive_ability_damage_mod: bool = False,
 ) -> ActivityResolutionContext:
     """Adapt the caster + the pre-computed hydration sidecars into the typed
     ``ActivityResolutionContext`` the new resolver consumes.
@@ -372,4 +373,5 @@ def build_activity_context(
         scale_values=scale_values or {},
         class_levels=class_levels or {},
         cast_level_override=cast_level_override,
+        suppress_positive_ability_damage_mod=suppress_positive_ability_damage_mod,
     )
