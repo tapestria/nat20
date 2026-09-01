@@ -332,15 +332,11 @@ zone + apply logic:
 
 ## Audit 2026-08-26 — action economy & turn structure
 
-- **`hide` intent is a no-op** (`dodge` closed C14 Task 3, `help`
-  (assist-an-attack-roll flavor) closed C14 Task 4 — both 2026-09-01;
+- **`search`/`study`/`influence`/`utilize` do not exist as `IntentType`
+  values at all** (`dodge` closed C14 Task 3, `help` assist-an-attack-roll
+  flavor closed C14 Task 4, `hide` closed C14 Task 5 — all 2026-09-01;
   Help's ability-check flavor is still open, no check-advantage producer
-  exists). It is a valid `IntentType` value with no handler —
-  `orchestrator.py` dispatches only `move_mark`/`move`/`dash`/`disengage`/
-  `dodge`/`help`; `hide` falls through to the generic tail, consumes the
-  Action, ends the turn and changes nothing. Worse than a rejection because
-  hosts see it "work". `search`/`study`/`influence`/`utilize` do not exist
-  at all. (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
+  exists). (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
 - **Extra Attack for PCs is not modelled.** No attacks-per-action counter
   exists (only monster Multiattack via prose parsing). `extra-attack.json`
   ships `activities: []`. Action Surge, Flurry of Blows and two-weapon fighting

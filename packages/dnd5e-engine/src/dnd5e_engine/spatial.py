@@ -151,6 +151,8 @@ class SpatialTopology(Protocol):
 
     def cover_on_cell(self, cell: str) -> CoverDegree: ...
 
+    def obscurement_on_cell(self, cell: str) -> Literal["none", "light", "heavy"]: ...
+
     def can_see(self, a: str, b: str, senses: CombatantSenses | None = None) -> bool: ...
 
     def distance_ft(self, a: str, b: str) -> int | None: ...
@@ -350,6 +352,19 @@ class GridTopology:
         if cell in self._blocked:
             return "total"
         return self._cover_cells.get(cell, "none")  # type: ignore[return-value]
+
+    def obscurement_on_cell(self, cell: str) -> Literal["none", "light", "heavy"]:
+        """SRD 5.2 §Vision and Light — the ``obscurement_cells`` degree tagged
+        directly on ``cell`` itself, with NO line walk to another point.
+
+        Mirrors ``cover_on_cell`` exactly (same "read the tag on this one
+        cell" shape); introduced for the Hide action's gate (SRD 5.2 Hide:
+        "while you're Heavily Obscured or behind Three-Quarters Cover or
+        Total Cover"). Out-of-bounds cells carry no obscurement tag.
+        """
+        if not self._in_bounds(cell):
+            return "none"
+        return self._obscurement.get(cell, "none")
 
     def can_see(self, a: str, b: str, senses: CombatantSenses | None = None) -> bool:
         """SRD 5.2 §Vision and Light — can a viewer in ``a`` with ``senses`` see

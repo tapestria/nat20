@@ -17,7 +17,13 @@ from __future__ import annotations
 import pytest
 
 from dnd5e_engine import PlayerIntent
-from dnd5e_engine.events import AttackRolled, SaveRolled
+from dnd5e_engine.events import (
+    AttackRolled,
+    CheckRolled,
+    ConditionApplied,
+    ConditionRemoved,
+    SaveRolled,
+)
 from dnd5e_engine.orchestrator import (
     IntentRejectedError,
     _get_live,
@@ -489,3 +495,269 @@ class TestHelpExpiry:
         live = run_async(_run())
         assert live.current_actor_id == "char:helper"
         assert live.help_grants.get("mon:foe") in (None, [])
+
+
+# ── C14 Task 5 — the Hide action ────────────────────────────────────────────
+#
+# SRD 5.2 (Hide): "you must succeed on a DC 15 Dexterity (Stealth) check
+# while you're Heavily Obscured or behind Three-Quarters Cover or Total
+# Cover, and you must be out of any enemy's line of sight... On a successful
+# check, you have the Invisible condition while hidden. The condition ends
+# on you immediately after any of the following occurs: you make a sound
+# louder than a whisper, an enemy finds you, you make an attack roll, or you
+# cast a spell with a Verbal component."
+#
+# The "out of any enemy's line of sight" conjunct is DEFERRED to C16b (no
+# vision-scan wired to this seam yet — mirrors the Dodge "if you can see the
+# attacker" deferral). The loud-sound / found-by-Search break clauses are a
+# host/Search concern, out of engine scope; the found-DC (check total) is
+# NOT stored.
+#
+# CONTROLLER RULING: Hide is zero-Action-cost (turn-keeping), NOT the SRD's
+# Action-consuming version — see ``_handle_hide``'s docstring in
+# ``orchestrator.py`` for the rationale (an Action-consuming Hide would make
+# the approved hide-then-attack catalog script unsatisfiable against the
+# hard Action gate the first attack swing enforces).
+
+
+def _hide_party(**overrides: object) -> list[PartyMemberSpec]:
+    base = dict(
+        entity_id="char:hider",
+        name="Hider",
+        initiative=20,
+        hp_current=20,
+        hp_max=20,
+        dexterity=10,
+        zone_id=cell(1, 1),
+    )
+    base.update(overrides)
+    return [PartyMemberSpec(**base)]  # type: ignore[arg-type]
+
+
+async def _start_hide_combat(
+    session_id: str,
+    *,
+    grid_kw: dict[str, object] | None = None,
+    # Adjacent to the hider's default ``cell(1, 1)`` — melee range for the
+    # break-on-attack scenarios; a cover/obscurement tag on the hider's OWN
+    # cell never touches the foe's cell, so proximity here is harmless to
+    # the gate tests.
+    foe_zone: str = cell(2, 1),
+    **party_overrides: object,
+):
+    return await start_combat(
+        session_id=session_id,
+        party=_hide_party(**party_overrides),
+        encounter=[
+            EncounterMemberSpec(
+                entity_id="mon:foe",
+                entity_type="Monster",
+                name="Foe",
+                initiative=10,
+                hp_current=30,
+                hp_max=30,
+                ac=10,
+                attack_bonus=5,
+                zone_id=foe_zone,
+            )
+        ],
+        scene_zones=None,
+        grid_scene=grid_scene(**(grid_kw or {})),
+        rng_seed=7,
+    )
+
+
+class TestHideGateAndCheck:
+    def test_hide_behind_three_quarters_cover_rolls_check_and_keeps_turn(self):
+        """(a) A ``hide`` intent on a Three-Quarters-cover cell rolls a DC 15
+        Dexterity (Stealth) check — modifier = DEX mod + PB (stealth
+        proficient) — and keeps the actor on turn without touching the
+        Action budget (controller ruling: zero-cost, not soft-consumed)."""
+
+        async def _run():
+            start = await _start_hide_combat(
+                "t5-a-three-quarters-cover",
+                grid_kw={"cover_cells": {cell(1, 1): "three_quarters"}},
+                dexterity=16,
+                skill_proficiencies=("stealth",),
+                character_level=1,
+            )
+            await submit_player_intent(
+                start.handle,
+                actor_id="char:hider",
+                intent=PlayerIntent(intent_type="hide"),
+            )
+            return _get_live(start.handle)
+
+        live = run_async(_run())
+        rolled = next(e for e in events_of(live, CheckRolled) if e.actor_id == "char:hider")
+        assert rolled.ability == "dex"
+        assert rolled.skill == "stealth"
+        assert rolled.dc == 15
+        # DEX 16 -> +3 modifier; proficient in Stealth at level 1 -> +2 PB.
+        assert rolled.modifier == 5
+        hider = next(c for c in live.initiative if c.entity_id == "char:hider")
+        assert hider.action_available is True
+        assert live.current_actor_id == "char:hider"
+
+    def test_hide_on_a_heavily_obscured_cell_also_gates_open(self):
+        """(a) Heavy obscurement alone (no cover tag) satisfies the gate."""
+
+        async def _run():
+            start = await _start_hide_combat(
+                "t5-a-heavy-obscurement",
+                grid_kw={"obscurement_cells": {cell(1, 1): "heavy"}},
+                dexterity=16,
+            )
+            await submit_player_intent(
+                start.handle,
+                actor_id="char:hider",
+                intent=PlayerIntent(intent_type="hide"),
+            )
+            return _get_live(start.handle)
+
+        live = run_async(_run())
+        rolled = [e for e in events_of(live, CheckRolled) if e.actor_id == "char:hider"]
+        assert rolled
+
+    def test_hide_on_an_uncovered_cell_is_rejected_with_no_roll(self):
+        """(a) No cover/obscurement on the hider's own cell -> rejected, and
+        NOT EVEN ONE d20 is drawn (zero stream perturbation on rejection)."""
+
+        async def _run():
+            start = await _start_hide_combat("t5-a-no-cover", dexterity=16)
+            with pytest.raises(IntentRejectedError) as exc_info:
+                await submit_player_intent(
+                    start.handle,
+                    actor_id="char:hider",
+                    intent=PlayerIntent(intent_type="hide"),
+                )
+            return exc_info, _get_live(start.handle)
+
+        exc_info, live = run_async(_run())
+        assert exc_info.value.reason == "target_invalid"
+        assert not [e for e in events_of(live, CheckRolled) if e.actor_id == "char:hider"]
+        hider = next(c for c in live.initiative if c.entity_id == "char:hider")
+        assert hider.action_available is True
+
+
+class TestHideGrantsInvisibleAndBreaksOnAttack:
+    def test_successful_hide_grants_invisible_and_breaks_after_the_next_attack(self):
+        """(b) A successful Hide check applies Invisible; the hider's NEXT
+        attack rolls with advantage and then breaks the hidden state — a
+        LATER attack (no re-hide) rolls "normal"."""
+
+        async def _run():
+            start = await _start_hide_combat(
+                "t5-b-invisible-then-break",
+                grid_kw={"cover_cells": {cell(1, 1): "three_quarters"}},
+                # Absurdly high DEX guarantees the DC 15 check succeeds
+                # regardless of the natural roll — keeps this test seed-
+                # independent (only the e2e catalog scenario pins a seed).
+                dexterity=40,
+            )
+            await submit_player_intent(
+                start.handle,
+                actor_id="char:hider",
+                intent=PlayerIntent(intent_type="hide"),
+            )
+            await submit_player_intent(
+                start.handle,
+                actor_id="char:hider",
+                intent=PlayerIntent(
+                    intent_type="attack", weapon_id="longsword", target_id="mon:foe"
+                ),
+            )
+            live = _get_live(start.handle)
+            await advance_monster_turn(start.handle)
+            # It is now the hider's own next turn; hide already broke on the
+            # attack above — this second attack should be plain "normal".
+            await submit_player_intent(
+                start.handle,
+                actor_id="char:hider",
+                intent=PlayerIntent(
+                    intent_type="attack", weapon_id="longsword", target_id="mon:foe"
+                ),
+            )
+            return _get_live(start.handle)
+
+        live = run_async(_run())
+        applied = [e for e in events_of(live, ConditionApplied) if e.target_id == "char:hider"]
+        assert any(e.condition == "invisible" for e in applied)
+        removed = [e for e in events_of(live, ConditionRemoved) if e.target_id == "char:hider"]
+        assert any(e.condition == "invisible" for e in removed)
+        attacks = [e for e in events_of(live, AttackRolled) if e.attacker_id == "char:hider"]
+        assert len(attacks) == 2
+        assert attacks[0].advantage == "advantage"
+        assert attacks[1].advantage == "normal"
+        assert "char:hider" not in live.hidden_entities
+
+
+class TestHideFailedCheck:
+    def test_a_failed_hide_check_grants_no_condition_and_no_advantage(self):
+        """(c) A failed check applies no condition, and the next attack is
+        plain "normal"."""
+
+        async def _run():
+            start = await _start_hide_combat(
+                "t5-c-failed-check",
+                grid_kw={"cover_cells": {cell(1, 1): "three_quarters"}},
+                # Extreme negative DEX guarantees the DC 15 check fails
+                # regardless of the natural roll.
+                dexterity=-10,
+            )
+            await submit_player_intent(
+                start.handle,
+                actor_id="char:hider",
+                intent=PlayerIntent(intent_type="hide"),
+            )
+            await submit_player_intent(
+                start.handle,
+                actor_id="char:hider",
+                intent=PlayerIntent(
+                    intent_type="attack", weapon_id="longsword", target_id="mon:foe"
+                ),
+            )
+            return _get_live(start.handle)
+
+        live = run_async(_run())
+        assert not [e for e in events_of(live, ConditionApplied) if e.target_id == "char:hider"]
+        assert "char:hider" not in live.hidden_entities
+        attack = next(e for e in events_of(live, AttackRolled) if e.attacker_id == "char:hider")
+        assert attack.advantage == "normal"
+
+
+class TestHideBreaksOnVerbalCast:
+    def test_casting_a_verbal_spell_breaks_hide(self):
+        """(d) Casting a spell with a Verbal component (Acid Splash: V, S)
+        clears the hidden state, same as an attack roll."""
+
+        async def _run():
+            start = await _start_hide_combat(
+                "t5-d-verbal-cast-breaks-hide",
+                grid_kw={"cover_cells": {cell(1, 1): "three_quarters"}},
+                dexterity=40,
+                spells_known=["acid-splash"],
+                character_level=1,
+                foe_zone=cell(2, 1),
+            )
+            await submit_player_intent(
+                start.handle,
+                actor_id="char:hider",
+                intent=PlayerIntent(intent_type="hide"),
+            )
+            live = _get_live(start.handle)
+            assert "char:hider" in live.hidden_entities
+            await submit_player_intent(
+                start.handle,
+                actor_id="char:hider",
+                intent=PlayerIntent(
+                    intent_type="cast_spell", spell_id="acid-splash", target_id="mon:foe"
+                ),
+            )
+            return _get_live(start.handle)
+
+        live = run_async(_run())
+        removed = [e for e in events_of(live, ConditionRemoved) if e.target_id == "char:hider"]
+        assert any(e.condition == "invisible" for e in removed)
+        assert "char:hider" not in live.hidden_entities

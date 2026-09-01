@@ -33,7 +33,7 @@ without failing CI.
 | Dash, Disengage | ✅ Resolved | |
 | Dodge | ✅ Resolved | Attacker Disadvantage + Dexterity save Advantage until the start of your next turn; lost under Incapacitated or Speed 0. No "can see the attacker" check yet (no vision model). |
 | Help | ✅ Resolved | Assist-an-attack-roll flavor only (the ability-check flavor has no check-advantage producer yet): the next ally attack against a target within 5 ft of the helper rolls with Advantage, consumed by that one attack roll (hit, miss, or cancelled to normal) and otherwise expiring at the start of the helper's own next turn. |
-| Hide | ❌ Not modelled | Accepted as an intent, but it has **no handler** — it consumes the Action and changes nothing. |
+| Hide | ✅ Resolved | Gated on Three-Quarters/Total cover or Heavy obscurement on the hider's own cell (no "out of any enemy's line of sight" check yet — no vision model); on a successful DC 15 Dexterity (Stealth) check grants the Invisible condition, which ends the moment the hider makes an attack roll or casts a spell with a Verbal component. Touches no Action-economy budget (see BACKLOG.md). |
 | Opportunity attacks | ✅ Resolved | Both directions (PC↔monster); same-zone reach approximation, no "can see" check |
 | Death saves, stabilization | ✅ Resolved | |
 | Instant death (massive damage) | ✅ Resolved | A Character whose damage remainder equals or exceeds their Hit Point maximum dies outright — `Death(reason="instant_kill")` (C12) |

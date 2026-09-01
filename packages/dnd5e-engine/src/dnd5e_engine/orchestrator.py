@@ -69,6 +69,7 @@ from dnd5e_srd_data.schema.item import Weapon, WeaponProperty
 from dnd5e_srd_data.schema.spell import (
     CastingTimeUnit,
     Spell,
+    SpellComponent,
     SpellDurationUnits,
     SpellRangeUnits,
 )
@@ -105,6 +106,7 @@ from dnd5e_engine.events import (
     AttackFailed,
     AttackRolled,
     CastFailed,
+    CheckRolled,
     CombatantMoved,
     CombatEnded,
     CombatEvent,
@@ -436,6 +438,11 @@ class _ZoneGraph:
 
     def cover_on_cell(self, cell: str) -> Literal["none", "half", "three_quarters", "total"]:
         # Same permanent no-cover-model split as ``cover_between`` above.
+        return "none"
+
+    def obscurement_on_cell(self, cell: str) -> Literal["none", "light", "heavy"]:
+        # Same permanent no-positional-model split as ``cover_on_cell`` above
+        # — the zone graph has no obscurement geometry to hang a tag off of.
         return "none"
 
     def can_see(self, a: str, b: str, senses: CombatantSenses | None = None) -> bool:
@@ -1489,6 +1496,18 @@ class _LiveCombat:
     # helper at that helper's OWN next ``TurnStarted``
     # (``_emit_apply_turn_started``), never at the target's turn.
     help_grants: dict[str, list[str]] = field(default_factory=dict)
+    # SRD 5.2 §Actions in Combat — Hide (C14 Task 5): the set of entity_ids
+    # currently benefiting from a successful Hide check's Invisible
+    # condition. Populated by ``_handle_hide`` on a successful DC 15
+    # Dexterity (Stealth) check (mirrors the ``ConditionApplied`` fold onto
+    # ``Combatant.conditions``); consumed (discarded, with a matching
+    # ``ConditionRemoved``) the moment its member "makes an attack roll" or
+    # "casts a spell with a Verbal component" (SRD 5.2 Hide's break clause).
+    # The found-DC / check total is intentionally NOT stored — the SRD's
+    # "an enemy finds you" and "a sound louder than a whisper" break clauses
+    # are host/Search concerns out of this engine's scope (no Search action
+    # or perception-vs-stealth contest is modeled here).
+    hidden_entities: set[str] = field(default_factory=set)
     # Turn-boundary hook registry (``dnd5e_engine.turn_lifecycle``). Populated
     # by ``_register_default_turn_hooks`` in ``start_combat``; run by
     # ``_end_turn_and_advance`` / ``_begin_turn``. Every rule that fires "at the
@@ -1885,6 +1904,108 @@ def _handle_drop_concentration(live: _LiveCombat, current: Combatant, intent: Pl
         IntentSubmitted(actor_id=current.entity_id, intent_type="drop_concentration"),
     )
     _drop_concentration(live, current.entity_id)
+
+
+def _handle_hide(live: _LiveCombat, current: Combatant, intent: PlayerIntent) -> None:
+    """SRD 5.2 §Actions in Combat — Hide.
+
+    *"You must succeed on a DC 15 Dexterity (Stealth) check while you're
+    Heavily Obscured or behind Three-Quarters Cover or Total Cover, and
+    you must be out of any enemy's line of sight... On a successful
+    check, you have the Invisible condition while hidden."*
+
+    CONTROLLER RULING (supersedes the task brief's "soft-consume the
+    Action" line): Hide costs NO Action-economy budget at all — the same
+    zero-cost, turn-keeping shape as ``_handle_drop_concentration``. The
+    SRD actually costs an Action; this divergence is deliberately
+    UNENFORCED pending strict Attack-action accounting (an Action-
+    consuming Hide would make the catalog's approved hide-then-attack
+    script unsatisfiable against the hard Action gate the first attack
+    swing enforces) — see BACKLOG.md.
+
+    Gate: the hider's own cell must be behind Three-Quarters/Total cover
+    OR Heavily Obscured. The "out of any enemy's line of sight" conjunct
+    is DEFERRED to C16b — no per-enemy vision scan is wired to this seam
+    yet (comment mirrors the Dodge "if you can see the attacker" deferral).
+    A failed gate raises ``IntentRejectedError("target_invalid")`` with NO
+    d20 draw (zero stream perturbation on rejection).
+
+    On success: emits ``ConditionApplied(condition="invisible")`` (the C12
+    Invisible wiring already grants the hider's next attack Advantage and
+    imposes Disadvantage on attacks against it) and records the hider in
+    ``live.hidden_entities`` so the break-on-attack /
+    break-on-verbal-cast hooks (attack path / cast_spell path) can end it.
+    The found-DC / check total is intentionally NOT stored — Search
+    (the SRD's "an enemy finds you" break clause) is a host concern out
+    of this engine's scope.
+    """
+    actor_id = current.entity_id
+    cell = live.actor_zone.get(actor_id)
+    cover = live.topology.cover_on_cell(cell) if cell is not None else "none"
+    obscurement = live.topology.obscurement_on_cell(cell) if cell is not None else "none"
+    if cover not in ("three_quarters", "total") and obscurement != "heavy":
+        raise IntentRejectedError(
+            "target_invalid",
+            f"actor_id={actor_id!r} is not behind Three-Quarters/Total cover "
+            "or Heavily Obscured — Hide requires one of those",
+        )
+
+    _emit(
+        live,
+        IntentSubmitted(actor_id=actor_id, intent_type="hide"),
+    )
+
+    modifier = check_modifier(current, "dex", "stealth").total + d20_test_penalty(
+        current.conditions
+    )
+    roll = roll_d20_test(live.rng, modifier, AdvantageSources())
+    dc = 15
+    succeeded = roll.total >= dc
+    _emit(
+        live,
+        CheckRolled(
+            actor_id=actor_id,
+            ability="dex",
+            skill="stealth",
+            dc=dc,
+            roll_total=roll.total,
+            succeeded=succeeded,
+            advantage=roll.mode,
+            natural=roll.kept,
+            modifier=roll.modifier,
+            sources=list(roll.sources),
+        ),
+    )
+    if succeeded:
+        _emit(live, ConditionApplied(target_id=actor_id, condition="invisible"))
+        live.hidden_entities.add(actor_id)
+
+
+def _break_hide_on_attack_or_verbal_cast(
+    live: _LiveCombat,
+    current: Combatant,
+    intent: PlayerIntent,
+    cast_spell: Spell | None,
+) -> None:
+    """SRD 5.2 Hide's break clause, the "attack roll" and "Verbal component"
+    conjuncts: ends the hider's Invisible condition the instant they make
+    an attack roll (any swing, main-hand or off-hand) or cast a spell whose
+    typed ``components`` carry ``SpellComponent.VOCAL``. No-op for a
+    non-hidden actor or any other intent kind. The loud-sound / found-by-
+    Search break clauses are out of this engine's scope (host/Search
+    concern); see ``_handle_hide``'s docstring.
+    """
+    if current.entity_id not in live.hidden_entities:
+        return
+    breaks = intent.intent_type == "attack" or (
+        intent.intent_type == "cast_spell"
+        and cast_spell is not None
+        and SpellComponent.VOCAL in cast_spell.components
+    )
+    if not breaks:
+        return
+    _emit(live, ConditionRemoved(target_id=current.entity_id, condition="invisible"))
+    live.hidden_entities.discard(current.entity_id)
 
 
 def _handle_disengage(live: _LiveCombat, current: Combatant, intent: PlayerIntent) -> None:
@@ -6400,6 +6521,11 @@ async def _dispatch_turn_nonending_intent(
     * ``drop_concentration`` — SRD §Concentration: end Concentration
       voluntarily at any time, no action required. Touches no budget and
       keeps the actor on turn.
+    * ``hide`` — SRD §Actions in Combat, Hide: gate on cover/obscurement,
+      roll a DC 15 Dexterity (Stealth) check, grant Invisible on success.
+      CONTROLLER RULING: touches NO Action-economy budget (see
+      ``_handle_hide``'s docstring for the divergence from strict SRD
+      cost) and keeps the actor on turn.
     """
     if intent.intent_type == "move_mark":
         await _handle_move_mark(live, current, intent)
@@ -6415,6 +6541,9 @@ async def _dispatch_turn_nonending_intent(
         return True
     if intent.intent_type == "drop_concentration":
         _handle_drop_concentration(live, current, intent)
+        return True
+    if intent.intent_type == "hide":
+        _handle_hide(live, current, intent)
         return True
     return False
 
@@ -6804,6 +6933,14 @@ async def submit_player_intent(
         # (``target_help_advantage`` above), spend exactly ONE matching
         # helper's grant now that the roll has happened.
         _pop_help_grant(live, current.entity_id, targets, pre_event_count)
+
+        # SRD 5.2 §Actions in Combat — Hide, break clause: "the condition
+        # ends on you immediately after ... you make an attack roll" or
+        # "cast a spell with a Verbal component." The swing/cast just
+        # resolved above still benefited from Invisible (the attack
+        # context was built before this removal, so the C12 advantage
+        # fold already applied) — this only affects the NEXT action.
+        _break_hide_on_attack_or_verbal_cast(live, current, intent, cast_spell)
 
         # SRD §Sneak Attack, "Once per turn" — record that the rider fired so a
         # (future) second qualifying attack this turn is capped. The rider folds
@@ -7453,6 +7590,14 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
             resolve_activity(activity, actx, weapon=None)
         # SRD 5.2 §Actions in Combat — Help: one-use pop, mirrors the PC site.
         _pop_help_grant(live, current.entity_id, target_list, pre_event_count)
+        # SRD 5.2 §Actions in Combat — Hide, break clause: mirrors the PC
+        # site. A monster hidden via a prior Hide loses Invisible the
+        # moment IT makes an attack roll (no monster gambit currently
+        # issues a Hide intent, so this is defensive symmetry, not a
+        # reachable path today).
+        if current.entity_id in live.hidden_entities:
+            _emit(live, ConditionRemoved(target_id=current.entity_id, condition="invisible"))
+            live.hidden_entities.discard(current.entity_id)
         # Symmetric concentration writeback for spellcaster monsters
         # (mirrors the PC path; no-op for non-caster monsters).
         _writeback_concentration(live, current, pre_event_count)

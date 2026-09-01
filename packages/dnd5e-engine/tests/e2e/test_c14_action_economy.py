@@ -85,7 +85,6 @@ def test_c14_s01_dodge_disadvantages_attackers_until_next_turn():
     assert rolled_b.advantage == "disadvantage"
 
 
-@xfail_cluster(14, "action economy")
 def test_c14_s02_hide_grants_advantage_on_next_attack():
     """C14-S02: SRD 5.2 (Hide) — "you must succeed on a DC 15 Dexterity
     (Stealth) check while you're Heavily Obscured or behind Three-Quarters

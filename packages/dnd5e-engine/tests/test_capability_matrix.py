@@ -176,7 +176,7 @@ _PROBES: dict[str, tuple[Any, str]] = {
         lambda: 'if intent.intent_type == "help":' in _src("orchestrator.py"),
         "✅",
     ),
-    # Still open (C14 Task 5): Hide has no handler yet.
+    # Closed (C14 Task 5): Hide has a dispatch handler.
     "| Hide |": (
         lambda: 'if intent.intent_type == "hide"' in _src("orchestrator.py"),
         "✅",
