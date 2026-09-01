@@ -153,6 +153,7 @@ def build_activity_context(
     target_unseen: dict[str, bool] | None = None,
     attacker_unseen_by: dict[str, bool] | None = None,
     suppress_positive_ability_damage_mod: bool = False,
+    target_dodging: dict[str, bool] | None = None,
 ) -> ActivityResolutionContext:
     """Adapt the caster + the pre-computed hydration sidecars into the typed
     ``ActivityResolutionContext`` the new resolver consumes.
@@ -351,6 +352,11 @@ def build_activity_context(
         target_unseen=target_unseen or {},
         attacker_unseen_by=attacker_unseen_by or {},
         target_distance_ft=target_distance_ft or {},
+        # SRD 5.2 §Actions in Combat — Dodge (C14 Task 3): PRE-RESOLVED
+        # per-target dodge-benefit flag, computed by the orchestrator
+        # (``_dodge_benefit_active``). Absent (``None``) → empty, leaving
+        # the golden corpus identical (no dodge geometry).
+        target_dodging=target_dodging or {},
         attacker_grappler_id=attacker_grappler_id,
         d20_test_penalty=d20_test_penalty or {},
         # SRD §Advantage / §Sneak Attack — the caster's own active effects

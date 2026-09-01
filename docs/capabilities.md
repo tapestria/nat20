@@ -31,7 +31,8 @@ without failing CI.
 | Ability & skill checks (in and out of combat) | ✅ Resolved | `resolve_check`; seed via `CheckSpec.rng` |
 | Action economy (action, bonus action, reaction, movement) | ⚠️ Partial | One action per turn; **Extra Attack / Action Surge are not modelled**. Incapacitated blocks action/bonus/reaction intents (C12). |
 | Dash, Disengage | ✅ Resolved | |
-| Dodge, Hide, Help | ❌ Not modelled | Accepted as intents, but they have **no handler** — they consume the Action and change nothing. |
+| Dodge | ✅ Resolved | Attacker Disadvantage + Dexterity save Advantage until the start of your next turn; lost under Incapacitated or Speed 0. No "can see the attacker" check yet (no vision model). |
+| Hide, Help | ❌ Not modelled | Accepted as intents, but they have **no handler** — they consume the Action and change nothing. |
 | Opportunity attacks | ✅ Resolved | Both directions (PC↔monster); same-zone reach approximation, no "can see" check |
 | Death saves, stabilization | ✅ Resolved | |
 | Instant death (massive damage) | ✅ Resolved | A Character whose damage remainder equals or exceeds their Hit Point maximum dies outright — `Death(reason="instant_kill")` (C12) |

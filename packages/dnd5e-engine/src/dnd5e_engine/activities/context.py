@@ -183,6 +183,18 @@ class ActivityResolutionContext:
     # within 5 ft, disadvantage otherwise). Absent target -> unknown -> that row
     # stays inert.
     target_distance_ft: dict[str, int] = field(default_factory=dict)
+    # SRD 5.2 §Actions in Combat — Dodge (C14 Task 3). Per-TARGET whether the
+    # Dodge benefit is currently active (``dodging`` AND not Incapacitated
+    # AND Speed > 0 — the SRD loss clause), projected once per resolution by
+    # the orchestrator (``_dodge_benefit_active``). Consumed in
+    # ``attack.py``, which folds it into disadvantage on an attack roll
+    # against that target. SRD also conditions the attack-disadvantage half
+    # of Dodge on "if you can see the attacker" — that conjunct is deferred
+    # to C16b (no vision model wired to this seam yet); the DEX-save
+    # advantage half has no such conjunct and is folded separately via
+    # ``passive_save_adv`` in the hydration payload. Empty default keeps the
+    # golden corpus identical (no dodge geometry).
+    target_dodging: dict[str, bool] = field(default_factory=dict)
     # The entity grappling the ATTACKER (SRD 5.2 Grappled: disadvantage on
     # attack rolls against any target other than the grappler). ``None`` when
     # not grappled or the grappler is unknown -> row inert.

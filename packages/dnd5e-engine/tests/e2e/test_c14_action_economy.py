@@ -22,7 +22,6 @@ from dnd5e_engine.specs import EncounterMemberSpec, GridScene, PartyMemberSpec
 from tests.e2e.harness import cell, events_of, grid_scene, run_async, xfail_cluster
 
 
-@xfail_cluster(14, "action economy")
 def test_c14_s01_dodge_disadvantages_attackers_until_next_turn():
     """C14-S01: SRD 5.2 (Dodge) — "until the start of your next turn, any
     attack roll made against you has Disadvantage if you can see the

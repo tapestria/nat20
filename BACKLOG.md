@@ -332,12 +332,13 @@ zone + apply logic:
 
 ## Audit 2026-08-26 — action economy & turn structure
 
-- **`dodge`, `hide` and `help` intents are no-ops.** They are valid
-  `IntentType` values with no handler — `orchestrator.py` dispatches only
-  `move_mark`/`move`/`dash`/`disengage`; the three fall through to the generic
-  tail, consume the Action, end the turn and change nothing. Worse than a
-  rejection because hosts see them "work". `search`/`study`/`influence`/
-  `utilize` do not exist at all. (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
+- **`hide` and `help` intents are no-ops** (`dodge` closed C14 Task 3 —
+  2026-09-01). They are valid `IntentType` values with no handler —
+  `orchestrator.py` dispatches only `move_mark`/`move`/`dash`/`disengage`/
+  `dodge`; the two fall through to the generic tail, consume the Action, end
+  the turn and change nothing. Worse than a rejection because hosts see them
+  "work". `search`/`study`/`influence`/`utilize` do not exist at all.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
 - **Extra Attack for PCs is not modelled.** No attacks-per-action counter
   exists (only monster Multiattack via prose parsing). `extra-attack.json`
   ships `activities: []`. Action Surge, Flurry of Blows and two-weapon fighting

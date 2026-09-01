@@ -1472,6 +1472,33 @@ def _effective_speed(c: Combatant) -> int:
     return project_speed(c.base_speed, _condition_names(c), exhaustion_level_of(c.conditions))
 
 
+def _set_dodging(live: _LiveCombat, actor_id: str) -> None:
+    """SRD 5.2 §Actions in Combat — Dodge: flip ``actor_id``'s ``dodging``
+    flag live via the standard initiative-list model_copy write. Split out
+    of ``submit_player_intent`` purely to keep that dispatcher's cyclomatic
+    complexity under the lint ceiling."""
+    for idx, c in enumerate(live.initiative):
+        if c.entity_id == actor_id:
+            live.initiative[idx] = c.model_copy(update={"dodging": True})
+            break
+
+
+def _dodge_benefit_active(live: _LiveCombat, c: Combatant) -> bool:
+    """SRD 5.2 §Actions in Combat — Dodge (C14 Task 3). True while ``c``'s
+    Dodge benefit is live: the combatant took the Dodge action this turn (or
+    a prior turn, "until the start of your next turn") AND has not lost it
+    under the SRD loss clause — *"You lose these benefits if you have the
+    Incapacitated condition or if your Speed is 0."* ``live`` is unused today
+    (no vision model yet — the "if you can see the attacker" conjunct on the
+    attack-disadvantage half is deferred to C16b) but threaded through so a
+    future vision check can slot in here without changing every call site.
+    """
+    del live  # C16b — see docstring; kept for the eventual vision-seam signature.
+    return (
+        c.dodging and not conditions_block_actions(_condition_names(c)) and _effective_speed(c) > 0
+    )
+
+
 def _clamp_movement_budget(live: _LiveCombat, entity_id: str) -> None:
     """Re-project one combatant's ``movement_remaining`` after its conditions
     changed mid-turn: never above the effective Speed (a creature grappled
@@ -2047,6 +2074,10 @@ def _emit_apply_turn_started(live: _LiveCombat, event: TurnStarted) -> None:
                     "attack_action_engaged": False,
                     "light_weapon_swing_slug": None,
                     "offhand_attack_spent": False,
+                    # SRD §Actions in Combat — Dodge: "until the start of
+                    # your next turn". The reset here, at the dodger's OWN
+                    # turn start, is the exact SRD expiry point.
+                    "dodging": False,
                 }
             )
             break
@@ -3041,6 +3072,16 @@ def _build_hydration_payload(live: _LiveCombat, caster: Combatant | None = None)
         per_target_entry, check_entry = _project_target_modifiers(c, live, passive_damage_modifiers)
         save_modifiers[c.entity_id] = per_target_entry
         check_modifiers[c.entity_id] = check_entry
+
+    # SRD 5.2 §Actions in Combat — Dodge: "you make Dexterity saving throws
+    # with Advantage" while the benefit is active. Folded onto the SAME
+    # per-target ``passive_save_adv`` list ``build_context.py`` reshapes
+    # into ``ActivityResolutionContext.passive_save_adv`` — no separate
+    # sidecar. No "can see" conjunct on this half of Dodge (only the
+    # attack-disadvantage half carries one, deferred to C16b).
+    for c in live.initiative:
+        if _dodge_benefit_active(live, c):
+            save_modifiers[c.entity_id]["passive_save_adv"].append("DEX")
 
     # ── C12 — SRD 5.2 Exhaustion ``-2 x level`` on every D20 Test, per entity ─
     # Only exhausted entities get a row, so an unexhausted combat hands the
@@ -6384,6 +6425,17 @@ async def submit_player_intent(
         ),
     )
 
+    # SRD §Actions in Combat — Dodge. The Action is already spent (the
+    # budget consumption above); set the ``dodging`` flag live and end the
+    # turn immediately — Dodge resolves no activities (no dice, no
+    # targets). ``current`` is the post-consume snapshot from above; write
+    # via the same initiative-list model_copy pattern the other per-turn
+    # state writers use.
+    if intent.intent_type == "dodge":
+        _set_dodging(live, actor_id)
+        _end_turn_and_advance(live, actor_id)
+        return
+
     # SRD §Ready — a "ready" intent pre-arms the pending-reaction queue
     # (docs/dev/reaction-queue.md): the Action is spent NOW (the budget
     # consumption above), the Reaction later, when the trigger fires.
@@ -6548,6 +6600,10 @@ async def submit_player_intent(
                 ),
             ),
             target_distance_ft=_target_distance_map(live, current.entity_id, targets),
+            # SRD 5.2 §Actions in Combat — Dodge: per-target dodge-benefit
+            # flag folded into attack disadvantage (attack.py) — the
+            # "if you can see the attacker" conjunct is deferred to C16b.
+            target_dodging={t.entity_id: _dodge_benefit_active(live, t) for t in targets},
             attacker_grappler_id=_condition_source_entity(live, current, "grappled"),
             target_unseen=target_unseen,
             attacker_unseen_by=attacker_unseen_by,
@@ -7203,6 +7259,11 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
             d20_test_penalty=payload["d20_test_penalty"],
             target_cover=_target_cover_map(live, current.entity_id, target_list),
             target_distance_ft=_target_distance_map(live, current.entity_id, target_list),
+            # SRD 5.2 §Actions in Combat — Dodge: mirrors the PC site. A
+            # dodging PC target imposes disadvantage on the monster's
+            # attack roll (attack.py); the "can see the attacker" conjunct
+            # is deferred to C16b.
+            target_dodging={t.entity_id: _dodge_benefit_active(live, t) for t in target_list},
             attacker_grappler_id=_condition_source_entity(live, current, "grappled"),
             target_unseen=target_unseen,
             attacker_unseen_by=attacker_unseen_by,

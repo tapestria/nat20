@@ -171,6 +171,14 @@ def resolve_attack(
             adv_sources.append("unseen")
         if ctx.target_unseen.get(target.entity_id):
             dis_sources.append("unseen")
+        # SRD 5.2 §Actions in Combat — Dodge: "any attack roll made against
+        # you has Disadvantage if you can see the attacker". The "can see
+        # the attacker" conjunct is deferred to C16b (no vision model wired
+        # to this seam yet); ``target_dodging`` already folds in the SRD
+        # loss clause (Incapacitated / Speed 0) via
+        # ``_dodge_benefit_active``.
+        if ctx.target_dodging.get(target.entity_id):
+            dis_sources.append("dodge")
         sources = AdvantageSources(advantage=tuple(adv_sources), disadvantage=tuple(dis_sources))
         roll = roll_d20_test(ctx.rng, attack_bonus, sources, forced_natural=_forced_d20(ctx, index))
         mode: AdvantageMode = roll.mode

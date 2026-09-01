@@ -164,9 +164,18 @@ _PROBES: dict[str, tuple[Any, str]] = {
         lambda: 'mode: AdvantageMode = "normal"' not in _src("activities/attack.py"),
         "Advantage/disadvantage is rolled on",
     ),
-    # Still open (C14): the three intents have no handler at all.
-    "Dodge, Hide, Help": (
-        lambda: '"dodge"' in _src("orchestrator.py"),
+    # C14 Task 3: Dodge sets a live ``dodging`` flag consumed by the attack
+    # and save resolvers; the intent branch owns this exact literal.
+    "Dodge": (
+        lambda: 'if intent.intent_type == "dodge":' in _src("orchestrator.py"),
+        "✅",
+    ),
+    # Still open (C14 Tasks 4-5): neither intent has a handler yet.
+    "Hide, Help": (
+        lambda: (
+            'if intent.intent_type == "hide"' in _src("orchestrator.py")
+            or 'if intent.intent_type == "help"' in _src("orchestrator.py")
+        ),
         "✅",
     ),
     # F2c/C13: the damage-triggered concentration save emits the dedicated

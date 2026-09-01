@@ -204,6 +204,15 @@ class Combatant(BaseModel):
     # any further off-hand swing. Reset to False at the actor's own
     # TurnStarted.
     offhand_attack_spent: bool = False
+    # SRD §Actions in Combat — Dodge (C14 Task 3). True for the remainder of
+    # this turn and "until the start of your next turn": while active, any
+    # attack roll made against this combatant has Disadvantage (if the
+    # attacker can see it — vision is deferred to C16b, see
+    # ``activities/attack.py``) and it makes Dexterity saving throws with
+    # Advantage. Lost early if Incapacitated or Speed 0 (SRD loss clause;
+    # see ``_dodge_benefit_active`` in orchestrator.py). Reset to False at
+    # the actor's own TurnStarted — the exact SRD expiry point.
+    dodging: bool = False
     # C22: typed SRD 5.2 monster traits hydrated from the template's
     # ``special_abilities[].mechanic`` (Magic Resistance → advantage on saves
     # against spells in ``activities/save_primitive.py``; C18 consumes Pack
