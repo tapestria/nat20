@@ -247,6 +247,13 @@ class PlayerIntent(BaseModel):
     # path when the actor is not a Rogue. Carried from
     # ``ParsedIntent.use_bonus_action``.
     use_bonus_action: bool = False
+    # SRD 5.2 Unarmed Strike — Shove: "you either push it 5 feet away or
+    # cause it to have the Prone condition" — the shover's pre-declared
+    # choice (no player-facing choice prompt exists at this seam). False
+    # (default) -> Prone; True -> a 5-ft forced push via ``push_combatant``.
+    # Duck-typed hosts that never set this field keep the default Prone
+    # behaviour unaffected.
+    shove_push: bool = False
 
     @field_validator("direction")
     @classmethod
@@ -296,6 +303,13 @@ class IntentRejectedError(CombatSeamError):
         # a direct raise (like Help's "target_invalid") since neither option
         # has a dedicated ``...Failed`` event.
         "out_of_range",
+        # SRD 5.2 Prone, Restricted Movement — ``stand_up`` has no dedicated
+        # ``...Failed`` event (like Grapple/Help above), so its two failure
+        # modes raise directly. Mirrors ``MoveFailed.reason``'s identically
+        # named members (a separate Literal on the move-intent event) —
+        # same SRD rule, different seam.
+        "speed_zero",
+        "insufficient_movement",
     ]
 
     def __init__(self, reason: RejectionReason, detail: str) -> None:
@@ -1662,6 +1676,23 @@ def _reject_invalid_grapple_target(live: _LiveCombat, actor_id: str, intent: Pla
         )
 
 
+def _reject_invalid_shove_target(live: _LiveCombat, actor_id: str, intent: PlayerIntent) -> None:
+    """Raise ``IntentRejectedError("target_invalid")`` for an out-of-reach /
+    dead / missing Shove target; a no-op for every other intent type.
+
+    SRD 5.2 Unarmed Strike — Shove has the same 5-ft reach shape as Grapple,
+    so this reuses ``_help_target_invalid``'s liveness/distance predicate
+    (Task 7 reuses Task 6's helpers exactly). Split out purely to keep
+    ``submit_player_intent``'s cyclomatic complexity under the lint ceiling
+    (mirrors ``_reject_invalid_grapple_target``)."""
+    if intent.intent_type == "shove" and _help_target_invalid(live, actor_id, intent):
+        raise IntentRejectedError(
+            "target_invalid",
+            f"actor_id={actor_id!r} shove target {intent.target_id!r} is not a living "
+            "combatant within reach (5 ft)",
+        )
+
+
 def _dodge_benefit_active(live: _LiveCombat, c: Combatant) -> bool:
     """SRD 5.2 §Actions in Combat — Dodge (C14 Task 3). True while ``c``'s
     Dodge benefit is live: the combatant took the Dodge action this turn (or
@@ -2030,6 +2061,78 @@ def _handle_grapple(live: _LiveCombat, attacker: Combatant, intent: PlayerIntent
     _end_turn_and_advance(live, attacker.entity_id)
 
 
+# SRD 5.2 Unarmed Strike, "Shove": "The target must succeed on a Strength or
+# Dexterity saving throw (it chooses which), or you either push it 5 feet
+# away or cause it to have the Prone condition. The DC for the saving throw
+# equals 8 plus your Strength modifier and Proficiency Bonus. This shove is
+# possible only if the target is no more than one size larger than you."
+#
+# Reuses Grapple's save shape byte-for-byte (``_unarmed_option_dc``, the
+# higher-of-STR/DEX target save via ``_resolve_grapple_save_ability``, the
+# ``_run_end_of_turn_saves``-style auto-fail/exhaustion machinery) — only the
+# on-failure OUTCOME differs, per the shover's pre-declared
+# ``intent.shove_push`` choice (Controller ruling R3: no player-facing
+# choice prompt exists at this seam, so the choice rides the intent).
+#
+# Out of scope (BACKLOG.md, Task 10): the size gate ("no more than one size
+# larger than you").
+
+
+def _handle_shove(live: _LiveCombat, attacker: Combatant, intent: PlayerIntent) -> None:
+    """SRD 5.2 Unarmed Strike — Shove. Rolls the target's save through the
+    same primitives ``_handle_grapple`` uses (auto-fail conditions +
+    exhaustion penalty come free; no advantage source of its own — a plain
+    D20 Test). On failure: Prone (default) or a 5-ft forced push away from
+    the shover, per ``intent.shove_push``. No damage either way. The Action
+    is already spent (budget consumed by the caller); Shove resolves no
+    other activities and always ends the turn."""
+    assert intent.target_id is not None  # narrowed by the range gate above
+    target_id = intent.target_id
+    target = _find_combatant(live, target_id)
+    assert target is not None  # narrowed by the range gate above
+    dc = _unarmed_option_dc(attacker)
+    ability = _resolve_grapple_save_ability(target)
+    save_proj = project_passive_save_modifiers(_condition_names(target))
+    ability_upper = ability.upper()
+    if ability_upper in save_proj.get("passive_save_auto_fail", []):
+        roll_total, succeeded = 0, False
+        mode: AdvantageMode = "normal"
+        natural: int | None = None
+        roll_modifier = 0
+        roll_sources: list[AdvantageSource] = []
+    else:
+        modifier = save_modifier(target, ability).total + d20_test_penalty(target.conditions)
+        dis: tuple[AdvantageSource, ...] = (
+            ("condition:target",) if ability_upper in save_proj.get("passive_save_dis", []) else ()
+        )
+        roll = roll_d20_test(live.rng, modifier, AdvantageSources(disadvantage=dis))
+        roll_total, succeeded = roll.total, roll.total >= dc
+        mode, natural, roll_modifier = roll.mode, roll.kept, roll.modifier
+        roll_sources = list(roll.sources)
+    _emit(
+        live,
+        SaveRolled(
+            target_id=target_id,
+            ability=ability,
+            dc=dc,
+            roll_total=roll_total,
+            succeeded=succeeded,
+            advantage=mode,
+            natural=natural,
+            modifier=roll_modifier,
+            sources=roll_sources,
+        ),
+    )
+    if not succeeded:
+        if intent.shove_push:
+            origin_cell = live.actor_zone.get(attacker.entity_id)
+            assert origin_cell is not None  # the attacker is on the live grid
+            push_combatant(live, target_id, origin_cell=origin_cell, distance_ft=5)
+        else:
+            _emit(live, ConditionApplied(target_id=target_id, condition="prone"))
+    _end_turn_and_advance(live, attacker.entity_id)
+
+
 def _escape_grapple_actor_invalid(current: Combatant) -> bool:
     """True (reject) unless ``current`` currently carries the Grappled
     condition — ``escape_grapple`` has nothing to escape from otherwise."""
@@ -2106,7 +2209,7 @@ def _dispatch_simple_turn_ending_intent(
     live: _LiveCombat, current: Combatant, actor_id: str, intent: PlayerIntent
 ) -> bool:
     """Route the turn-ending intents that resolve no activities of their own
-    — Dodge, Help, Grapple, ``escape_grapple`` — to their handlers and
+    — Dodge, Help, Grapple, Shove, ``escape_grapple`` — to their handlers and
     report whether one fired. Every gate (5-ft reach / Grappled-state) has
     already run in ``submit_player_intent`` before this is reached.
     Collapsing the dispatch into one call site (mirrors ``_dispatch_turn_
@@ -2123,6 +2226,9 @@ def _dispatch_simple_turn_ending_intent(
         return True
     if intent.intent_type == "grapple":
         _handle_grapple(live, current, intent)
+        return True
+    if intent.intent_type == "shove":
+        _handle_shove(live, current, intent)
         return True
     if intent.intent_type == "escape_grapple":
         _handle_escape_grapple(live, current, intent)
@@ -2275,6 +2381,51 @@ def _handle_hide(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
     if succeeded:
         _emit(live, ConditionApplied(target_id=actor_id, condition="invisible"))
         live.hidden_entities.add(actor_id)
+
+
+def _handle_stand_up(live: _LiveCombat, current: Combatant, intent: PlayerIntent) -> None:
+    """SRD 5.2 Prone, "Restricted Movement": *"you can spend an amount of
+    movement equal to half your Speed (round down) to right yourself and
+    thereby end the condition. If your Speed is 0, you can't right
+    yourself."*
+
+    Touches NO Action/Bonus Action budget (turn-KEEPING, like Hide/Dash) —
+    only movement. Gates, in order: the actor must be Prone
+    (``IntentRejectedError("target_invalid")``, mirrors ``_reject_invalid_
+    escape_grapple_actor``'s "nothing to do this from" shape); effective
+    Speed must be nonzero (``"speed_zero"``); the remaining movement budget
+    must cover half Speed, rounded down (``"insufficient_movement"``). Every
+    rejection draws no dice and leaves the Prone condition (and movement
+    budget) untouched. On success, decrements ``movement_remaining`` by the
+    cost and emits ``ConditionRemoved(prone)`` through ``_emit`` — a plain
+    fold, since Prone (unlike Grappled) carries no stored ``save_dc``."""
+    del intent  # stand_up carries no target/spell/item fields.
+    actor_id = current.entity_id
+    if not any(ac.condition == "prone" for ac in current.conditions):
+        raise IntentRejectedError(
+            "target_invalid",
+            f"actor_id={actor_id!r} is not Prone; nothing to stand up from",
+        )
+    speed = _effective_speed(current)
+    if speed == 0:
+        raise IntentRejectedError(
+            "speed_zero",
+            f"actor_id={actor_id!r} has Speed 0; can't right themself (SRD 5.2 Prone)",
+        )
+    cost = speed // 2
+    if current.movement_remaining < cost:
+        raise IntentRejectedError(
+            "insufficient_movement",
+            f"actor_id={actor_id!r} has {current.movement_remaining} ft remaining, "
+            f"needs {cost} ft (half Speed) to stand up",
+        )
+    for idx, c in enumerate(live.initiative):
+        if c.entity_id == actor_id:
+            live.initiative[idx] = c.model_copy(
+                update={"movement_remaining": c.movement_remaining - cost}
+            )
+            break
+    _emit(live, ConditionRemoved(target_id=actor_id, condition="prone"))
 
 
 def _break_hide_on_attack_or_verbal_cast(
@@ -6822,6 +6973,9 @@ async def _dispatch_turn_nonending_intent(
       CONTROLLER RULING: touches NO Action-economy budget (see
       ``_handle_hide``'s docstring for the divergence from strict SRD
       cost) and keeps the actor on turn.
+    * ``stand_up`` — SRD 5.2 Prone, Restricted Movement: spend half Speed
+      (rounded down) of movement to end Prone. Touches NO Action/Bonus
+      Action budget — movement only — and keeps the actor on turn.
     """
     if intent.intent_type == "move_mark":
         await _handle_move_mark(live, current, intent)
@@ -6840,6 +6994,9 @@ async def _dispatch_turn_nonending_intent(
         return True
     if intent.intent_type == "hide":
         _handle_hide(live, current, intent)
+        return True
+    if intent.intent_type == "stand_up":
+        _handle_stand_up(live, current, intent)
         return True
     return False
 
@@ -6982,6 +7139,10 @@ async def submit_player_intent(
     # complexity under the lint ceiling.
     _reject_invalid_grapple_target(live, actor_id, intent)
 
+    # SRD 5.2 Unarmed Strike — Shove: same reach-gate placement discipline
+    # as Grapple above.
+    _reject_invalid_shove_target(live, actor_id, intent)
+
     # SRD 5.2 "Ending a Grapple" — an ``escape_grapple`` intent from an actor
     # who is not (or no longer) Grappled has nothing to escape from. Gated
     # BEFORE any budget is consumed, same placement discipline as every other
@@ -7013,12 +7174,13 @@ async def submit_player_intent(
         ),
     )
 
-    # SRD §Actions in Combat — Dodge / Help / Unarmed Strike Grapple /
+    # SRD §Actions in Combat — Dodge / Help / Unarmed Strike Grapple/Shove /
     # "Ending a Grapple". Every one is Action-cost (already spent above),
     # resolves no activities of its own, and ends the turn immediately; each
     # target/actor-state gate already ran before any budget was touched
     # (``_reject_invalid_help_target`` / ``_reject_invalid_grapple_target`` /
-    # ``_reject_invalid_escape_grapple_actor``). Collapsed into one dispatch
+    # ``_reject_invalid_shove_target`` / ``_reject_invalid_escape_grapple_
+    # actor``). Collapsed into one dispatch
     # call — see ``_dispatch_simple_turn_ending_intent``'s docstring.
     if _dispatch_simple_turn_ending_intent(live, current, actor_id, intent):
         return

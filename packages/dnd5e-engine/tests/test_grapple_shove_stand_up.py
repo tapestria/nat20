@@ -26,10 +26,17 @@ from __future__ import annotations
 import pytest
 
 from dnd5e_engine import PlayerIntent
-from dnd5e_engine.events import CheckRolled, ConditionApplied, ConditionRemoved, SaveRolled
+from dnd5e_engine.events import (
+    CheckRolled,
+    CombatantMoved,
+    ConditionApplied,
+    ConditionRemoved,
+    SaveRolled,
+)
 from dnd5e_engine.orchestrator import (
     IntentRejectedError,
     _condition_source_entity,
+    _effective_speed,
     _emit,
     _find_combatant,
     _get_live,
@@ -354,3 +361,204 @@ class TestGrappleAutoReleaseOnIncapacitatedGrappler:
         target = _find_combatant(live, "char:target")
         assert target is not None
         assert not any(ac.condition == "grappled" for ac in target.conditions)
+
+
+# ── C14 Task 7 — Shove and Stand Up ──────────────────────────────────────
+#
+# SRD 5.2 (Unarmed Strike, "Shove"): "The target must succeed on a Strength
+# or Dexterity saving throw (it chooses which), or you either push it 5 feet
+# away or cause it to have the Prone condition. The DC for the saving throw
+# equals 8 plus your Strength modifier and Proficiency Bonus."
+#
+# SRD 5.2 (Prone, "Restricted Movement"): "you can spend an amount of
+# movement equal to half your Speed (round down) to right yourself and
+# thereby end the condition. If your Speed is 0, you can't right yourself."
+
+
+class TestShoveSave:
+    def test_shove_within_reach_defaults_to_prone_on_failed_save(self):
+        """(a) A failed Shove save (default intent, no ``shove_push``)
+        applies Prone, not a forced move, and ends the turn."""
+
+        async def _run():
+            start = await _start_grapple_combat("t7-a-shove-prone")
+            live = _get_live(start.handle)
+            for idx, c in enumerate(live.initiative):
+                if c.entity_id == "char:target":
+                    live.initiative[idx] = c.model_copy(update={"strength": 1, "dexterity": 1})
+                    break
+            await submit_player_intent(
+                start.handle,
+                actor_id="char:brute",
+                intent=PlayerIntent(intent_type="shove", target_id="char:target"),
+            )
+            return _get_live(start.handle)
+
+        live = run_async(_run())
+        rolled = next(e for e in events_of(live, SaveRolled) if e.target_id == "char:target")
+        assert rolled.dc == 15
+        assert rolled.succeeded is False
+        applied = [e for e in events_of(live, ConditionApplied) if e.target_id == "char:target"]
+        assert any(e.condition == "prone" for e in applied)
+        assert not events_of(live, CombatantMoved)
+        assert live.current_actor_id != "char:brute"
+
+    def test_shove_push_moves_the_target_5ft_with_no_prone(self):
+        """(a) ``shove_push=True`` on a failed save pushes the target 5 ft
+        away via ``push_combatant`` (``CombatantMoved(forced=True)``) and
+        applies NO Prone condition."""
+
+        async def _run():
+            start = await _start_grapple_combat("t7-a-shove-push")
+            live = _get_live(start.handle)
+            for idx, c in enumerate(live.initiative):
+                if c.entity_id == "char:target":
+                    live.initiative[idx] = c.model_copy(update={"strength": 1, "dexterity": 1})
+                    break
+            await submit_player_intent(
+                start.handle,
+                actor_id="char:brute",
+                intent=PlayerIntent(intent_type="shove", target_id="char:target", shove_push=True),
+            )
+            return _get_live(start.handle)
+
+        live = run_async(_run())
+        rolled = next(e for e in events_of(live, SaveRolled) if e.target_id == "char:target")
+        assert rolled.succeeded is False
+        moved = [e for e in events_of(live, CombatantMoved) if e.actor_id == "char:target"]
+        assert moved
+        assert moved[0].forced is True
+        assert moved[0].distance_ft == 5
+        applied = [e for e in events_of(live, ConditionApplied) if e.target_id == "char:target"]
+        assert not any(e.condition == "prone" for e in applied)
+
+
+class TestShoveRange:
+    def test_shove_beyond_5ft_is_rejected_with_no_roll(self):
+        """Same reach gate as Grapple: a target beyond 5 ft is rejected with
+        no d20 drawn and no state change."""
+
+        async def _run():
+            start = await _start_grapple_combat("t7-shove-out-of-range", target_zone=cell(9, 0))
+            with pytest.raises(IntentRejectedError) as exc_info:
+                await submit_player_intent(
+                    start.handle,
+                    actor_id="char:brute",
+                    intent=PlayerIntent(intent_type="shove", target_id="char:target"),
+                )
+            return exc_info, _get_live(start.handle)
+
+        exc_info, live = run_async(_run())
+        assert exc_info.value.reason == "target_invalid"
+        assert not events_of(live, SaveRolled)
+        brute = next(c for c in live.initiative if c.entity_id == "char:brute")
+        assert brute.action_available is True
+
+
+class TestStandUp:
+    def test_stand_up_costs_half_speed_and_keeps_the_turn(self):
+        """(b) Standing up from Prone with a full movement budget spends
+        half Speed (rounded down), removes Prone, and keeps the actor on
+        turn with the Action untouched."""
+
+        async def _run():
+            start = await _start_grapple_combat("t7-b-stand-up")
+            live = _get_live(start.handle)
+            await submit_player_intent(
+                start.handle, actor_id="char:brute", intent=PlayerIntent(intent_type="pass")
+            )
+            live = _get_live(start.handle)
+            _emit(live, ConditionApplied(target_id="char:target", condition="prone"))
+            await submit_player_intent(
+                start.handle,
+                actor_id="char:target",
+                intent=PlayerIntent(intent_type="stand_up"),
+            )
+            return _get_live(start.handle)
+
+        live = run_async(_run())
+        removed = [e for e in events_of(live, ConditionRemoved) if e.target_id == "char:target"]
+        assert any(e.condition == "prone" for e in removed)
+        target = _find_combatant(live, "char:target")
+        assert target is not None
+        assert not any(ac.condition == "prone" for ac in target.conditions)
+        # Default base_speed 30 -> half Speed 15 spent, 15 left.
+        assert target.movement_remaining == 15
+        assert target.action_available is True
+        assert live.current_actor_id == "char:target"
+
+    def test_stand_up_while_not_prone_is_rejected(self):
+        """(c) An actor without Prone has nothing to stand up from."""
+
+        async def _run():
+            start = await _start_grapple_combat("t7-c-stand-up-not-prone")
+            await submit_player_intent(
+                start.handle, actor_id="char:brute", intent=PlayerIntent(intent_type="pass")
+            )
+            with pytest.raises(IntentRejectedError) as exc_info:
+                await submit_player_intent(
+                    start.handle,
+                    actor_id="char:target",
+                    intent=PlayerIntent(intent_type="stand_up"),
+                )
+            return exc_info
+
+        exc_info = run_async(_run())
+        assert exc_info.value.reason == "target_invalid"
+
+    def test_stand_up_with_speed_zero_is_rejected(self):
+        """(c) Speed 0 (Grappled + Prone) — SRD 5.2 "If your Speed is 0,
+        you can't right yourself.\""""
+
+        async def _run():
+            start = await _start_grapple_combat("t7-c-stand-up-speed-zero")
+            await submit_player_intent(
+                start.handle, actor_id="char:brute", intent=PlayerIntent(intent_type="pass")
+            )
+            live = _get_live(start.handle)
+            _emit(live, ConditionApplied(target_id="char:target", condition="grappled"))
+            _emit(live, ConditionApplied(target_id="char:target", condition="prone"))
+            assert _effective_speed(_find_combatant(live, "char:target")) == 0
+            with pytest.raises(IntentRejectedError) as exc_info:
+                await submit_player_intent(
+                    start.handle,
+                    actor_id="char:target",
+                    intent=PlayerIntent(intent_type="stand_up"),
+                )
+            return exc_info, _get_live(start.handle)
+
+        exc_info, live = run_async(_run())
+        assert exc_info.value.reason == "speed_zero"
+        target = _find_combatant(live, "char:target")
+        assert target is not None
+        assert any(ac.condition == "prone" for ac in target.conditions)
+
+    def test_stand_up_with_insufficient_movement_is_rejected_and_prone_persists(self):
+        """(c) Insufficient remaining movement (< half Speed) rejects and
+        leaves Prone in place."""
+
+        async def _run():
+            start = await _start_grapple_combat("t7-c-stand-up-insufficient")
+            await submit_player_intent(
+                start.handle, actor_id="char:brute", intent=PlayerIntent(intent_type="pass")
+            )
+            live = _get_live(start.handle)
+            _emit(live, ConditionApplied(target_id="char:target", condition="prone"))
+            for idx, c in enumerate(live.initiative):
+                if c.entity_id == "char:target":
+                    live.initiative[idx] = c.model_copy(update={"movement_remaining": 5})
+                    break
+            with pytest.raises(IntentRejectedError) as exc_info:
+                await submit_player_intent(
+                    start.handle,
+                    actor_id="char:target",
+                    intent=PlayerIntent(intent_type="stand_up"),
+                )
+            return exc_info, _get_live(start.handle)
+
+        exc_info, live = run_async(_run())
+        assert exc_info.value.reason == "insufficient_movement"
+        target = _find_combatant(live, "char:target")
+        assert target is not None
+        assert any(ac.condition == "prone" for ac in target.conditions)
+        assert target.movement_remaining == 5
