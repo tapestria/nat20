@@ -473,7 +473,6 @@ def test_c14_s05_extra_attack_grants_exactly_two_swings():
     assert rejections
 
 
-@xfail_cluster(14, "action economy")
 def test_c14_s06_light_weapon_bonus_action_offhand_omits_positive_ability_mod():
     """C14-S06: SRD 5.2 (Light property) — "When you take the Attack
     action on your turn and attack with a Light weapon, you can make one
@@ -515,7 +514,8 @@ def test_c14_s06_light_weapon_bonus_action_offhand_omits_positive_ability_mod():
             ],
             scene_zones=None,
             grid_scene=grid_scene(),
-            rng_seed=23,
+            # Setup repair 2026-09-01: seed 23 rolled a natural-1 off-hand fumble; assertions unchanged (catalog repair protocol).
+            rng_seed=24,
         )
         live = _get_live(start.handle)
         await submit_player_intent(
