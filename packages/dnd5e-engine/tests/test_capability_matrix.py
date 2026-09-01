@@ -177,7 +177,8 @@ _PROBES: dict[str, tuple[Any, str]] = {
         "✅",
     ),
     # C12 landed the enforced rows (the Incapacitated action gate is the
-    # cheapest witness), but four SRD rows are still unenforced — the
+    # cheapest witness), but three SRD rows are still unenforced (a fourth,
+    # Incapacitated's concentration break, closed with C13) — the
     # Frightened line-of-sight gate is the one this probe watches, because
     # ``rules/conditions.py`` names it explicitly as not modelled. While both
     # halves hold, the row is ⚠️ Partial; implementing the gate (which means
