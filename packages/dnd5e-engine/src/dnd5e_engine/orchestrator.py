@@ -5525,7 +5525,20 @@ def _is_offhand_attack_swing(
     now being swung is Light, and it is a DIFFERENT weapon slug than the
     main-hand swing (SRD: "you can make an attack with a different light
     melee weapon"). ``weapon`` is the intent's resolved ``Weapon`` (``None``
-    for a missing/non-weapon slug -> never Light -> never off-hand)."""
+    for a missing/non-weapon slug -> never Light -> never off-hand).
+
+    Fix round 1 (controller ruling) — MAIN-ACTION SWINGS TAKE PRIORITY: an
+    Extra-Attack actor with budget left (``attacks_remaining > 0``) swinging
+    a second, different Light weapon is still an ordinary Attack-action
+    swing, not an automatic off-hand Bonus Action — the SRD off-hand option
+    is something the wielder chooses to spend a Bonus Action on, it does
+    not preempt remaining Attack-action swings. So the off-hand
+    classification additionally requires EITHER the Attack-action budget is
+    already exhausted (``attacks_remaining <= 0``, the common case: a
+    1-attack actor, or an Extra-Attack actor who has used up its swings) OR
+    the host explicitly asked for the Bonus Action swing now
+    (``intent.use_bonus_action``, e.g. interleaving the off-hand attack
+    before a multiattack sequence is finished)."""
     return (
         intent.intent_type == "attack"
         and current.attack_action_engaged
@@ -5535,6 +5548,7 @@ def _is_offhand_attack_swing(
         and current.bonus_action_available
         and weapon is not None
         and WeaponProperty.LIGHT in weapon.properties
+        and (current.attacks_remaining <= 0 or intent.use_bonus_action)
     )
 
 

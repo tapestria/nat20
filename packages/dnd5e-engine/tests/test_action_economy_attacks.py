@@ -360,6 +360,134 @@ class TestLightWeaponOffhandSwing:
         assert 1 <= offhand.amount <= 4
 
 
+class TestLightWeaponMainActionPriority:
+    """Fix round 1 (controller ruling): main-action swings take priority.
+
+    An Extra-Attack actor with Attack-action budget remaining
+    (``attacks_remaining > 0``) swinging a SECOND, different Light weapon is
+    still an ordinary main-hand Attack-action swing — the off-hand
+    classification must not preempt it — UNLESS the host explicitly asks
+    for the Bonus Action swing now via ``intent.use_bonus_action``.
+    """
+
+    def test_second_light_swing_with_budget_remaining_is_a_main_swing(self):
+        """Fighter-5 (2 attacks): shortsword then dagger, both Light and
+        different slugs. The SECOND swing must resolve as an ordinary
+        Attack-action swing (full positive ability mod, attacks_remaining
+        decremented, Bonus Action untouched) — NOT the TWF off-hand swing.
+        A THIRD swing with a different Light weapon (budget now exhausted)
+        DOES resolve as the off-hand Bonus Action swing, with the mod
+        suppressed.
+        """
+
+        async def _run():
+            start = await _start_duelist_combat(
+                "sess-t2-priority-main-swing", class_slug="fighter", character_level=5
+            )
+            await submit_player_intent(
+                start.handle, actor_id="char:duelist", intent=_shortsword_intent()
+            )
+            live_after_1 = _get_live(start.handle)
+            actor_after_1 = next(
+                c for c in live_after_1.initiative if c.entity_id == "char:duelist"
+            )
+
+            await submit_player_intent(
+                start.handle, actor_id="char:duelist", intent=_dagger_intent()
+            )
+            live_after_2 = _get_live(start.handle)
+            actor_after_2 = next(
+                c for c in live_after_2.initiative if c.entity_id == "char:duelist"
+            )
+            # Snapshot the event log NOW (before swing 3 appends more) — the
+            # live combat's event_log is a shared mutable list, so a bare
+            # reference captured here would silently pick up swing 3's
+            # events too by the time this coroutine returns.
+            events_after_2 = list(live_after_2.event_log)
+
+            await submit_player_intent(
+                start.handle, actor_id="char:duelist", intent=_shortsword_intent()
+            )
+            live_after_3 = _get_live(start.handle)
+            actor_after_3 = next(
+                c for c in live_after_3.initiative if c.entity_id == "char:duelist"
+            )
+            return events_after_2, actor_after_1, actor_after_2, actor_after_3
+
+        events_after_2, actor_after_1, actor_after_2, actor_after_3 = asyncio.run(_run())
+
+        # After swing 1 (shortsword, main-hand): budget decremented 2 -> 1,
+        # light slug recorded, Bonus Action untouched.
+        assert actor_after_1.attacks_remaining == 1
+        assert actor_after_1.light_weapon_swing_slug == "shortsword"
+        assert actor_after_1.bonus_action_available is True
+
+        # After swing 2 (dagger, DIFFERENT Light weapon, budget still > 0
+        # BEFORE this swing): must be classified as a MAIN swing, not the
+        # off-hand — budget decremented 1 -> 0, Bonus Action still
+        # untouched, offhand not spent, and its damage carries the FULL
+        # positive ability mod (STR 16 -> +3; forced die pips = 4 -> 7).
+        assert actor_after_2.attacks_remaining == 0
+        assert actor_after_2.bonus_action_available is True
+        assert actor_after_2.offhand_attack_spent is False
+        # The recorded light slug advances to the latest MAIN-hand Light
+        # swing (dagger) — it is not "sticky" to the first swing.
+        assert actor_after_2.light_weapon_swing_slug == "dagger"
+        dummy_damage = [e for e in events_after_2 if isinstance(e, DamageApplied)]
+        assert len(dummy_damage) == 2
+        second_swing_damage = dummy_damage[-1]
+        assert second_swing_damage.amount == 7
+
+        # After swing 3 (shortsword, different from the recorded "dagger"
+        # slug, budget NOW exhausted): this one IS the off-hand Bonus
+        # Action swing — spends the Bonus Action, mod suppressed (die pips
+        # 4, no positive mod -> amount 4).
+        assert actor_after_3.bonus_action_available is False
+        assert actor_after_3.offhand_attack_spent is True
+        assert actor_after_3.attacks_remaining == 0
+
+    def test_use_bonus_action_true_forces_offhand_immediately_with_budget_left(self):
+        """Same fighter, but the host explicitly interleaves the off-hand
+        swing early via ``intent.use_bonus_action=True`` while
+        ``attacks_remaining`` is still > 0: classified off-hand immediately
+        — Bonus Action spent, ``attacks_remaining`` untouched, mod
+        suppressed."""
+
+        async def _run():
+            start = await _start_duelist_combat(
+                "sess-t2-priority-explicit-bonus", class_slug="fighter", character_level=5
+            )
+            await submit_player_intent(
+                start.handle, actor_id="char:duelist", intent=_shortsword_intent()
+            )
+            await submit_player_intent(
+                start.handle,
+                actor_id="char:duelist",
+                intent=PlayerIntent(
+                    intent_type="attack",
+                    weapon_id="dagger",
+                    target_id="mon:dummy",
+                    use_bonus_action=True,
+                ),
+            )
+            return _get_live(start.handle)
+
+        live = asyncio.run(_run())
+        actor = next(c for c in live.initiative if c.entity_id == "char:duelist")
+        assert actor.bonus_action_available is False
+        assert actor.offhand_attack_spent is True
+        # attacks_remaining is UNCHANGED by the explicit-bonus off-hand
+        # swing — it was 1 after the first (main-hand) swing, budget
+        # untouched by the off-hand path.
+        assert actor.attacks_remaining == 1
+
+        dummy_damage = [e for e in live.event_log if isinstance(e, DamageApplied)]
+        assert len(dummy_damage) == 2
+        offhand = dummy_damage[-1]
+        # Mod suppressed: die pips 4, no positive mod added -> raw 4.
+        assert offhand.amount == 4
+
+
 class TestLightWeaponOffhandGateFailures:
     def test_offhand_same_weapon_slug_is_rejected_no_action_economy(self):
         async def _run():
