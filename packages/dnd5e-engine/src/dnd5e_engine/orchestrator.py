@@ -5117,6 +5117,42 @@ def _seed_active_effects(live: _LiveCombat, active_effects: Sequence[ActiveEffec
             break
 
 
+def _seeded_incapacitated_ids(active_effects: Sequence[ActiveEffect]) -> frozenset[str]:
+    """Entity ids whose SEEDED ``active_effects`` (passed into ``start_combat``,
+    before any ``Combatant`` exists) carry a status that is Incapacitated or
+    implies it (Paralyzed / Petrified / Stunned / Unconscious — SRD 5.2
+    ``CONDITION_IMPLIES``). Reuses the same implication chain
+    ``is_condition_active`` walks for the live-combat Incapacitated read
+    (``_sneak_ally_adjacent_map`` et al.), applied here to the pre-seat
+    effect statuses rather than ``Combatant.conditions``.
+    """
+    ids: set[str] = set()
+    for eff in active_effects:
+        if is_condition_active(Condition.INCAPACITATED, list(eff.statuses)):
+            ids.add(eff.target_id)
+    return frozenset(ids)
+
+
+def _resolve_initiative(
+    spec: PartyMemberSpec | EncounterMemberSpec,
+    rng: random.Random,
+    seeded_incapacitated: frozenset[str],
+) -> int:
+    """SRD 5.2 Initiative: "every participant rolls Initiative; they make a
+    Dexterity check". ``spec.initiative`` being an explicit int always wins
+    (zero RNG draws — the legacy / host-supplied path). ``None`` opts into an
+    engine-rolled d20 + DEX modifier. Surprise (and Incapacitated at roll
+    time — both SRD-cited on the spec fields / ``_seeded_incapacitated_ids``)
+    impose Disadvantage per SRD 5.2 Surprise / the Incapacitated glossary
+    entry.
+    """
+    if spec.initiative is not None:
+        return spec.initiative
+    disadvantage = spec.is_surprised or spec.entity_id in seeded_incapacitated
+    sources = AdvantageSources(disadvantage=("condition:attacker",) if disadvantage else ())
+    return roll_d20_test(rng, ability_modifier(spec.dexterity), sources).total
+
+
 async def start_combat(
     *,
     session_id: str,
@@ -5141,6 +5177,25 @@ async def start_combat(
         raise ValueError("start_combat: party must be non-empty")
     if not encounter:
         raise ValueError("start_combat: encounter must be non-empty")
+
+    # Hoisted so the SAME instance seeds both the initiative-rolling draws
+    # below (R4) and every subsequent in-combat draw via ``_LiveCombat.rng``.
+    rng = random.Random(rng_seed)
+
+    # SRD 5.2 Initiative: "every participant rolls Initiative; they make a
+    # Dexterity check". Entities with a fixed int ``initiative`` skip the
+    # RNG entirely (zero draws — every host-int-initiative caller keeps its
+    # exact pre-C14 draw sequence). ``None`` entities roll in SPEC ORDER
+    # (party first, then encounter) so results are reproducible per seed.
+    seeded_incapacitated = _seeded_incapacitated_ids(active_effects)
+    party = [
+        p.model_copy(update={"initiative": _resolve_initiative(p, rng, seeded_incapacitated)})
+        for p in party
+    ]
+    encounter = [
+        e.model_copy(update={"initiative": _resolve_initiative(e, rng, seeded_incapacitated)})
+        for e in encounter
+    ]
 
     # Initiative order: descending by initiative, ties broken by dex then
     # by entity_id for deterministic order. Mirrors the existing session
@@ -5186,7 +5241,7 @@ async def start_combat(
         party_ids={p.entity_id for p in party},
         encounter_ids={e.entity_id for e in encounter},
         topology=topology,
-        rng=random.Random(rng_seed),
+        rng=rng,
         event_queue=asyncio.Queue(),
         scene_location_id=scene_location_id,
         actor_zone=actor_zone,

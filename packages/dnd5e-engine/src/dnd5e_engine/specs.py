@@ -28,7 +28,15 @@ class PartyMemberSpec(BaseModel):
 
     entity_id: str
     name: str
-    initiative: int
+    # SRD 5.2 Initiative — "every participant rolls Initiative; they make a
+    # Dexterity check". A fixed int seats the combatant directly (legacy /
+    # host-supplied path, zero RNG draws). ``None`` opts into an
+    # engine-rolled ``d20 + DEX modifier`` in ``start_combat`` instead.
+    initiative: int | None
+    # SRD 5.2 Surprise — "that creature is surprised, which causes it to
+    # have Disadvantage on its Initiative roll." Only consulted when
+    # ``initiative`` is ``None`` (an explicit fixed initiative always wins).
+    is_surprised: bool = False
     hp_current: int
     hp_max: int
     ac: int = 10
@@ -153,7 +161,15 @@ class EncounterMemberSpec(BaseModel):
     entity_id: str
     entity_type: Literal["Monster", "NPC"]
     name: str
-    initiative: int
+    # SRD 5.2 Initiative — "every participant rolls Initiative; they make a
+    # Dexterity check". A fixed int seats the combatant directly (legacy /
+    # host-supplied path, zero RNG draws). ``None`` opts into an
+    # engine-rolled ``d20 + DEX modifier`` in ``start_combat`` instead.
+    initiative: int | None
+    # SRD 5.2 Surprise — "that creature is surprised, which causes it to
+    # have Disadvantage on its Initiative roll." Only consulted when
+    # ``initiative`` is ``None`` (an explicit fixed initiative always wins).
+    is_surprised: bool = False
     hp_current: int
     hp_max: int
     ac: int = 10

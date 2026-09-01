@@ -19,7 +19,7 @@ from dnd5e_engine.orchestrator import (
     submit_player_intent,
 )
 from dnd5e_engine.specs import EncounterMemberSpec, GridScene, PartyMemberSpec
-from tests.e2e.harness import cell, events_of, grid_scene, run_async, xfail_cluster
+from tests.e2e.harness import cell, events_of, grid_scene, run_async
 
 
 def test_c14_s01_dodge_disadvantages_attackers_until_next_turn():
@@ -550,7 +550,6 @@ def test_c14_s06_light_weapon_bonus_action_offhand_omits_positive_ability_mod():
     assert 1 <= offhand.amount <= 4
 
 
-@xfail_cluster(14, "action economy")
 def test_c14_s07_engine_rolls_initiative_and_surprise_applies_disadvantage():
     """C14-S07: SRD 5.2 (Initiative) — "every participant rolls
     Initiative; they make a Dexterity check that determines their place in

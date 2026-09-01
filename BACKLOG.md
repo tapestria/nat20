@@ -61,8 +61,6 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
 
 ## Core combat rules not modelled (2026-08-22)
 
-- **Surprise is not modelled.** SRD 5.2 gives a surprised creature disadvantage
-  on its initiative roll; `start_combat` has no surprise input.
 - **Grapple's/Shove's size gate, free-hand gate, and distance-exceeded
   auto-release are not modelled** (2026-09-01). SRD 5.2 Grapple/Shove
   require "a hand free" (Grapple only) and cap the actor at one size larger
@@ -366,8 +364,10 @@ zone + apply logic:
   `d20_test_penalty`, Prone and Grappled do not reach them. C14 routes them
   through the shared primitive and inherits all three.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
-- **Initiative is host-supplied, not rolled.** `start_combat` orders the
-  `initiative` values from the specs; no DEX-mod roll, no surprise, no delay.
+- **Initiative has no "Delay" option.** C14 Task 8 (2026-09-01) added the
+  engine-rolled `d20 + DEX modifier` path (`initiative=None`) with Surprise
+  and Incapacitated Disadvantage; the SRD "Delay" combat option (holding
+  your Initiative count to act later) is still absent.
   (`packages/dnd5e-engine/src/dnd5e_engine/specs.py`)
 - **`ended_reason="flee"` is never returned.** `_derive_ended_reason`
   (`orchestrator.py:5382`) yields victory / defeat_tpk / forced only.
@@ -617,10 +617,6 @@ cluster owns.
   sight/hearing".** There is no per-check sense vocabulary on `CheckSpec` /
   `CheckActivity`, so a check cannot declare it requires sight or hearing.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/check.py`)
-- **Incapacitated imposes Initiative disadvantage.** Initiative is
-  host-supplied until C14 rolls it. (Incapacitated breaking Concentration
-  landed via C13.)
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
 - **Invisible's "unless a creature can somehow see you" carve-out.** Both
   attack directions apply unconditionally; the per-observer sense check is
   C16b. (`packages/dnd5e-engine/src/dnd5e_engine/rules/conditions.py`)
