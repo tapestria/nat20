@@ -179,6 +179,14 @@ def resolve_attack(
         # ``_dodge_benefit_active``.
         if ctx.target_dodging.get(target.entity_id):
             dis_sources.append("dodge")
+        # SRD 5.2 §Actions in Combat — Help, Assist an Attack Roll: "giving
+        # Advantage to the next attack roll by one of your allies against
+        # that enemy". ``target_help_advantage`` is already gated to an
+        # ally-of-this-attacker grant (orchestrator-side); the one-use pop
+        # happens after resolution regardless of hit/miss/cancellation — see
+        # ``target_help_advantage`` docstring.
+        if ctx.target_help_advantage.get(target.entity_id):
+            adv_sources.append("help")
         sources = AdvantageSources(advantage=tuple(adv_sources), disadvantage=tuple(dis_sources))
         roll = roll_d20_test(ctx.rng, attack_bonus, sources, forced_natural=_forced_d20(ctx, index))
         mode: AdvantageMode = roll.mode

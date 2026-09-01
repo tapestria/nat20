@@ -285,6 +285,7 @@ class IntentRejectedError(CombatSeamError):
         "combat_ended",
         "no_action_economy",
         "actor_incapacitated",
+        "target_invalid",
     ]
 
     def __init__(self, reason: RejectionReason, detail: str) -> None:
@@ -711,6 +712,85 @@ def _target_distance_map(
         if distance is not None:
             out[target.entity_id] = distance
     return out
+
+
+def _side_of(live: _LiveCombat, entity_id: str) -> set[str] | None:
+    """The side (``live.party_ids`` or ``live.encounter_ids``) ``entity_id``
+    belongs to, or ``None`` for an unregistered id."""
+    if entity_id in live.party_ids:
+        return live.party_ids
+    if entity_id in live.encounter_ids:
+        return live.encounter_ids
+    return None
+
+
+def _target_help_advantage_map(
+    live: _LiveCombat, attacker_id: str, targets: Sequence[Combatant]
+) -> dict[str, bool]:
+    """SRD 5.2 §Actions in Combat — Help, Assist an Attack Roll (C14 Task 4):
+    per-TARGET, does an outstanding ``live.help_grants`` entry against this
+    target belong to an ALLY of ``attacker_id`` (same side: both in
+    ``party_ids`` or both in ``encounter_ids``)? ``target == attacker_id``
+    never qualifies — Help assists an ALLY's attack roll, not the
+    helped-against target's own. Threaded into
+    ``ActivityResolutionContext.target_help_advantage``; the one-use pop
+    happens after resolution (``_pop_help_grant``) — this is a read-only
+    projection.
+    """
+    attacker_side = _side_of(live, attacker_id)
+    if attacker_side is None:
+        return {}
+    out: dict[str, bool] = {}
+    for target in targets:
+        if target.entity_id == attacker_id:
+            continue
+        helpers = live.help_grants.get(target.entity_id)
+        if helpers and any(h in attacker_side for h in helpers):
+            out[target.entity_id] = True
+    return out
+
+
+def _pop_help_grant(
+    live: _LiveCombat, attacker_id: str, targets: Sequence[Combatant], pre_event_count: int
+) -> None:
+    """One-use pop for a consumed Help grant (SRD 5.2 "giving Advantage to
+    the NEXT attack roll"). For each target ``attacker_id`` attacked this
+    resolution under an ally-of-a-helper grant, if an ``AttackRolled``
+    against that target by ``attacker_id`` with ``"help"`` among its
+    sources landed in this resolution's event slice, remove exactly ONE
+    matching helper from that target's grant list.
+
+    Consumed even on a miss, and even when the advantage was cancelled to
+    normal by a disadvantage source: ``roll_d20_test`` folds every
+    ``AdvantageSources.advantage`` entry into ``AttackRolled.sources``
+    regardless of the resolved mode, so "help" is present whenever the
+    grant applied to the roll at all — the SRD reading is "the next attack
+    roll" (singular, unconditional), not "the next attack roll that
+    resolves with advantage".
+    """
+    attacker_side = _side_of(live, attacker_id)
+    if attacker_side is None:
+        return
+    recent = live.event_log[pre_event_count:]
+    for target in targets:
+        helpers = live.help_grants.get(target.entity_id)
+        if not helpers:
+            continue
+        fired = any(
+            isinstance(ev, AttackRolled)
+            and ev.target_id == target.entity_id
+            and ev.attacker_id == attacker_id
+            and "help" in ev.sources
+            for ev in recent
+        )
+        if not fired:
+            continue
+        for idx, helper_id in enumerate(helpers):
+            if helper_id in attacker_side:
+                del helpers[idx]
+                break
+        if not helpers:
+            del live.help_grants[target.entity_id]
 
 
 #: ``ActiveEffect.origin`` prefixes whose THIRD ``:``-segment is the entity that
@@ -1394,6 +1474,21 @@ class _LiveCombat:
     reaction_effects_pending_expiry: dict[str, list[tuple[str, str, str]]] = field(
         default_factory=dict
     )
+    # SRD 5.2 §Actions in Combat — Help, "Assist an Attack Roll" (C14 Task 4):
+    # *"You momentarily distract an enemy within 5 feet of you, giving
+    # Advantage to the next attack roll by one of your allies against that
+    # enemy. This benefit expires at the start of your next turn."* Keyed by
+    # the HELPED-AGAINST target's entity_id -> the list of helper entity_ids
+    # who have an outstanding, unconsumed grant against that target (one
+    # entry per ``help`` intent — a second helper against the same target
+    # queues a second grant, each independently consumable by one ally
+    # attack). Populated by the ``"help"`` intent branch in
+    # ``submit_player_intent``; consumed (popped) after an allied attack
+    # against the target rolls in this resolution (see the one-use pop
+    # comment near the PC/monster attack-context build sites); expired per
+    # helper at that helper's OWN next ``TurnStarted``
+    # (``_emit_apply_turn_started``), never at the target's turn.
+    help_grants: dict[str, list[str]] = field(default_factory=dict)
     # Turn-boundary hook registry (``dnd5e_engine.turn_lifecycle``). Populated
     # by ``_register_default_turn_hooks`` in ``start_combat``; run by
     # ``_end_turn_and_advance`` / ``_begin_turn``. Every rule that fires "at the
@@ -1481,6 +1576,43 @@ def _set_dodging(live: _LiveCombat, actor_id: str) -> None:
         if c.entity_id == actor_id:
             live.initiative[idx] = c.model_copy(update={"dodging": True})
             break
+
+
+def _help_target_invalid(live: _LiveCombat, actor_id: str, intent: PlayerIntent) -> bool:
+    """SRD 5.2 §Actions in Combat — Help, Assist an Attack Roll: *"an enemy
+    within 5 feet of you"*. True (reject) unless ``intent.target_id`` names a
+    living combatant within 5 ft of ``actor_id``, using the same
+    ``SpatialTopology.distance_ft`` measure ``_target_distance_map`` threads
+    into attack resolution (Chebyshev on the grid backend)."""
+    target_id = intent.target_id
+    if not target_id:
+        return True
+    target = _find_combatant(live, target_id)
+    if target is None or not target.is_alive or target.hp_current <= 0:
+        return True
+    actor_zone = live.actor_zone.get(actor_id)
+    target_zone = live.actor_zone.get(target_id)
+    if actor_zone is None or target_zone is None:
+        return True
+    distance = live.topology.distance_ft(actor_zone, target_zone)
+    return distance is None or distance > 5
+
+
+def _reject_invalid_help_target(live: _LiveCombat, actor_id: str, intent: PlayerIntent) -> None:
+    """Raise ``IntentRejectedError("target_invalid")`` for an out-of-range /
+    dead / missing Help target; a no-op for every other intent type. Unlike
+    a cast or attack, ``help`` has no dedicated ``...Failed`` event to emit,
+    so an invalid target raises directly — mirrors the generic
+    ``no_action_economy`` raise ``_action_economy_gate_failure`` uses for
+    intents without a typed failure event of their own. Split out of
+    ``submit_player_intent`` purely to keep that dispatcher's cyclomatic
+    complexity under the lint ceiling (mirrors ``_set_dodging``)."""
+    if intent.intent_type == "help" and _help_target_invalid(live, actor_id, intent):
+        raise IntentRejectedError(
+            "target_invalid",
+            f"actor_id={actor_id!r} help target {intent.target_id!r} is not a living "
+            "combatant within 5 ft",
+        )
 
 
 def _dodge_benefit_active(live: _LiveCombat, c: Combatant) -> bool:
@@ -2081,6 +2213,17 @@ def _emit_apply_turn_started(live: _LiveCombat, event: TurnStarted) -> None:
                 }
             )
             break
+    # SRD 5.2 §Actions in Combat — Help: "This benefit expires at the start
+    # of your next turn" — the HELPER's own next turn, not the helped-
+    # against target's. Strip this actor's entity_id out of every grant
+    # list (an unconsumed grant simply lapses); drop any list left empty so
+    # ``help_grants`` never accumulates dead keys.
+    for target_id in list(live.help_grants):
+        helpers = [h for h in live.help_grants[target_id] if h != event.actor_id]
+        if helpers:
+            live.help_grants[target_id] = helpers
+        else:
+            del live.help_grants[target_id]
 
 
 def _hook_expire_reaction_effects(live: _LiveCombat, actor_id: str | None) -> None:
@@ -6400,6 +6543,15 @@ async def submit_player_intent(
         _emit(live, action_economy_failure)
         return
 
+    # SRD 5.2 §Actions in Combat — Help, Assist an Attack Roll: "an enemy
+    # within 5 feet of you". Gate BEFORE any budget is consumed — same
+    # placement discipline as the ``pre_resolution_gates`` tuple above (spell
+    # range / weapon reach / Charmed / cast target_invalid), so a rejected
+    # Help spends no Action and leaves the turn untouched. Split out (like
+    # ``_set_dodging``) purely to keep this dispatcher's cyclomatic
+    # complexity under the lint ceiling.
+    _reject_invalid_help_target(live, actor_id, intent)
+
     # Consume the budget now. ``current`` is a stale snapshot; mutate via
     # initiative-list model_copy so subsequent reads (and the post-resolve
     # turn-advance branch below) see the updated state. Attack intents use
@@ -6433,6 +6585,18 @@ async def submit_player_intent(
     # state writers use.
     if intent.intent_type == "dodge":
         _set_dodging(live, actor_id)
+        _end_turn_and_advance(live, actor_id)
+        return
+
+    # SRD 5.2 §Actions in Combat — Help, Assist an Attack Roll. The Action is
+    # already spent (the budget consumption above) and the target was
+    # already validated (``_help_target_invalid`` above, before any budget
+    # was touched). Record the grant and end the turn immediately — Help
+    # resolves no activities (no dice, no on-target effects of its own).
+    # ``target_id`` is non-empty here (the gate above rejects an empty one).
+    if intent.intent_type == "help":
+        assert intent.target_id is not None  # mypy: narrowed by the gate above
+        live.help_grants.setdefault(intent.target_id, []).append(actor_id)
         _end_turn_and_advance(live, actor_id)
         return
 
@@ -6604,6 +6768,11 @@ async def submit_player_intent(
             # flag folded into attack disadvantage (attack.py) — the
             # "if you can see the attacker" conjunct is deferred to C16b.
             target_dodging={t.entity_id: _dodge_benefit_active(live, t) for t in targets},
+            # SRD 5.2 §Actions in Combat — Help, Assist an Attack Roll (C14
+            # Task 4): per-target ally-of-attacker Help grant folded into
+            # attack advantage (attack.py); the one-use pop fires after
+            # resolution below.
+            target_help_advantage=_target_help_advantage_map(live, current.entity_id, targets),
             attacker_grappler_id=_condition_source_entity(live, current, "grappled"),
             target_unseen=target_unseen,
             attacker_unseen_by=attacker_unseen_by,
@@ -6629,6 +6798,12 @@ async def submit_player_intent(
         )
         for activity in activities:
             resolve_activity(activity, actx, weapon=fetched_weapon)
+
+        # SRD 5.2 §Actions in Combat — Help: one-use pop. If this attack
+        # landed against a target the caster's Help grant was folded onto
+        # (``target_help_advantage`` above), spend exactly ONE matching
+        # helper's grant now that the roll has happened.
+        _pop_help_grant(live, current.entity_id, targets, pre_event_count)
 
         # SRD §Sneak Attack, "Once per turn" — record that the rider fired so a
         # (future) second qualifying attack this turn is capped. The rider folds
@@ -7264,6 +7439,10 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
             # attack roll (attack.py); the "can see the attacker" conjunct
             # is deferred to C16b.
             target_dodging={t.entity_id: _dodge_benefit_active(live, t) for t in target_list},
+            # SRD 5.2 §Actions in Combat — Help (C14 Task 4): mirrors the PC
+            # site — a monster attacker can be granted Help by one of ITS
+            # own allies (another monster) exactly like a PC can.
+            target_help_advantage=_target_help_advantage_map(live, current.entity_id, target_list),
             attacker_grappler_id=_condition_source_entity(live, current, "grappled"),
             target_unseen=target_unseen,
             attacker_unseen_by=attacker_unseen_by,
@@ -7272,6 +7451,8 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
             # Monster attacks carry their damage on the AttackActivity itself,
             # not a separate Weapon (unlike the PC weapon path).
             resolve_activity(activity, actx, weapon=None)
+        # SRD 5.2 §Actions in Combat — Help: one-use pop, mirrors the PC site.
+        _pop_help_grant(live, current.entity_id, target_list, pre_event_count)
         # Symmetric concentration writeback for spellcaster monsters
         # (mirrors the PC path; no-op for non-caster monsters).
         _writeback_concentration(live, current, pre_event_count)

@@ -170,12 +170,15 @@ _PROBES: dict[str, tuple[Any, str]] = {
         lambda: 'if intent.intent_type == "dodge":' in _src("orchestrator.py"),
         "✅",
     ),
-    # Still open (C14 Tasks 4-5): neither intent has a handler yet.
-    "Hide, Help": (
-        lambda: (
-            'if intent.intent_type == "hide"' in _src("orchestrator.py")
-            or 'if intent.intent_type == "help"' in _src("orchestrator.py")
-        ),
+    # C14 Task 4: Help (assist-an-attack-roll flavor) has a live handler —
+    # the intent branch owns this exact literal.
+    "| Help |": (
+        lambda: 'if intent.intent_type == "help":' in _src("orchestrator.py"),
+        "✅",
+    ),
+    # Still open (C14 Task 5): Hide has no handler yet.
+    "| Hide |": (
+        lambda: 'if intent.intent_type == "hide"' in _src("orchestrator.py"),
         "✅",
     ),
     # F2c/C13: the damage-triggered concentration save emits the dedicated

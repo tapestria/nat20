@@ -14,9 +14,12 @@ Tasks 4-5 (Help / Hide) append their own test classes to this module.
 
 from __future__ import annotations
 
+import pytest
+
 from dnd5e_engine import PlayerIntent
 from dnd5e_engine.events import AttackRolled, SaveRolled
 from dnd5e_engine.orchestrator import (
+    IntentRejectedError,
     _get_live,
     advance_monster_turn,
     start_combat,
@@ -252,3 +255,237 @@ class TestDodgeDexSaveAdvantage:
         rolled = next(e for e in events_of(live, SaveRolled) if e.target_id == "mon:foe")
         assert rolled.ability == "dex"
         assert rolled.advantage == "advantage"
+
+
+# ── C14 Task 4 — the Help action, assist-an-attack-roll flavor ──────────────
+#
+# SRD 5.2 (Help, "Assist an Attack Roll"): "You momentarily distract an enemy
+# within 5 feet of you, giving Advantage to the next attack roll by one of
+# your allies against that enemy. This benefit expires at the start of your
+# next turn." The ability-check flavor of Help is out of scope (no check-
+# advantage producer exists yet; see BACKLOG.md).
+
+
+async def _start_help_combat(
+    *, helper_zone: str, striker_zone: str, foe_zone: str, session_id: str
+):
+    return await start_combat(
+        session_id=session_id,
+        party=[
+            PartyMemberSpec(
+                entity_id="char:helper",
+                name="Helper",
+                initiative=20,
+                hp_current=20,
+                hp_max=20,
+                zone_id=helper_zone,
+            ),
+            PartyMemberSpec(
+                entity_id="char:striker",
+                name="Striker",
+                initiative=15,
+                hp_current=20,
+                hp_max=20,
+                attack_bonus=5,
+                zone_id=striker_zone,
+            ),
+            PartyMemberSpec(
+                entity_id="char:striker2",
+                name="Striker2",
+                initiative=14,
+                hp_current=20,
+                hp_max=20,
+                attack_bonus=5,
+                zone_id=striker_zone,
+            ),
+        ],
+        encounter=[
+            EncounterMemberSpec(
+                entity_id="mon:foe",
+                entity_type="Monster",
+                name="Foe",
+                initiative=1,
+                hp_current=30,
+                hp_max=30,
+                ac=10,
+                attack_bonus=5,
+                zone_id=foe_zone,
+            )
+        ],
+        scene_zones=None,
+        grid_scene=grid_scene(),
+        rng_seed=13,
+    )
+
+
+class TestHelpStateAndGate:
+    def test_help_within_5ft_consumes_action_ends_turn_and_records_grant(self):
+        """(a) A ``help`` intent against a target within 5 ft consumes the
+        Action, ends the turn, and records a grant against that target."""
+
+        async def _run():
+            start = await _start_help_combat(
+                helper_zone=cell(1, 0),
+                striker_zone=cell(2, 0),
+                foe_zone=cell(1, 1),
+                session_id="t4-a-help-state",
+            )
+            await submit_player_intent(
+                start.handle,
+                actor_id="char:helper",
+                intent=PlayerIntent(intent_type="help", target_id="mon:foe"),
+            )
+            return _get_live(start.handle)
+
+        live = run_async(_run())
+        helper = next(c for c in live.initiative if c.entity_id == "char:helper")
+        assert helper.action_available is False
+        assert live.help_grants.get("mon:foe") == ["char:helper"]
+        # Turn already advanced past the helper.
+        assert live.current_actor_id == "char:striker"
+
+    def test_help_beyond_5ft_is_rejected(self):
+        """(a) A ``help`` intent against a target beyond 5 ft is rejected —
+        no roll, no state change."""
+
+        async def _run():
+            start = await _start_help_combat(
+                helper_zone=cell(0, 0),
+                striker_zone=cell(2, 0),
+                foe_zone=cell(9, 9),
+                session_id="t4-a-help-out-of-range",
+            )
+            with pytest.raises(IntentRejectedError) as exc_info:
+                await submit_player_intent(
+                    start.handle,
+                    actor_id="char:helper",
+                    intent=PlayerIntent(intent_type="help", target_id="mon:foe"),
+                )
+            return exc_info, _get_live(start.handle)
+
+        exc_info, live = run_async(_run())
+        assert exc_info.value.reason == "target_invalid"
+        helper = next(c for c in live.initiative if c.entity_id == "char:helper")
+        assert helper.action_available is True
+        assert live.help_grants.get("mon:foe") is None
+        assert live.current_actor_id != "char:striker"
+
+
+class TestHelpGrantsAllyAdvantage:
+    def test_next_ally_attack_rolls_with_advantage_and_help_source(self):
+        """(b) The next ALLY attack against the helped-against target rolls
+        with advantage and "help" among the sources; the grant is consumed
+        (a second ally attack this round is "normal")."""
+
+        async def _run():
+            start = await _start_help_combat(
+                helper_zone=cell(1, 0),
+                striker_zone=cell(2, 0),
+                foe_zone=cell(1, 1),
+                session_id="t4-b-ally-advantage",
+            )
+            await submit_player_intent(
+                start.handle,
+                actor_id="char:helper",
+                intent=PlayerIntent(intent_type="help", target_id="mon:foe"),
+            )
+            await submit_player_intent(
+                start.handle,
+                actor_id="char:striker",
+                intent=PlayerIntent(
+                    intent_type="attack", weapon_id="longsword", target_id="mon:foe"
+                ),
+            )
+            await submit_player_intent(
+                start.handle,
+                actor_id="char:striker2",
+                intent=PlayerIntent(
+                    intent_type="attack", weapon_id="longsword", target_id="mon:foe"
+                ),
+            )
+            return _get_live(start.handle)
+
+        live = run_async(_run())
+        rolled = [e for e in events_of(live, AttackRolled) if e.target_id == "mon:foe"]
+        first, second = rolled[0], rolled[1]
+        assert first.advantage == "advantage"
+        assert "help" in first.sources
+        assert second.advantage == "normal"
+        assert "help" not in second.sources
+        assert live.help_grants.get("mon:foe") in (None, [])
+
+    def test_enemy_attacking_gets_no_help_boost(self):
+        """(c) Help only assists an ALLY of the helper — the monster (the
+        ENEMY the Help was declared against) making its own attack against a
+        party member gets no "help" advantage: a grant exists only against
+        ``mon:foe``, and even a same-target read would require the attacker
+        to be on the HELPER's own side, which the monster is not."""
+
+        async def _run():
+            start = await _start_help_combat(
+                helper_zone=cell(1, 0),
+                striker_zone=cell(1, 1),
+                foe_zone=cell(2, 0),
+                session_id="t4-c-enemy-no-help",
+            )
+            await submit_player_intent(
+                start.handle,
+                actor_id="char:helper",
+                intent=PlayerIntent(intent_type="help", target_id="mon:foe"),
+            )
+            await submit_player_intent(
+                start.handle,
+                actor_id="char:striker",
+                intent=PlayerIntent(intent_type="pass"),
+            )
+            await submit_player_intent(
+                start.handle,
+                actor_id="char:striker2",
+                intent=PlayerIntent(intent_type="pass"),
+            )
+            await advance_monster_turn(start.handle)
+            return _get_live(start.handle)
+
+        live = run_async(_run())
+        rolled = [e for e in events_of(live, AttackRolled) if e.attacker_id == "mon:foe"]
+        assert rolled, "expected the monster to have attacked"
+        assert all("help" not in e.sources for e in rolled)
+        assert all(e.advantage != "advantage" for e in rolled)
+
+
+class TestHelpExpiry:
+    def test_unused_grant_expires_at_the_start_of_the_helpers_next_turn(self):
+        """(d) "This benefit expires at the start of your next turn" — an
+        unused grant is stripped once the HELPER's own next turn begins,
+        even though no ally ever consumed it."""
+
+        async def _run():
+            start = await _start_help_combat(
+                helper_zone=cell(1, 0),
+                striker_zone=cell(2, 0),
+                foe_zone=cell(1, 1),
+                session_id="t4-d-expiry",
+            )
+            await submit_player_intent(
+                start.handle,
+                actor_id="char:helper",
+                intent=PlayerIntent(intent_type="help", target_id="mon:foe"),
+            )
+            # striker passes without attacking — grant is unused.
+            await submit_player_intent(
+                start.handle,
+                actor_id="char:striker",
+                intent=PlayerIntent(intent_type="pass"),
+            )
+            await submit_player_intent(
+                start.handle,
+                actor_id="char:striker2",
+                intent=PlayerIntent(intent_type="pass"),
+            )
+            await advance_monster_turn(start.handle)
+            # It is now the helper's own next turn.
+            return _get_live(start.handle)
+
+        live = run_async(_run())
+        assert live.current_actor_id == "char:helper"
+        assert live.help_grants.get("mon:foe") in (None, [])

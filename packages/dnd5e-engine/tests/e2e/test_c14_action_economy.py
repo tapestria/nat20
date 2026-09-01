@@ -182,7 +182,6 @@ def test_c14_s02_hide_grants_advantage_on_next_attack():
     assert rolled_b.advantage == "advantage"
 
 
-@xfail_cluster(14, "action economy")
 def test_c14_s03_help_grants_advantage_to_next_ally_attack():
     """C14-S03: SRD 5.2 (Help, Assist an Attack Roll) — "You momentarily
     distract an enemy within 5 feet of you, giving Advantage to the next

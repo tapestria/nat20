@@ -195,6 +195,17 @@ class ActivityResolutionContext:
     # ``passive_save_adv`` in the hydration payload. Empty default keeps the
     # golden corpus identical (no dodge geometry).
     target_dodging: dict[str, bool] = field(default_factory=dict)
+    # SRD 5.2 §Actions in Combat — Help, Assist an Attack Roll (C14 Task 4).
+    # Per-TARGET: does an outstanding Help grant against this target belong
+    # to an ALLY of the attacker resolving THIS activity? Projected once per
+    # resolution by the orchestrator (``live.help_grants`` cross-referenced
+    # against the attacker's side); consumed in ``attack.py``, which folds it
+    # into advantage on an attack roll against that target. The one-use pop
+    # (the grant is spent even on a miss, or when cancelled to normal by a
+    # disadvantage source — "the next attack roll") is an orchestrator-side
+    # write after resolution, not this pure resolver's concern. Empty default
+    # keeps the golden corpus identical (no Help geometry).
+    target_help_advantage: dict[str, bool] = field(default_factory=dict)
     # The entity grappling the ATTACKER (SRD 5.2 Grappled: disadvantage on
     # attack rolls against any target other than the grappler). ``None`` when
     # not grappled or the grappler is unknown -> row inert.
