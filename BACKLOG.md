@@ -70,8 +70,6 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   Task 10.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_handle_grapple`,
   `::_handle_shove`)
-- **Two-weapon fighting is not modelled.** The `light` weapon property is
-  parsed but grants no bonus-action attack.
 - **Ritual casting is not modelled.** 28 spells carry `ritual: true`; the flag
   is never read.
 - **Spell components are not enforced.** `components` / `materials` ship on
@@ -338,15 +336,49 @@ zone + apply logic:
   values at all** (`dodge` closed C14 Task 3, `help` assist-an-attack-roll
   flavor closed C14 Task 4, `hide` closed C14 Task 5 — all 2026-09-01;
   Help's ability-check flavor is still open, no check-advantage producer
-  exists). (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
-- **Extra Attack for PCs is not modelled.** No attacks-per-action counter
-  exists (only monster Multiattack via prose parsing). `extra-attack.json`
-  ships `activities: []`. Action Surge, Flurry of Blows and two-weapon fighting
-  are all blocked on the same missing "extra attack/action this turn" economy;
-  Sneak Attack's once-per-turn flag is consequently never re-read
-  (`orchestrator.py:604`). The generic-action tail calls `_advance_turn`, so a
-  turn cannot hold two actions today.
+  exists). Deliberately deferred from C14 in full: the campaign design
+  (spec §5, row C14) lists all four intents, but none has an approved
+  catalog acceptance scenario or a harmonised API-DELTAS row — a maintainer
+  flag, not an oversight.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
+- **Hide costs no Action** (2026-09-01). SRD 5.2 costs an Action to Hide;
+  `_handle_hide` deliberately charges no Action/Bonus-Action budget (the
+  same turn-keeping shape as Dash/`drop_concentration`) because the
+  approved S02 catalog script requires a hide-then-attack sequence inside
+  one turn, and the first attack swing hard-requires the Action — an
+  Action-consuming Hide would make that script unsatisfiable. Tighten once
+  strict Attack-action accounting lands.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_handle_hide`)
+- **Help's ability-check flavor is unimplemented.** No check-advantage
+  producer exists on the check-resolution path, so a helper cannot grant
+  Advantage on an ally's upcoming ability check (only the attack-roll
+  flavor is wired).
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/check.py`)
+- **Help has no "target is an enemy of the helper" gate.** SRD 5.2 Help's
+  ability-check flavor requires the helped creature to be "an enemy of the
+  one you're helping"; the attack-roll flavor's `help_grants` bookkeeping
+  accepts any `target_id`, including the helper's own ally or self, with no
+  validation.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_dispatch_simple_turn_ending_intent`)
+- **A redundant second Grapple attempt appends an orphaned, inert
+  `ActiveEffect`.** `_handle_grapple` never checks whether the target is
+  already Grappled by the same attacker before rolling a fresh save and
+  appending another `"Grappled"` effect; the pre-existing condition's
+  `source_effect_id` still wins, so the second effect sits in
+  `live.active_effects` doing nothing until combat ends.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_handle_grapple`)
+- **A grappler killed without a `ConditionApplied` (Incapacitated) path
+  does not auto-release its victim.** `_release_grapple_victims_of` fires
+  only from the Incapacitated fold inside `_fold_condition_onto_combatant`;
+  a grappler removed from combat by a path that never applies Incapacitated
+  leaves its victim's Grappled condition stuck. SRD 5.2 "Ending a Grapple"
+  names only the Incapacitated case, so this is RAW-arguable rather than a
+  clear defect — recorded for a future ruling.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_release_grapple_victims_of`)
+- **Monster AI never selects Dodge, Hide, Help, Grapple, or Shove.**
+  `advance_monster_turn` has no branch that chooses any of the five C14
+  actions; a monster only ever attacks, casts, moves, or flees.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::advance_monster_turn`)
 - **No ongoing-damage / regeneration / recharge producers.** (2026-08-26) F3a
   gave them a place to land — `turn_lifecycle.py` runs `round_start` /
   `turn_start` / `turn_end` hooks off the single `_end_turn_and_advance` path —
@@ -418,12 +450,19 @@ stand-in, not an engine capability. Specifically:
   `skill_check(jack_of_all_trades=...)` is unreachable from the public API;
   Reliable Talent, group checks and tool proficiencies are absent.
   (`packages/dnd5e-engine/src/dnd5e_engine/check.py`)
-- **Class features that are prose-only in the corpus:** Extra Attack, Fighting
-  Style, Divine Smite, Metamagic / sorcery points, Eldritch Invocations. Martial
-  Arts ships passive changes (`system.damage.base.custom.formula`) that are not
-  in the `passive_stats` allowlist. Bardic Inspiration grants a die nothing
-  consumes. Rage never ends for "didn't attack / take damage". Cunning Action's
-  bonus-action Dash is gated on `class_slug == "rogue"` rather than the feature.
+- **Class features that are prose-only in the corpus:** Fighting Style, Divine
+  Smite, Metamagic / sorcery points, Eldritch Invocations. (Extra Attack
+  closed C14 Task 1 — `_attacks_per_action` reads the granted
+  `extra-attack`/`two-extra-attacks`/`three-extra-attacks` feature slugs.)
+  **Action Surge and Flurry of Blows are still not modelled** (2026-09-01):
+  both grant an extra Action/action-equivalent mid-turn, which needs its own
+  seam distinct from the per-Action `attacks_remaining` counter C14 added —
+  neither feature's `activities` array carries a typed effect the resolver
+  reads. Martial Arts ships passive changes
+  (`system.damage.base.custom.formula`) that are not in the `passive_stats`
+  allowlist. Bardic Inspiration grants a die nothing consumes. Rage never
+  ends for "didn't attack / take damage". Cunning Action's bonus-action Dash
+  is gated on `class_slug == "rogue"` rather than the feature.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/passive_stats.py`)
 - **Equipment:** attunement limit (`requires_attunement` shipped, unread),
   ammunition decrement, versatile damage choice, shield don/doff, encumbrance —

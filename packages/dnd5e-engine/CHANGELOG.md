@@ -8,12 +8,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 Core-mechanics **foundations** (F1 actor stat projection, F2 unified d20 test,
-F3 turn lifecycle) and cluster **C12 — conditions enforced**. Nothing is removed
-and no signature changes shape — every new field is optional and defaults to the
-pre-0.6 behaviour. C12 does change *results* for hosts that carry conditions or
-exhaustion on a combatant. Behavioural deltas
+F3 turn lifecycle) and clusters **C12 — conditions enforced**, **C13 —
+concentration lifecycle** and **C14 — action economy** (Dodge, Help, Hide,
+Extra Attack, two-weapon fighting, Grapple/Shove/`stand_up`, engine-rolled
+initiative with Surprise, and opportunity attacks through the shared d20
+primitive). Nothing is removed and no signature changes shape — every new
+field is optional and defaults to the pre-0.6 behaviour. C12/C14 do change
+*results* for hosts that carry conditions, exhaustion, or turn-keeping attacks
+on a combatant. Behavioural deltas
 (and the fixtures they move) are enumerated in
 [`docs/migration/v0.5-to-v0.6.md`](../../docs/migration/v0.5-to-v0.6.md).
+
+- **Action economy (C14).** Extra Attack reads a caster's granted
+  `extra-attack` / `two-extra-attacks` / `three-extra-attacks` feature slugs
+  (highest tier wins, never summed) into a per-Action `attacks_remaining`
+  counter; a turn now keeps going after a main-hand attack until that
+  counter — and any open two-weapon-fighting Bonus Action window — is spent
+  (`LiveCombatView.turn: TurnCombatView`). A Light main-hand weapon opens a
+  same-turn off-hand Bonus Action swing (SRD 5.2 §Two-Weapon Fighting). Dodge,
+  Help (assist-an-attack-roll flavor) and Hide (DC 15 Stealth, cover/
+  obscurement gate, Invisible-while-hidden) now have live dispatch handlers.
+  New `IntentType` members `"grapple"`, `"shove"`, `"stand_up"`,
+  `"escape_grapple"` resolve the Unarmed Strike Grapple/Shove options, the
+  SRD 5.2 "Ending a Grapple" escape check and standing from Prone at half
+  Speed. `PlayerIntent.shove_push: bool = False` picks the shover's Prone-or-
+  push outcome. `PartyMemberSpec.initiative` / `EncounterMemberSpec.initiative`
+  widen to `int | None`: `None` rolls an engine `d20 + DEX modifier` (spec
+  order, before all other combat draws), with Disadvantage from the new
+  `is_surprised: bool = False` field or a seeded incapacitated-implying
+  status. Opportunity attacks now roll through `roll_d20_test` like every
+  other attack, picking up condition/Dodge/Exhaustion sources.
 
 - **Concentration lifecycle (C13).** The damage-triggered save DC is capped at
   the SRD 5.2 maximum of 30. A new concentration cast cascades the drop of the
@@ -187,6 +211,17 @@ exhaustion on a combatant. Behavioural deltas
 - **`start_combat(grid_scene=...)` raises `ValueError`** when a combatant's
   `zone_id` is out of bounds or blocked, instead of silently seating them on an
   unusable cell.
+- **A main-hand attack keeps the turn (R1, C14)** when `attacks_remaining > 0`
+  after the swing, or when a two-weapon-fighting off-hand window is still
+  open; the turn ends only once neither condition holds. A subsequent swing
+  in the same Attack action no longer re-pays the Action (R2): only the
+  first swing hard-gates on `action_available`, and an exhausted
+  `attacks_remaining` on a later swing is a turn-KEEPING `AttackFailed`
+  rather than the "no Action" rejection every other Action-costed intent
+  raises. `AttackFailed` / `CheckRolled` (Hide, `escape_grapple`) /
+  `SaveRolled` (Grapple, Shove) / `CombatantMoved` (Shove's push option) are
+  new observable events on these paths; see the migration guide for the
+  exact keep-turn predicate and draw discipline.
 - **A monster with no `monster_template_slug` now attacks.** The legacy
   evaluator that used to swing template-less monsters was retired without a
   replacement, so they silently passed every turn; `_synthesize_attack_from_legacy_fields`
