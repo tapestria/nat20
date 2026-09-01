@@ -13,10 +13,11 @@ per-effect Foundry ``duration.rounds`` is display-only and unreliable
 from __future__ import annotations
 
 import asyncio
+import random
 from typing import Any, cast
 
 from dnd5e_engine import orchestrator as orch
-from dnd5e_engine.events import ConcentrationDropped, EffectExpired
+from dnd5e_engine.events import ConcentrationDropped, EffectApplied, EffectExpired
 from dnd5e_engine.lib_loader import get_lib_loader
 from dnd5e_engine.orchestrator import _LiveCombat
 from dnd5e_engine.types.combat import Combatant
@@ -100,3 +101,68 @@ def test_any_drop_clears_the_counter() -> None:
     # And re-firing the hook after the drop is a no-op.
     orch._hook_concentration_expiry(live, "char:a")
     assert len([e for e in live.event_log if isinstance(e, ConcentrationDropped)]) == 1
+
+
+def test_capless_cast_clears_inherited_counter() -> None:
+    """A capless (unknown-max-duration) concentration cast must not inherit
+    a stale countdown left behind by the caster's PRIOR concentration
+    spell — ``_record_effect_lifecycle_links`` must be the counter's sole
+    authority on every NEW concentration cast, not just capped ones.
+
+    Preconditions model the caster's chain already having been cleared by
+    some other path (e.g. a successful repeat save, or a damage-driven
+    concentration break) while ``concentration_rounds_remaining`` was left
+    stale — the ``prior``/``_drop_concentration`` cascade in
+    ``_record_effect_lifecycle_links`` only fires when the chain is
+    non-empty, so it cannot be relied on to clear the counter here; the
+    ``else: pop`` branch is the only thing that can.
+    """
+    live = _live_with_counter(5)
+    live.concentration_chain.pop("char:a", None)
+    caster = live.initiative[0]
+    pre_event_count = len(live.event_log)
+    live.event_log.append(
+        EffectApplied(
+            effect=ActiveEffect(
+                id="effect:shield-of-faith",
+                name="Shield of Faith",
+                origin="cast:shield-of-faith:char:a",
+                target_id="char:a",
+                duration=ActiveEffectDuration(seconds=600),
+                flags={"concentration": True},
+            )
+        )
+    )
+    orch._record_effect_lifecycle_links(
+        live, caster, pre_event_count, concentration_max_rounds=None
+    )
+    assert "char:a" not in live.concentration_rounds_remaining
+    assert not [e for e in live.event_log if isinstance(e, ConcentrationDropped)]
+    # The hook then no-ops: no counter left to decrement, no drop fires.
+    orch._hook_concentration_expiry(live, "char:a")
+    assert "char:a" not in live.concentration_rounds_remaining
+    assert not [e for e in live.event_log if isinstance(e, ConcentrationDropped)]
+
+
+def test_repeat_save_success_clears_counter() -> None:
+    """SRD §Hold Person: a successful end-of-turn repeat save ends the
+    spell on the target and, when that was the caster's last chain entry,
+    must also clear the timed-expiry counter — otherwise a later
+    ``engine:concentration-expiry`` turn_end tick fires a spurious drop
+    against a caster who no longer concentrates on anything."""
+    live = _live_with_counter(5)
+    live.rng = random.Random(1)
+    caster = live.initiative[0]
+    identity = ("char:a", "effect:bless", "cast:bless:char:a")
+    live.repeat_save_on_turn_end[identity] = [
+        {
+            "ability": "wis",
+            "dc": -1,  # guarantee success on any d20 draw
+            "effect_name": "Bless",
+            "condition": "paralyzed",
+            "caster_id": caster.entity_id,
+        }
+    ]
+    orch._run_end_of_turn_saves(live, "char:a")
+    assert "char:a" not in live.concentration_chain
+    assert "char:a" not in live.concentration_rounds_remaining

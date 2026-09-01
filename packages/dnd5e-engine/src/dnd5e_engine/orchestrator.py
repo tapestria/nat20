@@ -1194,6 +1194,9 @@ def _synthesize_attack_from_legacy_fields(current: Combatant) -> AttackActivity 
     from the parsed dice parts. ``None`` when ``damage_dice`` doesn't parse
     — the turn stays the pre-existing no-op pass.
     """
+    # The whitespace strip is deliberate: host-supplied damage_dice strings
+    # are tolerated in loosely-spaced forms too (e.g. "2 d 6", "2d6 +3"),
+    # not just the canonical "2d6+3".
     m = _LEGACY_DICE_RE.match((current.damage_dice or "").replace(" ", ""))
     if m is None:
         return None
@@ -1911,6 +1914,16 @@ async def _handle_move_mark(live: _LiveCombat, caster: Combatant, intent: Player
     # projection finds the new marked target. Hunters-mark is the only
     # concentration effect this caster carries after move_mark; replace
     # any prior hunters-mark identity tuples wholesale.
+    #
+    # This bypasses ``_record_effect_lifecycle_links``'s one-at-a-time
+    # enforcement (the "cascade the prior chain and drop it" branch)
+    # DELIBERATELY: the initial Hunter's Mark cast already went through
+    # ``cast_spell`` and set up the chain/counter there; a move_mark
+    # re-target is not a new cast, it's the SAME concentration effect
+    # continuing on a new target, so it must preserve the original
+    # ``concentration_rounds_remaining`` countdown rather than restart or
+    # clear it. A future cluster touching either path should keep this
+    # divergence intentional, not reintroduce the general-cast gap here.
     new_origin = f"cast:{_MOVE_MARK_EFFECT_NAME}:{caster.entity_id}"
     new_identity = (new_target_id, _MOVE_MARK_EFFECT_ID, new_origin)
     surviving_chain = [
@@ -3497,6 +3510,8 @@ def _record_effect_lifecycle_links(
             _drop_concentration(live, caster.entity_id)
         if concentration_max_rounds is not None:
             live.concentration_rounds_remaining[caster.entity_id] = concentration_max_rounds
+        else:
+            live.concentration_rounds_remaining.pop(caster.entity_id, None)
     # Per-target tracking within this slice.
     last_failed_save_by_target: dict[str, SaveRolled] = {}
     last_effect_by_target: dict[str, ActiveEffect] = {}
@@ -4009,6 +4024,7 @@ def _run_end_of_turn_saves(live: _LiveCombat, actor_id: str) -> None:
                     live.concentration_chain[caster_id] = survivors
                 else:
                     live.concentration_chain.pop(caster_id, None)
+                    live.concentration_rounds_remaining.pop(caster_id, None)
         if surviving:
             live.repeat_save_on_turn_end[identity] = surviving
         else:
@@ -4453,11 +4469,20 @@ async def start_combat(
     # damage path, so without this a host resuming a saved combat with a downed
     # PC would get a PC that can act. ``_fold_condition_onto_combatant`` writes
     # BOTH condition stores, so the host-facing ``active_conditions`` view
-    # agrees with ``Combatant.conditions``. State-only, no event: this is
-    # hydration of a state the host already knows about, not a transition now —
-    # and the death-save state stays exactly as the host supplied it (the
-    # condition is what makes ``_maybe_roll_death_save`` fire on the PC's turn;
-    # no failure is charged here). Monsters are excluded — a monster at 0 HP is
+    # agrees with ``Combatant.conditions``. The condition write itself is
+    # state-only, no event — this is hydration of a state the host already
+    # knows about, not a transition — and the death-save state stays exactly
+    # as the host supplied it (the condition is what makes
+    # ``_maybe_roll_death_save`` fire on the PC's turn; no failure is charged
+    # here). Since C13, though, ``_fold_condition_onto_combatant`` also drops
+    # concentration for any condition that implies Incapacitated (SRD 5.2:
+    # "No Concentration. Your Concentration is broken."), so a 0-HP-hydrated
+    # PC with a pre-seeded concentration effect on their sheet DOES emit here
+    # — ``ConcentrationDropped`` / ``EffectExpired`` / ``ConditionRemoved`` —
+    # which is SRD-correct, not a regression of the "no event" note above;
+    # those events reach the queue (``narration_events``), not
+    # ``StartCombatResult.events``, which only captures the seeding-loop slice
+    # further up this function. Monsters are excluded — a monster at 0 HP is
     # dead, never Unconscious.
     for c in list(live.initiative):
         if c.entity_id in live.party_ids and c.is_alive and c.hp_current <= 0:
