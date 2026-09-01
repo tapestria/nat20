@@ -15,6 +15,17 @@ exhaustion on a combatant. Behavioural deltas
 (and the fixtures they move) are enumerated in
 [`docs/migration/v0.5-to-v0.6.md`](../../docs/migration/v0.5-to-v0.6.md).
 
+- **Concentration lifecycle (C13).** The damage-triggered save DC is capped at
+  the SRD 5.2 maximum of 30. A new concentration cast cascades the drop of the
+  caster's prior concentration effect (SRD "the moment you start casting…").
+  Concentration now ends on death and on gaining any Incapacitated-implying
+  condition. New `IntentType` member `"drop_concentration"`: a voluntary,
+  turn-keeping drop that costs no action economy. Concentration spells now
+  expire at their maximum typed duration (1 minute = 10 rounds, …) at the
+  caster's turn end via the new `engine:concentration-expiry` turn hook, with
+  `EffectExpired(reason="duration")`. `LiveCombatView.concentration_chain`
+  projects the caster-keyed ownership map for hosts.
+
 ### Added
 
 - **`activities/actor_stats.py`** — the per-actor D20-test modifier projection
@@ -168,13 +179,22 @@ exhaustion on a combatant. Behavioural deltas
 - **The two orchestrator-level save paths** (the concentration check and the
   end-of-turn repeat save) now honour the condition projections: STR/DEX
   auto-fail, Restrained DEX disadvantage and the exhaustion penalty.
-  Effect-derived `passive_save_bonus` (Bless/Bane) is still C13's.
+  Effect-derived `passive_save_bonus` (Bless/Bane) on these two paths is
+  still unenforced; see `BACKLOG.md`.
 - Walls now block movement as well as sight; `edge_distance` returns `None` for
   an illegal step. On the grid, `ActorMoved` carries the whole intent's distance
   (one event per `move`); the zone backend still emits one per step.
 - **`start_combat(grid_scene=...)` raises `ValueError`** when a combatant's
   `zone_id` is out of bounds or blocked, instead of silently seating them on an
   unusable cell.
+- **A monster with no `monster_template_slug` now attacks.** The legacy
+  evaluator that used to swing template-less monsters was retired without a
+  replacement, so they silently passed every turn; `_synthesize_attack_from_legacy_fields`
+  now builds one typed `AttackActivity` per turn from the spec-level
+  `attack_bonus` / `damage_dice` / `damage_type` fields (unparseable dice
+  still no-op). Hosts with template-less monster party members will see them
+  start attacking; seeded streams containing a template-less monster's turn
+  move.
 
 ### Deprecated
 

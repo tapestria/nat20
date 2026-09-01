@@ -4,8 +4,8 @@ Transcribed from specs/e2e-scenario-catalog.md, Cluster 13
 (specs/catalog-v2/c13.md). Grid-only setups; all assertions are
 RNG-robust (presence/shape/bounds/same-seed A-B deltas, never exact roll
 values). Concentration-chain reads go through the sanctioned
-``dnd5e_engine.testing.registry`` seam — ``LiveCombatView`` has no
-concentration projection today.
+``dnd5e_engine.testing.registry`` seam here; ``LiveCombatView`` has since
+gained its own ``concentration_chain`` projection for host consumers.
 """
 
 from __future__ import annotations
@@ -34,10 +34,9 @@ def test_c13_s01_second_concentration_spell_ends_the_first():
     you start casting a spell that requires Concentration or activate
     another effect that requires Concentration."
     (packs/_source/content24/appendices/appendix-d-rule-references.yml:5258-5261).
-    ``existing_concentration`` is built in the orchestrator but nothing
-    consumes it before ``_record_effect_lifecycle_links`` appends to
-    ``concentration_chain`` — the caster's chain grows unbounded instead
-    of dropping the prior effect.
+    A second concentration cast now cascades the drop of the caster's prior
+    concentration effect before ``_record_effect_lifecycle_links`` records
+    the new one — the chain holds exactly one entry at a time.
 
     Script repair (assertions untouched): Bless is an Action cast and ends
     the turn, so the second cast happens on the cleric's round-2 turn
@@ -135,9 +134,8 @@ def test_c13_s02_damage_triggers_concentration_check_with_con_modifier():
     F1c gave ``_emit_apply_damage`` the real CON modifier and F2c emits the
     harmonised ``ConcentrationCheck`` (alongside the legacy ``SaveRolled``
     until v0.7); F1c also added ``PartyMemberSpec.save_proficiencies``, so a
-    CON-save-proficient caster IS expressible now (set below). The residual gap
-    this scenario still pins is the DC: it is not capped at the SRD maximum
-    of 30.
+    CON-save-proficient caster IS expressible now (set below). C13 added the
+    DC's SRD maximum-of-30 clamp — pinned separately by C13-S05 below.
     """
 
     def _foe():
@@ -170,8 +168,7 @@ def test_c13_s02_damage_triggers_concentration_check_with_con_modifier():
         if proficient:
             # F1c added this field; before it, ConfigDict(extra="forbid")
             # rejected the kwarg and a CON-save-proficient caster was
-            # inexpressible. The scenario's residual gap is the missing DC 30
-            # cap, not this.
+            # inexpressible.
             kwargs["save_proficiencies"] = ("con",)
         return kwargs
 
@@ -223,8 +220,9 @@ def test_c13_s03_caster_reduced_to_zero_hp_ends_concentration():
     """C13-S03: SRD 5.2 — "Your Concentration ends if you have the
     Incapacitated condition or you die."
     (packs/_source/content24/appendices/appendix-d-rule-references.yml:5266-5268).
-    ``_drop_concentration`` has exactly one call site (the failed CON-save
-    path) — death/unconscious never calls it.
+    ``_record_death`` now calls ``_drop_concentration`` before recording the
+    kill, so a caster's death drops their concentration effect even when it
+    bypasses the failed-CON-save path.
     """
     from dnd5e_engine.testing import registry
 
@@ -288,9 +286,9 @@ def test_c13_s04_voluntary_drop_costs_no_action():
     """C13-S04: SRD 5.2 — "The creator can end Concentration at any time
     (no action required)."
     (packs/_source/content24/appendices/appendix-d-rule-references.yml:5255-5257).
-    There is no ``drop_concentration`` ``IntentType`` member and no public
-    entry point that calls ``_drop_concentration`` outside the failed
-    CON-save path.
+    ``IntentType`` gained a ``"drop_concentration"`` member: a voluntary,
+    turn-keeping drop that costs no action economy and is allowed even
+    while Incapacitated.
 
     Script repair (assertions untouched): the concentration spell is the
     bonus-action Shield of Faith (Bless is an Action cast and would end the
@@ -348,8 +346,8 @@ def test_c13_s04_voluntary_drop_costs_no_action():
                 intent_type="cast_spell", spell_id="shield-of-faith", target_id="char:fighter"
             ),
         )
-        # API delta (C13): "drop_concentration" is not a member of
-        # IntentType today — PlayerIntent's Literal validation rejects it.
+        # API delta (C13): "drop_concentration" — no action cost, keeps
+        # the turn.
         await submit_player_intent(
             start.handle,
             actor_id="char:cleric",
@@ -380,8 +378,9 @@ def test_c13_s04_voluntary_drop_costs_no_action():
 def test_c13_s05_concentration_dc_caps_at_30():
     """C13-S05: SRD 5.2 — "...up to a maximum DC of 30."
     (packs/_source/content24/appendices/appendix-d-rule-references.yml:5261-5266).
-    ``orchestrator.py`` computes ``dc = max(10, event.amount // 2)`` with
-    no upper clamp — a large damage roll can push the DC well past 30.
+    ``orchestrator.py`` now computes
+    ``dc = min(30, max(10, event.amount // 2))`` — a large damage roll is
+    clamped at the SRD maximum instead of pushing the DC past 30.
     """
 
     def _cleric():
