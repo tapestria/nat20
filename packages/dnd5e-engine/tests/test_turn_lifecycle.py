@@ -285,7 +285,10 @@ def test_hooks_registered_by_the_engine_are_present_and_ordered():
       boundary;
     * ``engine:timed-effect-expiry`` must stay AFTER ``engine:duration-tick``
       (the round tick claims an effect's ``rounds`` counter before the seconds
-      branch can look at it).
+      branch can look at it);
+    * ``engine:concentration-expiry`` (C13) must stay LAST — a same-boundary
+      repeat save must still roll against a live effect before the
+      concentration cap can cascade its own drop.
     """
 
     async def _run():
@@ -300,5 +303,6 @@ def test_hooks_registered_by_the_engine_are_present_and_ordered():
             "engine:repeat-save",
             "engine:duration-tick",
             "engine:timed-effect-expiry",
+            "engine:concentration-expiry",
         ],
     }

@@ -66,7 +66,12 @@ from dnd5e_srd_data.schema.common import (
     SaveActivity,
 )
 from dnd5e_srd_data.schema.item import Weapon, WeaponProperty
-from dnd5e_srd_data.schema.spell import CastingTimeUnit, Spell, SpellRangeUnits
+from dnd5e_srd_data.schema.spell import (
+    CastingTimeUnit,
+    Spell,
+    SpellDurationUnits,
+    SpellRangeUnits,
+)
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from dnd5e_engine.activities.actor_stats import (
@@ -112,6 +117,7 @@ from dnd5e_engine.events import (
     Death,
     EffectApplied,
     EffectExpired,
+    EffectExpiryReason,
     HealingApplied,
     IntentSubmitted,
     IntentType,
@@ -1333,6 +1339,16 @@ class _LiveCombat:
     # each evaluator run; read by ``_drop_concentration`` when a
     # concentration drop must cascade EffectExpired + ConditionRemoved.
     concentration_chain: dict[str, list[tuple[str, str, str]]] = field(default_factory=dict)
+    # SRD 5.2 §Concentration — "up to 1 minute, 1 hour, or some other
+    # duration": the caster-keyed countdown of the concentration spell's own
+    # MAXIMUM duration, in rounds, decremented by the
+    # ``engine:concentration-expiry`` turn_end hook at the CASTER's turn end
+    # (Bless on three allies is 10 rounds total, not per-target). Sourced
+    # from the typed Spell.duration at cast time — the per-effect Foundry
+    # ``duration.rounds`` is display-only and unreliable (Bane ships 1).
+    # Seeded effects (cross-combat persistence, a host concern) carry no
+    # counter and remain cascade-governed only.
+    concentration_rounds_remaining: dict[str, int] = field(default_factory=dict)
     # SRD §Conditions — per-effect condition lineage. Keyed by the
     # Foundry-shaped identity tuple ``(target_id, effect.id, effect.origin)``;
     # value is the list of ConditionType values that the named
@@ -1562,10 +1578,16 @@ def _strip_condition_from_combatant(live: _LiveCombat, entity_id: str, condition
         live.active_conditions.setdefault(entity_id, set()).add(condition)
 
 
-def _drop_concentration(live: _LiveCombat, caster_id: str) -> None:
+def _drop_concentration(
+    live: _LiveCombat, caster_id: str, *, reason: EffectExpiryReason = "concentration_drop"
+) -> None:
     """Cascade a concentration drop: ``ConcentrationDropped`` + per-target
-    ``EffectExpired(reason=concentration_drop)`` + ``ConditionRemoved`` for
-    every condition the dropped effect installed.
+    ``EffectExpired(reason=...)`` + ``ConditionRemoved`` for every
+    condition the dropped effect installed.
+
+    ``reason`` distinguishes a broken concentration ("concentration_drop")
+    from the spell's own maximum duration running out ("duration"); the
+    ``ConcentrationDropped`` marker fires either way.
 
     Reads the persistent ``live.concentration_chain[caster_id]`` (the
     caster's owned-effects-by-name map) and
@@ -1601,7 +1623,7 @@ def _drop_concentration(live: _LiveCombat, caster_id: str) -> None:
                 target_id=target_id,
                 effect_id=effect_id,
                 origin=origin,
-                reason="concentration_drop",
+                reason=reason,
             ),
         )
         identity = (target_id, effect_id, origin)
@@ -1618,6 +1640,7 @@ def _drop_concentration(live: _LiveCombat, caster_id: str) -> None:
         # Drop any pending repeat-save spec keyed off this expired effect.
         live.repeat_save_on_turn_end.pop(identity, None)
     live.concentration_chain.pop(caster_id, None)
+    live.concentration_rounds_remaining.pop(caster_id, None)
     # Clear ``Combatant.concentration_effect_id`` so subsequent hydration
     # payloads project an empty ``existing_concentration`` for this
     # caster. The ``_writeback_concentration`` path only fires when the
@@ -3402,7 +3425,11 @@ def _writeback_concentration(live: _LiveCombat, caster: Combatant, pre_event_cou
 
 
 def _record_effect_lifecycle_links(
-    live: _LiveCombat, caster: Combatant, pre_event_count: int
+    live: _LiveCombat,
+    caster: Combatant,
+    pre_event_count: int,
+    *,
+    concentration_max_rounds: int | None = None,
 ) -> None:
     """Project this turn's effect-application events into persistent lifecycle state.
 
@@ -3468,6 +3495,8 @@ def _record_effect_lifecycle_links(
         if prior:
             live.concentration_chain[caster.entity_id] = prior
             _drop_concentration(live, caster.entity_id)
+        if concentration_max_rounds is not None:
+            live.concentration_rounds_remaining[caster.entity_id] = concentration_max_rounds
     # Per-target tracking within this slice.
     last_failed_save_by_target: dict[str, SaveRolled] = {}
     last_effect_by_target: dict[str, ActiveEffect] = {}
@@ -3547,6 +3576,23 @@ def _hook_expire_timed_effects(live: _LiveCombat, actor_id: str | None) -> None:
     _expire_timed_effects_at_turn_end(live, actor_id)
 
 
+def _hook_concentration_expiry(live: _LiveCombat, actor_id: str | None) -> None:
+    """``turn_end`` hook — SRD 5.2 §Concentration maximum duration.
+
+    Decrements the caster-keyed rounds counter at the CASTER's own turn end
+    and cascades the drop (reason="duration") at zero. The cast turn's own
+    turn end counts as round 1 of the duration. No RNG."""
+    if actor_id is None:
+        return
+    remaining = live.concentration_rounds_remaining.get(actor_id)
+    if remaining is None:
+        return
+    if remaining > 1:
+        live.concentration_rounds_remaining[actor_id] = remaining - 1
+        return
+    _drop_concentration(live, actor_id, reason="duration")
+
+
 def _register_default_turn_hooks(live: _LiveCombat) -> None:
     """Register the engine's built-in turn-boundary hooks on ``live``.
 
@@ -3558,6 +3604,10 @@ def _register_default_turn_hooks(live: _LiveCombat) -> None:
     resolved by the ``rounds`` counter first and the seconds branch then sees
     ``rounds is not None`` and stands down ("rounds wins" — see
     ``_expire_timed_effects_at_turn_end``).
+    ``engine:concentration-expiry`` (C13) is appended LAST of the ``turn_end``
+    hooks, after ``engine:timed-effect-expiry``, so a same-boundary repeat save
+    (``engine:repeat-save``, registered first) still rolls against a live
+    effect before the concentration cap can cascade its drop.
     ``engine:repeat-save`` is registered FIRST among the ``turn_end`` hooks: the
     SRD repeat save (Hold Person / Hold Monster / Dominate Person) must resolve
     while its source effect is still live, so it runs before
@@ -3573,6 +3623,9 @@ def _register_default_turn_hooks(live: _LiveCombat) -> None:
     live.lifecycle.register("turn_end", _hook_tick_durations, key="engine:duration-tick")
     live.lifecycle.register(
         "turn_end", _hook_expire_timed_effects, key="engine:timed-effect-expiry"
+    )
+    live.lifecycle.register(
+        "turn_end", _hook_concentration_expiry, key="engine:concentration-expiry"
     )
     live.lifecycle.register(
         "turn_start", _hook_expire_reaction_effects, key="engine:reaction-effect-expiry"
@@ -3665,6 +3718,27 @@ def _tick_durations_at_turn_end(live: _LiveCombat, actor_id: str) -> None:
 #: SRD 5.2 §Duration — "a round represents about 6 seconds in the game world".
 #: The conversion factor for ``ActiveEffectDuration.seconds`` -> rounds.
 _SECONDS_PER_ROUND = 6
+
+
+def _concentration_max_rounds(spell: Spell | None) -> int | None:
+    """SRD 5.2 §Concentration maximum duration, in rounds (6 s each, SRD
+    §Duration). ``None`` = no engine-tracked cap: non-concentration spells,
+    the monster/no-spell paths, and non-metric durations (instantaneous /
+    until-dispelled / until-destroyed / permanent / special)."""
+    if spell is None or not spell.concentration:
+        return None
+    duration = spell.duration
+    if duration.value is None:
+        return None
+    per_unit = {
+        SpellDurationUnits.ROUND: 1,
+        SpellDurationUnits.MINUTE: 10,
+        SpellDurationUnits.HOUR: 600,
+        SpellDurationUnits.DAY: 14400,
+    }.get(duration.units)
+    if per_unit is None:
+        return None
+    return duration.value * per_unit
 
 
 def _duration_tick_matches_actor(*, origin: str, target_id: str, actor_id: str) -> bool:
@@ -6284,7 +6358,12 @@ async def submit_player_intent(
     # produced by this resolution. Closes the codex shelf finding
     # ``ieffect2.py`` P1 ("parent links don't survive across turns") by
     # owning the lifecycle graph at the orchestrator.
-    _record_effect_lifecycle_links(live, current, pre_event_count)
+    _record_effect_lifecycle_links(
+        live,
+        current,
+        pre_event_count,
+        concentration_max_rounds=_concentration_max_rounds(cast_spell),
+    )
 
     # SRD §Hold Person / §Hold Monster — *"At the end of each of its turns,
     # the target repeats the save."* This runs as the ``engine:repeat-save``
@@ -6867,6 +6946,12 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
         # Symmetric concentration writeback for spellcaster monsters
         # (mirrors the PC path; no-op for non-caster monsters).
         _writeback_concentration(live, current, pre_event_count)
+        # ``concentration_max_rounds`` stays on the default (None) here: the
+        # monster path has no typed ``Spell`` in scope (monster stat-block
+        # casts resolve straight off the monster's own activities, not a
+        # fetched Spell) until C18 threads one through. Monster
+        # concentration effects therefore remain cascade-governed only —
+        # no timed expiry — same as before this task.
         _record_effect_lifecycle_links(live, current, pre_event_count)
 
     # Advance the turn — the single shared path (F3a); this site used to carry
