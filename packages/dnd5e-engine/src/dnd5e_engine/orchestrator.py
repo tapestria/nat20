@@ -2074,6 +2074,11 @@ def _handle_escape_grapple(live: _LiveCombat, current: Combatant, intent: Player
         skill, ability, modifier = "athletics", "str", athletics_mod
     else:
         skill, ability, modifier = "acrobatics", "dex", acrobatics_mod
+    # SRD 5.2 Exhaustion — "the roll is reduced by 2 times your Exhaustion
+    # level" on EVERY D20 Test, ability checks included. The grapple SAVE
+    # already threads this (mirroring ``_run_end_of_turn_saves``); the
+    # escape check must too (Fix round 1).
+    modifier += d20_test_penalty(current.conditions)
     roll = roll_d20_test(live.rng, modifier, AdvantageSources())
     succeeded = roll.total >= dc
     _emit(

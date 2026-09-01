@@ -36,6 +36,7 @@ from dnd5e_engine.orchestrator import (
     submit_player_intent,
 )
 from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
+from dnd5e_engine.types.conditions import ActiveCondition
 from tests.e2e.harness import cell, events_of, grid_scene, run_async
 
 
@@ -246,6 +247,63 @@ class TestEscapeGrapple:
         assert target is not None
         assert not any(ac.condition == "grappled" for ac in target.conditions)
         assert _effective_speed(target) > 0
+
+    def test_escape_check_applies_the_exhaustion_penalty(self):
+        """Fix round 1 — SRD 5.2 Exhaustion: "the roll is reduced by 2 times
+        your Exhaustion level" on EVERY D20 Test, ability checks included
+        (``rules/conditions.py::d20_test_penalty``). The grapple SAVE already
+        threads this (mirroring ``_run_end_of_turn_saves``); the escape
+        CHECK must too. Compares an exhausted escaper's ``CheckRolled.modifier``
+        against an unexhausted control run of the identical scenario/seed —
+        seed-independent, since both runs draw the same d20 stream and only
+        the reported flat ``modifier`` should differ by ``-2 x level``.
+        """
+
+        async def _run(*, exhaustion_level: int | None):
+            start = await _start_grapple_combat("t6-f-escape-exhaustion", rng_seed=11)
+            live = _get_live(start.handle)
+            for idx, c in enumerate(live.initiative):
+                if c.entity_id == "char:target":
+                    live.initiative[idx] = c.model_copy(update={"strength": 1, "dexterity": 1})
+                    break
+            await submit_player_intent(
+                start.handle,
+                actor_id="char:brute",
+                intent=PlayerIntent(intent_type="grapple", target_id="char:target"),
+            )
+            live = _get_live(start.handle)
+            if exhaustion_level is not None:
+                target = _find_combatant(live, "char:target")
+                assert target is not None
+                for idx, c in enumerate(live.initiative):
+                    if c.entity_id == "char:target":
+                        live.initiative[idx] = c.model_copy(
+                            update={
+                                "conditions": [
+                                    *c.conditions,
+                                    ActiveCondition(
+                                        condition="exhaustion",
+                                        source_entity_id="implied:scenario",
+                                        scope="combat",
+                                        exhaustion_level=exhaustion_level,
+                                    ),
+                                ]
+                            }
+                        )
+                        break
+            await submit_player_intent(
+                start.handle,
+                actor_id="char:target",
+                intent=PlayerIntent(intent_type="escape_grapple"),
+            )
+            live = _get_live(start.handle)
+            return next(e for e in events_of(live, CheckRolled) if e.actor_id == "char:target")
+
+        plain = run_async(_run(exhaustion_level=None))
+        tired = run_async(_run(exhaustion_level=2))
+        assert plain.modifier is not None
+        assert tired.modifier is not None
+        assert tired.modifier == plain.modifier - 2 * 2
 
     def test_escape_grapple_without_the_condition_is_rejected(self):
         """(d) An actor without Grappled cannot ``escape_grapple``."""
