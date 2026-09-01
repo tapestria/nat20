@@ -261,7 +261,6 @@ def test_c14_s03_help_grants_advantage_to_next_ally_attack():
     assert rolled_b.advantage == "advantage"
 
 
-@xfail_cluster(14, "action economy")
 def test_c14_s04_grapple_shove_and_stand_up():
     """C14-S04: SRD 5.2 (Unarmed Strike, Grapple/Shove) and Ending a
     Grapple / Prone Restricted Movement
@@ -305,7 +304,9 @@ def test_c14_s04_grapple_shove_and_stand_up():
             ],
             scene_zones=None,
             grid_scene=grid_scene(),
-            rng_seed=5,
+            # Setup repair 2026-09-01: seed 5 rolled a natural-20 grapple save;
+            # assertions unchanged (catalog repair protocol).
+            rng_seed=1,
         )
         live = _get_live(start.handle)
 
