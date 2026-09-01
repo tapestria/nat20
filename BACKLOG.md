@@ -63,9 +63,19 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
 
 - **Surprise is not modelled.** SRD 5.2 gives a surprised creature disadvantage
   on its initiative roll; `start_combat` has no surprise input.
-- **Grapple and Shove are not modelled.** The `grappled` condition exists and
-  can be applied by an effect, but no contested check resolves either action,
-  and neither has an `IntentType`.
+- **Shove is not modelled.** The Grapple half of Unarmed Strike closed C14
+  Task 6 (2026-09-01): `grapple` / `escape_grapple` are live `IntentType`
+  members that roll the SRD 5.2 save/escape check. Shove (the other Unarmed
+  Strike option — knock Prone or push 5 ft on a failed save) still has no
+  `IntentType` or resolver. C14 Task 7.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
+- **Grapple's size gate, free-hand gate, and distance-exceeded auto-release
+  are not modelled** (2026-09-01). SRD 5.2 Grapple requires "a hand free" and
+  caps the grappler at one size larger than the target; "Ending a Grapple"
+  also ends the condition when a forced move separates the pair beyond
+  reach. None of the three block or auto-release `grapple`/`escape_grapple`
+  today — deferred to C14 Task 10.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_handle_grapple`)
 - **Two-weapon fighting is not modelled.** The `light` weapon property is
   parsed but grants no bonus-action attack.
 - **Ritual casting is not modelled.** 28 spells carry `ritual: true`; the flag

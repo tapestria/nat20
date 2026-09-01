@@ -131,6 +131,13 @@ IntentType = Literal[
     "use_feature",
     "pass",
     "drop_concentration",
+    # C14 Task 6/7 — Unarmed Strike options (SRD 5.2 §Actions in Combat) and
+    # the SRD 5.2 "Ending a Grapple" escape action. All four land together so
+    # a later task adding shove/stand_up handlers needs no events.py edit.
+    "grapple",
+    "shove",
+    "stand_up",
+    "escape_grapple",
 ]
 
 

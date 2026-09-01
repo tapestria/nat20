@@ -78,6 +78,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from dnd5e_engine.activities.actor_stats import (
     ABILITY_CODES,
     check_modifier,
+    proficiency_bonus_of,
     save_modifier,
     skill_ability,
 )
@@ -100,6 +101,7 @@ from dnd5e_engine.activities.scale import build_scale_values
 from dnd5e_engine.build_party import granted_feature_slugs
 from dnd5e_engine.death_saves import DeathSaveState, roll_death_save
 from dnd5e_engine.events import (
+    Ability,
     ActorMoved,
     AdvantageMode,
     AdvantageSource,
@@ -152,6 +154,7 @@ from dnd5e_engine.rules.conditions import (
     project_passive_save_modifiers,
     project_speed,
 )
+from dnd5e_engine.rules.dice import ability_modifier
 from dnd5e_engine.spatial import GridTopology, SpatialTopology, parse_cell
 from dnd5e_engine.specs import (
     EncounterMemberSpec,
@@ -288,6 +291,11 @@ class IntentRejectedError(CombatSeamError):
         "no_action_economy",
         "actor_incapacitated",
         "target_invalid",
+        # SRD 5.2 Unarmed Strike — Grapple/Shove: the target must be within
+        # reach (5 ft). Mirrors ``CastFailedReason``'s "out_of_range" but as
+        # a direct raise (like Help's "target_invalid") since neither option
+        # has a dedicated ``...Failed`` event.
+        "out_of_range",
     ]
 
     def __init__(self, reason: RejectionReason, detail: str) -> None:
@@ -1634,6 +1642,26 @@ def _reject_invalid_help_target(live: _LiveCombat, actor_id: str, intent: Player
         )
 
 
+def _reject_invalid_grapple_target(live: _LiveCombat, actor_id: str, intent: PlayerIntent) -> None:
+    """Raise ``IntentRejectedError("out_of_range")`` for an out-of-reach /
+    dead / missing Grapple target; a no-op for every other intent type.
+
+    SRD 5.2 Unarmed Strike — Grapple has the same 5-ft reach shape as Help's
+    "an enemy within 5 feet of you", so this reuses ``_help_target_invalid``'s
+    liveness/distance predicate — only the rejection reason differs (Grapple
+    has no dedicated ``...Failed`` event either, so — like Help — an invalid
+    target raises directly rather than emitting one). Split out purely to
+    keep ``submit_player_intent``'s cyclomatic complexity under the lint
+    ceiling (mirrors ``_reject_invalid_help_target`` / ``_set_dodging``).
+    """
+    if intent.intent_type == "grapple" and _help_target_invalid(live, actor_id, intent):
+        raise IntentRejectedError(
+            "out_of_range",
+            f"actor_id={actor_id!r} grapple target {intent.target_id!r} is not a living "
+            "combatant within reach (5 ft)",
+        )
+
+
 def _dodge_benefit_active(live: _LiveCombat, c: Combatant) -> bool:
     """SRD 5.2 §Actions in Combat — Dodge (C14 Task 3). True while ``c``'s
     Dodge benefit is live: the combatant took the Dodge action this turn (or
@@ -1678,7 +1706,14 @@ def _find_combatant(live: _LiveCombat, entity_id: str) -> Combatant | None:
     return None
 
 
-def _fold_condition_onto_combatant(live: _LiveCombat, entity_id: str, condition: str) -> None:
+def _fold_condition_onto_combatant(
+    live: _LiveCombat,
+    entity_id: str,
+    condition: str,
+    *,
+    save_dc: int | None = None,
+    source_effect_id: str | None = None,
+) -> None:
     """Materialise a condition on **both** condition stores: the coarse
     ``live.active_conditions`` name set (what ``views.py`` shows the host and
     what the bridge rebuilds host storage from) and ``Combatant.conditions``,
@@ -1698,6 +1733,14 @@ def _fold_condition_onto_combatant(live: _LiveCombat, entity_id: str, condition:
 
     Idempotent per condition name; implied conditions are NOT materialised —
     ``is_condition_active`` resolves ``CONDITION_IMPLIES`` from the names.
+
+    ``save_dc`` / ``source_effect_id`` are optional keyword-only overrides for
+    the newly-materialised ``ActiveCondition`` — C14's Grapple option threads
+    the escape DC and the imposing effect's id here (via
+    ``_emit_grapple_condition_applied``) so later escape attempts read the
+    STORED DC rather than recomputing it. Every other call site (the generic
+    ``ConditionApplied`` fold in ``_emit``, ``start_combat``'s 0-HP hydration)
+    leaves both at their ``None`` default — unchanged behavior.
     """
     live.active_conditions.setdefault(entity_id, set()).add(condition)
     c = _find_combatant(live, entity_id)
@@ -1710,6 +1753,8 @@ def _fold_condition_onto_combatant(live: _LiveCombat, entity_id: str, condition:
             source_entity_id="implied:event",
             scope="combat",
             applied_round=live.round_number,
+            save_dc=save_dc,
+            source_effect_id=source_effect_id,
         ),
     ]
     for idx, slot in enumerate(live.initiative):
@@ -1725,6 +1770,10 @@ def _fold_condition_onto_combatant(live: _LiveCombat, entity_id: str, condition:
     # HP threshold — see the rule card's 0-HP edge note.
     if is_condition_active(Condition.INCAPACITATED, [condition]):
         _drop_concentration(live, entity_id)
+        # SRD 5.2 "Ending a Grapple" — "The condition also ends if the
+        # grappler has the Incapacitated condition." Release every victim
+        # this newly-incapacitated combatant is currently grappling.
+        _release_grapple_victims_of(live, entity_id)
 
 
 def _strip_condition_from_combatant(live: _LiveCombat, entity_id: str, condition: str) -> None:
@@ -1832,6 +1881,248 @@ def _drop_concentration(
         if c.entity_id == caster_id and c.concentration_effect_id is not None:
             live.initiative[idx] = c.model_copy(update={"concentration_effect_id": None})
             break
+
+
+# ── C14 Task 6 — Unarmed Strike: the Grapple option + escape ────────────────
+#
+# SRD 5.2 (Unarmed Strike, "Grapple"): "The target must succeed on a Strength
+# or Dexterity saving throw (it chooses which), or it has the Grappled
+# condition. The DC for the saving throw and any escape attempts equals 8
+# plus your Strength modifier and Proficiency Bonus."
+#
+# Controller ruling R3 (deterministic-choice policy, since the engine has no
+# player-facing choice prompt): the target saves with whichever of STR/DEX
+# has the higher save modifier (tie -> STR); the escaper picks Athletics vs
+# Acrobatics by higher check modifier (tie -> Athletics/STR).
+#
+# Out of scope (BACKLOG.md, Task 10): the size gate ("a creature can grapple
+# no more than one size larger than itself"), the free-hand gate (SRD
+# requires "a hand free"), and the distance-exceeded auto-release (no
+# forced-move currently separates a grappled pair mid-grapple).
+
+
+def _unarmed_option_dc(attacker: Combatant) -> int:
+    """SRD 5.2 Unarmed Strike — Grapple / Shove: "The DC ... equals 8 plus
+    your Strength modifier and Proficiency Bonus." Shared by both options
+    (C14 Task 7 reuses this for Shove)."""
+    return 8 + ability_modifier(attacker.strength) + proficiency_bonus_of(attacker)
+
+
+def _emit_grapple_condition_applied(
+    live: _LiveCombat, target_id: str, *, save_dc: int, source_effect_id: str
+) -> None:
+    """Fold + emit ``ConditionApplied(grappled)`` with the escape DC and the
+    imposing effect's id threaded onto the freshly-materialised
+    ``ActiveCondition`` — a dedicated emit-side entry point (rather than
+    mutating the slot after the fact) so ``escape_grapple`` can later read
+    the STORED DC instead of recomputing it. Pre-folds directly (idempotent
+    per condition) THEN routes through the generic ``_emit`` so the event
+    still lands on the log/queue/listeners exactly like any other
+    ``ConditionApplied`` — the generic fold branch inside ``_emit`` then
+    no-ops (the condition is already materialised)."""
+    _fold_condition_onto_combatant(
+        live, target_id, "grappled", save_dc=save_dc, source_effect_id=source_effect_id
+    )
+    _emit(live, ConditionApplied(target_id=target_id, condition="grappled"))
+
+
+def _release_one_grapple_effect(live: _LiveCombat, victim_id: str, effect_id: str | None) -> None:
+    """Drop the grapple ``ActiveEffect`` named ``effect_id`` from
+    ``live.active_effects[victim_id]`` — a no-op if absent. MUST run BEFORE
+    the matching ``ConditionRemoved`` is emitted: ``_strip_condition_from_
+    combatant``'s multi-source stacking guard keeps a condition whose
+    ``source_effect_id`` is still present in ``active_effects``, so the
+    effect has to be gone first for the condition to actually clear."""
+    if effect_id is None:
+        return
+    effects = live.active_effects.get(victim_id)
+    if effects is None:
+        return
+    remaining = [e for e in effects if e.id != effect_id]
+    if len(remaining) != len(effects):
+        live.active_effects[victim_id] = remaining
+
+
+def _release_grapple_victims_of(live: _LiveCombat, grappler_id: str) -> None:
+    """SRD 5.2 "Ending a Grapple" — "The condition also ends if the grappler
+    has the Incapacitated condition." Called from
+    ``_fold_condition_onto_combatant``'s Incapacitated branch (beside the
+    C13 concentration drop) whenever ``grappler_id`` newly becomes
+    Incapacitated: release every combatant currently Grappled BY it (per
+    ``_condition_source_entity``'s resolution of the ``grapple:`` origin
+    prefix)."""
+    for victim in list(live.initiative):
+        grappled_ac = next((ac for ac in victim.conditions if ac.condition == "grappled"), None)
+        if grappled_ac is None:
+            continue
+        if _condition_source_entity(live, victim, "grappled") != grappler_id:
+            continue
+        _release_one_grapple_effect(live, victim.entity_id, grappled_ac.source_effect_id)
+        _emit(live, ConditionRemoved(target_id=victim.entity_id, condition="grappled"))
+
+
+def _resolve_grapple_save_ability(target: Combatant) -> Ability:
+    """Controller ruling R3 — the target saves with whichever of STR/DEX has
+    the higher save modifier (tie -> STR)."""
+    str_total = save_modifier(target, "str").total
+    dex_total = save_modifier(target, "dex").total
+    return "str" if str_total >= dex_total else "dex"
+
+
+def _handle_grapple(live: _LiveCombat, attacker: Combatant, intent: PlayerIntent) -> None:
+    """SRD 5.2 Unarmed Strike — Grapple. Rolls the target's save through the
+    same primitives ``_run_end_of_turn_saves`` uses outside the activity walk
+    (auto-fail conditions + exhaustion penalty come free; no advantage
+    source of its own — a plain D20 Test), so Paralyzed/Stunned/Petrified/
+    Unconscious targets auto-fail with zero draws. On failure, applies the
+    engine-owned Grappled condition with the escape DC + source effect
+    stored on the ``ActiveCondition`` (see ``_emit_grapple_condition_
+    applied``). The Action is already spent (budget consumed by the caller);
+    Grapple resolves no other activities and always ends the turn."""
+    assert intent.target_id is not None  # narrowed by the range gate above
+    target_id = intent.target_id
+    target = _find_combatant(live, target_id)
+    assert target is not None  # narrowed by the range gate above
+    dc = _unarmed_option_dc(attacker)
+    ability = _resolve_grapple_save_ability(target)
+    save_proj = project_passive_save_modifiers(_condition_names(target))
+    ability_upper = ability.upper()
+    if ability_upper in save_proj.get("passive_save_auto_fail", []):
+        roll_total, succeeded = 0, False
+        mode: AdvantageMode = "normal"
+        natural: int | None = None
+        roll_modifier = 0
+        roll_sources: list[AdvantageSource] = []
+    else:
+        modifier = save_modifier(target, ability).total + d20_test_penalty(target.conditions)
+        dis: tuple[AdvantageSource, ...] = (
+            ("condition:target",) if ability_upper in save_proj.get("passive_save_dis", []) else ()
+        )
+        roll = roll_d20_test(live.rng, modifier, AdvantageSources(disadvantage=dis))
+        roll_total, succeeded = roll.total, roll.total >= dc
+        mode, natural, roll_modifier = roll.mode, roll.kept, roll.modifier
+        roll_sources = list(roll.sources)
+    _emit(
+        live,
+        SaveRolled(
+            target_id=target_id,
+            ability=ability,
+            dc=dc,
+            roll_total=roll_total,
+            succeeded=succeeded,
+            advantage=mode,
+            natural=natural,
+            modifier=roll_modifier,
+            sources=roll_sources,
+        ),
+    )
+    if not succeeded:
+        effect_id = f"effect:grapple:{live.round_number}:{attacker.entity_id}:{target_id}"
+        effect = ActiveEffect(
+            id=effect_id,
+            name="Grappled",
+            origin=f"grapple:unarmed-strike:{attacker.entity_id}",
+            target_id=target_id,
+            statuses={"grappled"},
+        )
+        live.active_effects.setdefault(target_id, []).append(effect)
+        _emit_grapple_condition_applied(live, target_id, save_dc=dc, source_effect_id=effect_id)
+    _end_turn_and_advance(live, attacker.entity_id)
+
+
+def _escape_grapple_actor_invalid(current: Combatant) -> bool:
+    """True (reject) unless ``current`` currently carries the Grappled
+    condition — ``escape_grapple`` has nothing to escape from otherwise."""
+    return not any(ac.condition == "grappled" for ac in current.conditions)
+
+
+def _reject_invalid_escape_grapple_actor(
+    actor_id: str, intent: PlayerIntent, current: Combatant
+) -> None:
+    """Raise ``IntentRejectedError("target_invalid")`` for an
+    ``escape_grapple`` from an actor who is not (or no longer) Grappled; a
+    no-op for every other intent type. Split out (like ``_reject_invalid_
+    help_target`` / ``_reject_invalid_grapple_target``) purely to keep
+    ``submit_player_intent``'s cyclomatic complexity under the lint
+    ceiling."""
+    if intent.intent_type == "escape_grapple" and _escape_grapple_actor_invalid(current):
+        raise IntentRejectedError(
+            "target_invalid",
+            f"actor_id={actor_id!r} is not Grappled; nothing to escape",
+        )
+
+
+def _handle_escape_grapple(live: _LiveCombat, current: Combatant, intent: PlayerIntent) -> None:
+    """SRD 5.2 "Ending a Grapple" — "A Grappled creature can use its action
+    to make a Strength (Athletics) or Dexterity (Acrobatics) check against
+    the grapple's escape DC, ending the condition on itself on a success."
+
+    Reads the STORED escape DC off the actor's ``ActiveCondition`` (never
+    recomputed — the grappler's Strength may have changed since). Controller
+    ruling R3 picks Athletics vs Acrobatics by whichever check modifier is
+    higher (tie -> Athletics/STR), via the same ``check_modifier`` primitive
+    every other skill check on this seam uses. The Action is already spent
+    (budget consumed by the caller); escape always ends the turn."""
+    del intent  # escape_grapple carries no target/spell/item fields.
+    grappled_ac = next((ac for ac in current.conditions if ac.condition == "grappled"), None)
+    assert grappled_ac is not None  # narrowed by the gate above
+    assert grappled_ac.save_dc is not None  # every grapple emit stores one
+    dc = grappled_ac.save_dc
+    athletics_mod = check_modifier(current, "str", "athletics").total
+    acrobatics_mod = check_modifier(current, "dex", "acrobatics").total
+    if athletics_mod >= acrobatics_mod:
+        skill, ability, modifier = "athletics", "str", athletics_mod
+    else:
+        skill, ability, modifier = "acrobatics", "dex", acrobatics_mod
+    roll = roll_d20_test(live.rng, modifier, AdvantageSources())
+    succeeded = roll.total >= dc
+    _emit(
+        live,
+        CheckRolled(
+            actor_id=current.entity_id,
+            ability=ability,
+            skill=skill,
+            dc=dc,
+            roll_total=roll.total,
+            succeeded=succeeded,
+            advantage=roll.mode,
+            natural=roll.kept,
+            modifier=roll.modifier,
+            sources=list(roll.sources),
+        ),
+    )
+    if succeeded:
+        _release_one_grapple_effect(live, current.entity_id, grappled_ac.source_effect_id)
+        _emit(live, ConditionRemoved(target_id=current.entity_id, condition="grappled"))
+    _end_turn_and_advance(live, current.entity_id)
+
+
+def _dispatch_simple_turn_ending_intent(
+    live: _LiveCombat, current: Combatant, actor_id: str, intent: PlayerIntent
+) -> bool:
+    """Route the turn-ending intents that resolve no activities of their own
+    — Dodge, Help, Grapple, ``escape_grapple`` — to their handlers and
+    report whether one fired. Every gate (5-ft reach / Grappled-state) has
+    already run in ``submit_player_intent`` before this is reached.
+    Collapsing the dispatch into one call site (mirrors ``_dispatch_turn_
+    nonending_intent``'s shape) keeps that function's cyclomatic complexity
+    under the lint ceiling."""
+    if intent.intent_type == "dodge":
+        _set_dodging(live, actor_id)
+        _end_turn_and_advance(live, actor_id)
+        return True
+    if intent.intent_type == "help":
+        assert intent.target_id is not None  # mypy: narrowed by the gate above
+        live.help_grants.setdefault(intent.target_id, []).append(actor_id)
+        _end_turn_and_advance(live, actor_id)
+        return True
+    if intent.intent_type == "grapple":
+        _handle_grapple(live, current, intent)
+        return True
+    if intent.intent_type == "escape_grapple":
+        _handle_escape_grapple(live, current, intent)
+        return True
+    return False
 
 
 def _handle_dash(live: _LiveCombat, current: Combatant, intent: PlayerIntent) -> None:
@@ -6681,6 +6972,17 @@ async def submit_player_intent(
     # complexity under the lint ceiling.
     _reject_invalid_help_target(live, actor_id, intent)
 
+    # SRD 5.2 Unarmed Strike — Grapple: same reach-gate placement discipline
+    # as Help above. Split out purely to keep this dispatcher's cyclomatic
+    # complexity under the lint ceiling.
+    _reject_invalid_grapple_target(live, actor_id, intent)
+
+    # SRD 5.2 "Ending a Grapple" — an ``escape_grapple`` intent from an actor
+    # who is not (or no longer) Grappled has nothing to escape from. Gated
+    # BEFORE any budget is consumed, same placement discipline as every other
+    # pre-budget target gate above.
+    _reject_invalid_escape_grapple_actor(actor_id, intent, current)
+
     # Consume the budget now. ``current`` is a stale snapshot; mutate via
     # initiative-list model_copy so subsequent reads (and the post-resolve
     # turn-advance branch below) see the updated state. Attack intents use
@@ -6706,27 +7008,14 @@ async def submit_player_intent(
         ),
     )
 
-    # SRD §Actions in Combat — Dodge. The Action is already spent (the
-    # budget consumption above); set the ``dodging`` flag live and end the
-    # turn immediately — Dodge resolves no activities (no dice, no
-    # targets). ``current`` is the post-consume snapshot from above; write
-    # via the same initiative-list model_copy pattern the other per-turn
-    # state writers use.
-    if intent.intent_type == "dodge":
-        _set_dodging(live, actor_id)
-        _end_turn_and_advance(live, actor_id)
-        return
-
-    # SRD 5.2 §Actions in Combat — Help, Assist an Attack Roll. The Action is
-    # already spent (the budget consumption above) and the target was
-    # already validated (``_help_target_invalid`` above, before any budget
-    # was touched). Record the grant and end the turn immediately — Help
-    # resolves no activities (no dice, no on-target effects of its own).
-    # ``target_id`` is non-empty here (the gate above rejects an empty one).
-    if intent.intent_type == "help":
-        assert intent.target_id is not None  # mypy: narrowed by the gate above
-        live.help_grants.setdefault(intent.target_id, []).append(actor_id)
-        _end_turn_and_advance(live, actor_id)
+    # SRD §Actions in Combat — Dodge / Help / Unarmed Strike Grapple /
+    # "Ending a Grapple". Every one is Action-cost (already spent above),
+    # resolves no activities of its own, and ends the turn immediately; each
+    # target/actor-state gate already ran before any budget was touched
+    # (``_reject_invalid_help_target`` / ``_reject_invalid_grapple_target`` /
+    # ``_reject_invalid_escape_grapple_actor``). Collapsed into one dispatch
+    # call — see ``_dispatch_simple_turn_ending_intent``'s docstring.
+    if _dispatch_simple_turn_ending_intent(live, current, actor_id, intent):
         return
 
     # SRD §Ready — a "ready" intent pre-arms the pending-reaction queue
