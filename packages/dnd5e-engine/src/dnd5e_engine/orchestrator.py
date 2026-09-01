@@ -2000,20 +2000,28 @@ def _resolve_grapple_save_ability(target: Combatant) -> Ability:
     return "str" if str_total >= dex_total else "dex"
 
 
-def _handle_grapple(live: _LiveCombat, attacker: Combatant, intent: PlayerIntent) -> None:
-    """SRD 5.2 Unarmed Strike — Grapple. Rolls the target's save through the
-    same primitives ``_run_end_of_turn_saves`` uses outside the activity walk
-    (auto-fail conditions + exhaustion penalty come free; no advantage
-    source of its own — a plain D20 Test), so Paralyzed/Stunned/Petrified/
-    Unconscious targets auto-fail with zero draws. On failure, applies the
-    engine-owned Grappled condition with the escape DC + source effect
-    stored on the ``ActiveCondition`` (see ``_emit_grapple_condition_
-    applied``). The Action is already spent (budget consumed by the caller);
-    Grapple resolves no other activities and always ends the turn."""
-    assert intent.target_id is not None  # narrowed by the range gate above
-    target_id = intent.target_id
-    target = _find_combatant(live, target_id)
-    assert target is not None  # narrowed by the range gate above
+def _roll_unarmed_option_save(
+    live: _LiveCombat, attacker: Combatant, target: Combatant
+) -> SaveRolled:
+    """SRD 5.2 Unarmed Strike — Grapple/Shove: the shared save roll both
+    options make against ``_unarmed_option_dc(attacker)``. Fix round 1 —
+    extracted out of ``_handle_grapple``/``_handle_shove`` (byte-identical
+    behaviour, same draw order, same emitted ``SaveRolled`` fields) so a
+    future save-logic change lands once, not twice.
+
+    Rolls through the same primitives ``_run_end_of_turn_saves`` uses
+    outside the activity walk (auto-fail conditions + exhaustion penalty
+    come free; no advantage source of its own — a plain D20 Test), so
+    Paralyzed/Stunned/Petrified/Unconscious targets auto-fail with zero
+    draws. Controller ruling R3 (deterministic-choice policy, since the
+    engine has no player-facing choice prompt): the target saves with
+    whichever of STR/DEX has the higher save modifier (tie -> STR), via
+    ``_resolve_grapple_save_ability``.
+
+    Emits the ``SaveRolled`` event and returns it so callers can branch on
+    ``.succeeded`` (and read back the resolved ``.dc``) without recomputing
+    either."""
+    target_id = target.entity_id
     dc = _unarmed_option_dc(attacker)
     ability = _resolve_grapple_save_ability(target)
     save_proj = project_passive_save_modifiers(_condition_names(target))
@@ -2033,21 +2041,37 @@ def _handle_grapple(live: _LiveCombat, attacker: Combatant, intent: PlayerIntent
         roll_total, succeeded = roll.total, roll.total >= dc
         mode, natural, roll_modifier = roll.mode, roll.kept, roll.modifier
         roll_sources = list(roll.sources)
-    _emit(
-        live,
-        SaveRolled(
-            target_id=target_id,
-            ability=ability,
-            dc=dc,
-            roll_total=roll_total,
-            succeeded=succeeded,
-            advantage=mode,
-            natural=natural,
-            modifier=roll_modifier,
-            sources=roll_sources,
-        ),
+    event = SaveRolled(
+        target_id=target_id,
+        ability=ability,
+        dc=dc,
+        roll_total=roll_total,
+        succeeded=succeeded,
+        advantage=mode,
+        natural=natural,
+        modifier=roll_modifier,
+        sources=roll_sources,
     )
-    if not succeeded:
+    _emit(live, event)
+    return event
+
+
+def _handle_grapple(live: _LiveCombat, attacker: Combatant, intent: PlayerIntent) -> None:
+    """SRD 5.2 Unarmed Strike — Grapple. Rolls the target's save via
+    ``_roll_unarmed_option_save`` (shared with ``_handle_shove`` — auto-fail
+    conditions + exhaustion penalty come free; no advantage source of its
+    own — a plain D20 Test), so Paralyzed/Stunned/Petrified/Unconscious
+    targets auto-fail with zero draws. On failure, applies the engine-owned
+    Grappled condition with the escape DC + source effect stored on the
+    ``ActiveCondition`` (see ``_emit_grapple_condition_applied``). The
+    Action is already spent (budget consumed by the caller); Grapple
+    resolves no other activities and always ends the turn."""
+    assert intent.target_id is not None  # narrowed by the range gate above
+    target_id = intent.target_id
+    target = _find_combatant(live, target_id)
+    assert target is not None  # narrowed by the range gate above
+    save = _roll_unarmed_option_save(live, attacker, target)
+    if not save.succeeded:
         effect_id = f"effect:grapple:{live.round_number}:{attacker.entity_id}:{target_id}"
         effect = ActiveEffect(
             id=effect_id,
@@ -2057,7 +2081,9 @@ def _handle_grapple(live: _LiveCombat, attacker: Combatant, intent: PlayerIntent
             statuses={"grappled"},
         )
         live.active_effects.setdefault(target_id, []).append(effect)
-        _emit_grapple_condition_applied(live, target_id, save_dc=dc, source_effect_id=effect_id)
+        _emit_grapple_condition_applied(
+            live, target_id, save_dc=save.dc, source_effect_id=effect_id
+        )
     _end_turn_and_advance(live, attacker.entity_id)
 
 
@@ -2079,51 +2105,19 @@ def _handle_grapple(live: _LiveCombat, attacker: Combatant, intent: PlayerIntent
 
 
 def _handle_shove(live: _LiveCombat, attacker: Combatant, intent: PlayerIntent) -> None:
-    """SRD 5.2 Unarmed Strike — Shove. Rolls the target's save through the
-    same primitives ``_handle_grapple`` uses (auto-fail conditions +
-    exhaustion penalty come free; no advantage source of its own — a plain
-    D20 Test). On failure: Prone (default) or a 5-ft forced push away from
-    the shover, per ``intent.shove_push``. No damage either way. The Action
-    is already spent (budget consumed by the caller); Shove resolves no
-    other activities and always ends the turn."""
+    """SRD 5.2 Unarmed Strike — Shove. Rolls the target's save via the same
+    ``_roll_unarmed_option_save`` helper ``_handle_grapple`` uses (auto-fail
+    conditions + exhaustion penalty come free; no advantage source of its
+    own — a plain D20 Test). On failure: Prone (default) or a 5-ft forced
+    push away from the shover, per ``intent.shove_push``. No damage either
+    way. The Action is already spent (budget consumed by the caller); Shove
+    resolves no other activities and always ends the turn."""
     assert intent.target_id is not None  # narrowed by the range gate above
     target_id = intent.target_id
     target = _find_combatant(live, target_id)
     assert target is not None  # narrowed by the range gate above
-    dc = _unarmed_option_dc(attacker)
-    ability = _resolve_grapple_save_ability(target)
-    save_proj = project_passive_save_modifiers(_condition_names(target))
-    ability_upper = ability.upper()
-    if ability_upper in save_proj.get("passive_save_auto_fail", []):
-        roll_total, succeeded = 0, False
-        mode: AdvantageMode = "normal"
-        natural: int | None = None
-        roll_modifier = 0
-        roll_sources: list[AdvantageSource] = []
-    else:
-        modifier = save_modifier(target, ability).total + d20_test_penalty(target.conditions)
-        dis: tuple[AdvantageSource, ...] = (
-            ("condition:target",) if ability_upper in save_proj.get("passive_save_dis", []) else ()
-        )
-        roll = roll_d20_test(live.rng, modifier, AdvantageSources(disadvantage=dis))
-        roll_total, succeeded = roll.total, roll.total >= dc
-        mode, natural, roll_modifier = roll.mode, roll.kept, roll.modifier
-        roll_sources = list(roll.sources)
-    _emit(
-        live,
-        SaveRolled(
-            target_id=target_id,
-            ability=ability,
-            dc=dc,
-            roll_total=roll_total,
-            succeeded=succeeded,
-            advantage=mode,
-            natural=natural,
-            modifier=roll_modifier,
-            sources=roll_sources,
-        ),
-    )
-    if not succeeded:
+    save = _roll_unarmed_option_save(live, attacker, target)
+    if not save.succeeded:
         if intent.shove_push:
             origin_cell = live.actor_zone.get(attacker.entity_id)
             assert origin_cell is not None  # the attacker is on the live grid
