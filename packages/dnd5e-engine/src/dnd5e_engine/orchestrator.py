@@ -58,9 +58,20 @@ from collections.abc import AsyncIterator, Callable, Collection, Mapping, Sequen
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal
 
-from dnd5e_srd_data.schema.common import ActivationBlock, AttackActivity, SaveActivity
+from dnd5e_srd_data.schema.common import (
+    ActivationBlock,
+    AttackActivity,
+    AttackDamageBlock,
+    DamagePartBlock,
+    SaveActivity,
+)
 from dnd5e_srd_data.schema.item import Weapon, WeaponProperty
-from dnd5e_srd_data.schema.spell import CastingTimeUnit, Spell, SpellRangeUnits
+from dnd5e_srd_data.schema.spell import (
+    CastingTimeUnit,
+    Spell,
+    SpellDurationUnits,
+    SpellRangeUnits,
+)
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from dnd5e_engine.activities.actor_stats import (
@@ -106,6 +117,7 @@ from dnd5e_engine.events import (
     Death,
     EffectApplied,
     EffectExpired,
+    EffectExpiryReason,
     HealingApplied,
     IntentSubmitted,
     IntentType,
@@ -1166,6 +1178,92 @@ def _synthesize_attack_from_weapon(weapon: Weapon) -> AttackActivity:
     )
 
 
+_LEGACY_DICE_RE = re.compile(r"(\d+)d(\d+)([+-]\d+)?$")
+
+
+def _synthesize_attack_from_legacy_fields(current: Combatant) -> AttackActivity | None:
+    """Legacy-fixture fallback (SRD §Attack Rolls / §Damage Rolls): one typed
+    ``AttackActivity`` built from the spec-supplied ``attack_bonus`` /
+    ``damage_dice`` / ``damage_type`` for a monster with no
+    ``monster_template_slug``. ``specs.py`` has always documented this
+    fallback on the field; the typed-activity cutover dropped it and
+    template-less foes silently no-opped every turn. The synthesized
+    activity flows through the normal gambit (movement, range gate,
+    condition rows, concentration checks): to-hit magnitude comes from
+    ``build_activity_context``'s Monster branch (``attack_bonus``), damage
+    from the parsed dice parts. ``None`` when ``damage_dice`` doesn't parse
+    — the turn stays the pre-existing no-op pass.
+    """
+    # The whitespace strip is deliberate: host-supplied damage_dice strings
+    # are tolerated in loosely-spaced forms too (e.g. "2 d 6", "2d6 +3"),
+    # not just the canonical "2d6+3".
+    m = _LEGACY_DICE_RE.match((current.damage_dice or "").replace(" ", ""))
+    if m is None:
+        return None
+    return AttackActivity(
+        id="synth:legacy-swing",
+        activation=ActivationBlock(type="action", value=1),
+        damage=AttackDamageBlock(
+            include_base=False,
+            parts=[
+                DamagePartBlock(
+                    number=int(m.group(1)),
+                    denomination=int(m.group(2)),
+                    bonus=m.group(3) or "",
+                    types=[current.damage_type or "bludgeoning"],
+                )
+            ],
+        ),
+    )
+
+
+def _resolve_monster_activities(
+    live: _LiveCombat,
+    current: Combatant,
+    monster_slug: str | None,
+    skip_to_record_pass: bool,
+    chosen_target: Combatant | None,
+) -> list[Any]:
+    """Resolve monster activities: legacy-fallback when no template, or typed
+    activity selection from a ``Monster`` template.
+
+    Returns a list of ``Activity`` objects (typically empty or one element,
+    expanded to multiple on multiattack). Empty list when the monster has
+    no template and ``damage_dice`` doesn't parse, or when a slug is
+    unresolvable from the lib.
+    """
+    monster_activities: list[Any] = []
+    if not skip_to_record_pass and monster_slug is None:
+        # Legacy-fixture fallback — see _synthesize_attack_from_legacy_fields.
+        synthesized = _synthesize_attack_from_legacy_fields(current)
+        if synthesized is not None:
+            monster_activities = [synthesized]
+    if not skip_to_record_pass and monster_slug is not None:
+        monster = get_lib_loader().get_monster(monster_slug)
+        if monster is None:
+            # Slug absent from the lib — no action this turn. Loud, never
+            # silent; the turn still advances through the pass shape below.
+            _LOGGER.warning("monster_unresolved slug=%s", monster_slug)
+        else:
+            monster_action = select_typed_monster_action(monster)
+            if monster_action is not None:
+                # hand the labelless-multiattack fallback the live
+                # distance + profile so it can prefer a sibling whose own range
+                # already covers the target (scout → longbow at 100 ft) instead
+                # of the first-listed melee weapon. Distance is the same zone-path
+                # cost the movement gate below reads, so the two agree.
+                monster_activities = expand_action_to_activities(
+                    monster,
+                    monster_action,
+                    target_distance_ft=_monster_target_distance_ft(
+                        live, current.entity_id, chosen_target
+                    ),
+                    behavior_profile=current.behavior_profile,
+                    melee_reach_ft=current.melee_reach_ft,
+                )
+    return monster_activities
+
+
 # ── Internal live-combat state ──────────────────────────────────────────────
 
 
@@ -1244,6 +1342,16 @@ class _LiveCombat:
     # each evaluator run; read by ``_drop_concentration`` when a
     # concentration drop must cascade EffectExpired + ConditionRemoved.
     concentration_chain: dict[str, list[tuple[str, str, str]]] = field(default_factory=dict)
+    # SRD 5.2 §Concentration — "up to 1 minute, 1 hour, or some other
+    # duration": the caster-keyed countdown of the concentration spell's own
+    # MAXIMUM duration, in rounds, decremented by the
+    # ``engine:concentration-expiry`` turn_end hook at the CASTER's turn end
+    # (Bless on three allies is 10 rounds total, not per-target). Sourced
+    # from the typed Spell.duration at cast time — the per-effect Foundry
+    # ``duration.rounds`` is display-only and unreliable (Bane ships 1).
+    # Seeded effects (cross-combat persistence, a host concern) carry no
+    # counter and remain cascade-governed only.
+    concentration_rounds_remaining: dict[str, int] = field(default_factory=dict)
     # SRD §Conditions — per-effect condition lineage. Keyed by the
     # Foundry-shaped identity tuple ``(target_id, effect.id, effect.origin)``;
     # value is the list of ConditionType values that the named
@@ -1381,7 +1489,7 @@ def _clamp_movement_budget(live: _LiveCombat, entity_id: str) -> None:
 #: SRD 5.2 Incapacitated — intents that spend NO action, Bonus Action or
 #: Reaction and therefore stay legal: ending the turn, and plain movement
 #: (Speed is governed separately — see ``_handle_move``'s speed gate).
-_INCAPACITATED_ALLOWED_INTENTS: frozenset[str] = frozenset({"pass", "move"})
+_INCAPACITATED_ALLOWED_INTENTS: frozenset[str] = frozenset({"pass", "move", "drop_concentration"})
 
 
 def _find_combatant(live: _LiveCombat, entity_id: str) -> Combatant | None:
@@ -1431,6 +1539,14 @@ def _fold_condition_onto_combatant(live: _LiveCombat, entity_id: str, condition:
             live.initiative[idx] = slot.model_copy(update={"conditions": new})
             break
     _clamp_movement_budget(live, entity_id)
+    # SRD 5.2 Incapacitated — "No Concentration. Your Concentration is
+    # broken." Applies when the condition is Incapacitated directly or
+    # implies it (Paralyzed / Petrified / Stunned / Unconscious via
+    # CONDITION_IMPLIES). Keyed to the state TRANSITION (this is the
+    # first materialisation of the condition on the combatant), not a raw
+    # HP threshold — see the rule card's 0-HP edge note.
+    if is_condition_active(Condition.INCAPACITATED, [condition]):
+        _drop_concentration(live, entity_id)
 
 
 def _strip_condition_from_combatant(live: _LiveCombat, entity_id: str, condition: str) -> None:
@@ -1465,10 +1581,16 @@ def _strip_condition_from_combatant(live: _LiveCombat, entity_id: str, condition
         live.active_conditions.setdefault(entity_id, set()).add(condition)
 
 
-def _drop_concentration(live: _LiveCombat, caster_id: str) -> None:
+def _drop_concentration(
+    live: _LiveCombat, caster_id: str, *, reason: EffectExpiryReason = "concentration_drop"
+) -> None:
     """Cascade a concentration drop: ``ConcentrationDropped`` + per-target
-    ``EffectExpired(reason=concentration_drop)`` + ``ConditionRemoved`` for
-    every condition the dropped effect installed.
+    ``EffectExpired(reason=...)`` + ``ConditionRemoved`` for every
+    condition the dropped effect installed.
+
+    ``reason`` distinguishes a broken concentration ("concentration_drop")
+    from the spell's own maximum duration running out ("duration"); the
+    ``ConcentrationDropped`` marker fires either way.
 
     Reads the persistent ``live.concentration_chain[caster_id]`` (the
     caster's owned-effects-by-name map) and
@@ -1504,7 +1626,7 @@ def _drop_concentration(live: _LiveCombat, caster_id: str) -> None:
                 target_id=target_id,
                 effect_id=effect_id,
                 origin=origin,
-                reason="concentration_drop",
+                reason=reason,
             ),
         )
         identity = (target_id, effect_id, origin)
@@ -1521,6 +1643,7 @@ def _drop_concentration(live: _LiveCombat, caster_id: str) -> None:
         # Drop any pending repeat-save spec keyed off this expired effect.
         live.repeat_save_on_turn_end.pop(identity, None)
     live.concentration_chain.pop(caster_id, None)
+    live.concentration_rounds_remaining.pop(caster_id, None)
     # Clear ``Combatant.concentration_effect_id`` so subsequent hydration
     # payloads project an empty ``existing_concentration`` for this
     # caster. The ``_writeback_concentration`` path only fires when the
@@ -1586,6 +1709,23 @@ def _handle_dash(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
             budget_consumed=budget_consumed,
         ),
     )
+
+
+def _handle_drop_concentration(live: _LiveCombat, current: Combatant, intent: PlayerIntent) -> None:
+    """SRD 5.2 §Concentration — "The creator can end Concentration at any
+    time (no action required)." (Foundry actor.mjs:1065-1108
+    ``endConcentration``: callable at any time, no action-economy gate.)
+
+    Emits ``IntentSubmitted`` then cascades the drop via
+    ``_drop_concentration``. Touches NO Action / Bonus Action / Reaction /
+    movement budget and keeps the actor on turn. Idempotent: a caster with
+    no active concentration gets only the ``IntentSubmitted`` marker.
+    """
+    _emit(
+        live,
+        IntentSubmitted(actor_id=current.entity_id, intent_type="drop_concentration"),
+    )
+    _drop_concentration(live, current.entity_id)
 
 
 def _handle_disengage(live: _LiveCombat, current: Combatant, intent: PlayerIntent) -> None:
@@ -1774,6 +1914,16 @@ async def _handle_move_mark(live: _LiveCombat, caster: Combatant, intent: Player
     # projection finds the new marked target. Hunters-mark is the only
     # concentration effect this caster carries after move_mark; replace
     # any prior hunters-mark identity tuples wholesale.
+    #
+    # This bypasses ``_record_effect_lifecycle_links``'s one-at-a-time
+    # enforcement (the "cascade the prior chain and drop it" branch)
+    # DELIBERATELY: the initial Hunter's Mark cast already went through
+    # ``cast_spell`` and set up the chain/counter there; a move_mark
+    # re-target is not a new cast, it's the SAME concentration effect
+    # continuing on a new target, so it must preserve the original
+    # ``concentration_rounds_remaining`` countdown rather than restart or
+    # clear it. A future cluster touching either path should keep this
+    # divergence intentional, not reintroduce the general-cast gap here.
     new_origin = f"cast:{_MOVE_MARK_EFFECT_NAME}:{caster.entity_id}"
     new_identity = (new_target_id, _MOVE_MARK_EFFECT_ID, new_origin)
     surviving_chain = [
@@ -1976,11 +2126,13 @@ def _emit_apply_damage(live: _LiveCombat, event: DamageApplied) -> None:
     # modifier + proficiency bonus (F1c, via ``actor_stats``) and goes
     # through the shared ``roll_d20_test`` primitive (F2c) with no
     # advantage source, so it is still a single draw.
+    # Capped at 30 — SRD 5.2 "up to a maximum DC of 30" (2024-specific; the 2014
+    # formula has no cap).
     # Done BEFORE death synthesis so a dropped-conc + slain caster
     # still surface the cascade before the Death event.
     caster_chain = live.concentration_chain.get(event.target_id)
     if caster_chain:
-        dc = max(10, event.amount // 2)
+        dc = min(30, max(10, event.amount // 2))
         concentrator = _find_combatant(live, event.target_id)
         # The ``else 0`` cannot fire in practice: ``concentration_chain`` is
         # only ever keyed by an entity that is in ``live.initiative``, and the
@@ -2363,6 +2515,11 @@ def _record_death(live: _LiveCombat, event: Death, *, killer_id: str | None) -> 
             killer_id=killer_id if killer_id != event.target_id else None,
         )
     )
+    # SRD 5.2 §Concentration — "Your Concentration ends if ... you die."
+    # Idempotent for non-concentrating dead (empty-chain no-op), and safe
+    # inside the _emit fold: the cascade emits no DamageApplied/Death, so
+    # it cannot recurse into death synthesis.
+    _drop_concentration(live, event.target_id)
 
 
 # ── Sidecar hydration (per-evaluation projection of session state) ──────────
@@ -3281,7 +3438,11 @@ def _writeback_concentration(live: _LiveCombat, caster: Combatant, pre_event_cou
 
 
 def _record_effect_lifecycle_links(
-    live: _LiveCombat, caster: Combatant, pre_event_count: int
+    live: _LiveCombat,
+    caster: Combatant,
+    pre_event_count: int,
+    *,
+    concentration_max_rounds: int | None = None,
 ) -> None:
     """Project this turn's effect-application events into persistent lifecycle state.
 
@@ -3323,6 +3484,34 @@ def _record_effect_lifecycle_links(
     been folded in; re-walking them would double-count.
     """
     new_events = live.event_log[pre_event_count:]
+    # SRD 5.2 §Concentration — "You lose Concentration on an effect the
+    # moment you start casting a spell that requires Concentration."
+    # (Foundry mixin.mjs:470-476 ends the oldest effect before beginning
+    # the new one; attributes.concentration.limit is 1 for every SRD
+    # creature.) When THIS resolution applied a new concentration effect
+    # and the caster already had a chain from a PRIOR resolution, cascade
+    # the old drop first. Identities applied within this same slice (one
+    # multi-target cast) are never dropped against each other, and a
+    # same-spell/same-target recast (identical identity tuple) is a
+    # silent refresh rather than a drop-and-reapply.
+    new_conc_identities = [
+        (ev.effect.target_id, ev.effect.id, ev.effect.origin)
+        for ev in new_events
+        if isinstance(ev, EffectApplied) and ev.effect.flags.get("concentration")
+    ]
+    if new_conc_identities:
+        prior = [
+            entry
+            for entry in live.concentration_chain.get(caster.entity_id, [])
+            if entry not in new_conc_identities
+        ]
+        if prior:
+            live.concentration_chain[caster.entity_id] = prior
+            _drop_concentration(live, caster.entity_id)
+        if concentration_max_rounds is not None:
+            live.concentration_rounds_remaining[caster.entity_id] = concentration_max_rounds
+        else:
+            live.concentration_rounds_remaining.pop(caster.entity_id, None)
     # Per-target tracking within this slice.
     last_failed_save_by_target: dict[str, SaveRolled] = {}
     last_effect_by_target: dict[str, ActiveEffect] = {}
@@ -3367,6 +3556,18 @@ def _record_effect_lifecycle_links(
                     }
                 )
             continue
+    # _writeback_concentration ran before this fold and pointed
+    # concentration_effect_id at the new effect; _drop_concentration's
+    # inline clear (correct for every other drop path) wiped it. Restore.
+    if new_conc_identities:
+        new_effect_id = new_conc_identities[-1][1]
+        for idx, c in enumerate(live.initiative):
+            if c.entity_id == caster.entity_id:
+                if c.concentration_effect_id != new_effect_id:
+                    live.initiative[idx] = c.model_copy(
+                        update={"concentration_effect_id": new_effect_id}
+                    )
+                break
 
 
 def _hook_run_end_of_turn_saves(live: _LiveCombat, actor_id: str | None) -> None:
@@ -3390,6 +3591,23 @@ def _hook_expire_timed_effects(live: _LiveCombat, actor_id: str | None) -> None:
     _expire_timed_effects_at_turn_end(live, actor_id)
 
 
+def _hook_concentration_expiry(live: _LiveCombat, actor_id: str | None) -> None:
+    """``turn_end`` hook — SRD 5.2 §Concentration maximum duration.
+
+    Decrements the caster-keyed rounds counter at the CASTER's own turn end
+    and cascades the drop (reason="duration") at zero. The cast turn's own
+    turn end counts as round 1 of the duration. No RNG."""
+    if actor_id is None:
+        return
+    remaining = live.concentration_rounds_remaining.get(actor_id)
+    if remaining is None:
+        return
+    if remaining > 1:
+        live.concentration_rounds_remaining[actor_id] = remaining - 1
+        return
+    _drop_concentration(live, actor_id, reason="duration")
+
+
 def _register_default_turn_hooks(live: _LiveCombat) -> None:
     """Register the engine's built-in turn-boundary hooks on ``live``.
 
@@ -3401,6 +3619,10 @@ def _register_default_turn_hooks(live: _LiveCombat) -> None:
     resolved by the ``rounds`` counter first and the seconds branch then sees
     ``rounds is not None`` and stands down ("rounds wins" — see
     ``_expire_timed_effects_at_turn_end``).
+    ``engine:concentration-expiry`` (C13) is appended LAST of the ``turn_end``
+    hooks, after ``engine:timed-effect-expiry``, so a same-boundary repeat save
+    (``engine:repeat-save``, registered first) still rolls against a live
+    effect before the concentration cap can cascade its drop.
     ``engine:repeat-save`` is registered FIRST among the ``turn_end`` hooks: the
     SRD repeat save (Hold Person / Hold Monster / Dominate Person) must resolve
     while its source effect is still live, so it runs before
@@ -3416,6 +3638,9 @@ def _register_default_turn_hooks(live: _LiveCombat) -> None:
     live.lifecycle.register("turn_end", _hook_tick_durations, key="engine:duration-tick")
     live.lifecycle.register(
         "turn_end", _hook_expire_timed_effects, key="engine:timed-effect-expiry"
+    )
+    live.lifecycle.register(
+        "turn_end", _hook_concentration_expiry, key="engine:concentration-expiry"
     )
     live.lifecycle.register(
         "turn_start", _hook_expire_reaction_effects, key="engine:reaction-effect-expiry"
@@ -3508,6 +3733,27 @@ def _tick_durations_at_turn_end(live: _LiveCombat, actor_id: str) -> None:
 #: SRD 5.2 §Duration — "a round represents about 6 seconds in the game world".
 #: The conversion factor for ``ActiveEffectDuration.seconds`` -> rounds.
 _SECONDS_PER_ROUND = 6
+
+
+def _concentration_max_rounds(spell: Spell | None) -> int | None:
+    """SRD 5.2 §Concentration maximum duration, in rounds (6 s each, SRD
+    §Duration). ``None`` = no engine-tracked cap: non-concentration spells,
+    the monster/no-spell paths, and non-metric durations (instantaneous /
+    until-dispelled / until-destroyed / permanent / special)."""
+    if spell is None or not spell.concentration:
+        return None
+    duration = spell.duration
+    if duration.value is None:
+        return None
+    per_unit = {
+        SpellDurationUnits.ROUND: 1,
+        SpellDurationUnits.MINUTE: 10,
+        SpellDurationUnits.HOUR: 600,
+        SpellDurationUnits.DAY: 14400,
+    }.get(duration.units)
+    if per_unit is None:
+        return None
+    return duration.value * per_unit
 
 
 def _duration_tick_matches_actor(*, origin: str, target_id: str, actor_id: str) -> bool:
@@ -3778,6 +4024,7 @@ def _run_end_of_turn_saves(live: _LiveCombat, actor_id: str) -> None:
                     live.concentration_chain[caster_id] = survivors
                 else:
                     live.concentration_chain.pop(caster_id, None)
+                    live.concentration_rounds_remaining.pop(caster_id, None)
         if surviving:
             live.repeat_save_on_turn_end[identity] = surviving
         else:
@@ -4222,11 +4469,20 @@ async def start_combat(
     # damage path, so without this a host resuming a saved combat with a downed
     # PC would get a PC that can act. ``_fold_condition_onto_combatant`` writes
     # BOTH condition stores, so the host-facing ``active_conditions`` view
-    # agrees with ``Combatant.conditions``. State-only, no event: this is
-    # hydration of a state the host already knows about, not a transition now —
-    # and the death-save state stays exactly as the host supplied it (the
-    # condition is what makes ``_maybe_roll_death_save`` fire on the PC's turn;
-    # no failure is charged here). Monsters are excluded — a monster at 0 HP is
+    # agrees with ``Combatant.conditions``. The condition write itself is
+    # state-only, no event — this is hydration of a state the host already
+    # knows about, not a transition — and the death-save state stays exactly
+    # as the host supplied it (the condition is what makes
+    # ``_maybe_roll_death_save`` fire on the PC's turn; no failure is charged
+    # here). Since C13, though, ``_fold_condition_onto_combatant`` also drops
+    # concentration for any condition that implies Incapacitated (SRD 5.2:
+    # "No Concentration. Your Concentration is broken."), so a 0-HP-hydrated
+    # PC with a pre-seeded concentration effect on their sheet DOES emit here
+    # — ``ConcentrationDropped`` / ``EffectExpired`` / ``ConditionRemoved`` —
+    # which is SRD-correct, not a regression of the "no event" note above;
+    # those events reach the queue (``narration_events``), not
+    # ``StartCombatResult.events``, which only captures the seeding-loop slice
+    # further up this function. Monsters are excluded — a monster at 0 HP is
     # dead, never Unconscious.
     for c in list(live.initiative):
         if c.entity_id in live.party_ids and c.is_alive and c.hp_current <= 0:
@@ -5742,6 +5998,9 @@ async def _dispatch_turn_nonending_intent(
       ; closes the discovered turn-ending fall-through where
       "disengage" fell through to the generic Action tail that
       unconditionally calls ``_end_turn_and_advance``).
+    * ``drop_concentration`` — SRD §Concentration: end Concentration
+      voluntarily at any time, no action required. Touches no budget and
+      keeps the actor on turn.
     """
     if intent.intent_type == "move_mark":
         await _handle_move_mark(live, current, intent)
@@ -5754,6 +6013,9 @@ async def _dispatch_turn_nonending_intent(
         return True
     if intent.intent_type == "disengage":
         _handle_disengage(live, current, intent)
+        return True
+    if intent.intent_type == "drop_concentration":
+        _handle_drop_concentration(live, current, intent)
         return True
     return False
 
@@ -6121,7 +6383,12 @@ async def submit_player_intent(
     # produced by this resolution. Closes the codex shelf finding
     # ``ieffect2.py`` P1 ("parent links don't survive across turns") by
     # owning the lifecycle graph at the orchestrator.
-    _record_effect_lifecycle_links(live, current, pre_event_count)
+    _record_effect_lifecycle_links(
+        live,
+        current,
+        pre_event_count,
+        concentration_max_rounds=_concentration_max_rounds(cast_spell),
+    )
 
     # SRD §Hold Person / §Hold Monster — *"At the end of each of its turns,
     # the target repeats the save."* This runs as the ``engine:repeat-save``
@@ -6497,30 +6764,9 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
     # out multiattack. This is the sole monster-turn path; the old the legacy evaluator IR
     # path was retired in .
     monster_slug = live.monster_slug_by_entity.get(current.entity_id)
-    monster_activities: list[Any] = []
-    if not skip_to_record_pass and monster_slug is not None:
-        monster = get_lib_loader().get_monster(monster_slug)
-        if monster is None:
-            # Slug absent from the lib — no action this turn. Loud, never
-            # silent; the turn still advances through the pass shape below.
-            _LOGGER.warning("monster_unresolved slug=%s", monster_slug)
-        else:
-            monster_action = select_typed_monster_action(monster)
-            if monster_action is not None:
-                # hand the labelless-multiattack fallback the live
-                # distance + profile so it can prefer a sibling whose own range
-                # already covers the target (scout → longbow at 100 ft) instead
-                # of the first-listed melee weapon. Distance is the same zone-path
-                # cost the movement gate below reads, so the two agree.
-                monster_activities = expand_action_to_activities(
-                    monster,
-                    monster_action,
-                    target_distance_ft=_monster_target_distance_ft(
-                        live, current.entity_id, chosen_target
-                    ),
-                    behavior_profile=current.behavior_profile,
-                    melee_reach_ft=current.melee_reach_ft,
-                )
+    monster_activities = _resolve_monster_activities(
+        live, current, monster_slug, skip_to_record_pass, chosen_target
+    )
     has_action = bool(monster_activities)
 
     # Phase-5: monster gambit zone awareness. When the chosen attack is
@@ -6725,6 +6971,12 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
         # Symmetric concentration writeback for spellcaster monsters
         # (mirrors the PC path; no-op for non-caster monsters).
         _writeback_concentration(live, current, pre_event_count)
+        # ``concentration_max_rounds`` stays on the default (None) here: the
+        # monster path has no typed ``Spell`` in scope (monster stat-block
+        # casts resolve straight off the monster's own activities, not a
+        # fetched Spell) until C18 threads one through. Monster
+        # concentration effects therefore remain cascade-governed only —
+        # no timed expiry — same as before this task.
         _record_effect_lifecycle_links(live, current, pre_event_count)
 
     # Advance the turn — the single shared path (F3a); this site used to carry
