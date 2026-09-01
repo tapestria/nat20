@@ -23,6 +23,7 @@ from dnd5e_engine import PlayerIntent, get_live
 from dnd5e_engine.events import AttackFailed, AttackRolled
 from dnd5e_engine.lib_loader import set_lib_loader_for_tests
 from dnd5e_engine.orchestrator import (
+    IntentRejectedError,
     _attacks_per_action,
     _get_live,
     start_combat,
@@ -177,3 +178,42 @@ def test_one_attack_actor_ends_turn_on_first_swing_back_compat():
 
     live = asyncio.run(_run())
     assert live.current_actor_id != "char:ftr"
+
+
+def test_dash_then_attack_is_rejected_hard_no_double_dip():
+    """Fix round 1 — Action-economy double-dip: Dash (a turn-keeping Action
+    intent) spends ``action_available`` without touching
+    ``attacks_remaining``/``attack_action_engaged``. A same-turn attack
+    intent that follows must still be gated on the Action itself for the
+    FIRST swing (``attack_action_engaged`` False) — otherwise the actor
+    gets a full Dash AND a full attack sequence out of one Action.
+
+    Controller ruling: restore the pre-C14 hard gate for the first swing —
+    ``IntentRejectedError("no_action_economy")``, byte-for-byte today's
+    Dash-then-attack behavior — while ``attacks_remaining <= 0`` still
+    keeps the C14 turn-keeping ``AttackFailed`` emit (S05 contract).
+    """
+
+    async def _dash_then_attack(handle):
+        await submit_player_intent(
+            handle, actor_id="char:ftr", intent=PlayerIntent(intent_type="dash")
+        )
+        await submit_player_intent(handle, actor_id="char:ftr", intent=_attack_intent())
+
+    async def _setup():
+        return await _start_fighter_combat("sess-t1-dash-then-attack")
+
+    start = asyncio.run(_setup())
+
+    with pytest.raises(IntentRejectedError) as exc_info:
+        asyncio.run(_dash_then_attack(start.handle))
+    assert exc_info.value.reason == "no_action_economy"
+
+    live = _get_live(start.handle)
+    swings = [
+        e for e in live.event_log if isinstance(e, AttackRolled) and e.attacker_id == "char:ftr"
+    ]
+    assert swings == []
+    # the fighter still holds initiative — the raise unwinds before any
+    # turn-advance logic runs.
+    assert live.current_actor_id == "char:ftr"

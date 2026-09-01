@@ -5430,14 +5430,19 @@ def _action_economy_gate_failure(
     """The action-economy budget gate for ``submit_player_intent``: returns
     the rejection event to emit (turn-keeping), or ``None`` when the intent
     may proceed to budget consumption. Raises ``IntentRejectedError`` for
-    the one case with no typed event surface today (a non-cast, non-attack
-    Action-costed intent with no Action left).
+    the cases with no typed event surface today: a non-cast, non-attack
+    Action-costed intent with no Action left, and the FIRST swing of an
+    Attack action with no Action left (fix round 1 — restores the pre-C14
+    hard Action gate so a turn-keeping Action intent, e.g. Dash or
+    Disengage, cannot be chained into a free attack sequence).
 
     ``attack`` gets its own branch (SRD §Extra Attack, R2): an exhausted
-    ``attacks_remaining`` is a turn-KEEPING ``AttackFailed`` — unlike every
-    other Action-costed intent, a later same-Action swing owes no further
-    Action spend, so its rejection must not look like a fresh "no Action"
-    failure.
+    ``attacks_remaining`` is always a turn-KEEPING ``AttackFailed`` —
+    unlike every other Action-costed intent, a later same-Action swing
+    owes no further Action spend, so its rejection must not look like a
+    fresh "no Action" failure. But the FIRST swing (``attack_action_engaged``
+    False) still owes the Action itself, exactly like every other
+    Action-costed intent.
     """
     if is_bonus_action:
         if not current.bonus_action_available:
@@ -5461,6 +5466,17 @@ def _action_economy_gate_failure(
                 actor_id=current.entity_id,
                 target_id=intent.target_id,
                 reason="no_action_economy",
+            )
+        # SRD §Action Economy — the FIRST swing of the Attack action still
+        # owes the hard Action requirement (fix round 1: a turn-keeping
+        # Action intent — Dash, Disengage — must not let a same-turn attack
+        # sequence resolve for free). Subsequent swings this Action
+        # (``attack_action_engaged`` True) skip this: the Action was
+        # already paid for, or soft-consumed, by the first swing.
+        if not current.attack_action_engaged and not current.action_available:
+            raise IntentRejectedError(
+                "no_action_economy",
+                f"actor_id={current.entity_id!r} has no Action remaining this turn",
             )
         return None
     if not current.action_available:
