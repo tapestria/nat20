@@ -169,13 +169,16 @@ _PROBES: dict[str, tuple[Any, str]] = {
         lambda: '"dodge"' in _src("orchestrator.py"),
         "✅",
     ),
-    # F2c: the damage-triggered concentration save emits the dedicated event.
+    # F2c/C13: the damage-triggered concentration save emits the dedicated
+    # event; row text no longer quotes the event name, so this probe now
+    # pins the row's status instead.
     "Concentration, incl. damage-triggered saves": (
         lambda: "ConcentrationCheck(" in _src("orchestrator.py"),
-        "emits `ConcentrationCheck`",
+        "✅",
     ),
     # C12 landed the enforced rows (the Incapacitated action gate is the
-    # cheapest witness), but four SRD rows are still unenforced — the
+    # cheapest witness), but three SRD rows are still unenforced (a fourth,
+    # Incapacitated's concentration break, closed with C13) — the
     # Frightened line-of-sight gate is the one this probe watches, because
     # ``rules/conditions.py`` names it explicitly as not modelled. While both
     # halves hold, the row is ⚠️ Partial; implementing the gate (which means
@@ -249,6 +252,16 @@ _PROBES: dict[str, tuple[Any, str]] = {
     "Cover (half / three-quarters / total)": (
         lambda: "ignore_cover" in _src("activities/save_primitive.py"),
         "ignore_cover",
+    ),
+    # C13: the voluntary drop intent and its orchestrator call site are the
+    # cheapest witnesses that the concentration lifecycle (one-at-a-time,
+    # death/Incapacitated drop, timed expiry) is wired up end to end.
+    "and cascade drop": (
+        lambda: (
+            '"drop_concentration",' in _src("events.py")
+            and "_drop_concentration(live, event.target_id)" in _src("orchestrator.py")
+        ),
+        "✅",
     ),
 }
 

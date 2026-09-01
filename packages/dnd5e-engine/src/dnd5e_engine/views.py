@@ -40,6 +40,10 @@ class LiveCombatView:
     round_number: int
     ended: bool
     final_outcome: CombatOutcome | None
+    # SRD §Concentration — caster_id -> [(target_id, effect_id, origin), …];
+    # the host-readable projection of the engine's concentration ownership
+    # (C13, API-DELTAS). Empty dict when nobody concentrates.
+    concentration_chain: dict[str, list[tuple[str, str, str]]]
 
     @classmethod
     def from_live(cls, live: _LiveCombat) -> LiveCombatView:
@@ -62,6 +66,7 @@ class LiveCombatView:
             round_number=live.round_number,
             ended=live.ended,
             final_outcome=live.final_outcome,
+            concentration_chain={k: list(v) for k, v in live.concentration_chain.items()},
         )
 
 

@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 
 from dnd5e_engine import LiveCombatView, get_live
-from dnd5e_engine.orchestrator import _get_live, start_combat
+from dnd5e_engine.orchestrator import _get_live, _LiveCombat, start_combat
 from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec, SceneTopology
 
 
@@ -117,3 +117,33 @@ def test_custom_counters_snapshot_is_three_levels_deep():
     live = _get_live(handle)
     live.custom_counters_by_entity["char:aaaaaaaaaaaa"]["item_use:wand"]["spent"] = 99
     assert view.custom_counters_by_entity["char:aaaaaaaaaaaa"]["item_use:wand"]["spent"] == 1
+
+
+def _make_live() -> _LiveCombat:
+    """Construct a minimal _LiveCombat for testing view projections."""
+    import random
+
+    from dnd5e_engine.orchestrator import _LiveCombat, _ZoneGraph
+    from dnd5e_engine.specs import SceneTopology
+
+    return _LiveCombat(
+        handle_id="test:handle",
+        session_id="test:session",
+        initiative=[],
+        party_ids=set(),
+        encounter_ids=set(),
+        topology=_ZoneGraph(SceneTopology(zones=["zone:test"], edges=[])),
+        rng=random.Random(0),
+        event_queue=asyncio.Queue(),
+        scene_location_id="scene:test",
+    )
+
+
+def test_from_live_projects_concentration_chain_as_a_copy() -> None:
+    live = _make_live()
+    live.concentration_chain["char:a"] = [("char:b", "effect:bless", "cast:bless:char:a")]
+    view = LiveCombatView.from_live(live)
+    assert view.concentration_chain == {"char:a": [("char:b", "effect:bless", "cast:bless:char:a")]}
+    # Snapshot semantics: mutating the view must not touch live state.
+    view.concentration_chain["char:a"].append(("x", "y", "z"))
+    assert len(live.concentration_chain["char:a"]) == 1

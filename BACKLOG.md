@@ -377,14 +377,6 @@ zone + apply logic:
 
 ## Audit 2026-08-26 — spellcasting & concentration
 
-- **"One concentration spell at a time" is not enforced.** `orchestrator.py:2201`
-  builds `existing_concentration` and nothing consumes it;
-  `_record_effect_lifecycle_links` appends to `concentration_chain`. Casting a
-  second concentration spell keeps both.
-- **Concentration ends only on a failed damage save.** `_drop_concentration`
-  has one call site (`orchestrator.py:1552`). Caster death, unconscious,
-  incapacitated and voluntary drop never end it; concentration-flagged effects
-  are also skipped by the duration tick (`:2549`) so they never expire by time.
 - **Rests never restore spell slots.** `rest.py` has no slot handling; hosts
   must reset `spell_slots` themselves. Pact Magic and per-class slot tables do
   not exist — `spell_slots` is a host-supplied `dict[int, int]`.
@@ -459,8 +451,6 @@ stand-in, not an engine capability. Specifically:
 - **Target selection is hard-coded lowest-HP living PC** (`orchestrator.py:5069`)
   with no reach/LoS/threat consideration; flee planning returns `None` on a
   grid (`_plan_flee_destination:695`) so a fleeing monster holds still.
-- **Concentration is not dropped in `_record_death`** — only via the damage
-  path — so any death that bypasses `_emit_apply_damage` leaves it standing.
 - **Corpus damage resistances must carry their magical-bypass qualifier when
   hydrated** (2026-08-27). `Combatant.physical_resistances_nonmagical_only`
   defaults True (host-authored "…from nonmagical attacks" convention, C22-S04).
@@ -502,18 +492,6 @@ Seven e2e catalog-v2 scenarios (`specs/catalog-v2/c12.md`, `c13.md`, `c17.md`)
 name a gap with no standalone bullet filed anywhere above — recorded here so
 the close-gap protocol (delete-on-close) has an entry to delete.
 
-- **C13-S01 — Casting a second concentration spell doesn't end the first.**
-  `existing_concentration` is built in the orchestrator but nothing
-  consumes it before `_record_effect_lifecycle_links` appends to
-  `concentration_chain` — the chain grows unbounded instead of dropping the
-  prior effect. (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
-- **C13-S03 — Caster reduced to 0 HP does not end concentration.**
-  `_record_death` never drops the dying caster's concentration effect.
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
-- **C13-S04 — Voluntary concentration drop has no intent path.** No
-  `"drop_concentration"` `IntentType` exists; a caster who wants to end
-  their own concentration (no action required, per SRD) has no seam to do
-  so. (`packages/dnd5e-engine/src/dnd5e_engine/events.py`)
 - **C17-S01 — No engine-side per-class spell-slot table derivation.** The
   engine only accepts a host-precomputed flat `spell_slots` dict; nothing
   reads a class's `spellcasting.progression` to project a level → slot-table
@@ -631,9 +609,9 @@ cluster owns.
   sight/hearing".** There is no per-check sense vocabulary on `CheckSpec` /
   `CheckActivity`, so a check cannot declare it requires sight or hearing.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/check.py`)
-- **Incapacitated breaks Concentration and imposes Initiative disadvantage.**
-  The concentration break lands with C13's one-concentration-at-a-time rules;
-  initiative is host-supplied until C14 rolls it.
+- **Incapacitated imposes Initiative disadvantage.** Initiative is
+  host-supplied until C14 rolls it. (Incapacitated breaking Concentration
+  landed via C13.)
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
 - **Invisible's "unless a creature can somehow see you" carve-out.** Both
   attack directions apply unconditionally; the per-observer sense check is

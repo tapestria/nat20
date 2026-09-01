@@ -130,6 +130,7 @@ IntentType = Literal[
     "move_mark",
     "use_feature",
     "pass",
+    "drop_concentration",
 ]
 
 

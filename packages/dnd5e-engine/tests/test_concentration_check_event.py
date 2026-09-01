@@ -174,3 +174,20 @@ def test_concentration_check_draws_exactly_one_d20() -> None:
 
     assert _events(live, SaveRolled)[0].natural == expected_natural
     assert live.rng.randint(1, 20) == expected_next
+
+
+# SRD 5.2 §Concentration: "The DC equals 10 or half the damage taken (round
+# down), whichever number is higher, up to a maximum DC of 30." The cap is
+# 2024/SRD-5.2-specific (Foundry: actor.mjs getConcentrationDC clamps to
+# [10, 30] only in "modern" rules).
+def test_concentration_dc_clamps_at_srd_maximum_30() -> None:
+    live = _damage(90)
+    checks = [e for e in live.event_log if isinstance(e, ConcentrationCheck)]
+    assert len(checks) == 1
+    assert checks[0].dc == 30  # raw amount // 2 == 45, must clamp
+
+
+def test_concentration_dc_floor_and_midband_unchanged() -> None:
+    assert next(e for e in _damage(8).event_log if isinstance(e, ConcentrationCheck)).dc == 10
+    assert next(e for e in _damage(44).event_log if isinstance(e, ConcentrationCheck)).dc == 22
+    assert next(e for e in _damage(60).event_log if isinstance(e, ConcentrationCheck)).dc == 30

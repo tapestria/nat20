@@ -167,8 +167,8 @@ class EncounterMemberSpec(BaseModel):
     # this to look up the monster's typed action repertoire via
     # ``get_lib_loader().get_monster(slug)``. ``None`` (for NPCs without a
     # template, or test fixtures) falls back to the legacy damage_dice /
-    # damage_type single-attack heuristic — the monster has no typed actions and
-    # ``advance_monster_turn`` records a no-op turn.
+    # damage_type single-attack heuristic (one synthesized ``AttackActivity`` per turn;
+    # an unparseable ``damage_dice`` still records a no-op turn).
     monster_template_slug: str | None = None
     # SRD §Encounter XP value awarded when this monster dies. The orchestrator's
     # outcome projection sums xp_value across dead encounter members and divides
