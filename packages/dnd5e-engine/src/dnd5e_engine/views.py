@@ -22,6 +22,13 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True)
+class TurnCombatView:
+    """Per-current-actor turn-state projection (spec §6 row D2)."""
+
+    attacks_remaining: int
+
+
+@dataclass(frozen=True)
 class LiveCombatView:
     """Snapshot projection of live combat state for host consumers."""
 
@@ -44,9 +51,18 @@ class LiveCombatView:
     # the host-readable projection of the engine's concentration ownership
     # (C13, API-DELTAS). Empty dict when nobody concentrates.
     concentration_chain: dict[str, list[tuple[str, str, str]]]
+    # C14 — the current actor's per-Action attack budget (spec §6 row D2).
+    # ``TurnCombatView(attacks_remaining=0)`` when combat has ended or the
+    # initiative order is empty (no current actor to project).
+    turn: TurnCombatView
 
     @classmethod
     def from_live(cls, live: _LiveCombat) -> LiveCombatView:
+        turn = TurnCombatView(attacks_remaining=0)
+        if not live.ended and 0 <= live.current_turn_index < len(live.initiative):
+            turn = TurnCombatView(
+                attacks_remaining=live.initiative[live.current_turn_index].attacks_remaining
+            )
         return cls(
             initiative=list(live.initiative),
             party_ids=set(live.party_ids),
@@ -67,7 +83,8 @@ class LiveCombatView:
             ended=live.ended,
             final_outcome=live.final_outcome,
             concentration_chain={k: list(v) for k, v in live.concentration_chain.items()},
+            turn=turn,
         )
 
 
-__all__ = ["LiveCombatView"]
+__all__ = ["LiveCombatView", "TurnCombatView"]

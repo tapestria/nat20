@@ -56,7 +56,7 @@ import re
 import warnings
 from collections.abc import AsyncIterator, Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Final, Literal
 
 from dnd5e_srd_data.schema.common import (
     ActivationBlock,
@@ -2040,6 +2040,13 @@ def _emit_apply_turn_started(live: _LiveCombat, event: TurnStarted) -> None:
                     # clears at the start of the actor's own turn (symmetric
                     # with the action-economy resets above).
                     "sneak_attack_spent_this_turn": False,
+                    # SRD §Extra Attack / §Two-Weapon Fighting — refresh the
+                    # per-Action attack budget and clear the TWF window at
+                    # the start of the actor's own turn.
+                    "attacks_remaining": _attacks_per_action(c),
+                    "attack_action_engaged": False,
+                    "light_weapon_swing_slug": None,
+                    "offhand_attack_spent": False,
                 }
             )
             break
@@ -4511,6 +4518,51 @@ async def start_combat(
     )
 
 
+_EXTRA_ATTACK_TIERS: Final[tuple[tuple[str, int], ...]] = (
+    ("three-extra-attacks", 4),
+    ("two-extra-attacks", 3),
+    ("extra-attack", 2),
+)
+
+
+def _attacks_per_action(current: Combatant) -> int:
+    """SRD 5.2 Extra Attack + the multiclass non-stacking rule: the single
+    highest-count qualifying feature sets the cap; counts are never summed."""
+    if current.class_slug is None:
+        return 1
+    slugs = _granted_feature_slugs(current)
+    for slug, count in _EXTRA_ATTACK_TIERS:
+        if slug in slugs:
+            return count
+    return 1
+
+
+def _twf_window_open(current: Combatant) -> bool:
+    """SRD §Two-Weapon Fighting — True while an off-hand Bonus Action swing
+    is still available this turn (Light main-hand weapon swung, no
+    off-hand swing spent yet, Bonus Action unspent). Task 2 wires the
+    off-hand swing itself; until then this only affects whether the
+    main-hand attack tail keeps the turn (R1)."""
+    return (
+        current.light_weapon_swing_slug is not None
+        and not current.offhand_attack_spent
+        and current.bonus_action_available
+    )
+
+
+def _attack_action_is_spent(current: Combatant) -> bool:
+    """SRD §Extra Attack — R1: the Attack action is fully spent (and so the
+    turn should end after a main-hand attack) only when NO swings remain
+    this Action, the actor gets exactly one attack per Action (multi-attack
+    actors always keep the turn until their budget is exhausted), and no
+    two-weapon-fighting off-hand window is open."""
+    return (
+        current.attacks_remaining <= 0
+        and _attacks_per_action(current) == 1
+        and not _twf_window_open(current)
+    )
+
+
 def _granted_feature_slugs(caster: Combatant) -> frozenset[str]:
     """Feature slugs the caster's class (+ subclass) + species grants at/below its level.
 
@@ -5368,6 +5420,84 @@ def _consume_action_budget(live: _LiveCombat, actor_id: str, cost: _ActionCost) 
     return _current_actor(live)
 
 
+def _action_economy_gate_failure(
+    current: Combatant,
+    intent: PlayerIntent,
+    *,
+    is_bonus_action: bool,
+    is_reaction_cast: bool,
+) -> CombatEvent | None:
+    """The action-economy budget gate for ``submit_player_intent``: returns
+    the rejection event to emit (turn-keeping), or ``None`` when the intent
+    may proceed to budget consumption. Raises ``IntentRejectedError`` for
+    the one case with no typed event surface today (a non-cast, non-attack
+    Action-costed intent with no Action left).
+
+    ``attack`` gets its own branch (SRD §Extra Attack, R2): an exhausted
+    ``attacks_remaining`` is a turn-KEEPING ``AttackFailed`` — unlike every
+    other Action-costed intent, a later same-Action swing owes no further
+    Action spend, so its rejection must not look like a fresh "no Action"
+    failure.
+    """
+    if is_bonus_action:
+        if not current.bonus_action_available:
+            return CastFailed(
+                actor_id=current.entity_id,
+                spell_id=intent.spell_id or "",
+                reason="no_action_economy",
+            )
+        return None
+    if is_reaction_cast:
+        if not current.reaction_available:
+            return CastFailed(
+                actor_id=current.entity_id,
+                spell_id=intent.spell_id or "",
+                reason="no_action_economy",
+            )
+        return None
+    if intent.intent_type == "attack":
+        if current.attacks_remaining <= 0:
+            return AttackFailed(
+                actor_id=current.entity_id,
+                target_id=intent.target_id,
+                reason="no_action_economy",
+            )
+        return None
+    if not current.action_available:
+        if intent.intent_type == "cast_spell":
+            return CastFailed(
+                actor_id=current.entity_id,
+                spell_id=intent.spell_id or "",
+                reason="no_action_economy",
+            )
+        raise IntentRejectedError(
+            "no_action_economy",
+            f"actor_id={current.entity_id!r} has no Action remaining this turn",
+        )
+    return None
+
+
+def _consume_attack_budget(live: _LiveCombat, actor_id: str, current: Combatant) -> Combatant:
+    """SRD §Extra Attack — soft-consume the Action for a main-hand attack
+    (R2): the Action is spent only on the FIRST swing of a multi-attack
+    sequence (``attack_action_engaged`` False); a later swing this Action
+    never re-pays it, and never rejects even if the Action was somehow
+    already gone. Every resolved swing decrements ``attacks_remaining`` by
+    one and sets ``attack_action_engaged`` True."""
+    for idx, c in enumerate(live.initiative):
+        if c.entity_id == actor_id:
+            spend_action = not c.attack_action_engaged and c.action_available
+            live.initiative[idx] = c.model_copy(
+                update={
+                    "action_available": False if spend_action else c.action_available,
+                    "attack_action_engaged": True,
+                    "attacks_remaining": c.attacks_remaining - 1,
+                }
+            )
+            break
+    return _current_actor(live)
+
+
 def _consume_spell_slot(
     live: _LiveCombat, current: Combatant, actor_id: str, intent: PlayerIntent
 ) -> bool:
@@ -6115,49 +6245,24 @@ async def submit_player_intent(
             _emit(live, failure)
             return
 
-    if is_bonus_action:
-        if not current.bonus_action_available:
-            _emit(
-                live,
-                CastFailed(
-                    actor_id=current.entity_id,
-                    spell_id=intent.spell_id or "",
-                    reason="no_action_economy",
-                ),
-            )
-            return
-    elif is_reaction_cast:
-        if not current.reaction_available:
-            _emit(
-                live,
-                CastFailed(
-                    actor_id=current.entity_id,
-                    spell_id=intent.spell_id or "",
-                    reason="no_action_economy",
-                ),
-            )
-            return
-    else:
-        if not current.action_available:
-            if intent.intent_type == "cast_spell":
-                _emit(
-                    live,
-                    CastFailed(
-                        actor_id=current.entity_id,
-                        spell_id=intent.spell_id or "",
-                        reason="no_action_economy",
-                    ),
-                )
-                return
-            raise IntentRejectedError(
-                "no_action_economy",
-                f"actor_id={actor_id!r} has no Action remaining this turn",
-            )
+    action_economy_failure = _action_economy_gate_failure(
+        current, intent, is_bonus_action=is_bonus_action, is_reaction_cast=is_reaction_cast
+    )
+    if action_economy_failure is not None:
+        _emit(live, action_economy_failure)
+        return
 
     # Consume the budget now. ``current`` is a stale snapshot; mutate via
     # initiative-list model_copy so subsequent reads (and the post-resolve
-    # turn-advance branch below) see the updated state.
-    current = _consume_action_budget(live, actor_id, action_cost)
+    # turn-advance branch below) see the updated state. Attack intents use
+    # their own soft-consume path (R2): the Action is only spent by the
+    # FIRST swing of a multi-attack sequence; every swing decrements the
+    # per-Action attack budget.
+    current = (
+        _consume_attack_budget(live, actor_id, current)
+        if intent.intent_type == "attack"
+        else _consume_action_budget(live, actor_id, action_cost)
+    )
 
     _emit(
         live,
@@ -6404,6 +6509,14 @@ async def submit_player_intent(
     # SRD §Action Economy — a bonus action does NOT end the turn; the
     # actor keeps initiative and may follow with a regular Action.
     if is_bonus_action:
+        _maybe_roll_death_save(live)
+        return
+    # SRD §Extra Attack — a main-hand attack keeps the turn (R1) while
+    # swings remain this Action, OR a two-weapon-fighting off-hand window
+    # is still open (Task 2 fills the window itself in; until then
+    # ``_twf_window_open`` is always False, so a 1-attack actor's attack
+    # ends the turn exactly as before this feature — the back-compat bar).
+    if intent.intent_type == "attack" and not _attack_action_is_spent(current):
         _maybe_roll_death_save(live)
         return
     _end_turn_and_advance(live, actor_id)

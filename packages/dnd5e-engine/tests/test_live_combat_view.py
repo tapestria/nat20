@@ -139,6 +139,19 @@ def _make_live() -> _LiveCombat:
     )
 
 
+def test_turn_view_reflects_current_actor_attacks_remaining():
+    handle = _start().handle
+    view = get_live(handle)
+    current = view.initiative[view.current_turn_index]
+    assert view.turn.attacks_remaining == current.attacks_remaining
+
+
+def test_turn_view_defaults_when_initiative_is_empty() -> None:
+    live = _make_live()
+    view = LiveCombatView.from_live(live)
+    assert view.turn.attacks_remaining == 0
+
+
 def test_from_live_projects_concentration_chain_as_a_copy() -> None:
     live = _make_live()
     live.concentration_chain["char:a"] = [("char:b", "effect:bless", "cast:bless:char:a")]

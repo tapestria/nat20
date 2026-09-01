@@ -379,7 +379,6 @@ def test_c14_s04_grapple_shove_and_stand_up():
     assert target.movement_remaining <= 15
 
 
-@xfail_cluster(14, "action economy")
 def test_c14_s05_extra_attack_grants_exactly_two_swings():
     """C14-S05: SRD 5.2 (Fighter, Extra Attack) — "You can attack twice
     instead of once whenever you take the Attack action on your turn."
