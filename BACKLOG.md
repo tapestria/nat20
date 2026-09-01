@@ -172,10 +172,13 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   records presence only, not direction. A host rendering the source list shows
   the same word twice.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py`)
-- **Opportunity attacks bypass the activity context** (2026-08-27). The AoO path
-  hardcodes `advantage="normal"` and never calls `build_activity_context`, so an
-  opportunity attack sees no cover, no conditions and no visibility — despite
-  SRD 5.2's "a hostile creature that *you can see*" trigger. C14 seam.
+- **Opportunity attacks bypass the activity context** (2026-08-27, condition
+  gap closed 2026-09-01 C14 Task 9). The AoO path never calls
+  `build_activity_context`, so an opportunity attack still sees no cover and
+  no visibility — despite SRD 5.2's "a creature that you can see" trigger
+  (condition-derived advantage/disadvantage, Exhaustion's D20 Test penalty,
+  and Dodge now DO reach the roll via `roll_d20_test`, closing that half).
+  Remaining gap is C16b (visibility) and cover.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
 
 ## Reactions (2026-07-03)
@@ -309,11 +312,6 @@ zone + apply logic:
 
 ## Audit 2026-08-26 — rolls & modifiers
 
-- **Opportunity attacks bypass the d20 pipeline.**
-  `_resolve_pc_opportunity_attack` / monster OA path (`orchestrator.py` ~5007,
-  ~5107) emit `AttackRolled(advantage="normal")` without consulting
-  `roll_d20_test` sources; route them through `resolve_attack`'s primitive in
-  C14. (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
 - **Standalone out-of-combat `resolve_check` has no exhaustion seam**
   (2026-08-27) — the in-combat activity path folds `ctx.d20_test_penalty`, but
   the host-facing `CheckSpec` carries no conditions/exhaustion field, so a
@@ -358,12 +356,6 @@ zone + apply logic:
   producer.
   (`packages/dnd5e-engine/src/dnd5e_engine/turn_lifecycle.py`,
   `packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_register_default_turn_hooks`)
-- **Opportunity attacks ignore the exhaustion penalty and the condition attack
-  rows** (2026-08-27) — the two OA paths still roll
-  `live.rng.randint(1, 20) + attack_bonus` outside `resolve_attack`, so
-  `d20_test_penalty`, Prone and Grappled do not reach them. C14 routes them
-  through the shared primitive and inherits all three.
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
 - **Initiative has no "Delay" option.** C14 Task 8 (2026-09-01) added the
   engine-rolled `d20 + DEX modifier` path (`initiative=None`) with Surprise
   and Incapacitated Disadvantage; the SRD "Delay" combat option (holding

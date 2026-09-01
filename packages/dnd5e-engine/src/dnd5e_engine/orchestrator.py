@@ -146,6 +146,7 @@ from dnd5e_engine.rules.conditions import (
     Condition,
     active_condition_names,
     conditions_block_actions,
+    conditions_grant_advantage_on_attack,
     d20_test_penalty,
     exhaustion_level_of,
     is_condition_active,
@@ -7534,11 +7535,10 @@ def _fire_pc_opportunity_attacks_on_move(
 ) -> bool:
     """SRD §Opportunity Attacks — fire PC AoOs when ``mover_id`` leaves reach.
 
-    *"You can make an opportunity attack when a hostile creature that you
-    can see moves out of your Reach. To make the opportunity attack, you
-    use your Reaction to make a single Melee Attack against the provoking
-    creature. The attack interrupts the provoking creature's Movement,
-    occurring right before the creature leaves your Reach."*
+    *"You can make an Opportunity Attack when a creature that you can see
+    leaves your reach using its action, its Bonus Action, its Reaction, or
+    one of its speeds."* (SRD 5.2; the "you can see" gate is not modeled —
+    no vision seam is wired to this path yet — deferred to C16b.)
 
     Phase-6 wires this for the **PC reactor / monster mover** direction
     only — the symmetric monster-AoO path requires the reaction-queue
@@ -7592,10 +7592,21 @@ def _fire_pc_opportunity_attacks_on_move(
         # the reactor's reach band).
         if to_zone == from_zone:
             continue
-        # Roll the AoO attack: same rules shape as effects/attack.py — nat 20
-        # crit, nat 1 auto-miss, total ≥ AC on hit.
-        natural = live.rng.randint(1, 20)
-        total = natural + reactor.attack_bonus
+        # Roll the AoO attack through the shared SRD 5.2 D20 Test primitive
+        # (C14) — same rules shape as effects/attack.py — nat 20 crit, nat 1
+        # auto-miss, total ≥ AC on hit; now honors Exhaustion's flat penalty
+        # and the condition/Dodge advantage-disadvantage rows so an AoO is no
+        # longer a bare unconditioned d20.
+        modifier = reactor.attack_bonus + d20_test_penalty(reactor.conditions)
+        adv_sources, dis_sources = _opportunity_attack_advantage_sources(
+            live, reactor=reactor, mover=mover
+        )
+        roll = roll_d20_test(
+            live.rng,
+            modifier,
+            AdvantageSources(advantage=tuple(adv_sources), disadvantage=tuple(dis_sources)),
+        )
+        natural, total = roll.kept, roll.total
         if natural == 20:
             is_crit, is_hit = True, True
         elif natural == 1:
@@ -7617,10 +7628,13 @@ def _fire_pc_opportunity_attacks_on_move(
                 attacker_id=reactor.entity_id,
                 target_id=mover_id,
                 roll_total=total,
-                advantage="normal",
+                advantage=roll.mode,
                 is_crit=is_crit,
                 is_hit=is_hit,
                 is_opportunity_attack=True,
+                natural=natural,
+                modifier=modifier,
+                sources=list(roll.sources),
             ),
         )
         # Consume the reaction regardless of hit/miss (SRD: reactions are
@@ -7647,6 +7661,48 @@ def _fire_pc_opportunity_attacks_on_move(
     return mover_died
 
 
+def _opportunity_attack_advantage_sources(
+    live: _LiveCombat, *, reactor: Combatant, mover: Combatant
+) -> tuple[list[AdvantageSource], list[AdvantageSource]]:
+    """The typed advantage/disadvantage sources for an opportunity attack,
+    assembled the same way ``activities/attack.py::resolve_attack`` does for
+    a regular Attack: the condition-derived half (Prone/Grappled/etc, called
+    once per side so the emitted source names which side produced it) plus
+    the Dodge action's disadvantage. AoOs are always melee (same-zone reach
+    approximation — see the callers' docstrings), so the Prone-target
+    distance check always resolves within-5ft.
+    """
+    reactor_conditions = _condition_names(reactor)
+    mover_conditions = _condition_names(mover)
+    reactor_cond_adv, reactor_cond_dis = conditions_grant_advantage_on_attack(
+        reactor_conditions,
+        [],
+        grappler_id=_condition_source_entity(live, reactor, "grappled"),
+        target_id=mover.entity_id,
+    )
+    mover_cond_adv, mover_cond_dis = conditions_grant_advantage_on_attack(
+        [],
+        mover_conditions,
+        distance_ft=5,
+    )
+    adv_sources: list[AdvantageSource] = []
+    dis_sources: list[AdvantageSource] = []
+    if reactor_cond_adv:
+        adv_sources.append("condition:attacker")
+    if mover_cond_adv:
+        adv_sources.append("condition:target")
+    if reactor_cond_dis:
+        dis_sources.append("condition:attacker")
+    if mover_cond_dis:
+        dis_sources.append("condition:target")
+    # SRD 5.2 §Actions in Combat — Dodge: "any attack roll made against you
+    # has Disadvantage if you can see the attacker" — the "can see" conjunct
+    # is deferred to C16b (no vision seam wired here yet).
+    if _dodge_benefit_active(live, mover):
+        dis_sources.append("dodge")
+    return adv_sources, dis_sources
+
+
 def _fire_monster_opportunity_attacks_on_move(
     live: _LiveCombat,
     *,
@@ -7655,6 +7711,11 @@ def _fire_monster_opportunity_attacks_on_move(
     to_zone: str,
 ) -> bool:
     """SRD §Opportunity Attacks — fire monster AoOs when a PC leaves reach.
+
+    *"You can make an Opportunity Attack when a creature that you can see
+    leaves your reach using its action, its Bonus Action, its Reaction, or
+    one of its speeds."* (SRD 5.2; the "you can see" gate is not modeled —
+    no vision seam is wired to this path yet — deferred to C16b.)
 
     The monster-reactor / PC-mover mirror of
     ``_fire_pc_opportunity_attacks_on_move`` same hit/crit rules,
@@ -7697,8 +7758,20 @@ def _fire_monster_opportunity_attacks_on_move(
         # the reactor's reach band).
         if to_zone == from_zone:
             continue
-        natural = live.rng.randint(1, 20)
-        total = natural + reactor.attack_bonus
+        # Roll the AoO attack through the shared SRD 5.2 D20 Test primitive
+        # (C14) — see ``_fire_pc_opportunity_attacks_on_move`` for the
+        # rationale (Exhaustion penalty + condition/Dodge advantage rows now
+        # reach this roll instead of a bare unconditioned d20).
+        modifier = reactor.attack_bonus + d20_test_penalty(reactor.conditions)
+        adv_sources, dis_sources = _opportunity_attack_advantage_sources(
+            live, reactor=reactor, mover=mover
+        )
+        roll = roll_d20_test(
+            live.rng,
+            modifier,
+            AdvantageSources(advantage=tuple(adv_sources), disadvantage=tuple(dis_sources)),
+        )
+        natural, total = roll.kept, roll.total
         if natural == 20:
             is_crit, is_hit = True, True
         elif natural == 1:
@@ -7720,10 +7793,13 @@ def _fire_monster_opportunity_attacks_on_move(
                 attacker_id=reactor.entity_id,
                 target_id=mover_id,
                 roll_total=total,
-                advantage="normal",
+                advantage=roll.mode,
                 is_crit=is_crit,
                 is_hit=is_hit,
                 is_opportunity_attack=True,
+                natural=natural,
+                modifier=modifier,
+                sources=list(roll.sources),
             ),
         )
         # Consume the reaction regardless of hit/miss (SRD: reactions are
