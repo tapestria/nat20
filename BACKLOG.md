@@ -67,9 +67,11 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   than the target; "Ending a Grapple" also ends the condition when a forced
   move separates the pair beyond reach. None of the three block or
   auto-release `grapple`/`shove`/`escape_grapple` today — deferred to C14
-  Task 10.
+  Task 10. The Push weapon mastery's "if it is Large or smaller" gate
+  (2026-09-02, C15 Task 7) shares the same missing creature-size attribute
+  and pushes every target.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_handle_grapple`,
-  `::_handle_shove`)
+  `::_handle_shove`, `::_fold_mastery_procs`)
 - **Ritual casting is not modelled.** 28 spells carry `ritual: true`; the flag
   is never read.
 - **Spell components are not enforced.** `components` / `materials` ship on
@@ -310,10 +312,6 @@ zone + apply logic:
   `thrown`, `light`, `two_handed`, `versatile` (`versatile_damage` is shipped
   and never chosen), `ammunition`, `heavy` are parsed by the data schema and
   never read. (`packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py`)
-- **Weapon mastery: 4 of 8 resolve.** `graze`, `topple`, `vex`, and `sap`
-  (C15 Task 6) are implemented; `slow`/`push`/`nick`/`cleave` log
-  `mastery_deferred` and apply nothing.
-  (`packages/dnd5e-engine/src/dnd5e_engine/activities/mastery.py`)
 - **Upcasting scales dice only, never target count** (Magic Missile darts,
   Hold Person extra targets). (`packages/dnd5e-engine/src/dnd5e_engine/activities/dice.py`)
 

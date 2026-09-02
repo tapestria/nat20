@@ -1,9 +1,10 @@
 """Behavioral tests for SRD-2024 weapon mastery (``activities/mastery.py``).
 
-Four masteries fully resolve inside a single attack (graze, topple, and, as
-of C15 Task 6, vex/sap's PROC — the lingering grant/mark itself is folded by
-the orchestrator, tested at ``tests/test_weapon_masteries_c15.py``); the
-other four are deliberately deferred. The rules pinned here:
+Graze and topple fully resolve inside a single attack; vex/sap (C15 Task 6)
+and slow/push (C15 Task 7) append a PROC here — the lingering grant/mark/
+move itself is folded by the orchestrator, tested at
+``tests/test_weapon_masteries_c15.py`` (as are cleave and nick, which never
+route through this module). The rules pinned here:
 
 - **graze** fires on a MISS and deals flat governing-ability-modifier damage
   of the weapon's damage type — no dice, nothing at all when the modifier is
@@ -14,8 +15,8 @@ other four are deliberately deferred. The rules pinned here:
   ``SaveRolled`` must be emitted *before* any ``ConditionApplied`` — a topple
   that applies prone without first reporting the save is a bug.
 - Each mastery fires on exactly one of hit/miss, never both.
-- A deferred mastery applies no mechanic but must not be silent: it logs one
-  INFO marker so the gap stays visible.
+- No mastery is deferred any more (C15 Task 7): none logs the old
+  ``mastery_deferred`` marker.
 """
 
 from __future__ import annotations
@@ -323,21 +324,28 @@ def test_topple_save_reports_its_outcome() -> None:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("mastery", ["slow", "push", "nick", "cleave"])
-def test_deferred_masteries_apply_no_mechanic_but_log_the_gap(
-    mastery: str, caplog: pytest.LogCaptureFixture
+#: The eight SRD 5.2 weapon masteries (``Weapon.mastery`` values in the corpus).
+_ALL_MASTERIES = ("cleave", "graze", "nick", "push", "sap", "slow", "topple", "vex")
+
+
+def test_every_mastery_dispatches_without_a_deferred_log(
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """These four are multi-target / movement effects that cannot resolve
-    inside one attack. They must be inert — but visibly so. (sap/vex moved
-    to the C15 Task 6 proc-append behavior below — no longer deferred.)"""
-    ctx, events = _ctx(abilities={**ABILITIES, "str": 18})
+    """C15 Task 7 — all eight masteries are live. Every ``Weapon.mastery``
+    value dispatches through ``apply_mastery_on_hit`` / ``apply_mastery_on_miss``
+    without the old ``mastery_deferred`` INFO marker (that contract is closed:
+    slow/push append procs, cleave resolves in ``attack.py``, nick is
+    orchestrator action-economy), and the ``_log_deferred`` helper that
+    emitted it is gone (dead code removed)."""
+    import dnd5e_engine.activities.mastery as mastery_module
 
+    assert not hasattr(mastery_module, "_log_deferred")
     with caplog.at_level(logging.INFO, logger="dnd5e_engine.activities.mastery"):
-        apply_mastery_on_hit(_weapon(mastery), ctx, _target(), "str")
-        apply_mastery_on_miss(_weapon(mastery), ctx, _target(), "str")
-
-    assert events == []
-    assert caplog.text.count(f"mastery_deferred mastery={mastery}") == 2
+        for mastery in _ALL_MASTERIES:
+            ctx, _events = _ctx(abilities={**ABILITIES, "str": 18})
+            apply_mastery_on_hit(_weapon(mastery), ctx, _target(), "str", damage_dealt=5)
+            apply_mastery_on_miss(_weapon(mastery), ctx, _target(), "str")
+    assert "mastery_deferred" not in caplog.text
 
 
 def test_topple_save_carries_its_roll_breakdown() -> None:

@@ -1,8 +1,12 @@
 """Weapon-mastery resolution for the ``attack`` kind handler.
 
 ``Weapon.mastery`` is a lowercase string (Foundry ``system.mastery.value``) on a
-distinct axis from ``WeaponProperty``. The 2024 SRD defines eight masteries; four
-are implemented here:
+distinct axis from ``WeaponProperty``. The 2024 SRD defines eight masteries; all
+eight are live. Four resolve INSIDE the attack here; the other four are
+lingering / movement / multi-target riders that this pure resolver only
+REPORTS through the ``ctx.mastery_procs`` writeback channel (controller
+ruling R4) for the orchestrator to fold into live combat state — or, for
+cleave / nick, are resolved elsewhere entirely:
 
 * **graze** — on a MISS, deal damage equal to the attacker's governing-ability
   modifier (the SAME ability ``attack._governing_ability`` returns), of the
@@ -18,27 +22,34 @@ are implemented here:
   rolls and ``SaveRolled`` still fires; only the emit is gated, C15 Task 6).
 * **vex** (C15 Task 6) — on a HIT that DEALS DAMAGE (the post-immunity total,
   ``apply_damage``'s return), append ``("vex", target_id)`` to
-  ``ctx.mastery_procs`` (controller ruling R4). This resolver never touches
-  live combat state; the orchestrator folds the proc into a lingering
+  ``ctx.mastery_procs``. The orchestrator folds the proc into a lingering
   Advantage grant ("before the end of your next turn") after resolution.
 * **sap** (C15 Task 6) — on a HIT (damage irrelevant), append
-  ``("sap", target_id)`` to ``ctx.mastery_procs``. The orchestrator folds it
-  into a lingering Disadvantage mark on the TARGET ("before the start of
-  your next turn") after resolution.
-
-The remaining four masteries are multi-target / movement effects that do NOT
-resolve within the attack and are deferred to a later piece. Each is listed
-below with its one-line SRD reference; ``apply_mastery_*`` logs
-``mastery_deferred mastery=<name>`` at INFO and applies no mechanic:
-
-* **slow** — on hit, target's speed is reduced by 10 ft until your next turn
-  (movement / speed modifier — SRD §Slow).
-* **push** — on hit, you can push the target up to 10 ft straight away from you
-  (forced movement, needs grid/position — SRD §Push).
-* **nick** — the light-weapon extra attack is folded into the Attack action (extra
-  attack economy, not an in-attack rider — SRD §Nick).
-* **cleave** — on hit, a second creature within 5 ft of the target can be struck
-  (multi-target chained attack — SRD §Cleave).
+  ``("sap", target_id)``. The orchestrator folds it into a lingering
+  Disadvantage mark on the TARGET ("before the start of your next turn").
+* **slow** (C15 Task 7) — SRD: "If you hit a creature with this weapon and
+  deal damage to it, you can reduce its Speed by 10 feet until the start of
+  your next turn. If the creature is hit more than once by weapons that have
+  this property, the Speed reduction doesn't exceed 10 feet." On a HIT that
+  DEALS DAMAGE, append ``("slow", target_id)``; the orchestrator folds it
+  into ``live.slow_marks`` (a flat, non-stacking -10 ft on the target's
+  effective Speed, cleared at the SOURCE attacker's next turn start).
+* **push** (C15 Task 7) — SRD: "If you hit a creature with this weapon, you
+  can push the creature up to 10 feet straight away from yourself if it is
+  Large or smaller." On a HIT (damage irrelevant), append
+  ``("push", target_id)``; the orchestrator folds it into a
+  ``push_combatant(..., 10)`` forced move (controller ruling R5: always the
+  full 10 ft). The "Large or smaller" size gate is NOT modelled — creature
+  size is not a ``Combatant`` attribute yet (see ``BACKLOG.md``, the
+  Grapple/Shove/Push size-gate entry), so every target is pushed.
+* **cleave** (C15 Task 7) — resolved in ``attack.py`` itself (the chained
+  second attack roll needs the attack machinery: to-hit, d20, damage), gated
+  by the orchestrator-precomputed ``ctx.cleave_available`` /
+  ``ctx.cleave_candidate``. Nothing to do here on the main hit; the chained
+  roll never re-enters this module.
+* **nick** (C15 Task 7) — pure action-economy: the orchestrator's off-hand
+  consume path (``_consume_offhand_attack_budget``) leaves the Bonus Action
+  unspent when the off-hand weapon carries ``nick``. No in-attack rider.
 
 Topple's Con save runs through the shared
 ``activities/save_primitive.py:roll_save`` (the same primitive the ``save``
@@ -50,7 +61,6 @@ still does not import evaluator/orchestrator/neo4j machinery.
 
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING
 
 from dnd5e_engine.activities.apply import apply_damage
@@ -65,13 +75,14 @@ if TYPE_CHECKING:
 
     from .context import ActivityResolutionContext
 
-_LOGGER = logging.getLogger(__name__)
-
-# The instantaneous masteries this module resolves; everything else is deferred.
+# The masteries this module resolves or reports. ``cleave`` (attack.py) and
+# ``nick`` (orchestrator off-hand economy) never route through here.
 _GRAZE = "graze"
 _TOPPLE = "topple"
 _VEX = "vex"
 _SAP = "sap"
+_SLOW = "slow"
+_PUSH = "push"
 
 
 def apply_mastery_on_hit(
@@ -89,8 +100,11 @@ def apply_mastery_on_hit(
     (``damage_dealt > 0``, the post-immunity total from ``apply_damage``)
     appends a proc to ``ctx.mastery_procs`` for the orchestrator to fold into
     a lingering Advantage grant. **sap** — any hit appends a proc for a
-    lingering Disadvantage mark on ``target``. Other masteries are deferred
-    (logged). A weapon with no mastery is a no-op.
+    lingering Disadvantage mark on ``target``. **slow** — a hit that DEALT
+    damage appends a proc for the -10 ft Speed mark. **push** — any hit
+    appends a proc for the 10-ft forced move. graze (miss-only), cleave
+    (``attack.py``) and nick (orchestrator) have nothing to do here. A weapon
+    with no mastery is a no-op.
 
     ``damage_dealt`` is the caller's (``attack.py``) already-computed total —
     this resolver never re-derives it, keeping the "dealt damage" definition
@@ -113,10 +127,19 @@ def apply_mastery_on_hit(
         # SRD §Sap: "hit a creature with this weapon" — damage-independent.
         ctx.mastery_procs.append((_SAP, target.entity_id))
         return
-    if mastery == _GRAZE:
-        # graze triggers on a MISS, not a hit — nothing to do on a hit.
+    if mastery == _SLOW:
+        # SRD §Slow: "hit a creature with this weapon and deal damage to it"
+        # — same damage-dealt gate as vex (zero final damage = no proc).
+        if damage_dealt > 0:
+            ctx.mastery_procs.append((_SLOW, target.entity_id))
         return
-    _log_deferred(mastery)
+    if mastery == _PUSH:
+        # SRD §Push: "If you hit a creature with this weapon" — damage-
+        # independent, like sap. Size gate unmodelled (module docstring).
+        ctx.mastery_procs.append((_PUSH, target.entity_id))
+        return
+    # graze triggers on a MISS, not a hit; cleave resolves in attack.py; nick
+    # is orchestrator action-economy — nothing to do on a hit for any of them.
 
 
 def apply_mastery_on_miss(
@@ -128,19 +151,12 @@ def apply_mastery_on_miss(
     """Resolve a weapon's MISS-triggered mastery against ``target``.
 
     Only **graze** triggers on a miss: deal flat governing-ability-mod damage of
-    the weapon's damage type (nothing when the mod is <= 0). Other masteries are
-    deferred (logged). A weapon with no mastery is a no-op.
+    the weapon's damage type (nothing when the mod is <= 0). Every other
+    mastery is HIT-triggered — nothing to do on a miss. A weapon with no
+    mastery is a no-op.
     """
-    mastery = _mastery_of(weapon)
-    if mastery is None:
-        return
-    if mastery == _GRAZE:
+    if _mastery_of(weapon) == _GRAZE:
         _resolve_graze(weapon, ctx, target, governing_ability)
-        return
-    if mastery == _TOPPLE:
-        # topple triggers on a HIT, not a miss — nothing to do on a miss.
-        return
-    _log_deferred(mastery)
 
 
 def _mastery_of(weapon: Weapon | None) -> str | None:
@@ -148,15 +164,6 @@ def _mastery_of(weapon: Weapon | None) -> str | None:
     if weapon is None:
         return None
     return weapon.mastery
-
-
-def _log_deferred(mastery: str) -> None:
-    """Mark a non-instantaneous mastery as deferred (tracked Piece-2 follow-up).
-
-    The gap must not be SILENT: a lingering / multi-target / movement mastery
-    applies no mechanic here but emits one INFO marker so the deferral is visible.
-    """
-    _LOGGER.info("mastery_deferred mastery=%s", mastery)
 
 
 # ── graze (on miss) ──────────────────────────────────────────────────────────

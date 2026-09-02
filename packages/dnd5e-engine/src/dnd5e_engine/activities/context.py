@@ -407,6 +407,26 @@ class ActivityResolutionContext:
     # dataclass (list mutation, not field reassignment, is fine); empty
     # default keeps the golden corpus identical.
     mastery_procs: list[tuple[str, str]] = field(default_factory=list)
+    # SRD 5.2 §Weapon Mastery — Cleave (C15 Task 7): "If you hit a creature
+    # with a melee attack roll using this weapon, you can make a melee attack
+    # roll with the weapon against a second creature within 5 feet of the
+    # first that is also within your reach. ... You can make this extra
+    # attack only once per turn." Both halves are PRE-RESOLVED by the
+    # orchestrator (spatial + per-turn state reads it owns):
+    # ``cleave_available`` — the swung weapon carries ``cleave``, the swing is
+    # a melee attack within reach, and the attacker has not already cleaved
+    # this turn (``Combatant.cleave_spent_this_turn``); ``cleave_candidate``
+    # — the deterministic second creature (controller ruling R5: a LIVING
+    # hostile within 5 ft of the first target AND within the attacker's
+    # reach, excluding the first target; nearest to the ATTACKER, ties broken
+    # by ascending entity_id), or ``None`` when no creature qualifies.
+    # ``attack.py`` chains ONE extra attack roll against the candidate after
+    # a main-target HIT when both are set, and reports that it fired by
+    # appending ``("cleave", candidate_id)`` to ``mastery_procs`` (the
+    # orchestrator folds that marker into the per-turn cap). Defaults keep
+    # the golden corpus identical (no chain, no extra draws).
+    cleave_available: bool = False
+    cleave_candidate: Combatant | None = None
 
     def ability_mod(self, ability: str) -> int:
         return (self.caster_abilities.get(ability, 10) - 10) // 2

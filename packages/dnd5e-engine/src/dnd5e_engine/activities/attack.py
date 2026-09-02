@@ -63,6 +63,7 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
+from dataclasses import replace
 from typing import TYPE_CHECKING
 
 from dnd5e_srd_data.schema.item import WeaponProperty
@@ -75,6 +76,7 @@ from dnd5e_engine.activities.formula import resolve_damage_block, resolve_roll_d
 from dnd5e_engine.activities.mastery import apply_mastery_on_hit, apply_mastery_on_miss
 from dnd5e_engine.events import AdvantageMode, AdvantageSource, AttackRolled
 from dnd5e_engine.rules.conditions import (
+    active_condition_names,
     conditions_auto_crit_within_5ft,
     conditions_grant_advantage_on_attack,
 )
@@ -147,102 +149,25 @@ def resolve_attack(
     # computed once, outside the per-target loop, like the flag half above.
     heavy_disadvantage = _weapon_heavy_disadvantage(weapon, ctx.caster)
 
+    # SRD 5.2 §Weapon Mastery — Cleave (C15 Task 7): "You can make this
+    # extra attack only once per turn." ``ctx.cleave_available`` already
+    # carries the per-turn cap from the orchestrator; this local flag caps
+    # the chain to once per RESOLUTION as well (a multi-target attack
+    # activity must not chain off every hit).
+    cleave_fired = False
+
     for index, target in enumerate(ctx.targets):
-        # Condition-derived half. The helper is called once PER SIDE (the other
-        # side's list empty) purely so the emitted source can name which side
-        # produced it: neither direction is one-way any more — an Invisible
-        # attacker grants itself advantage while an Invisible TARGET imposes
-        # disadvantage, and a Restrained attacker takes disadvantage while a
-        # Restrained TARGET grants advantage. Every row in the helper reads
-        # exactly one of its two arguments, so the split is exact.
         distance_ft = ctx.target_distance_ft.get(target.entity_id)
-        attacker_cond_adv, attacker_cond_dis = conditions_grant_advantage_on_attack(
-            ctx.attacker_conditions,
-            [],
-            grappler_id=ctx.attacker_grappler_id,
-            target_id=target.entity_id,
-        )
-        target_cond_adv, target_cond_dis = conditions_grant_advantage_on_attack(
-            [],
-            ctx.target_conditions.get(target.entity_id, []),
+        sources, target_vex_advantage = _attack_roll_sources(
+            ctx,
+            target,
+            weapon,
             distance_ft=distance_ft,
+            target_conditions=ctx.target_conditions.get(target.entity_id, []),
+            attacker_has_advantage=attacker_has_advantage,
+            attacker_has_disadvantage=attacker_has_disadvantage,
+            heavy_disadvantage=heavy_disadvantage,
         )
-        adv_sources: list[AdvantageSource] = []
-        dis_sources: list[AdvantageSource] = []
-        if attacker_has_advantage:
-            adv_sources.append("flag")
-        if attacker_cond_adv:
-            adv_sources.append("condition:attacker")
-        if target_cond_adv:
-            adv_sources.append("condition:target")
-        if attacker_has_disadvantage:
-            dis_sources.append("flag")
-        if attacker_cond_dis:
-            dis_sources.append("condition:attacker")
-        if target_cond_dis:
-            dis_sources.append("condition:target")
-        # C16b — SRD 5.2 "Unseen Attackers and Targets": "When you make an
-        # attack roll against a target you can't see, you have Disadvantage";
-        # "When a creature can't see you, you have Advantage on attack rolls
-        # against it." Both present cancel to normal in ``resolve_mode``.
-        if ctx.attacker_unseen_by.get(target.entity_id):
-            adv_sources.append("unseen")
-        if ctx.target_unseen.get(target.entity_id):
-            dis_sources.append("unseen")
-        # SRD 5.2 §Actions in Combat — Dodge: "any attack roll made against
-        # you has Disadvantage if you can see the attacker". The "can see
-        # the attacker" conjunct is deferred to C16b (no vision model wired
-        # to this seam yet); ``target_dodging`` already folds in the SRD
-        # loss clause (Incapacitated / Speed 0) via
-        # ``_dodge_benefit_active``.
-        if ctx.target_dodging.get(target.entity_id):
-            dis_sources.append("dodge")
-        # SRD 5.2 §Range — "Your attack roll has Disadvantage when your
-        # target is beyond normal range" (a target beyond a weapon's LONG
-        # range is illegal and never reaches this resolver at all — gated
-        # upstream, ``_pc_attack_out_of_range``). Pre-resolved per-target by
-        # the orchestrator (``_target_beyond_normal_range_map``).
-        if ctx.target_beyond_normal_range.get(target.entity_id):
-            dis_sources.append("range:long")
-        # SRD 5.2 "Ranged Attacks in Close Combat" (C15 Task 3): "you have
-        # Disadvantage on the roll if you are within 5 feet of an enemy who
-        # can see you and doesn't have the Incapacitated condition." The
-        # spatial/incapacitated/vision predicate is pre-resolved orchestrator
-        # -side (``_hostile_adjacent_to_attacker``) into the per-ATTACKER
-        # ``ctx.attacker_ranged_in_melee`` flag; this pure resolver only
-        # gates it on the attack itself being effectively ranged (a melee
-        # swing, even with a hostile adjacent, is never penalized).
-        if ctx.attacker_ranged_in_melee and _attack_is_effectively_ranged(weapon, distance_ft):
-            dis_sources.append("ranged_in_melee")
-        # SRD 5.2 Heavy — no dedicated ``AdvantageSource`` exists (controller
-        # ruling, C15 task-3 brief): reuses ``"trait"``. Ability-invariant
-        # per attack, computed once above.
-        if heavy_disadvantage:
-            dis_sources.append("trait")
-        # SRD 5.2 §Actions in Combat — Help, Assist an Attack Roll: "giving
-        # Advantage to the next attack roll by one of your allies against
-        # that enemy". ``target_help_advantage`` is already gated to an
-        # ally-of-this-attacker grant (orchestrator-side); the one-use pop
-        # happens after resolution regardless of hit/miss/cancellation — see
-        # ``target_help_advantage`` docstring.
-        if ctx.target_help_advantage.get(target.entity_id):
-            adv_sources.append("help")
-        # SRD 5.2 §Weapon Mastery — Vex (C15 Task 6): "you have Advantage on
-        # your next attack roll against that creature". No dedicated
-        # ``AdvantageSource`` exists for mastery riders (controller ruling,
-        # same "trait" reuse as Heavy below) — the Literal is closed.
-        # ``target_attacker_has_advantage`` (below) folds this into the SAME
-        # boolean ``sneak_attack_triggers`` reads, so a vex-advantaged Rogue
-        # swing can Sneak Attack.
-        target_vex_advantage = bool(ctx.attacker_vex_advantage.get(target.entity_id))
-        if target_vex_advantage:
-            adv_sources.append("trait")
-        # SRD 5.2 §Weapon Mastery — Sap (C15 Task 6): "that creature has
-        # Disadvantage on its next attack roll". Per-ATTACKER (the acting
-        # caster may itself be sapped); reuses the SAME "trait" token.
-        if ctx.attacker_sapped:
-            dis_sources.append("trait")
-        sources = AdvantageSources(advantage=tuple(adv_sources), disadvantage=tuple(dis_sources))
         roll = roll_d20_test(ctx.rng, attack_bonus, sources, forced_natural=_forced_d20(ctx, index))
         mode: AdvantageMode = roll.mode
         natural, total = roll.kept, roll.total
@@ -304,8 +229,258 @@ def resolve_attack(
             apply_activity_effects(
                 activity, ctx, target, save_succeeded=None, cast_level=cast_level
             )
+            # SRD 5.2 §Weapon Mastery — Cleave (C15 Task 7): "If you hit a
+            # creature with a melee attack roll using this weapon, you can
+            # make a melee attack roll with the weapon against a second
+            # creature ...". Gate + candidate are orchestrator-precomputed
+            # (``ctx.cleave_available`` / ``ctx.cleave_candidate``); the
+            # chain draws dice ONLY when it actually fires.
+            if (
+                ctx.cleave_available
+                and ctx.cleave_candidate is not None
+                and weapon is not None
+                and not cleave_fired
+            ):
+                cleave_fired = True
+                _resolve_cleave_chain(
+                    activity,
+                    ctx,
+                    weapon,
+                    ctx.cleave_candidate,
+                    governing_ability,
+                    attack_bonus,
+                    attack_bonus_expr,
+                    attacker_has_advantage=attacker_has_advantage,
+                    attacker_has_disadvantage=attacker_has_disadvantage,
+                    heavy_disadvantage=heavy_disadvantage,
+                )
         else:
             apply_mastery_on_miss(weapon, ctx, target, governing_ability)
+
+
+def _resolve_cleave_chain(
+    activity: AttackActivity,
+    ctx: ActivityResolutionContext,
+    weapon: Weapon,
+    candidate: Combatant,
+    governing_ability: str | None,
+    attack_bonus: int,
+    attack_bonus_expr: str | None,
+    *,
+    attacker_has_advantage: bool,
+    attacker_has_disadvantage: bool,
+    heavy_disadvantage: bool,
+) -> None:
+    """SRD 5.2 §Weapon Mastery — Cleave: roll the ONE chained melee attack
+    against ``candidate`` (the orchestrator's R5 pick) and, on a hit, apply
+    "the weapon's damage, but don't add your ability modifier to that damage
+    unless that modifier is negative".
+
+    * To-hit is the FULL main-swing bonus (ability + proficiency + parsed
+      ``attack.bonus`` + magical bonus, plus the same Bless/Bane + magic-
+      weapon dice sidecar), with a FRESH d20 through ``ctx.rng`` — never the
+      ``force_d20`` test seam (that is scoped to the first main target).
+      Advantage geometry goes through ``_attack_roll_sources`` exactly like
+      a main swing; the candidate's conditions are read off the
+      ``Combatant`` since it is not one of ``ctx.targets`` (the orchestrator
+      does thread its ``target_distance_ft`` entry, so the distance-aware
+      Prone / auto-crit rows apply; cover / help / dodge / vex maps hold no
+      entry for it — a chained swing takes no Help or Vex benefit).
+    * Damage reuses ``_apply_on_hit_damage`` under a LOCAL
+      ``dataclasses.replace`` of the context with
+      ``suppress_positive_ability_damage_mod=True`` (the Light-property
+      mechanic, same wording) — the shared ``ctx`` is never flipped. The
+      shallow copy shares ``rng`` / ``variables`` / ``mastery_procs`` /
+      ``event_emitter``, so the seeded stream and the writeback channel are
+      the same objects. Attribution is ``source_id="mastery:cleave"``.
+    * NO re-proc: this chain never calls ``apply_mastery_on_hit`` /
+      ``apply_mastery_on_miss`` or ``apply_activity_effects`` — a chained
+      hit cannot cleave again (or vex/sap/slow/push/topple), by construction.
+    * The ``("cleave", candidate_id)`` marker is appended to
+      ``ctx.mastery_procs`` whenever the chain ROLLS (hit or miss — "you can
+      make this extra attack only once per turn" caps the attack, not the
+      hit); the orchestrator folds it into ``cleave_spent_this_turn``.
+    """
+    cid = candidate.entity_id
+    distance_ft = ctx.target_distance_ft.get(cid)
+    candidate_conditions = ctx.target_conditions.get(cid) or active_condition_names(
+        candidate.conditions
+    )
+    sources, _vex = _attack_roll_sources(
+        ctx,
+        candidate,
+        weapon,
+        distance_ft=distance_ft,
+        target_conditions=candidate_conditions,
+        attacker_has_advantage=attacker_has_advantage,
+        attacker_has_disadvantage=attacker_has_disadvantage,
+        heavy_disadvantage=heavy_disadvantage,
+    )
+    roll = roll_d20_test(ctx.rng, attack_bonus, sources, forced_natural=None)
+    total = roll.total
+    if attack_bonus_expr:
+        total += roll_expr(attack_bonus_expr, ctx.rng)
+    effective_ac = (
+        candidate.ac
+        + cover_bonus(ctx.target_cover.get(cid, "none"))
+        + ctx.passive_ac_bonus.get(cid, 0)
+    )
+    auto_crit = (
+        distance_ft is not None
+        and distance_ft <= 5
+        and conditions_auto_crit_within_5ft(candidate_conditions)
+    )
+    is_crit, is_hit = _resolve_hit_outcome(
+        roll.kept, total, effective_ac, activity, auto_crit_on_hit=auto_crit
+    )
+    ctx.event_emitter(
+        AttackRolled(
+            attacker_id=ctx.caster.entity_id,
+            target_id=cid,
+            roll_total=total,
+            advantage=roll.mode,
+            is_crit=is_crit,
+            is_hit=is_hit,
+            is_opportunity_attack=False,
+            natural=roll.kept,
+            modifier=attack_bonus,
+            sources=list(roll.sources),
+        )
+    )
+    ctx.mastery_procs.append(("cleave", cid))
+    if not is_hit:
+        return
+    chain_ctx = replace(ctx, suppress_positive_ability_damage_mod=True)
+    _apply_on_hit_damage(
+        activity,
+        chain_ctx,
+        candidate,
+        weapon,
+        governing_ability,
+        is_crit=is_crit,
+        source_id_override="mastery:cleave",
+    )
+
+
+def _attack_roll_sources(
+    ctx: ActivityResolutionContext,
+    target: Combatant,
+    weapon: Weapon | None,
+    *,
+    distance_ft: int | None,
+    target_conditions: list[str],
+    attacker_has_advantage: bool,
+    attacker_has_disadvantage: bool,
+    heavy_disadvantage: bool,
+) -> tuple[AdvantageSources, bool]:
+    """Collect every advantage / disadvantage source for ONE attack roll by
+    ``ctx.caster`` against ``target`` — the per-target half of
+    ``resolve_attack`` (source ORDER is load-bearing: it is the order
+    ``AttackRolled.sources`` reports). Returns the typed sources plus the
+    target-keyed Vex flag (which ``resolve_attack`` ALSO feeds into the
+    Sneak Attack trigger). Split out (C15 Task 7) so the Cleave chain rolls
+    its second attack through the exact same source geometry — for the
+    chain's candidate the per-target maps (cover / help / vex / dodge /
+    range) simply hold no entry, and its conditions are read off the
+    ``Combatant`` directly by the caller.
+    """
+    # Condition-derived half. The helper is called once PER SIDE (the other
+    # side's list empty) purely so the emitted source can name which side
+    # produced it: neither direction is one-way any more — an Invisible
+    # attacker grants itself advantage while an Invisible TARGET imposes
+    # disadvantage, and a Restrained attacker takes disadvantage while a
+    # Restrained TARGET grants advantage. Every row in the helper reads
+    # exactly one of its two arguments, so the split is exact.
+    attacker_cond_adv, attacker_cond_dis = conditions_grant_advantage_on_attack(
+        ctx.attacker_conditions,
+        [],
+        grappler_id=ctx.attacker_grappler_id,
+        target_id=target.entity_id,
+    )
+    target_cond_adv, target_cond_dis = conditions_grant_advantage_on_attack(
+        [],
+        target_conditions,
+        distance_ft=distance_ft,
+    )
+    adv_sources: list[AdvantageSource] = []
+    dis_sources: list[AdvantageSource] = []
+    if attacker_has_advantage:
+        adv_sources.append("flag")
+    if attacker_cond_adv:
+        adv_sources.append("condition:attacker")
+    if target_cond_adv:
+        adv_sources.append("condition:target")
+    if attacker_has_disadvantage:
+        dis_sources.append("flag")
+    if attacker_cond_dis:
+        dis_sources.append("condition:attacker")
+    if target_cond_dis:
+        dis_sources.append("condition:target")
+    # C16b — SRD 5.2 "Unseen Attackers and Targets": "When you make an
+    # attack roll against a target you can't see, you have Disadvantage";
+    # "When a creature can't see you, you have Advantage on attack rolls
+    # against it." Both present cancel to normal in ``resolve_mode``.
+    if ctx.attacker_unseen_by.get(target.entity_id):
+        adv_sources.append("unseen")
+    if ctx.target_unseen.get(target.entity_id):
+        dis_sources.append("unseen")
+    # SRD 5.2 §Actions in Combat — Dodge: "any attack roll made against
+    # you has Disadvantage if you can see the attacker". The "can see
+    # the attacker" conjunct is deferred to C16b (no vision model wired
+    # to this seam yet); ``target_dodging`` already folds in the SRD
+    # loss clause (Incapacitated / Speed 0) via
+    # ``_dodge_benefit_active``.
+    if ctx.target_dodging.get(target.entity_id):
+        dis_sources.append("dodge")
+    # SRD 5.2 §Range — "Your attack roll has Disadvantage when your
+    # target is beyond normal range" (a target beyond a weapon's LONG
+    # range is illegal and never reaches this resolver at all — gated
+    # upstream, ``_pc_attack_out_of_range``). Pre-resolved per-target by
+    # the orchestrator (``_target_beyond_normal_range_map``).
+    if ctx.target_beyond_normal_range.get(target.entity_id):
+        dis_sources.append("range:long")
+    # SRD 5.2 "Ranged Attacks in Close Combat" (C15 Task 3): "you have
+    # Disadvantage on the roll if you are within 5 feet of an enemy who
+    # can see you and doesn't have the Incapacitated condition." The
+    # spatial/incapacitated/vision predicate is pre-resolved orchestrator
+    # -side (``_hostile_adjacent_to_attacker``) into the per-ATTACKER
+    # ``ctx.attacker_ranged_in_melee`` flag; this pure resolver only
+    # gates it on the attack itself being effectively ranged (a melee
+    # swing, even with a hostile adjacent, is never penalized).
+    if ctx.attacker_ranged_in_melee and _attack_is_effectively_ranged(weapon, distance_ft):
+        dis_sources.append("ranged_in_melee")
+    # SRD 5.2 Heavy — no dedicated ``AdvantageSource`` exists (controller
+    # ruling, C15 task-3 brief): reuses ``"trait"``. Ability-invariant
+    # per attack, computed once above.
+    if heavy_disadvantage:
+        dis_sources.append("trait")
+    # SRD 5.2 §Actions in Combat — Help, Assist an Attack Roll: "giving
+    # Advantage to the next attack roll by one of your allies against
+    # that enemy". ``target_help_advantage`` is already gated to an
+    # ally-of-this-attacker grant (orchestrator-side); the one-use pop
+    # happens after resolution regardless of hit/miss/cancellation — see
+    # ``target_help_advantage`` docstring.
+    if ctx.target_help_advantage.get(target.entity_id):
+        adv_sources.append("help")
+    # SRD 5.2 §Weapon Mastery — Vex (C15 Task 6): "you have Advantage on
+    # your next attack roll against that creature". No dedicated
+    # ``AdvantageSource`` exists for mastery riders (controller ruling,
+    # same "trait" reuse as Heavy below) — the Literal is closed.
+    # ``target_attacker_has_advantage`` (below) folds this into the SAME
+    # boolean ``sneak_attack_triggers`` reads, so a vex-advantaged Rogue
+    # swing can Sneak Attack.
+    target_vex_advantage = bool(ctx.attacker_vex_advantage.get(target.entity_id))
+    if target_vex_advantage:
+        adv_sources.append("trait")
+    # SRD 5.2 §Weapon Mastery — Sap (C15 Task 6): "that creature has
+    # Disadvantage on its next attack roll". Per-ATTACKER (the acting
+    # caster may itself be sapped); reuses the SAME "trait" token.
+    if ctx.attacker_sapped:
+        dis_sources.append("trait")
+    return (
+        AdvantageSources(advantage=tuple(adv_sources), disadvantage=tuple(dis_sources)),
+        target_vex_advantage,
+    )
 
 
 # ── attacker advantage / Sneak Attack production ─────────────────────────────
@@ -615,8 +790,13 @@ def _apply_on_hit_damage(
     is_crit: bool,
     attacker_has_advantage: bool = False,
     attacker_has_disadvantage: bool = False,
+    source_id_override: str | None = None,
 ) -> int:
     """Roll base weapon damage + activity parts for one hit target and apply.
+
+    ``source_id_override`` (C15 Task 7) replaces the default attribution below
+    — the Cleave chain passes ``"mastery:cleave"`` so its ``DamageApplied``
+    is distinguishable from the main weapon hit.
 
     Sets ``variables["in_crit"]`` for the duration of this target's damage rolls so
     the shared dice helper doubles dice on a crit, then restores the prior value so
@@ -739,27 +919,13 @@ def _apply_on_hit_damage(
             if sneak_dice:
                 by_type[first_type] += roll_expr(sneak_dice, ctx.rng, crit=is_crit)
 
-        # C15 — damage-source attribution (``DamageApplied.source_id``): base
-        # weapon damage attributes to the weapon's slug; a synthesized
-        # legacy-fixture swing (no weapon, see
-        # ``orchestrator._synthesize_attack_from_legacy_fields``) attributes to
-        # its synthesized activity id instead. A non-weapon, non-synthesized
-        # attack (e.g. a spell attack) leaves it ``None`` this cluster — cast
-        # attribution is a C17+ seam.
-        if weapon is not None:
-            source_id: str | None = weapon.slug
-        elif activity.id.startswith("synth:"):
-            source_id = activity.id
-        else:
-            source_id = None
-
         # spell-delivered attack rolls are magical too (spells are magical effects)
         total_dealt = apply_damage(
             target,
             dict(by_type),
             ctx,
             magical=(weapon is not None and weapon.magical) or ctx.base_spell_level is not None,
-            source_id=source_id,
+            source_id=_damage_source_id(activity, weapon, source_id_override),
             is_crit=is_crit,
         )
     finally:
@@ -769,6 +935,27 @@ def _apply_on_hit_damage(
             else:
                 ctx.variables[_IN_CRIT] = previous
     return total_dealt
+
+
+def _damage_source_id(
+    activity: AttackActivity, weapon: Weapon | None, override: str | None
+) -> str | None:
+    """C15 — damage-source attribution (``DamageApplied.source_id``): an
+    explicit ``override`` (the Cleave chain's ``"mastery:cleave"``) wins;
+    else base weapon damage attributes to the weapon's slug; a synthesized
+    legacy-fixture swing (no weapon, see
+    ``orchestrator._synthesize_attack_from_legacy_fields``) attributes to its
+    synthesized activity id instead. A non-weapon, non-synthesized attack
+    (e.g. a spell attack) yields ``None`` this cluster — cast attribution is a
+    C17+ seam.
+    """
+    if override is not None:
+        return override
+    if weapon is not None:
+        return weapon.slug
+    if activity.id.startswith("synth:"):
+        return activity.id
+    return None
 
 
 def _roll_base_weapon_damage(

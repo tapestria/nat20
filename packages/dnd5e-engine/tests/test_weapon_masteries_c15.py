@@ -490,3 +490,500 @@ def test_d_sap_mark_expires_at_the_sappers_own_next_turn_start_if_unused() -> No
     live = run_async(_run())
     assert live.current_actor_id == "char:sapper"
     assert "char:sapped" not in live.sap_marks
+
+
+# ===========================================================================
+# C15 Task 7 — Slow, Push, Cleave, Nick (completing all eight masteries)
+# ===========================================================================
+#
+# SRD 5.2 verbatim (Appendix D, Weapon Mastery):
+#
+# * **Slow** — "If you hit a creature with this weapon and deal damage to it,
+#   you can reduce its Speed by 10 feet until the start of your next turn. If
+#   the creature is hit more than once by weapons that have this property,
+#   the Speed reduction doesn't exceed 10 feet."
+# * **Push** — "If you hit a creature with this weapon, you can push the
+#   creature up to 10 feet straight away from yourself if it is Large or
+#   smaller."
+# * **Cleave** — "If you hit a creature with a melee attack roll using this
+#   weapon, you can make a melee attack roll with the weapon against a second
+#   creature within 5 feet of the first that is also within your reach. On a
+#   hit, the second creature takes the weapon's damage, but don't add your
+#   ability modifier to that damage unless that modifier is negative. You can
+#   make this extra attack only once per turn."
+# * **Nick** — "When you make the extra attack of the Light property, you can
+#   make it as part of the Attack action instead of as a Bonus Action. You
+#   can make this extra attack only once per turn."
+#
+# Corpus slugs (grepped from canonical/items/*.json ``"mastery"``): club /
+# whip / javelin / longbow / light-crossbow / sling = slow; greatclub / pike /
+# warhammer / heavy-crossbow = push; greataxe / halberd = cleave; scimitar /
+# dagger / sickle / light-hammer = nick; shortsword = vex (the non-Nick
+# off-hand control below).
+
+from dnd5e_engine.events import AttackFailed, CombatantMoved, DamageApplied  # noqa: E402
+from dnd5e_engine.orchestrator import _effective_speed  # noqa: E402
+
+
+def _pc(entity_id: str, name: str, zone: str, **overrides: object) -> PartyMemberSpec:
+    base: dict[str, object] = dict(
+        entity_id=entity_id,
+        name=name,
+        initiative=20,
+        hp_current=20,
+        hp_max=20,
+        strength=16,
+        dexterity=16,
+        ac=1,
+        zone_id=zone,
+    )
+    base.update(overrides)
+    return PartyMemberSpec(**base)  # type: ignore[arg-type]
+
+
+def _mon(entity_id: str, name: str, zone: str, **overrides: object) -> EncounterMemberSpec:
+    base: dict[str, object] = dict(
+        entity_id=entity_id,
+        entity_type="Monster",
+        name=name,
+        initiative=10,
+        hp_current=500,
+        hp_max=500,
+        ac=1,
+        zone_id=zone,
+    )
+    base.update(overrides)
+    return EncounterMemberSpec(**base)  # type: ignore[arg-type]
+
+
+def _combatant(live, entity_id: str) -> Combatant:
+    return next(c for c in live.initiative if c.entity_id == entity_id)
+
+
+def _attack(weapon_id: str, target_id: str, **kw: object) -> PlayerIntent:
+    return PlayerIntent(intent_type="attack", weapon_id=weapon_id, target_id=target_id, **kw)  # type: ignore[arg-type]
+
+
+async def _start(session_id: str, party, encounter, *, seed: int = 1):
+    start = await start_combat(
+        session_id=session_id,
+        party=party,
+        encounter=encounter,
+        scene_zones=None,
+        grid_scene=grid_scene(),
+        rng_seed=seed,
+    )
+    live = _get_live(start.handle)
+    # Every attack d20 lands a natural 20 (auto-hit, crit) and every damage
+    # die rolls its maximum — the mastery riders under test all key off a
+    # HIT, so the d20 must never fumble.
+    live.rng = _MaxRandom()
+    return start, live
+
+
+# ── (a) Slow ─────────────────────────────────────────────────────────────────
+
+
+def test_a_slow_hit_reduces_target_speed_by_10_and_clamps_movement() -> None:
+    """(a) A club (slow) hit that deals damage reduces the TARGET's effective
+    Speed by 10 ft; its unspent movement budget is clamped to the new cap."""
+    club = _LOADER.get_weapon("club")
+    assert club is not None
+    assert club.mastery == "slow"
+
+    async def _run():
+        start, live = await _start(
+            "c15-t7-a-slow",
+            [_pc("char:hero", "Hero", cell(0, 0))],
+            [_mon("mon:foe", "Foe", cell(0, 1))],
+        )
+        base = _effective_speed(_combatant(live, "mon:foe"), live)
+        await submit_player_intent(
+            start.handle, actor_id="char:hero", intent=_attack("club", "mon:foe")
+        )
+        return live, base
+
+    live, base = run_async(_run())
+    foe = _combatant(live, "mon:foe")
+    assert _effective_speed(foe, live) == base - 10
+    assert foe.movement_remaining <= base - 10
+    assert live.slow_marks == {"mon:foe": {"char:hero"}}
+
+
+def test_a_slow_never_stacks_beyond_10_ft() -> None:
+    """(a) SRD: "the Speed reduction doesn't exceed 10 feet" — two slow-weapon
+    hits from two different attackers still reduce Speed by exactly 10."""
+
+    async def _run():
+        start, live = await _start(
+            "c15-t7-a-slow-cap",
+            [
+                _pc("char:hero1", "Hero1", cell(0, 0), initiative=20),
+                _pc("char:hero2", "Hero2", cell(1, 0), initiative=15),
+            ],
+            [_mon("mon:foe", "Foe", cell(0, 1))],
+        )
+        base = _effective_speed(_combatant(live, "mon:foe"), live)
+        await submit_player_intent(
+            start.handle, actor_id="char:hero1", intent=_attack("club", "mon:foe")
+        )
+        await submit_player_intent(
+            start.handle, actor_id="char:hero1", intent=_PASS
+        )  # club is Light
+        await submit_player_intent(
+            start.handle, actor_id="char:hero2", intent=_attack("club", "mon:foe")
+        )
+        return live, base
+
+    live, base = run_async(_run())
+    assert live.slow_marks == {"mon:foe": {"char:hero1", "char:hero2"}}
+    assert _effective_speed(_combatant(live, "mon:foe"), live) == base - 10
+
+
+def test_a_slow_expires_at_the_source_attackers_next_turn_start() -> None:
+    """(a) "until the start of your next turn" — the SOURCE attacker's own
+    next turn. The foe's own intervening turn starts with the reduced
+    budget; the hero's next TurnStarted clears the mark."""
+
+    async def _run():
+        start, live = await _start(
+            "c15-t7-a-slow-expiry",
+            [_pc("char:hero", "Hero", cell(0, 0))],
+            [_mon("mon:foe", "Foe", cell(0, 1))],
+        )
+        base = _effective_speed(_combatant(live, "mon:foe"), live)
+        await submit_player_intent(
+            start.handle, actor_id="char:hero", intent=_attack("club", "mon:foe")
+        )
+        await submit_player_intent(
+            start.handle, actor_id="char:hero", intent=_PASS
+        )  # club is Light
+        # mon:foe's turn (no template -> auto-pass); its TurnStarted budget
+        # reset must project the slowed Speed.
+        foe_speed_on_its_turn = _effective_speed(_combatant(live, "mon:foe"), live)
+        foe_budget_on_its_turn = _combatant(live, "mon:foe").movement_remaining
+        await advance_monster_turn(start.handle)
+        # Round wrap -> char:hero's TurnStarted -> mark cleared.
+        return live, base, foe_speed_on_its_turn, foe_budget_on_its_turn
+
+    live, base, foe_speed_on_its_turn, foe_budget_on_its_turn = run_async(_run())
+    assert foe_speed_on_its_turn == base - 10
+    assert foe_budget_on_its_turn == base - 10
+    assert live.current_actor_id == "char:hero"
+    assert live.slow_marks == {}
+    assert _effective_speed(_combatant(live, "mon:foe"), live) == base
+
+
+def test_a_slow_hit_dealing_zero_damage_does_not_proc() -> None:
+    """(a) SRD Slow requires the hit to "deal damage to it" — a bludgeoning-
+    immune target takes zero final damage, so no proc is appended."""
+    club = _LOADER.get_weapon("club")
+    assert club is not None
+    activity = next(a for a in club.activities if a.kind == "attack")
+
+    def _procs(*, immune: bool) -> list[tuple[str, str]]:
+        ctx = ActivityResolutionContext(
+            rng=random.Random(1),
+            caster=_hero(),
+            targets=[_foe(damage_immunities=["bludgeoning"] if immune else [])],
+            event_emitter=lambda _ev: None,
+            caster_abilities={"str": 16, "dex": 16, "con": 10, "int": 10, "wis": 10, "cha": 10},
+            caster_proficiency_bonus=2,
+            caster_level=1,
+            variables={"force_d20": 15},
+        )
+        resolve_activity(activity, ctx, weapon=club)
+        return list(ctx.mastery_procs)
+
+    assert _procs(immune=True) == []
+    assert _procs(immune=False) == [("slow", "mon:foe")]
+
+
+# ── (b) Push ─────────────────────────────────────────────────────────────────
+
+
+def test_b_push_hit_shoves_the_target_10_ft_straight_away() -> None:
+    """(b) A greatclub (push) hit moves the target 10 ft directly away from
+    the attacker — ``CombatantMoved(forced=True, distance_ft=10)`` and the
+    live position update (controller ruling R5: always the full 10 ft)."""
+    greatclub = _LOADER.get_weapon("greatclub")
+    assert greatclub is not None
+    assert greatclub.mastery == "push"
+
+    async def _run():
+        start, live = await _start(
+            "c15-t7-b-push",
+            [_pc("char:hero", "Hero", cell(0, 0))],
+            [_mon("mon:foe", "Foe", cell(0, 1))],
+        )
+        await submit_player_intent(
+            start.handle, actor_id="char:hero", intent=_attack("greatclub", "mon:foe")
+        )
+        return live
+
+    live = run_async(_run())
+    moved = [e for e in events_of(live, CombatantMoved) if e.actor_id == "mon:foe"]
+    assert len(moved) == 1
+    assert moved[0].forced is True
+    assert moved[0].distance_ft == 10
+    assert moved[0].from_zone == cell(0, 1)
+    assert moved[0].to_zone == cell(0, 3)
+    assert live.actor_zone["mon:foe"] == cell(0, 3)
+    # Push needs only a HIT — no damage-dealt gate, and the proc is a
+    # transient fold (no lingering live-state mark).
+    assert not hasattr(live, "push_marks")
+
+
+def test_b_push_against_a_boxed_in_target_is_a_no_op() -> None:
+    """(b) A target with nowhere to go (grid edge directly behind it) is
+    not moved and no ``CombatantMoved`` fires — ``push_combatant``'s
+    primitive no-op."""
+
+    async def _run():
+        start, live = await _start(
+            "c15-t7-b-push-boxed",
+            [_pc("char:hero", "Hero", cell(0, 8))],
+            [_mon("mon:foe", "Foe", cell(0, 9))],
+        )
+        await submit_player_intent(
+            start.handle, actor_id="char:hero", intent=_attack("greatclub", "mon:foe")
+        )
+        return live
+
+    live = run_async(_run())
+    assert [e for e in events_of(live, AttackRolled) if e.is_hit]  # the hit landed
+    assert events_of(live, CombatantMoved) == []
+    assert live.actor_zone["mon:foe"] == cell(0, 9)
+
+
+# ── (c) Cleave ───────────────────────────────────────────────────────────────
+
+
+def _cleave_party(**overrides: object) -> list[PartyMemberSpec]:
+    return [_pc("char:hero", "Hero", cell(0, 0), **overrides)]
+
+
+def test_c_cleave_chains_one_extra_attack_into_an_adjacent_second_target() -> None:
+    """(c) A greataxe (cleave) hit on mon:a chains ONE extra attack against
+    mon:b (within 5 ft of mon:a AND within the hero's 5-ft reach). mon:c is
+    within 5 ft of mon:a but 10 ft from the hero (outside reach) — never a
+    candidate. The chain's damage is attributed ``mastery:cleave`` and
+    carries NO positive STR mod: ``_MaxRandom`` crits every swing, so the
+    main hit is 1d12x2 + 3 = 27 and the chain is exactly 24."""
+    greataxe = _LOADER.get_weapon("greataxe")
+    assert greataxe is not None
+    assert greataxe.mastery == "cleave"
+
+    async def _run():
+        start, live = await _start(
+            "c15-t7-c-cleave",
+            _cleave_party(),
+            [
+                _mon("mon:a", "A", cell(0, 1)),
+                _mon("mon:b", "B", cell(1, 1), initiative=9),
+                _mon("mon:c", "C", cell(0, 2), initiative=8),
+            ],
+        )
+        await submit_player_intent(
+            start.handle, actor_id="char:hero", intent=_attack("greataxe", "mon:a")
+        )
+        return live
+
+    live = run_async(_run())
+    swings = [e for e in events_of(live, AttackRolled) if e.attacker_id == "char:hero"]
+    assert [s.target_id for s in swings] == ["mon:a", "mon:b"]
+    assert all(s.is_hit for s in swings)
+    # Full to-hit on the chain: same modifier as the main swing.
+    assert swings[1].modifier == swings[0].modifier
+    damage = {e.target_id: e for e in events_of(live, DamageApplied)}
+    assert damage["mon:a"].source_id == "greataxe"
+    assert damage["mon:a"].amount == 27
+    assert damage["mon:b"].source_id == "mastery:cleave"
+    assert damage["mon:b"].amount == 24
+    assert _combatant(live, "char:hero").cleave_spent_this_turn is True
+
+
+def test_c_cleave_fires_only_once_per_turn() -> None:
+    """(c) "You can make this extra attack only once per turn" — a level-5
+    Fighter (Extra Attack) swings the greataxe twice at mon:a; only the
+    FIRST hit chains (3 hero AttackRolled, not 4), and the cap resets at
+    the hero's next turn start."""
+
+    async def _run():
+        start, live = await _start(
+            "c15-t7-c-cleave-once",
+            _cleave_party(class_slug="fighter", character_level=5),
+            [_mon("mon:a", "A", cell(0, 1)), _mon("mon:b", "B", cell(1, 1), initiative=9)],
+        )
+        await submit_player_intent(
+            start.handle, actor_id="char:hero", intent=_attack("greataxe", "mon:a")
+        )
+        await submit_player_intent(
+            start.handle, actor_id="char:hero", intent=_attack("greataxe", "mon:a")
+        )
+        spent_mid_turn = _combatant(live, "char:hero").cleave_spent_this_turn
+        # An Extra-Attack actor keeps the turn until it passes (C14 R1).
+        await submit_player_intent(start.handle, actor_id="char:hero", intent=_PASS)
+        await advance_monster_turn(start.handle)  # mon:a
+        await advance_monster_turn(start.handle)  # mon:b -> round wrap -> hero
+        return live, spent_mid_turn
+
+    live, spent_mid_turn = run_async(_run())
+    swings = [e for e in events_of(live, AttackRolled) if e.attacker_id == "char:hero"]
+    assert [s.target_id for s in swings] == ["mon:a", "mon:b", "mon:a"]
+    assert spent_mid_turn is True
+    assert live.current_actor_id == "char:hero"
+    assert _combatant(live, "char:hero").cleave_spent_this_turn is False
+
+
+def test_c_cleave_without_a_candidate_does_not_chain() -> None:
+    """(c) No living hostile within 5 ft of the first target and within reach
+    -> no chain, no extra draw, cap NOT spent."""
+
+    async def _run():
+        start, live = await _start(
+            "c15-t7-c-cleave-none",
+            _cleave_party(),
+            [_mon("mon:a", "A", cell(0, 1)), _mon("mon:far", "Far", cell(5, 5), initiative=9)],
+        )
+        await submit_player_intent(
+            start.handle, actor_id="char:hero", intent=_attack("greataxe", "mon:a")
+        )
+        return live
+
+    live = run_async(_run())
+    swings = [e for e in events_of(live, AttackRolled) if e.attacker_id == "char:hero"]
+    assert [s.target_id for s in swings] == ["mon:a"]
+    assert _combatant(live, "char:hero").cleave_spent_this_turn is False
+
+
+def test_c_cleave_chain_hit_does_not_re_proc_cleave() -> None:
+    """(c) The chained hit never itself chains: mon:b (picked by the
+    ascending-entity_id tie-break over mon:d, both 5 ft from the hero and
+    from mon:a) is hit, and mon:d — adjacent to mon:b and within reach — is
+    NOT attacked. Exactly two hero swings."""
+
+    async def _run():
+        start, live = await _start(
+            "c15-t7-c-cleave-no-recursion",
+            _cleave_party(),
+            [
+                _mon("mon:a", "A", cell(0, 1)),
+                _mon("mon:b", "B", cell(1, 1), initiative=9),
+                _mon("mon:d", "D", cell(1, 0), initiative=8),
+            ],
+        )
+        await submit_player_intent(
+            start.handle, actor_id="char:hero", intent=_attack("greataxe", "mon:a")
+        )
+        return live
+
+    live = run_async(_run())
+    swings = [e for e in events_of(live, AttackRolled) if e.attacker_id == "char:hero"]
+    assert [s.target_id for s in swings] == ["mon:a", "mon:b"]
+    assert {e.target_id for e in events_of(live, DamageApplied)} == {"mon:a", "mon:b"}
+
+
+# ── (d) Nick ─────────────────────────────────────────────────────────────────
+
+
+def test_d_nick_offhand_swing_keeps_the_bonus_action() -> None:
+    """(d) Dagger main-hand (Light) then scimitar off-hand (Nick, Light): the
+    off-hand swing resolves as part of the Attack action — the Bonus Action
+    is STILL available afterwards, the once-per-turn ``offhand_attack_spent``
+    cap is set, and the Light-property mod suppression still applies
+    (scimitar 1d6 crit under ``_MaxRandom`` = 12, no +3)."""
+    scimitar = _LOADER.get_weapon("scimitar")
+    assert scimitar is not None
+    assert scimitar.mastery == "nick"
+
+    async def _run():
+        start, live = await _start(
+            "c15-t7-d-nick",
+            [_pc("char:hero", "Hero", cell(0, 0))],
+            [_mon("mon:foe", "Foe", cell(0, 1))],
+        )
+        await submit_player_intent(
+            start.handle, actor_id="char:hero", intent=_attack("dagger", "mon:foe")
+        )
+        await submit_player_intent(
+            start.handle, actor_id="char:hero", intent=_attack("scimitar", "mon:foe")
+        )
+        return live
+
+    live = run_async(_run())
+    hero = _combatant(live, "char:hero")
+    assert hero.offhand_attack_spent is True
+    assert hero.bonus_action_available is True
+    assert live.current_actor_id == "char:hero"  # the turn stays open
+    damage = events_of(live, DamageApplied)
+    assert [e.source_id for e in damage] == ["dagger", "scimitar"]
+    assert damage[-1].amount == 12
+
+
+def test_d_non_nick_offhand_swing_still_spends_the_bonus_action() -> None:
+    """(d)-control: dagger main-hand then shortsword (vex, Light) off-hand —
+    the ordinary Two-Weapon Fighting economy: Bonus Action spent."""
+
+    async def _run():
+        start, live = await _start(
+            "c15-t7-d-non-nick",
+            [_pc("char:hero", "Hero", cell(0, 0))],
+            [_mon("mon:foe", "Foe", cell(0, 1))],
+        )
+        await submit_player_intent(
+            start.handle, actor_id="char:hero", intent=_attack("dagger", "mon:foe")
+        )
+        await submit_player_intent(
+            start.handle, actor_id="char:hero", intent=_attack("shortsword", "mon:foe")
+        )
+        return live
+
+    live = run_async(_run())
+    hero = _combatant(live, "char:hero")
+    assert hero.offhand_attack_spent is True
+    assert hero.bonus_action_available is False
+
+
+def _spend_bonus_action(live, entity_id: str) -> None:
+    for idx, c in enumerate(live.initiative):
+        if c.entity_id == entity_id:
+            live.initiative[idx] = c.model_copy(update={"bonus_action_available": False})
+            break
+
+
+def test_d_nick_offhand_swing_resolves_even_with_the_bonus_action_already_spent() -> None:
+    """(d) Nick fidelity (controller ruling): "as part of the Attack action
+    instead of as a Bonus Action" — a Nick off-hand swing needs NO Bonus
+    Action. With the hero's Bonus Action already spent, dagger main-hand ->
+    scimitar (Nick) off-hand RESOLVES; the same state with a non-Nick
+    off-hand (handaxe, vex) is rejected exactly as before (``AttackFailed
+    (no_action_economy)``, turn kept)."""
+
+    async def _run(offhand: str):
+        start, live = await _start(
+            f"c15-t7-d-nick-no-ba-{offhand}",
+            [_pc("char:hero", "Hero", cell(0, 0))],
+            [_mon("mon:foe", "Foe", cell(0, 1))],
+        )
+        _spend_bonus_action(live, "char:hero")
+        await submit_player_intent(
+            start.handle, actor_id="char:hero", intent=_attack("dagger", "mon:foe")
+        )
+        await submit_player_intent(
+            start.handle, actor_id="char:hero", intent=_attack(offhand, "mon:foe")
+        )
+        return live
+
+    nick = run_async(_run("scimitar"))
+    assert [e.source_id for e in events_of(nick, DamageApplied)] == ["dagger", "scimitar"]
+    hero = _combatant(nick, "char:hero")
+    assert hero.offhand_attack_spent is True
+    assert hero.bonus_action_available is False
+
+    plain = run_async(_run("handaxe"))
+    assert [e.source_id for e in events_of(plain, DamageApplied)] == ["dagger"]
+    failures = [e for e in events_of(plain, AttackFailed) if e.actor_id == "char:hero"]
+    assert failures
+    assert failures[-1].reason == "no_action_economy"
+    assert _combatant(plain, "char:hero").offhand_attack_spent is False

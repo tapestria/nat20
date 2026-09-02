@@ -981,7 +981,7 @@ def _pop_sap_mark(live: _LiveCombat, attacker_id: str, pre_event_count: int) -> 
 def _fold_mastery_procs(
     live: _LiveCombat, attacker_id: str, ctx: ActivityResolutionContext
 ) -> None:
-    """SRD 5.2 §Weapon Mastery — Vex / Sap writeback (C15 Task 6, controller
+    """SRD 5.2 §Weapon Mastery — proc writeback (C15 Tasks 6-7, controller
     ruling R4). Fold every ``(mastery_slug, target_id)`` the pure resolver
     appended to ``ctx.mastery_procs`` this resolution into live combat
     state:
@@ -992,15 +992,106 @@ def _fold_mastery_procs(
     * ``"sap"`` -> ``live.sap_marks[target_id] = attacker_id`` ("before the
       start of your next turn" — cleared at the attacker's own next
       ``TurnStarted``, see ``_emit_apply_turn_started``).
+    * ``"slow"`` (Task 7) -> ``live.slow_marks[target_id] |= {attacker_id}``
+      then ``_clamp_movement_budget`` on the target (a slowed creature
+      mid-turn loses budget above its new cap). Flat -10 ft while ANY mark
+      is outstanding — never stacks (SRD "doesn't exceed 10 feet").
+    * ``"push"`` (Task 7) -> ``push_combatant(live, target_id, <attacker's
+      cell>, 10)`` — the full 10 ft straight away from the attacker
+      (controller ruling R5), a no-op when the attacker has no tracked
+      cell, the target is boxed in, or the backend is the zone graph.
+    * ``"cleave"`` (Task 7) -> the chain FIRED marker: flip the attacker's
+      ``cleave_spent_this_turn`` ("only once per turn"). Not a target
+      effect — ``attack.py`` already resolved the chained roll.
 
     Non-stacking (R5): a re-proc REFRESHES the grant/mark (overwrite, not
     append/increment).
     """
+    attacker_cell = live.actor_zone.get(attacker_id)
     for mastery_slug, target_id in ctx.mastery_procs:
         if mastery_slug == "vex":
             live.vex_grants.setdefault(attacker_id, {})[target_id] = 2
         elif mastery_slug == "sap":
             live.sap_marks[target_id] = attacker_id
+        elif mastery_slug == "slow":
+            live.slow_marks.setdefault(target_id, set()).add(attacker_id)
+            _clamp_movement_budget(live, target_id)
+        elif mastery_slug == "push":
+            if attacker_cell is not None:
+                push_combatant(live, target_id, attacker_cell, 10)
+        elif mastery_slug == "cleave":
+            _set_cleave_spent(live, attacker_id)
+
+
+def _set_cleave_spent(live: _LiveCombat, actor_id: str) -> None:
+    """SRD 5.2 §Weapon Mastery — Cleave: "You can make this extra attack only
+    once per turn." Flip the actor's per-turn cap via the standard
+    initiative-list model_copy write (reset at the actor's own TurnStarted).
+    """
+    for idx, c in enumerate(live.initiative):
+        if c.entity_id == actor_id:
+            live.initiative[idx] = c.model_copy(update={"cleave_spent_this_turn": True})
+            break
+
+
+def _cleave_candidate(
+    live: _LiveCombat, attacker: Combatant, weapon: Weapon | None, targets: Sequence[Combatant]
+) -> Combatant | None:
+    """SRD 5.2 §Weapon Mastery — Cleave (C15 Task 7): the deterministic
+    "second creature within 5 feet of the first that is also within your
+    reach", per controller ruling R5 — a LIVING hostile (opposite side of
+    ``attacker``) other than the first target, within 5 ft of the FIRST
+    target AND within the attacker's melee reach (5 ft, or 10 ft with the
+    Reach property); among several, the one NEAREST TO THE ATTACKER, ties
+    broken by ascending ``entity_id``. ``None`` when the weapon is not a
+    cleave weapon, positions are untracked, or nothing qualifies. A pure
+    spatial read owned here so ``attack.py`` never touches the seam.
+    """
+    if weapon is None or weapon.mastery != "cleave" or not targets:
+        return None
+    attacker_side = _side_of(live, attacker.entity_id)
+    attacker_zone = live.actor_zone.get(attacker.entity_id)
+    first = targets[0]
+    first_zone = live.actor_zone.get(first.entity_id)
+    if attacker_side is None or attacker_zone is None or first_zone is None:
+        return None
+    reach = 10 if WeaponProperty.REACH in weapon.properties else 5
+    best: tuple[int, str, Combatant] | None = None
+    for other in live.initiative:
+        if (
+            other.entity_id == first.entity_id
+            or other.entity_id in attacker_side
+            or other.entity_id in live.dead_ids
+            or not other.is_alive
+        ):
+            continue
+        other_zone = live.actor_zone.get(other.entity_id)
+        if other_zone is None or not live.topology.within_range(first_zone, other_zone, 5):
+            continue
+        distance = live.topology.distance_ft(attacker_zone, other_zone)
+        if distance is None or distance > reach:
+            continue
+        if best is None or (distance, other.entity_id) < best[:2]:
+            best = (distance, other.entity_id, other)
+    return None if best is None else best[2]
+
+
+def _cleave_available(
+    current: Combatant, weapon: Weapon | None, main_target_distance_ft: int | None
+) -> bool:
+    """SRD 5.2 §Weapon Mastery — Cleave gate: the swung weapon carries
+    ``cleave``, the attacker has not already cleaved this turn, and the
+    swing is a MELEE attack within reach ("hit a creature with a melee attack
+    roll"). A cleave weapon is never Thrown in the corpus, but the reach
+    check keeps a hypothetical thrown use from chaining. ``None`` distance
+    (untracked) counts as within reach, mirroring ``_versatile_grip_applies``.
+    """
+    if weapon is None or weapon.mastery != "cleave" or current.cleave_spent_this_turn:
+        return False
+    if weapon.weapon_category in {"simple_ranged", "martial_ranged"}:
+        return False
+    reach = 10 if WeaponProperty.REACH in weapon.properties else 5
+    return main_target_distance_ft is None or main_target_distance_ft <= reach
 
 
 #: ``ActiveEffect.origin`` prefixes whose THIRD ``:``-segment is the entity that
@@ -1813,6 +1904,21 @@ class _LiveCombat:
     # the PC/monster attack-context build sites. Populated by folding
     # ``ActivityResolutionContext.mastery_procs`` post-resolution (R4).
     sap_marks: dict[str, str] = field(default_factory=dict)
+    # SRD 5.2 §Weapon Mastery — Slow (C15 Task 7): *"If you hit a creature
+    # with this weapon and deal damage to it, you can reduce its Speed by 10
+    # feet until the start of your next turn. If the creature is hit more
+    # than once by weapons that have this property, the Speed reduction
+    # doesn't exceed 10 feet."* Keyed SLOWED-entity entity_id -> the set of
+    # SOURCE attacker entity_ids whose marks are outstanding. The reduction
+    # is a FLAT -10 ft in ``_effective_speed`` whenever the set is non-empty
+    # (the SRD's non-stacking cap, controller ruling R5 — a re-proc
+    # refreshes, never stacks); ``_clamp_movement_budget`` re-projects the
+    # target's unspent budget on application. Each source's marks are
+    # cleared at that SOURCE attacker's own next ``TurnStarted``
+    # (``_emit_apply_turn_started``, beside the Sap sweep); an entry whose
+    # set empties is dropped. Populated by folding
+    # ``ActivityResolutionContext.mastery_procs`` post-resolution (R4).
+    slow_marks: dict[str, set[str]] = field(default_factory=dict)
     # Turn-boundary hook registry (``dnd5e_engine.turn_lifecycle``). Populated
     # by ``_register_default_turn_hooks`` in ``start_combat``; run by
     # ``_end_turn_and_advance`` / ``_begin_turn``. Every rule that fires "at the
@@ -1884,11 +1990,22 @@ def _condition_names(c: Combatant) -> list[str]:
     return active_condition_names(c.conditions)
 
 
-def _effective_speed(c: Combatant) -> int:
+def _effective_speed(c: Combatant, live: _LiveCombat | None = None) -> int:
     """SRD 5.2 walking Speed under the combatant's conditions
     (``rules.conditions.project_speed``): 0 under a Speed-0 condition, else
-    ``base_speed - 5 x exhaustion level``."""
-    return project_speed(c.base_speed, _condition_names(c), exhaustion_level_of(c.conditions))
+    ``base_speed - 5 x exhaustion level``.
+
+    C15 Task 7 — SRD 5.2 §Weapon Mastery, Slow: when ``live`` is supplied
+    and ``c`` carries any outstanding ``live.slow_marks`` entry, a FLAT
+    10 ft comes off on top ("the Speed reduction doesn't exceed 10 feet" —
+    one deduction regardless of how many slow-weapon hits landed), floored
+    at 0. ``live=None`` (unit-test / pre-combat callers) projects
+    conditions only.
+    """
+    speed = project_speed(c.base_speed, _condition_names(c), exhaustion_level_of(c.conditions))
+    if live is not None and live.slow_marks.get(c.entity_id):
+        speed = max(0, speed - 10)
+    return speed
 
 
 def _set_dodging(live: _LiveCombat, actor_id: str) -> None:
@@ -1992,14 +2109,15 @@ def _dodge_benefit_active(live: _LiveCombat, c: Combatant) -> bool:
     Dodge benefit is live: the combatant took the Dodge action this turn (or
     a prior turn, "until the start of your next turn") AND has not lost it
     under the SRD loss clause — *"You lose these benefits if you have the
-    Incapacitated condition or if your Speed is 0."* ``live`` is unused today
-    (no vision model yet — the "if you can see the attacker" conjunct on the
-    attack-disadvantage half is deferred to C16b) but threaded through so a
-    future vision check can slot in here without changing every call site.
+    Incapacitated condition or if your Speed is 0."* ``live`` feeds the
+    Slow-mastery Speed projection (C15 Task 7); the "if you can see the
+    attacker" conjunct on the attack-disadvantage half is still deferred to
+    C16b (no vision model wired to this seam yet).
     """
-    del live  # C16b — see docstring; kept for the eventual vision-seam signature.
     return (
-        c.dodging and not conditions_block_actions(_condition_names(c)) and _effective_speed(c) > 0
+        c.dodging
+        and not conditions_block_actions(_condition_names(c))
+        and _effective_speed(c, live) > 0
     )
 
 
@@ -2011,7 +2129,7 @@ def _clamp_movement_budget(live: _LiveCombat, entity_id: str) -> None:
     for idx, c in enumerate(live.initiative):
         if c.entity_id != entity_id:
             continue
-        cap = _effective_speed(c)
+        cap = _effective_speed(c, live)
         if c.movement_remaining > cap:
             live.initiative[idx] = c.model_copy(update={"movement_remaining": cap})
         break
@@ -2559,7 +2677,7 @@ def _handle_dash(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
         budget_consumed = "action"
 
     # SRD 5.2 Dash adds the creature's (current) Speed; a Speed of 0 "can't increase".
-    new_movement = current.movement_remaining + _effective_speed(current)
+    new_movement = current.movement_remaining + _effective_speed(current, live)
     budget_field = (
         "bonus_action_available" if budget_consumed == "bonus_action" else "action_available"
     )
@@ -2710,7 +2828,7 @@ def _handle_stand_up(live: _LiveCombat, current: Combatant, intent: PlayerIntent
             "target_invalid",
             f"actor_id={actor_id!r} is not Prone; nothing to stand up from",
         )
-    speed = _effective_speed(current)
+    speed = _effective_speed(current, live)
     if speed == 0:
         raise IntentRejectedError(
             "speed_zero",
@@ -3063,7 +3181,7 @@ def _emit_apply_turn_started(live: _LiveCombat, event: TurnStarted) -> None:
                     # EFFECTIVE Speed (Speed-0 conditions, Exhaustion) at the
                     # start of their turn. Per-MOVE-intent decrement is the
                     # only other writer; this is the only reset.
-                    "movement_remaining": _effective_speed(c),
+                    "movement_remaining": _effective_speed(c, live),
                     # SRD §Disengage — "for the rest of the turn"; this is
                     # the start of a NEW turn, so the suppression lapses.
                     "disengaging_this_turn": False,
@@ -3090,6 +3208,10 @@ def _emit_apply_turn_started(live: _LiveCombat, event: TurnStarted) -> None:
                     # the actor's own TurnStarted, alongside the other
                     # per-turn attack-economy fields (C15 Task 5).
                     "loading_weapon_fired_this_turn": False,
+                    # SRD 5.2 §Weapon Mastery — Cleave: "only once per turn";
+                    # the cap resets at the actor's own TurnStarted (C15
+                    # Task 7).
+                    "cleave_spent_this_turn": False,
                 }
             )
             break
@@ -3110,6 +3232,17 @@ def _emit_apply_turn_started(live: _LiveCombat, event: TurnStarted) -> None:
     # unconsumed mark simply lapses), mirroring the Help sweep above.
     for sapped_id in [sid for sid, src in live.sap_marks.items() if src == event.actor_id]:
         del live.sap_marks[sapped_id]
+    # SRD 5.2 §Weapon Mastery — Slow (C15 Task 7): "until the start of your
+    # next turn" — again the SOURCE attacker's own next turn. Drop this
+    # actor out of every slowed creature's source set; a creature whose set
+    # empties is no longer slowed (its Speed projects normally from the
+    # next read; an in-flight budget is never RAISED — only its own next
+    # TurnStarted refreshes it).
+    for slowed_id in list(live.slow_marks):
+        sources = live.slow_marks[slowed_id]
+        sources.discard(event.actor_id)
+        if not sources:
+            del live.slow_marks[slowed_id]
 
 
 def _hook_expire_reaction_effects(live: _LiveCombat, actor_id: str | None) -> None:
@@ -5730,17 +5863,27 @@ def _attacks_per_action(current: Combatant) -> int:
     return 1
 
 
+def _offhand_window_open(current: Combatant) -> bool:
+    """SRD 5.2 Light property — True while the "extra attack with a
+    different Light weapon" is still available this turn, REGARDLESS of how
+    it is funded: a Light main-hand weapon was swung and no off-hand swing
+    has been spent yet. Governs whether the main-hand attack tail keeps the
+    turn (R1) — C15 Task 7 (Nick, controller ruling): a wielder whose Bonus
+    Action is already spent may still make the extra attack with a Nick
+    weapon ("as part of the Attack action instead of as a Bonus Action"),
+    and the orchestrator cannot know which off-hand weapon the host will
+    submit until the intent arrives, so the turn must stay open. The
+    Bonus-Action-FUNDED window is ``_twf_window_open``."""
+    return current.light_weapon_swing_slug is not None and not current.offhand_attack_spent
+
+
 def _twf_window_open(current: Combatant) -> bool:
-    """SRD §Two-Weapon Fighting — True while an off-hand Bonus Action swing
-    is still available this turn (Light main-hand weapon swung, no
-    off-hand swing spent yet, Bonus Action unspent). Task 2 wires the
-    off-hand swing itself; until then this only affects whether the
-    main-hand attack tail keeps the turn (R1)."""
-    return (
-        current.light_weapon_swing_slug is not None
-        and not current.offhand_attack_spent
-        and current.bonus_action_available
-    )
+    """SRD §Two-Weapon Fighting — True while a Bonus-Action off-hand swing
+    is still available this turn: the Light extra-attack window is open
+    (``_offhand_window_open``) AND the Bonus Action is unspent. A NON-Nick
+    off-hand weapon needs this; a Nick weapon only needs the broader
+    window (``_is_offhand_attack_swing``)."""
+    return _offhand_window_open(current) and current.bonus_action_available
 
 
 def _attack_action_is_spent(current: Combatant) -> bool:
@@ -5748,11 +5891,12 @@ def _attack_action_is_spent(current: Combatant) -> bool:
     turn should end after a main-hand attack) only when NO swings remain
     this Action, the actor gets exactly one attack per Action (multi-attack
     actors always keep the turn until their budget is exhausted), and no
-    two-weapon-fighting off-hand window is open."""
+    Light off-hand window is open (Bonus-Action-funded OR Nick — C15
+    Task 7, ``_offhand_window_open``)."""
     return (
         current.attacks_remaining <= 0
         and _attacks_per_action(current) == 1
-        and not _twf_window_open(current)
+        and not _offhand_window_open(current)
     )
 
 
@@ -6372,7 +6516,7 @@ def _handle_move(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
     # Restrained / Paralyzed / Petrified / Unconscious) and Exhaustion's
     # ``-5 ft x level``: a creature whose effective Speed is 0 cannot move at
     # all — distinct from ``insufficient_movement`` (budget spent this turn).
-    if _effective_speed(current) == 0:
+    if _effective_speed(current, live) == 0:
         _emit(live, MoveFailed(actor_id=actor_id, reason="speed_zero"))
         return
     destination = intent.target_zone_id
@@ -6742,34 +6886,55 @@ def _is_offhand_attack_swing(
     1-attack actor, or an Extra-Attack actor who has used up its swings) OR
     the host explicitly asked for the Bonus Action swing now
     (``intent.use_bonus_action``, e.g. interleaving the off-hand attack
-    before a multiattack sequence is finished)."""
+    before a multiattack sequence is finished).
+
+    SRD 5.2 §Weapon Mastery — Nick (C15 Task 7, controller ruling): *"When
+    you make the extra attack of the Light property, you can make it as
+    part of the Attack action instead of as a Bonus Action."* A Nick
+    off-hand weapon therefore does NOT require ``bonus_action_available``;
+    the different-Light-weapon gate and the ``offhand_attack_spent``
+    once-per-turn cap still apply unchanged."""
+    if weapon is None or WeaponProperty.LIGHT not in weapon.properties:
+        return False
+    window_open = _twf_window_open(current) or (
+        weapon.mastery == "nick" and _offhand_window_open(current)
+    )
     return (
         intent.intent_type == "attack"
         and current.attack_action_engaged
-        and current.light_weapon_swing_slug is not None
+        and window_open
         and intent.weapon_id != current.light_weapon_swing_slug
-        and not current.offhand_attack_spent
-        and current.bonus_action_available
-        and weapon is not None
-        and WeaponProperty.LIGHT in weapon.properties
         and (current.attacks_remaining <= 0 or intent.use_bonus_action)
     )
 
 
 def _consume_offhand_attack_budget(
-    live: _LiveCombat, actor_id: str, current: Combatant
+    live: _LiveCombat, actor_id: str, current: Combatant, weapon: Weapon | None
 ) -> Combatant:
     """SRD 5.2 §Two-Weapon Fighting — the off-hand swing spends the Bonus
     Action, NOT the per-Action attack budget: ``attacks_remaining`` is left
     untouched (the main-hand swing already decremented it) and
     ``attack_action_engaged`` stays as-is. Marks ``offhand_attack_spent``
     so ``_twf_window_open`` closes and a second off-hand swing this turn
-    is rejected."""
+    is rejected.
+
+    SRD 5.2 §Weapon Mastery — Nick (C15 Task 7): *"When you make the extra
+    attack of the Light property, you can make it as part of the Attack
+    action instead of as a Bonus Action. You can make this extra attack only
+    once per turn."* When the OFF-HAND ``weapon`` (the one making the extra
+    attack) carries ``nick``, the Bonus Action is left UNSPENT — the swing is
+    part of the Attack action. Everything else is unchanged: the
+    different-Light-weapon gate and ``bonus_action_available`` pre-condition
+    in ``_is_offhand_attack_swing``, the ``offhand_attack_spent``
+    once-per-turn cap (the SRD's own "only once per turn"), and the
+    positive-ability-mod suppression on the swing's damage."""
+    is_nick = weapon is not None and weapon.mastery == "nick"
+    update: dict[str, bool] = {"offhand_attack_spent": True}
+    if not is_nick:
+        update["bonus_action_available"] = False
     for idx, c in enumerate(live.initiative):
         if c.entity_id == actor_id:
-            live.initiative[idx] = c.model_copy(
-                update={"bonus_action_available": False, "offhand_attack_spent": True}
-            )
+            live.initiative[idx] = c.model_copy(update=update)
             break
     return _current_actor(live)
 
@@ -7633,7 +7798,7 @@ async def submit_player_intent(
     # per-Action attack budget. An off-hand swing (Task 2) spends the Bonus
     # Action via its own dedicated consume path instead.
     if intent.intent_type == "attack" and is_offhand_swing:
-        current = _consume_offhand_attack_budget(live, actor_id, current)
+        current = _consume_offhand_attack_budget(live, actor_id, current, offhand_weapon)
     elif intent.intent_type == "attack":
         current = _consume_attack_budget(live, actor_id, current)
     else:
@@ -7794,6 +7959,15 @@ async def submit_player_intent(
         use_versatile_damage = intent.two_handed and _versatile_grip_applies(
             fetched_weapon, _versatile_distance_ft
         )
+        # SRD 5.2 §Weapon Mastery — Cleave (C15 Task 7): the once-per-turn
+        # gate + the R5 deterministic second target, both pre-resolved here
+        # (spatial + per-turn state are orchestrator-owned); ``attack.py``
+        # chains the extra roll only when BOTH are set. ``None``/False for
+        # every non-cleave weapon and non-attack intent.
+        cleave_available = _cleave_available(current, fetched_weapon, _versatile_distance_ft)
+        cleave_candidate = (
+            _cleave_candidate(live, current, fetched_weapon, targets) if cleave_available else None
+        )
         actx = build_activity_context(
             current,
             targets,
@@ -7839,7 +8013,14 @@ async def submit_player_intent(
                     else None
                 ),
             ),
-            target_distance_ft=_target_distance_map(live, current.entity_id, targets),
+            # C15 Task 7 — the Cleave candidate (when one exists) rides along
+            # so the chained roll sees its distance-aware condition rows
+            # (Prone within 5 ft, Paralyzed auto-crit) like any target.
+            target_distance_ft=_target_distance_map(
+                live,
+                current.entity_id,
+                [*targets, cleave_candidate] if cleave_candidate is not None else targets,
+            ),
             # SRD 5.2 §Actions in Combat — Dodge: per-target dodge-benefit
             # flag folded into attack disadvantage (attack.py) — the
             # "if you can see the attacker" conjunct is deferred to C16b.
@@ -7898,6 +8079,12 @@ async def submit_player_intent(
             # resolution below.
             attacker_vex_advantage=_attacker_vex_advantage_map(live, current.entity_id, targets),
             attacker_sapped=current.entity_id in live.sap_marks,
+            # SRD 5.2 §Weapon Mastery — Cleave (C15 Task 7): see the
+            # ``cleave_available`` / ``cleave_candidate`` computation above.
+            # The monster site does not thread these: a monster attack
+            # carries no ``Weapon``, so it can never cleave today.
+            cleave_available=cleave_available,
+            cleave_candidate=cleave_candidate,
         )
         for activity in activities:
             resolve_activity(activity, actx, weapon=fetched_weapon)
@@ -8507,7 +8694,7 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
                 # SRD 5.2 Dash adds the creature's EFFECTIVE Speed: a Speed-0
                 # monster (Grappled / Restrained / …) "can't increase" it, so
                 # the gambit is declined outright (budget <= 0 → None).
-                _effective_speed(current),
+                _effective_speed(current, live),
             )
             if dashed_budget is not None and current.action_available:
                 dashed_this_turn = True

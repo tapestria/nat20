@@ -270,6 +270,13 @@ class Combatant(BaseModel):
     # 5). Reset to False at the actor's own TurnStarted, alongside the
     # other per-turn attack-economy fields above.
     loading_weapon_fired_this_turn: bool = False
+    # SRD 5.2 §Weapon Mastery — Cleave: "You can make this extra attack only
+    # once per turn." Set True by the orchestrator once a cleave chain has
+    # FIRED this turn (the extra attack roll was made, hit or miss); gates
+    # ``ActivityResolutionContext.cleave_available`` for every later swing
+    # this turn. Reset to False at the actor's own TurnStarted, alongside
+    # the other per-turn attack-economy fields above (C15 Task 7).
+    cleave_spent_this_turn: bool = False
 
     @model_validator(mode="before")
     @classmethod

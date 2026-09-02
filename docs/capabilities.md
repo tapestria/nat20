@@ -118,7 +118,7 @@ combat engine by nature.
 | HP, AC, hit dice, skill/save proficiencies | ❌ Host-supplied | The engine derives none of them; they arrive pre-computed on the party spec |
 | Ability scores, proficiency, expertise | ⚠️ Partial | Proficient/expertise skill lists are caller-supplied, never derived. ASI/feat advancements are ignored. |
 | Class/species feature activities (Rage, Second Wind, …) | ⚠️ Partial | Data-driven where the corpus carries a typed activity. Extra Attack is now read from granted feature slugs (C14: `extra-attack` / `two-extra-attacks` / `three-extra-attacks`, highest tier wins, never summed). **Still prose-only, so inert:** Fighting Style, Divine Smite, Metamagic, Invocations; `selected_choices` is never read |
-| Weapon mastery (2024) | ⚠️ Partial | Graze and Topple only; the other six log and do nothing |
+| Weapon mastery (2024) | ✅ Resolved | All eight (C15): Graze, Topple, Vex, Sap, Slow, Push, Cleave, Nick. Push ignores the "Large or smaller" size gate (no creature-size attribute yet) |
 | Sneak Attack | ✅ Resolved | Once per turn, ally-adjacency or advantage trigger |
 | Short/long rest, hit dice, feature & item recharge | ✅ Resolved | |
 | **Multiclassing** | ❌ Not modelled | `CharacterBuildSpec` takes a single class |

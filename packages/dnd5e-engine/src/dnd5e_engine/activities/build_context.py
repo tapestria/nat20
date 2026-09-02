@@ -165,6 +165,8 @@ def build_activity_context(
     attacker_ranged_in_melee: bool = False,
     attacker_vex_advantage: dict[str, bool] | None = None,
     attacker_sapped: bool = False,
+    cleave_available: bool = False,
+    cleave_candidate: Combatant | None = None,
 ) -> ActivityResolutionContext:
     """Adapt the caster + the pre-computed hydration sidecars into the typed
     ``ActivityResolutionContext`` the new resolver consumes.
@@ -430,4 +432,10 @@ def build_activity_context(
         # identical (no mastery geometry).
         attacker_vex_advantage=attacker_vex_advantage or {},
         attacker_sapped=attacker_sapped,
+        # SRD 5.2 §Weapon Mastery — Cleave (C15 Task 7): PRE-RESOLVED gate +
+        # deterministic second target (controller ruling R5), computed by
+        # the orchestrator. Defaults (False / None) -> no chain, keeping the
+        # golden corpus identical.
+        cleave_available=cleave_available,
+        cleave_candidate=cleave_candidate,
     )
