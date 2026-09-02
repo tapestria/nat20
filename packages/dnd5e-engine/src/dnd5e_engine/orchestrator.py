@@ -255,6 +255,14 @@ class PlayerIntent(BaseModel):
     # Duck-typed hosts that never set this field keep the default Prone
     # behaviour unaffected.
     shove_push: bool = False
+    # SRD 5.2 Versatile property — "The weapon deals that damage when used
+    # with two hands to make a melee attack." The attacker's pre-declared
+    # grip choice for THIS attack (no player-facing choice prompt exists at
+    # this seam). False (default) keeps the one-handed die. Ignored unless
+    # the weapon carries ``WeaponProperty.VERSATILE`` and the attack is an
+    # actual melee swing (a two-handed grip declared on a thrown/ranged use
+    # of the same weapon is ignored, per SRD "to make a melee attack").
+    two_handed: bool = False
 
     @field_validator("direction")
     @classmethod
@@ -474,20 +482,40 @@ class _ZoneGraph:
         return a in self._zones and b in self._zones
 
 
-def _weapon_attack_range_ft(weapon: Weapon | None) -> int | None:
-    """Resolve the effective attack range for a typed weapon, in feet.
+def _weapon_attack_range_ft(weapon: Weapon | None) -> tuple[int, int] | None:
+    """Resolve the effective attack range BANDS for a typed weapon, in feet.
+
+    Returns ``(normal, max)`` — SRD 5.2 §Range: "Your attack roll has
+    Disadvantage when your target is beyond normal range, and you can't
+    attack a target beyond long range." A distance ``<= normal`` rolls
+    plain; ``normal < distance <= max`` rolls with Disadvantage (a LEGAL
+    attack — ``"range:long"`` in ``attack.py``); ``distance > max`` is
+    illegal (``AttackFailed(reason="out_of_range")``).
 
     Reads the typed ``Weapon.range`` block (lib loader):
 
-      * melee weapons (``range.kind == "melee"``) reach 5ft, or 10ft when they
-        carry the ``reach`` property (glaive/halberd/pike). ``range.value`` is
-        NOT the melee reach — Foundry leaves it ``None`` for standard melee and
-        reuses it for the THROWN range on thrown weapons (dagger=20, handaxe=20),
-        so deriving reach from the ``reach`` property reproduces the old wrapper's
-        ``reach_ft`` (5/10) faithfully and avoids treating a dagger's 20ft throw
-        as its melee reach;
-      * ranged weapons carry ``range.value`` as the in-range (normal) band;
-        long-range disadvantage is a follow-up, not modeled here.
+      * a melee weapon (``range.kind == "melee"``) WITHOUT the ``thrown``
+        property reaches 5ft, or 10ft when it carries the ``reach``
+        property (glaive/halberd/pike) — both bands equal, so an ordinary
+        melee swing never rolls the disadvantage tier. ``range.value`` is
+        NOT the melee reach — Foundry leaves it ``None`` for standard melee
+        and reuses it for the THROWN range on thrown weapons (dagger=20,
+        handaxe=20), so deriving reach from the ``reach`` property
+        reproduces the old wrapper's ``reach_ft`` (5/10) faithfully;
+      * a ranged weapon (crossbow/bow) carries ``range.value`` as its
+        normal band and ``range.long`` as its max band (falling back to
+        ``range.value`` when a weapon carries no distinct long band);
+      * a MELEE weapon WITH the ``thrown`` property (dagger, handaxe) can
+        also be thrown (SRD §Thrown): within melee reach it's an ordinary
+        melee swing, and beyond reach out to ``range.value`` it's an
+        ordinary (un-penalized) thrown attack, so its normal band is
+        ``max(reach, range.value)``; the disadvantage tier then runs from
+        there out to ``range.long`` (falling back to ``range.value`` — or
+        ``reach`` if that too is absent). SRD §Thrown also pins the
+        governing ability: "use the same ability modifier for the attack
+        and damage rolls that you use for a melee attack with that
+        weapon" — automatic here, since ``_weapon_default_ability`` keys
+        off ``weapon_category``/``finesse``, not distance.
 
     Returns ``None`` when the weapon is missing or carries no usable
     range — the orchestrator skips the gate in that case.
@@ -496,9 +524,76 @@ def _weapon_attack_range_ft(weapon: Weapon | None) -> int | None:
         return None
     rng = weapon.range
     if rng.kind == "melee":
-        return 10 if WeaponProperty.REACH in weapon.properties else 5
-    normal = rng.value
-    return normal if isinstance(normal, int) and normal > 0 else None
+        reach = 10 if WeaponProperty.REACH in weapon.properties else 5
+        if WeaponProperty.THROWN not in weapon.properties:
+            return reach, reach
+        thrown_normal = rng.value if isinstance(rng.value, int) and rng.value > 0 else None
+        if thrown_normal is None:
+            return reach, reach
+        thrown_band = max(reach, thrown_normal)
+        thrown_long = rng.long if isinstance(rng.long, int) and rng.long > 0 else thrown_normal
+        return thrown_band, max(thrown_band, thrown_long)
+    ranged_normal = rng.value if isinstance(rng.value, int) and rng.value > 0 else None
+    if ranged_normal is None:
+        return None
+    long_band = rng.long if isinstance(rng.long, int) and rng.long > 0 else ranged_normal
+    return ranged_normal, max(ranged_normal, long_band)
+
+
+def _versatile_grip_applies(weapon: Weapon | None, distance_ft: int | None) -> bool:
+    """SRD 5.2 Versatile — "The weapon deals that damage when used with two
+    hands to make a melee attack."
+
+    ``True`` only when ``weapon`` carries ``WeaponProperty.VERSATILE`` AND
+    this particular swing is an actual melee attack, not a ranged one. A
+    Versatile weapon is always melee-kind, but a handful (Spear, Trident)
+    ALSO carry Thrown, so the same weapon can be thrown at range — reuses
+    the reach-band classification from ``_weapon_attack_range_ft``: beyond
+    melee reach (5ft, or 10ft with Reach) the swing is a thrown attack, and
+    a two-handed grip declared for it is ignored (SRD "to make a melee
+    attack"). ``distance_ft is None`` (no spatial model wired, or a
+    same-cell/zone attack) is treated as within reach.
+    """
+    if weapon is None or WeaponProperty.VERSATILE not in weapon.properties:
+        return False
+    if WeaponProperty.THROWN in weapon.properties and distance_ft is not None:
+        reach = 10 if WeaponProperty.REACH in weapon.properties else 5
+        if distance_ft > reach:
+            return False
+    return True
+
+
+def _target_beyond_normal_range_map(
+    live: _LiveCombat, actor_id: str, weapon: Weapon | None, targets: Sequence[Combatant]
+) -> dict[str, bool]:
+    """Per-target SRD 5.2 §Range disadvantage flag — True iff the live
+    attacker→target distance is beyond the weapon's NORMAL band (but, by
+    construction, never beyond its MAX band: ``_pc_attack_out_of_range``
+    already rejected that case upstream, before this map is even built).
+    Threaded into ``ActivityResolutionContext.target_beyond_normal_range``
+    so ``attack.py`` can append the ``"range:long"`` disadvantage source
+    without importing the spatial seam — mirrors ``_target_distance_map``.
+
+    ``None`` bands (no weapon, or a weapon with no usable range) and an
+    unreachable/untracked pair simply produce an empty map (the row stays
+    inert), matching every other per-target sidecar in this module.
+    """
+    bands = _weapon_attack_range_ft(weapon)
+    if bands is None:
+        return {}
+    normal, _max_band = bands
+    caster_zone = live.actor_zone.get(actor_id)
+    if caster_zone is None:
+        return {}
+    out: dict[str, bool] = {}
+    for target in targets:
+        target_zone = live.actor_zone.get(target.entity_id)
+        if target_zone is None:
+            continue
+        distance = live.topology.distance_ft(caster_zone, target_zone)
+        if distance is not None:
+            out[target.entity_id] = distance > normal
+    return out
 
 
 def _monster_attack_range_ft(activities: Sequence[Any], melee_reach_ft: int) -> int | None:
@@ -823,6 +918,187 @@ def _pop_help_grant(
             del live.help_grants[target.entity_id]
 
 
+def _attacker_vex_advantage_map(
+    live: _LiveCombat, attacker_id: str, targets: Sequence[Combatant]
+) -> dict[str, bool]:
+    """SRD 5.2 §Weapon Mastery — Vex (C15 Task 6): per-TARGET, does
+    ``attacker_id`` hold a live Vex grant against that target
+    (``live.vex_grants[attacker_id]``)? Threaded into
+    ``ActivityResolutionContext.attacker_vex_advantage``; the one-use pop
+    happens after resolution (``_pop_vex_grants``) — this is a read-only
+    projection, mirrors ``_target_help_advantage_map``.
+    """
+    grants = live.vex_grants.get(attacker_id)
+    if not grants:
+        return {}
+    return {t.entity_id: True for t in targets if t.entity_id in grants}
+
+
+def _pop_vex_grants(
+    live: _LiveCombat, attacker_id: str, targets: Sequence[Combatant], pre_event_count: int
+) -> None:
+    """One-use pop for a consumed Vex grant (SRD "your NEXT attack roll
+    against that creature"). For each target ``attacker_id`` held a live
+    grant against, if an ``AttackRolled`` by ``attacker_id`` against that
+    target landed in this resolution's event slice, the grant is spent
+    (removed) regardless of hit/miss/cancellation — mirrors
+    ``_pop_help_grant``.
+    """
+    grants = live.vex_grants.get(attacker_id)
+    if not grants:
+        return
+    recent = live.event_log[pre_event_count:]
+    for target in targets:
+        if target.entity_id not in grants:
+            continue
+        fired = any(
+            isinstance(ev, AttackRolled)
+            and ev.attacker_id == attacker_id
+            and ev.target_id == target.entity_id
+            for ev in recent
+        )
+        if fired:
+            del grants[target.entity_id]
+    if not grants:
+        del live.vex_grants[attacker_id]
+
+
+def _pop_sap_mark(live: _LiveCombat, attacker_id: str, pre_event_count: int) -> None:
+    """One-use pop for a consumed Sap mark (SRD "its NEXT attack roll").
+
+    If ``attacker_id`` (the potentially-sapped creature) rolled ANY attack
+    in this resolution's event slice, its outstanding mark is spent —
+    mirrors ``_pop_help_grant`` / ``_pop_vex_grants``.
+    """
+    if attacker_id not in live.sap_marks:
+        return
+    recent = live.event_log[pre_event_count:]
+    fired = any(isinstance(ev, AttackRolled) and ev.attacker_id == attacker_id for ev in recent)
+    if fired:
+        del live.sap_marks[attacker_id]
+
+
+def _fold_mastery_procs(
+    live: _LiveCombat, attacker_id: str, ctx: ActivityResolutionContext
+) -> None:
+    """SRD 5.2 §Weapon Mastery — proc writeback (C15 Tasks 6-7, controller
+    ruling R4). Fold every ``(mastery_slug, target_id)`` the pure resolver
+    appended to ``ctx.mastery_procs`` this resolution into live combat
+    state:
+
+    * ``"vex"`` -> ``live.vex_grants[attacker_id][target_id] = 2`` ("before
+      the end of your NEXT turn" — decremented at the attacker's own turn
+      end, see ``_end_turn_and_advance``).
+    * ``"sap"`` -> ``live.sap_marks[target_id] = attacker_id`` ("before the
+      start of your next turn" — cleared at the attacker's own next
+      ``TurnStarted``, see ``_emit_apply_turn_started``).
+    * ``"slow"`` (Task 7) -> ``live.slow_marks[target_id] |= {attacker_id}``
+      then ``_clamp_movement_budget`` on the target (a slowed creature
+      mid-turn loses budget above its new cap). Flat -10 ft while ANY mark
+      is outstanding — never stacks (SRD "doesn't exceed 10 feet").
+    * ``"push"`` (Task 7) -> ``push_combatant(live, target_id, <attacker's
+      cell>, 10)`` — the full 10 ft straight away from the attacker
+      (controller ruling R5), a no-op when the attacker has no tracked
+      cell, the target is boxed in, or the backend is the zone graph.
+    * ``"cleave"`` (Task 7) -> the chain FIRED marker: flip the attacker's
+      ``cleave_spent_this_turn`` ("only once per turn"). Not a target
+      effect — ``attack.py`` already resolved the chained roll.
+
+    Non-stacking (R5): a re-proc REFRESHES the grant/mark (overwrite, not
+    append/increment).
+    """
+    attacker_cell = live.actor_zone.get(attacker_id)
+    for mastery_slug, target_id in ctx.mastery_procs:
+        if mastery_slug == "vex":
+            live.vex_grants.setdefault(attacker_id, {})[target_id] = 2
+        elif mastery_slug == "sap":
+            live.sap_marks[target_id] = attacker_id
+        elif mastery_slug == "slow":
+            live.slow_marks.setdefault(target_id, set()).add(attacker_id)
+            _clamp_movement_budget(live, target_id)
+        elif mastery_slug == "push":
+            if attacker_cell is not None:
+                push_combatant(live, target_id, attacker_cell, 10)
+        elif mastery_slug == "cleave":
+            _set_cleave_spent(live, attacker_id)
+
+
+def _set_cleave_spent(live: _LiveCombat, actor_id: str) -> None:
+    """SRD 5.2 §Weapon Mastery — Cleave: "You can make this extra attack only
+    once per turn." Flip the actor's per-turn cap via the standard
+    initiative-list model_copy write (reset at the actor's own TurnStarted).
+    """
+    for idx, c in enumerate(live.initiative):
+        if c.entity_id == actor_id:
+            live.initiative[idx] = c.model_copy(update={"cleave_spent_this_turn": True})
+            break
+
+
+def _cleave_candidate(
+    live: _LiveCombat, attacker: Combatant, weapon: Weapon | None, targets: Sequence[Combatant]
+) -> Combatant | None:
+    """SRD 5.2 §Weapon Mastery — Cleave (C15 Task 7): the deterministic
+    "second creature within 5 feet of the first that is also within your
+    reach", per controller ruling R5 — a LIVING hostile (opposite side of
+    ``attacker``) other than the first target, within 5 ft of the FIRST
+    target AND within the attacker's melee reach (5 ft, or 10 ft with the
+    Reach property); among several, the one NEAREST TO THE ATTACKER, ties
+    broken by ascending ``entity_id``. ``None`` when the weapon is not a
+    cleave weapon, positions are untracked, or nothing qualifies. A pure
+    spatial read owned here so ``attack.py`` never touches the seam.
+    """
+    if weapon is None or weapon.mastery != "cleave" or not targets:
+        return None
+    attacker_side = _side_of(live, attacker.entity_id)
+    attacker_zone = live.actor_zone.get(attacker.entity_id)
+    first = targets[0]
+    first_zone = live.actor_zone.get(first.entity_id)
+    if attacker_side is None or attacker_zone is None or first_zone is None:
+        return None
+    reach = 10 if WeaponProperty.REACH in weapon.properties else 5
+    # F4 — exclude EVERY primary target's id, not just ``first``'s: a
+    # multi-target swing (should one ever exist) must never offer a
+    # creature that is already being attacked directly as its own cleave
+    # chain candidate.
+    primary_target_ids = {t.entity_id for t in targets}
+    best: tuple[int, str, Combatant] | None = None
+    for other in live.initiative:
+        if (
+            other.entity_id in primary_target_ids
+            or other.entity_id in attacker_side
+            or other.entity_id in live.dead_ids
+            or not other.is_alive
+        ):
+            continue
+        other_zone = live.actor_zone.get(other.entity_id)
+        if other_zone is None or not live.topology.within_range(first_zone, other_zone, 5):
+            continue
+        distance = live.topology.distance_ft(attacker_zone, other_zone)
+        if distance is None or distance > reach:
+            continue
+        if best is None or (distance, other.entity_id) < best[:2]:
+            best = (distance, other.entity_id, other)
+    return None if best is None else best[2]
+
+
+def _cleave_available(
+    current: Combatant, weapon: Weapon | None, main_target_distance_ft: int | None
+) -> bool:
+    """SRD 5.2 §Weapon Mastery — Cleave gate: the swung weapon carries
+    ``cleave``, the attacker has not already cleaved this turn, and the
+    swing is a MELEE attack within reach ("hit a creature with a melee attack
+    roll"). A cleave weapon is never Thrown in the corpus, but the reach
+    check keeps a hypothetical thrown use from chaining. ``None`` distance
+    (untracked) counts as within reach, mirroring ``_versatile_grip_applies``.
+    """
+    if weapon is None or weapon.mastery != "cleave" or current.cleave_spent_this_turn:
+        return False
+    if weapon.weapon_category in {"simple_ranged", "martial_ranged"}:
+        return False
+    reach = 10 if WeaponProperty.REACH in weapon.properties else 5
+    return main_target_distance_ft is None or main_target_distance_ft <= reach
+
+
 #: ``ActiveEffect.origin`` prefixes whose THIRD ``:``-segment is the entity that
 #: created the effect (``cast:<slug>:<caster_id>`` is the shipped convention;
 #: ``grapple:<slug>:<grappler_id>`` is reserved for C14's grapple contest).
@@ -896,6 +1172,51 @@ def _sneak_ally_adjacent_map(
                 out[target.entity_id] = True
                 break
     return out
+
+
+def _hostile_adjacent_to_attacker(live: _LiveCombat, caster: Combatant) -> bool:
+    """SRD 5.2 "Ranged Attacks in Close Combat": "you have Disadvantage on
+    the roll if you are within 5 feet of an enemy who can see you and
+    doesn't have the Incapacitated condition."
+
+    Scans ``live.initiative`` for a LIVING hostile (opposite side of
+    ``caster``, via ``party_ids``/``encounter_ids``) within 5 ft of the
+    ATTACKER's own zone. The attack's TARGET is never special-cased — if it
+    happens to be adjacent it's simply one more entry in ``live.initiative``
+    and counts like any other hostile (SRD: "an enemy", not "an enemy other
+    than your target"). Excludes an Incapacitated hostile
+    (``conditions_block_actions`` — the SRD conjunct) and one that cannot
+    see the attacker (``SpatialTopology.can_see`` with the HOSTILE's own
+    senses — same call shape as ``_target_visibility_maps``). Threaded into
+    ``ActivityResolutionContext.attacker_ranged_in_melee`` so
+    ``activities/attack.py`` can add the ``"ranged_in_melee"`` disadvantage
+    source without importing the spatial seam. An unregistered side or an
+    untracked attacker position yields ``False``.
+    """
+    attacker_side = _side_of(live, caster.entity_id)
+    if attacker_side is None:
+        return False
+    attacker_zone = live.actor_zone.get(caster.entity_id)
+    if attacker_zone is None:
+        return False
+    for hostile in live.initiative:
+        if (
+            hostile.entity_id in attacker_side
+            or hostile.entity_id in live.dead_ids
+            or not hostile.is_alive
+        ):
+            continue
+        if conditions_block_actions(_condition_names(hostile)):
+            continue
+        hostile_zone = live.actor_zone.get(hostile.entity_id)
+        if hostile_zone is None:
+            continue
+        if not live.topology.within_range(attacker_zone, hostile_zone, 5):
+            continue
+        if not live.topology.can_see(hostile_zone, attacker_zone, hostile.senses):
+            continue
+        return True
+    return False
 
 
 def push_combatant(live: _LiveCombat, target_id: str, origin_cell: str, distance_ft: int) -> None:
@@ -1200,14 +1521,18 @@ def _pc_attack_out_of_range(live: _LiveCombat, actor_id: str, intent: PlayerInte
     if intent.target_id is None or not intent.weapon_id:
         return False
     weapon = get_lib_loader().get_weapon(intent.weapon_id)
-    weapon_reach = _weapon_attack_range_ft(weapon)
-    if weapon_reach is None:
+    weapon_bands = _weapon_attack_range_ft(weapon)
+    if weapon_bands is None:
         return False
+    # SRD 5.2 §Range — the reject gate reads the MAX (long) band only; the
+    # narrower normal/long distinction lives in ``_target_beyond_normal_range_map``
+    # and is folded into a Disadvantage source (``attack.py``), never a reject.
+    _normal_band, max_band = weapon_bands
     attacker_zone = live.actor_zone.get(actor_id)
     target_zone = live.actor_zone.get(intent.target_id)
     if attacker_zone is None or target_zone is None:
         return False
-    return not _in_range_with_los(live.topology, attacker_zone, target_zone, weapon_reach)
+    return not _in_range_with_los(live.topology, attacker_zone, target_zone, max_band)
 
 
 def _attack_out_of_range_failure(
@@ -1220,6 +1545,31 @@ def _attack_out_of_range_failure(
     if intent.intent_type != "attack" or not _pc_attack_out_of_range(live, actor_id, intent):
         return None
     return AttackFailed(actor_id=actor_id, target_id=intent.target_id, reason="out_of_range")
+
+
+def _loading_weapon_already_fired_failure(
+    current: Combatant, actor_id: str, intent: PlayerIntent, weapon: Weapon | None
+) -> CombatEvent | None:
+    """SRD 5.2 Loading — "You can fire only one piece of ammunition from a
+    Loading weapon when you use an action, a Bonus Action, or a Reaction to
+    fire it, regardless of the number of attacks you can normally make."
+    Engine reading: one fire per TURN (no PC reaction-attack path exists,
+    so action/bonus/reaction collapse to the turn boundary); the cap is
+    per-actor, not per-weapon (SRD ambiguity resolved toward "you", the
+    actor). Applies to BOTH the main-hand and off-hand attack path — one
+    of the ``pre_resolution_gates`` failure-builders consumed by
+    ``submit_player_intent``, so a rejected shot spends no Action/Bonus
+    Action and leaves ``attacks_remaining`` untouched (C15 Task 5)."""
+    if (
+        intent.intent_type != "attack"
+        or weapon is None
+        or WeaponProperty.LOADING not in weapon.properties
+        or not current.loading_weapon_fired_this_turn
+    ):
+        return None
+    return AttackFailed(
+        actor_id=actor_id, target_id=intent.target_id, reason="weapon_already_fired"
+    )
 
 
 _HARMFUL_ACTIVITY_KINDS: frozenset[str] = frozenset({"attack", "damage", "save"})
@@ -1531,6 +1881,49 @@ class _LiveCombat:
     # are host/Search concerns out of this engine's scope (no Search action
     # or perception-vs-stealth contest is modeled here).
     hidden_entities: set[str] = field(default_factory=set)
+    # SRD 5.2 §Weapon Mastery — Vex (C15 Task 6): *"If you hit a creature
+    # with this weapon and deal damage to the creature, you have Advantage
+    # on your next attack roll against that creature before the end of your
+    # next turn."* Keyed ATTACKER entity_id -> {TARGET entity_id ->
+    # rounds-remaining}. A fresh proc sets rounds-remaining to 2 ("before
+    # the end of your NEXT turn" spans this turn's remainder plus the
+    # attacker's whole next turn); re-procing the SAME attacker/target pair
+    # REFRESHES to 2 rather than stacking (controller ruling R5 — riders are
+    # non-stacking). Decremented for the ENDING actor's own grants at
+    # ``_end_turn_and_advance`` (dropping entries that reach 0); the
+    # one-use consumption pop (after that attacker's next attack roll vs
+    # the SAME target lands) happens at the PC/monster attack-context build
+    # sites, mirroring ``help_grants``' ``_pop_help_grant``. Populated by
+    # folding ``ActivityResolutionContext.mastery_procs`` post-resolution
+    # (controller ruling R4).
+    vex_grants: dict[str, dict[str, int]] = field(default_factory=dict)
+    # SRD 5.2 §Weapon Mastery — Sap (C15 Task 6): *"If you hit a creature
+    # with this weapon, that creature has Disadvantage on its next attack
+    # roll before the start of your next turn."* Keyed SAPPED-entity
+    # entity_id -> the SOURCE attacker's entity_id (single mark; a re-proc
+    # from a DIFFERENT attacker overwrites rather than stacking, R5).
+    # Cleared for the source attacker's outstanding marks at that
+    # attacker's OWN next ``TurnStarted`` (``_emit_apply_turn_started``,
+    # beside the Help-grant expiry sweep); the one-use consumption pop
+    # (after the sapped entity's own next attack roll resolves) happens at
+    # the PC/monster attack-context build sites. Populated by folding
+    # ``ActivityResolutionContext.mastery_procs`` post-resolution (R4).
+    sap_marks: dict[str, str] = field(default_factory=dict)
+    # SRD 5.2 §Weapon Mastery — Slow (C15 Task 7): *"If you hit a creature
+    # with this weapon and deal damage to it, you can reduce its Speed by 10
+    # feet until the start of your next turn. If the creature is hit more
+    # than once by weapons that have this property, the Speed reduction
+    # doesn't exceed 10 feet."* Keyed SLOWED-entity entity_id -> the set of
+    # SOURCE attacker entity_ids whose marks are outstanding. The reduction
+    # is a FLAT -10 ft in ``_effective_speed`` whenever the set is non-empty
+    # (the SRD's non-stacking cap, controller ruling R5 — a re-proc
+    # refreshes, never stacks); ``_clamp_movement_budget`` re-projects the
+    # target's unspent budget on application. Each source's marks are
+    # cleared at that SOURCE attacker's own next ``TurnStarted``
+    # (``_emit_apply_turn_started``, beside the Sap sweep); an entry whose
+    # set empties is dropped. Populated by folding
+    # ``ActivityResolutionContext.mastery_procs`` post-resolution (R4).
+    slow_marks: dict[str, set[str]] = field(default_factory=dict)
     # Turn-boundary hook registry (``dnd5e_engine.turn_lifecycle``). Populated
     # by ``_register_default_turn_hooks`` in ``start_combat``; run by
     # ``_end_turn_and_advance`` / ``_begin_turn``. Every rule that fires "at the
@@ -1602,11 +1995,22 @@ def _condition_names(c: Combatant) -> list[str]:
     return active_condition_names(c.conditions)
 
 
-def _effective_speed(c: Combatant) -> int:
+def _effective_speed(c: Combatant, live: _LiveCombat | None = None) -> int:
     """SRD 5.2 walking Speed under the combatant's conditions
     (``rules.conditions.project_speed``): 0 under a Speed-0 condition, else
-    ``base_speed - 5 x exhaustion level``."""
-    return project_speed(c.base_speed, _condition_names(c), exhaustion_level_of(c.conditions))
+    ``base_speed - 5 x exhaustion level``.
+
+    C15 Task 7 — SRD 5.2 §Weapon Mastery, Slow: when ``live`` is supplied
+    and ``c`` carries any outstanding ``live.slow_marks`` entry, a FLAT
+    10 ft comes off on top ("the Speed reduction doesn't exceed 10 feet" —
+    one deduction regardless of how many slow-weapon hits landed), floored
+    at 0. ``live=None`` (unit-test / pre-combat callers) projects
+    conditions only.
+    """
+    speed = project_speed(c.base_speed, _condition_names(c), exhaustion_level_of(c.conditions))
+    if live is not None and live.slow_marks.get(c.entity_id):
+        speed = max(0, speed - 10)
+    return speed
 
 
 def _set_dodging(live: _LiveCombat, actor_id: str) -> None:
@@ -1710,14 +2114,15 @@ def _dodge_benefit_active(live: _LiveCombat, c: Combatant) -> bool:
     Dodge benefit is live: the combatant took the Dodge action this turn (or
     a prior turn, "until the start of your next turn") AND has not lost it
     under the SRD loss clause — *"You lose these benefits if you have the
-    Incapacitated condition or if your Speed is 0."* ``live`` is unused today
-    (no vision model yet — the "if you can see the attacker" conjunct on the
-    attack-disadvantage half is deferred to C16b) but threaded through so a
-    future vision check can slot in here without changing every call site.
+    Incapacitated condition or if your Speed is 0."* ``live`` feeds the
+    Slow-mastery Speed projection (C15 Task 7); the "if you can see the
+    attacker" conjunct on the attack-disadvantage half is still deferred to
+    C16b (no vision model wired to this seam yet).
     """
-    del live  # C16b — see docstring; kept for the eventual vision-seam signature.
     return (
-        c.dodging and not conditions_block_actions(_condition_names(c)) and _effective_speed(c) > 0
+        c.dodging
+        and not conditions_block_actions(_condition_names(c))
+        and _effective_speed(c, live) > 0
     )
 
 
@@ -1729,7 +2134,7 @@ def _clamp_movement_budget(live: _LiveCombat, entity_id: str) -> None:
     for idx, c in enumerate(live.initiative):
         if c.entity_id != entity_id:
             continue
-        cap = _effective_speed(c)
+        cap = _effective_speed(c, live)
         if c.movement_remaining > cap:
             live.initiative[idx] = c.model_copy(update={"movement_remaining": cap})
         break
@@ -2277,7 +2682,7 @@ def _handle_dash(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
         budget_consumed = "action"
 
     # SRD 5.2 Dash adds the creature's (current) Speed; a Speed of 0 "can't increase".
-    new_movement = current.movement_remaining + _effective_speed(current)
+    new_movement = current.movement_remaining + _effective_speed(current, live)
     budget_field = (
         "bonus_action_available" if budget_consumed == "bonus_action" else "action_available"
     )
@@ -2428,7 +2833,7 @@ def _handle_stand_up(live: _LiveCombat, current: Combatant, intent: PlayerIntent
             "target_invalid",
             f"actor_id={actor_id!r} is not Prone; nothing to stand up from",
         )
-    speed = _effective_speed(current)
+    speed = _effective_speed(current, live)
     if speed == 0:
         raise IntentRejectedError(
             "speed_zero",
@@ -2781,7 +3186,7 @@ def _emit_apply_turn_started(live: _LiveCombat, event: TurnStarted) -> None:
                     # EFFECTIVE Speed (Speed-0 conditions, Exhaustion) at the
                     # start of their turn. Per-MOVE-intent decrement is the
                     # only other writer; this is the only reset.
-                    "movement_remaining": _effective_speed(c),
+                    "movement_remaining": _effective_speed(c, live),
                     # SRD §Disengage — "for the rest of the turn"; this is
                     # the start of a NEW turn, so the suppression lapses.
                     "disengaging_this_turn": False,
@@ -2804,6 +3209,14 @@ def _emit_apply_turn_started(live: _LiveCombat, event: TurnStarted) -> None:
                     # turn; the gate resets alongside Dodge at the actor's own
                     # TurnStarted.
                     "hide_attempted_this_turn": False,
+                    # SRD 5.2 Loading — the one-fire-per-turn cap resets at
+                    # the actor's own TurnStarted, alongside the other
+                    # per-turn attack-economy fields (C15 Task 5).
+                    "loading_weapon_fired_this_turn": False,
+                    # SRD 5.2 §Weapon Mastery — Cleave: "only once per turn";
+                    # the cap resets at the actor's own TurnStarted (C15
+                    # Task 7).
+                    "cleave_spent_this_turn": False,
                 }
             )
             break
@@ -2818,6 +3231,23 @@ def _emit_apply_turn_started(live: _LiveCombat, event: TurnStarted) -> None:
             live.help_grants[target_id] = helpers
         else:
             del live.help_grants[target_id]
+    # SRD 5.2 §Weapon Mastery — Sap (C15 Task 6): "before the start of your
+    # next turn" — the SOURCE ATTACKER's own next turn, not the sapped
+    # creature's. Clear every outstanding mark this actor sourced (an
+    # unconsumed mark simply lapses), mirroring the Help sweep above.
+    for sapped_id in [sid for sid, src in live.sap_marks.items() if src == event.actor_id]:
+        del live.sap_marks[sapped_id]
+    # SRD 5.2 §Weapon Mastery — Slow (C15 Task 7): "until the start of your
+    # next turn" — again the SOURCE attacker's own next turn. Drop this
+    # actor out of every slowed creature's source set; a creature whose set
+    # empties is no longer slowed (its Speed projects normally from the
+    # next read; an in-flight budget is never RAISED — only its own next
+    # TurnStarted refreshes it).
+    for slowed_id in list(live.slow_marks):
+        sources = live.slow_marks[slowed_id]
+        sources.discard(event.actor_id)
+        if not sources:
+            del live.slow_marks[slowed_id]
 
 
 def _hook_expire_reaction_effects(live: _LiveCombat, actor_id: str | None) -> None:
@@ -2986,8 +3416,9 @@ def _apply_zero_hp_to_character(
       next turn (``_maybe_roll_death_save``).
     * Damage at 0 Hit Points: "If you take any damage while you have 0 Hit
       Points, you suffer a Death Saving Throw failure. ... If the damage
-      equals or exceeds your Hit Point maximum, you die." (The Critical-Hit
-      two-failure clause needs a crit flag on ``DamageApplied`` — C15 seam.)
+      equals or exceeds your Hit Point maximum, you die." A Critical Hit
+      counts as TWO failures instead of one (C15 — ``DamageApplied.is_crit``
+      threaded into ``DeathSaveState.apply_damage_while_unconscious``).
     """
     target = _find_combatant(live, event.target_id)
     if target is None:
@@ -3015,7 +3446,11 @@ def _apply_zero_hp_to_character(
     if damage_after_temp <= 0:
         return
     state = DeathSaveState.from_dict(target.death_saves) if target.death_saves else DeathSaveState()
-    outcome = state.apply_damage_while_unconscious(False)
+    # SRD 5.2 "Damage at 0 Hit Points" — the Critical-Hit two-failure clause
+    # (C15 Task 4): a Critical Hit against a creature already at 0 HP counts
+    # as TWO death-save failures instead of one. ``DamageApplied.is_crit``
+    # (this event) now carries that flag straight from the attack resolver.
+    outcome = state.apply_damage_while_unconscious(event.is_crit)
     update: dict[str, Any] = {"death_saves": state.to_dict()}
     if outcome == "dead":
         update["is_alive"] = False
@@ -4393,6 +4828,28 @@ def _hook_concentration_expiry(live: _LiveCombat, actor_id: str | None) -> None:
     _drop_concentration(live, actor_id, reason="duration")
 
 
+def _hook_expire_vex_grants(live: _LiveCombat, actor_id: str | None) -> None:
+    """``turn_end`` hook — SRD 5.2 §Weapon Mastery / Vex (C15 Task 6):
+    "before the end of your NEXT turn". Decrements every rounds-remaining
+    counter under the ENDING actor's own ``live.vex_grants`` entry (this
+    actor is the GRANTOR, never the grantee); a counter reaching 0 drops —
+    the grant fired the moment its holder made ITS next attack roll against
+    that target (``_pop_vex_grants``) before this can ever be reached in
+    the common case, so this hook is chiefly the "never attacked again"
+    lapse path. No RNG."""
+    if actor_id is None:
+        return
+    grants = live.vex_grants.get(actor_id)
+    if not grants:
+        return
+    for target_id in list(grants):
+        grants[target_id] -= 1
+        if grants[target_id] <= 0:
+            del grants[target_id]
+    if not grants:
+        del live.vex_grants[actor_id]
+
+
 def _register_default_turn_hooks(live: _LiveCombat) -> None:
     """Register the engine's built-in turn-boundary hooks on ``live``.
 
@@ -4427,6 +4884,7 @@ def _register_default_turn_hooks(live: _LiveCombat) -> None:
     live.lifecycle.register(
         "turn_end", _hook_concentration_expiry, key="engine:concentration-expiry"
     )
+    live.lifecycle.register("turn_end", _hook_expire_vex_grants, key="engine:vex-expiry")
     live.lifecycle.register(
         "turn_start", _hook_expire_reaction_effects, key="engine:reaction-effect-expiry"
     )
@@ -4860,6 +5318,31 @@ def _pc_condition_immunities(pc: PartyMemberSpec) -> list[str]:
     return immunities
 
 
+def _is_proficient_with_weapon(current: Combatant, weapon: Weapon | None) -> bool:
+    """SRD 5.2 §Weapon Proficiency — "Anyone can wield a weapon, but you must
+    have proficiency with it to add your Proficiency Bonus to an attack roll
+    you make with it." (packs/_source/content24/chapter-6/equipment.yml, id
+    dWQ2ZTLOuKr3PMAx). "A monster is proficient with any weapon in its stat
+    block" (same source) — monsters never carry an explicit
+    ``weapon_proficiencies`` list, so ``current.weapon_proficiencies is None``
+    covers them for free.
+
+    ``current.weapon_proficiencies is None`` is the C15 R1 sentinel: the host
+    never opted into enforcement (``PartyMemberSpec.weapon_proficiencies``
+    unset), so proficiency is assumed — this reproduces every pre-C15
+    fixture byte-identically. ``weapon is None`` covers non-weapon resolution
+    paths (spells, features) where proficiency never applies. Otherwise,
+    proficient iff the weapon's category or its own slug is in the caster's
+    explicit (possibly empty — "proficient in nothing") list.
+    """
+    if current.weapon_proficiencies is None or weapon is None:
+        return True
+    return (
+        weapon.weapon_category in current.weapon_proficiencies
+        or weapon.slug in current.weapon_proficiencies
+    )
+
+
 def _build_pc_combatants(
     party: list[PartyMemberSpec],
     combatants: list[Combatant],
@@ -4883,7 +5366,13 @@ def _build_pc_combatants(
                 hp_current=pc.hp_current,
                 hp_max=pc.hp_max,
                 ac=pc.ac,
-                attack_bonus=pc.attack_bonus,
+                # C15 sentinel (mirrors weapon_proficiencies below): ``None``
+                # when the host never explicitly set
+                # ``PartyMemberSpec.attack_bonus`` — lets a bare-ability PC's
+                # weapon attack fall through to the real ability-mod +
+                # proficiency-bonus computation instead of being pinned to a
+                # 0 override. See ``Combatant.attack_bonus``.
+                attack_bonus=(pc.attack_bonus if "attack_bonus" in pc.model_fields_set else None),
                 strength=pc.strength,
                 dexterity=pc.dexterity,
                 constitution=pc.constitution,
@@ -4908,7 +5397,16 @@ def _build_pc_combatants(
                 save_proficiencies=list(pc.save_proficiencies),
                 skill_proficiencies=list(pc.skill_proficiencies),
                 skill_expertise=list(pc.skill_expertise),
-                weapon_proficiencies=list(pc.weapon_proficiencies),
+                # C15 R1 sentinel: thread ``None`` when the host never
+                # explicitly set the spec field (legacy "assume proficient"
+                # behaviour, byte-identical to every pre-C15 fixture);
+                # thread the real (possibly empty) list only when the host
+                # opted in. See ``Combatant.weapon_proficiencies``.
+                weapon_proficiencies=(
+                    list(pc.weapon_proficiencies)
+                    if "weapon_proficiencies" in pc.model_fields_set
+                    else None
+                ),
             )
         )
         actor_zone[pc.entity_id] = pc.zone_id
@@ -5370,17 +5868,27 @@ def _attacks_per_action(current: Combatant) -> int:
     return 1
 
 
+def _offhand_window_open(current: Combatant) -> bool:
+    """SRD 5.2 Light property — True while the "extra attack with a
+    different Light weapon" is still available this turn, REGARDLESS of how
+    it is funded: a Light main-hand weapon was swung and no off-hand swing
+    has been spent yet. Governs whether the main-hand attack tail keeps the
+    turn (R1) — C15 Task 7 (Nick, controller ruling): a wielder whose Bonus
+    Action is already spent may still make the extra attack with a Nick
+    weapon ("as part of the Attack action instead of as a Bonus Action"),
+    and the orchestrator cannot know which off-hand weapon the host will
+    submit until the intent arrives, so the turn must stay open. The
+    Bonus-Action-FUNDED window is ``_twf_window_open``."""
+    return current.light_weapon_swing_slug is not None and not current.offhand_attack_spent
+
+
 def _twf_window_open(current: Combatant) -> bool:
-    """SRD §Two-Weapon Fighting — True while an off-hand Bonus Action swing
-    is still available this turn (Light main-hand weapon swung, no
-    off-hand swing spent yet, Bonus Action unspent). Task 2 wires the
-    off-hand swing itself; until then this only affects whether the
-    main-hand attack tail keeps the turn (R1)."""
-    return (
-        current.light_weapon_swing_slug is not None
-        and not current.offhand_attack_spent
-        and current.bonus_action_available
-    )
+    """SRD §Two-Weapon Fighting — True while a Bonus-Action off-hand swing
+    is still available this turn: the Light extra-attack window is open
+    (``_offhand_window_open``) AND the Bonus Action is unspent. A NON-Nick
+    off-hand weapon needs this; a Nick weapon only needs the broader
+    window (``_is_offhand_attack_swing``)."""
+    return _offhand_window_open(current) and current.bonus_action_available
 
 
 def _attack_action_is_spent(current: Combatant) -> bool:
@@ -5388,11 +5896,12 @@ def _attack_action_is_spent(current: Combatant) -> bool:
     turn should end after a main-hand attack) only when NO swings remain
     this Action, the actor gets exactly one attack per Action (multi-attack
     actors always keep the turn until their budget is exhausted), and no
-    two-weapon-fighting off-hand window is open."""
+    Light off-hand window is open (Bonus-Action-funded OR Nick — C15
+    Task 7, ``_offhand_window_open``)."""
     return (
         current.attacks_remaining <= 0
         and _attacks_per_action(current) == 1
-        and not _twf_window_open(current)
+        and not _offhand_window_open(current)
     )
 
 
@@ -6012,7 +6521,7 @@ def _handle_move(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
     # Restrained / Paralyzed / Petrified / Unconscious) and Exhaustion's
     # ``-5 ft x level``: a creature whose effective Speed is 0 cannot move at
     # all — distinct from ``insufficient_movement`` (budget spent this turn).
-    if _effective_speed(current) == 0:
+    if _effective_speed(current, live) == 0:
         _emit(live, MoveFailed(actor_id=actor_id, reason="speed_zero"))
         return
     destination = intent.target_zone_id
@@ -6382,34 +6891,55 @@ def _is_offhand_attack_swing(
     1-attack actor, or an Extra-Attack actor who has used up its swings) OR
     the host explicitly asked for the Bonus Action swing now
     (``intent.use_bonus_action``, e.g. interleaving the off-hand attack
-    before a multiattack sequence is finished)."""
+    before a multiattack sequence is finished).
+
+    SRD 5.2 §Weapon Mastery — Nick (C15 Task 7, controller ruling): *"When
+    you make the extra attack of the Light property, you can make it as
+    part of the Attack action instead of as a Bonus Action."* A Nick
+    off-hand weapon therefore does NOT require ``bonus_action_available``;
+    the different-Light-weapon gate and the ``offhand_attack_spent``
+    once-per-turn cap still apply unchanged."""
+    if weapon is None or WeaponProperty.LIGHT not in weapon.properties:
+        return False
+    window_open = _twf_window_open(current) or (
+        weapon.mastery == "nick" and _offhand_window_open(current)
+    )
     return (
         intent.intent_type == "attack"
         and current.attack_action_engaged
-        and current.light_weapon_swing_slug is not None
+        and window_open
         and intent.weapon_id != current.light_weapon_swing_slug
-        and not current.offhand_attack_spent
-        and current.bonus_action_available
-        and weapon is not None
-        and WeaponProperty.LIGHT in weapon.properties
         and (current.attacks_remaining <= 0 or intent.use_bonus_action)
     )
 
 
 def _consume_offhand_attack_budget(
-    live: _LiveCombat, actor_id: str, current: Combatant
+    live: _LiveCombat, actor_id: str, current: Combatant, weapon: Weapon | None
 ) -> Combatant:
     """SRD 5.2 §Two-Weapon Fighting — the off-hand swing spends the Bonus
     Action, NOT the per-Action attack budget: ``attacks_remaining`` is left
     untouched (the main-hand swing already decremented it) and
     ``attack_action_engaged`` stays as-is. Marks ``offhand_attack_spent``
     so ``_twf_window_open`` closes and a second off-hand swing this turn
-    is rejected."""
+    is rejected.
+
+    SRD 5.2 §Weapon Mastery — Nick (C15 Task 7): *"When you make the extra
+    attack of the Light property, you can make it as part of the Attack
+    action instead of as a Bonus Action. You can make this extra attack only
+    once per turn."* When the OFF-HAND ``weapon`` (the one making the extra
+    attack) carries ``nick``, the Bonus Action is left UNSPENT — the swing is
+    part of the Attack action. Everything else is unchanged: the
+    different-Light-weapon gate and ``bonus_action_available`` pre-condition
+    in ``_is_offhand_attack_swing``, the ``offhand_attack_spent``
+    once-per-turn cap (the SRD's own "only once per turn"), and the
+    positive-ability-mod suppression on the swing's damage."""
+    is_nick = weapon is not None and weapon.mastery == "nick"
+    update: dict[str, bool] = {"offhand_attack_spent": True}
+    if not is_nick:
+        update["bonus_action_available"] = False
     for idx, c in enumerate(live.initiative):
         if c.entity_id == actor_id:
-            live.initiative[idx] = c.model_copy(
-                update={"bonus_action_available": False, "offhand_attack_spent": True}
-            )
+            live.initiative[idx] = c.model_copy(update=update)
             break
     return _current_actor(live)
 
@@ -6423,6 +6953,19 @@ def _record_light_weapon_swing(
     for idx, c in enumerate(live.initiative):
         if c.entity_id == actor_id:
             live.initiative[idx] = c.model_copy(update={"light_weapon_swing_slug": weapon_slug})
+            break
+    return _current_actor(live)
+
+
+def _record_loading_weapon_fired(live: _LiveCombat, actor_id: str, current: Combatant) -> Combatant:
+    """Record that this turn's one permitted Loading-weapon shot has been
+    fired (SRD 5.2 Loading), closing the window for any further same-turn
+    attack attempt with a Loading weapon (checked pre-budget in
+    ``submit_player_intent``). Reset to False at the actor's own
+    TurnStarted."""
+    for idx, c in enumerate(live.initiative):
+        if c.entity_id == actor_id:
+            live.initiative[idx] = c.model_copy(update={"loading_weapon_fired_this_turn": True})
             break
     return _current_actor(live)
 
@@ -6887,6 +7430,10 @@ def _resolve_readied_spell_cast(
         save_modifiers=payload["save_modifiers"],
         check_modifiers=payload["check_modifiers"],
         d20_test_penalty=payload["d20_test_penalty"],
+        # C15: is_proficient_attack left on default (True) — this reaction
+        # path only resolves cast SaveActivity/DamageActivity from a Spell
+        # (Shield's own reaction cast), never an AttackActivity with a
+        # fetched Weapon, so the proficiency gate never applies here.
         target_distance_ft=_target_distance_map(live, reactor.entity_id, [reactor]),
         attacker_grappler_id=_condition_source_entity(live, reactor, "grappled"),
     )
@@ -7007,6 +7554,9 @@ def _drain_counterspell_reaction(
         check_modifiers=payload["check_modifiers"],
         d20_test_penalty=payload["d20_test_penalty"],
         target_distance_ft=_target_distance_map(live, reactor.entity_id, [current]),
+        # C15: is_proficient_attack left on default (True) — Counterspell
+        # resolves a SaveActivity, never an AttackActivity with a fetched
+        # Weapon, so the proficiency gate never applies here.
         attacker_grappler_id=_condition_source_entity(live, reactor, "grappled"),
     )
     pre_event_count = len(live.event_log)
@@ -7164,30 +7714,6 @@ async def submit_player_intent(
     is_bonus_action = action_cost.is_bonus_action
     is_reaction_cast = action_cost.is_reaction_cast
 
-    # Pre-resolution reject gates — each checked BEFORE any action budget is
-    # consumed, so a rejection spends no Action/Bonus Action/slot and leaves
-    # the turn untouched. Order matters and is preserved from the original
-    # sequential if-chain: spell range (SRD §Spell Range) -> weapon reach
-    # (SRD §Weapon Reach / Range) -> Charmed target (SRD 5.2 "You can't
-    # attack the charmer or target the charmer with damaging abilities or
-    # magical effects") -> pre-slot ``target_invalid`` (Hellish Rebuke's fixed
-    # target, SRD §Hellish Rebuke; an unaimed Cone/Line/Cube AoE template).
-    # The first gate whose failure-builder returns a non-``None`` event
-    # wins; that event is emitted and the intent is rejected.
-    pre_resolution_gates: tuple[Callable[[], CombatEvent | None], ...] = (
-        lambda: _spell_out_of_range_failure(live, actor_id, intent, cast_spell_for_timing),
-        lambda: _attack_out_of_range_failure(live, actor_id, intent),
-        lambda: _charmed_target_failure(live, actor_id, current, intent),
-        lambda: _cast_target_invalid_failure(
-            live, current, actor_id, intent, cast_spell_for_timing
-        ),
-    )
-    for build_pre_resolution_failure in pre_resolution_gates:
-        failure = build_pre_resolution_failure()
-        if failure is not None:
-            _emit(live, failure)
-            return
-
     # SRD 5.2 §Two-Weapon Fighting — classify BEFORE the action-economy gate:
     # an off-hand swing spends the Bonus Action (already gated by
     # ``bonus_action_available`` inside the classifier itself), not the
@@ -7198,13 +7724,41 @@ async def submit_player_intent(
     # Action already spent) falls through to the normal attack economy gate
     # below — with ``attacks_remaining`` already exhausted by the main-hand
     # swing, that gate's ``AttackFailed(reason="no_action_economy")`` covers
-    # the rejection (turn-keeping, per R2).
+    # the rejection (turn-keeping, per R2). Fetched here (ahead of the
+    # ``pre_resolution_gates`` tuple below) so the Loading gate (C15 Task 5)
+    # can reuse the same fetch instead of re-fetching the weapon.
     offhand_weapon = (
         get_lib_loader().get_weapon(intent.weapon_id)
         if intent.intent_type == "attack" and intent.weapon_id
         else None
     )
     is_offhand_swing = _is_offhand_attack_swing(current, intent, offhand_weapon)
+
+    # Pre-resolution reject gates — each checked BEFORE any action budget is
+    # consumed, so a rejection spends no Action/Bonus Action/slot and leaves
+    # the turn untouched. Order matters and is preserved from the original
+    # sequential if-chain: spell range (SRD §Spell Range) -> weapon reach
+    # (SRD §Weapon Reach / Range) -> Loading one-shot-per-turn cap (SRD 5.2
+    # Loading) -> Charmed target (SRD 5.2 "You can't attack the charmer or
+    # target the charmer with damaging abilities or magical effects") ->
+    # pre-slot ``target_invalid`` (Hellish Rebuke's fixed target, SRD
+    # §Hellish Rebuke; an unaimed Cone/Line/Cube AoE template). The first
+    # gate whose failure-builder returns a non-``None`` event wins; that
+    # event is emitted and the intent is rejected.
+    pre_resolution_gates: tuple[Callable[[], CombatEvent | None], ...] = (
+        lambda: _spell_out_of_range_failure(live, actor_id, intent, cast_spell_for_timing),
+        lambda: _attack_out_of_range_failure(live, actor_id, intent),
+        lambda: _loading_weapon_already_fired_failure(current, actor_id, intent, offhand_weapon),
+        lambda: _charmed_target_failure(live, actor_id, current, intent),
+        lambda: _cast_target_invalid_failure(
+            live, current, actor_id, intent, cast_spell_for_timing
+        ),
+    )
+    for build_pre_resolution_failure in pre_resolution_gates:
+        failure = build_pre_resolution_failure()
+        if failure is not None:
+            _emit(live, failure)
+            return
 
     action_economy_failure = (
         None
@@ -7249,7 +7803,7 @@ async def submit_player_intent(
     # per-Action attack budget. An off-hand swing (Task 2) spends the Bonus
     # Action via its own dedicated consume path instead.
     if intent.intent_type == "attack" and is_offhand_swing:
-        current = _consume_offhand_attack_budget(live, actor_id, current)
+        current = _consume_offhand_attack_budget(live, actor_id, current, offhand_weapon)
     elif intent.intent_type == "attack":
         current = _consume_attack_budget(live, actor_id, current)
     else:
@@ -7394,7 +7948,46 @@ async def submit_player_intent(
             loader=get_lib_loader(),
         )
         class_levels = {current.class_slug: current.character_level} if current.class_slug else {}
-        target_unseen, attacker_unseen_by = _target_visibility_maps(live, current, targets)
+        # SRD 5.2 §Weapon Mastery — Cleave (C15 Task 7): the once-per-turn
+        # gate + the R5 deterministic second target, both pre-resolved here
+        # (spatial + per-turn state are orchestrator-owned); ``attack.py``
+        # chains the extra roll only when BOTH are set. ``None``/False for
+        # every non-cleave weapon and non-attack intent. Single-target
+        # distance read (weapon attacks resolve against one primary target).
+        _primary_distance_ft = (
+            _target_distance_map(live, current.entity_id, targets).get(targets[0].entity_id)
+            if targets
+            else None
+        )
+        cleave_available = _cleave_available(current, fetched_weapon, _primary_distance_ft)
+        cleave_candidate = (
+            _cleave_candidate(live, current, fetched_weapon, targets) if cleave_available else None
+        )
+        # Fix round 1 (controller ruling): every PER-TARGET sidecar below is
+        # built over the primary targets PLUS the cleave candidate, so the
+        # chained roll sees the candidate's own full SRD geometry (visibility,
+        # cover, distance, range tier, Dodge, Help, Vex) through the same
+        # ``_attack_roll_sources`` path as a main swing. ``ctx.targets``
+        # itself stays the PRIMARY list — damage / effects / turn-state
+        # writebacks never treat the candidate as a primary target. The
+        # Help/Vex one-use pops also walk this list: a chained
+        # ``AttackRolled`` against the candidate consuming a Help or Vex
+        # grant held against IT is SRD-correct ("the next attack roll
+        # against that creature").
+        geometry_targets: list[Combatant] = (
+            [*targets, cleave_candidate] if cleave_candidate is not None else targets
+        )
+        target_unseen, attacker_unseen_by = _target_visibility_maps(live, current, geometry_targets)
+        # SRD 5.2 Versatile property (C15 Task 4) — the attacker's declared
+        # two-handed grip (``intent.two_handed``) applies only when the
+        # weapon carries VERSATILE AND this swing is an actual melee attack
+        # (not a Thrown weapon being thrown at range, per
+        # ``_versatile_grip_applies``). Single-target-distance read: weapon
+        # attacks resolve against one primary target, so the first entry's
+        # distance stands in for "this swing's" distance.
+        use_versatile_damage = intent.two_handed and _versatile_grip_applies(
+            fetched_weapon, _primary_distance_ft
+        )
         actx = build_activity_context(
             current,
             targets,
@@ -7433,23 +8026,25 @@ async def submit_player_intent(
             target_cover=_target_cover_map(
                 live,
                 current.entity_id,
-                targets,
+                geometry_targets,
                 origin_cell=(
                     _aoe_cover_origin(live, current.entity_id, intent, activities)
                     if intent.intent_type == "cast_spell" and _typed_spell_broadcasts(activities)
                     else None
                 ),
             ),
-            target_distance_ft=_target_distance_map(live, current.entity_id, targets),
+            target_distance_ft=_target_distance_map(live, current.entity_id, geometry_targets),
             # SRD 5.2 §Actions in Combat — Dodge: per-target dodge-benefit
             # flag folded into attack disadvantage (attack.py) — the
             # "if you can see the attacker" conjunct is deferred to C16b.
-            target_dodging={t.entity_id: _dodge_benefit_active(live, t) for t in targets},
+            target_dodging={t.entity_id: _dodge_benefit_active(live, t) for t in geometry_targets},
             # SRD 5.2 §Actions in Combat — Help, Assist an Attack Roll (C14
             # Task 4): per-target ally-of-attacker Help grant folded into
             # attack advantage (attack.py); the one-use pop fires after
             # resolution below.
-            target_help_advantage=_target_help_advantage_map(live, current.entity_id, targets),
+            target_help_advantage=_target_help_advantage_map(
+                live, current.entity_id, geometry_targets
+            ),
             attacker_grappler_id=_condition_source_entity(live, current, "grappled"),
             target_unseen=target_unseen,
             attacker_unseen_by=attacker_unseen_by,
@@ -7465,13 +8060,48 @@ async def submit_player_intent(
             # spatial read owned here, not in the pure resolver).
             active_effects=tuple(live.active_effects.get(current.entity_id, [])),
             sneak_attack_spent={current.entity_id: current.sneak_attack_spent_this_turn},
-            sneak_attack_ally_adjacent=_sneak_ally_adjacent_map(live, current, targets),
+            sneak_attack_ally_adjacent=_sneak_ally_adjacent_map(live, current, geometry_targets),
+            # SRD 5.2 §Weapon Proficiency (C15) — real gate: proficient iff
+            # ``current.weapon_proficiencies`` is the ``None`` sentinel (host
+            # never opted in) or the fetched weapon's category/slug is
+            # listed. ``fetched_weapon`` is ``None`` for every non-attack
+            # intent (cast_spell/use_item/feature), and the helper returns
+            # ``True`` for a ``None`` weapon, so this is a no-op there.
+            is_proficient_attack=_is_proficient_with_weapon(current, fetched_weapon),
+            # SRD 5.2 §Range (C15 Task 2) — per-target "beyond normal range"
+            # flag folded into attack disadvantage (attack.py, "range:long").
+            # ``None``/empty for every non-attack intent (fetched_weapon is
+            # None), keeping the golden corpus identical.
+            target_beyond_normal_range=_target_beyond_normal_range_map(
+                live, current.entity_id, fetched_weapon, geometry_targets
+            ),
+            # SRD 5.2 "Ranged Attacks in Close Combat" (C15 Task 3): per-
+            # ATTACKER flag folded into attack disadvantage (attack.py,
+            # "ranged_in_melee") for an effectively-ranged attack.
+            attacker_ranged_in_melee=_hostile_adjacent_to_attacker(live, current),
             # SRD 5.2 §Two-Weapon Fighting / Light property — an off-hand
             # swing (Task 2) never adds a POSITIVE governing-ability
             # modifier to its damage; a negative modifier still applies.
             # False (the default) for every main-hand / monster / spell
             # swing keeps their damage byte-identical to before this field.
             suppress_positive_ability_damage_mod=is_offhand_swing,
+            # SRD 5.2 Versatile property (C15 Task 4) — see
+            # ``use_versatile_damage`` computation above.
+            use_versatile_damage=use_versatile_damage,
+            # SRD 5.2 §Weapon Mastery — Vex / Sap (C15 Task 6): PRE-RESOLVED
+            # per-target vex-grant / per-attacker sap-mark flags, mirroring
+            # the Help geometry above. The one-use pops fire after
+            # resolution below.
+            attacker_vex_advantage=_attacker_vex_advantage_map(
+                live, current.entity_id, geometry_targets
+            ),
+            attacker_sapped=current.entity_id in live.sap_marks,
+            # SRD 5.2 §Weapon Mastery — Cleave (C15 Task 7): see the
+            # ``cleave_available`` / ``cleave_candidate`` computation above.
+            # The monster site does not thread these: a monster attack
+            # carries no ``Weapon``, so it can never cleave today.
+            cleave_available=cleave_available,
+            cleave_candidate=cleave_candidate,
         )
         for activity in activities:
             resolve_activity(activity, actx, weapon=fetched_weapon)
@@ -7480,7 +8110,17 @@ async def submit_player_intent(
         # landed against a target the caster's Help grant was folded onto
         # (``target_help_advantage`` above), spend exactly ONE matching
         # helper's grant now that the roll has happened.
-        _pop_help_grant(live, current.entity_id, targets, pre_event_count)
+        _pop_help_grant(live, current.entity_id, geometry_targets, pre_event_count)
+
+        # SRD 5.2 §Weapon Mastery — Vex / Sap (C15 Task 6): spend the
+        # one-use grants/marks that PRE-EXISTED this resolution and were
+        # CONSUMED by an attack roll this resolution (mirrors the Help pop
+        # immediately above) BEFORE folding any NEW procs THIS resolution
+        # produced — a fresh vex/sap proc from THIS hit must survive to gate
+        # the attacker's/target's NEXT attack, not this one.
+        _pop_vex_grants(live, current.entity_id, geometry_targets, pre_event_count)
+        _pop_sap_mark(live, current.entity_id, pre_event_count)
+        _fold_mastery_procs(live, current.entity_id, actx)
 
         # SRD 5.2 §Actions in Combat — Hide, break clause: "the condition
         # ends on you immediately after ... you make an attack roll" or
@@ -7520,6 +8160,19 @@ async def submit_player_intent(
             and WeaponProperty.LIGHT in fetched_weapon.properties
         ):
             current = _record_light_weapon_swing(live, actor_id, current, fetched_weapon.slug)
+
+        # SRD 5.2 Loading — after ANY resolved swing (main-hand or off-hand)
+        # with a Loading weapon, mark the actor's one-fire-per-turn cap so a
+        # subsequent same-turn attack attempt with a Loading weapon is
+        # rejected pre-budget above (C15 Task 5). Recorded unconditionally
+        # on hit-or-miss, mirroring the Light-weapon record above — the
+        # SRD caps firing the weapon, not landing the shot.
+        if (
+            intent.intent_type == "attack"
+            and fetched_weapon is not None
+            and WeaponProperty.LOADING in fetched_weapon.properties
+        ):
+            current = _record_loading_weapon_fired(live, actor_id, current)
 
     # SRD §Concentration — fold any emitted ``EffectApplied(is_concentration=True)``
     # back onto the caster's ``Combatant.concentration_effect_id`` so the
@@ -7650,7 +8303,9 @@ def _fire_pc_opportunity_attacks_on_move(
         # auto-miss, total ≥ AC on hit; now honors Exhaustion's flat penalty
         # and the condition/Dodge advantage-disadvantage rows so an AoO is no
         # longer a bare unconditioned d20.
-        modifier = reactor.attack_bonus + d20_test_penalty(reactor.conditions)
+        # C15: reactor.attack_bonus is int | None (None = host never set
+        # PartyMemberSpec.attack_bonus); or 0 mirrors the pre-C15 int default.
+        modifier = (reactor.attack_bonus or 0) + d20_test_penalty(reactor.conditions)
         adv_sources, dis_sources = _opportunity_attack_advantage_sources(
             live, reactor=reactor, mover=mover
         )
@@ -7704,6 +8359,13 @@ def _fire_pc_opportunity_attacks_on_move(
                         amount=damage,
                         damage_type=reactor.damage_type,
                         is_overkill=damage > tracked_before,
+                        # F2 — an opportunity attack always resolves through the
+                        # reactor's legacy attack_bonus/damage_dice fields (see
+                        # _synthesize_attack_from_legacy_fields), never a typed
+                        # weapon/activity, so attribute it the same synthesized id
+                        # that path uses rather than inventing a new naming scheme.
+                        source_id="synth:legacy-swing",
+                        is_crit=is_crit,
                     ),
                 )
                 # _emit synthesizes Death + records dead_ids when tracked HP
@@ -7815,7 +8477,9 @@ def _fire_monster_opportunity_attacks_on_move(
         # (C14) — see ``_fire_pc_opportunity_attacks_on_move`` for the
         # rationale (Exhaustion penalty + condition/Dodge advantage rows now
         # reach this roll instead of a bare unconditioned d20).
-        modifier = reactor.attack_bonus + d20_test_penalty(reactor.conditions)
+        # C15: reactor.attack_bonus is int | None (None = host never set
+        # PartyMemberSpec.attack_bonus); or 0 mirrors the pre-C15 int default.
+        modifier = (reactor.attack_bonus or 0) + d20_test_penalty(reactor.conditions)
         adv_sources, dis_sources = _opportunity_attack_advantage_sources(
             live, reactor=reactor, mover=mover
         )
@@ -7869,6 +8533,13 @@ def _fire_monster_opportunity_attacks_on_move(
                         amount=damage,
                         damage_type=reactor.damage_type,
                         is_overkill=damage > tracked_before,
+                        # F2 — an opportunity attack always resolves through the
+                        # reactor's legacy attack_bonus/damage_dice fields (see
+                        # _synthesize_attack_from_legacy_fields), never a typed
+                        # weapon/activity, so attribute it the same synthesized id
+                        # that path uses rather than inventing a new naming scheme.
+                        source_id="synth:legacy-swing",
+                        is_crit=is_crit,
                     ),
                 )
                 if mover_id in live.dead_ids:
@@ -8054,7 +8725,7 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
                 # SRD 5.2 Dash adds the creature's EFFECTIVE Speed: a Speed-0
                 # monster (Grappled / Restrained / …) "can't increase" it, so
                 # the gambit is declined outright (budget <= 0 → None).
-                _effective_speed(current),
+                _effective_speed(current, live),
             )
             if dashed_budget is not None and current.action_available:
                 dashed_this_turn = True
@@ -8217,6 +8888,29 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
             attacker_grappler_id=_condition_source_entity(live, current, "grappled"),
             target_unseen=target_unseen,
             attacker_unseen_by=attacker_unseen_by,
+            # SRD 5.2 §Weapon Proficiency — "A monster is proficient with any
+            # weapon in its stat block." Left on the default (True): a
+            # monster's Combatant.weapon_proficiencies is never explicitly
+            # set (the R1 sentinel), so it would resolve to True via
+            # ``_is_proficient_with_weapon`` anyway — this IS a real attack
+            # site (monster_activities below), but the SRD rule makes the
+            # gate a no-op for every monster.
+            # SRD 5.2 "Ranged Attacks in Close Combat" (C15 Task 3): mirrors
+            # the PC site — a monster archer adjacent to a PC gets the same
+            # SRD penalty. A monster attack carries no ``Weapon`` (its
+            # damage rides on the ``AttackActivity`` itself), so
+            # ``attack.py``'s weapon-based "effectively ranged" gate never
+            # fires for a monster attack today — a recorded follow-up.
+            attacker_ranged_in_melee=_hostile_adjacent_to_attacker(live, current),
+            # SRD 5.2 §Weapon Mastery — Vex / Sap (C15 Task 6): mirrors the
+            # PC site. A monster attack carries no ``Weapon`` (see below), so
+            # a monster attacker can never itself PRODUCE a vex/sap proc —
+            # but it CAN be a vex-grant target or a sap-mark holder from a
+            # prior PC weapon hit, so both flags are wired for symmetry.
+            attacker_vex_advantage=_attacker_vex_advantage_map(
+                live, current.entity_id, target_list
+            ),
+            attacker_sapped=current.entity_id in live.sap_marks,
         )
         for activity in monster_activities:
             # Monster attacks carry their damage on the AttackActivity itself,
@@ -8224,6 +8918,13 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
             resolve_activity(activity, actx, weapon=None)
         # SRD 5.2 §Actions in Combat — Help: one-use pop, mirrors the PC site.
         _pop_help_grant(live, current.entity_id, target_list, pre_event_count)
+        # SRD 5.2 §Weapon Mastery — Vex / Sap (C15 Task 6): mirrors the PC
+        # site's pop-then-fold ordering. A monster attack never produces a
+        # proc itself (no ``Weapon``, see above), so the fold is a no-op
+        # here in practice — wired for symmetry / future monster weapons.
+        _pop_vex_grants(live, current.entity_id, target_list, pre_event_count)
+        _pop_sap_mark(live, current.entity_id, pre_event_count)
+        _fold_mastery_procs(live, current.entity_id, actx)
         # SRD 5.2 §Actions in Combat — Hide, break clause: mirrors the PC
         # site. A monster hidden via a prior Hide loses Invisible the
         # moment IT makes an attack roll (no monster gambit currently

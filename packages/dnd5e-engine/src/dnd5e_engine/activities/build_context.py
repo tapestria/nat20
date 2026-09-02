@@ -38,9 +38,13 @@ def _caster_mod(caster: Combatant) -> int:
     Monster: ``attack_bonus`` (``monster_ai``). PC: ``max(0, attack_bonus-2)``
     (``intent_resolver._spellcasting_mod``).
     """
+    # C15: ``caster.attack_bonus`` is ``int | None`` (``None`` = host never
+    # set ``PartyMemberSpec.attack_bonus``); ``or 0`` reproduces the old
+    # int-default behaviour exactly for that case. A monster's is always a
+    # concrete int (unaffected).
     if caster.entity_type == "Monster":
-        return caster.attack_bonus
-    return max(0, caster.attack_bonus - 2)
+        return caster.attack_bonus or 0
+    return max(0, (caster.attack_bonus or 0) - 2)
 
 
 def _save_dc(
@@ -67,7 +71,7 @@ def _save_dc(
     the legacy evaluator-era ``_spell_save_dc``, ``pb`` hardcoded to ``2``).
     """
     if caster.entity_type == "Monster":
-        return 8 + caster.attack_bonus
+        return 8 + (caster.attack_bonus or 0)
     if spellcasting_ability:
         ability_mod = (caster_abilities.get(spellcasting_ability, 10) - 10) // 2
         return 8 + caster_proficiency_bonus + ability_mod
@@ -153,8 +157,16 @@ def build_activity_context(
     target_unseen: dict[str, bool] | None = None,
     attacker_unseen_by: dict[str, bool] | None = None,
     suppress_positive_ability_damage_mod: bool = False,
+    use_versatile_damage: bool = False,
     target_dodging: dict[str, bool] | None = None,
     target_help_advantage: dict[str, bool] | None = None,
+    is_proficient_attack: bool = True,
+    target_beyond_normal_range: dict[str, bool] | None = None,
+    attacker_ranged_in_melee: bool = False,
+    attacker_vex_advantage: dict[str, bool] | None = None,
+    attacker_sapped: bool = False,
+    cleave_available: bool = False,
+    cleave_candidate: Combatant | None = None,
 ) -> ActivityResolutionContext:
     """Adapt the caster + the pre-computed hydration sidecars into the typed
     ``ActivityResolutionContext`` the new resolver consumes.
@@ -189,6 +201,14 @@ def build_activity_context(
     So for a feature invocation the override is omitted (``None``), letting the
     save resolver fall through to ``save.dc.calculation``. The spell / item
     path keeps the blanket override.
+
+    ``is_proficient_attack`` (C15) passes straight through to
+    ``ActivityResolutionContext`` — the orchestrator computes it (real
+    weapon-proficiency gate for the PC weapon-attack path via
+    ``_is_proficient_with_weapon``; every other call site defaults it to
+    ``True``, reproducing the pre-C15 hardcode for casts, features, and
+    monster/reaction attacks). This pure builder never touches the loader or
+    the caster's proficiency list itself.
 
     ``cast_level_override`` passes straight through to
     ``ActivityResolutionContext`` — a ``use_item`` charges_to_spend
@@ -231,6 +251,13 @@ def build_activity_context(
     # (a signed dice string); lift it into its own typed sidecar so attack.py can
     # roll it without reaching into the resistance-shaped damage dict.
     passive_attack_bonus: dict[str, str] = {}
+    # Per-attacker WEAPON-ONLY to-hit bonus (a +N weapon / weapon-tagged
+    # ``attack.roll.bonus`` change). The orchestrator fold lands it on
+    # ``passive_damage_modifiers[id]["passive_weapon_to_hit_bonus"]`` (a
+    # signed dice string, action-type-tagged so it does not leak into spell
+    # attacks); lift it into its own typed sidecar so attack.py can add it to
+    # any weapon swing, symmetric with ``passive_weapon_damage_bonus``.
+    passive_weapon_attack_bonus: dict[str, str] = {}
     # Per-attacker MELEE-WEAPON damage bonus (Rage +2). The orchestrator fold
     # lands it on ``passive_damage_modifiers[id]["passive_melee_damage_bonus"]``
     # (a signed numeric/dice string); lift it into its own typed sidecar so
@@ -260,6 +287,9 @@ def build_activity_context(
         to_hit: object = dmg_entry.get("passive_to_hit_bonus")
         if isinstance(to_hit, str) and to_hit:
             passive_attack_bonus[entity_id] = to_hit
+        weapon_to_hit: object = dmg_entry.get("passive_weapon_to_hit_bonus")
+        if isinstance(weapon_to_hit, str) and weapon_to_hit:
+            passive_weapon_attack_bonus[entity_id] = weapon_to_hit
         melee_dmg: object = dmg_entry.get("passive_melee_damage_bonus")
         if isinstance(melee_dmg, str) and melee_dmg:
             passive_melee_damage_bonus[entity_id] = melee_dmg
@@ -314,7 +344,9 @@ def build_activity_context(
         caster_proficiency_bonus=caster_proficiency_bonus,
         caster_level=caster.character_level,
         spellcasting_ability=spellcasting_ability,
-        is_proficient_attack=True,
+        is_proficient_attack=is_proficient_attack,
+        target_beyond_normal_range=target_beyond_normal_range or {},
+        attacker_ranged_in_melee=attacker_ranged_in_melee,
         concentration=concentration,
         slot_level=slot_level,
         base_spell_level=base_spell_level,
@@ -330,11 +362,17 @@ def build_activity_context(
             )
             + _spell_dc_bonus(caster, passive_damage_modifiers, rng)
         ),
+        # C15: ``None`` here (host never set ``PartyMemberSpec.attack_bonus``)
+        # correctly falls through in ``attack.py::_attack_bonus`` to the real
+        # governing-ability-mod + proficiency-bonus computation instead of a
+        # pinned 0 override — no change needed at that call site, it already
+        # treated ``None`` as "no override".
         attack_bonus_override=caster.attack_bonus,
         passive_damage_modifiers=passive_damage_modifiers,
         passive_save_modifiers=passive_save_modifiers,
         passive_save_bonus=passive_save_bonus,
         passive_attack_bonus=passive_attack_bonus,
+        passive_weapon_attack_bonus=passive_weapon_attack_bonus,
         passive_melee_damage_bonus=passive_melee_damage_bonus,
         passive_weapon_damage_bonus=passive_weapon_damage_bonus,
         passive_ranged_damage_bonus=passive_ranged_damage_bonus,
@@ -386,4 +424,18 @@ def build_activity_context(
         class_levels=class_levels or {},
         cast_level_override=cast_level_override,
         suppress_positive_ability_damage_mod=suppress_positive_ability_damage_mod,
+        use_versatile_damage=use_versatile_damage,
+        # SRD 5.2 §Weapon Mastery — Vex / Sap (C15 Task 6): PRE-RESOLVED
+        # per-target vex-grant / per-attacker sap-mark flags, computed by
+        # the orchestrator (``live.vex_grants`` / ``live.sap_marks``).
+        # Absent (``None``) -> empty / False, leaving the golden corpus
+        # identical (no mastery geometry).
+        attacker_vex_advantage=attacker_vex_advantage or {},
+        attacker_sapped=attacker_sapped,
+        # SRD 5.2 §Weapon Mastery — Cleave (C15 Task 7): PRE-RESOLVED gate +
+        # deterministic second target (controller ruling R5), computed by
+        # the orchestrator. Defaults (False / None) -> no chain, keeping the
+        # golden corpus identical.
+        cleave_available=cleave_available,
+        cleave_candidate=cleave_candidate,
     )

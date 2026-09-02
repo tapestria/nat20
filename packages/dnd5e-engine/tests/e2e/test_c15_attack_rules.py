@@ -18,10 +18,9 @@ from dnd5e_engine.orchestrator import (
     submit_player_intent,
 )
 from dnd5e_engine.specs import EncounterMemberSpec, GridScene, PartyMemberSpec
-from tests.e2e.harness import cell, events_of, grid_scene, run_async, xfail_cluster
+from tests.e2e.harness import cell, events_of, grid_scene, run_async
 
 
-@xfail_cluster(15, "attack rules")
 def test_c15_s01_nonproficient_attacker_still_adds_proficiency_bonus():
     """C15-S01: SRD 5.2 — "you must have proficiency with it to add your
     Proficiency Bonus to an attack roll you make with it."
@@ -95,7 +94,6 @@ def test_c15_s01_nonproficient_attacker_still_adds_proficiency_bonus():
     assert base_total - nonprof_total == 2
 
 
-@xfail_cluster(15, "attack rules")
 def test_c15_s02_ranged_attack_disadvantaged_by_adjacent_hostile():
     """C15-S02: SRD 5.2 (Ranged Attacks in Close Combat) — "you have
     Disadvantage on the roll if you are within 5 feet of an enemy who can
@@ -188,7 +186,6 @@ def test_c15_s02_ranged_attack_disadvantaged_by_adjacent_hostile():
     assert rolled_b.roll_total <= rolled_a.roll_total
 
 
-@xfail_cluster(15, "attack rules")
 def test_c15_s03_disadvantage_tier_between_normal_and_long_range():
     """C15-S03: SRD 5.2 (Range) — "Your attack roll has Disadvantage when
     your target is beyond normal range, and you can't attack a target
@@ -261,7 +258,6 @@ def test_c15_s03_disadvantage_tier_between_normal_and_long_range():
     assert beyond_failed[0].reason == "out_of_range"
 
 
-@xfail_cluster(15, "attack rules")
 def test_c15_s04_versatile_grip_and_damage_source_attribution():
     """C15-S04: SRD 5.2 (Versatile) — "The weapon deals that damage when
     used with two hands to make a melee attack."
@@ -321,7 +317,6 @@ def test_c15_s04_versatile_grip_and_damage_source_attribution():
     PlayerIntent(**two_handed_kwargs)
 
 
-@xfail_cluster(15, "attack rules")
 def test_c15_s05_loading_weapon_second_shot_rejected_for_the_right_reason():
     """C15-S05: SRD 5.2 (Loading) — "You can fire only one piece of
     ammunition from a Loading weapon when you use an action, a Bonus
@@ -345,6 +340,9 @@ def test_c15_s05_loading_weapon_second_shot_rejected_for_the_right_reason():
         start = await start_combat(
             session_id="e2e-c15-s05",
             party=[
+                # Setup repair 2026-09-02: fighter-5 so the turn survives shot 1
+                # (C14 economy); the Loading gate, not turn order, must reject
+                # shot 2 (catalog repair protocol).
                 PartyMemberSpec(
                     entity_id="char:hero",
                     name="Hero",
@@ -352,6 +350,8 @@ def test_c15_s05_loading_weapon_second_shot_rejected_for_the_right_reason():
                     hp_current=20,
                     hp_max=20,
                     dexterity=16,
+                    character_level=5,
+                    class_slug="fighter",
                     zone_id=cell(0, 0),
                 )
             ],
@@ -379,10 +379,6 @@ def test_c15_s05_loading_weapon_second_shot_rejected_for_the_right_reason():
                 intent_type="attack", weapon_id="light-crossbow", target_id="mon:foe"
             ),
         )
-        # Today this raises IntentRejectedError("not_actor_turn") instead of
-        # resolving through the pre-resolution reject path — suppress so the
-        # event-based assertions below (which pin the SRD-correct, not-yet-
-        # true state) still run.
         with contextlib.suppress(IntentRejectedError):
             await submit_player_intent(
                 start.handle,
@@ -471,15 +467,15 @@ def test_c15_s06_massive_damage_triggers_instant_death_for_a_character():
     assert deaths
 
 
-@xfail_cluster(15, "attack rules")
 def test_c15_s07_vex_mastery_grants_advantage_on_next_attack():
     """C15-S07: SRD 5.2 (Vex) — "If you hit a creature with this weapon
     and deal damage to the creature, you have Advantage on your next
     attack roll against that creature before the end of your next turn."
     (packs/_source/content24/appendices/appendix-d-rule-references.yml,
     id hg3adn9O1O5Z2QxL). ``apply_mastery_on_hit`` routes ``vex`` to
-    ``_log_deferred`` — an info log line, no event, no ``ActiveEffect``,
-    no sidecar write. Vex-granted advantage is unreachable end-to-end.
+    ``ctx.mastery_procs``; the orchestrator folds it into a live
+    ``vex_grants`` entry the hero's next attack roll against the same
+    target consumes as Advantage (C15 Task 6).
     """
     from dnd5e_engine.orchestrator import advance_monster_turn
 
@@ -519,11 +515,23 @@ def test_c15_s07_vex_mastery_grants_advantage_on_next_attack():
             actor_id="char:hero",
             intent=PlayerIntent(intent_type="attack", weapon_id="shortsword", target_id="mon:foe"),
         )
+        # Script repair 2026-09-02: pass ends the TWF-open turn (C14 economy); assertions unchanged (catalog repair protocol).
+        await submit_player_intent(
+            start.handle,
+            actor_id="char:hero",
+            intent=PlayerIntent(intent_type="pass"),
+        )
         await advance_monster_turn(start.handle)
         await submit_player_intent(
             start.handle,
             actor_id="char:hero",
             intent=PlayerIntent(intent_type="attack", weapon_id="shortsword", target_id="mon:foe"),
+        )
+        # Script repair 2026-09-02: pass ends the TWF-open turn (C14 economy); assertions unchanged (catalog repair protocol).
+        await submit_player_intent(
+            start.handle,
+            actor_id="char:hero",
+            intent=PlayerIntent(intent_type="pass"),
         )
         return live
 

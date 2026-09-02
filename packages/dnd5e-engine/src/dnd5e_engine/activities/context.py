@@ -101,6 +101,19 @@ class ActivityResolutionContext:
     # stream as the attack d20. Absent → +0. Empty default keeps the golden
     # corpus identical.
     passive_attack_bonus: dict[str, str] = field(default_factory=dict)
+    # Per-ATTACKER additive WEAPON-ONLY to-hit bonus, keyed entity_id -> a
+    # signed dice-expression STRING. The to-hit analogue of
+    # ``passive_weapon_damage_bonus``: a +N weapon / weapon-tagged
+    # (``applicable_action_types == ["attack"]``) ``attack.roll.bonus``
+    # change applies to a weapon swing only, unlike ``passive_attack_bonus``
+    # (Bless/Bane), which buffs weapon AND spell attacks alike. Sourced from
+    # the orchestrator's action-type-tagged
+    # ``passive_damage_modifiers[id]["passive_weapon_to_hit_bonus"]``
+    # projection (``_fold_active_effect_changes``'s ``weapon_only`` branch);
+    # consumed in ``attack.py`` gated on a weapon being present, symmetric
+    # with ``passive_weapon_damage_bonus``. Absent attacker → +0. Empty
+    # default keeps the golden corpus identical.
+    passive_weapon_attack_bonus: dict[str, str] = field(default_factory=dict)
     # Per-ATTACKER additive MELEE-WEAPON damage bonus, keyed entity_id -> a signed
     # numeric/dice STRING (Rage's ``+2`` at L5; stacked sources pre-joined). The
     # melee-damage analogue of ``passive_attack_bonus``: Foundry's
@@ -183,6 +196,30 @@ class ActivityResolutionContext:
     # within 5 ft, disadvantage otherwise). Absent target -> unknown -> that row
     # stays inert.
     target_distance_ft: dict[str, int] = field(default_factory=dict)
+    # SRD 5.2 §Range (C15 Task 2): "Your attack roll has Disadvantage when
+    # your target is beyond normal range, and you can't attack a target
+    # beyond long range." Per-TARGET flag — True iff the attacker→target
+    # distance is beyond the weapon's NORMAL band but still within its MAX
+    # (long) band, projected once per resolution by the orchestrator from
+    # ``_weapon_attack_range_ft`` + the live distance. The MAX-band reject
+    # itself happens upstream (``_pc_attack_out_of_range``), before this
+    # context is even built, so a target reaching ``attack.py`` with this
+    # flag set is always a LEGAL, merely disadvantaged, attack. Consumed in
+    # ``attack.py``, which appends the ``"range:long"`` disadvantage source.
+    # Empty default keeps the golden corpus identical (no range geometry).
+    target_beyond_normal_range: dict[str, bool] = field(default_factory=dict)
+    # SRD 5.2 "Ranged Attacks in Close Combat" (C15 Task 3): "you have
+    # Disadvantage on the roll if you are within 5 feet of an enemy who can
+    # see you and doesn't have the Incapacitated condition." Per-ATTACKER
+    # (not per-target) flag — True iff a qualifying hostile is adjacent to
+    # THIS caster, projected once per resolution by the orchestrator
+    # (``_hostile_adjacent_to_attacker``). Consumed in ``attack.py``, which
+    # folds it into disadvantage only for an attack that is itself
+    # effectively ranged (ranged-category weapon, or a thrown melee weapon
+    # beyond its own reach) — an ordinary melee swing is never penalized.
+    # Default ``False`` keeps the golden corpus identical (no adjacency
+    # geometry).
+    attacker_ranged_in_melee: bool = False
     # SRD 5.2 §Actions in Combat — Dodge (C14 Task 3). Per-TARGET whether the
     # Dodge benefit is currently active (``dodging`` AND not Incapacitated
     # AND Speed > 0 — the SRD loss clause), projected once per resolution by
@@ -322,6 +359,74 @@ class ActivityResolutionContext:
     # False default keeps every other swing (main-hand, monster, spell)
     # byte-identical to before this field existed.
     suppress_positive_ability_damage_mod: bool = False
+    # SRD 5.2 Versatile property — "The weapon deals that damage when used
+    # with two hands to make a melee attack." Set True by the orchestrator
+    # only when the player intent requests a two-handed grip
+    # (``PlayerIntent.two_handed``) AND the weapon carries
+    # ``WeaponProperty.VERSATILE`` AND the swing is a melee attack (a
+    # two-handed grip on a thrown/ranged use of the weapon is ignored).
+    # ``_roll_base_weapon_damage`` (attack.py) rolls ``Weapon.versatile_damage``
+    # instead of ``Weapon.damage_parts`` when this is set. False default keeps
+    # every other swing byte-identical to before this field existed.
+    use_versatile_damage: bool = False
+    # SRD 5.2 §Weapon Mastery — Vex (C15 Task 6): "If you hit a creature with
+    # this weapon and deal damage to the creature, you have Advantage on your
+    # next attack roll against that creature before the end of your next
+    # turn." Per-TARGET flag for the ATTACKER resolving THIS activity — is
+    # there a live Vex grant (this attacker -> that target) still
+    # outstanding? Projected by the orchestrator from ``live.vex_grants``
+    # immediately before resolution; consumed in ``attack.py``, which folds
+    # it into advantage via the existing ``"trait"`` AdvantageSource (no
+    # dedicated mastery-rider token exists — the Literal is closed) AND
+    # feeds the SAME boolean ``sneak_attack_triggers`` reads as
+    # ``attacker_has_advantage`` (a vex-advantaged Rogue swing can Sneak
+    # Attack). The one-use pop (mirrors ``target_help_advantage``'s
+    # ``_pop_help_grant``) is an orchestrator-side write after resolution.
+    # Empty default keeps the golden corpus identical (no mastery geometry).
+    attacker_vex_advantage: dict[str, bool] = field(default_factory=dict)
+    # SRD 5.2 §Weapon Mastery — Sap (C15 Task 6): "If you hit a creature with
+    # this weapon, that creature has Disadvantage on its next attack roll
+    # before the start of your next turn." Per-ATTACKER (the caster
+    # resolving THIS activity, who may be the SAPPED creature) — True iff a
+    # live Sap mark (``live.sap_marks``) is outstanding against THIS caster,
+    # projected by the orchestrator immediately before resolution. Consumed
+    # in ``attack.py``, which folds it into disadvantage via the SAME
+    # ``"trait"`` AdvantageSource. The one-use pop is an orchestrator-side
+    # write after resolution. Default ``False`` keeps the golden corpus
+    # identical (no mastery geometry).
+    attacker_sapped: bool = False
+    # SRD 5.2 §Weapon Mastery — Vex / Sap proc writeback channel (C15 Task 6,
+    # controller ruling R4). Mastery resolvers (``activities/mastery.py``)
+    # APPEND ``(mastery_slug, target_id)`` here when a hit qualifies for a
+    # lingering rider (vex: hit AND damage DEALT > 0, post-immunity; sap:
+    # hit alone) — they never touch live combat state directly (purity
+    # boundary). The orchestrator reads this list AFTER resolution and folds
+    # each entry into ``live.vex_grants`` / ``live.sap_marks`` (non-stacking
+    # — a re-proc REFRESHES the grant/mark's expiry rather than stacking,
+    # controller ruling R5). Mutated via ``list.append`` despite the frozen
+    # dataclass (list mutation, not field reassignment, is fine); empty
+    # default keeps the golden corpus identical.
+    mastery_procs: list[tuple[str, str]] = field(default_factory=list)
+    # SRD 5.2 §Weapon Mastery — Cleave (C15 Task 7): "If you hit a creature
+    # with a melee attack roll using this weapon, you can make a melee attack
+    # roll with the weapon against a second creature within 5 feet of the
+    # first that is also within your reach. ... You can make this extra
+    # attack only once per turn." Both halves are PRE-RESOLVED by the
+    # orchestrator (spatial + per-turn state reads it owns):
+    # ``cleave_available`` — the swung weapon carries ``cleave``, the swing is
+    # a melee attack within reach, and the attacker has not already cleaved
+    # this turn (``Combatant.cleave_spent_this_turn``); ``cleave_candidate``
+    # — the deterministic second creature (controller ruling R5: a LIVING
+    # hostile within 5 ft of the first target AND within the attacker's
+    # reach, excluding the first target; nearest to the ATTACKER, ties broken
+    # by ascending entity_id), or ``None`` when no creature qualifies.
+    # ``attack.py`` chains ONE extra attack roll against the candidate after
+    # a main-target HIT when both are set, and reports that it fired by
+    # appending ``("cleave", candidate_id)`` to ``mastery_procs`` (the
+    # orchestrator folds that marker into the per-turn cap). Defaults keep
+    # the golden corpus identical (no chain, no extra draws).
+    cleave_available: bool = False
+    cleave_candidate: Combatant | None = None
 
     def ability_mod(self, ability: str) -> int:
         return (self.caster_abilities.get(ability, 10) - 10) // 2

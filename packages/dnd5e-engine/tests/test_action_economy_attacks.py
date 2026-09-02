@@ -310,6 +310,11 @@ def _dagger_intent() -> PlayerIntent:
     return PlayerIntent(intent_type="attack", weapon_id="dagger", target_id="mon:dummy")
 
 
+def _handaxe_intent() -> PlayerIntent:
+    # C15 repair: dagger carries the Nick mastery (off-hand no longer spends the Bonus Action); a non-Nick Light weapon preserves this test's TWF-budget intent.
+    return PlayerIntent(intent_type="attack", weapon_id="handaxe", target_id="mon:dummy")
+
+
 def _longsword_intent() -> PlayerIntent:
     return PlayerIntent(intent_type="attack", weapon_id="longsword", target_id="mon:dummy")
 
@@ -341,7 +346,7 @@ class TestLightWeaponOffhandSwing:
             live_before = _get_live(start.handle)
             actor_before = next(c for c in live_before.initiative if c.entity_id == "char:duelist")
             await submit_player_intent(
-                start.handle, actor_id="char:duelist", intent=_dagger_intent()
+                start.handle, actor_id="char:duelist", intent=_handaxe_intent()
             )
             return _get_live(start.handle), actor_before
 
@@ -463,9 +468,10 @@ class TestLightWeaponMainActionPriority:
             await submit_player_intent(
                 start.handle,
                 actor_id="char:duelist",
+                # C15 repair: dagger carries the Nick mastery (off-hand no longer spends the Bonus Action); a non-Nick Light weapon preserves this test's TWF-budget intent.
                 intent=PlayerIntent(
                     intent_type="attack",
-                    weapon_id="dagger",
+                    weapon_id="handaxe",
                     target_id="mon:dummy",
                     use_bonus_action=True,
                 ),
@@ -561,8 +567,9 @@ class TestLightWeaponOffhandGateFailures:
                 if c.entity_id == "char:duelist":
                     live.initiative[idx] = c.model_copy(update={"bonus_action_available": False})
                     break
+            # C15 repair: dagger carries the Nick mastery (off-hand no longer spends the Bonus Action); a non-Nick Light weapon preserves this test's TWF-budget intent.
             await submit_player_intent(
-                start.handle, actor_id="char:duelist", intent=_dagger_intent()
+                start.handle, actor_id="char:duelist", intent=_handaxe_intent()
             )
             return _get_live(start.handle)
 

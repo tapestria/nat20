@@ -40,7 +40,19 @@ class Combatant(BaseModel):
     # Extended combat stats (populated at combat start)
     hp_max: int = 0
     ac: int = 10
-    attack_bonus: int = 0
+    # C15 (2026-09-02) — widened to ``int | None`` (was ``int = 0``). ``None``
+    # means the host never explicitly set ``PartyMemberSpec.attack_bonus``;
+    # ``activities/build_context.py``'s ``attack_bonus_override`` threads this
+    # verbatim into ``ActivityResolutionContext``, and ``activities/attack.py``
+    # already treats ``None`` as "no override" — so an unset PC now correctly
+    # falls through to the real governing-ability-mod + proficiency-bonus
+    # computation (SRD §Weapon Proficiency gate) instead of being silently
+    # pinned to a 0 to-hit bonus. A host-supplied value (including a
+    # real monster's, always threaded as a concrete int) is unaffected —
+    # byte-identical to every pre-C15 fixture. Every direct arithmetic reader
+    # (``build_context._caster_mod`` / ``_save_dc``, the two opportunity-
+    # attack fire sites in ``orchestrator.py``) guards with ``or 0``.
+    attack_bonus: int | None = None
     damage_dice: str = "1d4"  # "XdY+Z" format
     damage_type: str = "bludgeoning"
     behavior_profile: str = "AGGRESSIVE"  # BehaviorProfile value
@@ -56,7 +68,18 @@ class Combatant(BaseModel):
     save_proficiencies: list[str] = Field(default_factory=list)  # Ability codes
     skill_proficiencies: list[str] = Field(default_factory=list)  # skill slugs
     skill_expertise: list[str] = Field(default_factory=list)
-    weapon_proficiencies: list[str] = Field(default_factory=list)  # categories + slugs
+    # C15 (2026-09-02) R1 sentinel — SRD 5.2 §Weapon Proficiency: "Anyone can
+    # wield a weapon, but you must have proficiency with it to add your
+    # Proficiency Bonus to an attack roll you make with it" (Proficiency
+    # Bonus is OMITTED, never subtracted, when unproficient). ``None`` means
+    # the host never set ``PartyMemberSpec.weapon_proficiencies`` — "assume
+    # proficient", reproducing every pre-C15 fixture byte-identically. An
+    # explicit list (possibly empty — "proficient in nothing") switches on
+    # real enforcement: proficient iff the weapon's ``weapon_category`` or
+    # ``slug`` appears in the list. Monsters never carry this field
+    # explicitly, so it stays ``None`` -> always proficient, matching the SRD
+    # "a monster is proficient with any weapon in its stat block" rule.
+    weapon_proficiencies: list[str] | None = None  # categories + slugs; None = legacy sentinel
     death_saves: dict[str, Any] = Field(default_factory=dict)  # serialized DeathSaveState
     # SRD §Creatures — creature_type (e.g. "humanoid", "undead", "construct",
     # "elf"). Drives type-gated spell semantics (Hold Person targets only
@@ -236,6 +259,24 @@ class Combatant(BaseModel):
     # ``dr.bypasses == []``). C18's corpus hydration sets it from
     # ``dr.bypasses``.
     physical_resistances_nonmagical_only: bool = True
+    # SRD 5.2 Loading — "You can fire only one piece of ammunition from a
+    # Loading weapon when you use an action, a Bonus Action, or a Reaction
+    # to fire it, regardless of the number of attacks you can normally
+    # make." Engine reading: one fire per TURN, not per action-type — no
+    # PC reaction-attack path exists, so action/bonus/reaction collapse to
+    # the turn boundary; the cap is per-actor (not per-weapon), matching
+    # the SRD's "you" framing. Set True after any resolved main-hand OR
+    # off-hand swing with a ``WeaponProperty.LOADING`` weapon (C15 Task
+    # 5). Reset to False at the actor's own TurnStarted, alongside the
+    # other per-turn attack-economy fields above.
+    loading_weapon_fired_this_turn: bool = False
+    # SRD 5.2 §Weapon Mastery — Cleave: "You can make this extra attack only
+    # once per turn." Set True by the orchestrator once a cleave chain has
+    # FIRED this turn (the extra attack roll was made, hit or miss); gates
+    # ``ActivityResolutionContext.cleave_available`` for every later swing
+    # this turn. Reset to False at the actor's own TurnStarted, alongside
+    # the other per-turn attack-economy fields above (C15 Task 7).
+    cleave_spent_this_turn: bool = False
 
     @model_validator(mode="before")
     @classmethod

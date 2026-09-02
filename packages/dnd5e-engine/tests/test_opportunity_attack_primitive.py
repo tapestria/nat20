@@ -20,8 +20,10 @@ every pre-existing seeded AoO scenario is untouched.
 
 from __future__ import annotations
 
+import random
+
 from dnd5e_engine import PlayerIntent
-from dnd5e_engine.events import AttackRolled
+from dnd5e_engine.events import AttackRolled, DamageApplied
 from dnd5e_engine.orchestrator import (
     _fire_monster_opportunity_attacks_on_move,
     _fire_pc_opportunity_attacks_on_move,
@@ -232,3 +234,46 @@ def test_condition_free_aoo_determinism_pin_matches_pre_change_natural():
     assert rolled.advantage == "normal"
     assert rolled.natural == 5
     assert rolled.roll_total == 5
+
+
+class _NatTwentyRng(random.Random):
+    """Deterministic stand-in for the live combat's seeded RNG: every d20
+    draw (``randint(1, 20)``) is forced to a natural 20 so the opportunity
+    attack always crits; every other draw (weapon damage) returns a fixed
+    pip count so damage is always > 0. Swapped in for ``live.rng`` AFTER
+    ``start_combat`` (which already consumed the real seeded RNG for
+    initiative), mirroring ``test_action_economy_attacks.py``'s
+    ``_ForcedRng`` idiom."""
+
+    def randint(self, a: int, b: int) -> int:
+        if (a, b) == (1, 20):
+            return 20
+        return 4
+
+
+def test_opportunity_attack_nat_20_damage_is_attributed_and_flagged_crit():
+    """F2 — a forced natural-20 opportunity attack's ``DamageApplied`` now
+    threads ``is_crit`` and ``source_id`` (previously both silently
+    defaulted, so a crit OA looked identical to a normal-hit OA on the
+    damage event and the damage was unattributed). An OA always resolves
+    through the reactor's legacy ``attack_bonus``/``damage_dice`` fields
+    (never a typed weapon/activity — see
+    ``orchestrator._synthesize_attack_from_legacy_fields``), so it is
+    attributed the same synthesized id that path uses."""
+
+    async def _run():
+        start = await _start_pc_reactor_combat("t9-e-crit-oa-attribution")
+        live = _get_live(start.handle)
+        live.rng = _NatTwentyRng()
+        _fire_pc_opportunity_attacks_on_move(
+            live, mover_id="mon:goblin", from_zone="zone:a", to_zone="zone:b"
+        )
+        return live
+
+    live = run_async(_run())
+    rolled = next(e for e in events_of(live, AttackRolled) if e.attacker_id == "char:hero")
+    assert rolled.natural == 20
+    assert rolled.is_crit is True
+    damaged = next(e for e in events_of(live, DamageApplied) if e.target_id == "mon:goblin")
+    assert damaged.is_crit is True
+    assert damaged.source_id == "synth:legacy-swing"

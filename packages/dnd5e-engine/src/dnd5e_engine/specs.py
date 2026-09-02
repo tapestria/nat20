@@ -40,6 +40,13 @@ class PartyMemberSpec(BaseModel):
     hp_current: int
     hp_max: int
     ac: int = 10
+    # A fixed weapon-attack to-hit bonus, honored verbatim (bypasses the
+    # engine's governing-ability-mod + proficiency-bonus computation) —
+    # for a host that precomputes its own totals. Leaving this unset (the
+    # default) is NOT the same as ``0``: an unset field lets the engine
+    # compute the real ability-mod + proficiency-bonus total instead
+    # (C15, SRD 5.2 §Weapon Proficiency); an explicit ``0`` is honored as a
+    # genuine zero override.
     attack_bonus: int = 0
     strength: int = 10
     dexterity: int = 10
@@ -145,8 +152,16 @@ class PartyMemberSpec(BaseModel):
     # proficiency), and proficient weapon categories/slugs. Threaded onto the
     # live ``Combatant`` at start_combat by ``_build_pc_combatants`` and read by
     # ``activities/actor_stats.save_modifier`` / ``check_modifier`` (F1c/F1d).
-    # Empty tuples reproduce pre-F1 behaviour exactly: ability modifier only,
-    # no proficiency bonus.
+    # For ``save_proficiencies`` / ``skill_proficiencies`` / ``skill_expertise``,
+    # an empty tuple reproduces pre-F1 behaviour exactly: ability modifier
+    # only, no proficiency bonus. ``weapon_proficiencies`` is the ONE
+    # exception (C15 R1 sentinel): ``Combatant.weapon_proficiencies`` is
+    # ``list[str] | None``, keyed off ``model_fields_set`` rather than off
+    # emptiness — an UNSET field on this spec (the field never assigned)
+    # projects to ``None`` and assumes proficient with every weapon (the
+    # legacy behaviour); an explicitly-set field, even an empty tuple/list,
+    # projects to a real list and every attack is enforced against it by
+    # category or slug. See ``orchestrator.py::_is_proficient_with_weapon``.
     save_proficiencies: tuple[str, ...] = ()
     skill_proficiencies: tuple[str, ...] = ()
     skill_expertise: tuple[str, ...] = ()
