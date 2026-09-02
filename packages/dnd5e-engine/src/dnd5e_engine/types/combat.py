@@ -259,6 +259,17 @@ class Combatant(BaseModel):
     # ``dr.bypasses == []``). C18's corpus hydration sets it from
     # ``dr.bypasses``.
     physical_resistances_nonmagical_only: bool = True
+    # SRD 5.2 Loading — "You can fire only one piece of ammunition from a
+    # Loading weapon when you use an action, a Bonus Action, or a Reaction
+    # to fire it, regardless of the number of attacks you can normally
+    # make." Engine reading: one fire per TURN, not per action-type — no
+    # PC reaction-attack path exists, so action/bonus/reaction collapse to
+    # the turn boundary; the cap is per-actor (not per-weapon), matching
+    # the SRD's "you" framing. Set True after any resolved main-hand OR
+    # off-hand swing with a ``WeaponProperty.LOADING`` weapon (C15 Task
+    # 5). Reset to False at the actor's own TurnStarted, alongside the
+    # other per-turn attack-economy fields above.
+    loading_weapon_fired_this_turn: bool = False
 
     @model_validator(mode="before")
     @classmethod

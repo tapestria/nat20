@@ -317,7 +317,6 @@ def test_c15_s04_versatile_grip_and_damage_source_attribution():
     PlayerIntent(**two_handed_kwargs)
 
 
-@xfail_cluster(15, "attack rules")
 def test_c15_s05_loading_weapon_second_shot_rejected_for_the_right_reason():
     """C15-S05: SRD 5.2 (Loading) — "You can fire only one piece of
     ammunition from a Loading weapon when you use an action, a Bonus
@@ -341,6 +340,9 @@ def test_c15_s05_loading_weapon_second_shot_rejected_for_the_right_reason():
         start = await start_combat(
             session_id="e2e-c15-s05",
             party=[
+                # Setup repair 2026-09-02: fighter-5 so the turn survives shot 1
+                # (C14 economy); the Loading gate, not turn order, must reject
+                # shot 2 (catalog repair protocol).
                 PartyMemberSpec(
                     entity_id="char:hero",
                     name="Hero",
@@ -348,6 +350,8 @@ def test_c15_s05_loading_weapon_second_shot_rejected_for_the_right_reason():
                     hp_current=20,
                     hp_max=20,
                     dexterity=16,
+                    character_level=5,
+                    class_slug="fighter",
                     zone_id=cell(0, 0),
                 )
             ],
@@ -375,10 +379,6 @@ def test_c15_s05_loading_weapon_second_shot_rejected_for_the_right_reason():
                 intent_type="attack", weapon_id="light-crossbow", target_id="mon:foe"
             ),
         )
-        # Today this raises IntentRejectedError("not_actor_turn") instead of
-        # resolving through the pre-resolution reject path — suppress so the
-        # event-based assertions below (which pin the SRD-correct, not-yet-
-        # true state) still run.
         with contextlib.suppress(IntentRejectedError):
             await submit_player_intent(
                 start.handle,

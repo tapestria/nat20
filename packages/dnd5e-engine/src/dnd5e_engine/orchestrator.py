@@ -1366,6 +1366,31 @@ def _attack_out_of_range_failure(
     return AttackFailed(actor_id=actor_id, target_id=intent.target_id, reason="out_of_range")
 
 
+def _loading_weapon_already_fired_failure(
+    current: Combatant, actor_id: str, intent: PlayerIntent, weapon: Weapon | None
+) -> CombatEvent | None:
+    """SRD 5.2 Loading — "You can fire only one piece of ammunition from a
+    Loading weapon when you use an action, a Bonus Action, or a Reaction to
+    fire it, regardless of the number of attacks you can normally make."
+    Engine reading: one fire per TURN (no PC reaction-attack path exists,
+    so action/bonus/reaction collapse to the turn boundary); the cap is
+    per-actor, not per-weapon (SRD ambiguity resolved toward "you", the
+    actor). Applies to BOTH the main-hand and off-hand attack path — one
+    of the ``pre_resolution_gates`` failure-builders consumed by
+    ``submit_player_intent``, so a rejected shot spends no Action/Bonus
+    Action and leaves ``attacks_remaining`` untouched (C15 Task 5)."""
+    if (
+        intent.intent_type != "attack"
+        or weapon is None
+        or WeaponProperty.LOADING not in weapon.properties
+        or not current.loading_weapon_fired_this_turn
+    ):
+        return None
+    return AttackFailed(
+        actor_id=actor_id, target_id=intent.target_id, reason="weapon_already_fired"
+    )
+
+
 _HARMFUL_ACTIVITY_KINDS: frozenset[str] = frozenset({"attack", "damage", "save"})
 
 
@@ -2948,6 +2973,10 @@ def _emit_apply_turn_started(live: _LiveCombat, event: TurnStarted) -> None:
                     # turn; the gate resets alongside Dodge at the actor's own
                     # TurnStarted.
                     "hide_attempted_this_turn": False,
+                    # SRD 5.2 Loading — the one-fire-per-turn cap resets at
+                    # the actor's own TurnStarted, alongside the other
+                    # per-turn attack-economy fields (C15 Task 5).
+                    "loading_weapon_fired_this_turn": False,
                 }
             )
             break
@@ -6616,6 +6645,19 @@ def _record_light_weapon_swing(
     return _current_actor(live)
 
 
+def _record_loading_weapon_fired(live: _LiveCombat, actor_id: str, current: Combatant) -> Combatant:
+    """Record that this turn's one permitted Loading-weapon shot has been
+    fired (SRD 5.2 Loading), closing the window for any further same-turn
+    attack attempt with a Loading weapon (checked pre-budget in
+    ``submit_player_intent``). Reset to False at the actor's own
+    TurnStarted."""
+    for idx, c in enumerate(live.initiative):
+        if c.entity_id == actor_id:
+            live.initiative[idx] = c.model_copy(update={"loading_weapon_fired_this_turn": True})
+            break
+    return _current_actor(live)
+
+
 def _consume_spell_slot(
     live: _LiveCombat, current: Combatant, actor_id: str, intent: PlayerIntent
 ) -> bool:
@@ -7360,30 +7402,6 @@ async def submit_player_intent(
     is_bonus_action = action_cost.is_bonus_action
     is_reaction_cast = action_cost.is_reaction_cast
 
-    # Pre-resolution reject gates — each checked BEFORE any action budget is
-    # consumed, so a rejection spends no Action/Bonus Action/slot and leaves
-    # the turn untouched. Order matters and is preserved from the original
-    # sequential if-chain: spell range (SRD §Spell Range) -> weapon reach
-    # (SRD §Weapon Reach / Range) -> Charmed target (SRD 5.2 "You can't
-    # attack the charmer or target the charmer with damaging abilities or
-    # magical effects") -> pre-slot ``target_invalid`` (Hellish Rebuke's fixed
-    # target, SRD §Hellish Rebuke; an unaimed Cone/Line/Cube AoE template).
-    # The first gate whose failure-builder returns a non-``None`` event
-    # wins; that event is emitted and the intent is rejected.
-    pre_resolution_gates: tuple[Callable[[], CombatEvent | None], ...] = (
-        lambda: _spell_out_of_range_failure(live, actor_id, intent, cast_spell_for_timing),
-        lambda: _attack_out_of_range_failure(live, actor_id, intent),
-        lambda: _charmed_target_failure(live, actor_id, current, intent),
-        lambda: _cast_target_invalid_failure(
-            live, current, actor_id, intent, cast_spell_for_timing
-        ),
-    )
-    for build_pre_resolution_failure in pre_resolution_gates:
-        failure = build_pre_resolution_failure()
-        if failure is not None:
-            _emit(live, failure)
-            return
-
     # SRD 5.2 §Two-Weapon Fighting — classify BEFORE the action-economy gate:
     # an off-hand swing spends the Bonus Action (already gated by
     # ``bonus_action_available`` inside the classifier itself), not the
@@ -7394,13 +7412,41 @@ async def submit_player_intent(
     # Action already spent) falls through to the normal attack economy gate
     # below — with ``attacks_remaining`` already exhausted by the main-hand
     # swing, that gate's ``AttackFailed(reason="no_action_economy")`` covers
-    # the rejection (turn-keeping, per R2).
+    # the rejection (turn-keeping, per R2). Fetched here (ahead of the
+    # ``pre_resolution_gates`` tuple below) so the Loading gate (C15 Task 5)
+    # can reuse the same fetch instead of re-fetching the weapon.
     offhand_weapon = (
         get_lib_loader().get_weapon(intent.weapon_id)
         if intent.intent_type == "attack" and intent.weapon_id
         else None
     )
     is_offhand_swing = _is_offhand_attack_swing(current, intent, offhand_weapon)
+
+    # Pre-resolution reject gates — each checked BEFORE any action budget is
+    # consumed, so a rejection spends no Action/Bonus Action/slot and leaves
+    # the turn untouched. Order matters and is preserved from the original
+    # sequential if-chain: spell range (SRD §Spell Range) -> weapon reach
+    # (SRD §Weapon Reach / Range) -> Loading one-shot-per-turn cap (SRD 5.2
+    # Loading) -> Charmed target (SRD 5.2 "You can't attack the charmer or
+    # target the charmer with damaging abilities or magical effects") ->
+    # pre-slot ``target_invalid`` (Hellish Rebuke's fixed target, SRD
+    # §Hellish Rebuke; an unaimed Cone/Line/Cube AoE template). The first
+    # gate whose failure-builder returns a non-``None`` event wins; that
+    # event is emitted and the intent is rejected.
+    pre_resolution_gates: tuple[Callable[[], CombatEvent | None], ...] = (
+        lambda: _spell_out_of_range_failure(live, actor_id, intent, cast_spell_for_timing),
+        lambda: _attack_out_of_range_failure(live, actor_id, intent),
+        lambda: _loading_weapon_already_fired_failure(current, actor_id, intent, offhand_weapon),
+        lambda: _charmed_target_failure(live, actor_id, current, intent),
+        lambda: _cast_target_invalid_failure(
+            live, current, actor_id, intent, cast_spell_for_timing
+        ),
+    )
+    for build_pre_resolution_failure in pre_resolution_gates:
+        failure = build_pre_resolution_failure()
+        if failure is not None:
+            _emit(live, failure)
+            return
 
     action_economy_failure = (
         None
@@ -7752,6 +7798,19 @@ async def submit_player_intent(
             and WeaponProperty.LIGHT in fetched_weapon.properties
         ):
             current = _record_light_weapon_swing(live, actor_id, current, fetched_weapon.slug)
+
+        # SRD 5.2 Loading — after ANY resolved swing (main-hand or off-hand)
+        # with a Loading weapon, mark the actor's one-fire-per-turn cap so a
+        # subsequent same-turn attack attempt with a Loading weapon is
+        # rejected pre-budget above (C15 Task 5). Recorded unconditionally
+        # on hit-or-miss, mirroring the Light-weapon record above — the
+        # SRD caps firing the weapon, not landing the shot.
+        if (
+            intent.intent_type == "attack"
+            and fetched_weapon is not None
+            and WeaponProperty.LOADING in fetched_weapon.properties
+        ):
+            current = _record_loading_weapon_fired(live, actor_id, current)
 
     # SRD §Concentration — fold any emitted ``EffectApplied(is_concentration=True)``
     # back onto the caster's ``Combatant.concentration_effect_id`` so the

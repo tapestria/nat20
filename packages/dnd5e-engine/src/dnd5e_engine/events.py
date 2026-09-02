@@ -519,6 +519,13 @@ class AttackFailed(BaseModel):
         # SRD 5.2 Charmed — "You can't attack the charmer or target the
         # charmer with damaging abilities or magical effects." (C12)
         "target_is_charmer",
+        # SRD 5.2 Loading — "You can fire only one piece of ammunition from
+        # a Loading weapon when you use an action, a Bonus Action, or a
+        # Reaction to fire it, regardless of the number of attacks you can
+        # normally make." Engine reading: one fire per turn (no PC
+        # reaction-attack path exists, so action/bonus/reaction collapse
+        # to the turn boundary). (C15)
+        "weapon_already_fired",
     ]
 
 
