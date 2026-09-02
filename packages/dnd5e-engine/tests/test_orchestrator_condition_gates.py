@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import random
 from typing import Any
 
 import pytest
@@ -69,6 +70,21 @@ def _status(target_id: str, *statuses: str, origin: str = "test:cond") -> Active
         target_id=target_id,
         statuses=set(statuses),
     )
+
+
+class _ForcedNatFifteenRng(random.Random):
+    """F5 — deterministic stand-in for the live combat's seeded RNG: every
+    d20 draw (``randint(1, 20)``) is forced to a natural 15 (a guaranteed
+    hit against low AC, never a nat 1/20 — so an Advantage roll's kept die
+    can never crit), every other draw (weapon damage) returns a fixed pip
+    count. Swapped in for ``live.rng`` AFTER ``start_combat`` (which
+    already consumed the real seeded RNG for initiative) — mirrors
+    ``test_action_economy_attacks.py``'s ``_ForcedRng`` idiom."""
+
+    def randint(self, a: int, b: int) -> int:
+        if (a, b) == (1, 20):
+            return 15
+        return 4
 
 
 def _start(
@@ -385,6 +401,17 @@ def test_damage_while_at_zero_hp_is_a_death_save_failure() -> None:
     # so the attacker switches to a ranged weapon (Shortbow, 80 ft normal
     # range) to keep this an ORDINARY (non-crit) hit, preserving the test's
     # original intent: ordinary damage at 0 HP is exactly one failure.
+    #
+    # F5 — SRD 5.2 Unconscious: "Attack rolls against the creature have
+    # Advantage", so this shot rolls TWO d20s (kept: the higher). At the
+    # seed this test previously ran on, neither die happened to land a
+    # natural 20 — but nothing pinned that, so a future seed/ordering
+    # change could silently flip this into a crit (2 failures instead of
+    # 1) and the assertion below would fail for the wrong reason. Force
+    # both d20 draws to a fixed non-20/non-1 natural (15) so "ordinary
+    # damage at 0 HP is exactly one failure" is pinned by construction,
+    # not by seed luck — mirrors the ``_ForcedRng`` idiom used elsewhere
+    # (e.g. ``test_action_economy_attacks.py``).
     start = _start(
         "c12-damage-at-zero",
         [
@@ -398,6 +425,8 @@ def test_damage_while_at_zero_hp_is_a_death_save_failure() -> None:
         ],
         [_foe(initiative=5, hp_current=20, hp_max=20, ac=99, zone_id=cell(5, 5))],
     )
+    live_for_rng = _get_live(start.handle)
+    live_for_rng.rng = _ForcedNatFifteenRng()
 
     def _shoot() -> Any:
         run_async(
