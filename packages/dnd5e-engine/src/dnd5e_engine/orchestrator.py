@@ -962,6 +962,51 @@ def _sneak_ally_adjacent_map(
     return out
 
 
+def _hostile_adjacent_to_attacker(live: _LiveCombat, caster: Combatant) -> bool:
+    """SRD 5.2 "Ranged Attacks in Close Combat": "you have Disadvantage on
+    the roll if you are within 5 feet of an enemy who can see you and
+    doesn't have the Incapacitated condition."
+
+    Scans ``live.initiative`` for a LIVING hostile (opposite side of
+    ``caster``, via ``party_ids``/``encounter_ids``) within 5 ft of the
+    ATTACKER's own zone. The attack's TARGET is never special-cased — if it
+    happens to be adjacent it's simply one more entry in ``live.initiative``
+    and counts like any other hostile (SRD: "an enemy", not "an enemy other
+    than your target"). Excludes an Incapacitated hostile
+    (``conditions_block_actions`` — the SRD conjunct) and one that cannot
+    see the attacker (``SpatialTopology.can_see`` with the HOSTILE's own
+    senses — same call shape as ``_target_visibility_maps``). Threaded into
+    ``ActivityResolutionContext.attacker_ranged_in_melee`` so
+    ``activities/attack.py`` can add the ``"ranged_in_melee"`` disadvantage
+    source without importing the spatial seam. An unregistered side or an
+    untracked attacker position yields ``False``.
+    """
+    attacker_side = _side_of(live, caster.entity_id)
+    if attacker_side is None:
+        return False
+    attacker_zone = live.actor_zone.get(caster.entity_id)
+    if attacker_zone is None:
+        return False
+    for hostile in live.initiative:
+        if (
+            hostile.entity_id in attacker_side
+            or hostile.entity_id in live.dead_ids
+            or not hostile.is_alive
+        ):
+            continue
+        if conditions_block_actions(_condition_names(hostile)):
+            continue
+        hostile_zone = live.actor_zone.get(hostile.entity_id)
+        if hostile_zone is None:
+            continue
+        if not live.topology.within_range(attacker_zone, hostile_zone, 5):
+            continue
+        if not live.topology.can_see(hostile_zone, attacker_zone, hostile.senses):
+            continue
+        return True
+    return False
+
+
 def push_combatant(live: _LiveCombat, target_id: str, origin_cell: str, distance_ft: int) -> None:
     """Forced movement primitive — move ``target_id`` up to ``distance_ft``
     straight away from ``origin_cell`` and emit ``CombatantMoved(forced=True)``
@@ -7595,6 +7640,10 @@ async def submit_player_intent(
             target_beyond_normal_range=_target_beyond_normal_range_map(
                 live, current.entity_id, fetched_weapon, targets
             ),
+            # SRD 5.2 "Ranged Attacks in Close Combat" (C15 Task 3): per-
+            # ATTACKER flag folded into attack disadvantage (attack.py,
+            # "ranged_in_melee") for an effectively-ranged attack.
+            attacker_ranged_in_melee=_hostile_adjacent_to_attacker(live, current),
             # SRD 5.2 §Two-Weapon Fighting / Light property — an off-hand
             # swing (Task 2) never adds a POSITIVE governing-ability
             # modifier to its damage; a negative modifier still applies.
@@ -8357,6 +8406,13 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
             # ``_is_proficient_with_weapon`` anyway — this IS a real attack
             # site (monster_activities below), but the SRD rule makes the
             # gate a no-op for every monster.
+            # SRD 5.2 "Ranged Attacks in Close Combat" (C15 Task 3): mirrors
+            # the PC site — a monster archer adjacent to a PC gets the same
+            # SRD penalty. A monster attack carries no ``Weapon`` (its
+            # damage rides on the ``AttackActivity`` itself), so
+            # ``attack.py``'s weapon-based "effectively ranged" gate never
+            # fires for a monster attack today — a recorded follow-up.
+            attacker_ranged_in_melee=_hostile_adjacent_to_attacker(live, current),
         )
         for activity in monster_activities:
             # Monster attacks carry their damage on the AttackActivity itself,

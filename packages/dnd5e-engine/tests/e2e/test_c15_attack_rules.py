@@ -94,7 +94,6 @@ def test_c15_s01_nonproficient_attacker_still_adds_proficiency_bonus():
     assert base_total - nonprof_total == 2
 
 
-@xfail_cluster(15, "attack rules")
 def test_c15_s02_ranged_attack_disadvantaged_by_adjacent_hostile():
     """C15-S02: SRD 5.2 (Ranged Attacks in Close Combat) — "you have
     Disadvantage on the roll if you are within 5 feet of an enemy who can

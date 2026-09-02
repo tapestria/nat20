@@ -195,6 +195,18 @@ class ActivityResolutionContext:
     # ``attack.py``, which appends the ``"range:long"`` disadvantage source.
     # Empty default keeps the golden corpus identical (no range geometry).
     target_beyond_normal_range: dict[str, bool] = field(default_factory=dict)
+    # SRD 5.2 "Ranged Attacks in Close Combat" (C15 Task 3): "you have
+    # Disadvantage on the roll if you are within 5 feet of an enemy who can
+    # see you and doesn't have the Incapacitated condition." Per-ATTACKER
+    # (not per-target) flag — True iff a qualifying hostile is adjacent to
+    # THIS caster, projected once per resolution by the orchestrator
+    # (``_hostile_adjacent_to_attacker``). Consumed in ``attack.py``, which
+    # folds it into disadvantage only for an attack that is itself
+    # effectively ranged (ranged-category weapon, or a thrown melee weapon
+    # beyond its own reach) — an ordinary melee swing is never penalized.
+    # Default ``False`` keeps the golden corpus identical (no adjacency
+    # geometry).
+    attacker_ranged_in_melee: bool = False
     # SRD 5.2 §Actions in Combat — Dodge (C14 Task 3). Per-TARGET whether the
     # Dodge benefit is currently active (``dodging`` AND not Incapacitated
     # AND Speed > 0 — the SRD loss clause), projected once per resolution by

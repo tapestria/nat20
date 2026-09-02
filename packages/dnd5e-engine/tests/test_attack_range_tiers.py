@@ -24,11 +24,12 @@ S03, which uses the same convention).
 
 from __future__ import annotations
 
-from dnd5e_engine import PlayerIntent
+from dnd5e_engine import ActiveEffect, PlayerIntent
 from dnd5e_engine.events import AttackFailed, AttackRolled
 from dnd5e_engine.lib_loader import get_lib_loader
 from dnd5e_engine.orchestrator import (
     _get_live,
+    _hostile_adjacent_to_attacker,
     _weapon_attack_range_ft,
     start_combat,
     submit_player_intent,
@@ -197,3 +198,236 @@ def test_longsword_at_10ft_is_still_rejected():
     failed = events_of(live, AttackFailed)
     assert failed
     assert failed[0].reason == "out_of_range"
+
+
+# ── C15 Task 3 — Ranged-in-melee + Heavy property (closes C15-S02) ──────
+#
+# SRD 5.2 "Ranged Attacks in Close Combat" (packs/_source/content24/
+# appendices/appendix-d-rule-references.yml, id qEZvxW0NM7ixSQP5): "you
+# have Disadvantage on the roll if you are within 5 feet of an enemy who
+# can see you and doesn't have the Incapacitated condition."
+#
+# SRD 5.2 Heavy: "You have Disadvantage on attack rolls with a Heavy
+# weapon if it's a Melee weapon and your Strength score isn't at least 13
+# or if it's a Ranged weapon and your Dexterity score isn't at least 13."
+# (2024 rule — not the 2014 Small-creature rule.)
+#
+# longbow: martial_ranged, Heavy, 150/600ft. greatsword: martial_melee,
+# Heavy, reach 5ft only. heavy-crossbow: martial_ranged, Heavy, 100/400ft.
+
+LONGBOW = get_lib_loader().get_weapon("longbow")
+GREATSWORD = get_lib_loader().get_weapon("greatsword")
+HEAVY_CROSSBOW = get_lib_loader().get_weapon("heavy-crossbow")
+
+
+def _named_foe(entity_id: str, col: int, *, initiative: int = 1) -> EncounterMemberSpec:
+    return EncounterMemberSpec(
+        entity_id=entity_id,
+        entity_type="Monster",
+        name=entity_id,
+        initiative=initiative,
+        hp_current=100,
+        hp_max=100,
+        ac=15,
+        zone_id=cell(col, 0),
+    )
+
+
+def _weapon_attack(
+    weapon_id: str,
+    session_id: str,
+    *,
+    encounter: list[EncounterMemberSpec],
+    target_id: str,
+    hero: PartyMemberSpec | None = None,
+    active_effects: tuple = (),
+    grid_scene: GridScene | None = None,
+):
+    async def _inner():
+        start = await start_combat(
+            session_id=session_id,
+            party=[hero or _hero()],
+            encounter=encounter,
+            scene_zones=None,
+            grid_scene=grid_scene or GridScene(width=200, height=10),
+            active_effects=list(active_effects),
+            rng_seed=1,
+        )
+        live = _get_live(start.handle)
+        await submit_player_intent(
+            start.handle,
+            actor_id="char:hero",
+            intent=PlayerIntent(intent_type="attack", weapon_id=weapon_id, target_id=target_id),
+        )
+        return live
+
+    return run_async(_inner())
+
+
+# (a) Ranged attack, living adjacent hostile who is not the target → disadvantage.
+
+
+def test_longbow_disadvantaged_by_a_living_adjacent_hostile_not_the_target():
+    near = _named_foe("mon:near", 1, initiative=2)  # 5 ft from hero
+    far = _named_foe("mon:far", 10, initiative=1)  # 50 ft from hero
+    live = _weapon_attack(
+        "longbow", "c15-t3-ranged-in-melee", encounter=[far, near], target_id="mon:far"
+    )
+    rolled = next(e for e in events_of(live, AttackRolled) if e.target_id == "mon:far")
+    assert rolled.advantage == "disadvantage"
+    assert "ranged_in_melee" in rolled.sources
+
+
+# (b) No adjacent hostile → normal.
+
+
+def test_longbow_normal_with_no_adjacent_hostile():
+    far = _named_foe("mon:far", 10, initiative=1)
+    live = _weapon_attack("longbow", "c15-t3-no-adjacent", encounter=[far], target_id="mon:far")
+    rolled = next(e for e in events_of(live, AttackRolled) if e.target_id == "mon:far")
+    assert rolled.advantage == "normal"
+    assert "ranged_in_melee" not in rolled.sources
+
+
+# (c) Adjacent hostile Incapacitated (Stunned) → the SRD conjunct excludes it.
+
+
+def test_longbow_normal_when_adjacent_hostile_is_stunned():
+    near = _named_foe("mon:near", 1, initiative=2)
+    far = _named_foe("mon:far", 10, initiative=1)
+    stunned = ActiveEffect(
+        id="effect:stunned:mon:near",
+        name="Stunned",
+        origin="test:cond",
+        target_id="mon:near",
+        statuses={"stunned"},
+    )
+    live = _weapon_attack(
+        "longbow",
+        "c15-t3-stunned-adjacent",
+        encounter=[far, near],
+        target_id="mon:far",
+        active_effects=(stunned,),
+    )
+    rolled = next(e for e in events_of(live, AttackRolled) if e.target_id == "mon:far")
+    assert rolled.advantage == "normal"
+    assert "ranged_in_melee" not in rolled.sources
+
+
+# (d) Adjacent hostile that cannot see the attacker — direct unit test of the
+# helper (a full e2e wiring would also make the ranged TARGET unable to see
+# the attacker via the same darkness, adding an unrelated "unseen" advantage
+# source that would mask the assertion; see task-3-report.md).
+
+
+def test_hostile_adjacent_helper_excludes_a_hostile_that_cannot_see_the_attacker():
+    near = _named_foe("mon:near", 1, initiative=2)  # 5 ft away, no darkvision
+
+    async def _inner():
+        start = await start_combat(
+            session_id="c15-t3-blind-adjacent",
+            party=[_hero()],
+            encounter=[near],
+            scene_zones=None,
+            # Darkness on the ATTACKER's own cell — the adjacent monster has
+            # no darkvision by default (EncounterMemberSpec carries no
+            # ``senses`` override), so it cannot see into it.
+            grid_scene=GridScene(width=200, height=10, lighting={cell(0, 0): "dark"}),
+            rng_seed=1,
+        )
+        return _get_live(start.handle)
+
+    live = run_async(_inner())
+    hero_combatant = next(c for c in live.initiative if c.entity_id == "char:hero")
+    assert _hostile_adjacent_to_attacker(live, hero_combatant) is False
+
+
+def test_hostile_adjacent_helper_true_for_a_seeing_adjacent_hostile():
+    near = _named_foe("mon:near", 1, initiative=2)
+
+    async def _inner():
+        start = await start_combat(
+            session_id="c15-t3-seeing-adjacent",
+            party=[_hero()],
+            encounter=[near],
+            scene_zones=None,
+            grid_scene=GridScene(width=200, height=10),
+            rng_seed=1,
+        )
+        return _get_live(start.handle)
+
+    live = run_async(_inner())
+    hero_combatant = next(c for c in live.initiative if c.entity_id == "char:hero")
+    assert _hostile_adjacent_to_attacker(live, hero_combatant) is True
+
+
+# (e) MELEE attack — never penalized, even with a (necessarily adjacent) hostile.
+
+
+def test_melee_attack_is_unaffected_by_an_adjacent_hostile():
+    near = _named_foe("mon:near", 1, initiative=2)  # the melee target itself, 5 ft away
+    live = _weapon_attack(
+        "longsword", "c15-t3-melee-unaffected", encounter=[near], target_id="mon:near"
+    )
+    rolled = next(e for e in events_of(live, AttackRolled) if e.target_id == "mon:near")
+    assert rolled.advantage == "normal"
+    assert "ranged_in_melee" not in rolled.sources
+
+
+# (f) Heavy — melee (STR-gated) and ranged (DEX-gated).
+
+
+def test_heavy_melee_weapon_disadvantaged_below_str_13():
+    far = _named_foe("mon:near", 1, initiative=1)  # greatsword reach is 5ft only
+    live = _weapon_attack(
+        "greatsword",
+        "c15-t3-heavy-melee-low-str",
+        encounter=[far],
+        target_id="mon:near",
+        hero=_hero(strength=11),
+    )
+    rolled = next(e for e in events_of(live, AttackRolled) if e.target_id == "mon:near")
+    assert rolled.advantage == "disadvantage"
+    assert "trait" in rolled.sources
+
+
+def test_heavy_melee_weapon_normal_at_str_13():
+    far = _named_foe("mon:near", 1, initiative=1)
+    live = _weapon_attack(
+        "greatsword",
+        "c15-t3-heavy-melee-ok-str",
+        encounter=[far],
+        target_id="mon:near",
+        hero=_hero(strength=13),
+    )
+    rolled = next(e for e in events_of(live, AttackRolled) if e.target_id == "mon:near")
+    assert rolled.advantage == "normal"
+    assert "trait" not in rolled.sources
+
+
+def test_heavy_ranged_weapon_disadvantaged_below_dex_13():
+    far = _named_foe("mon:far", 10, initiative=1)
+    live = _weapon_attack(
+        "heavy-crossbow",
+        "c15-t3-heavy-ranged-low-dex",
+        encounter=[far],
+        target_id="mon:far",
+        hero=_hero(dexterity=11),
+    )
+    rolled = next(e for e in events_of(live, AttackRolled) if e.target_id == "mon:far")
+    assert rolled.advantage == "disadvantage"
+    assert "trait" in rolled.sources
+
+
+def test_heavy_ranged_weapon_normal_at_dex_13():
+    far = _named_foe("mon:far", 10, initiative=1)
+    live = _weapon_attack(
+        "heavy-crossbow",
+        "c15-t3-heavy-ranged-ok-dex",
+        encounter=[far],
+        target_id="mon:far",
+        hero=_hero(dexterity=13),
+    )
+    rolled = next(e for e in events_of(live, AttackRolled) if e.target_id == "mon:far")
+    assert rolled.advantage == "normal"
+    assert "trait" not in rolled.sources

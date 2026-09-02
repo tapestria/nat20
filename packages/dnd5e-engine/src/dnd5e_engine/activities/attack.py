@@ -128,6 +128,9 @@ def resolve_attack(
     # ``reconcile_adv``). These both feed the d20 mode below (F2b) and gate the
     # SRD §Sneak Attack trigger.
     attacker_has_advantage, attacker_has_disadvantage = attacker_advantage_flags(ctx)
+    # SRD 5.2 Heavy — ability-score-invariant per attack (see docstring);
+    # computed once, outside the per-target loop, like the flag half above.
+    heavy_disadvantage = _weapon_heavy_disadvantage(weapon, ctx.caster)
 
     for index, target in enumerate(ctx.targets):
         # Condition-derived half. The helper is called once PER SIDE (the other
@@ -186,6 +189,21 @@ def resolve_attack(
         # the orchestrator (``_target_beyond_normal_range_map``).
         if ctx.target_beyond_normal_range.get(target.entity_id):
             dis_sources.append("range:long")
+        # SRD 5.2 "Ranged Attacks in Close Combat" (C15 Task 3): "you have
+        # Disadvantage on the roll if you are within 5 feet of an enemy who
+        # can see you and doesn't have the Incapacitated condition." The
+        # spatial/incapacitated/vision predicate is pre-resolved orchestrator
+        # -side (``_hostile_adjacent_to_attacker``) into the per-ATTACKER
+        # ``ctx.attacker_ranged_in_melee`` flag; this pure resolver only
+        # gates it on the attack itself being effectively ranged (a melee
+        # swing, even with a hostile adjacent, is never penalized).
+        if ctx.attacker_ranged_in_melee and _attack_is_effectively_ranged(weapon, distance_ft):
+            dis_sources.append("ranged_in_melee")
+        # SRD 5.2 Heavy — no dedicated ``AdvantageSource`` exists (controller
+        # ruling, C15 task-3 brief): reuses ``"trait"``. Ability-invariant
+        # per attack, computed once above.
+        if heavy_disadvantage:
+            dis_sources.append("trait")
         # SRD 5.2 §Actions in Combat — Help, Assist an Attack Roll: "giving
         # Advantage to the next attack roll by one of your allies against
         # that enemy". ``target_help_advantage`` is already gated to an
@@ -380,6 +398,51 @@ def _is_ranged_weapon(weapon: Weapon | None) -> bool:
     ``system.bonuses.rwak.damage`` .
     """
     return weapon is not None and weapon.weapon_category in _RANGED_CATEGORIES
+
+
+def _attack_is_effectively_ranged(weapon: Weapon | None, distance_ft: int | None) -> bool:
+    """SRD 5.2 "Ranged Attacks in Close Combat" — is THIS attack, against
+    THIS target, a ranged attack?
+
+    A ranged-category weapon (bow/crossbow) always qualifies. A melee
+    weapon carrying the Thrown property becomes a ranged attack only once
+    it's actually being THROWN — i.e. the target is beyond the weapon's
+    melee reach (5 ft, or 10 ft with the Reach property) — mirroring the
+    orchestrator's range-tier split (``_weapon_attack_range_ft``): within
+    reach it's an ordinary melee swing (never penalized here), beyond reach
+    it's a thrown ranged attack. An ordinary melee-only weapon (no Thrown)
+    is never ranged, and a spell attack (no weapon) never triggers this
+    weapon-keyed gate — see the migration note on the monster attack ctx
+    site (``orchestrator.py``) for why.
+    """
+    if weapon is None:
+        return False
+    if weapon.weapon_category in _RANGED_CATEGORIES:
+        return True
+    if WeaponProperty.THROWN not in weapon.properties:
+        return False
+    reach = 10 if WeaponProperty.REACH in weapon.properties else 5
+    return distance_ft is not None and distance_ft > reach
+
+
+def _weapon_heavy_disadvantage(weapon: Weapon | None, caster: Combatant) -> bool:
+    """SRD 5.2 Heavy: "You have Disadvantage on attack rolls with a Heavy
+    weapon if it's a Melee weapon and your Strength score isn't at least 13
+    or if it's a Ranged weapon and your Dexterity score isn't at least 13."
+
+    Ability-score-invariant per attack (unlike ``_attack_is_effectively_
+    ranged``, this does not vary per target): a melee weapon with Thrown
+    stays STR-gated even when thrown at range (SRD §Thrown — same ability
+    as a melee attack with that weapon). No dedicated ``AdvantageSource``
+    exists for Heavy (controller ruling, C15 task-3 brief): the caller
+    appends the existing ``"trait"`` source.
+    """
+    if weapon is None or WeaponProperty.HEAVY not in weapon.properties:
+        return False
+    governing_score = (
+        caster.dexterity if weapon.weapon_category in _RANGED_CATEGORIES else caster.strength
+    )
+    return governing_score < 13
 
 
 def _is_melee_spell_attack(activity: AttackActivity, weapon: Weapon | None) -> bool:

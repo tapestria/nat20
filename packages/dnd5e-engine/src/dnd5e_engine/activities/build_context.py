@@ -161,6 +161,7 @@ def build_activity_context(
     target_help_advantage: dict[str, bool] | None = None,
     is_proficient_attack: bool = True,
     target_beyond_normal_range: dict[str, bool] | None = None,
+    attacker_ranged_in_melee: bool = False,
 ) -> ActivityResolutionContext:
     """Adapt the caster + the pre-computed hydration sidecars into the typed
     ``ActivityResolutionContext`` the new resolver consumes.
@@ -330,6 +331,7 @@ def build_activity_context(
         spellcasting_ability=spellcasting_ability,
         is_proficient_attack=is_proficient_attack,
         target_beyond_normal_range=target_beyond_normal_range or {},
+        attacker_ranged_in_melee=attacker_ranged_in_melee,
         concentration=concentration,
         slot_level=slot_level,
         base_spell_level=base_spell_level,
