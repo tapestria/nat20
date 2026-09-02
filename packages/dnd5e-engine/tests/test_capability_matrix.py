@@ -352,11 +352,26 @@ _PROBES: dict[str, tuple[Any, str]] = {
         lambda: 'is_condition_immune(target, "prone")' in _src("activities/mastery.py"),
         "Weapon-mastery Topple honors condition immunity",
     ),
-    # C15: all eight 2024 weapon masteries are live.
+    # C15: all eight 2024 weapon masteries are live. F6 — this used to be a
+    # bare substring grep for each mastery slug over mastery.py, which
+    # passed on COMMENT text alone: cleave and nick are documented there
+    # ("resolved elsewhere entirely") but never dispatched from that file,
+    # so the probe couldn't fail even if either mastery regressed. Probe
+    # each mastery's actual dispatch/resolution site instead: graze/topple
+    # resolve in mastery.py itself; vex/sap/slow/push report through the
+    # ``ctx.mastery_procs`` writeback (their proc-append call sites);
+    # cleave's chained attack lives in attack.py; Nick is pure action
+    # economy, gated in orchestrator.py's off-hand consume helper.
     "All eight (C15)": (
-        lambda: all(
-            slug in _src("activities/mastery.py")
-            for slug in ("graze", "topple", "vex", "sap", "slow", "push", "cleave", "nick")
+        lambda: (
+            "_resolve_graze(" in _src("activities/mastery.py")
+            and "_resolve_topple(" in _src("activities/mastery.py")
+            and "ctx.mastery_procs.append((_VEX" in _src("activities/mastery.py")
+            and "ctx.mastery_procs.append((_SAP" in _src("activities/mastery.py")
+            and "ctx.mastery_procs.append((_SLOW" in _src("activities/mastery.py")
+            and "ctx.mastery_procs.append((_PUSH" in _src("activities/mastery.py")
+            and "_resolve_cleave_chain(" in _src("activities/attack.py")
+            and 'weapon.mastery == "nick"' in _src("orchestrator.py")
         ),
         "All eight (C15)",
     ),
