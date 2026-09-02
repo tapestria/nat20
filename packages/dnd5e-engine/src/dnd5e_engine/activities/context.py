@@ -183,6 +183,29 @@ class ActivityResolutionContext:
     # within 5 ft, disadvantage otherwise). Absent target -> unknown -> that row
     # stays inert.
     target_distance_ft: dict[str, int] = field(default_factory=dict)
+    # SRD 5.2 §Actions in Combat — Dodge (C14 Task 3). Per-TARGET whether the
+    # Dodge benefit is currently active (``dodging`` AND not Incapacitated
+    # AND Speed > 0 — the SRD loss clause), projected once per resolution by
+    # the orchestrator (``_dodge_benefit_active``). Consumed in
+    # ``attack.py``, which folds it into disadvantage on an attack roll
+    # against that target. SRD also conditions the attack-disadvantage half
+    # of Dodge on "if you can see the attacker" — that conjunct is deferred
+    # to C16b (no vision model wired to this seam yet); the DEX-save
+    # advantage half has no such conjunct and is folded separately via
+    # ``passive_save_adv`` in the hydration payload. Empty default keeps the
+    # golden corpus identical (no dodge geometry).
+    target_dodging: dict[str, bool] = field(default_factory=dict)
+    # SRD 5.2 §Actions in Combat — Help, Assist an Attack Roll (C14 Task 4).
+    # Per-TARGET: does an outstanding Help grant against this target belong
+    # to an ALLY of the attacker resolving THIS activity? Projected once per
+    # resolution by the orchestrator (``live.help_grants`` cross-referenced
+    # against the attacker's side); consumed in ``attack.py``, which folds it
+    # into advantage on an attack roll against that target. The one-use pop
+    # (the grant is spent even on a miss, or when cancelled to normal by a
+    # disadvantage source — "the next attack roll") is an orchestrator-side
+    # write after resolution, not this pure resolver's concern. Empty default
+    # keeps the golden corpus identical (no Help geometry).
+    target_help_advantage: dict[str, bool] = field(default_factory=dict)
     # The entity grappling the ATTACKER (SRD 5.2 Grappled: disadvantage on
     # attack rolls against any target other than the grappler). ``None`` when
     # not grappled or the grappler is unknown -> row inert.
@@ -291,6 +314,14 @@ class ActivityResolutionContext:
     # Test-determinism seams (our own code): variables["force_d20"],
     # variables["force_save_d20"], variables["in_crit"].
     variables: dict[str, int] = field(default_factory=dict)
+    # SRD 5.2 §Two-Weapon Fighting / Light property — "you don't add your
+    # ability modifier to the extra attack's damage unless that modifier is
+    # negative." Set True by the orchestrator only for an off-hand swing
+    # (Task 2); ``_roll_base_weapon_damage`` (attack.py) zeroes a POSITIVE
+    # governing-ability mod when this is set — a negative mod still applies.
+    # False default keeps every other swing (main-hand, monster, spell)
+    # byte-identical to before this field existed.
+    suppress_positive_ability_damage_mod: bool = False
 
     def ability_mod(self, ability: str) -> int:
         return (self.caster_abilities.get(ability, 10) - 10) // 2

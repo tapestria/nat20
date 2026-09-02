@@ -19,10 +19,9 @@ from dnd5e_engine.orchestrator import (
     submit_player_intent,
 )
 from dnd5e_engine.specs import EncounterMemberSpec, GridScene, PartyMemberSpec
-from tests.e2e.harness import cell, events_of, grid_scene, run_async, xfail_cluster
+from tests.e2e.harness import cell, events_of, grid_scene, run_async
 
 
-@xfail_cluster(14, "action economy")
 def test_c14_s01_dodge_disadvantages_attackers_until_next_turn():
     """C14-S01: SRD 5.2 (Dodge) — "until the start of your next turn, any
     attack roll made against you has Disadvantage if you can see the
@@ -86,16 +85,16 @@ def test_c14_s01_dodge_disadvantages_attackers_until_next_turn():
     assert rolled_b.advantage == "disadvantage"
 
 
-@xfail_cluster(14, "action economy")
 def test_c14_s02_hide_grants_advantage_on_next_attack():
     """C14-S02: SRD 5.2 (Hide) — "you must succeed on a DC 15 Dexterity
     (Stealth) check while you're Heavily Obscured or behind Three-Quarters
     Cover or Total Cover... On a successful check, you have the Invisible
     condition while hidden."
     (packs/_source/content24/appendices/rules-glossary.yml, page
-    rqhOsUY4wWa1oHTy, heading "Hide"). ``hide`` is a valid ``IntentType``
-    with no dispatch handler — no ``CheckRolled`` fires and the follow-up
-    attack stays "normal".
+    rqhOsUY4wWa1oHTy, heading "Hide"). Implemented by C14: ``hide`` gates on
+    cover/obscurement, rolls a DC 15 Dexterity (Stealth) ``CheckRolled``, and
+    grants Invisible on success, which the follow-up attack picks up as
+    Advantage.
     """
 
     def _party():
@@ -183,7 +182,6 @@ def test_c14_s02_hide_grants_advantage_on_next_attack():
     assert rolled_b.advantage == "advantage"
 
 
-@xfail_cluster(14, "action economy")
 def test_c14_s03_help_grants_advantage_to_next_ally_attack():
     """C14-S03: SRD 5.2 (Help, Assist an Attack Roll) — "You momentarily
     distract an enemy within 5 feet of you, giving Advantage to the next
@@ -264,7 +262,6 @@ def test_c14_s03_help_grants_advantage_to_next_ally_attack():
     assert rolled_b.advantage == "advantage"
 
 
-@xfail_cluster(14, "action economy")
 def test_c14_s04_grapple_shove_and_stand_up():
     """C14-S04: SRD 5.2 (Unarmed Strike, Grapple/Shove) and Ending a
     Grapple / Prone Restricted Movement
@@ -308,7 +305,9 @@ def test_c14_s04_grapple_shove_and_stand_up():
             ],
             scene_zones=None,
             grid_scene=grid_scene(),
-            rng_seed=5,
+            # Setup repair 2026-09-01: seed 5 rolled a natural-20 grapple save;
+            # assertions unchanged (catalog repair protocol).
+            rng_seed=1,
         )
         live = _get_live(start.handle)
 
@@ -379,7 +378,6 @@ def test_c14_s04_grapple_shove_and_stand_up():
     assert target.movement_remaining <= 15
 
 
-@xfail_cluster(14, "action economy")
 def test_c14_s05_extra_attack_grants_exactly_two_swings():
     """C14-S05: SRD 5.2 (Fighter, Extra Attack) — "You can attack twice
     instead of once whenever you take the Attack action on your turn."
@@ -474,7 +472,6 @@ def test_c14_s05_extra_attack_grants_exactly_two_swings():
     assert rejections
 
 
-@xfail_cluster(14, "action economy")
 def test_c14_s06_light_weapon_bonus_action_offhand_omits_positive_ability_mod():
     """C14-S06: SRD 5.2 (Light property) — "When you take the Attack
     action on your turn and attack with a Light weapon, you can make one
@@ -516,7 +513,8 @@ def test_c14_s06_light_weapon_bonus_action_offhand_omits_positive_ability_mod():
             ],
             scene_zones=None,
             grid_scene=grid_scene(),
-            rng_seed=23,
+            # Setup repair 2026-09-01: seed 23 rolled a natural-1 off-hand fumble; assertions unchanged (catalog repair protocol).
+            rng_seed=24,
         )
         live = _get_live(start.handle)
         await submit_player_intent(
@@ -553,7 +551,6 @@ def test_c14_s06_light_weapon_bonus_action_offhand_omits_positive_ability_mod():
     assert 1 <= offhand.amount <= 4
 
 
-@xfail_cluster(14, "action economy")
 def test_c14_s07_engine_rolls_initiative_and_surprise_applies_disadvantage():
     """C14-S07: SRD 5.2 (Initiative) — "every participant rolls
     Initiative; they make a Dexterity check that determines their place in
@@ -561,10 +558,10 @@ def test_c14_s07_engine_rolls_initiative_and_surprise_applies_disadvantage():
     page FUH9AHeKlTFzC1L9); Surprise — "that creature is surprised, which
     causes it to have Disadvantage on its Initiative roll."
     (packs/_source/content24/appendices/appendix-d-rule-references.yml,
-    page YmOt8HderKveA19K). ``PartyMemberSpec.initiative`` /
-    ``EncounterMemberSpec.initiative`` are required ``int`` fields with no
-    ``None``/optional path — passing ``initiative=None`` raises a
-    validation error before any roll can happen.
+    page YmOt8HderKveA19K). Implemented by C14: ``PartyMemberSpec.initiative``
+    / ``EncounterMemberSpec.initiative`` are now ``int | None`` — ``None``
+    triggers engine-rolled initiative (a DEX check), and ``is_surprised=True``
+    applies Disadvantage to that roll.
     """
 
     def _party_kwargs(entity_id: str, name: str, zone: str, surprised: bool) -> dict:

@@ -171,6 +171,22 @@ def resolve_attack(
             adv_sources.append("unseen")
         if ctx.target_unseen.get(target.entity_id):
             dis_sources.append("unseen")
+        # SRD 5.2 §Actions in Combat — Dodge: "any attack roll made against
+        # you has Disadvantage if you can see the attacker". The "can see
+        # the attacker" conjunct is deferred to C16b (no vision model wired
+        # to this seam yet); ``target_dodging`` already folds in the SRD
+        # loss clause (Incapacitated / Speed 0) via
+        # ``_dodge_benefit_active``.
+        if ctx.target_dodging.get(target.entity_id):
+            dis_sources.append("dodge")
+        # SRD 5.2 §Actions in Combat — Help, Assist an Attack Roll: "giving
+        # Advantage to the next attack roll by one of your allies against
+        # that enemy". ``target_help_advantage`` is already gated to an
+        # ally-of-this-attacker grant (orchestrator-side); the one-use pop
+        # happens after resolution regardless of hit/miss/cancellation — see
+        # ``target_help_advantage`` docstring.
+        if ctx.target_help_advantage.get(target.entity_id):
+            adv_sources.append("help")
         sources = AdvantageSources(advantage=tuple(adv_sources), disadvantage=tuple(dis_sources))
         roll = roll_d20_test(ctx.rng, attack_bonus, sources, forced_natural=_forced_d20(ctx, index))
         mode: AdvantageMode = roll.mode
@@ -647,7 +663,12 @@ def _roll_base_weapon_damage(
     first_type: str | None = None
     flat_addition = weapon.magical_bonus
     if governing_ability is not None:
-        flat_addition += ctx.ability_mod(governing_ability)
+        mod = ctx.ability_mod(governing_ability)
+        # SRD 5.2 Light property: "you don't add your ability modifier to the
+        # extra attack's damage unless that modifier is negative."
+        if ctx.suppress_positive_ability_damage_mod and mod > 0:
+            mod = 0
+        flat_addition += mod
 
     for index, part in enumerate(weapon.damage_parts):
         rolled = roll_damage_part(part, ctx.rng, crit=is_crit)

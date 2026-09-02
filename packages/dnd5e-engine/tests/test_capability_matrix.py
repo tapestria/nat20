@@ -164,9 +164,21 @@ _PROBES: dict[str, tuple[Any, str]] = {
         lambda: 'mode: AdvantageMode = "normal"' not in _src("activities/attack.py"),
         "Advantage/disadvantage is rolled on",
     ),
-    # Still open (C14): the three intents have no handler at all.
-    "Dodge, Hide, Help": (
-        lambda: '"dodge"' in _src("orchestrator.py"),
+    # C14 Task 3: Dodge sets a live ``dodging`` flag consumed by the attack
+    # and save resolvers; the intent branch owns this exact literal.
+    "Dodge": (
+        lambda: 'if intent.intent_type == "dodge":' in _src("orchestrator.py"),
+        "✅",
+    ),
+    # C14 Task 4: Help (assist-an-attack-roll flavor) has a live handler —
+    # the intent branch owns this exact literal.
+    "| Help |": (
+        lambda: 'if intent.intent_type == "help":' in _src("orchestrator.py"),
+        "✅",
+    ),
+    # Closed (C14 Task 5): Hide has a dispatch handler.
+    "| Hide |": (
+        lambda: 'if intent.intent_type == "hide"' in _src("orchestrator.py"),
         "✅",
     ),
     # F2c/C13: the damage-triggered concentration save emits the dedicated
@@ -261,6 +273,48 @@ _PROBES: dict[str, tuple[Any, str]] = {
             '"drop_concentration",' in _src("events.py")
             and "_drop_concentration(live, event.target_id)" in _src("orchestrator.py")
         ),
+        "✅",
+    ),
+    # C14 Task 1/2: Extra Attack's per-Action counter and the Light-property
+    # off-hand Bonus Action window are both live.
+    "Action economy": (
+        lambda: (
+            "_attacks_per_action(" in _src("orchestrator.py")
+            and "_twf_window_open(" in _src("orchestrator.py")
+        ),
+        "modelled (C14)",
+    ),
+    # C14 Task 6/7: Grapple/Shove resolve via the shared Unarmed Strike save.
+    "Grapple / Shove": (
+        lambda: "_roll_unarmed_option_save(" in _src("orchestrator.py"),
+        "⚠️ Partial",
+    ),
+    # C14 Task 2: the Light-property off-hand Bonus Action window.
+    "Two-weapon fighting": (
+        lambda: "_twf_window_open(" in _src("orchestrator.py"),
+        "✅",
+    ),
+    # C14 Task 8: Surprise imposes Disadvantage on the engine-rolled Initiative.
+    "| Surprise |": (
+        lambda: "spec.is_surprised" in _src("orchestrator.py"),
+        "✅",
+    ),
+    # C14 Task 8: initiative=None draws an engine d20 + DEX modifier roll.
+    "Initiative order, rounds, turns": (
+        lambda: "def _resolve_initiative(" in _src("orchestrator.py"),
+        "✅",
+    ),
+    # C14 Task 8: a seeded incapacitated-implying status also imposes
+    # Disadvantage on the engine-rolled Initiative roll.
+    "Incapacitated's initiative disadvantage": (
+        lambda: "seeded_incapacitated" in _src("orchestrator.py"),
+        "closed via C14 Task 8",
+    ),
+    # C14 Task 9: opportunity attacks roll through the same d20-test
+    # primitive as every other attack, picking up condition/Exhaustion
+    # sources — still no visibility gate (BACKLOG.md).
+    "| Opportunity attacks |": (
+        lambda: "roll_d20_test" in _src("orchestrator.py"),
         "✅",
     ),
 }

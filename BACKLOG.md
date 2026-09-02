@@ -61,13 +61,15 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
 
 ## Core combat rules not modelled (2026-08-22)
 
-- **Surprise is not modelled.** SRD 5.2 gives a surprised creature disadvantage
-  on its initiative roll; `start_combat` has no surprise input.
-- **Grapple and Shove are not modelled.** The `grappled` condition exists and
-  can be applied by an effect, but no contested check resolves either action,
-  and neither has an `IntentType`.
-- **Two-weapon fighting is not modelled.** The `light` weapon property is
-  parsed but grants no bonus-action attack.
+- **Grapple's/Shove's size gate, free-hand gate, and distance-exceeded
+  auto-release are not modelled** (2026-09-01). SRD 5.2 Grapple/Shove
+  require "a hand free" (Grapple only) and cap the actor at one size larger
+  than the target; "Ending a Grapple" also ends the condition when a forced
+  move separates the pair beyond reach. None of the three block or
+  auto-release `grapple`/`shove`/`escape_grapple` today — deferred to C14
+  Task 10.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_handle_grapple`,
+  `::_handle_shove`)
 - **Ritual casting is not modelled.** 28 spells carry `ritual: true`; the flag
   is never read.
 - **Spell components are not enforced.** `components` / `materials` ship on
@@ -168,10 +170,13 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   records presence only, not direction. A host rendering the source list shows
   the same word twice.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py`)
-- **Opportunity attacks bypass the activity context** (2026-08-27). The AoO path
-  hardcodes `advantage="normal"` and never calls `build_activity_context`, so an
-  opportunity attack sees no cover, no conditions and no visibility — despite
-  SRD 5.2's "a hostile creature that *you can see*" trigger. C14 seam.
+- **Opportunity attacks bypass the activity context** (2026-08-27, condition
+  gap closed 2026-09-01 C14 Task 9). The AoO path never calls
+  `build_activity_context`, so an opportunity attack still sees no cover and
+  no visibility — despite SRD 5.2's "a creature that you can see" trigger
+  (condition-derived advantage/disadvantage, Exhaustion's D20 Test penalty,
+  and Dodge now DO reach the roll via `roll_d20_test`, closing that half).
+  Remaining gap is C16b (visibility) and cover.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
 
 ## Reactions (2026-07-03)
@@ -305,11 +310,6 @@ zone + apply logic:
 
 ## Audit 2026-08-26 — rolls & modifiers
 
-- **Opportunity attacks bypass the d20 pipeline.**
-  `_resolve_pc_opportunity_attack` / monster OA path (`orchestrator.py` ~5007,
-  ~5107) emit `AttackRolled(advantage="normal")` without consulting
-  `roll_d20_test` sources; route them through `resolve_attack`'s primitive in
-  C14. (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
 - **Standalone out-of-combat `resolve_check` has no exhaustion seam**
   (2026-08-27) — the in-combat activity path folds `ctx.d20_test_penalty`, but
   the host-facing `CheckSpec` carries no conditions/exhaustion field, so a
@@ -332,20 +332,60 @@ zone + apply logic:
 
 ## Audit 2026-08-26 — action economy & turn structure
 
-- **`dodge`, `hide` and `help` intents are no-ops.** They are valid
-  `IntentType` values with no handler — `orchestrator.py` dispatches only
-  `move_mark`/`move`/`dash`/`disengage`; the three fall through to the generic
-  tail, consume the Action, end the turn and change nothing. Worse than a
-  rejection because hosts see them "work". `search`/`study`/`influence`/
-  `utilize` do not exist at all. (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
-- **Extra Attack for PCs is not modelled.** No attacks-per-action counter
-  exists (only monster Multiattack via prose parsing). `extra-attack.json`
-  ships `activities: []`. Action Surge, Flurry of Blows and two-weapon fighting
-  are all blocked on the same missing "extra attack/action this turn" economy;
-  Sneak Attack's once-per-turn flag is consequently never re-read
-  (`orchestrator.py:604`). The generic-action tail calls `_advance_turn`, so a
-  turn cannot hold two actions today.
+- **`search`/`study`/`influence`/`utilize` do not exist as `IntentType`
+  values at all** (`dodge` closed C14 Task 3, `help` assist-an-attack-roll
+  flavor closed C14 Task 4, `hide` closed C14 Task 5 — all 2026-09-01;
+  Help's ability-check flavor is still open, no check-advantage producer
+  exists). Deliberately deferred from C14 in full: the campaign design
+  (spec §5, row C14) lists all four intents, but none has an approved
+  catalog acceptance scenario or a harmonised API-DELTAS row — a maintainer
+  flag, not an oversight.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
+- **Hide costs no Action** (2026-09-01). SRD 5.2 costs an Action to Hide;
+  `_handle_hide` deliberately charges no Action/Bonus-Action budget (the
+  same turn-keeping shape as Dash/`drop_concentration`) because the
+  approved S02 catalog script requires a hide-then-attack sequence inside
+  one turn, and the first attack swing hard-requires the Action — an
+  Action-consuming Hide would make that script unsatisfiable. Tighten once
+  strict Attack-action accounting lands.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_handle_hide`)
+- **Help's ability-check flavor is unimplemented.** No check-advantage
+  producer exists on the check-resolution path, so a helper cannot grant
+  Advantage on an ally's upcoming ability check (only the attack-roll
+  flavor is wired).
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/check.py`)
+- **Help has no "target is an enemy of the helper" gate.** SRD 5.2 Help's
+  ability-check flavor requires the helped creature to be "an enemy of the
+  one you're helping"; the attack-roll flavor's `help_grants` bookkeeping
+  accepts any `target_id`, including the helper's own ally or self, with no
+  validation.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_dispatch_simple_turn_ending_intent`)
+- **A redundant second Grapple attempt appends an orphaned, inert
+  `ActiveEffect`.** `_handle_grapple` never checks whether the target is
+  already Grappled by the same attacker before rolling a fresh save and
+  appending another `"Grappled"` effect; the pre-existing condition's
+  `source_effect_id` still wins, so the second effect sits in
+  `live.active_effects` doing nothing until combat ends. Compounding this:
+  `escape_grapple`/`_handle_escape_grapple` clears the Grappled condition
+  outright on a successful escape check rather than decrementing a
+  grappler-count, so a victim held by TWO grapplers (the original plus this
+  redundant-attempt orphan) is freed from BOTH by a single successful escape
+  — a one-check-escapes-two leniency — while the second, never-consulted
+  `ActiveEffect` remains orphaned in `live.active_effects` regardless.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_handle_grapple`,
+  `::_handle_escape_grapple`)
+- **A grappler killed without a `ConditionApplied` (Incapacitated) path
+  does not auto-release its victim.** `_release_grapple_victims_of` fires
+  only from the Incapacitated fold inside `_fold_condition_onto_combatant`;
+  a grappler removed from combat by a path that never applies Incapacitated
+  leaves its victim's Grappled condition stuck. SRD 5.2 "Ending a Grapple"
+  names only the Incapacitated case, so this is RAW-arguable rather than a
+  clear defect — recorded for a future ruling.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_release_grapple_victims_of`)
+- **Monster AI never selects Dodge, Hide, Help, Grapple, or Shove.**
+  `advance_monster_turn` has no branch that chooses any of the five C14
+  actions; a monster only ever attacks, casts, moves, or flees.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::advance_monster_turn`)
 - **No ongoing-damage / regeneration / recharge producers.** (2026-08-26) F3a
   gave them a place to land — `turn_lifecycle.py` runs `round_start` /
   `turn_start` / `turn_end` hooks off the single `_end_turn_and_advance` path —
@@ -355,20 +395,19 @@ zone + apply logic:
   producer.
   (`packages/dnd5e-engine/src/dnd5e_engine/turn_lifecycle.py`,
   `packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_register_default_turn_hooks`)
-- **Opportunity attacks ignore the exhaustion penalty and the condition attack
-  rows** (2026-08-27) — the two OA paths still roll
-  `live.rng.randint(1, 20) + attack_bonus` outside `resolve_attack`, so
-  `d20_test_penalty`, Prone and Grappled do not reach them. C14 routes them
-  through the shared primitive and inherits all three.
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
-- **Initiative is host-supplied, not rolled.** `start_combat` orders the
-  `initiative` values from the specs; no DEX-mod roll, no surprise, no delay.
+- **Initiative has no "Delay" option.** C14 Task 8 (2026-09-01) added the
+  engine-rolled `d20 + DEX modifier` path (`initiative=None`) with Surprise
+  and Incapacitated Disadvantage; the SRD "Delay" combat option (holding
+  your Initiative count to act later) is still absent.
   (`packages/dnd5e-engine/src/dnd5e_engine/specs.py`)
 - **`ended_reason="flee"` is never returned.** `_derive_ended_reason`
   (`orchestrator.py:5382`) yields victory / defeat_tpk / forced only.
-- **Movement rules beyond the budget are absent:** standing from prone (half
-  speed), crawling, climb/swim cost, jumping; `Combatant.movement_modes` is
-  hydrated and never read. Occupancy (C16) treats every enemy space as
+- **Movement rules beyond the budget are absent:** crawling, climb/swim
+  cost, jumping; `Combatant.movement_modes` is hydrated and never read.
+  Standing from Prone (half Speed, rounded down) closed C14 Task 7
+  (2026-09-01) via the `stand_up` `IntentType`
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_handle_stand_up`).
+  Occupancy (C16) treats every enemy space as
   impassable — the SRD's Tiny / two-sizes-larger pass-through and the "another
   creature's space is Difficult Terrain" cost both need creature size, which is
   not modelled; the forced-Prone consequence of ending a turn in a shared space
@@ -418,12 +457,19 @@ stand-in, not an engine capability. Specifically:
   `skill_check(jack_of_all_trades=...)` is unreachable from the public API;
   Reliable Talent, group checks and tool proficiencies are absent.
   (`packages/dnd5e-engine/src/dnd5e_engine/check.py`)
-- **Class features that are prose-only in the corpus:** Extra Attack, Fighting
-  Style, Divine Smite, Metamagic / sorcery points, Eldritch Invocations. Martial
-  Arts ships passive changes (`system.damage.base.custom.formula`) that are not
-  in the `passive_stats` allowlist. Bardic Inspiration grants a die nothing
-  consumes. Rage never ends for "didn't attack / take damage". Cunning Action's
-  bonus-action Dash is gated on `class_slug == "rogue"` rather than the feature.
+- **Class features that are prose-only in the corpus:** Fighting Style, Divine
+  Smite, Metamagic / sorcery points, Eldritch Invocations. (Extra Attack
+  closed C14 Task 1 — `_attacks_per_action` reads the granted
+  `extra-attack`/`two-extra-attacks`/`three-extra-attacks` feature slugs.)
+  **Action Surge and Flurry of Blows are still not modelled** (2026-09-01):
+  both grant an extra Action/action-equivalent mid-turn, which needs its own
+  seam distinct from the per-Action `attacks_remaining` counter C14 added —
+  neither feature's `activities` array carries a typed effect the resolver
+  reads. Martial Arts ships passive changes
+  (`system.damage.base.custom.formula`) that are not in the `passive_stats`
+  allowlist. Bardic Inspiration grants a die nothing consumes. Rage never
+  ends for "didn't attack / take damage". Cunning Action's bonus-action Dash
+  is gated on `class_slug == "rogue"` rather than the feature.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/passive_stats.py`)
 - **Equipment:** attunement limit (`requires_attunement` shipped, unread),
   ammunition decrement, versatile damage choice, shield don/doff, encumbrance —
@@ -609,10 +655,6 @@ cluster owns.
   sight/hearing".** There is no per-check sense vocabulary on `CheckSpec` /
   `CheckActivity`, so a check cannot declare it requires sight or hearing.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/check.py`)
-- **Incapacitated imposes Initiative disadvantage.** Initiative is
-  host-supplied until C14 rolls it. (Incapacitated breaking Concentration
-  landed via C13.)
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
 - **Invisible's "unless a creature can somehow see you" carve-out.** Both
   attack directions apply unconditionally; the per-observer sense check is
   C16b. (`packages/dnd5e-engine/src/dnd5e_engine/rules/conditions.py`)

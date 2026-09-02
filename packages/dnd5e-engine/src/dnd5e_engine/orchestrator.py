@@ -56,7 +56,7 @@ import re
 import warnings
 from collections.abc import AsyncIterator, Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Final, Literal
 
 from dnd5e_srd_data.schema.common import (
     ActivationBlock,
@@ -69,6 +69,7 @@ from dnd5e_srd_data.schema.item import Weapon, WeaponProperty
 from dnd5e_srd_data.schema.spell import (
     CastingTimeUnit,
     Spell,
+    SpellComponent,
     SpellDurationUnits,
     SpellRangeUnits,
 )
@@ -77,6 +78,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from dnd5e_engine.activities.actor_stats import (
     ABILITY_CODES,
     check_modifier,
+    proficiency_bonus_of,
     save_modifier,
     skill_ability,
 )
@@ -99,12 +101,14 @@ from dnd5e_engine.activities.scale import build_scale_values
 from dnd5e_engine.build_party import granted_feature_slugs
 from dnd5e_engine.death_saves import DeathSaveState, roll_death_save
 from dnd5e_engine.events import (
+    Ability,
     ActorMoved,
     AdvantageMode,
     AdvantageSource,
     AttackFailed,
     AttackRolled,
     CastFailed,
+    CheckRolled,
     CombatantMoved,
     CombatEnded,
     CombatEvent,
@@ -142,6 +146,7 @@ from dnd5e_engine.rules.conditions import (
     Condition,
     active_condition_names,
     conditions_block_actions,
+    conditions_grant_advantage_on_attack,
     d20_test_penalty,
     exhaustion_level_of,
     is_condition_active,
@@ -150,6 +155,7 @@ from dnd5e_engine.rules.conditions import (
     project_passive_save_modifiers,
     project_speed,
 )
+from dnd5e_engine.rules.dice import ability_modifier
 from dnd5e_engine.spatial import GridTopology, SpatialTopology, parse_cell
 from dnd5e_engine.specs import (
     EncounterMemberSpec,
@@ -242,6 +248,13 @@ class PlayerIntent(BaseModel):
     # path when the actor is not a Rogue. Carried from
     # ``ParsedIntent.use_bonus_action``.
     use_bonus_action: bool = False
+    # SRD 5.2 Unarmed Strike — Shove: "you either push it 5 feet away or
+    # cause it to have the Prone condition" — the shover's pre-declared
+    # choice (no player-facing choice prompt exists at this seam). False
+    # (default) -> Prone; True -> a 5-ft forced push via ``push_combatant``.
+    # Duck-typed hosts that never set this field keep the default Prone
+    # behaviour unaffected.
+    shove_push: bool = False
 
     @field_validator("direction")
     @classmethod
@@ -285,6 +298,19 @@ class IntentRejectedError(CombatSeamError):
         "combat_ended",
         "no_action_economy",
         "actor_incapacitated",
+        "target_invalid",
+        # SRD 5.2 Unarmed Strike — Grapple/Shove: the target must be within
+        # reach (5 ft). Mirrors ``CastFailedReason``'s "out_of_range" but as
+        # a direct raise (like Help's "target_invalid") since neither option
+        # has a dedicated ``...Failed`` event.
+        "out_of_range",
+        # SRD 5.2 Prone, Restricted Movement — ``stand_up`` has no dedicated
+        # ``...Failed`` event (like Grapple/Help above), so its two failure
+        # modes raise directly. Mirrors ``MoveFailed.reason``'s identically
+        # named members (a separate Literal on the move-intent event) —
+        # same SRD rule, different seam.
+        "speed_zero",
+        "insufficient_movement",
     ]
 
     def __init__(self, reason: RejectionReason, detail: str) -> None:
@@ -435,6 +461,11 @@ class _ZoneGraph:
 
     def cover_on_cell(self, cell: str) -> Literal["none", "half", "three_quarters", "total"]:
         # Same permanent no-cover-model split as ``cover_between`` above.
+        return "none"
+
+    def obscurement_on_cell(self, cell: str) -> Literal["none", "light", "heavy"]:
+        # Same permanent no-positional-model split as ``cover_on_cell`` above
+        # — the zone graph has no obscurement geometry to hang a tag off of.
         return "none"
 
     def can_see(self, a: str, b: str, senses: CombatantSenses | None = None) -> bool:
@@ -711,6 +742,85 @@ def _target_distance_map(
         if distance is not None:
             out[target.entity_id] = distance
     return out
+
+
+def _side_of(live: _LiveCombat, entity_id: str) -> set[str] | None:
+    """The side (``live.party_ids`` or ``live.encounter_ids``) ``entity_id``
+    belongs to, or ``None`` for an unregistered id."""
+    if entity_id in live.party_ids:
+        return live.party_ids
+    if entity_id in live.encounter_ids:
+        return live.encounter_ids
+    return None
+
+
+def _target_help_advantage_map(
+    live: _LiveCombat, attacker_id: str, targets: Sequence[Combatant]
+) -> dict[str, bool]:
+    """SRD 5.2 §Actions in Combat — Help, Assist an Attack Roll (C14 Task 4):
+    per-TARGET, does an outstanding ``live.help_grants`` entry against this
+    target belong to an ALLY of ``attacker_id`` (same side: both in
+    ``party_ids`` or both in ``encounter_ids``)? ``target == attacker_id``
+    never qualifies — Help assists an ALLY's attack roll, not the
+    helped-against target's own. Threaded into
+    ``ActivityResolutionContext.target_help_advantage``; the one-use pop
+    happens after resolution (``_pop_help_grant``) — this is a read-only
+    projection.
+    """
+    attacker_side = _side_of(live, attacker_id)
+    if attacker_side is None:
+        return {}
+    out: dict[str, bool] = {}
+    for target in targets:
+        if target.entity_id == attacker_id:
+            continue
+        helpers = live.help_grants.get(target.entity_id)
+        if helpers and any(h in attacker_side for h in helpers):
+            out[target.entity_id] = True
+    return out
+
+
+def _pop_help_grant(
+    live: _LiveCombat, attacker_id: str, targets: Sequence[Combatant], pre_event_count: int
+) -> None:
+    """One-use pop for a consumed Help grant (SRD 5.2 "giving Advantage to
+    the NEXT attack roll"). For each target ``attacker_id`` attacked this
+    resolution under an ally-of-a-helper grant, if an ``AttackRolled``
+    against that target by ``attacker_id`` with ``"help"`` among its
+    sources landed in this resolution's event slice, remove exactly ONE
+    matching helper from that target's grant list.
+
+    Consumed even on a miss, and even when the advantage was cancelled to
+    normal by a disadvantage source: ``roll_d20_test`` folds every
+    ``AdvantageSources.advantage`` entry into ``AttackRolled.sources``
+    regardless of the resolved mode, so "help" is present whenever the
+    grant applied to the roll at all — the SRD reading is "the next attack
+    roll" (singular, unconditional), not "the next attack roll that
+    resolves with advantage".
+    """
+    attacker_side = _side_of(live, attacker_id)
+    if attacker_side is None:
+        return
+    recent = live.event_log[pre_event_count:]
+    for target in targets:
+        helpers = live.help_grants.get(target.entity_id)
+        if not helpers:
+            continue
+        fired = any(
+            isinstance(ev, AttackRolled)
+            and ev.target_id == target.entity_id
+            and ev.attacker_id == attacker_id
+            and "help" in ev.sources
+            for ev in recent
+        )
+        if not fired:
+            continue
+        for idx, helper_id in enumerate(helpers):
+            if helper_id in attacker_side:
+                del helpers[idx]
+                break
+        if not helpers:
+            del live.help_grants[target.entity_id]
 
 
 #: ``ActiveEffect.origin`` prefixes whose THIRD ``:``-segment is the entity that
@@ -1394,6 +1504,33 @@ class _LiveCombat:
     reaction_effects_pending_expiry: dict[str, list[tuple[str, str, str]]] = field(
         default_factory=dict
     )
+    # SRD 5.2 §Actions in Combat — Help, "Assist an Attack Roll" (C14 Task 4):
+    # *"You momentarily distract an enemy within 5 feet of you, giving
+    # Advantage to the next attack roll by one of your allies against that
+    # enemy. This benefit expires at the start of your next turn."* Keyed by
+    # the HELPED-AGAINST target's entity_id -> the list of helper entity_ids
+    # who have an outstanding, unconsumed grant against that target (one
+    # entry per ``help`` intent — a second helper against the same target
+    # queues a second grant, each independently consumable by one ally
+    # attack). Populated by the ``"help"`` intent branch in
+    # ``submit_player_intent``; consumed (popped) after an allied attack
+    # against the target rolls in this resolution (see the one-use pop
+    # comment near the PC/monster attack-context build sites); expired per
+    # helper at that helper's OWN next ``TurnStarted``
+    # (``_emit_apply_turn_started``), never at the target's turn.
+    help_grants: dict[str, list[str]] = field(default_factory=dict)
+    # SRD 5.2 §Actions in Combat — Hide (C14 Task 5): the set of entity_ids
+    # currently benefiting from a successful Hide check's Invisible
+    # condition. Populated by ``_handle_hide`` on a successful DC 15
+    # Dexterity (Stealth) check (mirrors the ``ConditionApplied`` fold onto
+    # ``Combatant.conditions``); consumed (discarded, with a matching
+    # ``ConditionRemoved``) the moment its member "makes an attack roll" or
+    # "casts a spell with a Verbal component" (SRD 5.2 Hide's break clause).
+    # The found-DC / check total is intentionally NOT stored — the SRD's
+    # "an enemy finds you" and "a sound louder than a whisper" break clauses
+    # are host/Search concerns out of this engine's scope (no Search action
+    # or perception-vs-stealth contest is modeled here).
+    hidden_entities: set[str] = field(default_factory=set)
     # Turn-boundary hook registry (``dnd5e_engine.turn_lifecycle``). Populated
     # by ``_register_default_turn_hooks`` in ``start_combat``; run by
     # ``_end_turn_and_advance`` / ``_begin_turn``. Every rule that fires "at the
@@ -1472,6 +1609,118 @@ def _effective_speed(c: Combatant) -> int:
     return project_speed(c.base_speed, _condition_names(c), exhaustion_level_of(c.conditions))
 
 
+def _set_dodging(live: _LiveCombat, actor_id: str) -> None:
+    """SRD 5.2 §Actions in Combat — Dodge: flip ``actor_id``'s ``dodging``
+    flag live via the standard initiative-list model_copy write. Split out
+    of ``submit_player_intent`` purely to keep that dispatcher's cyclomatic
+    complexity under the lint ceiling."""
+    for idx, c in enumerate(live.initiative):
+        if c.entity_id == actor_id:
+            live.initiative[idx] = c.model_copy(update={"dodging": True})
+            break
+
+
+def _set_hide_attempted(live: _LiveCombat, actor_id: str) -> None:
+    """SRD 5.2 §Actions in Combat — Hide (F3): flip ``actor_id``'s
+    ``hide_attempted_this_turn`` flag live, mirroring ``_set_dodging``. Called
+    once a Hide intent has cleared the cover/obscurement gate — a second
+    attempt this turn is rejected before any dice are drawn."""
+    for idx, c in enumerate(live.initiative):
+        if c.entity_id == actor_id:
+            live.initiative[idx] = c.model_copy(update={"hide_attempted_this_turn": True})
+            break
+
+
+def _help_target_invalid(live: _LiveCombat, actor_id: str, intent: PlayerIntent) -> bool:
+    """SRD 5.2 §Actions in Combat — Help, Assist an Attack Roll: *"an enemy
+    within 5 feet of you"*. True (reject) unless ``intent.target_id`` names a
+    living combatant within 5 ft of ``actor_id``, using the same
+    ``SpatialTopology.distance_ft`` measure ``_target_distance_map`` threads
+    into attack resolution (Chebyshev on the grid backend)."""
+    target_id = intent.target_id
+    if not target_id:
+        return True
+    target = _find_combatant(live, target_id)
+    if target is None or not target.is_alive or target.hp_current <= 0:
+        return True
+    actor_zone = live.actor_zone.get(actor_id)
+    target_zone = live.actor_zone.get(target_id)
+    if actor_zone is None or target_zone is None:
+        return True
+    distance = live.topology.distance_ft(actor_zone, target_zone)
+    return distance is None or distance > 5
+
+
+def _reject_invalid_help_target(live: _LiveCombat, actor_id: str, intent: PlayerIntent) -> None:
+    """Raise ``IntentRejectedError("target_invalid")`` for an out-of-range /
+    dead / missing Help target; a no-op for every other intent type. Unlike
+    a cast or attack, ``help`` has no dedicated ``...Failed`` event to emit,
+    so an invalid target raises directly — mirrors the generic
+    ``no_action_economy`` raise ``_action_economy_gate_failure`` uses for
+    intents without a typed failure event of their own. Split out of
+    ``submit_player_intent`` purely to keep that dispatcher's cyclomatic
+    complexity under the lint ceiling (mirrors ``_set_dodging``)."""
+    if intent.intent_type == "help" and _help_target_invalid(live, actor_id, intent):
+        raise IntentRejectedError(
+            "target_invalid",
+            f"actor_id={actor_id!r} help target {intent.target_id!r} is not a living "
+            "combatant within 5 ft",
+        )
+
+
+def _reject_invalid_grapple_target(live: _LiveCombat, actor_id: str, intent: PlayerIntent) -> None:
+    """Raise ``IntentRejectedError("out_of_range")`` for an out-of-reach /
+    dead / missing Grapple target; a no-op for every other intent type.
+
+    SRD 5.2 Unarmed Strike — Grapple has the same 5-ft reach shape as Help's
+    "an enemy within 5 feet of you", so this reuses ``_help_target_invalid``'s
+    liveness/distance predicate — only the rejection reason differs (Grapple
+    has no dedicated ``...Failed`` event either, so — like Help — an invalid
+    target raises directly rather than emitting one). Split out purely to
+    keep ``submit_player_intent``'s cyclomatic complexity under the lint
+    ceiling (mirrors ``_reject_invalid_help_target`` / ``_set_dodging``).
+    """
+    if intent.intent_type == "grapple" and _help_target_invalid(live, actor_id, intent):
+        raise IntentRejectedError(
+            "out_of_range",
+            f"actor_id={actor_id!r} grapple target {intent.target_id!r} is not a living "
+            "combatant within reach (5 ft)",
+        )
+
+
+def _reject_invalid_shove_target(live: _LiveCombat, actor_id: str, intent: PlayerIntent) -> None:
+    """Raise ``IntentRejectedError("target_invalid")`` for an out-of-reach /
+    dead / missing Shove target; a no-op for every other intent type.
+
+    SRD 5.2 Unarmed Strike — Shove has the same 5-ft reach shape as Grapple,
+    so this reuses ``_help_target_invalid``'s liveness/distance predicate
+    (Task 7 reuses Task 6's helpers exactly). Split out purely to keep
+    ``submit_player_intent``'s cyclomatic complexity under the lint ceiling
+    (mirrors ``_reject_invalid_grapple_target``)."""
+    if intent.intent_type == "shove" and _help_target_invalid(live, actor_id, intent):
+        raise IntentRejectedError(
+            "target_invalid",
+            f"actor_id={actor_id!r} shove target {intent.target_id!r} is not a living "
+            "combatant within reach (5 ft)",
+        )
+
+
+def _dodge_benefit_active(live: _LiveCombat, c: Combatant) -> bool:
+    """SRD 5.2 §Actions in Combat — Dodge (C14 Task 3). True while ``c``'s
+    Dodge benefit is live: the combatant took the Dodge action this turn (or
+    a prior turn, "until the start of your next turn") AND has not lost it
+    under the SRD loss clause — *"You lose these benefits if you have the
+    Incapacitated condition or if your Speed is 0."* ``live`` is unused today
+    (no vision model yet — the "if you can see the attacker" conjunct on the
+    attack-disadvantage half is deferred to C16b) but threaded through so a
+    future vision check can slot in here without changing every call site.
+    """
+    del live  # C16b — see docstring; kept for the eventual vision-seam signature.
+    return (
+        c.dodging and not conditions_block_actions(_condition_names(c)) and _effective_speed(c) > 0
+    )
+
+
 def _clamp_movement_budget(live: _LiveCombat, entity_id: str) -> None:
     """Re-project one combatant's ``movement_remaining`` after its conditions
     changed mid-turn: never above the effective Speed (a creature grappled
@@ -1500,7 +1749,14 @@ def _find_combatant(live: _LiveCombat, entity_id: str) -> Combatant | None:
     return None
 
 
-def _fold_condition_onto_combatant(live: _LiveCombat, entity_id: str, condition: str) -> None:
+def _fold_condition_onto_combatant(
+    live: _LiveCombat,
+    entity_id: str,
+    condition: str,
+    *,
+    save_dc: int | None = None,
+    source_effect_id: str | None = None,
+) -> None:
     """Materialise a condition on **both** condition stores: the coarse
     ``live.active_conditions`` name set (what ``views.py`` shows the host and
     what the bridge rebuilds host storage from) and ``Combatant.conditions``,
@@ -1520,6 +1776,14 @@ def _fold_condition_onto_combatant(live: _LiveCombat, entity_id: str, condition:
 
     Idempotent per condition name; implied conditions are NOT materialised —
     ``is_condition_active`` resolves ``CONDITION_IMPLIES`` from the names.
+
+    ``save_dc`` / ``source_effect_id`` are optional keyword-only overrides for
+    the newly-materialised ``ActiveCondition`` — C14's Grapple option threads
+    the escape DC and the imposing effect's id here (via
+    ``_emit_grapple_condition_applied``) so later escape attempts read the
+    STORED DC rather than recomputing it. Every other call site (the generic
+    ``ConditionApplied`` fold in ``_emit``, ``start_combat``'s 0-HP hydration)
+    leaves both at their ``None`` default — unchanged behavior.
     """
     live.active_conditions.setdefault(entity_id, set()).add(condition)
     c = _find_combatant(live, entity_id)
@@ -1532,6 +1796,8 @@ def _fold_condition_onto_combatant(live: _LiveCombat, entity_id: str, condition:
             source_entity_id="implied:event",
             scope="combat",
             applied_round=live.round_number,
+            save_dc=save_dc,
+            source_effect_id=source_effect_id,
         ),
     ]
     for idx, slot in enumerate(live.initiative):
@@ -1547,6 +1813,10 @@ def _fold_condition_onto_combatant(live: _LiveCombat, entity_id: str, condition:
     # HP threshold — see the rule card's 0-HP edge note.
     if is_condition_active(Condition.INCAPACITATED, [condition]):
         _drop_concentration(live, entity_id)
+        # SRD 5.2 "Ending a Grapple" — "The condition also ends if the
+        # grappler has the Incapacitated condition." Release every victim
+        # this newly-incapacitated combatant is currently grappling.
+        _release_grapple_victims_of(live, entity_id)
 
 
 def _strip_condition_from_combatant(live: _LiveCombat, entity_id: str, condition: str) -> None:
@@ -1656,6 +1926,322 @@ def _drop_concentration(
             break
 
 
+# ── C14 Task 6 — Unarmed Strike: the Grapple option + escape ────────────────
+#
+# SRD 5.2 (Unarmed Strike, "Grapple"): "The target must succeed on a Strength
+# or Dexterity saving throw (it chooses which), or it has the Grappled
+# condition. The DC for the saving throw and any escape attempts equals 8
+# plus your Strength modifier and Proficiency Bonus."
+#
+# Controller ruling R3 (deterministic-choice policy, since the engine has no
+# player-facing choice prompt): the target saves with whichever of STR/DEX
+# has the higher save modifier (tie -> STR); the escaper picks Athletics vs
+# Acrobatics by higher check modifier (tie -> Athletics/STR).
+#
+# Out of scope (BACKLOG.md, Task 10): the size gate ("a creature can grapple
+# no more than one size larger than itself"), the free-hand gate (SRD
+# requires "a hand free"), and the distance-exceeded auto-release (no
+# forced-move currently separates a grappled pair mid-grapple).
+
+
+def _unarmed_option_dc(attacker: Combatant) -> int:
+    """SRD 5.2 Unarmed Strike — Grapple / Shove: "The DC ... equals 8 plus
+    your Strength modifier and Proficiency Bonus." Shared by both options
+    (C14 Task 7 reuses this for Shove)."""
+    return 8 + ability_modifier(attacker.strength) + proficiency_bonus_of(attacker)
+
+
+def _emit_grapple_condition_applied(
+    live: _LiveCombat, target_id: str, *, save_dc: int, source_effect_id: str
+) -> None:
+    """Fold + emit ``ConditionApplied(grappled)`` with the escape DC and the
+    imposing effect's id threaded onto the freshly-materialised
+    ``ActiveCondition`` — a dedicated emit-side entry point (rather than
+    mutating the slot after the fact) so ``escape_grapple`` can later read
+    the STORED DC instead of recomputing it. Pre-folds directly (idempotent
+    per condition) THEN routes through the generic ``_emit`` so the event
+    still lands on the log/queue/listeners exactly like any other
+    ``ConditionApplied`` — the generic fold branch inside ``_emit`` then
+    no-ops (the condition is already materialised)."""
+    _fold_condition_onto_combatant(
+        live, target_id, "grappled", save_dc=save_dc, source_effect_id=source_effect_id
+    )
+    _emit(live, ConditionApplied(target_id=target_id, condition="grappled"))
+
+
+def _release_one_grapple_effect(live: _LiveCombat, victim_id: str, effect_id: str | None) -> None:
+    """Drop the grapple ``ActiveEffect`` named ``effect_id`` from
+    ``live.active_effects[victim_id]`` — a no-op if absent. MUST run BEFORE
+    the matching ``ConditionRemoved`` is emitted: ``_strip_condition_from_
+    combatant``'s multi-source stacking guard keeps a condition whose
+    ``source_effect_id`` is still present in ``active_effects``, so the
+    effect has to be gone first for the condition to actually clear."""
+    if effect_id is None:
+        return
+    effects = live.active_effects.get(victim_id)
+    if effects is None:
+        return
+    remaining = [e for e in effects if e.id != effect_id]
+    if len(remaining) != len(effects):
+        live.active_effects[victim_id] = remaining
+
+
+def _release_grapple_victims_of(live: _LiveCombat, grappler_id: str) -> None:
+    """SRD 5.2 "Ending a Grapple" — "The condition also ends if the grappler
+    has the Incapacitated condition." Called from
+    ``_fold_condition_onto_combatant``'s Incapacitated branch (beside the
+    C13 concentration drop) whenever ``grappler_id`` newly becomes
+    Incapacitated: release every combatant currently Grappled BY it (per
+    ``_condition_source_entity``'s resolution of the ``grapple:`` origin
+    prefix)."""
+    for victim in list(live.initiative):
+        grappled_ac = next((ac for ac in victim.conditions if ac.condition == "grappled"), None)
+        if grappled_ac is None:
+            continue
+        if _condition_source_entity(live, victim, "grappled") != grappler_id:
+            continue
+        _release_one_grapple_effect(live, victim.entity_id, grappled_ac.source_effect_id)
+        _emit(live, ConditionRemoved(target_id=victim.entity_id, condition="grappled"))
+
+
+def _resolve_grapple_save_ability(target: Combatant) -> Ability:
+    """Controller ruling R3 — the target saves with whichever of STR/DEX has
+    the higher save modifier (tie -> STR)."""
+    str_total = save_modifier(target, "str").total
+    dex_total = save_modifier(target, "dex").total
+    return "str" if str_total >= dex_total else "dex"
+
+
+def _roll_unarmed_option_save(
+    live: _LiveCombat, attacker: Combatant, target: Combatant
+) -> SaveRolled:
+    """SRD 5.2 Unarmed Strike — Grapple/Shove: the shared save roll both
+    options make against ``_unarmed_option_dc(attacker)``. Fix round 1 —
+    extracted out of ``_handle_grapple``/``_handle_shove`` (byte-identical
+    behaviour, same draw order, same emitted ``SaveRolled`` fields) so a
+    future save-logic change lands once, not twice.
+
+    Rolls through the same primitives ``_run_end_of_turn_saves`` uses
+    outside the activity walk (auto-fail conditions + exhaustion penalty
+    come free; no advantage source of its own — a plain D20 Test), so
+    Paralyzed/Stunned/Petrified/Unconscious targets auto-fail with zero
+    draws. Controller ruling R3 (deterministic-choice policy, since the
+    engine has no player-facing choice prompt): the target saves with
+    whichever of STR/DEX has the higher save modifier (tie -> STR), via
+    ``_resolve_grapple_save_ability``.
+
+    Emits the ``SaveRolled`` event and returns it so callers can branch on
+    ``.succeeded`` (and read back the resolved ``.dc``) without recomputing
+    either."""
+    target_id = target.entity_id
+    dc = _unarmed_option_dc(attacker)
+    ability = _resolve_grapple_save_ability(target)
+    save_proj = project_passive_save_modifiers(_condition_names(target))
+    ability_upper = ability.upper()
+    if ability_upper in save_proj.get("passive_save_auto_fail", []):
+        roll_total, succeeded = 0, False
+        mode: AdvantageMode = "normal"
+        natural: int | None = None
+        roll_modifier = 0
+        roll_sources: list[AdvantageSource] = []
+    else:
+        modifier = save_modifier(target, ability).total + d20_test_penalty(target.conditions)
+        dis: tuple[AdvantageSource, ...] = (
+            ("condition:target",) if ability_upper in save_proj.get("passive_save_dis", []) else ()
+        )
+        roll = roll_d20_test(live.rng, modifier, AdvantageSources(disadvantage=dis))
+        roll_total, succeeded = roll.total, roll.total >= dc
+        mode, natural, roll_modifier = roll.mode, roll.kept, roll.modifier
+        roll_sources = list(roll.sources)
+    event = SaveRolled(
+        target_id=target_id,
+        ability=ability,
+        dc=dc,
+        roll_total=roll_total,
+        succeeded=succeeded,
+        advantage=mode,
+        natural=natural,
+        modifier=roll_modifier,
+        sources=roll_sources,
+    )
+    _emit(live, event)
+    return event
+
+
+def _handle_grapple(live: _LiveCombat, attacker: Combatant, intent: PlayerIntent) -> None:
+    """SRD 5.2 Unarmed Strike — Grapple. Rolls the target's save via
+    ``_roll_unarmed_option_save`` (shared with ``_handle_shove`` — auto-fail
+    conditions + exhaustion penalty come free; no advantage source of its
+    own — a plain D20 Test), so Paralyzed/Stunned/Petrified/Unconscious
+    targets auto-fail with zero draws. On failure, applies the engine-owned
+    Grappled condition with the escape DC + source effect stored on the
+    ``ActiveCondition`` (see ``_emit_grapple_condition_applied``). The
+    Action is already spent (budget consumed by the caller); Grapple
+    resolves no other activities and always ends the turn."""
+    assert intent.target_id is not None  # narrowed by the range gate above
+    target_id = intent.target_id
+    target = _find_combatant(live, target_id)
+    assert target is not None  # narrowed by the range gate above
+    save = _roll_unarmed_option_save(live, attacker, target)
+    if not save.succeeded:
+        effect_id = f"effect:grapple:{live.round_number}:{attacker.entity_id}:{target_id}"
+        effect = ActiveEffect(
+            id=effect_id,
+            name="Grappled",
+            origin=f"grapple:unarmed-strike:{attacker.entity_id}",
+            target_id=target_id,
+            statuses={"grappled"},
+        )
+        live.active_effects.setdefault(target_id, []).append(effect)
+        _emit_grapple_condition_applied(
+            live, target_id, save_dc=save.dc, source_effect_id=effect_id
+        )
+    _end_turn_and_advance(live, attacker.entity_id)
+
+
+# SRD 5.2 Unarmed Strike, "Shove": "The target must succeed on a Strength or
+# Dexterity saving throw (it chooses which), or you either push it 5 feet
+# away or cause it to have the Prone condition. The DC for the saving throw
+# equals 8 plus your Strength modifier and Proficiency Bonus. This shove is
+# possible only if the target is no more than one size larger than you."
+#
+# Reuses Grapple's save shape byte-for-byte (``_unarmed_option_dc``, the
+# higher-of-STR/DEX target save via ``_resolve_grapple_save_ability``, the
+# ``_run_end_of_turn_saves``-style auto-fail/exhaustion machinery) — only the
+# on-failure OUTCOME differs, per the shover's pre-declared
+# ``intent.shove_push`` choice (Controller ruling R3: no player-facing
+# choice prompt exists at this seam, so the choice rides the intent).
+#
+# Out of scope (BACKLOG.md, Task 10): the size gate ("no more than one size
+# larger than you").
+
+
+def _handle_shove(live: _LiveCombat, attacker: Combatant, intent: PlayerIntent) -> None:
+    """SRD 5.2 Unarmed Strike — Shove. Rolls the target's save via the same
+    ``_roll_unarmed_option_save`` helper ``_handle_grapple`` uses (auto-fail
+    conditions + exhaustion penalty come free; no advantage source of its
+    own — a plain D20 Test). On failure: Prone (default) or a 5-ft forced
+    push away from the shover, per ``intent.shove_push``. No damage either
+    way. The Action is already spent (budget consumed by the caller); Shove
+    resolves no other activities and always ends the turn."""
+    assert intent.target_id is not None  # narrowed by the range gate above
+    target_id = intent.target_id
+    target = _find_combatant(live, target_id)
+    assert target is not None  # narrowed by the range gate above
+    save = _roll_unarmed_option_save(live, attacker, target)
+    if not save.succeeded:
+        if intent.shove_push:
+            origin_cell = live.actor_zone.get(attacker.entity_id)
+            assert origin_cell is not None  # the attacker is on the live grid
+            push_combatant(live, target_id, origin_cell=origin_cell, distance_ft=5)
+        else:
+            _emit(live, ConditionApplied(target_id=target_id, condition="prone"))
+    _end_turn_and_advance(live, attacker.entity_id)
+
+
+def _escape_grapple_actor_invalid(current: Combatant) -> bool:
+    """True (reject) unless ``current`` currently carries the Grappled
+    condition — ``escape_grapple`` has nothing to escape from otherwise."""
+    return not any(ac.condition == "grappled" for ac in current.conditions)
+
+
+def _reject_invalid_escape_grapple_actor(
+    actor_id: str, intent: PlayerIntent, current: Combatant
+) -> None:
+    """Raise ``IntentRejectedError("target_invalid")`` for an
+    ``escape_grapple`` from an actor who is not (or no longer) Grappled; a
+    no-op for every other intent type. Split out (like ``_reject_invalid_
+    help_target`` / ``_reject_invalid_grapple_target``) purely to keep
+    ``submit_player_intent``'s cyclomatic complexity under the lint
+    ceiling."""
+    if intent.intent_type == "escape_grapple" and _escape_grapple_actor_invalid(current):
+        raise IntentRejectedError(
+            "target_invalid",
+            f"actor_id={actor_id!r} is not Grappled; nothing to escape",
+        )
+
+
+def _handle_escape_grapple(live: _LiveCombat, current: Combatant, intent: PlayerIntent) -> None:
+    """SRD 5.2 "Ending a Grapple" — "A Grappled creature can use its action
+    to make a Strength (Athletics) or Dexterity (Acrobatics) check against
+    the grapple's escape DC, ending the condition on itself on a success."
+
+    Reads the STORED escape DC off the actor's ``ActiveCondition`` (never
+    recomputed — the grappler's Strength may have changed since). Controller
+    ruling R3 picks Athletics vs Acrobatics by whichever check modifier is
+    higher (tie -> Athletics/STR), via the same ``check_modifier`` primitive
+    every other skill check on this seam uses. The Action is already spent
+    (budget consumed by the caller); escape always ends the turn."""
+    del intent  # escape_grapple carries no target/spell/item fields.
+    grappled_ac = next((ac for ac in current.conditions if ac.condition == "grappled"), None)
+    assert grappled_ac is not None  # narrowed by the gate above
+    assert grappled_ac.save_dc is not None  # every grapple emit stores one
+    dc = grappled_ac.save_dc
+    athletics_mod = check_modifier(current, "str", "athletics").total
+    acrobatics_mod = check_modifier(current, "dex", "acrobatics").total
+    if athletics_mod >= acrobatics_mod:
+        skill, ability, modifier = "athletics", "str", athletics_mod
+    else:
+        skill, ability, modifier = "acrobatics", "dex", acrobatics_mod
+    # SRD 5.2 Exhaustion — "the roll is reduced by 2 times your Exhaustion
+    # level" on EVERY D20 Test, ability checks included. The grapple SAVE
+    # already threads this (mirroring ``_run_end_of_turn_saves``); the
+    # escape check must too (Fix round 1).
+    modifier += d20_test_penalty(current.conditions)
+    roll = roll_d20_test(live.rng, modifier, AdvantageSources())
+    succeeded = roll.total >= dc
+    _emit(
+        live,
+        CheckRolled(
+            actor_id=current.entity_id,
+            ability=ability,
+            skill=skill,
+            dc=dc,
+            roll_total=roll.total,
+            succeeded=succeeded,
+            advantage=roll.mode,
+            natural=roll.kept,
+            modifier=roll.modifier,
+            sources=list(roll.sources),
+        ),
+    )
+    if succeeded:
+        _release_one_grapple_effect(live, current.entity_id, grappled_ac.source_effect_id)
+        _emit(live, ConditionRemoved(target_id=current.entity_id, condition="grappled"))
+    _end_turn_and_advance(live, current.entity_id)
+
+
+def _dispatch_simple_turn_ending_intent(
+    live: _LiveCombat, current: Combatant, actor_id: str, intent: PlayerIntent
+) -> bool:
+    """Route the turn-ending intents that resolve no activities of their own
+    — Dodge, Help, Grapple, Shove, ``escape_grapple`` — to their handlers and
+    report whether one fired. Every gate (5-ft reach / Grappled-state) has
+    already run in ``submit_player_intent`` before this is reached.
+    Collapsing the dispatch into one call site (mirrors ``_dispatch_turn_
+    nonending_intent``'s shape) keeps that function's cyclomatic complexity
+    under the lint ceiling."""
+    if intent.intent_type == "dodge":
+        _set_dodging(live, actor_id)
+        _end_turn_and_advance(live, actor_id)
+        return True
+    if intent.intent_type == "help":
+        assert intent.target_id is not None  # mypy: narrowed by the gate above
+        live.help_grants.setdefault(intent.target_id, []).append(actor_id)
+        _end_turn_and_advance(live, actor_id)
+        return True
+    if intent.intent_type == "grapple":
+        _handle_grapple(live, current, intent)
+        return True
+    if intent.intent_type == "shove":
+        _handle_shove(live, current, intent)
+        return True
+    if intent.intent_type == "escape_grapple":
+        _handle_escape_grapple(live, current, intent)
+        return True
+    return False
+
+
 def _handle_dash(live: _LiveCombat, current: Combatant, intent: PlayerIntent) -> None:
     """SRD §Combat — Dash: double the actor's movement budget for this turn.
 
@@ -1726,6 +2312,169 @@ def _handle_drop_concentration(live: _LiveCombat, current: Combatant, intent: Pl
         IntentSubmitted(actor_id=current.entity_id, intent_type="drop_concentration"),
     )
     _drop_concentration(live, current.entity_id)
+
+
+def _handle_hide(live: _LiveCombat, current: Combatant, intent: PlayerIntent) -> None:
+    """SRD 5.2 §Actions in Combat — Hide.
+
+    *"You must succeed on a DC 15 Dexterity (Stealth) check while you're
+    Heavily Obscured or behind Three-Quarters Cover or Total Cover, and
+    you must be out of any enemy's line of sight... On a successful
+    check, you have the Invisible condition while hidden."*
+
+    CONTROLLER RULING (supersedes the task brief's "soft-consume the
+    Action" line): Hide costs NO Action-economy budget at all — the same
+    zero-cost, turn-keeping shape as ``_handle_drop_concentration``. The
+    SRD actually costs an Action; this divergence is deliberately
+    UNENFORCED pending strict Attack-action accounting (an Action-
+    consuming Hide would make the catalog's approved hide-then-attack
+    script unsatisfiable against the hard Action gate the first attack
+    swing enforces) — see BACKLOG.md.
+
+    Gate: the hider's own cell must be behind Three-Quarters/Total cover
+    OR Heavily Obscured. The "out of any enemy's line of sight" conjunct
+    is DEFERRED to C16b — no per-enemy vision scan is wired to this seam
+    yet (comment mirrors the Dodge "if you can see the attacker" deferral).
+    A failed gate raises ``IntentRejectedError("target_invalid")`` with NO
+    d20 draw (zero stream perturbation on rejection).
+
+    On success: emits ``ConditionApplied(condition="invisible")`` (the C12
+    Invisible wiring already grants the hider's next attack Advantage and
+    imposes Disadvantage on attacks against it) and records the hider in
+    ``live.hidden_entities`` so the break-on-attack /
+    break-on-verbal-cast hooks (attack path / cast_spell path) can end it.
+    The found-DC / check total is intentionally NOT stored — Search
+    (the SRD's "an enemy finds you" break clause) is a host concern out
+    of this engine's scope.
+
+    FINAL-REVIEW FIX (F3): one Hide attempt per turn. Zero-cost + turn-
+    keeping with no repeat gate would otherwise let a host loop ``hide``
+    against the DC 15 check until it lands. A SECOND attempt this turn
+    raises ``IntentRejectedError("no_action_economy")`` before the cover
+    gate even runs — zero draws either way.
+    """
+    actor_id = current.entity_id
+    if current.hide_attempted_this_turn:
+        raise IntentRejectedError(
+            "no_action_economy",
+            f"actor_id={actor_id!r} has already attempted Hide this turn",
+        )
+    cell = live.actor_zone.get(actor_id)
+    cover = live.topology.cover_on_cell(cell) if cell is not None else "none"
+    obscurement = live.topology.obscurement_on_cell(cell) if cell is not None else "none"
+    if cover not in ("three_quarters", "total") and obscurement != "heavy":
+        raise IntentRejectedError(
+            "target_invalid",
+            f"actor_id={actor_id!r} is not behind Three-Quarters/Total cover "
+            "or Heavily Obscured — Hide requires one of those",
+        )
+
+    # F3 — this attempt has cleared the cover gate and is now committed to
+    # rolling; record it BEFORE the roll so a same-turn retry (success or
+    # failure) is rejected regardless of this attempt's outcome.
+    _set_hide_attempted(live, actor_id)
+
+    _emit(
+        live,
+        IntentSubmitted(actor_id=actor_id, intent_type="hide"),
+    )
+
+    modifier = check_modifier(current, "dex", "stealth").total + d20_test_penalty(
+        current.conditions
+    )
+    roll = roll_d20_test(live.rng, modifier, AdvantageSources())
+    dc = 15
+    succeeded = roll.total >= dc
+    _emit(
+        live,
+        CheckRolled(
+            actor_id=actor_id,
+            ability="dex",
+            skill="stealth",
+            dc=dc,
+            roll_total=roll.total,
+            succeeded=succeeded,
+            advantage=roll.mode,
+            natural=roll.kept,
+            modifier=roll.modifier,
+            sources=list(roll.sources),
+        ),
+    )
+    if succeeded:
+        _emit(live, ConditionApplied(target_id=actor_id, condition="invisible"))
+        live.hidden_entities.add(actor_id)
+
+
+def _handle_stand_up(live: _LiveCombat, current: Combatant, intent: PlayerIntent) -> None:
+    """SRD 5.2 Prone, "Restricted Movement": *"you can spend an amount of
+    movement equal to half your Speed (round down) to right yourself and
+    thereby end the condition. If your Speed is 0, you can't right
+    yourself."*
+
+    Touches NO Action/Bonus Action budget (turn-KEEPING, like Hide/Dash) —
+    only movement. Gates, in order: the actor must be Prone
+    (``IntentRejectedError("target_invalid")``, mirrors ``_reject_invalid_
+    escape_grapple_actor``'s "nothing to do this from" shape); effective
+    Speed must be nonzero (``"speed_zero"``); the remaining movement budget
+    must cover half Speed, rounded down (``"insufficient_movement"``). Every
+    rejection draws no dice and leaves the Prone condition (and movement
+    budget) untouched. On success, decrements ``movement_remaining`` by the
+    cost and emits ``ConditionRemoved(prone)`` through ``_emit`` — a plain
+    fold, since Prone (unlike Grappled) carries no stored ``save_dc``."""
+    del intent  # stand_up carries no target/spell/item fields.
+    actor_id = current.entity_id
+    if not any(ac.condition == "prone" for ac in current.conditions):
+        raise IntentRejectedError(
+            "target_invalid",
+            f"actor_id={actor_id!r} is not Prone; nothing to stand up from",
+        )
+    speed = _effective_speed(current)
+    if speed == 0:
+        raise IntentRejectedError(
+            "speed_zero",
+            f"actor_id={actor_id!r} has Speed 0; can't right themself (SRD 5.2 Prone)",
+        )
+    cost = speed // 2
+    if current.movement_remaining < cost:
+        raise IntentRejectedError(
+            "insufficient_movement",
+            f"actor_id={actor_id!r} has {current.movement_remaining} ft remaining, "
+            f"needs {cost} ft (half Speed) to stand up",
+        )
+    for idx, c in enumerate(live.initiative):
+        if c.entity_id == actor_id:
+            live.initiative[idx] = c.model_copy(
+                update={"movement_remaining": c.movement_remaining - cost}
+            )
+            break
+    _emit(live, ConditionRemoved(target_id=actor_id, condition="prone"))
+
+
+def _break_hide_on_attack_or_verbal_cast(
+    live: _LiveCombat,
+    current: Combatant,
+    intent: PlayerIntent,
+    cast_spell: Spell | None,
+) -> None:
+    """SRD 5.2 Hide's break clause, the "attack roll" and "Verbal component"
+    conjuncts: ends the hider's Invisible condition the instant they make
+    an attack roll (any swing, main-hand or off-hand) or cast a spell whose
+    typed ``components`` carry ``SpellComponent.VOCAL``. No-op for a
+    non-hidden actor or any other intent kind. The loud-sound / found-by-
+    Search break clauses are out of this engine's scope (host/Search
+    concern); see ``_handle_hide``'s docstring.
+    """
+    if current.entity_id not in live.hidden_entities:
+        return
+    breaks = intent.intent_type == "attack" or (
+        intent.intent_type == "cast_spell"
+        and cast_spell is not None
+        and SpellComponent.VOCAL in cast_spell.components
+    )
+    if not breaks:
+        return
+    _emit(live, ConditionRemoved(target_id=current.entity_id, condition="invisible"))
+    live.hidden_entities.discard(current.entity_id)
 
 
 def _handle_disengage(live: _LiveCombat, current: Combatant, intent: PlayerIntent) -> None:
@@ -2040,9 +2789,35 @@ def _emit_apply_turn_started(live: _LiveCombat, event: TurnStarted) -> None:
                     # clears at the start of the actor's own turn (symmetric
                     # with the action-economy resets above).
                     "sneak_attack_spent_this_turn": False,
+                    # SRD §Extra Attack / §Two-Weapon Fighting — refresh the
+                    # per-Action attack budget and clear the TWF window at
+                    # the start of the actor's own turn.
+                    "attacks_remaining": _attacks_per_action(c),
+                    "attack_action_engaged": False,
+                    "light_weapon_swing_slug": None,
+                    "offhand_attack_spent": False,
+                    # SRD §Actions in Combat — Dodge: "until the start of
+                    # your next turn". The reset here, at the dodger's OWN
+                    # turn start, is the exact SRD expiry point.
+                    "dodging": False,
+                    # SRD 5.2 §Actions in Combat — Hide (F3): one attempt per
+                    # turn; the gate resets alongside Dodge at the actor's own
+                    # TurnStarted.
+                    "hide_attempted_this_turn": False,
                 }
             )
             break
+    # SRD 5.2 §Actions in Combat — Help: "This benefit expires at the start
+    # of your next turn" — the HELPER's own next turn, not the helped-
+    # against target's. Strip this actor's entity_id out of every grant
+    # list (an unconsumed grant simply lapses); drop any list left empty so
+    # ``help_grants`` never accumulates dead keys.
+    for target_id in list(live.help_grants):
+        helpers = [h for h in live.help_grants[target_id] if h != event.actor_id]
+        if helpers:
+            live.help_grants[target_id] = helpers
+        else:
+            del live.help_grants[target_id]
 
 
 def _hook_expire_reaction_effects(live: _LiveCombat, actor_id: str | None) -> None:
@@ -3034,6 +3809,16 @@ def _build_hydration_payload(live: _LiveCombat, caster: Combatant | None = None)
         per_target_entry, check_entry = _project_target_modifiers(c, live, passive_damage_modifiers)
         save_modifiers[c.entity_id] = per_target_entry
         check_modifiers[c.entity_id] = check_entry
+
+    # SRD 5.2 §Actions in Combat — Dodge: "you make Dexterity saving throws
+    # with Advantage" while the benefit is active. Folded onto the SAME
+    # per-target ``passive_save_adv`` list ``build_context.py`` reshapes
+    # into ``ActivityResolutionContext.passive_save_adv`` — no separate
+    # sidecar. No "can see" conjunct on this half of Dodge (only the
+    # attack-disadvantage half carries one, deferred to C16b).
+    for c in live.initiative:
+        if _dodge_benefit_active(live, c):
+            save_modifiers[c.entity_id]["passive_save_adv"].append("DEX")
 
     # ── C12 — SRD 5.2 Exhaustion ``-2 x level`` on every D20 Test, per entity ─
     # Only exhausted entities get a row, so an unexhausted combat hands the
@@ -4364,6 +5149,42 @@ def _seed_active_effects(live: _LiveCombat, active_effects: Sequence[ActiveEffec
             break
 
 
+def _seeded_incapacitated_ids(active_effects: Sequence[ActiveEffect]) -> frozenset[str]:
+    """Entity ids whose SEEDED ``active_effects`` (passed into ``start_combat``,
+    before any ``Combatant`` exists) carry a status that is Incapacitated or
+    implies it (Paralyzed / Petrified / Stunned / Unconscious — SRD 5.2
+    ``CONDITION_IMPLIES``). Reuses the same implication chain
+    ``is_condition_active`` walks for the live-combat Incapacitated read
+    (``_sneak_ally_adjacent_map`` et al.), applied here to the pre-seat
+    effect statuses rather than ``Combatant.conditions``.
+    """
+    ids: set[str] = set()
+    for eff in active_effects:
+        if is_condition_active(Condition.INCAPACITATED, list(eff.statuses)):
+            ids.add(eff.target_id)
+    return frozenset(ids)
+
+
+def _resolve_initiative(
+    spec: PartyMemberSpec | EncounterMemberSpec,
+    rng: random.Random,
+    seeded_incapacitated: frozenset[str],
+) -> int:
+    """SRD 5.2 Initiative: "every participant rolls Initiative; they make a
+    Dexterity check". ``spec.initiative`` being an explicit int always wins
+    (zero RNG draws — the legacy / host-supplied path). ``None`` opts into an
+    engine-rolled d20 + DEX modifier. Surprise (and Incapacitated at roll
+    time — both SRD-cited on the spec fields / ``_seeded_incapacitated_ids``)
+    impose Disadvantage per SRD 5.2 Surprise / the Incapacitated glossary
+    entry.
+    """
+    if spec.initiative is not None:
+        return spec.initiative
+    disadvantage = spec.is_surprised or spec.entity_id in seeded_incapacitated
+    sources = AdvantageSources(disadvantage=("condition:attacker",) if disadvantage else ())
+    return roll_d20_test(rng, ability_modifier(spec.dexterity), sources).total
+
+
 async def start_combat(
     *,
     session_id: str,
@@ -4388,6 +5209,25 @@ async def start_combat(
         raise ValueError("start_combat: party must be non-empty")
     if not encounter:
         raise ValueError("start_combat: encounter must be non-empty")
+
+    # Hoisted so the SAME instance seeds both the initiative-rolling draws
+    # below (R4) and every subsequent in-combat draw via ``_LiveCombat.rng``.
+    rng = random.Random(rng_seed)
+
+    # SRD 5.2 Initiative: "every participant rolls Initiative; they make a
+    # Dexterity check". Entities with a fixed int ``initiative`` skip the
+    # RNG entirely (zero draws — every host-int-initiative caller keeps its
+    # exact pre-C14 draw sequence). ``None`` entities roll in SPEC ORDER
+    # (party first, then encounter) so results are reproducible per seed.
+    seeded_incapacitated = _seeded_incapacitated_ids(active_effects)
+    party = [
+        p.model_copy(update={"initiative": _resolve_initiative(p, rng, seeded_incapacitated)})
+        for p in party
+    ]
+    encounter = [
+        e.model_copy(update={"initiative": _resolve_initiative(e, rng, seeded_incapacitated)})
+        for e in encounter
+    ]
 
     # Initiative order: descending by initiative, ties broken by dex then
     # by entity_id for deterministic order. Mirrors the existing session
@@ -4433,7 +5273,7 @@ async def start_combat(
         party_ids={p.entity_id for p in party},
         encounter_ids={e.entity_id for e in encounter},
         topology=topology,
-        rng=random.Random(rng_seed),
+        rng=rng,
         event_queue=asyncio.Queue(),
         scene_location_id=scene_location_id,
         actor_zone=actor_zone,
@@ -4508,6 +5348,51 @@ async def start_combat(
     return StartCombatResult(
         handle=CombatHandle(handle_id=handle_id),
         events=start_events,
+    )
+
+
+_EXTRA_ATTACK_TIERS: Final[tuple[tuple[str, int], ...]] = (
+    ("three-extra-attacks", 4),
+    ("two-extra-attacks", 3),
+    ("extra-attack", 2),
+)
+
+
+def _attacks_per_action(current: Combatant) -> int:
+    """SRD 5.2 Extra Attack + the multiclass non-stacking rule: the single
+    highest-count qualifying feature sets the cap; counts are never summed."""
+    if current.class_slug is None:
+        return 1
+    slugs = _granted_feature_slugs(current)
+    for slug, count in _EXTRA_ATTACK_TIERS:
+        if slug in slugs:
+            return count
+    return 1
+
+
+def _twf_window_open(current: Combatant) -> bool:
+    """SRD §Two-Weapon Fighting — True while an off-hand Bonus Action swing
+    is still available this turn (Light main-hand weapon swung, no
+    off-hand swing spent yet, Bonus Action unspent). Task 2 wires the
+    off-hand swing itself; until then this only affects whether the
+    main-hand attack tail keeps the turn (R1)."""
+    return (
+        current.light_weapon_swing_slug is not None
+        and not current.offhand_attack_spent
+        and current.bonus_action_available
+    )
+
+
+def _attack_action_is_spent(current: Combatant) -> bool:
+    """SRD §Extra Attack — R1: the Attack action is fully spent (and so the
+    turn should end after a main-hand attack) only when NO swings remain
+    this Action, the actor gets exactly one attack per Action (multi-attack
+    actors always keep the turn until their budget is exhausted), and no
+    two-weapon-fighting off-hand window is open."""
+    return (
+        current.attacks_remaining <= 0
+        and _attacks_per_action(current) == 1
+        and not _twf_window_open(current)
     )
 
 
@@ -5368,6 +6253,180 @@ def _consume_action_budget(live: _LiveCombat, actor_id: str, cost: _ActionCost) 
     return _current_actor(live)
 
 
+def _action_economy_gate_failure(
+    current: Combatant,
+    intent: PlayerIntent,
+    *,
+    is_bonus_action: bool,
+    is_reaction_cast: bool,
+) -> CombatEvent | None:
+    """The action-economy budget gate for ``submit_player_intent``: returns
+    the rejection event to emit (turn-keeping), or ``None`` when the intent
+    may proceed to budget consumption. Raises ``IntentRejectedError`` for
+    the cases with no typed event surface today: a non-cast, non-attack
+    Action-costed intent with no Action left, and the FIRST swing of an
+    Attack action with no Action left (fix round 1 — restores the pre-C14
+    hard Action gate so a turn-keeping Action intent, e.g. Dash or
+    Disengage, cannot be chained into a free attack sequence).
+
+    ``attack`` gets its own branch (SRD §Extra Attack, R2): an exhausted
+    ``attacks_remaining`` is always a turn-KEEPING ``AttackFailed`` —
+    unlike every other Action-costed intent, a later same-Action swing
+    owes no further Action spend, so its rejection must not look like a
+    fresh "no Action" failure. But the FIRST swing (``attack_action_engaged``
+    False) still owes the Action itself, exactly like every other
+    Action-costed intent.
+
+    FINAL-REVIEW FIX (F1): ``"pass"`` is exempt from every branch below —
+    it was never an Action ("I'm done" needs no budget) and it must ALWAYS
+    be accepted and end the turn. Without this exemption, every turn-
+    keeping intent (attack/move/cast_spell/drop_concentration/dash/...)
+    that leaves ``action_available`` False with nothing left to spend it on
+    (e.g. after a multi-attack actor's swings, or after a plain Dash) has
+    no way to end the turn: the generic ``not current.action_available``
+    branch below would hard-reject ``pass`` itself, deadlocking the turn.
+    """
+    if intent.intent_type == "pass":
+        return None
+    if is_bonus_action:
+        if not current.bonus_action_available:
+            return CastFailed(
+                actor_id=current.entity_id,
+                spell_id=intent.spell_id or "",
+                reason="no_action_economy",
+            )
+        return None
+    if is_reaction_cast:
+        if not current.reaction_available:
+            return CastFailed(
+                actor_id=current.entity_id,
+                spell_id=intent.spell_id or "",
+                reason="no_action_economy",
+            )
+        return None
+    if intent.intent_type == "attack":
+        if current.attacks_remaining <= 0:
+            return AttackFailed(
+                actor_id=current.entity_id,
+                target_id=intent.target_id,
+                reason="no_action_economy",
+            )
+        # SRD §Action Economy — the FIRST swing of the Attack action still
+        # owes the hard Action requirement (fix round 1: a turn-keeping
+        # Action intent — Dash, Disengage — must not let a same-turn attack
+        # sequence resolve for free). Subsequent swings this Action
+        # (``attack_action_engaged`` True) skip this: the Action was
+        # already paid for, or soft-consumed, by the first swing.
+        if not current.attack_action_engaged and not current.action_available:
+            raise IntentRejectedError(
+                "no_action_economy",
+                f"actor_id={current.entity_id!r} has no Action remaining this turn",
+            )
+        return None
+    if not current.action_available:
+        if intent.intent_type == "cast_spell":
+            return CastFailed(
+                actor_id=current.entity_id,
+                spell_id=intent.spell_id or "",
+                reason="no_action_economy",
+            )
+        raise IntentRejectedError(
+            "no_action_economy",
+            f"actor_id={current.entity_id!r} has no Action remaining this turn",
+        )
+    return None
+
+
+def _consume_attack_budget(live: _LiveCombat, actor_id: str, current: Combatant) -> Combatant:
+    """SRD §Extra Attack — soft-consume the Action for a main-hand attack
+    (R2): the Action is spent only on the FIRST swing of a multi-attack
+    sequence (``attack_action_engaged`` False); a later swing this Action
+    never re-pays it, and never rejects even if the Action was somehow
+    already gone. Every resolved swing decrements ``attacks_remaining`` by
+    one and sets ``attack_action_engaged`` True."""
+    for idx, c in enumerate(live.initiative):
+        if c.entity_id == actor_id:
+            spend_action = not c.attack_action_engaged and c.action_available
+            live.initiative[idx] = c.model_copy(
+                update={
+                    "action_available": False if spend_action else c.action_available,
+                    "attack_action_engaged": True,
+                    "attacks_remaining": c.attacks_remaining - 1,
+                }
+            )
+            break
+    return _current_actor(live)
+
+
+def _is_offhand_attack_swing(
+    current: Combatant, intent: PlayerIntent, weapon: Weapon | None
+) -> bool:
+    """SRD 5.2 §Two-Weapon Fighting — True when THIS attack intent is the
+    off-hand Bonus Action swing that follows a Light main-hand weapon
+    attack this same turn: the actor has already engaged its Attack action,
+    swung a Light weapon (``light_weapon_swing_slug``), the off-hand swing
+    hasn't already fired, the Bonus Action is still available, the weapon
+    now being swung is Light, and it is a DIFFERENT weapon slug than the
+    main-hand swing (SRD: "you can make an attack with a different light
+    melee weapon"). ``weapon`` is the intent's resolved ``Weapon`` (``None``
+    for a missing/non-weapon slug -> never Light -> never off-hand).
+
+    Fix round 1 (controller ruling) — MAIN-ACTION SWINGS TAKE PRIORITY: an
+    Extra-Attack actor with budget left (``attacks_remaining > 0``) swinging
+    a second, different Light weapon is still an ordinary Attack-action
+    swing, not an automatic off-hand Bonus Action — the SRD off-hand option
+    is something the wielder chooses to spend a Bonus Action on, it does
+    not preempt remaining Attack-action swings. So the off-hand
+    classification additionally requires EITHER the Attack-action budget is
+    already exhausted (``attacks_remaining <= 0``, the common case: a
+    1-attack actor, or an Extra-Attack actor who has used up its swings) OR
+    the host explicitly asked for the Bonus Action swing now
+    (``intent.use_bonus_action``, e.g. interleaving the off-hand attack
+    before a multiattack sequence is finished)."""
+    return (
+        intent.intent_type == "attack"
+        and current.attack_action_engaged
+        and current.light_weapon_swing_slug is not None
+        and intent.weapon_id != current.light_weapon_swing_slug
+        and not current.offhand_attack_spent
+        and current.bonus_action_available
+        and weapon is not None
+        and WeaponProperty.LIGHT in weapon.properties
+        and (current.attacks_remaining <= 0 or intent.use_bonus_action)
+    )
+
+
+def _consume_offhand_attack_budget(
+    live: _LiveCombat, actor_id: str, current: Combatant
+) -> Combatant:
+    """SRD 5.2 §Two-Weapon Fighting — the off-hand swing spends the Bonus
+    Action, NOT the per-Action attack budget: ``attacks_remaining`` is left
+    untouched (the main-hand swing already decremented it) and
+    ``attack_action_engaged`` stays as-is. Marks ``offhand_attack_spent``
+    so ``_twf_window_open`` closes and a second off-hand swing this turn
+    is rejected."""
+    for idx, c in enumerate(live.initiative):
+        if c.entity_id == actor_id:
+            live.initiative[idx] = c.model_copy(
+                update={"bonus_action_available": False, "offhand_attack_spent": True}
+            )
+            break
+    return _current_actor(live)
+
+
+def _record_light_weapon_swing(
+    live: _LiveCombat, actor_id: str, current: Combatant, weapon_slug: str
+) -> Combatant:
+    """Record ``weapon_slug`` as this turn's main-hand Light-weapon swing so
+    ``_twf_window_open`` opens for a same-turn off-hand Bonus Action swing
+    (SRD 5.2 §Two-Weapon Fighting)."""
+    for idx, c in enumerate(live.initiative):
+        if c.entity_id == actor_id:
+            live.initiative[idx] = c.model_copy(update={"light_weapon_swing_slug": weapon_slug})
+            break
+    return _current_actor(live)
+
+
 def _consume_spell_slot(
     live: _LiveCombat, current: Combatant, actor_id: str, intent: PlayerIntent
 ) -> bool:
@@ -6001,6 +7060,14 @@ async def _dispatch_turn_nonending_intent(
     * ``drop_concentration`` — SRD §Concentration: end Concentration
       voluntarily at any time, no action required. Touches no budget and
       keeps the actor on turn.
+    * ``hide`` — SRD §Actions in Combat, Hide: gate on cover/obscurement,
+      roll a DC 15 Dexterity (Stealth) check, grant Invisible on success.
+      CONTROLLER RULING: touches NO Action-economy budget (see
+      ``_handle_hide``'s docstring for the divergence from strict SRD
+      cost) and keeps the actor on turn.
+    * ``stand_up`` — SRD 5.2 Prone, Restricted Movement: spend half Speed
+      (rounded down) of movement to end Prone. Touches NO Action/Bonus
+      Action budget — movement only — and keeps the actor on turn.
     """
     if intent.intent_type == "move_mark":
         await _handle_move_mark(live, current, intent)
@@ -6016,6 +7083,12 @@ async def _dispatch_turn_nonending_intent(
         return True
     if intent.intent_type == "drop_concentration":
         _handle_drop_concentration(live, current, intent)
+        return True
+    if intent.intent_type == "hide":
+        _handle_hide(live, current, intent)
+        return True
+    if intent.intent_type == "stand_up":
+        _handle_stand_up(live, current, intent)
         return True
     return False
 
@@ -6115,49 +7188,72 @@ async def submit_player_intent(
             _emit(live, failure)
             return
 
-    if is_bonus_action:
-        if not current.bonus_action_available:
-            _emit(
-                live,
-                CastFailed(
-                    actor_id=current.entity_id,
-                    spell_id=intent.spell_id or "",
-                    reason="no_action_economy",
-                ),
-            )
-            return
-    elif is_reaction_cast:
-        if not current.reaction_available:
-            _emit(
-                live,
-                CastFailed(
-                    actor_id=current.entity_id,
-                    spell_id=intent.spell_id or "",
-                    reason="no_action_economy",
-                ),
-            )
-            return
-    else:
-        if not current.action_available:
-            if intent.intent_type == "cast_spell":
-                _emit(
-                    live,
-                    CastFailed(
-                        actor_id=current.entity_id,
-                        spell_id=intent.spell_id or "",
-                        reason="no_action_economy",
-                    ),
-                )
-                return
-            raise IntentRejectedError(
-                "no_action_economy",
-                f"actor_id={actor_id!r} has no Action remaining this turn",
-            )
+    # SRD 5.2 §Two-Weapon Fighting — classify BEFORE the action-economy gate:
+    # an off-hand swing spends the Bonus Action (already gated by
+    # ``bonus_action_available`` inside the classifier itself), not the
+    # per-Action attack budget, so it must bypass the attack branch of
+    # ``_action_economy_gate_failure`` / ``_consume_attack_budget`` entirely.
+    # An attack-shaped intent that LOOKS like an off-hand swing but fails one
+    # of the classifier's gates (same weapon slug, no open window, Bonus
+    # Action already spent) falls through to the normal attack economy gate
+    # below — with ``attacks_remaining`` already exhausted by the main-hand
+    # swing, that gate's ``AttackFailed(reason="no_action_economy")`` covers
+    # the rejection (turn-keeping, per R2).
+    offhand_weapon = (
+        get_lib_loader().get_weapon(intent.weapon_id)
+        if intent.intent_type == "attack" and intent.weapon_id
+        else None
+    )
+    is_offhand_swing = _is_offhand_attack_swing(current, intent, offhand_weapon)
+
+    action_economy_failure = (
+        None
+        if is_offhand_swing
+        else _action_economy_gate_failure(
+            current, intent, is_bonus_action=is_bonus_action, is_reaction_cast=is_reaction_cast
+        )
+    )
+    if action_economy_failure is not None:
+        _emit(live, action_economy_failure)
+        return
+
+    # SRD 5.2 §Actions in Combat — Help, Assist an Attack Roll: "an enemy
+    # within 5 feet of you". Gate BEFORE any budget is consumed — same
+    # placement discipline as the ``pre_resolution_gates`` tuple above (spell
+    # range / weapon reach / Charmed / cast target_invalid), so a rejected
+    # Help spends no Action and leaves the turn untouched. Split out (like
+    # ``_set_dodging``) purely to keep this dispatcher's cyclomatic
+    # complexity under the lint ceiling.
+    _reject_invalid_help_target(live, actor_id, intent)
+
+    # SRD 5.2 Unarmed Strike — Grapple: same reach-gate placement discipline
+    # as Help above. Split out purely to keep this dispatcher's cyclomatic
+    # complexity under the lint ceiling.
+    _reject_invalid_grapple_target(live, actor_id, intent)
+
+    # SRD 5.2 Unarmed Strike — Shove: same reach-gate placement discipline
+    # as Grapple above.
+    _reject_invalid_shove_target(live, actor_id, intent)
+
+    # SRD 5.2 "Ending a Grapple" — an ``escape_grapple`` intent from an actor
+    # who is not (or no longer) Grappled has nothing to escape from. Gated
+    # BEFORE any budget is consumed, same placement discipline as every other
+    # pre-budget target gate above.
+    _reject_invalid_escape_grapple_actor(actor_id, intent, current)
 
     # Consume the budget now. ``current`` is a stale snapshot; mutate via
     # initiative-list model_copy so subsequent reads (and the post-resolve
-    # turn-advance branch below) see the updated state.
-    current = _consume_action_budget(live, actor_id, action_cost)
+    # turn-advance branch below) see the updated state. Attack intents use
+    # their own soft-consume path (R2): the Action is only spent by the
+    # FIRST swing of a multi-attack sequence; every swing decrements the
+    # per-Action attack budget. An off-hand swing (Task 2) spends the Bonus
+    # Action via its own dedicated consume path instead.
+    if intent.intent_type == "attack" and is_offhand_swing:
+        current = _consume_offhand_attack_budget(live, actor_id, current)
+    elif intent.intent_type == "attack":
+        current = _consume_attack_budget(live, actor_id, current)
+    else:
+        current = _consume_action_budget(live, actor_id, action_cost)
 
     _emit(
         live,
@@ -6169,6 +7265,17 @@ async def submit_player_intent(
             item_id=intent.item_id,
         ),
     )
+
+    # SRD §Actions in Combat — Dodge / Help / Unarmed Strike Grapple/Shove /
+    # "Ending a Grapple". Every one is Action-cost (already spent above),
+    # resolves no activities of its own, and ends the turn immediately; each
+    # target/actor-state gate already ran before any budget was touched
+    # (``_reject_invalid_help_target`` / ``_reject_invalid_grapple_target`` /
+    # ``_reject_invalid_shove_target`` / ``_reject_invalid_escape_grapple_
+    # actor``). Collapsed into one dispatch
+    # call — see ``_dispatch_simple_turn_ending_intent``'s docstring.
+    if _dispatch_simple_turn_ending_intent(live, current, actor_id, intent):
+        return
 
     # SRD §Ready — a "ready" intent pre-arms the pending-reaction queue
     # (docs/dev/reaction-queue.md): the Action is spent NOW (the budget
@@ -6334,6 +7441,15 @@ async def submit_player_intent(
                 ),
             ),
             target_distance_ft=_target_distance_map(live, current.entity_id, targets),
+            # SRD 5.2 §Actions in Combat — Dodge: per-target dodge-benefit
+            # flag folded into attack disadvantage (attack.py) — the
+            # "if you can see the attacker" conjunct is deferred to C16b.
+            target_dodging={t.entity_id: _dodge_benefit_active(live, t) for t in targets},
+            # SRD 5.2 §Actions in Combat — Help, Assist an Attack Roll (C14
+            # Task 4): per-target ally-of-attacker Help grant folded into
+            # attack advantage (attack.py); the one-use pop fires after
+            # resolution below.
+            target_help_advantage=_target_help_advantage_map(live, current.entity_id, targets),
             attacker_grappler_id=_condition_source_entity(live, current, "grappled"),
             target_unseen=target_unseen,
             attacker_unseen_by=attacker_unseen_by,
@@ -6350,9 +7466,29 @@ async def submit_player_intent(
             active_effects=tuple(live.active_effects.get(current.entity_id, [])),
             sneak_attack_spent={current.entity_id: current.sneak_attack_spent_this_turn},
             sneak_attack_ally_adjacent=_sneak_ally_adjacent_map(live, current, targets),
+            # SRD 5.2 §Two-Weapon Fighting / Light property — an off-hand
+            # swing (Task 2) never adds a POSITIVE governing-ability
+            # modifier to its damage; a negative modifier still applies.
+            # False (the default) for every main-hand / monster / spell
+            # swing keeps their damage byte-identical to before this field.
+            suppress_positive_ability_damage_mod=is_offhand_swing,
         )
         for activity in activities:
             resolve_activity(activity, actx, weapon=fetched_weapon)
+
+        # SRD 5.2 §Actions in Combat — Help: one-use pop. If this attack
+        # landed against a target the caster's Help grant was folded onto
+        # (``target_help_advantage`` above), spend exactly ONE matching
+        # helper's grant now that the roll has happened.
+        _pop_help_grant(live, current.entity_id, targets, pre_event_count)
+
+        # SRD 5.2 §Actions in Combat — Hide, break clause: "the condition
+        # ends on you immediately after ... you make an attack roll" or
+        # "cast a spell with a Verbal component." The swing/cast just
+        # resolved above still benefited from Invisible (the attack
+        # context was built before this removal, so the C12 advantage
+        # fold already applied) — this only affects the NEXT action.
+        _break_hide_on_attack_or_verbal_cast(live, current, intent, cast_spell)
 
         # SRD §Sneak Attack, "Once per turn" — record that the rider fired so a
         # (future) second qualifying attack this turn is capped. The rider folds
@@ -6369,6 +7505,21 @@ async def submit_player_intent(
         # save/damage resolution so the push never perturbs the seeded roll
         # order and a target that died is left where it fell.
         _apply_forced_movement_riders(live, current, intent, pre_event_count)
+
+        # SRD 5.2 §Two-Weapon Fighting — after a resolved MAIN-HAND swing
+        # (never the off-hand swing itself) with a Light weapon, record its
+        # slug so a same-turn different-Light-weapon attack opens the
+        # off-hand Bonus Action window (``_twf_window_open``). Recorded
+        # unconditionally on hit-or-miss (SRD: the option is "when you take
+        # the Attack action... you can use a Bonus Action", not gated on
+        # the main-hand swing landing).
+        if (
+            intent.intent_type == "attack"
+            and not is_offhand_swing
+            and fetched_weapon is not None
+            and WeaponProperty.LIGHT in fetched_weapon.properties
+        ):
+            current = _record_light_weapon_swing(live, actor_id, current, fetched_weapon.slug)
 
     # SRD §Concentration — fold any emitted ``EffectApplied(is_concentration=True)``
     # back onto the caster's ``Combatant.concentration_effect_id`` so the
@@ -6403,7 +7554,26 @@ async def submit_player_intent(
     #
     # SRD §Action Economy — a bonus action does NOT end the turn; the
     # actor keeps initiative and may follow with a regular Action.
-    if is_bonus_action:
+    #
+    # FINAL-REVIEW FIX (F2): an off-hand (Two-Weapon Fighting) swing is
+    # ALSO a Bonus Action spend (R1 verbatim: "An off-hand (bonus-action)
+    # swing follows the existing bonus-action tail (never ends the turn)")
+    # — ``is_bonus_action`` only covers a bonus-action CAST's
+    # ``casting_time.unit``, so the off-hand attack needs its own check
+    # here. Without it, a 1-attack actor's off-hand swing falls through to
+    # ``_attack_action_is_spent`` below, which sees ``attacks_remaining <=
+    # 0`` (spent by the main-hand swing) and a now-closed TWF window
+    # (``offhand_attack_spent`` just flipped True) and wrongly ends the
+    # turn, discarding any movement the actor still owed.
+    if is_bonus_action or is_offhand_swing:
+        _maybe_roll_death_save(live)
+        return
+    # SRD §Extra Attack — a main-hand attack keeps the turn (R1) while
+    # swings remain this Action, OR a two-weapon-fighting off-hand window
+    # is still open (Task 2 fills the window itself in; until then
+    # ``_twf_window_open`` is always False, so a 1-attack actor's attack
+    # ends the turn exactly as before this feature — the back-compat bar).
+    if intent.intent_type == "attack" and not _attack_action_is_spent(current):
         _maybe_roll_death_save(live)
         return
     _end_turn_and_advance(live, actor_id)
@@ -6418,11 +7588,10 @@ def _fire_pc_opportunity_attacks_on_move(
 ) -> bool:
     """SRD §Opportunity Attacks — fire PC AoOs when ``mover_id`` leaves reach.
 
-    *"You can make an opportunity attack when a hostile creature that you
-    can see moves out of your Reach. To make the opportunity attack, you
-    use your Reaction to make a single Melee Attack against the provoking
-    creature. The attack interrupts the provoking creature's Movement,
-    occurring right before the creature leaves your Reach."*
+    *"You can make an Opportunity Attack when a creature that you can see
+    leaves your reach using its action, its Bonus Action, its Reaction, or
+    one of its speeds."* (SRD 5.2; the "you can see" gate is not modeled —
+    no vision seam is wired to this path yet — deferred to C16b.)
 
     Phase-6 wires this for the **PC reactor / monster mover** direction
     only — the symmetric monster-AoO path requires the reaction-queue
@@ -6476,10 +7645,21 @@ def _fire_pc_opportunity_attacks_on_move(
         # the reactor's reach band).
         if to_zone == from_zone:
             continue
-        # Roll the AoO attack: same rules shape as effects/attack.py — nat 20
-        # crit, nat 1 auto-miss, total ≥ AC on hit.
-        natural = live.rng.randint(1, 20)
-        total = natural + reactor.attack_bonus
+        # Roll the AoO attack through the shared SRD 5.2 D20 Test primitive
+        # (C14) — same rules shape as effects/attack.py — nat 20 crit, nat 1
+        # auto-miss, total ≥ AC on hit; now honors Exhaustion's flat penalty
+        # and the condition/Dodge advantage-disadvantage rows so an AoO is no
+        # longer a bare unconditioned d20.
+        modifier = reactor.attack_bonus + d20_test_penalty(reactor.conditions)
+        adv_sources, dis_sources = _opportunity_attack_advantage_sources(
+            live, reactor=reactor, mover=mover
+        )
+        roll = roll_d20_test(
+            live.rng,
+            modifier,
+            AdvantageSources(advantage=tuple(adv_sources), disadvantage=tuple(dis_sources)),
+        )
+        natural, total = roll.kept, roll.total
         if natural == 20:
             is_crit, is_hit = True, True
         elif natural == 1:
@@ -6501,10 +7681,13 @@ def _fire_pc_opportunity_attacks_on_move(
                 attacker_id=reactor.entity_id,
                 target_id=mover_id,
                 roll_total=total,
-                advantage="normal",
+                advantage=roll.mode,
                 is_crit=is_crit,
                 is_hit=is_hit,
                 is_opportunity_attack=True,
+                natural=natural,
+                modifier=modifier,
+                sources=list(roll.sources),
             ),
         )
         # Consume the reaction regardless of hit/miss (SRD: reactions are
@@ -6531,6 +7714,48 @@ def _fire_pc_opportunity_attacks_on_move(
     return mover_died
 
 
+def _opportunity_attack_advantage_sources(
+    live: _LiveCombat, *, reactor: Combatant, mover: Combatant
+) -> tuple[list[AdvantageSource], list[AdvantageSource]]:
+    """The typed advantage/disadvantage sources for an opportunity attack,
+    assembled the same way ``activities/attack.py::resolve_attack`` does for
+    a regular Attack: the condition-derived half (Prone/Grappled/etc, called
+    once per side so the emitted source names which side produced it) plus
+    the Dodge action's disadvantage. AoOs are always melee (same-zone reach
+    approximation — see the callers' docstrings), so the Prone-target
+    distance check always resolves within-5ft.
+    """
+    reactor_conditions = _condition_names(reactor)
+    mover_conditions = _condition_names(mover)
+    reactor_cond_adv, reactor_cond_dis = conditions_grant_advantage_on_attack(
+        reactor_conditions,
+        [],
+        grappler_id=_condition_source_entity(live, reactor, "grappled"),
+        target_id=mover.entity_id,
+    )
+    mover_cond_adv, mover_cond_dis = conditions_grant_advantage_on_attack(
+        [],
+        mover_conditions,
+        distance_ft=5,
+    )
+    adv_sources: list[AdvantageSource] = []
+    dis_sources: list[AdvantageSource] = []
+    if reactor_cond_adv:
+        adv_sources.append("condition:attacker")
+    if mover_cond_adv:
+        adv_sources.append("condition:target")
+    if reactor_cond_dis:
+        dis_sources.append("condition:attacker")
+    if mover_cond_dis:
+        dis_sources.append("condition:target")
+    # SRD 5.2 §Actions in Combat — Dodge: "any attack roll made against you
+    # has Disadvantage if you can see the attacker" — the "can see" conjunct
+    # is deferred to C16b (no vision seam wired here yet).
+    if _dodge_benefit_active(live, mover):
+        dis_sources.append("dodge")
+    return adv_sources, dis_sources
+
+
 def _fire_monster_opportunity_attacks_on_move(
     live: _LiveCombat,
     *,
@@ -6539,6 +7764,11 @@ def _fire_monster_opportunity_attacks_on_move(
     to_zone: str,
 ) -> bool:
     """SRD §Opportunity Attacks — fire monster AoOs when a PC leaves reach.
+
+    *"You can make an Opportunity Attack when a creature that you can see
+    leaves your reach using its action, its Bonus Action, its Reaction, or
+    one of its speeds."* (SRD 5.2; the "you can see" gate is not modeled —
+    no vision seam is wired to this path yet — deferred to C16b.)
 
     The monster-reactor / PC-mover mirror of
     ``_fire_pc_opportunity_attacks_on_move`` same hit/crit rules,
@@ -6581,8 +7811,20 @@ def _fire_monster_opportunity_attacks_on_move(
         # the reactor's reach band).
         if to_zone == from_zone:
             continue
-        natural = live.rng.randint(1, 20)
-        total = natural + reactor.attack_bonus
+        # Roll the AoO attack through the shared SRD 5.2 D20 Test primitive
+        # (C14) — see ``_fire_pc_opportunity_attacks_on_move`` for the
+        # rationale (Exhaustion penalty + condition/Dodge advantage rows now
+        # reach this roll instead of a bare unconditioned d20).
+        modifier = reactor.attack_bonus + d20_test_penalty(reactor.conditions)
+        adv_sources, dis_sources = _opportunity_attack_advantage_sources(
+            live, reactor=reactor, mover=mover
+        )
+        roll = roll_d20_test(
+            live.rng,
+            modifier,
+            AdvantageSources(advantage=tuple(adv_sources), disadvantage=tuple(dis_sources)),
+        )
+        natural, total = roll.kept, roll.total
         if natural == 20:
             is_crit, is_hit = True, True
         elif natural == 1:
@@ -6604,10 +7846,13 @@ def _fire_monster_opportunity_attacks_on_move(
                 attacker_id=reactor.entity_id,
                 target_id=mover_id,
                 roll_total=total,
-                advantage="normal",
+                advantage=roll.mode,
                 is_crit=is_crit,
                 is_hit=is_hit,
                 is_opportunity_attack=True,
+                natural=natural,
+                modifier=modifier,
+                sources=list(roll.sources),
             ),
         )
         # Consume the reaction regardless of hit/miss (SRD: reactions are
@@ -6960,6 +8205,15 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
             d20_test_penalty=payload["d20_test_penalty"],
             target_cover=_target_cover_map(live, current.entity_id, target_list),
             target_distance_ft=_target_distance_map(live, current.entity_id, target_list),
+            # SRD 5.2 §Actions in Combat — Dodge: mirrors the PC site. A
+            # dodging PC target imposes disadvantage on the monster's
+            # attack roll (attack.py); the "can see the attacker" conjunct
+            # is deferred to C16b.
+            target_dodging={t.entity_id: _dodge_benefit_active(live, t) for t in target_list},
+            # SRD 5.2 §Actions in Combat — Help (C14 Task 4): mirrors the PC
+            # site — a monster attacker can be granted Help by one of ITS
+            # own allies (another monster) exactly like a PC can.
+            target_help_advantage=_target_help_advantage_map(live, current.entity_id, target_list),
             attacker_grappler_id=_condition_source_entity(live, current, "grappled"),
             target_unseen=target_unseen,
             attacker_unseen_by=attacker_unseen_by,
@@ -6968,6 +8222,16 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
             # Monster attacks carry their damage on the AttackActivity itself,
             # not a separate Weapon (unlike the PC weapon path).
             resolve_activity(activity, actx, weapon=None)
+        # SRD 5.2 §Actions in Combat — Help: one-use pop, mirrors the PC site.
+        _pop_help_grant(live, current.entity_id, target_list, pre_event_count)
+        # SRD 5.2 §Actions in Combat — Hide, break clause: mirrors the PC
+        # site. A monster hidden via a prior Hide loses Invisible the
+        # moment IT makes an attack roll (no monster gambit currently
+        # issues a Hide intent, so this is defensive symmetry, not a
+        # reachable path today).
+        if current.entity_id in live.hidden_entities:
+            _emit(live, ConditionRemoved(target_id=current.entity_id, condition="invisible"))
+            live.hidden_entities.discard(current.entity_id)
         # Symmetric concentration writeback for spellcaster monsters
         # (mirrors the PC path; no-op for non-caster monsters).
         _writeback_concentration(live, current, pre_event_count)

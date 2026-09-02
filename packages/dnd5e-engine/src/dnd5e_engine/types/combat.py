@@ -180,6 +180,48 @@ class Combatant(BaseModel):
     # / reaction_available / disengaging_this_turn. Defaults False (rider may
     # fire) for every combatant.
     sneak_attack_spent_this_turn: bool = False
+    # SRD §Extra Attack — "you can attack twice, instead of once, whenever
+    # you take the Attack action on your turn" (and thrice/four-times at
+    # higher tiers). The remaining main-hand swings this Action; refreshed
+    # to ``_attacks_per_action(current)`` at the actor's own TurnStarted,
+    # decremented once per resolved main-hand attack. 1 for every combatant
+    # without a qualifying Extra Attack feature (the SRD default).
+    attacks_remaining: int = 1
+    # SRD §Action Economy — True once this turn's Attack action has
+    # consumed its Action (the FIRST main-hand swing of a multi-attack
+    # sequence). Gates whether a subsequent same-turn attack intent still
+    # owes the Action budget (soft-consume: only the first swing pays).
+    # Reset to False at the actor's own TurnStarted.
+    attack_action_engaged: bool = False
+    # SRD §Two-Weapon Fighting (Task 2) — the main-hand weapon's slug when
+    # the just-resolved main-hand attack used a Light melee weapon,
+    # opening the "attack again with a different Light weapon" off-hand
+    # window. ``None`` closes the window (no Light main-hand swing yet
+    # this turn). Reset to ``None`` at the actor's own TurnStarted.
+    light_weapon_swing_slug: str | None = None
+    # SRD §Two-Weapon Fighting (Task 2) — True once the Bonus Action
+    # off-hand attack has been made this turn, closing the TWF window for
+    # any further off-hand swing. Reset to False at the actor's own
+    # TurnStarted.
+    offhand_attack_spent: bool = False
+    # SRD §Actions in Combat — Dodge (C14 Task 3). True for the remainder of
+    # this turn and "until the start of your next turn": while active, any
+    # attack roll made against this combatant has Disadvantage (if the
+    # attacker can see it — vision is deferred to C16b, see
+    # ``activities/attack.py``) and it makes Dexterity saving throws with
+    # Advantage. Lost early if Incapacitated or Speed 0 (SRD loss clause;
+    # see ``_dodge_benefit_active`` in orchestrator.py). Reset to False at
+    # the actor's own TurnStarted — the exact SRD expiry point.
+    dodging: bool = False
+    # SRD 5.2 §Actions in Combat — Hide (final-review fix F3). Although Hide
+    # touches no Action-economy budget (``_handle_hide``'s docstring), the
+    # SRD frames it as taking "the Hide action" — a single attempt, not a
+    # retry loop against an unresolved DC 15 Dexterity (Stealth) check.
+    # True once a gated-through Hide attempt (success OR failure) has been
+    # made this turn; a second attempt is rejected
+    # (``IntentRejectedError("no_action_economy")``) with zero d20 draws.
+    # Reset to False at the actor's own TurnStarted, alongside dodging.
+    hide_attempted_this_turn: bool = False
     # C22: typed SRD 5.2 monster traits hydrated from the template's
     # ``special_abilities[].mechanic`` (Magic Resistance → advantage on saves
     # against spells in ``activities/save_primitive.py``; C18 consumes Pack
