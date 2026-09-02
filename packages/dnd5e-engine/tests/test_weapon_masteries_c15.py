@@ -1069,3 +1069,72 @@ def test_c_cleave_chain_honors_three_quarters_cover_on_the_candidate() -> None:
 
     assert _chain(run_async(_run(covered=False))).is_hit is True
     assert _chain(run_async(_run(covered=True))).is_hit is False
+
+
+def test_f3_heavy_plus_sap_disadvantage_trait_source_is_not_duplicated() -> None:
+    """F3 — Heavy (``_weapon_heavy_disadvantage``) and Sap
+    (``ctx.attacker_sapped``) both reuse the SAME ``"trait"``
+    ``AdvantageSource`` token (no dedicated token exists for either,
+    controller ruling). When both are simultaneously active on one attack
+    roll, ``"trait"`` must appear at most once in ``AttackRolled.sources``
+    — the docstring on ``AdvantageSources``/``sources`` promises a
+    set-like list, and a duplicate is a latent bug even though the roll
+    mode (``disadvantage``) is unaffected either way."""
+    greataxe = _LOADER.get_weapon("greataxe")
+    assert greataxe is not None
+    assert greataxe.mastery == "cleave"
+    activity = next(a for a in greataxe.activities if a.kind == "attack")
+    events: list[object] = []
+    ctx = ActivityResolutionContext(
+        rng=random.Random(1),
+        caster=_hero(strength=10),  # < 13 STR: Heavy melee disadvantage
+        targets=[_foe()],
+        event_emitter=events.append,
+        caster_abilities={"str": 10, "dex": 10, "con": 10, "int": 10, "wis": 10, "cha": 10},
+        caster_proficiency_bonus=2,
+        caster_level=1,
+        variables={"force_d20": 15},
+        attacker_sapped=True,
+    )
+
+    resolve_activity(activity, ctx, weapon=greataxe)
+
+    rolled = next(e for e in events if isinstance(e, AttackRolled))
+    assert rolled.sources.count("trait") == 1
+    assert rolled.advantage == "disadvantage"
+
+
+def test_f4_cleave_candidate_excludes_every_primary_target_not_just_the_first() -> None:
+    """F4 — ``_cleave_candidate`` must exclude EVERY primary target, not
+    just ``targets[0]``. mon:a, mon:b and mon:c are ALL within 5 ft of the
+    hero (reach) and of each other, and mon:a and mon:b are BOTH primary
+    targets of this swing. The buggy version only excludes ``targets[0]``
+    (mon:a) from the candidate search, so it ties mon:b and mon:c on
+    distance and picks mon:b BY ASCENDING ``entity_id`` ('b' < 'c') — an
+    already-directly-attacked creature offered up as its own cleave
+    target. The fixed version excludes every ``targets`` id, so mon:c
+    (the only bystander) is the only legal candidate."""
+    from dnd5e_engine.orchestrator import _cleave_candidate
+
+    greataxe = _LOADER.get_weapon("greataxe")
+    assert greataxe is not None
+    assert greataxe.mastery == "cleave"
+
+    async def _run():
+        _start_result, live = await _start(
+            "c15-f4-cleave-multi-target",
+            _cleave_party(),
+            [
+                _mon("mon:a", "A", cell(0, 1)),
+                _mon("mon:b", "B", cell(1, 1), initiative=9),
+                _mon("mon:c", "C", cell(1, 0), initiative=8),
+            ],
+        )
+        hero = _combatant(live, "char:hero")
+        targets = [_combatant(live, "mon:a"), _combatant(live, "mon:b")]
+        candidate = _cleave_candidate(live, hero, greataxe, targets)
+        return candidate
+
+    candidate = run_async(_run())
+    assert candidate is not None
+    assert candidate.entity_id == "mon:c"

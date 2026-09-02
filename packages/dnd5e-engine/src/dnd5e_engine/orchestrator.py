@@ -1056,10 +1056,15 @@ def _cleave_candidate(
     if attacker_side is None or attacker_zone is None or first_zone is None:
         return None
     reach = 10 if WeaponProperty.REACH in weapon.properties else 5
+    # F4 — exclude EVERY primary target's id, not just ``first``'s: a
+    # multi-target swing (should one ever exist) must never offer a
+    # creature that is already being attacked directly as its own cleave
+    # chain candidate.
+    primary_target_ids = {t.entity_id for t in targets}
     best: tuple[int, str, Combatant] | None = None
     for other in live.initiative:
         if (
-            other.entity_id == first.entity_id
+            other.entity_id in primary_target_ids
             or other.entity_id in attacker_side
             or other.entity_id in live.dead_ids
             or not other.is_alive
@@ -8354,6 +8359,13 @@ def _fire_pc_opportunity_attacks_on_move(
                         amount=damage,
                         damage_type=reactor.damage_type,
                         is_overkill=damage > tracked_before,
+                        # F2 — an opportunity attack always resolves through the
+                        # reactor's legacy attack_bonus/damage_dice fields (see
+                        # _synthesize_attack_from_legacy_fields), never a typed
+                        # weapon/activity, so attribute it the same synthesized id
+                        # that path uses rather than inventing a new naming scheme.
+                        source_id="synth:legacy-swing",
+                        is_crit=is_crit,
                     ),
                 )
                 # _emit synthesizes Death + records dead_ids when tracked HP
@@ -8521,6 +8533,13 @@ def _fire_monster_opportunity_attacks_on_move(
                         amount=damage,
                         damage_type=reactor.damage_type,
                         is_overkill=damage > tracked_before,
+                        # F2 — an opportunity attack always resolves through the
+                        # reactor's legacy attack_bonus/damage_dice fields (see
+                        # _synthesize_attack_from_legacy_fields), never a typed
+                        # weapon/activity, so attribute it the same synthesized id
+                        # that path uses rather than inventing a new naming scheme.
+                        source_id="synth:legacy-swing",
+                        is_crit=is_crit,
                     ),
                 )
                 if mover_id in live.dead_ids:

@@ -480,10 +480,33 @@ def _attack_roll_sources(
     # caster may itself be sapped); reuses the SAME "trait" token.
     if ctx.attacker_sapped:
         dis_sources.append("trait")
+    # F3 — Heavy and Sap (and, on the advantage side, Vex) all reuse the
+    # SAME "trait" token (no dedicated ``AdvantageSource`` exists for any
+    # of the three). When two of them are simultaneously active on one
+    # attack roll, "trait" would otherwise be appended twice; dedupe here
+    # (order-preserving) so ``AttackRolled.sources`` stays set-like, as its
+    # docstring promises.
     return (
-        AdvantageSources(advantage=tuple(adv_sources), disadvantage=tuple(dis_sources)),
+        AdvantageSources(
+            advantage=tuple(_dedupe_preserve_order(adv_sources)),
+            disadvantage=tuple(_dedupe_preserve_order(dis_sources)),
+        ),
         target_vex_advantage,
     )
+
+
+def _dedupe_preserve_order(sources: list[AdvantageSource]) -> list[AdvantageSource]:
+    """Drop repeated entries from ``sources`` while preserving first-seen
+    order (F3) — used because multiple advantage/disadvantage causes can
+    share the same closed ``AdvantageSource`` token (e.g. Heavy and Sap
+    both reuse ``"trait"``)."""
+    seen: set[AdvantageSource] = set()
+    deduped: list[AdvantageSource] = []
+    for source in sources:
+        if source not in seen:
+            seen.add(source)
+            deduped.append(source)
+    return deduped
 
 
 # ── attacker advantage / Sneak Attack production ─────────────────────────────
