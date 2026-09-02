@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from dnd5e_engine import CombatEvent, CombatHandle
+    from dnd5e_engine import CombatEvent, CombatHandle, GridScene
     from dnd5e_srd_data.loader import AssetLoader
 
     from nat20_bridge.homebrew import HomebrewStore
@@ -32,6 +32,12 @@ class BridgeState:
     # engine's Combatant rows (which only carry the name the caller gave it
     # at start_combat time anyway).
     names: dict[str, dict[str, str]] = field(default_factory=dict)
+    # The battlefield each combat was started on, per combat_id. The engine
+    # takes the scene at start_combat time and does not hand it back through
+    # LiveCombatView, so the bridge keeps its own copy to serve the grid
+    # block on GET /v1/combat/{cid} (hosts need the extent and terrain to
+    # render the zones the view already reports).
+    grids: dict[str, GridScene] = field(default_factory=dict)
     # Background collector tasks draining ``narration_events(handle)`` into
     # ``events_log[cid]`` for the lifetime of each combat — see
     # ``routes_combat.py``'s module docstring for the drain protocol. Kept
