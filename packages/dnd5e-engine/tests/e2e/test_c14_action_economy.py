@@ -91,9 +91,10 @@ def test_c14_s02_hide_grants_advantage_on_next_attack():
     Cover or Total Cover... On a successful check, you have the Invisible
     condition while hidden."
     (packs/_source/content24/appendices/rules-glossary.yml, page
-    rqhOsUY4wWa1oHTy, heading "Hide"). ``hide`` is a valid ``IntentType``
-    with no dispatch handler — no ``CheckRolled`` fires and the follow-up
-    attack stays "normal".
+    rqhOsUY4wWa1oHTy, heading "Hide"). Implemented by C14: ``hide`` gates on
+    cover/obscurement, rolls a DC 15 Dexterity (Stealth) ``CheckRolled``, and
+    grants Invisible on success, which the follow-up attack picks up as
+    Advantage.
     """
 
     def _party():
@@ -557,10 +558,10 @@ def test_c14_s07_engine_rolls_initiative_and_surprise_applies_disadvantage():
     page FUH9AHeKlTFzC1L9); Surprise — "that creature is surprised, which
     causes it to have Disadvantage on its Initiative roll."
     (packs/_source/content24/appendices/appendix-d-rule-references.yml,
-    page YmOt8HderKveA19K). ``PartyMemberSpec.initiative`` /
-    ``EncounterMemberSpec.initiative`` are required ``int`` fields with no
-    ``None``/optional path — passing ``initiative=None`` raises a
-    validation error before any roll can happen.
+    page YmOt8HderKveA19K). Implemented by C14: ``PartyMemberSpec.initiative``
+    / ``EncounterMemberSpec.initiative`` are now ``int | None`` — ``None``
+    triggers engine-rolled initiative (a DEX check), and ``is_surprised=True``
+    applies Disadvantage to that roll.
     """
 
     def _party_kwargs(entity_id: str, name: str, zone: str, surprised: bool) -> dict:

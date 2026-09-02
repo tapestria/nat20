@@ -213,6 +213,15 @@ class Combatant(BaseModel):
     # see ``_dodge_benefit_active`` in orchestrator.py). Reset to False at
     # the actor's own TurnStarted — the exact SRD expiry point.
     dodging: bool = False
+    # SRD 5.2 §Actions in Combat — Hide (final-review fix F3). Although Hide
+    # touches no Action-economy budget (``_handle_hide``'s docstring), the
+    # SRD frames it as taking "the Hide action" — a single attempt, not a
+    # retry loop against an unresolved DC 15 Dexterity (Stealth) check.
+    # True once a gated-through Hide attempt (success OR failure) has been
+    # made this turn; a second attempt is rejected
+    # (``IntentRejectedError("no_action_economy")``) with zero d20 draws.
+    # Reset to False at the actor's own TurnStarted, alongside dodging.
+    hide_attempted_this_turn: bool = False
     # C22: typed SRD 5.2 monster traits hydrated from the template's
     # ``special_abilities[].mechanic`` (Magic Resistance → advantage on saves
     # against spells in ``activities/save_primitive.py``; C18 consumes Pack

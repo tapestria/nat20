@@ -1620,6 +1620,17 @@ def _set_dodging(live: _LiveCombat, actor_id: str) -> None:
             break
 
 
+def _set_hide_attempted(live: _LiveCombat, actor_id: str) -> None:
+    """SRD 5.2 §Actions in Combat — Hide (F3): flip ``actor_id``'s
+    ``hide_attempted_this_turn`` flag live, mirroring ``_set_dodging``. Called
+    once a Hide intent has cleared the cover/obscurement gate — a second
+    attempt this turn is rejected before any dice are drawn."""
+    for idx, c in enumerate(live.initiative):
+        if c.entity_id == actor_id:
+            live.initiative[idx] = c.model_copy(update={"hide_attempted_this_turn": True})
+            break
+
+
 def _help_target_invalid(live: _LiveCombat, actor_id: str, intent: PlayerIntent) -> bool:
     """SRD 5.2 §Actions in Combat — Help, Assist an Attack Roll: *"an enemy
     within 5 feet of you"*. True (reject) unless ``intent.target_id`` names a
@@ -2335,8 +2346,19 @@ def _handle_hide(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
     The found-DC / check total is intentionally NOT stored — Search
     (the SRD's "an enemy finds you" break clause) is a host concern out
     of this engine's scope.
+
+    FINAL-REVIEW FIX (F3): one Hide attempt per turn. Zero-cost + turn-
+    keeping with no repeat gate would otherwise let a host loop ``hide``
+    against the DC 15 check until it lands. A SECOND attempt this turn
+    raises ``IntentRejectedError("no_action_economy")`` before the cover
+    gate even runs — zero draws either way.
     """
     actor_id = current.entity_id
+    if current.hide_attempted_this_turn:
+        raise IntentRejectedError(
+            "no_action_economy",
+            f"actor_id={actor_id!r} has already attempted Hide this turn",
+        )
     cell = live.actor_zone.get(actor_id)
     cover = live.topology.cover_on_cell(cell) if cell is not None else "none"
     obscurement = live.topology.obscurement_on_cell(cell) if cell is not None else "none"
@@ -2346,6 +2368,11 @@ def _handle_hide(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
             f"actor_id={actor_id!r} is not behind Three-Quarters/Total cover "
             "or Heavily Obscured — Hide requires one of those",
         )
+
+    # F3 — this attempt has cleared the cover gate and is now committed to
+    # rolling; record it BEFORE the roll so a same-turn retry (success or
+    # failure) is rejected regardless of this attempt's outcome.
+    _set_hide_attempted(live, actor_id)
 
     _emit(
         live,
@@ -2773,6 +2800,10 @@ def _emit_apply_turn_started(live: _LiveCombat, event: TurnStarted) -> None:
                     # your next turn". The reset here, at the dodger's OWN
                     # turn start, is the exact SRD expiry point.
                     "dodging": False,
+                    # SRD 5.2 §Actions in Combat — Hide (F3): one attempt per
+                    # turn; the gate resets alongside Dodge at the actor's own
+                    # TurnStarted.
+                    "hide_attempted_this_turn": False,
                 }
             )
             break
@@ -6245,7 +6276,18 @@ def _action_economy_gate_failure(
     fresh "no Action" failure. But the FIRST swing (``attack_action_engaged``
     False) still owes the Action itself, exactly like every other
     Action-costed intent.
+
+    FINAL-REVIEW FIX (F1): ``"pass"`` is exempt from every branch below —
+    it was never an Action ("I'm done" needs no budget) and it must ALWAYS
+    be accepted and end the turn. Without this exemption, every turn-
+    keeping intent (attack/move/cast_spell/drop_concentration/dash/...)
+    that leaves ``action_available`` False with nothing left to spend it on
+    (e.g. after a multi-attack actor's swings, or after a plain Dash) has
+    no way to end the turn: the generic ``not current.action_available``
+    branch below would hard-reject ``pass`` itself, deadlocking the turn.
     """
+    if intent.intent_type == "pass":
+        return None
     if is_bonus_action:
         if not current.bonus_action_available:
             return CastFailed(
@@ -7512,7 +7554,18 @@ async def submit_player_intent(
     #
     # SRD §Action Economy — a bonus action does NOT end the turn; the
     # actor keeps initiative and may follow with a regular Action.
-    if is_bonus_action:
+    #
+    # FINAL-REVIEW FIX (F2): an off-hand (Two-Weapon Fighting) swing is
+    # ALSO a Bonus Action spend (R1 verbatim: "An off-hand (bonus-action)
+    # swing follows the existing bonus-action tail (never ends the turn)")
+    # — ``is_bonus_action`` only covers a bonus-action CAST's
+    # ``casting_time.unit``, so the off-hand attack needs its own check
+    # here. Without it, a 1-attack actor's off-hand swing falls through to
+    # ``_attack_action_is_spent`` below, which sees ``attacks_remaining <=
+    # 0`` (spent by the main-hand swing) and a now-closed TWF window
+    # (``offhand_attack_spent`` just flipped True) and wrongly ends the
+    # turn, discarding any movement the actor still owed.
+    if is_bonus_action or is_offhand_swing:
         _maybe_roll_death_save(live)
         return
     # SRD §Extra Attack — a main-hand attack keeps the turn (R1) while

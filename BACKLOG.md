@@ -365,8 +365,15 @@ zone + apply logic:
   already Grappled by the same attacker before rolling a fresh save and
   appending another `"Grappled"` effect; the pre-existing condition's
   `source_effect_id` still wins, so the second effect sits in
-  `live.active_effects` doing nothing until combat ends.
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_handle_grapple`)
+  `live.active_effects` doing nothing until combat ends. Compounding this:
+  `escape_grapple`/`_handle_escape_grapple` clears the Grappled condition
+  outright on a successful escape check rather than decrementing a
+  grappler-count, so a victim held by TWO grapplers (the original plus this
+  redundant-attempt orphan) is freed from BOTH by a single successful escape
+  — a one-check-escapes-two leniency — while the second, never-consulted
+  `ActiveEffect` remains orphaned in `live.active_effects` regardless.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_handle_grapple`,
+  `::_handle_escape_grapple`)
 - **A grappler killed without a `ConditionApplied` (Incapacitated) path
   does not auto-release its victim.** `_release_grapple_victims_of` fires
   only from the Incapacitated fold inside `_fold_condition_onto_combatant`;

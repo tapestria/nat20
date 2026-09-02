@@ -727,6 +727,76 @@ class TestHideFailedCheck:
         assert attack.advantage == "normal"
 
 
+# ── Final-review fix wave — F3: Hide is retryable-until-success ────────────
+#
+# CONTROLLER RULING: ``_handle_hide`` is zero-cost and turn-keeping with no
+# repeat gate, which lets a host loop ``hide`` intents until the DC 15 check
+# lands. Fix: one Hide attempt per turn — ``Combatant.hide_attempted_this_
+# turn`` gates a second same-turn attempt with
+# ``IntentRejectedError("no_action_economy")`` and zero d20 draws; the gate
+# resets at the actor's own next TurnStarted.
+
+
+class TestHideOncePerTurn:
+    def test_failed_hide_then_retry_same_turn_is_rejected_with_no_second_roll(self):
+        async def _run():
+            start = await _start_hide_combat(
+                "t5-f3-retry-rejected",
+                grid_kw={"cover_cells": {cell(1, 1): "three_quarters"}},
+                # Extreme negative DEX guarantees the DC 15 check fails.
+                dexterity=-10,
+            )
+            await submit_player_intent(
+                start.handle,
+                actor_id="char:hider",
+                intent=PlayerIntent(intent_type="hide"),
+            )
+            with pytest.raises(IntentRejectedError) as exc_info:
+                await submit_player_intent(
+                    start.handle,
+                    actor_id="char:hider",
+                    intent=PlayerIntent(intent_type="hide"),
+                )
+            return exc_info, _get_live(start.handle)
+
+        exc_info, live = run_async(_run())
+        assert exc_info.value.reason == "no_action_economy"
+        checks = [e for e in events_of(live, CheckRolled) if e.actor_id == "char:hider"]
+        assert len(checks) == 1
+        hider = next(c for c in live.initiative if c.entity_id == "char:hider")
+        assert hider.hide_attempted_this_turn is True
+
+    def test_retry_next_turn_is_allowed(self):
+        async def _run():
+            start = await _start_hide_combat(
+                "t5-f3-retry-next-turn",
+                grid_kw={"cover_cells": {cell(1, 1): "three_quarters"}},
+                dexterity=-10,
+            )
+            await submit_player_intent(
+                start.handle,
+                actor_id="char:hider",
+                intent=PlayerIntent(intent_type="hide"),
+            )
+            await submit_player_intent(
+                start.handle,
+                actor_id="char:hider",
+                intent=PlayerIntent(intent_type="pass"),
+            )
+            await advance_monster_turn(start.handle)
+            # It is now the hider's own next turn — the per-turn gate reset.
+            await submit_player_intent(
+                start.handle,
+                actor_id="char:hider",
+                intent=PlayerIntent(intent_type="hide"),
+            )
+            return _get_live(start.handle)
+
+        live = run_async(_run())
+        checks = [e for e in events_of(live, CheckRolled) if e.actor_id == "char:hider"]
+        assert len(checks) == 2
+
+
 class TestHideBreaksOnVerbalCast:
     def test_casting_a_verbal_spell_breaks_hide(self):
         """(d) Casting a spell with a Verbal component (Acid Splash: V, S)

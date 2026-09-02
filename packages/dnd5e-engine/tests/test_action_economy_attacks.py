@@ -612,6 +612,114 @@ class TestLightWeaponNegativeAbilityMod:
         assert offhand.amount == 2
 
 
+# ── Final-review fix wave — F1: multi-attack turn deadlock ─────────────────
+#
+# CONTROLLER RULING: ``"pass"`` is exempt from the Action hard gate in
+# ``_action_economy_gate_failure`` — it was never an Action ("I'm done"
+# needs no budget) and must ALWAYS be accepted and end the turn, regardless
+# of what budgets are already spent.
+
+
+class TestPassAlwaysEndsTheTurn:
+    def test_fighter_swings_twice_then_pass_ends_the_turn(self):
+        """F1 regression (a): after a level-5 fighter's two swings,
+        ``action_available`` is False (consumed by swing 1) with nothing
+        left to spend it on — a ``pass`` intent must still be accepted and
+        end the turn (next actor seated), not raise
+        ``IntentRejectedError("no_action_economy")``."""
+
+        async def _run():
+            start = await _start_fighter_combat("sess-f1-swings-then-pass")
+            for _ in range(2):
+                await submit_player_intent(
+                    start.handle, actor_id="char:ftr", intent=_attack_intent()
+                )
+            await submit_player_intent(
+                start.handle, actor_id="char:ftr", intent=PlayerIntent(intent_type="pass")
+            )
+            return _get_live(start.handle)
+
+        live = asyncio.run(_run())
+        assert live.current_actor_id != "char:ftr"
+        assert live.current_actor_id == "mon:dummy"
+
+    def test_plain_dash_then_pass_ends_the_turn(self):
+        """F1 regression (b): a plain Dash (a turn-keeping Action intent)
+        spends ``action_available`` with nothing else to spend it on — a
+        follow-up ``pass`` must still end the turn. This was ALSO broken
+        pre-C14 (pinned here, not just for the multi-attack case)."""
+
+        async def _run():
+            start = await _start_fighter_combat("sess-f1-dash-then-pass")
+            await submit_player_intent(
+                start.handle, actor_id="char:ftr", intent=PlayerIntent(intent_type="dash")
+            )
+            await submit_player_intent(
+                start.handle, actor_id="char:ftr", intent=PlayerIntent(intent_type="pass")
+            )
+            return _get_live(start.handle)
+
+        live = asyncio.run(_run())
+        assert live.current_actor_id != "char:ftr"
+        assert live.current_actor_id == "mon:dummy"
+
+
+# ── Final-review fix wave — F2: off-hand swing must not end the turn ───────
+#
+# PLAN RULING R1 (verbatim): "An off-hand (bonus-action) swing follows the
+# existing bonus-action tail (never ends the turn)."
+
+
+class TestOffhandSwingKeepsTheTurn:
+    def test_duelist_offhand_swing_keeps_the_turn_movement_intact(self):
+        """F2 regression: a duelist (1 attack per Action) swings shortsword
+        main-hand then dagger off-hand — the off-hand swing must NOT end
+        the turn (discarding movement); the actor stays current with
+        ``movement_remaining`` untouched, and a follow-up ``pass`` ends the
+        turn (F1)."""
+
+        async def _run():
+            start = await _start_duelist_combat("sess-f2-offhand-keeps-turn")
+            live_before = _get_live(start.handle)
+            movement_before = next(
+                c for c in live_before.initiative if c.entity_id == "char:duelist"
+            ).movement_remaining
+
+            await submit_player_intent(
+                start.handle, actor_id="char:duelist", intent=_shortsword_intent()
+            )
+            await submit_player_intent(
+                start.handle, actor_id="char:duelist", intent=_dagger_intent()
+            )
+            live_after_offhand = _get_live(start.handle)
+            current_after_offhand = live_after_offhand.current_actor_id
+            movement_after_offhand = next(
+                c for c in live_after_offhand.initiative if c.entity_id == "char:duelist"
+            ).movement_remaining
+
+            await submit_player_intent(
+                start.handle, actor_id="char:duelist", intent=PlayerIntent(intent_type="pass")
+            )
+            live_after_pass = _get_live(start.handle)
+            return (
+                movement_before,
+                current_after_offhand,
+                movement_after_offhand,
+                live_after_pass.current_actor_id,
+            )
+
+        (
+            movement_before,
+            current_after_offhand,
+            movement_after_offhand,
+            current_after_pass,
+        ) = asyncio.run(_run())
+
+        assert current_after_offhand == "char:duelist"
+        assert movement_after_offhand == movement_before
+        assert current_after_pass != "char:duelist"
+
+
 class TestTwfWindowOpen:
     """Prior-review follow-up (Task 1 had no direct unit test for
     ``_twf_window_open``): pins the window-open/closed truth table now that
