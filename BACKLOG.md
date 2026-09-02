@@ -89,6 +89,17 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   is never read.
 - **Spell components are not enforced.** `components` / `materials` ship on
   every spell and are never checked.
+- **The Cleave chain's damage routes through `_apply_on_hit_damage`, which
+  folds Sneak Attack BEFORE the orchestrator writes the once-per-turn cap
+  — the chained hit is structurally unguarded against a second Sneak
+  Attack fold on the same turn** (2026-09-02, C15 final-review F7). Not
+  reachable today: no shipped Cleave weapon (greataxe, halberd) carries
+  Finesse or a ranged category, so `sneak_attack_triggers`'s qualifying-
+  weapon gate always excludes them — but nothing in `_resolve_cleave_chain`
+  itself re-checks `ctx.sneak_attack_spent` between the main hit and the
+  chained one, so a future data change (a Finesse/ranged weapon gaining
+  the `cleave` mastery) would silently double-fold the rider.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py::_resolve_cleave_chain`)
 
 ## Movement (2026-08-22)
 
@@ -117,6 +128,16 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   (`packages/dnd5e-engine/src/dnd5e_engine/build_spec.py`)
 - **Feats are almost entirely inert.** 1 of the 17 corpus feats carries a
   mechanical activity; the rest resolve to nothing.
+- **`build_party.py` never passes `weapon_proficiencies`, so an engine-built
+  party always hits the C15 R1 assume-proficient sentinel — weapon
+  proficiency enforcement is unreachable through the engine's own party
+  builder** (2026-09-02, C15 final-review F7). `Combatant.weapon_proficiencies`
+  is keyed off *whether the field was ever assigned* on `PartyMemberSpec`
+  (see `docs/migration/v0.5-to-v0.6.md`'s "R1 sentinel" section); every
+  character this helper builds projects to `None`, so proficiency is
+  always assumed, matching pre-C15 behaviour — a host that wants
+  enforcement through this path has to populate the field itself.
+  (`packages/dnd5e-engine/src/dnd5e_engine/build_party.py`)
 
 ## Architecture (2026-08-22)
 
