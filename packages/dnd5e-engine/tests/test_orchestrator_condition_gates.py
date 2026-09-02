@@ -379,10 +379,41 @@ def test_massive_damage_kills_outright() -> None:
 
 
 def test_damage_while_at_zero_hp_is_a_death_save_failure() -> None:
-    start = _duel("c12-damage-at-zero", _victim(hp_current=1, hp_max=40))
-    live = _stab(start)
+    # C15 repair: attacker moved beyond 5 ft — the adjacent stab auto-crits vs
+    # an Unconscious target (C12), and a crit at 0 HP now correctly counts two
+    # failures (SRD §Damage at 0 HP). A melee weapon cannot reach from 15 ft,
+    # so the attacker switches to a ranged weapon (Shortbow, 80 ft normal
+    # range) to keep this an ORDINARY (non-crit) hit, preserving the test's
+    # original intent: ordinary damage at 0 HP is exactly one failure.
+    start = _start(
+        "c12-damage-at-zero",
+        [
+            _hero(
+                entity_id="char:attacker",
+                name="Attacker",
+                attack_bonus=99,
+                zone_id=cell(0, 0),
+            ),
+            _victim(hp_current=1, hp_max=40, zone_id=cell(3, 0)),
+        ],
+        [_foe(initiative=5, hp_current=20, hp_max=20, ac=99, zone_id=cell(5, 5))],
+    )
+
+    def _shoot() -> Any:
+        run_async(
+            submit_player_intent(
+                start.handle,
+                actor_id="char:attacker",
+                intent=PlayerIntent(
+                    intent_type="attack", weapon_id="shortbow", target_id="char:victim"
+                ),
+            )
+        )
+        return _get_live(start.handle)
+
+    live = _shoot()
     # Attacker's turn ended; skip the foe and the victim (victim rolls a death
-    # save at turn start), then stab again on the attacker's next turn.
+    # save at turn start), then shoot again on the attacker's next turn.
     run_async(advance_monster_turn(start.handle))
     run_async(
         submit_player_intent(
@@ -390,7 +421,7 @@ def test_damage_while_at_zero_hp_is_a_death_save_failure() -> None:
         )
     )
     failures_before = _combatant(live, "char:victim").death_saves.get("failures", 0)
-    _stab(start)
+    _shoot()
     assert _combatant(live, "char:victim").death_saves.get("failures", 0) == failures_before + 1
 
 
