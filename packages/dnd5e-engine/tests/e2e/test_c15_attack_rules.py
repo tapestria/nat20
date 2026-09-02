@@ -258,7 +258,6 @@ def test_c15_s03_disadvantage_tier_between_normal_and_long_range():
     assert beyond_failed[0].reason == "out_of_range"
 
 
-@xfail_cluster(15, "attack rules")
 def test_c15_s04_versatile_grip_and_damage_source_attribution():
     """C15-S04: SRD 5.2 (Versatile) — "The weapon deals that damage when
     used with two hands to make a melee attack."

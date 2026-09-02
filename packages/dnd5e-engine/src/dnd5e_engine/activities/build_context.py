@@ -157,6 +157,7 @@ def build_activity_context(
     target_unseen: dict[str, bool] | None = None,
     attacker_unseen_by: dict[str, bool] | None = None,
     suppress_positive_ability_damage_mod: bool = False,
+    use_versatile_damage: bool = False,
     target_dodging: dict[str, bool] | None = None,
     target_help_advantage: dict[str, bool] | None = None,
     is_proficient_attack: bool = True,
@@ -246,6 +247,13 @@ def build_activity_context(
     # (a signed dice string); lift it into its own typed sidecar so attack.py can
     # roll it without reaching into the resistance-shaped damage dict.
     passive_attack_bonus: dict[str, str] = {}
+    # Per-attacker WEAPON-ONLY to-hit bonus (a +N weapon / weapon-tagged
+    # ``attack.roll.bonus`` change). The orchestrator fold lands it on
+    # ``passive_damage_modifiers[id]["passive_weapon_to_hit_bonus"]`` (a
+    # signed dice string, action-type-tagged so it does not leak into spell
+    # attacks); lift it into its own typed sidecar so attack.py can add it to
+    # any weapon swing, symmetric with ``passive_weapon_damage_bonus``.
+    passive_weapon_attack_bonus: dict[str, str] = {}
     # Per-attacker MELEE-WEAPON damage bonus (Rage +2). The orchestrator fold
     # lands it on ``passive_damage_modifiers[id]["passive_melee_damage_bonus"]``
     # (a signed numeric/dice string); lift it into its own typed sidecar so
@@ -275,6 +283,9 @@ def build_activity_context(
         to_hit: object = dmg_entry.get("passive_to_hit_bonus")
         if isinstance(to_hit, str) and to_hit:
             passive_attack_bonus[entity_id] = to_hit
+        weapon_to_hit: object = dmg_entry.get("passive_weapon_to_hit_bonus")
+        if isinstance(weapon_to_hit, str) and weapon_to_hit:
+            passive_weapon_attack_bonus[entity_id] = weapon_to_hit
         melee_dmg: object = dmg_entry.get("passive_melee_damage_bonus")
         if isinstance(melee_dmg, str) and melee_dmg:
             passive_melee_damage_bonus[entity_id] = melee_dmg
@@ -357,6 +368,7 @@ def build_activity_context(
         passive_save_modifiers=passive_save_modifiers,
         passive_save_bonus=passive_save_bonus,
         passive_attack_bonus=passive_attack_bonus,
+        passive_weapon_attack_bonus=passive_weapon_attack_bonus,
         passive_melee_damage_bonus=passive_melee_damage_bonus,
         passive_weapon_damage_bonus=passive_weapon_damage_bonus,
         passive_ranged_damage_bonus=passive_ranged_damage_bonus,
@@ -408,4 +420,5 @@ def build_activity_context(
         class_levels=class_levels or {},
         cast_level_override=cast_level_override,
         suppress_positive_ability_damage_mod=suppress_positive_ability_damage_mod,
+        use_versatile_damage=use_versatile_damage,
     )

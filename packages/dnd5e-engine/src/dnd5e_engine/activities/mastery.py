@@ -151,7 +151,14 @@ def _resolve_graze(
     damage_type = _weapon_damage_type(weapon)
     if damage_type is None:
         return
-    apply_damage(target, {damage_type: mod}, ctx, magical=weapon.magical)
+    apply_damage(
+        target,
+        {damage_type: mod},
+        ctx,
+        magical=weapon.magical,
+        source_id="mastery:graze",
+        is_crit=False,
+    )
 
 
 def _weapon_damage_type(weapon: Weapon) -> str | None:

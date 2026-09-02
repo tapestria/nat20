@@ -101,6 +101,19 @@ class ActivityResolutionContext:
     # stream as the attack d20. Absent → +0. Empty default keeps the golden
     # corpus identical.
     passive_attack_bonus: dict[str, str] = field(default_factory=dict)
+    # Per-ATTACKER additive WEAPON-ONLY to-hit bonus, keyed entity_id -> a
+    # signed dice-expression STRING. The to-hit analogue of
+    # ``passive_weapon_damage_bonus``: a +N weapon / weapon-tagged
+    # (``applicable_action_types == ["attack"]``) ``attack.roll.bonus``
+    # change applies to a weapon swing only, unlike ``passive_attack_bonus``
+    # (Bless/Bane), which buffs weapon AND spell attacks alike. Sourced from
+    # the orchestrator's action-type-tagged
+    # ``passive_damage_modifiers[id]["passive_weapon_to_hit_bonus"]``
+    # projection (``_fold_active_effect_changes``'s ``weapon_only`` branch);
+    # consumed in ``attack.py`` gated on a weapon being present, symmetric
+    # with ``passive_weapon_damage_bonus``. Absent attacker → +0. Empty
+    # default keeps the golden corpus identical.
+    passive_weapon_attack_bonus: dict[str, str] = field(default_factory=dict)
     # Per-ATTACKER additive MELEE-WEAPON damage bonus, keyed entity_id -> a signed
     # numeric/dice STRING (Rage's ``+2`` at L5; stacked sources pre-joined). The
     # melee-damage analogue of ``passive_attack_bonus``: Foundry's
@@ -346,6 +359,16 @@ class ActivityResolutionContext:
     # False default keeps every other swing (main-hand, monster, spell)
     # byte-identical to before this field existed.
     suppress_positive_ability_damage_mod: bool = False
+    # SRD 5.2 Versatile property — "The weapon deals that damage when used
+    # with two hands to make a melee attack." Set True by the orchestrator
+    # only when the player intent requests a two-handed grip
+    # (``PlayerIntent.two_handed``) AND the weapon carries
+    # ``WeaponProperty.VERSATILE`` AND the swing is a melee attack (a
+    # two-handed grip on a thrown/ranged use of the weapon is ignored).
+    # ``_roll_base_weapon_damage`` (attack.py) rolls ``Weapon.versatile_damage``
+    # instead of ``Weapon.damage_parts`` when this is set. False default keeps
+    # every other swing byte-identical to before this field existed.
+    use_versatile_damage: bool = False
 
     def ability_mod(self, ability: str) -> int:
         return (self.caster_abilities.get(ability, 10) - 10) // 2

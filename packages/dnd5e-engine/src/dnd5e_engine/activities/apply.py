@@ -84,6 +84,8 @@ def apply_damage(
     ctx: ActivityResolutionContext,
     *,
     magical: bool = False,
+    source_id: str | None = None,
+    is_crit: bool = False,
 ) -> None:
     """Apply a per-damage-type rolled amount to ``target`` and emit one
     ``DamageApplied`` per valid type.
@@ -101,6 +103,10 @@ def apply_damage(
     applies ONLY to the static stat-block resistance list — effect-granted
     (sidecar) resistances, such as Rage's, are always unconditional and are
     never bypassed by ``magical`` (see ``_effective_resistances``).
+
+    ``source_id`` / ``is_crit`` — C15 damage-attribution metadata threaded
+    straight into the emitted ``DamageApplied`` event(s); see
+    ``DamageApplied.source_id`` / ``.is_crit`` for the source-id policy.
     """
     sidecar = ctx.passive_damage_modifiers.get(target.entity_id, {})
     resistances = _effective_resistances(target, sidecar, magical=magical)
@@ -123,6 +129,8 @@ def apply_damage(
                 amount=final_amount,
                 damage_type=srd_type,
                 is_overkill=final_amount > target.hp_current,
+                source_id=source_id,
+                is_crit=is_crit,
             )
         )
 

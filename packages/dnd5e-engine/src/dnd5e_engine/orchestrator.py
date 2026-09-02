@@ -255,6 +255,14 @@ class PlayerIntent(BaseModel):
     # Duck-typed hosts that never set this field keep the default Prone
     # behaviour unaffected.
     shove_push: bool = False
+    # SRD 5.2 Versatile property — "The weapon deals that damage when used
+    # with two hands to make a melee attack." The attacker's pre-declared
+    # grip choice for THIS attack (no player-facing choice prompt exists at
+    # this seam). False (default) keeps the one-handed die. Ignored unless
+    # the weapon carries ``WeaponProperty.VERSATILE`` and the attack is an
+    # actual melee swing (a two-handed grip declared on a thrown/ranged use
+    # of the same weapon is ignored, per SRD "to make a melee attack").
+    two_handed: bool = False
 
     @field_validator("direction")
     @classmethod
@@ -530,6 +538,29 @@ def _weapon_attack_range_ft(weapon: Weapon | None) -> tuple[int, int] | None:
         return None
     long_band = rng.long if isinstance(rng.long, int) and rng.long > 0 else ranged_normal
     return ranged_normal, max(ranged_normal, long_band)
+
+
+def _versatile_grip_applies(weapon: Weapon | None, distance_ft: int | None) -> bool:
+    """SRD 5.2 Versatile — "The weapon deals that damage when used with two
+    hands to make a melee attack."
+
+    ``True`` only when ``weapon`` carries ``WeaponProperty.VERSATILE`` AND
+    this particular swing is an actual melee attack, not a ranged one. A
+    Versatile weapon is always melee-kind, but a handful (Spear, Trident)
+    ALSO carry Thrown, so the same weapon can be thrown at range — reuses
+    the reach-band classification from ``_weapon_attack_range_ft``: beyond
+    melee reach (5ft, or 10ft with Reach) the swing is a thrown attack, and
+    a two-handed grip declared for it is ignored (SRD "to make a melee
+    attack"). ``distance_ft is None`` (no spatial model wired, or a
+    same-cell/zone attack) is treated as within reach.
+    """
+    if weapon is None or WeaponProperty.VERSATILE not in weapon.properties:
+        return False
+    if WeaponProperty.THROWN in weapon.properties and distance_ft is not None:
+        reach = 10 if WeaponProperty.REACH in weapon.properties else 5
+        if distance_ft > reach:
+            return False
+    return True
 
 
 def _target_beyond_normal_range_map(
@@ -3099,8 +3130,9 @@ def _apply_zero_hp_to_character(
       next turn (``_maybe_roll_death_save``).
     * Damage at 0 Hit Points: "If you take any damage while you have 0 Hit
       Points, you suffer a Death Saving Throw failure. ... If the damage
-      equals or exceeds your Hit Point maximum, you die." (The Critical-Hit
-      two-failure clause needs a crit flag on ``DamageApplied`` — C15 seam.)
+      equals or exceeds your Hit Point maximum, you die." A Critical Hit
+      counts as TWO failures instead of one (C15 — ``DamageApplied.is_crit``
+      threaded into ``DeathSaveState.apply_damage_while_unconscious``).
     """
     target = _find_combatant(live, event.target_id)
     if target is None:
@@ -3128,7 +3160,11 @@ def _apply_zero_hp_to_character(
     if damage_after_temp <= 0:
         return
     state = DeathSaveState.from_dict(target.death_saves) if target.death_saves else DeathSaveState()
-    outcome = state.apply_damage_while_unconscious(False)
+    # SRD 5.2 "Damage at 0 Hit Points" — the Critical-Hit two-failure clause
+    # (C15 Task 4): a Critical Hit against a creature already at 0 HP counts
+    # as TWO death-save failures instead of one. ``DamageApplied.is_crit``
+    # (this event) now carries that flag straight from the attack resolver.
+    outcome = state.apply_damage_while_unconscious(event.is_crit)
     update: dict[str, Any] = {"death_saves": state.to_dict()}
     if outcome == "dead":
         update["is_alive"] = False
@@ -7555,6 +7591,21 @@ async def submit_player_intent(
         )
         class_levels = {current.class_slug: current.character_level} if current.class_slug else {}
         target_unseen, attacker_unseen_by = _target_visibility_maps(live, current, targets)
+        # SRD 5.2 Versatile property (C15 Task 4) — the attacker's declared
+        # two-handed grip (``intent.two_handed``) applies only when the
+        # weapon carries VERSATILE AND this swing is an actual melee attack
+        # (not a Thrown weapon being thrown at range, per
+        # ``_versatile_grip_applies``). Single-target-distance read: weapon
+        # attacks resolve against one primary target, so the first entry's
+        # distance stands in for "this swing's" distance.
+        _versatile_distance_ft = (
+            _target_distance_map(live, current.entity_id, targets).get(targets[0].entity_id)
+            if targets
+            else None
+        )
+        use_versatile_damage = intent.two_handed and _versatile_grip_applies(
+            fetched_weapon, _versatile_distance_ft
+        )
         actx = build_activity_context(
             current,
             targets,
@@ -7650,6 +7701,9 @@ async def submit_player_intent(
             # False (the default) for every main-hand / monster / spell
             # swing keeps their damage byte-identical to before this field.
             suppress_positive_ability_damage_mod=is_offhand_swing,
+            # SRD 5.2 Versatile property (C15 Task 4) — see
+            # ``use_versatile_damage`` computation above.
+            use_versatile_damage=use_versatile_damage,
         )
         for activity in activities:
             resolve_activity(activity, actx, weapon=fetched_weapon)

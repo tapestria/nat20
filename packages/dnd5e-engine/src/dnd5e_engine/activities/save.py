@@ -239,6 +239,7 @@ def _apply_save_damage(
             raw_part, activity.damage.on_save, succeeded=succeeded
         )
 
+    # cast attribution is a C17+ seam — source_id left None here.
     apply_damage(target, dict(by_type), ctx, magical=ctx.base_spell_level is not None)
 
 

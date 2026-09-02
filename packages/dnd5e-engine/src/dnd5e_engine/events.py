@@ -288,6 +288,13 @@ class DamageApplied(BaseModel):
     amount: int
     damage_type: DamageType
     is_overkill: bool
+    # C15 — damage-source attribution: weapon slug / synthesized activity id /
+    # ``"mastery:<slug>"`` for procs. ``None`` for paths not yet threaded
+    # (spell/save/heal damage — a C17+ seam).
+    source_id: str | None = None
+    # C15 — whether this damage event was a critical hit; feeds the
+    # crit-at-0-HP two-death-save-failures clause (SRD §Damage at 0 HP).
+    is_crit: bool = False
 
 
 class HealingApplied(BaseModel):

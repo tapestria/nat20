@@ -93,6 +93,7 @@ def resolve_damage(activity: DamageActivity, ctx: ActivityResolutionContext) -> 
     shared = dict(by_type)
     cast_level = ctx.slot_level or ctx.base_spell_level or 0
     for target in ctx.targets:
+        # cast attribution is a C17+ seam — source_id left None here.
         apply_damage(target, shared, ctx, magical=ctx.base_spell_level is not None)
         apply_activity_effects(activity, ctx, target, save_succeeded=None, cast_level=cast_level)
 

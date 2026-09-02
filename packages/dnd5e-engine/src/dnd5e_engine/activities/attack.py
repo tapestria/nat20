@@ -121,6 +121,21 @@ def resolve_attack(
     # rolls (keyed on the attacker). Rolled once per attack so each swing draws a
     # fresh d4 in the seeded stream — mirrors save_primitive's passive_save_bonus.
     attack_bonus_expr = ctx.passive_attack_bonus.get(ctx.caster.entity_id)
+    # SRD §Making an Attack / §Magic Items — a magic weapon's bonus applies to
+    # BOTH the attack roll and the damage roll made with it (the to-hit
+    # analogue of ``passive_weapon_damage_bonus``, gated on a weapon being
+    # present so it never leaks into a spell attack). Folded into the SAME
+    # signed-dice-expr sum as the Bless/Bane bonus above so both draws land in
+    # one roll_expr call, keeping the seeded stream shape unchanged when
+    # neither sidecar is populated (the default/empty case).
+    if weapon is not None:
+        weapon_attack_bonus_expr = ctx.passive_weapon_attack_bonus.get(ctx.caster.entity_id)
+        if weapon_attack_bonus_expr:
+            attack_bonus_expr = (
+                f"{attack_bonus_expr} + {weapon_attack_bonus_expr}"
+                if attack_bonus_expr
+                else weapon_attack_bonus_expr
+            )
 
     # SRD §Advantage and Disadvantage — the attacker's own
     # ``flags.advantage.attack`` / ``flags.disadvantage.attack`` override
@@ -699,12 +714,28 @@ def _apply_on_hit_damage(
             if sneak_dice:
                 by_type[first_type] += roll_expr(sneak_dice, ctx.rng, crit=is_crit)
 
+        # C15 — damage-source attribution (``DamageApplied.source_id``): base
+        # weapon damage attributes to the weapon's slug; a synthesized
+        # legacy-fixture swing (no weapon, see
+        # ``orchestrator._synthesize_attack_from_legacy_fields``) attributes to
+        # its synthesized activity id instead. A non-weapon, non-synthesized
+        # attack (e.g. a spell attack) leaves it ``None`` this cluster — cast
+        # attribution is a C17+ seam.
+        if weapon is not None:
+            source_id: str | None = weapon.slug
+        elif activity.id.startswith("synth:"):
+            source_id = activity.id
+        else:
+            source_id = None
+
         # spell-delivered attack rolls are magical too (spells are magical effects)
         apply_damage(
             target,
             dict(by_type),
             ctx,
             magical=(weapon is not None and weapon.magical) or ctx.base_spell_level is not None,
+            source_id=source_id,
+            is_crit=is_crit,
         )
     finally:
         if is_crit:
@@ -729,6 +760,13 @@ def _roll_base_weapon_damage(
     folds ``@mod`` into the first weapon damage term, and a +N weapon adds N to
     damage (SRD §Magic Weapons). The weapon dice carry no mod, so adding here does
     not double-count.
+
+    SRD 5.2 Versatile property — "The weapon deals that damage when used with
+    two hands to make a melee attack." When ``ctx.use_versatile_damage`` is set
+    (the orchestrator has already confirmed a two-handed grip + VERSATILE +
+    melee swing) AND the weapon carries ``versatile_damage``, that single part
+    is rolled INSTEAD OF ``damage_parts`` — crit doubling and the ability-mod
+    fold apply identically to either die.
     """
     first_type: str | None = None
     flat_addition = weapon.magical_bonus
@@ -740,7 +778,11 @@ def _roll_base_weapon_damage(
             mod = 0
         flat_addition += mod
 
-    for index, part in enumerate(weapon.damage_parts):
+    parts = weapon.damage_parts
+    if ctx.use_versatile_damage and weapon.versatile_damage is not None:
+        parts = [weapon.versatile_damage]
+
+    for index, part in enumerate(parts):
         rolled = roll_damage_part(part, ctx.rng, crit=is_crit)
         if index == 0:
             rolled += flat_addition
