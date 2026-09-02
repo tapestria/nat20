@@ -4860,6 +4860,31 @@ def _pc_condition_immunities(pc: PartyMemberSpec) -> list[str]:
     return immunities
 
 
+def _is_proficient_with_weapon(current: Combatant, weapon: Weapon | None) -> bool:
+    """SRD 5.2 §Weapon Proficiency — "Anyone can wield a weapon, but you must
+    have proficiency with it to add your Proficiency Bonus to an attack roll
+    you make with it." (packs/_source/content24/chapter-6/equipment.yml, id
+    dWQ2ZTLOuKr3PMAx). "A monster is proficient with any weapon in its stat
+    block" (same source) — monsters never carry an explicit
+    ``weapon_proficiencies`` list, so ``current.weapon_proficiencies is None``
+    covers them for free.
+
+    ``current.weapon_proficiencies is None`` is the C15 R1 sentinel: the host
+    never opted into enforcement (``PartyMemberSpec.weapon_proficiencies``
+    unset), so proficiency is assumed — this reproduces every pre-C15
+    fixture byte-identically. ``weapon is None`` covers non-weapon resolution
+    paths (spells, features) where proficiency never applies. Otherwise,
+    proficient iff the weapon's category or its own slug is in the caster's
+    explicit (possibly empty — "proficient in nothing") list.
+    """
+    if current.weapon_proficiencies is None or weapon is None:
+        return True
+    return (
+        weapon.weapon_category in current.weapon_proficiencies
+        or weapon.slug in current.weapon_proficiencies
+    )
+
+
 def _build_pc_combatants(
     party: list[PartyMemberSpec],
     combatants: list[Combatant],
@@ -4883,7 +4908,13 @@ def _build_pc_combatants(
                 hp_current=pc.hp_current,
                 hp_max=pc.hp_max,
                 ac=pc.ac,
-                attack_bonus=pc.attack_bonus,
+                # C15 sentinel (mirrors weapon_proficiencies below): ``None``
+                # when the host never explicitly set
+                # ``PartyMemberSpec.attack_bonus`` — lets a bare-ability PC's
+                # weapon attack fall through to the real ability-mod +
+                # proficiency-bonus computation instead of being pinned to a
+                # 0 override. See ``Combatant.attack_bonus``.
+                attack_bonus=(pc.attack_bonus if "attack_bonus" in pc.model_fields_set else None),
                 strength=pc.strength,
                 dexterity=pc.dexterity,
                 constitution=pc.constitution,
@@ -4908,7 +4939,16 @@ def _build_pc_combatants(
                 save_proficiencies=list(pc.save_proficiencies),
                 skill_proficiencies=list(pc.skill_proficiencies),
                 skill_expertise=list(pc.skill_expertise),
-                weapon_proficiencies=list(pc.weapon_proficiencies),
+                # C15 R1 sentinel: thread ``None`` when the host never
+                # explicitly set the spec field (legacy "assume proficient"
+                # behaviour, byte-identical to every pre-C15 fixture);
+                # thread the real (possibly empty) list only when the host
+                # opted in. See ``Combatant.weapon_proficiencies``.
+                weapon_proficiencies=(
+                    list(pc.weapon_proficiencies)
+                    if "weapon_proficiencies" in pc.model_fields_set
+                    else None
+                ),
             )
         )
         actor_zone[pc.entity_id] = pc.zone_id
@@ -6887,6 +6927,10 @@ def _resolve_readied_spell_cast(
         save_modifiers=payload["save_modifiers"],
         check_modifiers=payload["check_modifiers"],
         d20_test_penalty=payload["d20_test_penalty"],
+        # C15: is_proficient_attack left on default (True) — this reaction
+        # path only resolves cast SaveActivity/DamageActivity from a Spell
+        # (Shield's own reaction cast), never an AttackActivity with a
+        # fetched Weapon, so the proficiency gate never applies here.
         target_distance_ft=_target_distance_map(live, reactor.entity_id, [reactor]),
         attacker_grappler_id=_condition_source_entity(live, reactor, "grappled"),
     )
@@ -7007,6 +7051,9 @@ def _drain_counterspell_reaction(
         check_modifiers=payload["check_modifiers"],
         d20_test_penalty=payload["d20_test_penalty"],
         target_distance_ft=_target_distance_map(live, reactor.entity_id, [current]),
+        # C15: is_proficient_attack left on default (True) — Counterspell
+        # resolves a SaveActivity, never an AttackActivity with a fetched
+        # Weapon, so the proficiency gate never applies here.
         attacker_grappler_id=_condition_source_entity(live, reactor, "grappled"),
     )
     pre_event_count = len(live.event_log)
@@ -7466,6 +7513,13 @@ async def submit_player_intent(
             active_effects=tuple(live.active_effects.get(current.entity_id, [])),
             sneak_attack_spent={current.entity_id: current.sneak_attack_spent_this_turn},
             sneak_attack_ally_adjacent=_sneak_ally_adjacent_map(live, current, targets),
+            # SRD 5.2 §Weapon Proficiency (C15) — real gate: proficient iff
+            # ``current.weapon_proficiencies`` is the ``None`` sentinel (host
+            # never opted in) or the fetched weapon's category/slug is
+            # listed. ``fetched_weapon`` is ``None`` for every non-attack
+            # intent (cast_spell/use_item/feature), and the helper returns
+            # ``True`` for a ``None`` weapon, so this is a no-op there.
+            is_proficient_attack=_is_proficient_with_weapon(current, fetched_weapon),
             # SRD 5.2 §Two-Weapon Fighting / Light property — an off-hand
             # swing (Task 2) never adds a POSITIVE governing-ability
             # modifier to its damage; a negative modifier still applies.
@@ -7650,7 +7704,9 @@ def _fire_pc_opportunity_attacks_on_move(
         # auto-miss, total ≥ AC on hit; now honors Exhaustion's flat penalty
         # and the condition/Dodge advantage-disadvantage rows so an AoO is no
         # longer a bare unconditioned d20.
-        modifier = reactor.attack_bonus + d20_test_penalty(reactor.conditions)
+        # C15: reactor.attack_bonus is int | None (None = host never set
+        # PartyMemberSpec.attack_bonus); or 0 mirrors the pre-C15 int default.
+        modifier = (reactor.attack_bonus or 0) + d20_test_penalty(reactor.conditions)
         adv_sources, dis_sources = _opportunity_attack_advantage_sources(
             live, reactor=reactor, mover=mover
         )
@@ -7815,7 +7871,9 @@ def _fire_monster_opportunity_attacks_on_move(
         # (C14) — see ``_fire_pc_opportunity_attacks_on_move`` for the
         # rationale (Exhaustion penalty + condition/Dodge advantage rows now
         # reach this roll instead of a bare unconditioned d20).
-        modifier = reactor.attack_bonus + d20_test_penalty(reactor.conditions)
+        # C15: reactor.attack_bonus is int | None (None = host never set
+        # PartyMemberSpec.attack_bonus); or 0 mirrors the pre-C15 int default.
+        modifier = (reactor.attack_bonus or 0) + d20_test_penalty(reactor.conditions)
         adv_sources, dis_sources = _opportunity_attack_advantage_sources(
             live, reactor=reactor, mover=mover
         )
@@ -8217,6 +8275,13 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
             attacker_grappler_id=_condition_source_entity(live, current, "grappled"),
             target_unseen=target_unseen,
             attacker_unseen_by=attacker_unseen_by,
+            # SRD 5.2 §Weapon Proficiency — "A monster is proficient with any
+            # weapon in its stat block." Left on the default (True): a
+            # monster's Combatant.weapon_proficiencies is never explicitly
+            # set (the R1 sentinel), so it would resolve to True via
+            # ``_is_proficient_with_weapon`` anyway — this IS a real attack
+            # site (monster_activities below), but the SRD rule makes the
+            # gate a no-op for every monster.
         )
         for activity in monster_activities:
             # Monster attacks carry their damage on the AttackActivity itself,

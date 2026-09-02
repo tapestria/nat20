@@ -317,9 +317,6 @@ zone + apply logic:
   `-2 x level` D20 Test penalty. Additive fix: an `exhaustion_level: int = 0`
   (or projected `modifier`) on `CheckSpec`.
   (`packages/dnd5e-engine/src/dnd5e_engine/check.py:36`)
-- **Attack proficiency is assumed.** `build_context.py:278` hard-codes
-  `is_proficient_attack=True`; a wizard swinging a greatsword adds PB.
-  (`packages/dnd5e-engine/src/dnd5e_engine/activities/build_context.py`)
 - **Weapon properties beyond `finesse`/`reach` are ignored.** `loading`,
   `thrown`, `light`, `two_handed`, `versatile` (`versatile_damage` is shipped
   and never chosen), `ammunition`, `heavy` are parsed by the data schema and

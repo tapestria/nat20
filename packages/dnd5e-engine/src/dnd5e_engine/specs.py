@@ -40,6 +40,13 @@ class PartyMemberSpec(BaseModel):
     hp_current: int
     hp_max: int
     ac: int = 10
+    # A fixed weapon-attack to-hit bonus, honored verbatim (bypasses the
+    # engine's governing-ability-mod + proficiency-bonus computation) —
+    # for a host that precomputes its own totals. Leaving this unset (the
+    # default) is NOT the same as ``0``: an unset field lets the engine
+    # compute the real ability-mod + proficiency-bonus total instead
+    # (C15, SRD 5.2 §Weapon Proficiency); an explicit ``0`` is honored as a
+    # genuine zero override.
     attack_bonus: int = 0
     strength: int = 10
     dexterity: int = 10

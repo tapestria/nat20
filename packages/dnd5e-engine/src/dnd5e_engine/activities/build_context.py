@@ -38,9 +38,13 @@ def _caster_mod(caster: Combatant) -> int:
     Monster: ``attack_bonus`` (``monster_ai``). PC: ``max(0, attack_bonus-2)``
     (``intent_resolver._spellcasting_mod``).
     """
+    # C15: ``caster.attack_bonus`` is ``int | None`` (``None`` = host never
+    # set ``PartyMemberSpec.attack_bonus``); ``or 0`` reproduces the old
+    # int-default behaviour exactly for that case. A monster's is always a
+    # concrete int (unaffected).
     if caster.entity_type == "Monster":
-        return caster.attack_bonus
-    return max(0, caster.attack_bonus - 2)
+        return caster.attack_bonus or 0
+    return max(0, (caster.attack_bonus or 0) - 2)
 
 
 def _save_dc(
@@ -67,7 +71,7 @@ def _save_dc(
     the legacy evaluator-era ``_spell_save_dc``, ``pb`` hardcoded to ``2``).
     """
     if caster.entity_type == "Monster":
-        return 8 + caster.attack_bonus
+        return 8 + (caster.attack_bonus or 0)
     if spellcasting_ability:
         ability_mod = (caster_abilities.get(spellcasting_ability, 10) - 10) // 2
         return 8 + caster_proficiency_bonus + ability_mod
@@ -155,6 +159,7 @@ def build_activity_context(
     suppress_positive_ability_damage_mod: bool = False,
     target_dodging: dict[str, bool] | None = None,
     target_help_advantage: dict[str, bool] | None = None,
+    is_proficient_attack: bool = True,
 ) -> ActivityResolutionContext:
     """Adapt the caster + the pre-computed hydration sidecars into the typed
     ``ActivityResolutionContext`` the new resolver consumes.
@@ -189,6 +194,14 @@ def build_activity_context(
     So for a feature invocation the override is omitted (``None``), letting the
     save resolver fall through to ``save.dc.calculation``. The spell / item
     path keeps the blanket override.
+
+    ``is_proficient_attack`` (C15) passes straight through to
+    ``ActivityResolutionContext`` — the orchestrator computes it (real
+    weapon-proficiency gate for the PC weapon-attack path via
+    ``_is_proficient_with_weapon``; every other call site defaults it to
+    ``True``, reproducing the pre-C15 hardcode for casts, features, and
+    monster/reaction attacks). This pure builder never touches the loader or
+    the caster's proficiency list itself.
 
     ``cast_level_override`` passes straight through to
     ``ActivityResolutionContext`` — a ``use_item`` charges_to_spend
@@ -314,7 +327,7 @@ def build_activity_context(
         caster_proficiency_bonus=caster_proficiency_bonus,
         caster_level=caster.character_level,
         spellcasting_ability=spellcasting_ability,
-        is_proficient_attack=True,
+        is_proficient_attack=is_proficient_attack,
         concentration=concentration,
         slot_level=slot_level,
         base_spell_level=base_spell_level,
@@ -330,6 +343,11 @@ def build_activity_context(
             )
             + _spell_dc_bonus(caster, passive_damage_modifiers, rng)
         ),
+        # C15: ``None`` here (host never set ``PartyMemberSpec.attack_bonus``)
+        # correctly falls through in ``attack.py::_attack_bonus`` to the real
+        # governing-ability-mod + proficiency-bonus computation instead of a
+        # pinned 0 override — no change needed at that call site, it already
+        # treated ``None`` as "no override".
         attack_bonus_override=caster.attack_bonus,
         passive_damage_modifiers=passive_damage_modifiers,
         passive_save_modifiers=passive_save_modifiers,

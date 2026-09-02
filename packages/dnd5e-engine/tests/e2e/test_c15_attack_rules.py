@@ -21,7 +21,6 @@ from dnd5e_engine.specs import EncounterMemberSpec, GridScene, PartyMemberSpec
 from tests.e2e.harness import cell, events_of, grid_scene, run_async, xfail_cluster
 
 
-@xfail_cluster(15, "attack rules")
 def test_c15_s01_nonproficient_attacker_still_adds_proficiency_bonus():
     """C15-S01: SRD 5.2 — "you must have proficiency with it to add your
     Proficiency Bonus to an attack roll you make with it."
