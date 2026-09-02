@@ -474,20 +474,40 @@ class _ZoneGraph:
         return a in self._zones and b in self._zones
 
 
-def _weapon_attack_range_ft(weapon: Weapon | None) -> int | None:
-    """Resolve the effective attack range for a typed weapon, in feet.
+def _weapon_attack_range_ft(weapon: Weapon | None) -> tuple[int, int] | None:
+    """Resolve the effective attack range BANDS for a typed weapon, in feet.
+
+    Returns ``(normal, max)`` — SRD 5.2 §Range: "Your attack roll has
+    Disadvantage when your target is beyond normal range, and you can't
+    attack a target beyond long range." A distance ``<= normal`` rolls
+    plain; ``normal < distance <= max`` rolls with Disadvantage (a LEGAL
+    attack — ``"range:long"`` in ``attack.py``); ``distance > max`` is
+    illegal (``AttackFailed(reason="out_of_range")``).
 
     Reads the typed ``Weapon.range`` block (lib loader):
 
-      * melee weapons (``range.kind == "melee"``) reach 5ft, or 10ft when they
-        carry the ``reach`` property (glaive/halberd/pike). ``range.value`` is
-        NOT the melee reach — Foundry leaves it ``None`` for standard melee and
-        reuses it for the THROWN range on thrown weapons (dagger=20, handaxe=20),
-        so deriving reach from the ``reach`` property reproduces the old wrapper's
-        ``reach_ft`` (5/10) faithfully and avoids treating a dagger's 20ft throw
-        as its melee reach;
-      * ranged weapons carry ``range.value`` as the in-range (normal) band;
-        long-range disadvantage is a follow-up, not modeled here.
+      * a melee weapon (``range.kind == "melee"``) WITHOUT the ``thrown``
+        property reaches 5ft, or 10ft when it carries the ``reach``
+        property (glaive/halberd/pike) — both bands equal, so an ordinary
+        melee swing never rolls the disadvantage tier. ``range.value`` is
+        NOT the melee reach — Foundry leaves it ``None`` for standard melee
+        and reuses it for the THROWN range on thrown weapons (dagger=20,
+        handaxe=20), so deriving reach from the ``reach`` property
+        reproduces the old wrapper's ``reach_ft`` (5/10) faithfully;
+      * a ranged weapon (crossbow/bow) carries ``range.value`` as its
+        normal band and ``range.long`` as its max band (falling back to
+        ``range.value`` when a weapon carries no distinct long band);
+      * a MELEE weapon WITH the ``thrown`` property (dagger, handaxe) can
+        also be thrown (SRD §Thrown): within melee reach it's an ordinary
+        melee swing, and beyond reach out to ``range.value`` it's an
+        ordinary (un-penalized) thrown attack, so its normal band is
+        ``max(reach, range.value)``; the disadvantage tier then runs from
+        there out to ``range.long`` (falling back to ``range.value`` — or
+        ``reach`` if that too is absent). SRD §Thrown also pins the
+        governing ability: "use the same ability modifier for the attack
+        and damage rolls that you use for a melee attack with that
+        weapon" — automatic here, since ``_weapon_default_ability`` keys
+        off ``weapon_category``/``finesse``, not distance.
 
     Returns ``None`` when the weapon is missing or carries no usable
     range — the orchestrator skips the gate in that case.
@@ -496,9 +516,53 @@ def _weapon_attack_range_ft(weapon: Weapon | None) -> int | None:
         return None
     rng = weapon.range
     if rng.kind == "melee":
-        return 10 if WeaponProperty.REACH in weapon.properties else 5
-    normal = rng.value
-    return normal if isinstance(normal, int) and normal > 0 else None
+        reach = 10 if WeaponProperty.REACH in weapon.properties else 5
+        if WeaponProperty.THROWN not in weapon.properties:
+            return reach, reach
+        thrown_normal = rng.value if isinstance(rng.value, int) and rng.value > 0 else None
+        if thrown_normal is None:
+            return reach, reach
+        thrown_band = max(reach, thrown_normal)
+        thrown_long = rng.long if isinstance(rng.long, int) and rng.long > 0 else thrown_normal
+        return thrown_band, max(thrown_band, thrown_long)
+    ranged_normal = rng.value if isinstance(rng.value, int) and rng.value > 0 else None
+    if ranged_normal is None:
+        return None
+    long_band = rng.long if isinstance(rng.long, int) and rng.long > 0 else ranged_normal
+    return ranged_normal, max(ranged_normal, long_band)
+
+
+def _target_beyond_normal_range_map(
+    live: _LiveCombat, actor_id: str, weapon: Weapon | None, targets: Sequence[Combatant]
+) -> dict[str, bool]:
+    """Per-target SRD 5.2 §Range disadvantage flag — True iff the live
+    attacker→target distance is beyond the weapon's NORMAL band (but, by
+    construction, never beyond its MAX band: ``_pc_attack_out_of_range``
+    already rejected that case upstream, before this map is even built).
+    Threaded into ``ActivityResolutionContext.target_beyond_normal_range``
+    so ``attack.py`` can append the ``"range:long"`` disadvantage source
+    without importing the spatial seam — mirrors ``_target_distance_map``.
+
+    ``None`` bands (no weapon, or a weapon with no usable range) and an
+    unreachable/untracked pair simply produce an empty map (the row stays
+    inert), matching every other per-target sidecar in this module.
+    """
+    bands = _weapon_attack_range_ft(weapon)
+    if bands is None:
+        return {}
+    normal, _max_band = bands
+    caster_zone = live.actor_zone.get(actor_id)
+    if caster_zone is None:
+        return {}
+    out: dict[str, bool] = {}
+    for target in targets:
+        target_zone = live.actor_zone.get(target.entity_id)
+        if target_zone is None:
+            continue
+        distance = live.topology.distance_ft(caster_zone, target_zone)
+        if distance is not None:
+            out[target.entity_id] = distance > normal
+    return out
 
 
 def _monster_attack_range_ft(activities: Sequence[Any], melee_reach_ft: int) -> int | None:
@@ -1200,14 +1264,18 @@ def _pc_attack_out_of_range(live: _LiveCombat, actor_id: str, intent: PlayerInte
     if intent.target_id is None or not intent.weapon_id:
         return False
     weapon = get_lib_loader().get_weapon(intent.weapon_id)
-    weapon_reach = _weapon_attack_range_ft(weapon)
-    if weapon_reach is None:
+    weapon_bands = _weapon_attack_range_ft(weapon)
+    if weapon_bands is None:
         return False
+    # SRD 5.2 §Range — the reject gate reads the MAX (long) band only; the
+    # narrower normal/long distinction lives in ``_target_beyond_normal_range_map``
+    # and is folded into a Disadvantage source (``attack.py``), never a reject.
+    _normal_band, max_band = weapon_bands
     attacker_zone = live.actor_zone.get(actor_id)
     target_zone = live.actor_zone.get(intent.target_id)
     if attacker_zone is None or target_zone is None:
         return False
-    return not _in_range_with_los(live.topology, attacker_zone, target_zone, weapon_reach)
+    return not _in_range_with_los(live.topology, attacker_zone, target_zone, max_band)
 
 
 def _attack_out_of_range_failure(
@@ -7520,6 +7588,13 @@ async def submit_player_intent(
             # intent (cast_spell/use_item/feature), and the helper returns
             # ``True`` for a ``None`` weapon, so this is a no-op there.
             is_proficient_attack=_is_proficient_with_weapon(current, fetched_weapon),
+            # SRD 5.2 §Range (C15 Task 2) — per-target "beyond normal range"
+            # flag folded into attack disadvantage (attack.py, "range:long").
+            # ``None``/empty for every non-attack intent (fetched_weapon is
+            # None), keeping the golden corpus identical.
+            target_beyond_normal_range=_target_beyond_normal_range_map(
+                live, current.entity_id, fetched_weapon, targets
+            ),
             # SRD 5.2 §Two-Weapon Fighting / Light property — an off-hand
             # swing (Task 2) never adds a POSITIVE governing-ability
             # modifier to its damage; a negative modifier still applies.

@@ -183,6 +183,18 @@ class ActivityResolutionContext:
     # within 5 ft, disadvantage otherwise). Absent target -> unknown -> that row
     # stays inert.
     target_distance_ft: dict[str, int] = field(default_factory=dict)
+    # SRD 5.2 §Range (C15 Task 2): "Your attack roll has Disadvantage when
+    # your target is beyond normal range, and you can't attack a target
+    # beyond long range." Per-TARGET flag — True iff the attacker→target
+    # distance is beyond the weapon's NORMAL band but still within its MAX
+    # (long) band, projected once per resolution by the orchestrator from
+    # ``_weapon_attack_range_ft`` + the live distance. The MAX-band reject
+    # itself happens upstream (``_pc_attack_out_of_range``), before this
+    # context is even built, so a target reaching ``attack.py`` with this
+    # flag set is always a LEGAL, merely disadvantaged, attack. Consumed in
+    # ``attack.py``, which appends the ``"range:long"`` disadvantage source.
+    # Empty default keeps the golden corpus identical (no range geometry).
+    target_beyond_normal_range: dict[str, bool] = field(default_factory=dict)
     # SRD 5.2 §Actions in Combat — Dodge (C14 Task 3). Per-TARGET whether the
     # Dodge benefit is currently active (``dodging`` AND not Incapacitated
     # AND Speed > 0 — the SRD loss clause), projected once per resolution by

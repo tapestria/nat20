@@ -160,6 +160,7 @@ def build_activity_context(
     target_dodging: dict[str, bool] | None = None,
     target_help_advantage: dict[str, bool] | None = None,
     is_proficient_attack: bool = True,
+    target_beyond_normal_range: dict[str, bool] | None = None,
 ) -> ActivityResolutionContext:
     """Adapt the caster + the pre-computed hydration sidecars into the typed
     ``ActivityResolutionContext`` the new resolver consumes.
@@ -328,6 +329,7 @@ def build_activity_context(
         caster_level=caster.character_level,
         spellcasting_ability=spellcasting_ability,
         is_proficient_attack=is_proficient_attack,
+        target_beyond_normal_range=target_beyond_normal_range or {},
         concentration=concentration,
         slot_level=slot_level,
         base_spell_level=base_spell_level,

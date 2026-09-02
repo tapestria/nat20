@@ -179,6 +179,13 @@ def resolve_attack(
         # ``_dodge_benefit_active``.
         if ctx.target_dodging.get(target.entity_id):
             dis_sources.append("dodge")
+        # SRD 5.2 §Range — "Your attack roll has Disadvantage when your
+        # target is beyond normal range" (a target beyond a weapon's LONG
+        # range is illegal and never reaches this resolver at all — gated
+        # upstream, ``_pc_attack_out_of_range``). Pre-resolved per-target by
+        # the orchestrator (``_target_beyond_normal_range_map``).
+        if ctx.target_beyond_normal_range.get(target.entity_id):
+            dis_sources.append("range:long")
         # SRD 5.2 §Actions in Combat — Help, Assist an Attack Roll: "giving
         # Advantage to the next attack roll by one of your allies against
         # that enemy". ``target_help_advantage`` is already gated to an

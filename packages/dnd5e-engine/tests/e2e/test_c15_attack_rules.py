@@ -187,7 +187,6 @@ def test_c15_s02_ranged_attack_disadvantaged_by_adjacent_hostile():
     assert rolled_b.roll_total <= rolled_a.roll_total
 
 
-@xfail_cluster(15, "attack rules")
 def test_c15_s03_disadvantage_tier_between_normal_and_long_range():
     """C15-S03: SRD 5.2 (Range) — "Your attack roll has Disadvantage when
     your target is beyond normal range, and you can't attack a target
