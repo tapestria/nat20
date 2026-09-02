@@ -7943,7 +7943,36 @@ async def submit_player_intent(
             loader=get_lib_loader(),
         )
         class_levels = {current.class_slug: current.character_level} if current.class_slug else {}
-        target_unseen, attacker_unseen_by = _target_visibility_maps(live, current, targets)
+        # SRD 5.2 §Weapon Mastery — Cleave (C15 Task 7): the once-per-turn
+        # gate + the R5 deterministic second target, both pre-resolved here
+        # (spatial + per-turn state are orchestrator-owned); ``attack.py``
+        # chains the extra roll only when BOTH are set. ``None``/False for
+        # every non-cleave weapon and non-attack intent. Single-target
+        # distance read (weapon attacks resolve against one primary target).
+        _primary_distance_ft = (
+            _target_distance_map(live, current.entity_id, targets).get(targets[0].entity_id)
+            if targets
+            else None
+        )
+        cleave_available = _cleave_available(current, fetched_weapon, _primary_distance_ft)
+        cleave_candidate = (
+            _cleave_candidate(live, current, fetched_weapon, targets) if cleave_available else None
+        )
+        # Fix round 1 (controller ruling): every PER-TARGET sidecar below is
+        # built over the primary targets PLUS the cleave candidate, so the
+        # chained roll sees the candidate's own full SRD geometry (visibility,
+        # cover, distance, range tier, Dodge, Help, Vex) through the same
+        # ``_attack_roll_sources`` path as a main swing. ``ctx.targets``
+        # itself stays the PRIMARY list — damage / effects / turn-state
+        # writebacks never treat the candidate as a primary target. The
+        # Help/Vex one-use pops also walk this list: a chained
+        # ``AttackRolled`` against the candidate consuming a Help or Vex
+        # grant held against IT is SRD-correct ("the next attack roll
+        # against that creature").
+        geometry_targets: list[Combatant] = (
+            [*targets, cleave_candidate] if cleave_candidate is not None else targets
+        )
+        target_unseen, attacker_unseen_by = _target_visibility_maps(live, current, geometry_targets)
         # SRD 5.2 Versatile property (C15 Task 4) — the attacker's declared
         # two-handed grip (``intent.two_handed``) applies only when the
         # weapon carries VERSATILE AND this swing is an actual melee attack
@@ -7951,22 +7980,8 @@ async def submit_player_intent(
         # ``_versatile_grip_applies``). Single-target-distance read: weapon
         # attacks resolve against one primary target, so the first entry's
         # distance stands in for "this swing's" distance.
-        _versatile_distance_ft = (
-            _target_distance_map(live, current.entity_id, targets).get(targets[0].entity_id)
-            if targets
-            else None
-        )
         use_versatile_damage = intent.two_handed and _versatile_grip_applies(
-            fetched_weapon, _versatile_distance_ft
-        )
-        # SRD 5.2 §Weapon Mastery — Cleave (C15 Task 7): the once-per-turn
-        # gate + the R5 deterministic second target, both pre-resolved here
-        # (spatial + per-turn state are orchestrator-owned); ``attack.py``
-        # chains the extra roll only when BOTH are set. ``None``/False for
-        # every non-cleave weapon and non-attack intent.
-        cleave_available = _cleave_available(current, fetched_weapon, _versatile_distance_ft)
-        cleave_candidate = (
-            _cleave_candidate(live, current, fetched_weapon, targets) if cleave_available else None
+            fetched_weapon, _primary_distance_ft
         )
         actx = build_activity_context(
             current,
@@ -8006,30 +8021,25 @@ async def submit_player_intent(
             target_cover=_target_cover_map(
                 live,
                 current.entity_id,
-                targets,
+                geometry_targets,
                 origin_cell=(
                     _aoe_cover_origin(live, current.entity_id, intent, activities)
                     if intent.intent_type == "cast_spell" and _typed_spell_broadcasts(activities)
                     else None
                 ),
             ),
-            # C15 Task 7 — the Cleave candidate (when one exists) rides along
-            # so the chained roll sees its distance-aware condition rows
-            # (Prone within 5 ft, Paralyzed auto-crit) like any target.
-            target_distance_ft=_target_distance_map(
-                live,
-                current.entity_id,
-                [*targets, cleave_candidate] if cleave_candidate is not None else targets,
-            ),
+            target_distance_ft=_target_distance_map(live, current.entity_id, geometry_targets),
             # SRD 5.2 §Actions in Combat — Dodge: per-target dodge-benefit
             # flag folded into attack disadvantage (attack.py) — the
             # "if you can see the attacker" conjunct is deferred to C16b.
-            target_dodging={t.entity_id: _dodge_benefit_active(live, t) for t in targets},
+            target_dodging={t.entity_id: _dodge_benefit_active(live, t) for t in geometry_targets},
             # SRD 5.2 §Actions in Combat — Help, Assist an Attack Roll (C14
             # Task 4): per-target ally-of-attacker Help grant folded into
             # attack advantage (attack.py); the one-use pop fires after
             # resolution below.
-            target_help_advantage=_target_help_advantage_map(live, current.entity_id, targets),
+            target_help_advantage=_target_help_advantage_map(
+                live, current.entity_id, geometry_targets
+            ),
             attacker_grappler_id=_condition_source_entity(live, current, "grappled"),
             target_unseen=target_unseen,
             attacker_unseen_by=attacker_unseen_by,
@@ -8045,7 +8055,7 @@ async def submit_player_intent(
             # spatial read owned here, not in the pure resolver).
             active_effects=tuple(live.active_effects.get(current.entity_id, [])),
             sneak_attack_spent={current.entity_id: current.sneak_attack_spent_this_turn},
-            sneak_attack_ally_adjacent=_sneak_ally_adjacent_map(live, current, targets),
+            sneak_attack_ally_adjacent=_sneak_ally_adjacent_map(live, current, geometry_targets),
             # SRD 5.2 §Weapon Proficiency (C15) — real gate: proficient iff
             # ``current.weapon_proficiencies`` is the ``None`` sentinel (host
             # never opted in) or the fetched weapon's category/slug is
@@ -8058,7 +8068,7 @@ async def submit_player_intent(
             # ``None``/empty for every non-attack intent (fetched_weapon is
             # None), keeping the golden corpus identical.
             target_beyond_normal_range=_target_beyond_normal_range_map(
-                live, current.entity_id, fetched_weapon, targets
+                live, current.entity_id, fetched_weapon, geometry_targets
             ),
             # SRD 5.2 "Ranged Attacks in Close Combat" (C15 Task 3): per-
             # ATTACKER flag folded into attack disadvantage (attack.py,
@@ -8077,7 +8087,9 @@ async def submit_player_intent(
             # per-target vex-grant / per-attacker sap-mark flags, mirroring
             # the Help geometry above. The one-use pops fire after
             # resolution below.
-            attacker_vex_advantage=_attacker_vex_advantage_map(live, current.entity_id, targets),
+            attacker_vex_advantage=_attacker_vex_advantage_map(
+                live, current.entity_id, geometry_targets
+            ),
             attacker_sapped=current.entity_id in live.sap_marks,
             # SRD 5.2 §Weapon Mastery — Cleave (C15 Task 7): see the
             # ``cleave_available`` / ``cleave_candidate`` computation above.
@@ -8093,7 +8105,7 @@ async def submit_player_intent(
         # landed against a target the caster's Help grant was folded onto
         # (``target_help_advantage`` above), spend exactly ONE matching
         # helper's grant now that the roll has happened.
-        _pop_help_grant(live, current.entity_id, targets, pre_event_count)
+        _pop_help_grant(live, current.entity_id, geometry_targets, pre_event_count)
 
         # SRD 5.2 §Weapon Mastery — Vex / Sap (C15 Task 6): spend the
         # one-use grants/marks that PRE-EXISTED this resolution and were
@@ -8101,7 +8113,7 @@ async def submit_player_intent(
         # immediately above) BEFORE folding any NEW procs THIS resolution
         # produced — a fresh vex/sap proc from THIS hit must survive to gate
         # the attacker's/target's NEXT attack, not this one.
-        _pop_vex_grants(live, current.entity_id, targets, pre_event_count)
+        _pop_vex_grants(live, current.entity_id, geometry_targets, pre_event_count)
         _pop_sap_mark(live, current.entity_id, pre_event_count)
         _fold_mastery_procs(live, current.entity_id, actx)
 

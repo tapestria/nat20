@@ -281,11 +281,14 @@ def _resolve_cleave_chain(
       weapon dice sidecar), with a FRESH d20 through ``ctx.rng`` — never the
       ``force_d20`` test seam (that is scoped to the first main target).
       Advantage geometry goes through ``_attack_roll_sources`` exactly like
-      a main swing; the candidate's conditions are read off the
-      ``Combatant`` since it is not one of ``ctx.targets`` (the orchestrator
-      does thread its ``target_distance_ft`` entry, so the distance-aware
-      Prone / auto-crit rows apply; cover / help / dodge / vex maps hold no
-      entry for it — a chained swing takes no Help or Vex benefit).
+      a main swing with the candidate's FULL per-target geometry: the
+      orchestrator builds every per-target sidecar (visibility, cover,
+      distance, range tier, Dodge, Help, Vex, conditions) over the primary
+      targets PLUS the candidate (fix round 1), while ``ctx.targets`` stays
+      the primary list. A Help or Vex grant held against the candidate is
+      therefore honored on — and consumed by — the chained roll ("the next
+      attack roll against that creature"). The ``active_condition_names``
+      fallback only covers a hand-built context that omitted the candidate.
     * Damage reuses ``_apply_on_hit_damage`` under a LOCAL
       ``dataclasses.replace`` of the context with
       ``suppress_positive_ability_damage_mod=True`` (the Light-property

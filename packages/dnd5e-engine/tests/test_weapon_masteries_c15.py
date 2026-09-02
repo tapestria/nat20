@@ -987,3 +987,85 @@ def test_d_nick_offhand_swing_resolves_even_with_the_bonus_action_already_spent(
     assert failures
     assert failures[-1].reason == "no_action_economy"
     assert _combatant(plain, "char:hero").offhand_attack_spent is False
+
+
+# ── (c) Cleave — fix round 1: full per-target geometry on the chained roll ──
+
+
+class _FixedRandom(random.Random):
+    """Every ``randint`` draw returns a fixed pip count (attack d20 AND damage
+    dice) so a hit/miss boundary is exact."""
+
+    def __init__(self, pips: int) -> None:
+        super().__init__(0)
+        self._pips = pips
+
+    def randint(self, a: int, b: int) -> int:
+        return min(max(self._pips, a), b)
+
+
+def _set_dodging(live, entity_id: str) -> None:
+    for idx, c in enumerate(live.initiative):
+        if c.entity_id == entity_id:
+            live.initiative[idx] = c.model_copy(update={"dodging": True})
+            break
+
+
+def test_c_cleave_chain_honors_a_dodging_candidate() -> None:
+    """Fix round 1 — the chained roll gets the candidate's OWN per-target
+    geometry: a Dodging mon:b imposes Disadvantage (``"dodge"`` source) on
+    the chained ``AttackRolled`` exactly as it would on a main swing."""
+
+    async def _run():
+        start, live = await _start(
+            "c15-t7-c-cleave-dodge",
+            _cleave_party(),
+            [_mon("mon:a", "A", cell(0, 1)), _mon("mon:b", "B", cell(1, 1), initiative=9)],
+        )
+        _set_dodging(live, "mon:b")
+        await submit_player_intent(
+            start.handle, actor_id="char:hero", intent=_attack("greataxe", "mon:a")
+        )
+        return live
+
+    live = run_async(_run())
+    swings = [e for e in events_of(live, AttackRolled) if e.attacker_id == "char:hero"]
+    assert [s.target_id for s in swings] == ["mon:a", "mon:b"]
+    assert "dodge" not in swings[0].sources
+    assert "dodge" in swings[1].sources
+    assert swings[1].advantage == "disadvantage"
+
+
+def test_c_cleave_chain_honors_three_quarters_cover_on_the_candidate() -> None:
+    """Fix round 1 — cover geometry on the chained roll: with a fixed d20 of
+    10 the hero's total is 10 + 3 (STR) + 2 (prof) = 15 vs mon:b AC 14 — a
+    HIT in the open, a MISS behind three-quarters cover (+5 -> effective
+    AC 19). Control and covered runs differ ONLY in ``cover_cells``."""
+
+    async def _run(*, covered: bool):
+        start = await start_combat(
+            session_id=f"c15-t7-c-cleave-cover-{covered}",
+            party=_cleave_party(),
+            encounter=[
+                _mon("mon:a", "A", cell(0, 1)),
+                _mon("mon:b", "B", cell(1, 1), initiative=9, ac=14),
+            ],
+            scene_zones=None,
+            grid_scene=grid_scene(cover_cells={cell(1, 1): "three_quarters"} if covered else {}),
+            rng_seed=1,
+        )
+        live = _get_live(start.handle)
+        live.rng = _FixedRandom(10)
+        await submit_player_intent(
+            start.handle, actor_id="char:hero", intent=_attack("greataxe", "mon:a")
+        )
+        return live
+
+    def _chain(live):
+        swings = [e for e in events_of(live, AttackRolled) if e.attacker_id == "char:hero"]
+        assert [s.target_id for s in swings] == ["mon:a", "mon:b"]
+        assert swings[1].roll_total == 15
+        return swings[1]
+
+    assert _chain(run_async(_run(covered=False))).is_hit is True
+    assert _chain(run_async(_run(covered=True))).is_hit is False
