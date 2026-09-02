@@ -163,6 +163,8 @@ def build_activity_context(
     is_proficient_attack: bool = True,
     target_beyond_normal_range: dict[str, bool] | None = None,
     attacker_ranged_in_melee: bool = False,
+    attacker_vex_advantage: dict[str, bool] | None = None,
+    attacker_sapped: bool = False,
 ) -> ActivityResolutionContext:
     """Adapt the caster + the pre-computed hydration sidecars into the typed
     ``ActivityResolutionContext`` the new resolver consumes.
@@ -421,4 +423,11 @@ def build_activity_context(
         cast_level_override=cast_level_override,
         suppress_positive_ability_damage_mod=suppress_positive_ability_damage_mod,
         use_versatile_damage=use_versatile_damage,
+        # SRD 5.2 §Weapon Mastery — Vex / Sap (C15 Task 6): PRE-RESOLVED
+        # per-target vex-grant / per-attacker sap-mark flags, computed by
+        # the orchestrator (``live.vex_grants`` / ``live.sap_marks``).
+        # Absent (``None``) -> empty / False, leaving the golden corpus
+        # identical (no mastery geometry).
+        attacker_vex_advantage=attacker_vex_advantage or {},
+        attacker_sapped=attacker_sapped,
     )

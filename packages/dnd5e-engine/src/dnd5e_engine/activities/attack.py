@@ -227,6 +227,21 @@ def resolve_attack(
         # ``target_help_advantage`` docstring.
         if ctx.target_help_advantage.get(target.entity_id):
             adv_sources.append("help")
+        # SRD 5.2 §Weapon Mastery — Vex (C15 Task 6): "you have Advantage on
+        # your next attack roll against that creature". No dedicated
+        # ``AdvantageSource`` exists for mastery riders (controller ruling,
+        # same "trait" reuse as Heavy below) — the Literal is closed.
+        # ``target_attacker_has_advantage`` (below) folds this into the SAME
+        # boolean ``sneak_attack_triggers`` reads, so a vex-advantaged Rogue
+        # swing can Sneak Attack.
+        target_vex_advantage = bool(ctx.attacker_vex_advantage.get(target.entity_id))
+        if target_vex_advantage:
+            adv_sources.append("trait")
+        # SRD 5.2 §Weapon Mastery — Sap (C15 Task 6): "that creature has
+        # Disadvantage on its next attack roll". Per-ATTACKER (the acting
+        # caster may itself be sapped); reuses the SAME "trait" token.
+        if ctx.attacker_sapped:
+            dis_sources.append("trait")
         sources = AdvantageSources(advantage=tuple(adv_sources), disadvantage=tuple(dis_sources))
         roll = roll_d20_test(ctx.rng, attack_bonus, sources, forced_natural=_forced_d20(ctx, index))
         mode: AdvantageMode = roll.mode
@@ -270,17 +285,22 @@ def resolve_attack(
         )
 
         if is_hit:
-            _apply_on_hit_damage(
+            # C15 Task 6 — Vex synergy: a vex-advantaged swing feeds the SAME
+            # boolean ``sneak_attack_triggers`` reads as
+            # ``attacker_has_advantage`` (the flag-based override), so a
+            # vex-advantaged Rogue attack can Sneak Attack even without the
+            # flag itself set.
+            damage_dealt = _apply_on_hit_damage(
                 activity,
                 ctx,
                 target,
                 weapon,
                 governing_ability,
                 is_crit=is_crit,
-                attacker_has_advantage=attacker_has_advantage,
+                attacker_has_advantage=attacker_has_advantage or target_vex_advantage,
                 attacker_has_disadvantage=attacker_has_disadvantage,
             )
-            apply_mastery_on_hit(weapon, ctx, target, governing_ability)
+            apply_mastery_on_hit(weapon, ctx, target, governing_ability, damage_dealt=damage_dealt)
             apply_activity_effects(
                 activity, ctx, target, save_succeeded=None, cast_level=cast_level
             )
@@ -595,17 +615,22 @@ def _apply_on_hit_damage(
     is_crit: bool,
     attacker_has_advantage: bool = False,
     attacker_has_disadvantage: bool = False,
-) -> None:
+) -> int:
     """Roll base weapon damage + activity parts for one hit target and apply.
 
     Sets ``variables["in_crit"]`` for the duration of this target's damage rolls so
     the shared dice helper doubles dice on a crit, then restores the prior value so
     the signal never leaks to a sibling target or a later caller (mirrors
     ``effects/attack.py:_recurse_hit`` push/pop discipline).
+
+    Returns the total (post-modifier) damage actually dealt to ``target``
+    (``apply_damage``'s return) — C15 Task 6 (Vex) needs this to gate its
+    on-hit proc on damage actually landing, not merely a hit.
     """
     previous = ctx.variables.get(_IN_CRIT)
     if is_crit:
         ctx.variables[_IN_CRIT] = 1
+    total_dealt = 0
     try:
         by_type: dict[str, int] = defaultdict(int)
         first_type: str | None = None
@@ -729,7 +754,7 @@ def _apply_on_hit_damage(
             source_id = None
 
         # spell-delivered attack rolls are magical too (spells are magical effects)
-        apply_damage(
+        total_dealt = apply_damage(
             target,
             dict(by_type),
             ctx,
@@ -743,6 +768,7 @@ def _apply_on_hit_damage(
                 ctx.variables.pop(_IN_CRIT, None)
             else:
                 ctx.variables[_IN_CRIT] = previous
+    return total_dealt
 
 
 def _roll_base_weapon_damage(

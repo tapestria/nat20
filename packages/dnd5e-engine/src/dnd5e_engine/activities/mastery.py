@@ -1,9 +1,8 @@
-"""Weapon-mastery resolution for the ``attack`` kind handler — the SRD-2024
-INSTANTANEOUS subset that resolves entirely within a single attack.
+"""Weapon-mastery resolution for the ``attack`` kind handler.
 
 ``Weapon.mastery`` is a lowercase string (Foundry ``system.mastery.value``) on a
-distinct axis from ``WeaponProperty``. The 2024 SRD defines eight masteries; only
-the two that fully resolve inside the attack are implemented here:
+distinct axis from ``WeaponProperty``. The 2024 SRD defines eight masteries; four
+are implemented here:
 
 * **graze** — on a MISS, deal damage equal to the attacker's governing-ability
   modifier (the SAME ability ``attack._governing_ability`` returns), of the
@@ -14,17 +13,24 @@ the two that fully resolve inside the attack are implemented here:
   mastery DC ``8 + proficiency + governing-ability mod``. The save goes through
   the same save primitive the ``save`` kind uses (honoring ``force_save_d20``) and
   emits ``SaveRolled(ability="con", ...)`` BEFORE any condition. On a FAILURE the
-  target is knocked ``prone`` (``ConditionApplied``); on a success, nothing.
+  target is knocked ``prone`` (``ConditionApplied``) UNLESS the target is immune
+  to the ``prone`` condition (``effects.is_condition_immune`` — the save still
+  rolls and ``SaveRolled`` still fires; only the emit is gated, C15 Task 6).
+* **vex** (C15 Task 6) — on a HIT that DEALS DAMAGE (the post-immunity total,
+  ``apply_damage``'s return), append ``("vex", target_id)`` to
+  ``ctx.mastery_procs`` (controller ruling R4). This resolver never touches
+  live combat state; the orchestrator folds the proc into a lingering
+  Advantage grant ("before the end of your next turn") after resolution.
+* **sap** (C15 Task 6) — on a HIT (damage irrelevant), append
+  ``("sap", target_id)`` to ``ctx.mastery_procs``. The orchestrator folds it
+  into a lingering Disadvantage mark on the TARGET ("before the start of
+  your next turn") after resolution.
 
-The remaining six masteries are lingering / multi-target / movement effects that
-do NOT resolve within the attack and are deferred to a later piece. Each is
-listed below with its one-line SRD reference; ``apply_mastery_*`` logs
+The remaining four masteries are multi-target / movement effects that do NOT
+resolve within the attack and are deferred to a later piece. Each is listed
+below with its one-line SRD reference; ``apply_mastery_*`` logs
 ``mastery_deferred mastery=<name>`` at INFO and applies no mechanic:
 
-* **sap** — on hit, target has disadvantage on its next attack before your next
-  turn (lingering disadvantage rider — SRD §Weapon Mastery / Sap).
-* **vex** — on hit, you have advantage on your next attack against that target
-  before your next turn (lingering advantage rider — SRD §Vex).
 * **slow** — on hit, target's speed is reduced by 10 ft until your next turn
   (movement / speed modifier — SRD §Slow).
 * **push** — on hit, you can push the target up to 10 ft straight away from you
@@ -34,10 +40,12 @@ listed below with its one-line SRD reference; ``apply_mastery_*`` logs
 * **cleave** — on hit, a second creature within 5 ft of the target can be struck
   (multi-target chained attack — SRD §Cleave).
 
-MIRRORS, does not import from, ``effects/``. Topple's Con save runs through the
-shared ``activities/save_primitive.py:roll_save`` (the same primitive the ``save``
+Topple's Con save runs through the shared
+``activities/save_primitive.py:roll_save`` (the same primitive the ``save``
 kind uses), so its ``force_save_d20`` determinism and modifier sourcing match;
-graze has no roll. No effects/evaluator/orchestrator/neo4j imports.
+graze has no roll. The one import from ``effects/`` (``is_condition_immune``)
+is the shared condition-immunity gate (C15 Task 6) — otherwise this module
+still does not import evaluator/orchestrator/neo4j machinery.
 """
 
 from __future__ import annotations
@@ -46,6 +54,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from dnd5e_engine.activities.apply import apply_damage
+from dnd5e_engine.activities.effects import is_condition_immune
 from dnd5e_engine.activities.save_primitive import roll_save
 from dnd5e_engine.events import ConditionApplied, SaveRolled
 
@@ -61,6 +70,8 @@ _LOGGER = logging.getLogger(__name__)
 # The instantaneous masteries this module resolves; everything else is deferred.
 _GRAZE = "graze"
 _TOPPLE = "topple"
+_VEX = "vex"
+_SAP = "sap"
 
 
 def apply_mastery_on_hit(
@@ -68,18 +79,39 @@ def apply_mastery_on_hit(
     ctx: ActivityResolutionContext,
     target: Combatant,
     governing_ability: str | None,
+    *,
+    damage_dealt: int = 0,
 ) -> None:
     """Resolve a weapon's HIT-triggered mastery against ``target``.
 
-    Only **topple** triggers on a hit: the target makes a Con save vs the mastery
-    DC and is knocked prone on a failure. Other masteries are deferred (logged).
-    A weapon with no mastery is a no-op.
+    **topple** — the target makes a Con save vs the mastery DC and is knocked
+    prone (immunity-gated) on a failure. **vex** — a hit that DEALT damage
+    (``damage_dealt > 0``, the post-immunity total from ``apply_damage``)
+    appends a proc to ``ctx.mastery_procs`` for the orchestrator to fold into
+    a lingering Advantage grant. **sap** — any hit appends a proc for a
+    lingering Disadvantage mark on ``target``. Other masteries are deferred
+    (logged). A weapon with no mastery is a no-op.
+
+    ``damage_dealt`` is the caller's (``attack.py``) already-computed total —
+    this resolver never re-derives it, keeping the "dealt damage" definition
+    (post-resistance/immunity) in exactly one place.
     """
     mastery = _mastery_of(weapon)
     if mastery is None:
         return
     if mastery == _TOPPLE:
         _resolve_topple(ctx, target, governing_ability)
+        return
+    if mastery == _VEX:
+        # SRD §Vex: "hit a creature ... and deal damage to the creature" — a
+        # hit that dealt ZERO final damage (e.g. a damage-immune target)
+        # does not proc the rider.
+        if damage_dealt > 0:
+            ctx.mastery_procs.append((_VEX, target.entity_id))
+        return
+    if mastery == _SAP:
+        # SRD §Sap: "hit a creature with this weapon" — damage-independent.
+        ctx.mastery_procs.append((_SAP, target.entity_id))
         return
     if mastery == _GRAZE:
         # graze triggers on a MISS, not a hit — nothing to do on a hit.
@@ -188,6 +220,11 @@ def _resolve_topple(
     knocked prone. ``SaveRolled(ability="con", ...)`` is emitted BEFORE any
     condition (a topple that applies prone without first emitting SaveRolled is a
     bug). The save d20 honors ``force_save_d20`` for determinism.
+
+    C15 Task 6: SRD §Immunity — "Immunity to a condition means you aren't
+    affected by it." The save STILL rolls (and ``SaveRolled`` still fires)
+    against a prone-immune target; only the ``ConditionApplied`` emit is
+    gated by the shared ``is_condition_immune`` helper.
     """
     dc = _topple_dc(ctx, governing_ability)
     roll = roll_save(ctx, target, "con", dc)
@@ -206,7 +243,7 @@ def _resolve_topple(
         )
     )
 
-    if not roll.succeeded:
+    if not roll.succeeded and not is_condition_immune(target, "prone"):
         ctx.event_emitter(ConditionApplied(target_id=target.entity_id, condition="prone"))
 
 

@@ -918,6 +918,91 @@ def _pop_help_grant(
             del live.help_grants[target.entity_id]
 
 
+def _attacker_vex_advantage_map(
+    live: _LiveCombat, attacker_id: str, targets: Sequence[Combatant]
+) -> dict[str, bool]:
+    """SRD 5.2 §Weapon Mastery — Vex (C15 Task 6): per-TARGET, does
+    ``attacker_id`` hold a live Vex grant against that target
+    (``live.vex_grants[attacker_id]``)? Threaded into
+    ``ActivityResolutionContext.attacker_vex_advantage``; the one-use pop
+    happens after resolution (``_pop_vex_grants``) — this is a read-only
+    projection, mirrors ``_target_help_advantage_map``.
+    """
+    grants = live.vex_grants.get(attacker_id)
+    if not grants:
+        return {}
+    return {t.entity_id: True for t in targets if t.entity_id in grants}
+
+
+def _pop_vex_grants(
+    live: _LiveCombat, attacker_id: str, targets: Sequence[Combatant], pre_event_count: int
+) -> None:
+    """One-use pop for a consumed Vex grant (SRD "your NEXT attack roll
+    against that creature"). For each target ``attacker_id`` held a live
+    grant against, if an ``AttackRolled`` by ``attacker_id`` against that
+    target landed in this resolution's event slice, the grant is spent
+    (removed) regardless of hit/miss/cancellation — mirrors
+    ``_pop_help_grant``.
+    """
+    grants = live.vex_grants.get(attacker_id)
+    if not grants:
+        return
+    recent = live.event_log[pre_event_count:]
+    for target in targets:
+        if target.entity_id not in grants:
+            continue
+        fired = any(
+            isinstance(ev, AttackRolled)
+            and ev.attacker_id == attacker_id
+            and ev.target_id == target.entity_id
+            for ev in recent
+        )
+        if fired:
+            del grants[target.entity_id]
+    if not grants:
+        del live.vex_grants[attacker_id]
+
+
+def _pop_sap_mark(live: _LiveCombat, attacker_id: str, pre_event_count: int) -> None:
+    """One-use pop for a consumed Sap mark (SRD "its NEXT attack roll").
+
+    If ``attacker_id`` (the potentially-sapped creature) rolled ANY attack
+    in this resolution's event slice, its outstanding mark is spent —
+    mirrors ``_pop_help_grant`` / ``_pop_vex_grants``.
+    """
+    if attacker_id not in live.sap_marks:
+        return
+    recent = live.event_log[pre_event_count:]
+    fired = any(isinstance(ev, AttackRolled) and ev.attacker_id == attacker_id for ev in recent)
+    if fired:
+        del live.sap_marks[attacker_id]
+
+
+def _fold_mastery_procs(
+    live: _LiveCombat, attacker_id: str, ctx: ActivityResolutionContext
+) -> None:
+    """SRD 5.2 §Weapon Mastery — Vex / Sap writeback (C15 Task 6, controller
+    ruling R4). Fold every ``(mastery_slug, target_id)`` the pure resolver
+    appended to ``ctx.mastery_procs`` this resolution into live combat
+    state:
+
+    * ``"vex"`` -> ``live.vex_grants[attacker_id][target_id] = 2`` ("before
+      the end of your NEXT turn" — decremented at the attacker's own turn
+      end, see ``_end_turn_and_advance``).
+    * ``"sap"`` -> ``live.sap_marks[target_id] = attacker_id`` ("before the
+      start of your next turn" — cleared at the attacker's own next
+      ``TurnStarted``, see ``_emit_apply_turn_started``).
+
+    Non-stacking (R5): a re-proc REFRESHES the grant/mark (overwrite, not
+    append/increment).
+    """
+    for mastery_slug, target_id in ctx.mastery_procs:
+        if mastery_slug == "vex":
+            live.vex_grants.setdefault(attacker_id, {})[target_id] = 2
+        elif mastery_slug == "sap":
+            live.sap_marks[target_id] = attacker_id
+
+
 #: ``ActiveEffect.origin`` prefixes whose THIRD ``:``-segment is the entity that
 #: created the effect (``cast:<slug>:<caster_id>`` is the shipped convention;
 #: ``grapple:<slug>:<grappler_id>`` is reserved for C14's grapple contest).
@@ -1700,6 +1785,34 @@ class _LiveCombat:
     # are host/Search concerns out of this engine's scope (no Search action
     # or perception-vs-stealth contest is modeled here).
     hidden_entities: set[str] = field(default_factory=set)
+    # SRD 5.2 §Weapon Mastery — Vex (C15 Task 6): *"If you hit a creature
+    # with this weapon and deal damage to the creature, you have Advantage
+    # on your next attack roll against that creature before the end of your
+    # next turn."* Keyed ATTACKER entity_id -> {TARGET entity_id ->
+    # rounds-remaining}. A fresh proc sets rounds-remaining to 2 ("before
+    # the end of your NEXT turn" spans this turn's remainder plus the
+    # attacker's whole next turn); re-procing the SAME attacker/target pair
+    # REFRESHES to 2 rather than stacking (controller ruling R5 — riders are
+    # non-stacking). Decremented for the ENDING actor's own grants at
+    # ``_end_turn_and_advance`` (dropping entries that reach 0); the
+    # one-use consumption pop (after that attacker's next attack roll vs
+    # the SAME target lands) happens at the PC/monster attack-context build
+    # sites, mirroring ``help_grants``' ``_pop_help_grant``. Populated by
+    # folding ``ActivityResolutionContext.mastery_procs`` post-resolution
+    # (controller ruling R4).
+    vex_grants: dict[str, dict[str, int]] = field(default_factory=dict)
+    # SRD 5.2 §Weapon Mastery — Sap (C15 Task 6): *"If you hit a creature
+    # with this weapon, that creature has Disadvantage on its next attack
+    # roll before the start of your next turn."* Keyed SAPPED-entity
+    # entity_id -> the SOURCE attacker's entity_id (single mark; a re-proc
+    # from a DIFFERENT attacker overwrites rather than stacking, R5).
+    # Cleared for the source attacker's outstanding marks at that
+    # attacker's OWN next ``TurnStarted`` (``_emit_apply_turn_started``,
+    # beside the Help-grant expiry sweep); the one-use consumption pop
+    # (after the sapped entity's own next attack roll resolves) happens at
+    # the PC/monster attack-context build sites. Populated by folding
+    # ``ActivityResolutionContext.mastery_procs`` post-resolution (R4).
+    sap_marks: dict[str, str] = field(default_factory=dict)
     # Turn-boundary hook registry (``dnd5e_engine.turn_lifecycle``). Populated
     # by ``_register_default_turn_hooks`` in ``start_combat``; run by
     # ``_end_turn_and_advance`` / ``_begin_turn``. Every rule that fires "at the
@@ -2991,6 +3104,12 @@ def _emit_apply_turn_started(live: _LiveCombat, event: TurnStarted) -> None:
             live.help_grants[target_id] = helpers
         else:
             del live.help_grants[target_id]
+    # SRD 5.2 §Weapon Mastery — Sap (C15 Task 6): "before the start of your
+    # next turn" — the SOURCE ATTACKER's own next turn, not the sapped
+    # creature's. Clear every outstanding mark this actor sourced (an
+    # unconsumed mark simply lapses), mirroring the Help sweep above.
+    for sapped_id in [sid for sid, src in live.sap_marks.items() if src == event.actor_id]:
+        del live.sap_marks[sapped_id]
 
 
 def _hook_expire_reaction_effects(live: _LiveCombat, actor_id: str | None) -> None:
@@ -4571,6 +4690,28 @@ def _hook_concentration_expiry(live: _LiveCombat, actor_id: str | None) -> None:
     _drop_concentration(live, actor_id, reason="duration")
 
 
+def _hook_expire_vex_grants(live: _LiveCombat, actor_id: str | None) -> None:
+    """``turn_end`` hook — SRD 5.2 §Weapon Mastery / Vex (C15 Task 6):
+    "before the end of your NEXT turn". Decrements every rounds-remaining
+    counter under the ENDING actor's own ``live.vex_grants`` entry (this
+    actor is the GRANTOR, never the grantee); a counter reaching 0 drops —
+    the grant fired the moment its holder made ITS next attack roll against
+    that target (``_pop_vex_grants``) before this can ever be reached in
+    the common case, so this hook is chiefly the "never attacked again"
+    lapse path. No RNG."""
+    if actor_id is None:
+        return
+    grants = live.vex_grants.get(actor_id)
+    if not grants:
+        return
+    for target_id in list(grants):
+        grants[target_id] -= 1
+        if grants[target_id] <= 0:
+            del grants[target_id]
+    if not grants:
+        del live.vex_grants[actor_id]
+
+
 def _register_default_turn_hooks(live: _LiveCombat) -> None:
     """Register the engine's built-in turn-boundary hooks on ``live``.
 
@@ -4605,6 +4746,7 @@ def _register_default_turn_hooks(live: _LiveCombat) -> None:
     live.lifecycle.register(
         "turn_end", _hook_concentration_expiry, key="engine:concentration-expiry"
     )
+    live.lifecycle.register("turn_end", _hook_expire_vex_grants, key="engine:vex-expiry")
     live.lifecycle.register(
         "turn_start", _hook_expire_reaction_effects, key="engine:reaction-effect-expiry"
     )
@@ -7750,6 +7892,12 @@ async def submit_player_intent(
             # SRD 5.2 Versatile property (C15 Task 4) — see
             # ``use_versatile_damage`` computation above.
             use_versatile_damage=use_versatile_damage,
+            # SRD 5.2 §Weapon Mastery — Vex / Sap (C15 Task 6): PRE-RESOLVED
+            # per-target vex-grant / per-attacker sap-mark flags, mirroring
+            # the Help geometry above. The one-use pops fire after
+            # resolution below.
+            attacker_vex_advantage=_attacker_vex_advantage_map(live, current.entity_id, targets),
+            attacker_sapped=current.entity_id in live.sap_marks,
         )
         for activity in activities:
             resolve_activity(activity, actx, weapon=fetched_weapon)
@@ -7759,6 +7907,16 @@ async def submit_player_intent(
         # (``target_help_advantage`` above), spend exactly ONE matching
         # helper's grant now that the roll has happened.
         _pop_help_grant(live, current.entity_id, targets, pre_event_count)
+
+        # SRD 5.2 §Weapon Mastery — Vex / Sap (C15 Task 6): spend the
+        # one-use grants/marks that PRE-EXISTED this resolution and were
+        # CONSUMED by an attack roll this resolution (mirrors the Help pop
+        # immediately above) BEFORE folding any NEW procs THIS resolution
+        # produced — a fresh vex/sap proc from THIS hit must survive to gate
+        # the attacker's/target's NEXT attack, not this one.
+        _pop_vex_grants(live, current.entity_id, targets, pre_event_count)
+        _pop_sap_mark(live, current.entity_id, pre_event_count)
+        _fold_mastery_procs(live, current.entity_id, actx)
 
         # SRD 5.2 §Actions in Combat — Hide, break clause: "the condition
         # ends on you immediately after ... you make an attack roll" or
@@ -8526,6 +8684,15 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
             # ``attack.py``'s weapon-based "effectively ranged" gate never
             # fires for a monster attack today — a recorded follow-up.
             attacker_ranged_in_melee=_hostile_adjacent_to_attacker(live, current),
+            # SRD 5.2 §Weapon Mastery — Vex / Sap (C15 Task 6): mirrors the
+            # PC site. A monster attack carries no ``Weapon`` (see below), so
+            # a monster attacker can never itself PRODUCE a vex/sap proc —
+            # but it CAN be a vex-grant target or a sap-mark holder from a
+            # prior PC weapon hit, so both flags are wired for symmetry.
+            attacker_vex_advantage=_attacker_vex_advantage_map(
+                live, current.entity_id, target_list
+            ),
+            attacker_sapped=current.entity_id in live.sap_marks,
         )
         for activity in monster_activities:
             # Monster attacks carry their damage on the AttackActivity itself,
@@ -8533,6 +8700,13 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
             resolve_activity(activity, actx, weapon=None)
         # SRD 5.2 §Actions in Combat — Help: one-use pop, mirrors the PC site.
         _pop_help_grant(live, current.entity_id, target_list, pre_event_count)
+        # SRD 5.2 §Weapon Mastery — Vex / Sap (C15 Task 6): mirrors the PC
+        # site's pop-then-fold ordering. A monster attack never produces a
+        # proc itself (no ``Weapon``, see above), so the fold is a no-op
+        # here in practice — wired for symmetry / future monster weapons.
+        _pop_vex_grants(live, current.entity_id, target_list, pre_event_count)
+        _pop_sap_mark(live, current.entity_id, pre_event_count)
+        _fold_mastery_procs(live, current.entity_id, actx)
         # SRD 5.2 §Actions in Combat — Hide, break clause: mirrors the PC
         # site. A monster hidden via a prior Hide loses Invisible the
         # moment IT makes an attack roll (no monster gambit currently

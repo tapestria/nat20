@@ -1,7 +1,9 @@
 """Behavioral tests for SRD-2024 weapon mastery (``activities/mastery.py``).
 
-Only the two masteries that fully resolve inside a single attack are
-implemented; the other six are deliberately deferred. The rules pinned here:
+Four masteries fully resolve inside a single attack (graze, topple, and, as
+of C15 Task 6, vex/sap's PROC — the lingering grant/mark itself is folded by
+the orchestrator, tested at ``tests/test_weapon_masteries_c15.py``); the
+other four are deliberately deferred. The rules pinned here:
 
 - **graze** fires on a MISS and deals flat governing-ability-modifier damage
   of the weapon's damage type — no dice, nothing at all when the modifier is
@@ -321,12 +323,13 @@ def test_topple_save_reports_its_outcome() -> None:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("mastery", ["sap", "vex", "slow", "push", "nick", "cleave"])
+@pytest.mark.parametrize("mastery", ["slow", "push", "nick", "cleave"])
 def test_deferred_masteries_apply_no_mechanic_but_log_the_gap(
     mastery: str, caplog: pytest.LogCaptureFixture
 ) -> None:
-    """These six are lingering / multi-target / movement effects that cannot
-    resolve inside one attack. They must be inert — but visibly so."""
+    """These four are multi-target / movement effects that cannot resolve
+    inside one attack. They must be inert — but visibly so. (sap/vex moved
+    to the C15 Task 6 proc-append behavior below — no longer deferred.)"""
     ctx, events = _ctx(abilities={**ABILITIES, "str": 18})
 
     with caplog.at_level(logging.INFO, logger="dnd5e_engine.activities.mastery"):

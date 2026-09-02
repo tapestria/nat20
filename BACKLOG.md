@@ -194,17 +194,6 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   scenario co-locates them; needs a topology distance check at drain
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`).
 
-## Weapon mastery (2026-07-03)
-
-- **Weapon-mastery Topple bypasses `condition_immunities`.** C08's
-  condition-immunity gate lives in `activities/effects.py::apply_activity_effects`,
-  but `activities/mastery.py` (~line 199) is a second `ConditionApplied` emit
-  site with no gate — a Topple-mastery hit still knocks a prone-immune target
-  prone. Fix: factor the immunity check into a shared helper both emit sites
-  call (grep-verified: exactly two emit sites today)
-  (`packages/dnd5e-engine/src/dnd5e_engine/activities/mastery.py`,
-  `packages/dnd5e-engine/src/dnd5e_engine/activities/effects.py`).
-
 ## Effect-change sidecars (2026-07-02)
 
 - **Weapon-tagged to-hit bonus sidecar never consumed.** The orchestrator's
@@ -321,9 +310,10 @@ zone + apply logic:
   `thrown`, `light`, `two_handed`, `versatile` (`versatile_damage` is shipped
   and never chosen), `ammunition`, `heavy` are parsed by the data schema and
   never read. (`packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py`)
-- **Weapon mastery: 2 of 8 resolve.** Only `graze` and `topple` are
-  implemented; `sap`/`vex`/`slow`/`push`/`nick`/`cleave` log `mastery_deferred`
-  and apply nothing. (`packages/dnd5e-engine/src/dnd5e_engine/activities/mastery.py`)
+- **Weapon mastery: 4 of 8 resolve.** `graze`, `topple`, `vex`, and `sap`
+  (C15 Task 6) are implemented; `slow`/`push`/`nick`/`cleave` log
+  `mastery_deferred` and apply nothing.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/mastery.py`)
 - **Upcasting scales dice only, never target count** (Magic Missile darts,
   Hold Person extra targets). (`packages/dnd5e-engine/src/dnd5e_engine/activities/dice.py`)
 

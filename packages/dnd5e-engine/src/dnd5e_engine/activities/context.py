@@ -369,6 +369,44 @@ class ActivityResolutionContext:
     # instead of ``Weapon.damage_parts`` when this is set. False default keeps
     # every other swing byte-identical to before this field existed.
     use_versatile_damage: bool = False
+    # SRD 5.2 §Weapon Mastery — Vex (C15 Task 6): "If you hit a creature with
+    # this weapon and deal damage to the creature, you have Advantage on your
+    # next attack roll against that creature before the end of your next
+    # turn." Per-TARGET flag for the ATTACKER resolving THIS activity — is
+    # there a live Vex grant (this attacker -> that target) still
+    # outstanding? Projected by the orchestrator from ``live.vex_grants``
+    # immediately before resolution; consumed in ``attack.py``, which folds
+    # it into advantage via the existing ``"trait"`` AdvantageSource (no
+    # dedicated mastery-rider token exists — the Literal is closed) AND
+    # feeds the SAME boolean ``sneak_attack_triggers`` reads as
+    # ``attacker_has_advantage`` (a vex-advantaged Rogue swing can Sneak
+    # Attack). The one-use pop (mirrors ``target_help_advantage``'s
+    # ``_pop_help_grant``) is an orchestrator-side write after resolution.
+    # Empty default keeps the golden corpus identical (no mastery geometry).
+    attacker_vex_advantage: dict[str, bool] = field(default_factory=dict)
+    # SRD 5.2 §Weapon Mastery — Sap (C15 Task 6): "If you hit a creature with
+    # this weapon, that creature has Disadvantage on its next attack roll
+    # before the start of your next turn." Per-ATTACKER (the caster
+    # resolving THIS activity, who may be the SAPPED creature) — True iff a
+    # live Sap mark (``live.sap_marks``) is outstanding against THIS caster,
+    # projected by the orchestrator immediately before resolution. Consumed
+    # in ``attack.py``, which folds it into disadvantage via the SAME
+    # ``"trait"`` AdvantageSource. The one-use pop is an orchestrator-side
+    # write after resolution. Default ``False`` keeps the golden corpus
+    # identical (no mastery geometry).
+    attacker_sapped: bool = False
+    # SRD 5.2 §Weapon Mastery — Vex / Sap proc writeback channel (C15 Task 6,
+    # controller ruling R4). Mastery resolvers (``activities/mastery.py``)
+    # APPEND ``(mastery_slug, target_id)`` here when a hit qualifies for a
+    # lingering rider (vex: hit AND damage DEALT > 0, post-immunity; sap:
+    # hit alone) — they never touch live combat state directly (purity
+    # boundary). The orchestrator reads this list AFTER resolution and folds
+    # each entry into ``live.vex_grants`` / ``live.sap_marks`` (non-stacking
+    # — a re-proc REFRESHES the grant/mark's expiry rather than stacking,
+    # controller ruling R5). Mutated via ``list.append`` despite the frozen
+    # dataclass (list mutation, not field reassignment, is fine); empty
+    # default keeps the golden corpus identical.
+    mastery_procs: list[tuple[str, str]] = field(default_factory=list)
 
     def ability_mod(self, ability: str) -> int:
         return (self.caster_abilities.get(ability, 10) - 10) // 2

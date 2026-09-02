@@ -286,9 +286,14 @@ def test_hooks_registered_by_the_engine_are_present_and_ordered():
     * ``engine:timed-effect-expiry`` must stay AFTER ``engine:duration-tick``
       (the round tick claims an effect's ``rounds`` counter before the seconds
       branch can look at it);
-    * ``engine:concentration-expiry`` (C13) must stay LAST — a same-boundary
-      repeat save must still roll against a live effect before the
-      concentration cap can cascade its own drop.
+    * ``engine:concentration-expiry`` (C13) must stay LAST among the pre-C15
+      hooks — a same-boundary repeat save must still roll against a live
+      effect before the concentration cap can cascade its own drop.
+    * ``engine:vex-expiry`` (C15 Task 6, SRD §Weapon Mastery / Vex) is
+      appended AFTER concentration-expiry — it decrements independent
+      per-attacker mastery-grant counters with no cross-hook ordering
+      dependency, so it only needs to run once per turn end, after the
+      others.
     """
 
     async def _run():
@@ -304,5 +309,6 @@ def test_hooks_registered_by_the_engine_are_present_and_ordered():
             "engine:duration-tick",
             "engine:timed-effect-expiry",
             "engine:concentration-expiry",
+            "engine:vex-expiry",
         ],
     }

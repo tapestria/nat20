@@ -86,7 +86,7 @@ def apply_damage(
     magical: bool = False,
     source_id: str | None = None,
     is_crit: bool = False,
-) -> None:
+) -> int:
     """Apply a per-damage-type rolled amount to ``target`` and emit one
     ``DamageApplied`` per valid type.
 
@@ -107,12 +107,19 @@ def apply_damage(
     ``source_id`` / ``is_crit`` — C15 damage-attribution metadata threaded
     straight into the emitted ``DamageApplied`` event(s); see
     ``DamageApplied.source_id`` / ``.is_crit`` for the source-id policy.
+
+    Returns the TOTAL final (post-modifier) amount actually dealt across every
+    valid type — C15 Task 6 (Vex): "hit a creature ... and deal damage to the
+    creature" needs the AFTER-immunity total (a damage-immune target dealt 0
+    final damage must not proc the rider), not the pre-modifier rolled sum.
+    Existing callers that ignore the return are unaffected.
     """
     sidecar = ctx.passive_damage_modifiers.get(target.entity_id, {})
     resistances = _effective_resistances(target, sidecar, magical=magical)
     immunities = set(target.damage_immunities) | set(sidecar.get("immunities", ()))
     vulnerabilities = set(sidecar.get("vulnerabilities", ()))
 
+    total_dealt = 0
     for damage_type_str, amount in rolled_by_type.items():
         if damage_type_str not in _SRD_DAMAGE_TYPES:
             _LOGGER.warning(
@@ -123,6 +130,7 @@ def apply_damage(
             continue
         srd_type = cast(DamageType, damage_type_str)
         final_amount = _apply_modifiers(amount, srd_type, resistances, immunities, vulnerabilities)
+        total_dealt += final_amount
         ctx.event_emitter(
             DamageApplied(
                 target_id=target.entity_id,
@@ -133,6 +141,7 @@ def apply_damage(
                 is_crit=is_crit,
             )
         )
+    return total_dealt
 
 
 def _apply_modifiers(

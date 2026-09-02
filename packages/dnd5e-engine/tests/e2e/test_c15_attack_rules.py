@@ -18,7 +18,7 @@ from dnd5e_engine.orchestrator import (
     submit_player_intent,
 )
 from dnd5e_engine.specs import EncounterMemberSpec, GridScene, PartyMemberSpec
-from tests.e2e.harness import cell, events_of, grid_scene, run_async, xfail_cluster
+from tests.e2e.harness import cell, events_of, grid_scene, run_async
 
 
 def test_c15_s01_nonproficient_attacker_still_adds_proficiency_bonus():
@@ -467,15 +467,15 @@ def test_c15_s06_massive_damage_triggers_instant_death_for_a_character():
     assert deaths
 
 
-@xfail_cluster(15, "attack rules")
 def test_c15_s07_vex_mastery_grants_advantage_on_next_attack():
     """C15-S07: SRD 5.2 (Vex) — "If you hit a creature with this weapon
     and deal damage to the creature, you have Advantage on your next
     attack roll against that creature before the end of your next turn."
     (packs/_source/content24/appendices/appendix-d-rule-references.yml,
     id hg3adn9O1O5Z2QxL). ``apply_mastery_on_hit`` routes ``vex`` to
-    ``_log_deferred`` — an info log line, no event, no ``ActiveEffect``,
-    no sidecar write. Vex-granted advantage is unreachable end-to-end.
+    ``ctx.mastery_procs``; the orchestrator folds it into a live
+    ``vex_grants`` entry the hero's next attack roll against the same
+    target consumes as Advantage (C15 Task 6).
     """
     from dnd5e_engine.orchestrator import advance_monster_turn
 
@@ -515,11 +515,23 @@ def test_c15_s07_vex_mastery_grants_advantage_on_next_attack():
             actor_id="char:hero",
             intent=PlayerIntent(intent_type="attack", weapon_id="shortsword", target_id="mon:foe"),
         )
+        # Script repair 2026-09-02: pass ends the TWF-open turn (C14 economy); assertions unchanged (catalog repair protocol).
+        await submit_player_intent(
+            start.handle,
+            actor_id="char:hero",
+            intent=PlayerIntent(intent_type="pass"),
+        )
         await advance_monster_turn(start.handle)
         await submit_player_intent(
             start.handle,
             actor_id="char:hero",
             intent=PlayerIntent(intent_type="attack", weapon_id="shortsword", target_id="mon:foe"),
+        )
+        # Script repair 2026-09-02: pass ends the TWF-open turn (C14 economy); assertions unchanged (catalog repair protocol).
+        await submit_player_intent(
+            start.handle,
+            actor_id="char:hero",
+            intent=PlayerIntent(intent_type="pass"),
         )
         return live
 

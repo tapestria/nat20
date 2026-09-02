@@ -63,6 +63,20 @@ _MODE_MAP: dict[int, ChangeMode] = {
 _DEFAULT_CHANGE_PRIORITY = 20
 
 
+def is_condition_immune(target: Combatant, condition: str) -> bool:
+    """SRD 5.2 §Immunity: "Immunity to a condition means you aren't affected
+    by it." A target immune to ``condition`` never has it attach.
+
+    Shared gate for every ``ConditionApplied`` emit site: the effect-status
+    path below (``passive_effect_to_active_effect`` riders) AND
+    ``activities/mastery.py``'s Topple prone rider (C15 Task 6) — Topple's
+    Constitution save always rolls regardless; only the resulting
+    ``ConditionApplied`` emit is gated by this check. Extracted so the two
+    sites cannot drift on the immunity semantics.
+    """
+    return condition in target.condition_immunities
+
+
 def _name_slug(name: str) -> str:
     return name.lower().replace(" ", "_")
 
@@ -228,14 +242,15 @@ def apply_activity_effects(
         # gated on the mapping.
         for status in sorted(pe.statuses):
             if status in _CONDITION_VALUES:
-                # condition-immunity gate. A target immune to this
+                # condition-immunity gate (``is_condition_immune``, shared with
+                # ``mastery.py``'s Topple rider). A target immune to this
                 # condition (Nature's Ward → "poisoned") never has it attach —
                 # the ConditionApplied is SUPPRESSED outright (the EffectApplied
                 # rider above still fired narratively). Suppress, not
                 # emit-and-neutralize: a condition is binary present/absent with
                 # no amount to zero, so a ConditionApplied the engine treats as
                 # not-applied would mislead every condition-tick reader.
-                if status in target.condition_immunities:
+                if is_condition_immune(target, status):
                     _LOGGER.info(
                         "condition_immune_suppressed status=%s target_id=%s",
                         status,
