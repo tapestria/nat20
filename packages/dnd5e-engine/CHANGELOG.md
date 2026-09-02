@@ -9,14 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Core-mechanics **foundations** (F1 actor stat projection, F2 unified d20 test,
 F3 turn lifecycle) and clusters **C12 — conditions enforced**, **C13 —
-concentration lifecycle** and **C14 — action economy** (Dodge, Help, Hide,
+concentration lifecycle**, **C14 — action economy** (Dodge, Help, Hide,
 Extra Attack, two-weapon fighting, Grapple/Shove/`stand_up`, engine-rolled
 initiative with Surprise, and opportunity attacks through the shared d20
-primitive). Nothing is removed and no signature changes shape — every new
-field is optional and defaults to the pre-0.6 behaviour. C12/C14 do change
-*results* for hosts that carry conditions, exhaustion, or turn-keeping attacks
-on a combatant. Behavioural deltas
-(and the fixtures they move) are enumerated in
+primitive) and **C15 — attack rules** (weapon proficiency, range tiers,
+thrown weapons, Ranged Attacks in Close Combat, Heavy, versatile grip,
+damage attribution, crit-at-0-HP, Loading, and all eight 2024 weapon
+masteries). Nothing is removed and no signature changes shape — every new
+field is optional and defaults to the pre-0.6 behaviour. C12/C14/C15 do
+change *results* for hosts that carry conditions, exhaustion, turn-keeping
+attacks, or weapon proficiency/mastery data on a combatant. Behavioural
+deltas (and the fixtures they move) are enumerated in
 [`docs/migration/v0.5-to-v0.6.md`](../../docs/migration/v0.5-to-v0.6.md).
 
 - **Action economy (C14).** Extra Attack reads a caster's granted
@@ -49,6 +52,37 @@ on a combatant. Behavioural deltas
   caster's turn end via the new `engine:concentration-expiry` turn hook, with
   `EffectExpired(reason="duration")`. `LiveCombatView.concentration_chain`
   projects the caster-keyed ownership map for hosts.
+
+- **Attack rules (C15).** Weapon proficiency is a real gate: a host that never
+  sets `PartyMemberSpec.weapon_proficiencies` is assumed proficient (the R1
+  sentinel — legacy behaviour, byte-identical); an explicit (possibly empty)
+  list enforces proficiency by the weapon's category or slug, omitting
+  Proficiency Bonus (never subtracting it) when unproficient. Attack range now
+  has three tiers — normal, a middle disadvantage tier beyond normal range
+  (`"range:long"`), and beyond max range is rejected — and a melee weapon with
+  the Thrown property can now attack at range using its throw bands (both were
+  previously flatly rejected). Ranged Attacks in Close Combat (SRD 5.2):
+  disadvantage when a living, sighted, non-Incapacitated hostile is within 5
+  ft of the attacker (`"ranged_in_melee"`). Heavy weapons impose disadvantage
+  on a wielder with a raw Strength score below 13 — this and the Vex/Sap
+  mastery riders below all ride the same `"trait"` advantage-source token.
+  `PlayerIntent.two_handed: bool = False` selects a Versatile weapon's
+  two-handed damage die on a melee swing. `DamageApplied` gains `source_id`
+  (weapon slug / synthesized activity id / `"mastery:<slug>"`; spell/save/heal
+  damage paths still report `None`, a C17+ seam) and `is_crit`; a critical hit
+  against a target already making death saves now counts as two failures (SRD
+  §Damage at 0 Hit Points). Loading weapons cap at one fired shot per actor
+  per turn (`AttackFailed(reason="weapon_already_fired")`, gated ahead of the
+  Charmed-target gate). All eight 2024 weapon masteries are live: Graze
+  (miss-damage), Topple (Con save vs. `prone`, honoring condition immunity),
+  Vex (a 2-round Advantage grant against the same target), Sap (a
+  Disadvantage mark on the target until the source's next turn), Slow (a
+  flat, non-stacking −10 ft Speed penalty, cleared at the source's next turn
+  start), Push (a full 10 ft forced move via `push_combatant`; the "Large or
+  smaller" size gate is unmodelled), Cleave (a deterministic, once-per-turn
+  chained attack against the nearest eligible living hostile within 5 ft of
+  the first target and within reach) and Nick (the off-hand extra attack
+  spends no Bonus Action — SRD 5.2 lets it ride the Attack action instead).
 
 ### Added
 
@@ -230,6 +264,71 @@ on a combatant. Behavioural deltas
   still no-op). Hosts with template-less monster party members will see them
   start attacking; seeded streams containing a template-less monster's turn
   move.
+- **Weapon proficiency gates the Proficiency Bonus on an attack roll (C15).**
+  `Combatant.weapon_proficiencies: list[str] | None` — `None` (the field
+  never explicitly set on `PartyMemberSpec`) assumes proficient with every
+  weapon; an explicit list, even empty, is enforced by weapon category or
+  slug. Monsters are always proficient (never carry the field explicitly).
+- **Attack range widens to three tiers (C15).** `_weapon_attack_range_ft`
+  returns `(normal, max)`; a shot between `normal` and `max` now resolves at
+  disadvantage (`"range:long"`) instead of the pre-C15 binary in-range/
+  rejected split, and a melee weapon carrying the Thrown property can attack
+  beyond its melee reach using its thrown bands instead of being rejected.
+- **Ranged Attacks in Close Combat (C15).** A ranged (or effectively-ranged
+  thrown) attack rolls with disadvantage (`"ranged_in_melee"`) when a living,
+  sighted (`SpatialTopology.can_see`), non-Incapacitated hostile is within 5
+  ft of the attacker.
+- **Heavy-property disadvantage (C15).** A wielder with a raw Strength score
+  below 13 rolls a Heavy weapon's attack with disadvantage.
+- **Versatile grip (C15).** `PlayerIntent.two_handed: bool = False` — when
+  `True` and the weapon carries `versatile_damage`, a melee swing uses the
+  two-handed damage die instead of the one-handed die.
+- **Damage attribution and crit tracking (C15).** `DamageApplied.source_id:
+  str | None` (weapon slug / synthesized activity id / `"mastery:<slug>"`)
+  and `DamageApplied.is_crit: bool = False`. A critical hit against a target
+  already making death saves counts as two failures instead of one (SRD
+  §Damage at 0 Hit Points).
+- **Loading property (C15).** `Combatant.loading_weapon_fired_this_turn:
+  bool = False`, reset at the actor's own turn start. A second Loading-weapon
+  shot in the same turn is rejected pre-resolution with
+  `AttackFailed(reason="weapon_already_fired")`, gated ahead of the Charmed
+  target gate.
+- **All eight 2024 weapon masteries (C15).** `activities/mastery.py`
+  resolves Graze (flat governing-ability-mod damage on a miss) and Topple
+  (Constitution save vs. `8 + proficiency + governing-ability mod`, prone on
+  a failure, gated by the shared `is_condition_immune` helper) directly.
+  Vex, Sap, Slow, Push, Cleave and Nick report through
+  `ActivityResolutionContext.mastery_procs`, which the orchestrator folds
+  into live combat state: Vex grants Advantage against the same target for
+  the attacker's next 2 attack-roll turns (one-use); Sap marks the target
+  with Disadvantage until the attacker's next turn start (one-use); Slow
+  applies a flat, non-stacking −10 ft Speed penalty cleared at the source's
+  next turn start; Push forces a full 10 ft move via `push_combatant`
+  (controller ruling: always the full distance; the "Large or smaller" size
+  gate is unmodelled); Cleave chains one extra attack+damage roll against the
+  nearest eligible living hostile within 5 ft of the first target and within
+  reach (deterministic tie-break by `entity_id`, once per turn, no re-proc);
+  Nick's off-hand extra attack spends no Bonus Action and does not require
+  one — `_offhand_window_open` now keeps the turn open after any Light
+  main-hand swing even when the Bonus Action is already spent, so a host
+  must submit `"pass"` to end such a turn (see the migration guide).
+- **`test_capability_matrix.py`** gains six probes pinning the C15 rows in
+  `docs/capabilities.md` (attack rolls, conditions, forced movement, weapon
+  mastery).
+
+### Fixed
+
+- **A `PartyMemberSpec` that never set `attack_bonus` was pinned to a 0
+  to-hit bonus (2026-09-02, C15 Task 1).** `Combatant.attack_bonus` widens
+  from `int = 0` to `int | None = None`; `None` (the host never explicitly
+  set `PartyMemberSpec.attack_bonus`) now correctly falls through to the
+  real governing-ability-modifier + proficiency-bonus computation instead of
+  being silently treated as a genuine `0` override. A host-supplied value
+  (including every monster's, always threaded as a concrete int) is
+  unaffected — byte-identical to every pre-C15 fixture. The engine's own
+  `build_party.py` host-party-building path always sets `attack_bonus`
+  explicitly (from the pre-computed character sheet), so this fix does not
+  change its output — pre-existing behaviour there, unchanged.
 
 ### Deprecated
 

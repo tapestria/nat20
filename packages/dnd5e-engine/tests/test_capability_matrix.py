@@ -317,6 +317,49 @@ _PROBES: dict[str, tuple[Any, str]] = {
         lambda: "roll_d20_test" in _src("orchestrator.py"),
         "✅",
     ),
+    # C15 Tasks 2/3: the long-range disadvantage tier and the Ranged
+    # Attacks in Close Combat gate both append their own AdvantageSource
+    # (previously the row called both "still inert").
+    "long-range disadvantage": (
+        lambda: (
+            '"range:long"' in _src("activities/attack.py")
+            and '"ranged_in_melee"' in _src("activities/attack.py")
+        ),
+        "long-range disadvantage",
+    ),
+    # C15 Task 3: the Heavy-property Strength gate.
+    "Heavy weapon (raw Strength": (
+        lambda: "def _weapon_heavy_disadvantage(" in _src("activities/attack.py"),
+        "Heavy weapon (raw Strength",
+    ),
+    # C15 Task 4: DamageApplied gains source_id / is_crit for weapon damage.
+    "DamageApplied` now carries `source_id`": (
+        lambda: (
+            "source_id: str | None = None" in _event_class_body("DamageApplied")
+            and "is_crit: bool = False" in _event_class_body("DamageApplied")
+        ),
+        "DamageApplied` now carries `source_id`",
+    ),
+    # C15 Task 7: Push weapon mastery wired into the same forced-movement
+    # primitive as Thunderwave / Shove.
+    "Push weapon mastery (C15": (
+        lambda: 'elif mastery_slug == "push":' in _src("orchestrator.py"),
+        "Push weapon mastery (C15",
+    ),
+    # C15 Task 6: Topple's prone rider is gated by the shared
+    # is_condition_immune helper (previously an ungated emit site).
+    "Weapon-mastery Topple honors condition immunity": (
+        lambda: 'is_condition_immune(target, "prone")' in _src("activities/mastery.py"),
+        "Weapon-mastery Topple honors condition immunity",
+    ),
+    # C15: all eight 2024 weapon masteries are live.
+    "All eight (C15)": (
+        lambda: all(
+            slug in _src("activities/mastery.py")
+            for slug in ("graze", "topple", "vex", "sap", "slow", "push", "cleave", "nick")
+        ),
+        "All eight (C15)",
+    ),
 }
 
 

@@ -48,6 +48,19 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
 - **Monster `recharge` (5–6) abilities are not gated.** A breath weapon can be
   used every turn. Needs a per-creature recharge roll at turn start.
 - **Regeneration is not modelled.**
+- **Monster-side ranged-in-melee/Vex/Sap threading is wired but inert
+  (2026-09-02, C15 Task 6/3).** `orchestrator.py`'s monster attack site
+  passes `attacker_ranged_in_melee`, `attacker_vex_advantage`, and
+  `attacker_sapped` into the activity context and pops vex grants/sap marks
+  after resolution, mirroring the PC site exactly — but a monster attack
+  carries its damage on the `AttackActivity` itself, not a separate typed
+  `Weapon` (`resolve_activity(activity, actx, weapon=None)`), so
+  `attack.py`'s weapon-gated "effectively ranged" check and mastery-proc
+  fold never fire for a monster attacker. A monster can still be the
+  RECEIVING end of a vex grant or sap mark from a prior PC weapon hit
+  (that half is live). Needs a monster weapon-mastery/property model —
+  C18's.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
 - **Multiattack conditional clauses are not modelled.** Since C22 every
   multiattack token is labelled, so the five opaque-key monsters join
   precisely; doppelganger and chain-devil now ALSO count their conditional
@@ -86,10 +99,12 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
 
 ## Event stream observability (2026-08-22)
 
-- **Damage is not attributed.** `DamageApplied` carries no `source_id`, so
-  damage cannot be credited to an attacker or effect — a killing blow cannot be
-  attributed. Additive on the event model; owned by C15. (The roll-breakdown
-  half of this entry closed in F2c: `AttackRolled` / `SaveRolled` /
+- **Spell/save/heal damage is not attributed (2026-09-02, narrowed by C15).**
+  C15 added `DamageApplied.source_id` (weapon slug / synthesized activity id
+  / `"mastery:<slug>"` for a mastery proc) and `is_crit`, and threads both
+  through the weapon-attack path. Spell, saving-throw, and healing-adjacent
+  damage paths still emit `source_id=None` — a C17+ seam. (The roll-breakdown
+  half of the original entry closed in F2c: `AttackRolled` / `SaveRolled` /
   `CheckRolled` now carry `natural`, `modifier` and `sources`; the target's
   effective AC is still not reported.)
   (`packages/dnd5e-engine/src/dnd5e_engine/events.py`)
@@ -160,7 +175,11 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
 - **Vision is scene-lit only** (2026-08-27). No light sources (torches, *Light*,
   *Darkness*), no viewer-side obscurement, no Blinded emission from darkness;
   `can_see` reads `GridScene.lighting` / `obscurement_cells` plus the viewer's
-  projected senses. Sunlight Sensitivity is C18.
+  projected senses. Sunlight Sensitivity is C18. C15's Ranged-Attacks-in-
+  Close-Combat gate (`orchestrator.py::_hostile_adjacent_to_attacker`, the
+  `"ranged_in_melee"` disadvantage source) calls this same `can_see` for its
+  "can see you" conjunct, so it inherits this exact limitation — pinned
+  scenarios only exercise lit, unobscured scenes.
   (`packages/dnd5e-engine/src/dnd5e_engine/spatial.py::GridTopology.can_see`)
 - **Monster-cast AoE applies no forced-movement rider** (2026-08-27). Only the
   player-intent cast path calls `activities/forced_movement.py`, so a monster
@@ -198,17 +217,6 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
 
 ## Effect-change sidecars (2026-07-02)
 
-- **Weapon-tagged to-hit bonus sidecar never consumed.** The orchestrator's
-  `_fold_active_effect_changes` folds a weapon-tagged (`applicable_action_types
-  == ["attack"]`) `attack.roll.bonus` change into the
-  `passive_weapon_to_hit_bonus` sidecar key, but nothing downstream reads it —
-  `build_activity_context` only lifts the untagged `passive_to_hit_bonus` into
-  `ActivityResolutionContext.passive_attack_bonus`. A +N weapon's to-hit bonus
-  therefore never reaches the attack roll via this sidecar (the sibling
-  damage-side gap, `passive_weapon_damage_bonus`, has been closed —
-  see `docs/migration/v0.1-to-v0.2.md`)
-  (`packages/dnd5e-engine/src/dnd5e_engine/activities/build_context.py`,
-  `packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py`).
 - **Two effect-key namespaces for check/save bonuses (2026-08-26).** The public
   standalone check resolver folds `check.bonus` / `check.skill_check.bonus` /
   `check.ability_check.bonus` / `save.bonus` / `save.saving_throw.bonus` /
@@ -308,10 +316,23 @@ zone + apply logic:
   `-2 x level` D20 Test penalty. Additive fix: an `exhaustion_level: int = 0`
   (or projected `modifier`) on `CheckSpec`.
   (`packages/dnd5e-engine/src/dnd5e_engine/check.py:36`)
-- **Weapon properties beyond `finesse`/`reach` are ignored.** `loading`,
-  `thrown`, `light`, `two_handed`, `versatile` (`versatile_damage` is shipped
-  and never chosen), `ammunition`, `heavy` are parsed by the data schema and
-  never read. (`packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py`)
+- **`ammunition` is parsed and never read (2026-09-02, narrowed by C15).**
+  C15 wired `finesse`, `reach`, `loading` (one-shot-per-turn cap),
+  `thrown` (thrown-at-range attacks), `light` (Nick's off-hand-swing
+  exemption), `two_handed`/`versatile` (grip selection via
+  `PlayerIntent.two_handed`; `versatile_damage` is now chosen when
+  two-handed), and `heavy` (the raw-Strength-13 disadvantage gate) into the
+  attack-resolution path. `ammunition` — tracking how many pieces of
+  ammunition a combatant carries, and blocking an attack when the supply
+  runs out — is deliberately out of scope: it is host inventory-tracking
+  state, not a rules computation, and the engine models no inventory.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py`)
+- **Two-Handed weapon equip legality is out of engine scope (2026-09-02).**
+  SRD 5.2 requires both hands free to wield a Two-Handed weapon (and bars
+  it alongside a shield); the engine has no equipped-item/hand-occupancy
+  model, so `PlayerIntent.two_handed` is accepted at face value with no
+  legality check. Equip-slot bookkeeping is a host concern.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py`)
 - **Upcasting scales dice only, never target count** (Magic Missile darts,
   Hold Person extra targets). (`packages/dnd5e-engine/src/dnd5e_engine/activities/dice.py`)
 
