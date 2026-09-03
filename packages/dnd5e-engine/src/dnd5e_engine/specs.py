@@ -60,6 +60,9 @@ class PartyMemberSpec(BaseModel):
     # orchestrator's slot gate decrements it and emits ``CastFailed`` when no
     # slot remains rather than resolving the spell. Empty dict for non-casters.
     spell_slots: dict[int, int] = Field(default_factory=dict)
+    # SRD Pact Magic — the Warlock's separately-recovering slot pool
+    # ``{slot_level: count_remaining}``; consumed by the orchestrator in C17 Task 3.
+    pact_slots: dict[int, int] = Field(default_factory=dict)
     # SRD §Spells Known — list of spell slugs the caster has prepared/known.
     # The orchestrator resolves each slug to a typed ``Spell`` via
     # ``get_lib_loader().get_spell`` and routes its activities through the typed

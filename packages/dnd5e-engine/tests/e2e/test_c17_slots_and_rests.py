@@ -19,7 +19,6 @@ from dnd5e_engine.specs import EncounterMemberSpec, GridScene, PartyMemberSpec
 from tests.e2e.harness import cell, events_of, grid_scene, run_async, xfail_cluster
 
 
-@xfail_cluster(17, "spell slots & rests")
 def test_c17_s01_wizard_full_caster_slot_table_has_no_engine_derivation():
     """C17-S01: SRD 5.2 — "a level 3 Wizard has four level 1 spell slots
     and two level 2 slots." (packs/_source/content24/chapter-7/spells.yml:503-517,
@@ -63,7 +62,6 @@ def test_c17_s02_pact_magic_has_no_separate_pool_and_recovers_on_short_rest():
     assert outcome.pact_slots == {3: 2}
 
 
-@xfail_cluster(17, "spell slots & rests")
 def test_c17_s03_multiclass_paladin_wizard_has_no_per_class_level_input():
     """C17-S03: SRD 5.2 — "You determine your available spell slots by
     adding together the following: All your levels in the Bard, Cleric,

@@ -32,6 +32,8 @@ from dnd5e_engine.build_spec import (
     AbilityScores,
     CharacterBuildSpec,
     CombatInstance,
+    derive_multiclass_slots,
+    derive_spell_slots,
     make_build_spec,
 )
 from dnd5e_engine.check import CheckKind, CheckResult, CheckSpec, resolve_check
@@ -76,6 +78,7 @@ from dnd5e_engine.specs import (
     WallSegment,
     ZoneEdge,
 )
+from dnd5e_engine.spellcasting import derive_pact_slots
 from dnd5e_engine.types.effects import (
     ActiveEffect,
     ActiveEffectChange,
@@ -117,6 +120,9 @@ __all__ = [
     "build_party_member",
     "cell_id",
     "configure_lib_loader",
+    "derive_multiclass_slots",
+    "derive_pact_slots",
+    "derive_spell_slots",
     "drain_pending_events",
     "end_combat",
     "get_actor_active_effects",
