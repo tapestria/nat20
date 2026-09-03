@@ -232,6 +232,23 @@ class ActivityResolutionContext:
     # ``passive_save_adv`` in the hydration payload. Empty default keeps the
     # golden corpus identical (no dodge geometry).
     target_dodging: dict[str, bool] = field(default_factory=dict)
+    # C16b — SRD 5.2 Invisible "can somehow see you" carve-out (plan ruling
+    # R3): per-TARGET, does that target's own Blindsight/Truesight reach the
+    # ATTACKER (and line of sight hold) — i.e. does the target pierce the
+    # attacker's Invisible condition? Projected once per resolution by the
+    # orchestrator (``_invisibility_pierced_maps`` / ``_pierces_invisibility``).
+    # Consumed in ``attack.py``, passed as
+    # ``conditions_grant_advantage_on_attack(..., attacker_invisibility_pierced=...)``
+    # to drop the attacker's Invisible advantage against that one target.
+    # Empty default keeps the golden corpus identical (no vision model wired).
+    attacker_invisibility_pierced_by: dict[str, bool] = field(default_factory=dict)
+    # C16b — the reverse direction: per-TARGET, does the ATTACKER's own
+    # Blindsight/Truesight reach that (Invisible) target — i.e. does the
+    # attacker pierce the target's Invisible condition? Consumed in
+    # ``attack.py`` as ``target_invisibility_pierced=...`` to drop the
+    # attacker's Invisible-target disadvantage against that one target. Empty
+    # default keeps the golden corpus identical.
+    target_invisibility_pierced: dict[str, bool] = field(default_factory=dict)
     # SRD 5.2 §Actions in Combat — Help, Assist an Attack Roll (C14 Task 4).
     # Per-TARGET: does an outstanding Help grant against this target belong
     # to an ALLY of the attacker resolving THIS activity? Projected once per

@@ -399,11 +399,20 @@ def _attack_roll_sources(
         [],
         grappler_id=ctx.attacker_grappler_id,
         target_id=target.entity_id,
+        # C16b — SRD 5.2 Invisible "can somehow see you" carve-out: does THIS
+        # target's own Blindsight/Truesight pierce the attacker's Invisible
+        # condition (``_invisibility_pierced_maps`` via the orchestrator)?
+        attacker_invisibility_pierced=ctx.attacker_invisibility_pierced_by.get(
+            target.entity_id, False
+        ),
     )
     target_cond_adv, target_cond_dis = conditions_grant_advantage_on_attack(
         [],
         target_conditions,
         distance_ft=distance_ft,
+        # C16b — the reverse: does the ATTACKER's own Blindsight/Truesight
+        # pierce THIS target's Invisible condition?
+        target_invisibility_pierced=ctx.target_invisibility_pierced.get(target.entity_id, False),
     )
     adv_sources: list[AdvantageSource] = []
     dis_sources: list[AdvantageSource] = []

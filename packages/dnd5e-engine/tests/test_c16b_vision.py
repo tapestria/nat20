@@ -292,3 +292,107 @@ def test_opportunity_attack_has_advantage_when_pc_mover_cannot_see_monster_react
     rolled = _attacks(live, "mon:foe")[0]
     assert "unseen" in rolled.sources
     assert "condition:target" in rolled.sources
+
+
+# ── Task 3: Invisible carve-out end-to-end ───────────────────────────────
+
+
+def test_attack_on_invisible_target_normal_when_attacker_has_blindsight():
+    """Same-seed A/B: foe Invisible. Run A hero has no special sense →
+    "condition:target" disadvantage. Run B hero has blindsight 30 → no
+    condition:target source, advantage mode "normal"."""
+
+    async def run(has_blindsight: bool):
+        grid = GridScene(width=10, height=10)
+        start = await start_combat(
+            session_id=f"c16b-t3-target-invis-{has_blindsight}",
+            party=[_hero()],
+            encounter=[_foe()],
+            scene_zones=None,
+            grid_scene=grid,
+            rng_seed=1,
+        )
+        live = _get_live(start.handle)
+        _give_condition(live, "mon:foe", "invisible")
+        if has_blindsight:
+            _give_senses(live, "char:hero", blindsight=30)
+        await submit_player_intent(
+            start.handle,
+            actor_id="char:hero",
+            intent=PlayerIntent(intent_type="attack", weapon_id="dagger", target_id="mon:foe"),
+        )
+        return _attacks(live, "char:hero")[0]
+
+    no_sense = run_async(run(False))
+    blindsight = run_async(run(True))
+
+    assert "condition:target" in no_sense.sources
+    assert no_sense.advantage == "disadvantage"
+    assert "condition:target" not in blindsight.sources
+    assert blindsight.advantage == "normal"
+
+
+def test_invisible_attacker_loses_advantage_against_truesight_target():
+    """Hero Invisible (e.g. after a successful Hide, or a bare condition);
+    foe with truesight 30 → the hero's attack has NO "condition:attacker"
+    advantage source."""
+
+    async def run(foe_truesight: bool):
+        grid = GridScene(width=10, height=10)
+        start = await start_combat(
+            session_id=f"c16b-t3-attacker-invis-{foe_truesight}",
+            party=[_hero()],
+            encounter=[_foe()],
+            scene_zones=None,
+            grid_scene=grid,
+            rng_seed=1,
+        )
+        live = _get_live(start.handle)
+        _give_condition(live, "char:hero", "invisible")
+        if foe_truesight:
+            _give_senses(live, "mon:foe", truesight=30)
+        await submit_player_intent(
+            start.handle,
+            actor_id="char:hero",
+            intent=PlayerIntent(intent_type="attack", weapon_id="dagger", target_id="mon:foe"),
+        )
+        return _attacks(live, "char:hero")[0]
+
+    no_pierce = run_async(run(False))
+    pierced = run_async(run(True))
+
+    assert "condition:attacker" in no_pierce.sources
+    assert no_pierce.advantage == "advantage"
+    assert "condition:attacker" not in pierced.sources
+    assert pierced.advantage == "normal"
+
+
+def test_opportunity_attack_against_invisible_mover_seen_by_blindsight_is_normal():
+    """AoO path threads the same booleans: reactor with blindsight vs an
+    Invisible mover → no condition:target disadvantage on the AoO. Same-seed
+    A/B: run A (no special sense) never triggers the AoO at all — the
+    trigger gate (``_combatant_can_see``) itself requires a special sense to
+    see an Invisible mover, SRD 5.2 "a creature that you can see". Run B
+    (blindsight 30) triggers the AoO and pierces the SAME Invisible
+    condition for the condition-derived disadvantage row, so
+    "condition:target" is absent."""
+
+    def run(has_blindsight: bool):
+        grid = GridScene(width=10, height=10)
+        _handle, live = _start(
+            [_hero()], [_foe(zone_id=cell(0, 0))], grid, session=f"c16b-t3-aoo-{has_blindsight}"
+        )
+        _give_condition(live, "mon:foe", "invisible")
+        if has_blindsight:
+            _give_senses(live, "char:hero", blindsight=30)
+        _fire_pc_opportunity_attacks_on_move(
+            live, mover_id="mon:foe", from_zone=cell(0, 0), to_zone=cell(5, 5)
+        )
+        return _attacks(live, "char:hero")
+
+    no_sense = run(False)
+    blindsight = run(True)
+
+    assert no_sense == []
+    assert len(blindsight) == 1
+    assert "condition:target" not in blindsight[0].sources

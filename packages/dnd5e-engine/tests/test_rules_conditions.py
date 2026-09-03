@@ -566,3 +566,22 @@ def test_grappled_attacker_with_unknown_grappler_is_inert() -> None:
 
 def test_existing_rows_unchanged_without_keywords() -> None:
     assert conditions_grant_advantage_on_attack(["poisoned"], ["paralyzed"]) == (True, True)
+
+
+# ── Task 3: Invisible "can somehow see you" carve-out (C16b) ────────────────
+
+
+def test_invisible_attacker_advantage_dropped_when_target_pierces() -> None:
+    """SRD 5.2 Invisible: "If a creature can somehow see you, you don't gain
+    this benefit against that creature"."""
+    assert conditions_grant_advantage_on_attack(["invisible"], []) == (True, False)
+    assert conditions_grant_advantage_on_attack(
+        ["invisible"], [], attacker_invisibility_pierced=True
+    ) == (False, False)
+
+
+def test_invisible_target_disadvantage_dropped_when_attacker_pierces() -> None:
+    assert conditions_grant_advantage_on_attack([], ["invisible"]) == (False, True)
+    assert conditions_grant_advantage_on_attack(
+        [], ["invisible"], target_invisibility_pierced=True
+    ) == (False, False)

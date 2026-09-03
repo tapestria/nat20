@@ -1225,6 +1225,61 @@ def _combatant_can_see(live: _LiveCombat, viewer: Combatant, target: Combatant) 
     return live.topology.can_see(viewer_zone, target_zone, viewer.senses)
 
 
+def _pierces_invisibility(live: _LiveCombat, viewer: Combatant, target: Combatant) -> bool:
+    """Plan ruling R3: does ``viewer`` pierce ``target``'s Invisible condition
+    (whether or not ``target`` actually carries it — the maps below are
+    computed unconditionally; the SRD row in ``rules/conditions.py`` gates on
+    the condition itself)? SRD 5.2 Blindsight: "in that range, you can see
+    something has the Invisible condition." Truesight: "You see creatures and
+    objects that have the Invisible condition." Both need REACH
+    (``_special_sense_reaches``) AND line of sight
+    (``SpatialTopology.can_see`` with the viewer's own senses) — Darkvision
+    never pierces (it only re-grades light, and is excluded from
+    ``_special_sense_reaches``). Untracked positions ⇒ False (mirrors
+    ``_special_sense_reaches``; an untracked pair never grants a piercing
+    benefit, unlike the "everyone seen" convention used for the raw
+    visibility maps).
+    """
+    if not _special_sense_reaches(live, viewer, target):
+        return False
+    viewer_zone = live.actor_zone.get(viewer.entity_id)
+    target_zone = live.actor_zone.get(target.entity_id)
+    if viewer_zone is None or target_zone is None:
+        return False
+    return live.topology.can_see(viewer_zone, target_zone, viewer.senses)
+
+
+def _invisibility_pierced_maps(
+    live: _LiveCombat, caster: Combatant, targets: Sequence[Combatant]
+) -> tuple[dict[str, bool], dict[str, bool]]:
+    """SRD 5.2 Invisible "can somehow see you" carve-out (plan ruling R3).
+    Per target: (does the TARGET pierce the CASTER's Invisible condition,
+    does the CASTER pierce the TARGET's Invisible condition), via
+    ``_pierces_invisibility`` in each direction. Computed regardless of
+    whether anyone is actually Invisible — cheap, and the SRD row in
+    ``rules/conditions.py`` gates on the condition. Threaded into
+    ``ActivityResolutionContext.attacker_invisibility_pierced_by`` /
+    ``.target_invisibility_pierced`` so ``activities/attack.py`` can drop the
+    Invisible advantage/disadvantage without importing the spatial seam.
+    Untracked caster position ⇒ both maps empty (mirrors
+    ``_target_visibility_maps``).
+    """
+    caster_zone = live.actor_zone.get(caster.entity_id)
+    attacker_invisibility_pierced_by: dict[str, bool] = {}
+    target_invisibility_pierced: dict[str, bool] = {}
+    if caster_zone is None:
+        return attacker_invisibility_pierced_by, target_invisibility_pierced
+    for target in targets:
+        target_zone = live.actor_zone.get(target.entity_id)
+        if target_zone is None:
+            continue
+        attacker_invisibility_pierced_by[target.entity_id] = _pierces_invisibility(
+            live, target, caster
+        )
+        target_invisibility_pierced[target.entity_id] = _pierces_invisibility(live, caster, target)
+    return attacker_invisibility_pierced_by, target_invisibility_pierced
+
+
 def _hostile_adjacent_to_attacker(live: _LiveCombat, caster: Combatant) -> bool:
     """SRD 5.2 "Ranged Attacks in Close Combat": "you have Disadvantage on
     the roll if you are within 5 feet of an enemy who can see you and
@@ -8036,6 +8091,9 @@ async def submit_player_intent(
             [*targets, cleave_candidate] if cleave_candidate is not None else targets
         )
         target_unseen, attacker_unseen_by = _target_visibility_maps(live, current, geometry_targets)
+        attacker_invisibility_pierced_by, target_invisibility_pierced = _invisibility_pierced_maps(
+            live, current, geometry_targets
+        )
         # SRD 5.2 Versatile property (C15 Task 4) — the attacker's declared
         # two-handed grip (``intent.two_handed``) applies only when the
         # weapon carries VERSATILE AND this swing is an actual melee attack
@@ -8111,6 +8169,8 @@ async def submit_player_intent(
             attacker_grappler_id=_condition_source_entity(live, current, "grappled"),
             target_unseen=target_unseen,
             attacker_unseen_by=attacker_unseen_by,
+            attacker_invisibility_pierced_by=attacker_invisibility_pierced_by,
+            target_invisibility_pierced=target_invisibility_pierced,
             scale_values=scale_values,
             class_levels=class_levels,
             # A FEATURE invocation must not inherit the blanket spell
@@ -8451,11 +8511,13 @@ def _opportunity_attack_advantage_sources(
     """The typed advantage/disadvantage sources for an opportunity attack,
     assembled the same way ``activities/attack.py::resolve_attack`` does for
     a regular Attack: the condition-derived half (Prone/Grappled/etc, called
-    once per side so the emitted source names which side produced it) plus
-    the Dodge action's disadvantage and the C16b "Unseen Attackers and
-    Targets" advantage row (mover can't see reactor). AoOs are always melee
-    (same-zone reach approximation — see the callers' docstrings), so the
-    Prone-target distance check always resolves within-5ft.
+    once per side so the emitted source names which side produced it — now
+    also threading the C16b Invisible "can somehow see you" carve-out via
+    ``_pierces_invisibility`` in each direction) plus the Dodge action's
+    disadvantage and the C16b "Unseen Attackers and Targets" advantage row
+    (mover can't see reactor). AoOs are always melee (same-zone reach
+    approximation — see the callers' docstrings), so the Prone-target
+    distance check always resolves within-5ft.
     """
     reactor_conditions = _condition_names(reactor)
     mover_conditions = _condition_names(mover)
@@ -8464,11 +8526,16 @@ def _opportunity_attack_advantage_sources(
         [],
         grappler_id=_condition_source_entity(live, reactor, "grappled"),
         target_id=mover.entity_id,
+        # C16b — does the mover (AoO TARGET) pierce the reactor's (AoO
+        # ATTACKER) Invisible condition?
+        attacker_invisibility_pierced=_pierces_invisibility(live, mover, reactor),
     )
     mover_cond_adv, mover_cond_dis = conditions_grant_advantage_on_attack(
         [],
         mover_conditions,
         distance_ft=5,
+        # C16b — does the reactor pierce the mover's Invisible condition?
+        target_invisibility_pierced=_pierces_invisibility(live, reactor, mover),
     )
     adv_sources: list[AdvantageSource] = []
     dis_sources: list[AdvantageSource] = []
@@ -8937,6 +9004,9 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
         # "Monster"`` branch — no per-call slot/spell parameters apply to a
         # mundane monster attack.
         target_unseen, attacker_unseen_by = _target_visibility_maps(live, current, target_list)
+        attacker_invisibility_pierced_by, target_invisibility_pierced = _invisibility_pierced_maps(
+            live, current, target_list
+        )
         actx = build_activity_context(
             current,
             target_list,
@@ -8973,6 +9043,8 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
             attacker_grappler_id=_condition_source_entity(live, current, "grappled"),
             target_unseen=target_unseen,
             attacker_unseen_by=attacker_unseen_by,
+            attacker_invisibility_pierced_by=attacker_invisibility_pierced_by,
+            target_invisibility_pierced=target_invisibility_pierced,
             # SRD 5.2 §Weapon Proficiency — "A monster is proficient with any
             # weapon in its stat block." Left on the default (True): a
             # monster's Combatant.weapon_proficiencies is never explicitly
