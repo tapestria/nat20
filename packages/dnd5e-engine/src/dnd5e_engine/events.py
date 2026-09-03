@@ -113,6 +113,10 @@ CastFailedReason = Literal[
     # SRD 5.2 Charmed — "You can't attack the charmer or target the
     # charmer with damaging abilities or magical effects." (C12)
     "target_is_charmer",
+    # C17 R8 — a ritual cast takes 10 extra minutes; the turn economy cannot
+    # host it, hosts resolve rituals between combats via
+    # ``spellcasting.resolve_ritual_cast``.
+    "ritual_in_combat",
 ]
 
 IntentType = Literal[
@@ -552,6 +556,26 @@ class CastFailed(BaseModel):
     reason: CastFailedReason
 
 
+class SpellCast(BaseModel):
+    """SRD 5.2 §Components: "A spell's components are physical requirements
+    the spellcaster must meet to cast the spell." Metadata only — never
+    enforced (host decision, spec §5 C17). Emitted at every cast site (on-turn,
+    readied-reaction resolve, Counterspell drain) so a host can render
+    component/material bookkeeping without re-deriving it from the spell doc.
+    """
+
+    type: Literal["spell_cast"] = "spell_cast"
+    actor_id: str
+    spell_id: str
+    slot_level: int | None  # None for a cantrip
+    ritual: bool  # the spell CARRIES the Ritual tag (never True for an in-combat
+    # ritual cast — that path is rejected before this event is ever emitted)
+    components: list[Literal["V", "S", "M"]]  # sorted V, S, M
+    material: str | None  # Spell.materials.value or None when empty
+    material_consumed: bool
+    material_cost_gp: int
+
+
 class ReactionTriggered(BaseModel):
     type: Literal["reaction_triggered"] = "reaction_triggered"
     actor_id: str
@@ -598,6 +622,7 @@ CombatEvent = Annotated[
     | MoveFailed
     | AttackFailed
     | CastFailed
+    | SpellCast
     | ReactionTriggered
     | CombatEnded,
     Field(discriminator="type"),
@@ -638,6 +663,7 @@ ALL_COMBAT_EVENT_TYPES: tuple[type[BaseModel], ...] = (
     MoveFailed,
     AttackFailed,
     CastFailed,
+    SpellCast,
     ReactionTriggered,
     CombatEnded,
 )
@@ -679,6 +705,7 @@ __all__ = [
     "RoundEnded",
     "RoundStarted",
     "SaveRolled",
+    "SpellCast",
     "Stabilized",
     "TempHpApplied",
     "TurnEnded",

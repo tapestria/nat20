@@ -78,7 +78,7 @@ from dnd5e_engine.specs import (
     WallSegment,
     ZoneEdge,
 )
-from dnd5e_engine.spellcasting import derive_pact_slots
+from dnd5e_engine.spellcasting import RitualCast, derive_pact_slots, resolve_ritual_cast
 from dnd5e_engine.types.effects import (
     ActiveEffect,
     ActiveEffectChange,
@@ -112,6 +112,7 @@ __all__ = [
     "PlayerIntent",
     "RecoveryPeriod",
     "RestOutcome",
+    "RitualCast",
     "SceneTopology",
     "StartCombatResult",
     "WallSegment",
@@ -134,6 +135,7 @@ __all__ = [
     "recover_item_uses",
     "resolve_check",
     "resolve_long_rest",
+    "resolve_ritual_cast",
     "resolve_short_rest",
     "roll_dice_str",
     "start_combat",

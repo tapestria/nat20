@@ -20,7 +20,7 @@ from dnd5e_engine import (
     start_combat,
     submit_player_intent,
 )
-from dnd5e_engine.events import CastFailed, DamageApplied, ReactionTriggered
+from dnd5e_engine.events import CastFailed, DamageApplied, ReactionTriggered, SpellCast
 from dnd5e_engine.lib_loader import set_lib_loader_for_tests
 from dnd5e_engine.orchestrator import _get_live
 from dnd5e_engine.spatial import cell_id as cell
@@ -400,3 +400,51 @@ def test_dart_count_adds_no_rng_draws():
     live_a = _cast_mm(slot_level=1)
     live_b = _cast_mm(slot_level=3)
     assert live_a.rng.getstate() == live_b.rng.getstate()
+
+
+# ── Task 6: SpellCast event + ritual flag ────────────────────────────────────
+
+
+def test_spell_cast_event_carries_component_metadata():
+    live = _cast_mm(slot_level=1)
+    casts = _events(live, SpellCast)
+    assert len(casts) == 1
+    ev = casts[0]
+    assert (ev.actor_id, ev.spell_id, ev.slot_level, ev.ritual) == (
+        "char:caster",
+        "magic-missile",
+        1,
+        False,
+    )
+    assert ev.components == ["V", "S"]
+    assert ev.material is None
+    assert ev.material_consumed is False
+    assert ev.material_cost_gp == 0
+    # ordering: after the slot gate, before any DamageApplied
+    assert live.event_log.index(ev) < live.event_log.index(_events(live, DamageApplied)[0])
+
+
+def test_ritual_in_combat_is_rejected_without_spending_a_slot():
+    async def _go():
+        handle, live = await _start(
+            [_caster(spells=["detect-magic"], spell_slots={1: 1})], [_foe()]
+        )
+        await submit_player_intent(
+            handle,
+            actor_id="char:caster",
+            intent=PlayerIntent(
+                intent_type="cast_spell", spell_id="detect-magic", slot_level=1, as_ritual=True
+            ),
+        )
+        return live
+
+    live = _run(_go())
+    assert [e.reason for e in _events(live, CastFailed)] == ["ritual_in_combat"]
+    assert live.spell_slots_by_entity["char:caster"] == {1: 1}
+    assert not _events(live, SpellCast)
+
+
+def test_counterspell_and_readied_casts_emit_spell_cast():
+    live = _counterspell_pair(reactor_slots={3: 1}, enemy_col=1)
+    names = [e.spell_id for e in _events(live, SpellCast)]
+    assert "counterspell" in names

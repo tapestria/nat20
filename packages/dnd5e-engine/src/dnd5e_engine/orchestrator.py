@@ -129,6 +129,7 @@ from dnd5e_engine.events import (
     ReactionTriggered,
     RoundStarted,
     SaveRolled,
+    SpellCast,
     TempHpApplied,
     TurnEnded,
     TurnPhase,
@@ -165,7 +166,11 @@ from dnd5e_engine.specs import (
     SceneTopology,
     ZoneEdge,
 )
-from dnd5e_engine.spellcasting import count_scales_with_cast_level, resolve_target_count
+from dnd5e_engine.spellcasting import (
+    count_scales_with_cast_level,
+    resolve_target_count,
+    spell_component_metadata,
+)
 from dnd5e_engine.turn_lifecycle import (
     TurnLifecycle,
     run_round_start,
@@ -270,6 +275,13 @@ class PlayerIntent(BaseModel):
     # actual melee swing (a two-handed grip declared on a thrown/ranged use
     # of the same weapon is ignored, per SRD "to make a melee attack").
     two_handed: bool = False
+    # SRD 5.2 §Rituals: "To cast a spell as a Ritual, a spellcaster must have
+    # it prepared" — the Ritual version "takes 10 minutes longer to cast than
+    # normal, but it doesn't expend a spell slot." The turn economy has no
+    # room to host that extra 10 minutes, so in combat this flag is a hard
+    # reject (``CastFailed(reason="ritual_in_combat")``, slot untouched).
+    # Out-of-combat rituals resolve via ``spellcasting.resolve_ritual_cast``.
+    as_ritual: bool = False
 
     @field_validator("direction")
     @classmethod
@@ -7312,6 +7324,17 @@ def _consume_spell_slot(
     slot_gate_spell = get_lib_loader().get_spell(intent.spell_id)
     if slot_gate_spell is None:
         return False
+    if intent.as_ritual:
+        _emit(
+            live,
+            CastFailed(
+                actor_id=current.entity_id,
+                spell_id=intent.spell_id,
+                reason="ritual_in_combat",
+            ),
+        )
+        _end_turn_and_advance(live, actor_id)
+        return True
     base_level = slot_gate_spell.level
     slot_level = intent.slot_level if intent.slot_level is not None else base_level
     # SRD §Cantrips — "A cantrip is a spell that can be cast at
@@ -7347,6 +7370,47 @@ def _consume_spell_slot(
         _end_turn_and_advance(live, actor_id)
         return True
     return False
+
+
+def _emit_spell_cast(
+    live: _LiveCombat, caster_id: str, spell: Spell, slot_level: int | None
+) -> None:
+    """C17 — ``SpellCast`` with component metadata (SRD §Components; never enforced)."""
+    comps, material, consumed, cost = spell_component_metadata(spell)
+    _emit(
+        live,
+        SpellCast(
+            actor_id=caster_id,
+            spell_id=spell.slug,
+            slot_level=slot_level,
+            ritual=bool(spell.ritual),
+            components=list(comps),
+            material=material,
+            material_consumed=consumed,
+            material_cost_gp=cost,
+        ),
+    )
+
+
+def _emit_spell_cast_for_on_turn_intent(
+    live: _LiveCombat, actor_id: str, intent: PlayerIntent
+) -> None:
+    """C17 — the on-turn ``SpellCast`` call site: fetch the spell the intent just
+    successfully cast (the slot gate has already passed by the time the caller
+    reaches this) and emit its component metadata. No-op for non-cast intents
+    or an unknown ``spell_id`` (mirrors every other lib-loader miss in this
+    module — silently skip rather than raise)."""
+    if not (intent.intent_type == "cast_spell" and intent.spell_id):
+        return
+    spell = get_lib_loader().get_spell(intent.spell_id)
+    if spell is None:
+        return
+    slot_level = (
+        None
+        if spell.level == 0
+        else (intent.slot_level if intent.slot_level is not None else spell.level)
+    )
+    _emit_spell_cast(live, actor_id, spell, slot_level)
 
 
 @dataclass
@@ -7804,6 +7868,7 @@ def _resolve_readied_spell_cast(
             trigger_event_uuid="",
         ),
     )
+    _emit_spell_cast(live, reactor.entity_id, spell, slot_level)
 
     spellcasting_ability = _resolve_caster_spellcasting_ability(reactor)
     payload = _build_hydration_payload(live, caster=reactor)
@@ -7963,6 +8028,7 @@ def _drain_counterspell_reaction(
             trigger_event_uuid="",
         ),
     )
+    _emit_spell_cast(live, reactor.entity_id, counterspell, cs_level)
 
     reactor_spellcasting_ability = _resolve_caster_spellcasting_ability(reactor)
     payload = _build_hydration_payload(live, caster=reactor)
@@ -8301,6 +8367,11 @@ async def submit_player_intent(
     # and signals the caller to return.
     if _consume_spell_slot(live, current, actor_id, intent):
         return
+
+    # C17 — ``SpellCast`` metadata event (component/material/ritual bookkeeping,
+    # never enforced). Emitted right after the slot gate passes so it is
+    # ordered before any resolution events (damage, saves, ...) the cast produces.
+    _emit_spell_cast_for_on_turn_intent(live, actor_id, intent)
 
     # SRD §Limited-Use Features — every action-economy / slot gate has
     # passed and the invocation is now committed to resolving; record the spend on

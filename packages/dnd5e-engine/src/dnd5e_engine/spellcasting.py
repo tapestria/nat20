@@ -27,7 +27,11 @@ from __future__ import annotations
 import ast
 import math
 from collections.abc import Mapping
-from typing import Final, Literal
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Final, Literal
+
+if TYPE_CHECKING:
+    from dnd5e_srd_data.schema.spell import Spell
 
 SpellcastingProgression = Literal["full", "half", "third", "pact", "none", "artificer"]
 
@@ -209,15 +213,93 @@ def _eval_int(node: ast.AST) -> int:
     raise ValueError(f"unsupported expression node in target count: {type(node).__name__}")
 
 
+_COMPONENT_ORDER: Final[tuple[Literal["V", "S", "M"], ...]] = ("V", "S", "M")
+
+
+def spell_component_metadata(
+    spell: Spell,
+) -> tuple[tuple[Literal["V", "S", "M"], ...], str | None, bool, int]:
+    """Project a ``Spell`` doc's component/material fields into the
+    ``(components, material, material_consumed, material_cost_gp)`` tuple
+    shared by ``SpellCast`` (orchestrator emission) and ``resolve_ritual_cast``
+    below. SRD 5.2 §Components: "A spell's components are physical
+    requirements the spellcaster must meet to cast the spell." Metadata
+    only — never enforced (host decision, spec §5 C17)."""
+    comps = tuple(c for c in _COMPONENT_ORDER if c in {str(x) for x in spell.components})
+    return (
+        comps,
+        (spell.materials.value or None),
+        bool(spell.materials.consumed),
+        int(spell.materials.cost),
+    )
+
+
+@dataclass(frozen=True)
+class RitualCast:
+    """Out-of-combat resolution of a Ritual-tagged spell (C17 R8). SRD 5.2
+    §Rituals: "The Ritual version of a spell takes 10 minutes longer to cast
+    than normal, but it doesn't expend a spell slot. To cast a spell as a
+    Ritual, a spellcaster must have it prepared."
+    """
+
+    spell_id: str
+    casting_time_minutes: int
+    slot_consumed: bool  # always False
+    components: tuple[Literal["V", "S", "M"], ...]
+    material: str | None
+    material_consumed: bool
+    material_cost_gp: int
+
+
+def resolve_ritual_cast(spell: Spell, *, prepared: bool, ritual_adept: bool = False) -> RitualCast:
+    """Resolve a Ritual-tagged spell cast outside the turn economy (R8).
+
+    SRD 5.2 §Rituals: "To cast a spell as a Ritual, a spellcaster must have
+    it prepared." §Ritual Adept (feat): "You needn't have the spell
+    prepared." Raises ``ValueError`` when ``spell`` carries no Ritual tag, or
+    when neither ``prepared`` nor ``ritual_adept`` is set. The 10-minute
+    Ritual tax is additive on top of the spell's own casting time (``minute``
+    unit adds its ``value`` in minutes; ``hour`` adds ``value * 60``; any
+    other unit — e.g. ``action`` — contributes 0 base minutes).
+    """
+    if not spell.ritual:
+        raise ValueError(f"{spell.slug!r} has no Ritual tag")
+    if not prepared and not ritual_adept:
+        raise ValueError(
+            "a ritual cast requires the spell to be prepared (Ritual Adept waives this)"
+        )
+    unit = spell.casting_time.unit
+    value = spell.casting_time.value or 0
+    if str(unit) == "minute":
+        base_minutes = value
+    elif str(unit) == "hour":
+        base_minutes = value * 60
+    else:
+        base_minutes = 0
+    comps, material, consumed, cost = spell_component_metadata(spell)
+    return RitualCast(
+        spell_id=spell.slug,
+        casting_time_minutes=base_minutes + 10,
+        slot_consumed=False,
+        components=comps,
+        material=material,
+        material_consumed=consumed,
+        material_cost_gp=cost,
+    )
+
+
 __all__ = [
     "PACT_SLOT_TABLE",
     "SPELL_SLOT_TABLE",
+    "RitualCast",
     "SpellcastingProgression",
     "count_scales_with_cast_level",
     "derive_pact_slots",
     "derive_spell_slots",
     "effective_caster_level",
     "multiclass_caster_level",
+    "resolve_ritual_cast",
     "resolve_target_count",
     "slots_for_caster_level",
+    "spell_component_metadata",
 ]

@@ -6,6 +6,7 @@ Magic: "when you're a level 5 Warlock, you have two level 3 spell slots"."""
 from __future__ import annotations
 
 import pytest
+from dnd5e_srd_data.loader import BundledAssetLoader
 
 from dnd5e_engine.spellcasting import (
     PACT_SLOT_TABLE,
@@ -15,6 +16,7 @@ from dnd5e_engine.spellcasting import (
     derive_spell_slots,
     effective_caster_level,
     multiclass_caster_level,
+    resolve_ritual_cast,
     resolve_target_count,
     slots_for_caster_level,
 )
@@ -148,3 +150,42 @@ def test_resolve_target_count_floors_at_one_and_rejects_foreign_tokens():
 )
 def test_count_scales_with_cast_level(count_formula, expected):
     assert count_scales_with_cast_level(count_formula) is expected
+
+
+# ── Task 6: RitualCast / resolve_ritual_cast (R8) ────────────────────────────
+
+
+def test_ritual_cast_detect_magic_adds_ten_minutes_and_no_slot():
+    """SRD 5.2 Rituals: "takes 10 minutes longer to cast than normal, but it doesn't
+    expend a spell slot. To cast a spell as a Ritual, a spellcaster must have it prepared."""
+    spell = BundledAssetLoader().get_spell("detect-magic")
+    out = resolve_ritual_cast(spell, prepared=True)
+    assert out.spell_id == "detect-magic"
+    assert out.casting_time_minutes == 10  # 1 action ⇒ 0 min base + 10
+    assert out.slot_consumed is False
+    assert out.components == ("V", "S")
+    assert out.material is None
+
+
+def test_ritual_cast_requires_prepared_unless_ritual_adept():
+    spell = BundledAssetLoader().get_spell("detect-magic")
+    with pytest.raises(ValueError):
+        resolve_ritual_cast(spell, prepared=False)
+    assert resolve_ritual_cast(spell, prepared=False, ritual_adept=True).slot_consumed is False
+
+
+def test_ritual_cast_rejects_spell_without_ritual_tag():
+    with pytest.raises(ValueError):
+        resolve_ritual_cast(BundledAssetLoader().get_spell("magic-missile"), prepared=True)
+
+
+def test_ritual_cast_minute_and_hour_casting_times_are_additive():
+    # pick a corpus ritual with a 1-minute casting time; verify by loading and asserting
+    # ``spell.casting_time.unit == "minute"`` first (e.g. "identify"), then 1 + 10 == 11.
+    spell = BundledAssetLoader().get_spell("identify")
+    assert spell is not None
+    assert spell.ritual
+    assert (
+        resolve_ritual_cast(spell, prepared=True).casting_time_minutes
+        == spell.casting_time.value + 10
+    )
