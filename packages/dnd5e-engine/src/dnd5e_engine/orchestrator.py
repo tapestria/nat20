@@ -1174,6 +1174,57 @@ def _sneak_ally_adjacent_map(
     return out
 
 
+def _special_sense_reaches(live: _LiveCombat, viewer: Combatant, target: Combatant) -> bool:
+    """SRD 5.2 Blindsight — "you can see anything that isn't behind Total Cover
+    even if you have the Blinded condition or are in Darkness. Moreover, in
+    that range, you can see something has the Invisible condition." Truesight
+    — "You see creatures and objects that have the Invisible condition."
+    Reach test only (``within_range`` on the viewer's blindsight / truesight);
+    line of sight is re-checked by ``SpatialTopology.can_see``. Untracked
+    positions ⇒ False. Darkvision is NOT a special sense here (it only
+    re-grades light — SRD 5.2 Darkvision)."""
+    viewer_zone = live.actor_zone.get(viewer.entity_id)
+    target_zone = live.actor_zone.get(target.entity_id)
+    if viewer_zone is None or target_zone is None:
+        return False
+    for range_ft in (viewer.senses.blindsight, viewer.senses.truesight):
+        if range_ft and live.topology.within_range(viewer_zone, target_zone, range_ft):
+            return True
+    return False
+
+
+def _combatant_can_see(live: _LiveCombat, viewer: Combatant, target: Combatant) -> bool:
+    """C16b composite "can see" predicate (plan ruling R4) for every SRD 5.2
+    "can see" conjunct: Dodge, Ranged Attacks in Close Combat, Opportunity
+    Attacks, Hide's line-of-sight gate, Frightened's line-of-sight gate.
+
+    1. Untracked position on either side ⇒ True (a scene with no positional
+       data can never impose a penalty — same convention as
+       ``_target_visibility_maps``).
+    2. Blinded viewer (SRD 5.2 Blinded: "You can't see") ⇒ False unless a
+       special sense reaches (``_special_sense_reaches``).
+    3. Invisible target (SRD 5.2 Invisible: "If a creature can somehow see
+       you, you don't gain this benefit against that creature") ⇒ False
+       unless a special sense reaches — plan ruling R3. A creature hidden
+       via Hide carries the Invisible condition, so this covers it.
+    4. Otherwise the scene vision model: ``SpatialTopology.can_see`` with
+       the viewer's own projected senses (line of sight, light, obscurement).
+
+    NOT used by ``_target_visibility_maps`` (the ``"unseen"`` producer) —
+    Blinded / Invisible already emit their own ``condition:*`` sources.
+    """
+    viewer_zone = live.actor_zone.get(viewer.entity_id)
+    target_zone = live.actor_zone.get(target.entity_id)
+    if viewer_zone is None or target_zone is None:
+        return True
+    special = _special_sense_reaches(live, viewer, target)
+    if is_condition_active(Condition.BLINDED, _condition_names(viewer)) and not special:
+        return False
+    if is_condition_active(Condition.INVISIBLE, _condition_names(target)) and not special:
+        return False
+    return live.topology.can_see(viewer_zone, target_zone, viewer.senses)
+
+
 def _hostile_adjacent_to_attacker(live: _LiveCombat, caster: Combatant) -> bool:
     """SRD 5.2 "Ranged Attacks in Close Combat": "you have Disadvantage on
     the roll if you are within 5 feet of an enemy who can see you and
@@ -1186,9 +1237,10 @@ def _hostile_adjacent_to_attacker(live: _LiveCombat, caster: Combatant) -> bool:
     and counts like any other hostile (SRD: "an enemy", not "an enemy other
     than your target"). Excludes an Incapacitated hostile
     (``conditions_block_actions`` — the SRD conjunct) and one that cannot
-    see the attacker (``SpatialTopology.can_see`` with the HOSTILE's own
-    senses — same call shape as ``_target_visibility_maps``). Threaded into
-    ``ActivityResolutionContext.attacker_ranged_in_melee`` so
+    see the attacker (the C16b composite ``_combatant_can_see`` — a Blinded
+    hostile or an Invisible attacker no longer imposes the disadvantage,
+    same call shape as ``_target_visibility_maps`` otherwise). Threaded
+    into ``ActivityResolutionContext.attacker_ranged_in_melee`` so
     ``activities/attack.py`` can add the ``"ranged_in_melee"`` disadvantage
     source without importing the spatial seam. An unregistered side or an
     untracked attacker position yields ``False``.
@@ -1213,7 +1265,7 @@ def _hostile_adjacent_to_attacker(live: _LiveCombat, caster: Combatant) -> bool:
             continue
         if not live.topology.within_range(attacker_zone, hostile_zone, 5):
             continue
-        if not live.topology.can_see(hostile_zone, attacker_zone, hostile.senses):
+        if not _combatant_can_see(live, hostile, caster):
             continue
         return True
     return False
