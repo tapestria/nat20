@@ -164,11 +164,32 @@ _PROBES: dict[str, tuple[Any, str]] = {
         lambda: 'mode: AdvantageMode = "normal"' not in _src("activities/attack.py"),
         "Advantage/disadvantage is rolled on",
     ),
+    # C16b: opportunity attacks now honour the ``unseen`` advantage source
+    # and the Invisible carve-out via the shared per-side advantage-source
+    # helper both AoO directions call.
+    "Invisible-carve-out sources (C16b composite": (
+        lambda: (
+            "_opportunity_attack_advantage_sources(" in _src("orchestrator.py")
+            and "_pierces_invisibility(live, mover, reactor)" in _src("orchestrator.py")
+        ),
+        "Invisible-carve-out sources (C16b composite",
+    ),
     # C14 Task 3: Dodge sets a live ``dodging`` flag consumed by the attack
     # and save resolvers; the intent branch owns this exact literal.
     "Dodge": (
         lambda: 'if intent.intent_type == "dodge":' in _src("orchestrator.py"),
         "✅",
+    ),
+    # C16b: Dodge's "if you can see the attacker" conjunct is applied both at
+    # the regular-attack context build sites (``_combatant_can_see(live, t,
+    # current)``) and on the AoO path (``_combatant_can_see(live, mover,
+    # reactor)``).
+    'if you can see the attacker" is now enforced (C16b': (
+        lambda: (
+            "_combatant_can_see(live, t, current)" in _src("orchestrator.py")
+            and "_combatant_can_see(live, mover, reactor)" in _src("orchestrator.py")
+        ),
+        'if you can see the attacker" is now enforced (C16b',
     ),
     # C14 Task 4: Help (assist-an-attack-roll flavor) has a live handler —
     # the intent branch owns this exact literal.
@@ -180,6 +201,19 @@ _PROBES: dict[str, tuple[Any, str]] = {
     "| Hide |": (
         lambda: 'if intent.intent_type == "hide"' in _src("orchestrator.py"),
         "✅",
+    ),
+    # C16b (plan ruling R1): Hide's "out of any enemy's line of sight"
+    # conjunct scans hostiles via the composite predicate, skipped only when
+    # the hider's own cell already carries Three-Quarters/Total cover.
+    "out of every living, non-Incapacitated hostile's line of sight (C16b": (
+        lambda: "_combatant_can_see(live, hostile, current)" in _src("orchestrator.py"),
+        "out of every living, non-Incapacitated hostile's line of sight (C16b",
+    ),
+    # C16b (Hide Task 4): a dark cell satisfies "Heavily Obscured" via the
+    # new ``SpatialTopology.light_on_cell`` seam.
+    "`GridTopology.light_on_cell`": (
+        lambda: "def light_on_cell(" in _src("spatial.py"),
+        "`GridTopology.light_on_cell`",
     ),
     # F2c/C13: the damage-triggered concentration save emits the dedicated
     # event; row text no longer quotes the event name, so this probe now
@@ -201,6 +235,16 @@ _PROBES: dict[str, tuple[Any, str]] = {
             and "line-of-sight gate is not modelled" in _src("rules/conditions.py")
         ),
         "⚠️ Partial",
+    ),
+    # C16b: Frightened's attack-roll line-of-sight gate and the "can't
+    # willingly move closer" movement rule are now enforced (the residual
+    # unenforced half is the ability-check gate the probe above still pins).
+    "now gated on line of sight to a known, living, tracked fear source (C16b": (
+        lambda: (
+            "_fear_source_in_sight(" in _src("orchestrator.py")
+            and '"frightened",' in _event_class_body("MoveFailed")
+        ),
+        "now gated on line of sight to a known, living, tracked fear source (C16b",
     ),
     # C12: the SRD 5.2 exhaustion penalty is a real projection, not prose.
     "| Exhaustion |": (
@@ -241,6 +285,12 @@ _PROBES: dict[str, tuple[Any, str]] = {
             "can_see(" in _src("orchestrator.py") and '"unseen"' in _src("activities/attack.py")
         ),
         "⚠️ Partial",
+    ),
+    # C16b (plan ruling R4): the composite predicate folding Blinded/
+    # Invisible/blindsight/truesight on top of the scene vision model.
+    "composite `_combatant_can_see` predicate": (
+        lambda: "def _combatant_can_see(" in _src("orchestrator.py"),
+        "composite `_combatant_can_see` predicate",
     ),
     # D8: the zone graph is deprecated (warning raised in _resolve_topology).
     "Zone-graph topology": (
@@ -310,12 +360,18 @@ _PROBES: dict[str, tuple[Any, str]] = {
         lambda: "seeded_incapacitated" in _src("orchestrator.py"),
         "closed via C14 Task 8",
     ),
-    # C14 Task 9: opportunity attacks roll through the same d20-test
+    # C14 Task 9 / C16b: opportunity attacks roll through the same d20-test
     # primitive as every other attack, picking up condition/Exhaustion
-    # sources — still no visibility gate (BACKLOG.md).
+    # sources and now the visibility gate too — only cover is still missing.
     "| Opportunity attacks |": (
         lambda: "roll_d20_test" in _src("orchestrator.py"),
         "✅",
+    ),
+    # C16b: the AoO's remaining gap is cover only — visibility now reaches
+    # the roll via ``_combatant_can_see``.
+    "cover on the AoO roll itself remains unmodelled": (
+        lambda: "_combatant_can_see(live, reactor, mover)" in _src("orchestrator.py"),
+        "cover on the AoO roll itself remains unmodelled",
     ),
     # C15 Tasks 2/3: the long-range disadvantage tier and the Ranged
     # Attacks in Close Combat gate both append their own AdvantageSource
