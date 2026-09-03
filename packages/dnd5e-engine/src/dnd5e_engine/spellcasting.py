@@ -150,6 +150,20 @@ def multiclass_caster_level(
 _ITEM_LEVEL_TOKEN: Final = "@item.level"
 
 
+def count_scales_with_cast_level(count_formula: str) -> bool:
+    """True when a Foundry ``target.affects.count`` formula genuinely encodes the
+    R5 upcast mechanic — i.e. it references ``@item.level`` (the cast's slot
+    level). A blank formula, or a FIXED marker like ``"1"`` (the schema default
+    that a plain single-target damage/save/utility activity carries — Hex,
+    Hunter's Mark, Revivify, Wall of Fire's per-creature save, ...), is NOT an
+    upcast mechanic: it must not engage the R5 count-expansion machinery (target
+    fan-out, damage dice-scaling suppression) at all. The single source of truth
+    both ``orchestrator._find_count_activity`` and ``activities/damage.py``'s
+    dice-scaling guard consult.
+    """
+    return bool(count_formula.strip()) and _ITEM_LEVEL_TOKEN in count_formula
+
+
 def resolve_target_count(count_formula: str, *, cast_level: int) -> int | None:
     """Foundry ``target.affects.count`` roll-data → int, with ``@item.level`` = the
     cast's slot level (R5) — SRD 5.2 Magic Missile: "You create three glowing darts
@@ -199,6 +213,7 @@ __all__ = [
     "PACT_SLOT_TABLE",
     "SPELL_SLOT_TABLE",
     "SpellcastingProgression",
+    "count_scales_with_cast_level",
     "derive_pact_slots",
     "derive_spell_slots",
     "effective_caster_level",

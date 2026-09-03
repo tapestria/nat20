@@ -10,6 +10,7 @@ import pytest
 from dnd5e_engine.spellcasting import (
     PACT_SLOT_TABLE,
     SPELL_SLOT_TABLE,
+    count_scales_with_cast_level,
     derive_pact_slots,
     derive_spell_slots,
     effective_caster_level,
@@ -133,3 +134,17 @@ def test_resolve_target_count_floors_at_one_and_rejects_foreign_tokens():
         resolve_target_count("@abilities.cha.mod + 1", cast_level=1)
     with pytest.raises(ValueError):
         resolve_target_count("__import__('os')", cast_level=1)
+
+
+@pytest.mark.parametrize(
+    ("count_formula", "expected"),
+    [
+        ("2 + @item.level", True),  # Magic Missile: darts scale with cast level
+        ("@item.level - 1", True),  # Hold Person: extra Humanoids scale with cast level
+        ("1", False),  # fixed single-target schema marker (Hex, Hunter's Mark, Wall of Fire, ...)
+        ("", False),
+        ("  ", False),
+    ],
+)
+def test_count_scales_with_cast_level(count_formula, expected):
+    assert count_scales_with_cast_level(count_formula) is expected

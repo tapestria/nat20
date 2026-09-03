@@ -165,7 +165,7 @@ from dnd5e_engine.specs import (
     SceneTopology,
     ZoneEdge,
 )
-from dnd5e_engine.spellcasting import resolve_target_count
+from dnd5e_engine.spellcasting import count_scales_with_cast_level, resolve_target_count
 from dnd5e_engine.turn_lifecycle import (
     TurnLifecycle,
     run_round_start,
@@ -7510,13 +7510,21 @@ def _item_cast_level_override(intent: PlayerIntent) -> int | None:
 
 
 def _find_count_activity(activities: list[Any]) -> Any | None:
-    """R5 — the first activity whose ``target.affects.count`` is non-blank
-    creature-count roll-data (Magic Missile's dart count, Hold Person's extra
-    Humanoids). ``None`` when no activity in the list carries one."""
+    """R5 — the first activity whose ``target.affects.count`` GENUINELY encodes
+    the upcast mechanic (``count_scales_with_cast_level`` — references
+    ``@item.level``; Magic Missile's dart count, Hold Person's extra Humanoids).
+    A fixed marker like ``"1"`` (the schema default a plain single-target
+    damage/save/utility activity carries — Hex, Hunter's Mark, Revivify, ...) is
+    NOT a count mechanic and must not engage this machinery at all. ``None``
+    when no activity in the list carries a genuine count formula."""
     for activity in activities:
         target = getattr(activity, "target", None)
         affects = getattr(target, "affects", None) if target is not None else None
-        if affects is not None and affects.count.strip() and affects.type == "creature":
+        if (
+            affects is not None
+            and affects.type == "creature"
+            and count_scales_with_cast_level(affects.count)
+        ):
             return activity
     return None
 
