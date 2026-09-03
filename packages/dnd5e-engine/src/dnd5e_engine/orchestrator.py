@@ -6703,7 +6703,11 @@ def _handle_move(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
     the destination is adjacent but the step crosses a wall or cuts a blocked
     corner; ``unreachable`` — no legal route (enemy-occupied cells are
     impassable, allies may be passed through); ``insufficient_movement`` — the
-    whole route costs more than the remaining budget, and nothing moves.
+    whole route costs more than the remaining budget, and nothing moves;
+    ``frightened`` — SRD 5.2 Frightened: "You can't willingly move closer to
+    the source of fear" (C16b) — the mover is Frightened of a known, living,
+    tracked, currently-visible source and some step of the route would
+    reduce distance to it (``_frightened_approach_blocked``).
 
     Multi-hop routing, ``occupied`` and the enemy-impassability rule are all
     GRID-only: a zone is an area rather than a 5-ft square and ``_ZoneGraph``
@@ -8656,8 +8660,20 @@ def _opportunity_attack_advantage_sources(
         dis_sources.append("dodge")
     # SRD 5.2 "Unseen Attackers and Targets": "When a creature can't see
     # you, you have Advantage on attack rolls against it" — the mover
-    # (AoO target) can't see the reactor (AoO attacker).
-    if not _combatant_can_see(live, mover, reactor):
+    # (AoO target) can't see the reactor (AoO attacker). Plan ruling R4: this
+    # row uses raw scene vision (``SpatialTopology.can_see``), NOT the
+    # ``_combatant_can_see`` composite, mirroring ``_target_visibility_maps``
+    # exactly — Blinded/Invisible already emit their own ``condition:*``
+    # sources above, so folding them into "unseen" too would double-tag a
+    # Blinded mover. Untracked position on either side ⇒ skip the row (same
+    # "untracked ⇒ seen" convention as ``_target_visibility_maps``).
+    mover_zone = live.actor_zone.get(mover.entity_id)
+    reactor_zone = live.actor_zone.get(reactor.entity_id)
+    if (
+        mover_zone is not None
+        and reactor_zone is not None
+        and not live.topology.can_see(mover_zone, reactor_zone, mover.senses)
+    ):
         adv_sources.append("unseen")
     return adv_sources, dis_sources
 

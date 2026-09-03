@@ -229,10 +229,11 @@ class Combatant(BaseModel):
     offhand_attack_spent: bool = False
     # SRD §Actions in Combat — Dodge (C14 Task 3). True for the remainder of
     # this turn and "until the start of your next turn": while active, any
-    # attack roll made against this combatant has Disadvantage (if the
-    # attacker can see it — vision is deferred to C16b, see
-    # ``activities/attack.py``) and it makes Dexterity saving throws with
-    # Advantage. Lost early if Incapacitated or Speed 0 (SRD loss clause;
+    # attack roll made against this combatant has Disadvantage if the
+    # attacker can see it (C16b: gated via ``orchestrator.py::
+    # _combatant_can_see``, see ``activities/attack.py``) and it makes
+    # Dexterity saving throws with Advantage. Lost early if Incapacitated or
+    # Speed 0 (SRD loss clause;
     # see ``_dodge_benefit_active`` in orchestrator.py). Reset to False at
     # the actor's own TurnStarted — the exact SRD expiry point.
     dodging: bool = False

@@ -226,11 +226,12 @@ class ActivityResolutionContext:
     # the orchestrator (``_dodge_benefit_active``). Consumed in
     # ``attack.py``, which folds it into disadvantage on an attack roll
     # against that target. SRD also conditions the attack-disadvantage half
-    # of Dodge on "if you can see the attacker" — that conjunct is deferred
-    # to C16b (no vision model wired to this seam yet); the DEX-save
-    # advantage half has no such conjunct and is folded separately via
-    # ``passive_save_adv`` in the hydration payload. Empty default keeps the
-    # golden corpus identical (no dodge geometry).
+    # of Dodge on "if you can see the attacker" — this map's value is now
+    # "dodging AND the dodger can see this attacker" (C16b: computed
+    # orchestrator-side via ``_combatant_can_see`` before the map is built);
+    # the DEX-save advantage half has no such conjunct and is folded
+    # separately via ``passive_save_adv`` in the hydration payload. Empty
+    # default keeps the golden corpus identical (no dodge geometry).
     target_dodging: dict[str, bool] = field(default_factory=dict)
     # C16b — SRD 5.2 Invisible "can somehow see you" carve-out (plan ruling
     # R3): per-TARGET, does that target's own Blindsight/Truesight reach the

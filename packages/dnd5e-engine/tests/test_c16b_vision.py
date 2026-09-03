@@ -251,11 +251,21 @@ def test_opportunity_attack_not_triggered_when_reactor_cannot_see_mover():
 
 
 def test_opportunity_attack_has_advantage_when_mover_cannot_see_reactor():
-    """Unseen Attackers and Targets on the AoO roll: the mover is Blinded →
-    the reactor's AoO carries the "unseen" advantage source."""
+    """Unseen Attackers and Targets on the AoO roll: plan ruling R4 — the
+    "unseen" row on the AoO advantage list uses raw scene vision only (same
+    as ``_target_visibility_maps``), NOT the ``_combatant_can_see`` composite,
+    so it must fire from the reactor standing in a dark cell that the mover
+    (no darkvision) genuinely cannot see into, not merely from the mover
+    being Blinded. The AoO reach model fires only for a same-zone reactor, so
+    mover and reactor share the one dark cell here — the reactor is given
+    Darkvision so the TRIGGER (reactor sees mover) still passes; the mover is
+    left without it so the directional "unseen" row still fires. The mover is
+    ALSO given Blinded here (unrelated to scene vision) to keep the
+    "condition:target" advantage row covered in the same scenario."""
 
-    grid = GridScene(width=10, height=10)
+    grid = GridScene(width=10, height=10, lighting={cell(0, 0): "dark"})
     _handle, live = _start([_hero()], [_foe(zone_id=cell(0, 0))], grid)
+    _give_senses(live, "char:hero", darkvision=60)
     _give_condition(live, "mon:foe", "blinded")
     _fire_pc_opportunity_attacks_on_move(
         live, mover_id="mon:foe", from_zone=cell(0, 0), to_zone=cell(5, 5)
@@ -282,12 +292,20 @@ def test_opportunity_attack_not_triggered_when_monster_reactor_cannot_see_mover(
 
 
 def test_opportunity_attack_has_advantage_when_pc_mover_cannot_see_monster_reactor():
-    """Unseen Attackers and Targets on the monster-reactor AoO roll: the PC
-    mover is Blinded → the reactor's AoO carries the "unseen" advantage
-    source."""
+    """Unseen Attackers and Targets on the monster-reactor AoO roll: plan
+    ruling R4 — mirrors the PC-reactor test above, so the "unseen" row must
+    come from the reactor standing in a dark cell the mover (no darkvision)
+    genuinely cannot see into, not merely from the mover being Blinded. The
+    AoO reach model fires only for a same-zone reactor, so mover and reactor
+    share the one dark cell here — the reactor is given Darkvision so the
+    TRIGGER (reactor sees mover) still passes; the mover is left without it
+    so the directional "unseen" row still fires. The mover is ALSO given
+    Blinded here (unrelated to scene vision) to keep the "condition:target"
+    advantage row covered in the same scenario."""
 
-    grid = GridScene(width=10, height=10)
+    grid = GridScene(width=10, height=10, lighting={cell(0, 0): "dark"})
     _handle, live = _start([_hero()], [_foe(zone_id=cell(0, 0))], grid)
+    _give_senses(live, "mon:foe", darkvision=60)
     _give_condition(live, "char:hero", "blinded")
     _fire_monster_opportunity_attacks_on_move(
         live, mover_id="char:hero", from_zone=cell(0, 0), to_zone=cell(5, 5)
@@ -609,11 +627,16 @@ def test_mutual_unseen_reports_one_token_per_direction():
 
 def test_opportunity_attack_populates_split_source_lists():
     """Mirror of ``test_opportunity_attack_has_advantage_when_mover_cannot_see_reactor``
-    (Task 2 fixture): the mover (mon:foe) is Blinded, so the reactor's AoO
-    carries "unseen" (mover can't see reactor) and "condition:target"
-    (Blinded target) as ADVANTAGE sources only — no disadvantage applies."""
-    grid = GridScene(width=10, height=10)
+    (Task 2 fixture): the reactor stands in a dark cell the mover (mon:foe,
+    no darkvision) can't see into, so the reactor's AoO carries "unseen"
+    (plan ruling R4 — raw scene vision, not the Blinded condition); the
+    reactor is given Darkvision so the AoO TRIGGER still passes. The mover
+    is ALSO Blinded (unrelated to scene vision) so "condition:target"
+    (Blinded target) is covered too — both as ADVANTAGE sources only, no
+    disadvantage applies."""
+    grid = GridScene(width=10, height=10, lighting={cell(0, 0): "dark"})
     _handle, live = _start([_hero()], [_foe(zone_id=cell(0, 0))], grid)
+    _give_senses(live, "char:hero", darkvision=60)
     _give_condition(live, "mon:foe", "blinded")
     _fire_pc_opportunity_attacks_on_move(
         live, mover_id="mon:foe", from_zone=cell(0, 0), to_zone=cell(5, 5)

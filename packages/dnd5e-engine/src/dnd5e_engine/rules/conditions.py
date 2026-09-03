@@ -270,7 +270,9 @@ def conditions_grant_disadvantage_on_ability_checks(conditions: list[str]) -> bo
     SRD 5.2 glossary: Poisoned — "You have Disadvantage on attack rolls and
     ability checks."; Frightened — "You have Disadvantage on ability checks and
     attack rolls while the source of fear is within line of sight" (the
-    line-of-sight gate is not modelled; C16b owns it).
+    line-of-sight gate is not modelled here; C16b gated the attack-roll half
+    and the no-approach movement rule, but this ability-check half is a
+    residual — see BACKLOG.md "Conditions — SRD 5.2 rows not enforced").
 
     Exhaustion is deliberately NOT here: SRD 5.2 replaced the 2014 ladder with a
     numeric ``-2 x level`` penalty on every D20 Test — see ``d20_test_penalty``.
