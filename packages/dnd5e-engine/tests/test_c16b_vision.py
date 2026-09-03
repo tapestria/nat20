@@ -582,3 +582,43 @@ def test_frightened_mover_may_approach_source_it_cannot_see():
     moved = events_of(live, ActorMoved)
     assert moved
     assert live.actor_zone["char:hero"] == cell(1, 0)
+
+
+# ── Task 6: direction-split source lists ─────────────────────────────────
+
+
+def test_mutual_unseen_reports_one_token_per_direction():
+    """Both in darkness, no darkvision: sources == ["unseen", "unseen"]
+    (unchanged union), advantage_sources == ["unseen"], disadvantage_sources
+    == ["unseen"], advantage == "normal"."""
+    grid = GridScene(width=10, height=10, default_lighting="dark")
+    handle, live = _start([_hero()], [_foe()], grid)
+    _run(
+        submit_player_intent(
+            handle,
+            actor_id="char:hero",
+            intent=PlayerIntent(intent_type="attack", weapon_id="dagger", target_id="mon:foe"),
+        )
+    )
+    rolled = _attacks(live, "char:hero")[0]
+    assert rolled.advantage == "normal"
+    assert rolled.sources.count("unseen") == 2
+    assert rolled.advantage_sources == ["unseen"]
+    assert rolled.disadvantage_sources == ["unseen"]
+
+
+def test_opportunity_attack_populates_split_source_lists():
+    """Mirror of ``test_opportunity_attack_has_advantage_when_mover_cannot_see_reactor``
+    (Task 2 fixture): the mover (mon:foe) is Blinded, so the reactor's AoO
+    carries "unseen" (mover can't see reactor) and "condition:target"
+    (Blinded target) as ADVANTAGE sources only — no disadvantage applies."""
+    grid = GridScene(width=10, height=10)
+    _handle, live = _start([_hero()], [_foe(zone_id=cell(0, 0))], grid)
+    _give_condition(live, "mon:foe", "blinded")
+    _fire_pc_opportunity_attacks_on_move(
+        live, mover_id="mon:foe", from_zone=cell(0, 0), to_zone=cell(5, 5)
+    )
+    rolled = _attacks(live, "char:hero")[0]
+    assert rolled.disadvantage_sources == []
+    assert "unseen" in rolled.advantage_sources
+    assert "condition:target" in rolled.advantage_sources

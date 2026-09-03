@@ -244,6 +244,16 @@ class AttackRolled(BaseModel):
     # A separate ``bonus_dice_total`` field is deferred.
     modifier: int | None = None
     sources: list[AdvantageSource] = Field(default_factory=list)
+    # C16 BACKLOG — "Mutual unseen is reported twice" (2026-08-27): ``sources``
+    # is the UNION of advantage + disadvantage contributions, so a mutual-
+    # unseen swing (attacker can't see target AND target can't see attacker)
+    # reports ``"unseen"`` twice with no way to tell which direction is which.
+    # These two ADDITIVE fields carry the same tokens pre-split by direction
+    # (``AdvantageSources.advantage`` / ``.disadvantage`` from
+    # ``activities/d20.py``); ``sources`` keeps its existing union semantics
+    # unchanged for backward compatibility.
+    advantage_sources: list[AdvantageSource] = Field(default_factory=list)
+    disadvantage_sources: list[AdvantageSource] = Field(default_factory=list)
 
 
 class SaveRolled(BaseModel):

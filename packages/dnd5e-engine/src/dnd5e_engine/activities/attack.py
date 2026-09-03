@@ -206,6 +206,8 @@ def resolve_attack(
                 natural=roll.kept,
                 modifier=attack_bonus,
                 sources=list(roll.sources),
+                advantage_sources=list(sources.advantage),
+                disadvantage_sources=list(sources.disadvantage),
             )
         )
 
@@ -348,6 +350,8 @@ def _resolve_cleave_chain(
             natural=roll.kept,
             modifier=attack_bonus,
             sources=list(roll.sources),
+            advantage_sources=list(sources.advantage),
+            disadvantage_sources=list(sources.disadvantage),
         )
     )
     ctx.mastery_procs.append(("cleave", cid))

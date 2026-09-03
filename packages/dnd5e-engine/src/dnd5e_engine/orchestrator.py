@@ -8569,6 +8569,8 @@ def _fire_pc_opportunity_attacks_on_move(
                 natural=natural,
                 modifier=modifier,
                 sources=list(roll.sources),
+                advantage_sources=list(adv_sources),
+                disadvantage_sources=list(dis_sources),
             ),
         )
         # Consume the reaction regardless of hit/miss (SRD: reactions are
@@ -8765,6 +8767,8 @@ def _fire_monster_opportunity_attacks_on_move(
                 natural=natural,
                 modifier=modifier,
                 sources=list(roll.sources),
+                advantage_sources=list(adv_sources),
+                disadvantage_sources=list(dis_sources),
             ),
         )
         # Consume the reaction regardless of hit/miss (SRD: reactions are
