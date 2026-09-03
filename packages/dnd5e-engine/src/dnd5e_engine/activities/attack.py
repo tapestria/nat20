@@ -429,10 +429,10 @@ def _attack_roll_sources(
         dis_sources.append("unseen")
     # SRD 5.2 §Actions in Combat — Dodge: "any attack roll made against
     # you has Disadvantage if you can see the attacker". The "can see
-    # the attacker" conjunct is deferred to C16b (no vision model wired
-    # to this seam yet); ``target_dodging`` already folds in the SRD
-    # loss clause (Incapacitated / Speed 0) via
-    # ``_dodge_benefit_active``.
+    # the attacker" conjunct now lives in ``target_dodging`` itself —
+    # the orchestrator ANDs ``_dodge_benefit_active`` (SRD loss clause:
+    # Incapacitated / Speed 0) with ``_combatant_can_see(live, target,
+    # attacker)`` before this resolver ever sees the flag (C16b).
     if ctx.target_dodging.get(target.entity_id):
         dis_sources.append("dodge")
     # SRD 5.2 §Range — "Your attack roll has Disadvantage when your

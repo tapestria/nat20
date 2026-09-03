@@ -2167,9 +2167,12 @@ def _dodge_benefit_active(live: _LiveCombat, c: Combatant) -> bool:
     a prior turn, "until the start of your next turn") AND has not lost it
     under the SRD loss clause — *"You lose these benefits if you have the
     Incapacitated condition or if your Speed is 0."* ``live`` feeds the
-    Slow-mastery Speed projection (C15 Task 7); the "if you can see the
-    attacker" conjunct on the attack-disadvantage half is still deferred to
-    C16b (no vision model wired to this seam yet).
+    Slow-mastery Speed projection (C15 Task 7). This predicate does NOT
+    itself apply the SRD "if you can see the attacker" conjunct on the
+    attack-disadvantage half — callers building a ``target_dodging`` map
+    (C16b) AND this result with ``_combatant_can_see(live, dodger,
+    attacker)`` at the call site, since only the caller has the attacker in
+    scope.
     """
     return (
         c.dodging
@@ -8087,9 +8090,14 @@ async def submit_player_intent(
             ),
             target_distance_ft=_target_distance_map(live, current.entity_id, geometry_targets),
             # SRD 5.2 §Actions in Combat — Dodge: per-target dodge-benefit
-            # flag folded into attack disadvantage (attack.py) — the
-            # "if you can see the attacker" conjunct is deferred to C16b.
-            target_dodging={t.entity_id: _dodge_benefit_active(live, t) for t in geometry_targets},
+            # flag folded into attack disadvantage (attack.py). C16b: *"any
+            # attack roll made against you has Disadvantage if you can see
+            # the attacker"* — the dodging target must also see THIS
+            # attacker (``current``) for the benefit to apply here.
+            target_dodging={
+                t.entity_id: _dodge_benefit_active(live, t) and _combatant_can_see(live, t, current)
+                for t in geometry_targets
+            },
             # SRD 5.2 §Actions in Combat — Help, Assist an Attack Roll (C14
             # Task 4): per-target ally-of-attacker Help grant folded into
             # attack advantage (attack.py); the one-use pop fires after
@@ -8295,8 +8303,9 @@ def _fire_pc_opportunity_attacks_on_move(
 
     *"You can make an Opportunity Attack when a creature that you can see
     leaves your reach using its action, its Bonus Action, its Reaction, or
-    one of its speeds."* (SRD 5.2; the "you can see" gate is not modeled —
-    no vision seam is wired to this path yet — deferred to C16b.)
+    one of its speeds."* (SRD 5.2; C16b: a reactor that can't see the mover
+    — ``_combatant_can_see(live, reactor, mover)`` — never triggers, no
+    Reaction spent, no event emitted, the same as any other gate below.)
 
     Phase-6 wires this for the **PC reactor / monster mover** direction
     only — the symmetric monster-AoO path requires the reaction-queue
@@ -8349,6 +8358,11 @@ def _fire_pc_opportunity_attacks_on_move(
         # adjacency; an out-of-zone move always provokes (the mover leaves
         # the reactor's reach band).
         if to_zone == from_zone:
+            continue
+        # SRD 5.2 §Opportunity Attacks — "a creature that you can see": a
+        # Blinded (or otherwise sight-blocked) reactor never triggers; no
+        # Reaction spent, no event emitted.
+        if not _combatant_can_see(live, reactor, mover):
             continue
         # Roll the AoO attack through the shared SRD 5.2 D20 Test primitive
         # (C14) — same rules shape as effects/attack.py — nat 20 crit, nat 1
@@ -8435,9 +8449,10 @@ def _opportunity_attack_advantage_sources(
     assembled the same way ``activities/attack.py::resolve_attack`` does for
     a regular Attack: the condition-derived half (Prone/Grappled/etc, called
     once per side so the emitted source names which side produced it) plus
-    the Dodge action's disadvantage. AoOs are always melee (same-zone reach
-    approximation — see the callers' docstrings), so the Prone-target
-    distance check always resolves within-5ft.
+    the Dodge action's disadvantage and the C16b "Unseen Attackers and
+    Targets" advantage row (mover can't see reactor). AoOs are always melee
+    (same-zone reach approximation — see the callers' docstrings), so the
+    Prone-target distance check always resolves within-5ft.
     """
     reactor_conditions = _condition_names(reactor)
     mover_conditions = _condition_names(mover)
@@ -8462,11 +8477,16 @@ def _opportunity_attack_advantage_sources(
         dis_sources.append("condition:attacker")
     if mover_cond_dis:
         dis_sources.append("condition:target")
-    # SRD 5.2 §Actions in Combat — Dodge: "any attack roll made against you
-    # has Disadvantage if you can see the attacker" — the "can see" conjunct
-    # is deferred to C16b (no vision seam wired here yet).
-    if _dodge_benefit_active(live, mover):
+    # SRD 5.2 §Actions in Combat — Dodge: "any attack roll made against
+    # you has Disadvantage if you can see the attacker" (C16b: the mover
+    # is the dodging "you" here, the reactor is "the attacker").
+    if _dodge_benefit_active(live, mover) and _combatant_can_see(live, mover, reactor):
         dis_sources.append("dodge")
+    # SRD 5.2 "Unseen Attackers and Targets": "When a creature can't see
+    # you, you have Advantage on attack rolls against it" — the mover
+    # (AoO target) can't see the reactor (AoO attacker).
+    if not _combatant_can_see(live, mover, reactor):
+        adv_sources.append("unseen")
     return adv_sources, dis_sources
 
 
@@ -8481,8 +8501,9 @@ def _fire_monster_opportunity_attacks_on_move(
 
     *"You can make an Opportunity Attack when a creature that you can see
     leaves your reach using its action, its Bonus Action, its Reaction, or
-    one of its speeds."* (SRD 5.2; the "you can see" gate is not modeled —
-    no vision seam is wired to this path yet — deferred to C16b.)
+    one of its speeds."* (SRD 5.2; C16b: a reactor that can't see the mover
+    — ``_combatant_can_see(live, reactor, mover)`` — never triggers, no
+    Reaction spent, no event emitted, mirrors the PC direction.)
 
     The monster-reactor / PC-mover mirror of
     ``_fire_pc_opportunity_attacks_on_move`` same hit/crit rules,
@@ -8524,6 +8545,11 @@ def _fire_monster_opportunity_attacks_on_move(
         # adjacency; an out-of-zone move always provokes (the mover leaves
         # the reactor's reach band).
         if to_zone == from_zone:
+            continue
+        # SRD 5.2 §Opportunity Attacks — "a creature that you can see": a
+        # sight-blocked reactor never triggers; no Reaction spent, no event
+        # emitted.
+        if not _combatant_can_see(live, reactor, mover):
             continue
         # Roll the AoO attack through the shared SRD 5.2 D20 Test primitive
         # (C14) — see ``_fire_pc_opportunity_attacks_on_move`` for the
@@ -8930,9 +8956,13 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
             target_distance_ft=_target_distance_map(live, current.entity_id, target_list),
             # SRD 5.2 §Actions in Combat — Dodge: mirrors the PC site. A
             # dodging PC target imposes disadvantage on the monster's
-            # attack roll (attack.py); the "can see the attacker" conjunct
-            # is deferred to C16b.
-            target_dodging={t.entity_id: _dodge_benefit_active(live, t) for t in target_list},
+            # attack roll (attack.py) only while it can also see THIS
+            # attacker (``current``) — C16b's "can see the attacker"
+            # conjunct.
+            target_dodging={
+                t.entity_id: _dodge_benefit_active(live, t) and _combatant_can_see(live, t, current)
+                for t in target_list
+            },
             # SRD 5.2 §Actions in Combat — Help (C14 Task 4): mirrors the PC
             # site — a monster attacker can be granted Help by one of ITS
             # own allies (another monster) exactly like a PC can.

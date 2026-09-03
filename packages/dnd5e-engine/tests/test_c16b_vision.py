@@ -10,6 +10,7 @@ from dnd5e_engine.activities.passive_stats import CombatantSenses
 from dnd5e_engine.events import AttackRolled
 from dnd5e_engine.orchestrator import (
     _combatant_can_see,
+    _fire_pc_opportunity_attacks_on_move,
     _get_live,
     start_combat,
     submit_player_intent,
@@ -79,6 +80,14 @@ def _give_condition(live, entity_id, condition, source="implied:test"):
 
 def _give_senses(live, entity_id, **senses):
     _combatant(live, entity_id).senses = CombatantSenses(**senses)
+
+
+def _attacks(live, attacker_id):
+    return [e for e in events_of(live, AttackRolled) if e.attacker_id == attacker_id]
+
+
+def _run(coro):
+    return run_async(coro)
 
 
 # ── Task 1: composite predicate ──────────────────────────────────────────
@@ -176,3 +185,77 @@ def test_ranged_in_melee_disadvantage_dropped_when_adjacent_hostile_is_blinded()
 
     assert "ranged_in_melee" in rolled_a.sources
     assert "ranged_in_melee" not in rolled_b.sources
+
+
+# ── Task 2: Dodge "if you can see the attacker" ──────────────────────────
+
+
+def test_dodge_disadvantage_dropped_when_dodger_cannot_see_attacker():
+    """SRD 5.2 Dodge: "any attack roll made against you has Disadvantage if
+    you can see the attacker". Same-seed A/B: foe dodges; hero attacks from a
+    dark cell (foe has no darkvision) → no "dodge" source."""
+
+    async def run(dark: bool):
+        grid = GridScene(width=10, height=10, lighting={cell(0, 0): "dark"} if dark else {})
+        start = await start_combat(
+            session_id=f"c16b-dodge-{dark}",
+            party=[_hero(initiative=1)],
+            encounter=[_foe(initiative=20)],
+            scene_zones=None,
+            grid_scene=grid,
+            rng_seed=1,
+        )
+        live = _get_live(start.handle)
+        # foe (initiative 20) acts first: flag it as dodging directly
+        # (mirrors tests/test_dodge_help_hide.py's ``c.dodging = True``
+        # seam — no engine-sanctioned monster-dodge AI path exists) and
+        # advance the turn pointer past it (test-only seam, same class as
+        # the direct condition/dodging writes above) to hero's turn.
+        _combatant(live, "mon:foe").dodging = True
+        live.current_turn_index = 1
+        await submit_player_intent(
+            start.handle,
+            actor_id="char:hero",
+            intent=PlayerIntent(intent_type="attack", weapon_id="dagger", target_id="mon:foe"),
+        )
+        return _attacks(live, "char:hero")[0]
+
+    lit = run_async(run(False))
+    dark = run_async(run(True))
+    assert "dodge" in lit.sources
+    assert "dodge" not in dark.sources
+    assert (
+        "unseen" in dark.sources
+    )  # foe can't see the hero → hero has advantage (pre-existing producer)
+
+
+# ── Task 2: Opportunity Attacks "a creature that you can see" ────────────
+
+
+def test_opportunity_attack_not_triggered_when_reactor_cannot_see_mover():
+    """SRD 5.2: "when a creature that you can see leaves your reach". A
+    Blinded reactor makes no opportunity attack and keeps its Reaction."""
+
+    grid = GridScene(width=10, height=10)
+    _handle, live = _start([_hero()], [_foe(zone_id=cell(0, 0))], grid)
+    _give_condition(live, "char:hero", "blinded")
+    _fire_pc_opportunity_attacks_on_move(
+        live, mover_id="mon:foe", from_zone=cell(0, 0), to_zone=cell(5, 5)
+    )
+    assert _attacks(live, "char:hero") == []
+    assert _combatant(live, "char:hero").reaction_available is True
+
+
+def test_opportunity_attack_has_advantage_when_mover_cannot_see_reactor():
+    """Unseen Attackers and Targets on the AoO roll: the mover is Blinded →
+    the reactor's AoO carries the "unseen" advantage source."""
+
+    grid = GridScene(width=10, height=10)
+    _handle, live = _start([_hero()], [_foe(zone_id=cell(0, 0))], grid)
+    _give_condition(live, "mon:foe", "blinded")
+    _fire_pc_opportunity_attacks_on_move(
+        live, mover_id="mon:foe", from_zone=cell(0, 0), to_zone=cell(5, 5)
+    )
+    rolled = _attacks(live, "char:hero")[0]
+    assert "unseen" in rolled.sources
+    assert "condition:target" in rolled.sources
