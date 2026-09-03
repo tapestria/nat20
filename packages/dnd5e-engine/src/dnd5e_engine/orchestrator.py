@@ -4304,8 +4304,11 @@ def _build_hydration_payload(live: _LiveCombat, caster: Combatant | None = None)
     # with Advantage" while the benefit is active. Folded onto the SAME
     # per-target ``passive_save_adv`` list ``build_context.py`` reshapes
     # into ``ActivityResolutionContext.passive_save_adv`` — no separate
-    # sidecar. No "can see" conjunct on this half of Dodge (only the
-    # attack-disadvantage half carries one, deferred to C16b).
+    # sidecar. SRD 5.2 gives this DEX-save half no "can see" conjunct at
+    # all — unlike the sibling attack-disadvantage half, whose "if you can
+    # see the attacker" conjunct is applied at the ``target_dodging`` ctx
+    # sites (C16b, ``_combatant_can_see``), this half stays unconditioned
+    # on vision.
     for c in live.initiative:
         if _dodge_benefit_active(live, c):
             save_modifiers[c.entity_id]["passive_save_adv"].append("DEX")

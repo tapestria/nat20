@@ -10,6 +10,7 @@ from dnd5e_engine.activities.passive_stats import CombatantSenses
 from dnd5e_engine.events import AttackRolled
 from dnd5e_engine.orchestrator import (
     _combatant_can_see,
+    _fire_monster_opportunity_attacks_on_move,
     _fire_pc_opportunity_attacks_on_move,
     _get_live,
     start_combat,
@@ -257,5 +258,37 @@ def test_opportunity_attack_has_advantage_when_mover_cannot_see_reactor():
         live, mover_id="mon:foe", from_zone=cell(0, 0), to_zone=cell(5, 5)
     )
     rolled = _attacks(live, "char:hero")[0]
+    assert "unseen" in rolled.sources
+    assert "condition:target" in rolled.sources
+
+
+def test_opportunity_attack_not_triggered_when_monster_reactor_cannot_see_mover():
+    """SRD 5.2: "when a creature that you can see leaves your reach" — the
+    monster-reactor / PC-mover mirror of the PC-reactor test above. A
+    Blinded monster reactor makes no opportunity attack and keeps its
+    Reaction."""
+
+    grid = GridScene(width=10, height=10)
+    _handle, live = _start([_hero()], [_foe(zone_id=cell(0, 0))], grid)
+    _give_condition(live, "mon:foe", "blinded")
+    _fire_monster_opportunity_attacks_on_move(
+        live, mover_id="char:hero", from_zone=cell(0, 0), to_zone=cell(5, 5)
+    )
+    assert _attacks(live, "mon:foe") == []
+    assert _combatant(live, "mon:foe").reaction_available is True
+
+
+def test_opportunity_attack_has_advantage_when_pc_mover_cannot_see_monster_reactor():
+    """Unseen Attackers and Targets on the monster-reactor AoO roll: the PC
+    mover is Blinded → the reactor's AoO carries the "unseen" advantage
+    source."""
+
+    grid = GridScene(width=10, height=10)
+    _handle, live = _start([_hero()], [_foe(zone_id=cell(0, 0))], grid)
+    _give_condition(live, "char:hero", "blinded")
+    _fire_monster_opportunity_attacks_on_move(
+        live, mover_id="char:hero", from_zone=cell(0, 0), to_zone=cell(5, 5)
+    )
+    rolled = _attacks(live, "mon:foe")[0]
     assert "unseen" in rolled.sources
     assert "condition:target" in rolled.sources
