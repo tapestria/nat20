@@ -140,12 +140,14 @@ def resolve_short_rest(
         raise ValueError(
             f"cannot spend {dice_to_spend} Hit Dice; only {pool.dice_remaining} remaining"
         )
+    # Validate BEFORE any rng draw: a rejected call must never mutate rng state
+    # (determinism — seeded reproducibility is a hard engine promise).
+    restored_pact = _restored_pool(pact_slots, pact_slot_max, name="pact_slots")
     rolls = tuple(
         max(1, rng.randint(1, pool.hit_die_size) + con_modifier) for _ in range(dice_to_spend)
     )
     healed = sum(rolls)
     dice_remaining = pool.dice_remaining - dice_to_spend
-    restored_pact = _restored_pool(pact_slots, pact_slot_max, name="pact_slots")
     return RestOutcome(
         healed=healed,
         dice_spent=dice_to_spend,

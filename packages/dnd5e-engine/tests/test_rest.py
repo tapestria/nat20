@@ -285,6 +285,18 @@ def test_rest_pool_without_max_is_rejected():
         )
 
 
+def test_short_rest_rejected_pact_input_never_mutates_rng_state():
+    """A rejected pact_slots/pact_slot_max validation must fail BEFORE any rng draw —
+    the engine promises seeded reproducibility, so a raised call cannot leave rng
+    mutated (regression: dice_to_spend > 0 previously drew before validating)."""
+    pool = HitDicePool(hit_die_size=6, dice_remaining=3, dice_total=3)
+    rng = random.Random(1)
+    state_before = rng.getstate()
+    with pytest.raises(ValueError):
+        resolve_short_rest(pool, dice_to_spend=2, con_modifier=0, rng=rng, pact_slots={1: 0})
+    assert rng.getstate() == state_before
+
+
 def test_rest_max_alone_restores_to_it():
     pool = HitDicePool(hit_die_size=6, dice_remaining=3, dice_total=3)
     assert resolve_long_rest(pool, hp_current=1, hp_max=1, spell_slot_max={1: 2}).spell_slots == {
