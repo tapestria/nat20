@@ -7577,6 +7577,7 @@ def _pop_pending_reaction(
     *,
     triggering_actor_id: str,
     only_owner_id: str | None = None,
+    eligible: Callable[[Combatant, _PendingReaction], bool] | None = None,
 ) -> _PendingReaction | None:
     """SRD §Reactions — pop the first pending reaction matching ``trigger``,
     scanning ``live.initiative`` in INITIATIVE ORDER (the documented firing
@@ -7587,6 +7588,10 @@ def _pop_pending_reaction(
     under attack/targeted, not any bystander), must be alive, and must have
     ``reaction_available``. Removes + returns the match (a reaction fires — and
     is spent — at most once); ``None`` when nothing qualifies.
+
+    An armed reaction whose owner fails ``eligible`` is SKIPPED (left queued,
+    no Reaction spent) — R4. The scan continues in initiative order to the
+    next candidate rather than stopping.
     """
     for reactor in live.initiative:
         if reactor.entity_id == triggering_actor_id:
@@ -7609,6 +7614,8 @@ def _pop_pending_reaction(
             None,
         )
         if match is not None:
+            if eligible is not None and not eligible(reactor, match):
+                continue
             live.pending_reactions.remove(match)
             return match
     return None
@@ -7692,6 +7699,20 @@ def _resolve_readied_spell_cast(
             )
 
 
+def _readied_cast_eligible(
+    live: _LiveCombat, reactor: Combatant, pending: _PendingReaction
+) -> bool:
+    """R4 — a readied leveled spell (Shield) needs an unexpended slot at its
+    readied level. SRD §Spell Slots: "When you cast a spell, you expend a
+    slot of that spell's level or higher"; a cantrip (level 0) has no slot
+    to expend and is always eligible."""
+    spell = get_lib_loader().get_spell(pending.spell_id or "")
+    if spell is None or spell.level == 0:
+        return True
+    level = pending.slot_level if pending.slot_level is not None else spell.level
+    return _slot_available(live, reactor.entity_id, level)
+
+
 def _drain_targeted_reactions(
     live: _LiveCombat,
     *,
@@ -7710,6 +7731,7 @@ def _drain_targeted_reactions(
             trigger,
             triggering_actor_id=triggering_actor_id,
             only_owner_id=target.entity_id,
+            eligible=lambda reactor, pending: _readied_cast_eligible(live, reactor, pending),
         )
         if popped is None:
             continue
@@ -7736,10 +7758,33 @@ def _drain_counterspell_reaction(
     ``docs/dev/reaction-queue.md``, "Slot-consumption redesign"). ``False``
     means no reaction fired OR the save succeeded; either way the triggering
     cast proceeds exactly as if this function had never been called.
+
+    Gates (R4): the reactor must hold a slot at the readied level in either
+    pool and be within Counterspell's own ``range.value`` with line of
+    sight — an ineligible reactor's armed reaction is skipped, not
+    consumed.
     """
     if intent.intent_type != "cast_spell" or not intent.spell_id:
         return False
-    popped = _pop_pending_reaction(live, "cast_spell", triggering_actor_id=actor_id)
+
+    caster_zone = live.actor_zone.get(actor_id)
+
+    def _eligible(reactor: Combatant, pending: _PendingReaction) -> bool:
+        spell = get_lib_loader().get_spell(pending.spell_id or "counterspell")
+        if spell is None:
+            return False
+        level = pending.slot_level if pending.slot_level is not None else spell.level
+        if spell.level > 0 and not _slot_available(live, reactor.entity_id, level):
+            return False
+        range_ft = spell.range.value
+        reactor_zone = live.actor_zone.get(reactor.entity_id)
+        if range_ft is None or reactor_zone is None or caster_zone is None:
+            return True  # no geometry ⇒ no penalty (engine-wide convention)
+        return _in_range_with_los(live.topology, reactor_zone, caster_zone, int(range_ft))
+
+    popped = _pop_pending_reaction(
+        live, "cast_spell", triggering_actor_id=actor_id, eligible=_eligible
+    )
     if popped is None:
         return False
     reactor = _find_combatant(live, popped.owner_id)

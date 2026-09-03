@@ -182,7 +182,6 @@ def test_c17_s05_magic_missile_upcast_at_slot_3_should_fire_5_darts():
         assert 2 <= dart.amount <= 5
 
 
-@xfail_cluster(17, "spell slots & rests")
 def test_c17_s06_counterspell_with_empty_slot_pool_or_out_of_range_still_fires_for_free():
     """C17-S06: two independent, co-located gates in
     ``_drain_counterspell_reaction`` — "No-slot readied reactions fire for

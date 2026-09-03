@@ -219,21 +219,6 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   itself.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
 
-## Reactions (2026-07-03)
-
-- **No-slot readied reactions fire for free.** `_resolve_readied_spell_cast`
-  and `_drain_counterspell_reaction` decrement the reactor's spell slot only
-  when one is available, but fire the reaction (spending the Reaction and
-  applying the full effect) regardless — a reactor armed with an empty slot
-  pool gets a free Shield/Counterspell. Host-gated today (the host chooses to
-  arm), unpinned by any catalog scenario; the fix is a slot-availability gate
-  at drain time (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`).
-- **Counterspell range ungated at drain time.** SRD 5.2 Counterspell has a
-  60-foot range, but `_drain_counterspell_reaction` fires for any armed
-  reactor regardless of reactor↔caster distance. Unpinned — every catalog
-  scenario co-locates them; needs a topology distance check at drain
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`).
-
 ## Effect-change sidecars (2026-07-02)
 
 - **Two effect-key namespaces for check/save bonuses (2026-08-26).** The public
