@@ -7284,19 +7284,42 @@ def _reject_over_count_targets(
 def _apply_pre_slot_cast_gates(
     live: _LiveCombat, current: Combatant, actor_id: str, intent: PlayerIntent
 ) -> bool:
-    """Run every gate that MUST fire before ``_consume_spell_slot`` — a
-    Counterspell interrupt (``_drain_counterspell_reaction``) and the C17/R5
-    target-count validation (``_reject_over_count_targets``) both need to reject
-    (when applicable) before the slot is ever touched, so neither a countered
-    nor a rejected-target cast spends the caster's slot. Merged into one
-    early-return call site (rather than two separate ``if``s in
-    ``submit_player_intent``) to keep that function's branch count down; the two
-    checks are independent and order-insensitive (each returns ``False`` fast
-    when not applicable to the intent).
+    """Run every gate that MUST fire before ``_consume_spell_slot`` — the R8
+    in-combat-ritual rejection, a Counterspell interrupt
+    (``_drain_counterspell_reaction``) and the C17/R5 target-count validation
+    (``_reject_over_count_targets``) all need to reject (when applicable)
+    before the slot is ever touched, so neither an illegal ritual cast, a
+    countered cast, nor a rejected-target cast spends the caster's slot.
+    Merged into one early-return call site (rather than separate ``if``s in
+    ``submit_player_intent``) to keep that function's branch count down.
 
-    Returns ``True`` iff either gate emitted ``CastFailed`` and already
+    The ritual check runs FIRST and unconditionally: an in-combat
+    ``as_ritual=True`` cast is illegal regardless of anything else about the
+    intent, so it must never reach ``_drain_counterspell_reaction`` — an
+    armed Counterspell must not be triggered (or its slot spent) by a cast
+    that was never going to resolve. The remaining two checks are
+    independent and order-insensitive (each returns ``False`` fast when not
+    applicable to the intent).
+
+    Returns ``True`` iff any gate emitted ``CastFailed`` and already
     advanced the turn — the caller must return.
     """
+    if (
+        intent.intent_type == "cast_spell"
+        and intent.spell_id
+        and intent.as_ritual
+        and get_lib_loader().get_spell(intent.spell_id) is not None
+    ):
+        _emit(
+            live,
+            CastFailed(
+                actor_id=current.entity_id,
+                spell_id=intent.spell_id,
+                reason="ritual_in_combat",
+            ),
+        )
+        _end_turn_and_advance(live, actor_id)
+        return True
     if _drain_counterspell_reaction(live, current, actor_id, intent):
         return True
     return _reject_over_count_targets(live, current, actor_id, intent)
@@ -7324,17 +7347,6 @@ def _consume_spell_slot(
     slot_gate_spell = get_lib_loader().get_spell(intent.spell_id)
     if slot_gate_spell is None:
         return False
-    if intent.as_ritual:
-        _emit(
-            live,
-            CastFailed(
-                actor_id=current.entity_id,
-                spell_id=intent.spell_id,
-                reason="ritual_in_combat",
-            ),
-        )
-        _end_turn_and_advance(live, actor_id)
-        return True
     base_level = slot_gate_spell.level
     slot_level = intent.slot_level if intent.slot_level is not None else base_level
     # SRD §Cantrips — "A cantrip is a spell that can be cast at
@@ -7375,14 +7387,22 @@ def _consume_spell_slot(
 def _emit_spell_cast(
     live: _LiveCombat, caster_id: str, spell: Spell, slot_level: int | None
 ) -> None:
-    """C17 — ``SpellCast`` with component metadata (SRD §Components; never enforced)."""
+    """C17 — ``SpellCast`` with component metadata (SRD §Components; never enforced).
+
+    Normalises ``slot_level`` to ``None`` for a cantrip (``spell.level == 0``)
+    regardless of what the caller computed — ``events.py`` declares
+    ``SpellCast.slot_level: int | None  # None for a cantrip`` and every call
+    site (on-turn cast, readied-reaction resolve, Counterspell's own cast)
+    shares this single normalisation point rather than each re-deriving it.
+    """
+    normalized_slot_level = None if spell.level == 0 else slot_level
     comps, material, consumed, cost = spell_component_metadata(spell)
     _emit(
         live,
         SpellCast(
             actor_id=caster_id,
             spell_id=spell.slug,
-            slot_level=slot_level,
+            slot_level=normalized_slot_level,
             ritual=bool(spell.ritual),
             components=list(comps),
             material=material,
@@ -7405,11 +7425,7 @@ def _emit_spell_cast_for_on_turn_intent(
     spell = get_lib_loader().get_spell(intent.spell_id)
     if spell is None:
         return
-    slot_level = (
-        None
-        if spell.level == 0
-        else (intent.slot_level if intent.slot_level is not None else spell.level)
-    )
+    slot_level = intent.slot_level if intent.slot_level is not None else spell.level
     _emit_spell_cast(live, actor_id, spell, slot_level)
 
 
@@ -7859,6 +7875,9 @@ def _resolve_readied_spell_cast(
     slot_level = popped.slot_level if popped.slot_level is not None else spell.level
     if spell.level > 0:
         _take_spell_slot(live, reactor.entity_id, slot_level)
+    # ``_emit_spell_cast`` normalises ``slot_level`` to ``None`` for a
+    # cantrip; ``slot_level`` here stays the raw popped/derived value for the
+    # slot-take check above.
 
     _emit(
         live,
@@ -8003,6 +8022,12 @@ def _drain_counterspell_reaction(
     reactor = _find_combatant(live, popped.owner_id)
     if reactor is None:
         return False
+    # The spell lookup here duplicates ``_eligible``'s (identical
+    # ``pending.spell_id or "counterspell"`` / ``popped.spell_id or
+    # "counterspell"`` expression): ``_eligible`` runs once per CANDIDATE
+    # during the scan inside ``_pop_pending_reaction`` — the armed entry is
+    # not known yet, so its spell can't be pre-fetched — and this second
+    # lookup is against ``popped``, the one entry the scan actually selected.
     counterspell = get_lib_loader().get_spell(popped.spell_id or "counterspell")
     if counterspell is None:
         return False

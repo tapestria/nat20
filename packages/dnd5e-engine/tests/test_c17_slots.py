@@ -444,7 +444,107 @@ def test_ritual_in_combat_is_rejected_without_spending_a_slot():
     assert not _events(live, SpellCast)
 
 
+def test_ritual_in_combat_does_not_trigger_a_readied_counterspell():
+    """R8: the ``as_ritual`` rejection must run BEFORE the Counterspell drain
+    (``_apply_pre_slot_cast_gates``) — an illegal in-combat ritual intent must
+    not burn an opponent's readied Counterspell reaction or its slot."""
+
+    async def _go():
+        handle, live = await _start(
+            [
+                _caster(
+                    "char:reactor",
+                    spells=["counterspell"],
+                    spell_slots={3: 1},
+                    intelligence=18,
+                    initiative=20,
+                ),
+                _caster(
+                    "char:enemy_caster",
+                    spells=["fireball"],
+                    spell_slots={3: 1},
+                    col=1,
+                    initiative=15,
+                ),
+            ],
+            [_foe(col=2, ac=10, hp=50)],
+            seed=9,
+            width=30,
+        )
+        await submit_player_intent(
+            handle,
+            actor_id="char:reactor",
+            intent=PlayerIntent(
+                intent_type="ready",
+                spell_id="counterspell",
+                slot_level=3,
+                reaction_trigger="cast_spell",
+            ),
+        )
+        await submit_player_intent(
+            handle,
+            actor_id="char:enemy_caster",
+            intent=PlayerIntent(
+                intent_type="cast_spell",
+                spell_id="fireball",
+                slot_level=3,
+                target_id="mon:foe",
+                as_ritual=True,
+            ),
+        )
+        return live
+
+    live = _run(_go())
+    assert not _events(live, ReactionTriggered)
+    assert [e.reason for e in _events(live, CastFailed)] == ["ritual_in_combat"]
+    # Counterspell stays armed and its slot untouched.
+    assert live.spell_slots_by_entity["char:reactor"] == {3: 1}
+    assert [pr.owner_id for pr in live.pending_reactions] == ["char:reactor"]
+
+
 def test_counterspell_and_readied_casts_emit_spell_cast():
     live = _counterspell_pair(reactor_slots={3: 1}, enemy_col=1)
     names = [e.spell_id for e in _events(live, SpellCast)]
     assert "counterspell" in names
+
+
+def test_readied_cantrip_emits_spell_cast_with_none_slot_level():
+    """``events.py``: ``SpellCast.slot_level: int | None  # None for a cantrip`` —
+    a readied cantrip (Fire Bolt on hit_by_attack) must honour that contract too,
+    not just the on-turn cast path."""
+
+    async def _go():
+        handle, live = await _start(
+            [_caster("char:target", spells=["fire-bolt"], spell_slots={}, initiative=20)],
+            [
+                EncounterMemberSpec(
+                    entity_id="mon:foe",
+                    entity_type="Monster",
+                    name="mon:foe",
+                    initiative=1,
+                    hp_current=50,
+                    hp_max=50,
+                    ac=10,
+                    attack_bonus=10,
+                    damage_dice="1d6",
+                    damage_type="slashing",
+                    zone_id=cell(1, 0),
+                )
+            ],
+        )
+        await submit_player_intent(
+            handle,
+            actor_id="char:target",
+            intent=PlayerIntent(
+                intent_type="ready",
+                spell_id="fire-bolt",
+                reaction_trigger="hit_by_attack",
+            ),
+        )
+        await advance_monster_turn(handle)
+        return live
+
+    live = _run(_go())
+    casts = [e for e in _events(live, SpellCast) if e.spell_id == "fire-bolt"]
+    assert len(casts) == 1
+    assert casts[0].slot_level is None
