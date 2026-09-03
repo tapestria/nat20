@@ -160,6 +160,7 @@ from dnd5e_engine.spatial import GridTopology, SpatialTopology, parse_cell
 from dnd5e_engine.specs import (
     EncounterMemberSpec,
     GridScene,
+    LightLevel,
     PartyMemberSpec,
     SceneTopology,
     ZoneEdge,
@@ -475,6 +476,12 @@ class _ZoneGraph:
         # Same permanent no-positional-model split as ``cover_on_cell`` above
         # — the zone graph has no obscurement geometry to hang a tag off of.
         return "none"
+
+    def light_on_cell(self, cell: str) -> LightLevel:
+        # Same permanent no-lighting-model split as ``obscurement_on_cell``
+        # above — the zone graph has no lighting geometry to hang a tag off
+        # of; every zone is treated as fully lit.
+        return "bright"
 
     def can_see(self, a: str, b: str, senses: CombatantSenses | None = None) -> bool:
         # Zone graph has no lighting model — everything in a known zone is
@@ -2846,12 +2853,16 @@ def _handle_hide(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
     script unsatisfiable against the hard Action gate the first attack
     swing enforces) — see BACKLOG.md.
 
-    Gate: the hider's own cell must be behind Three-Quarters/Total cover
-    OR Heavily Obscured. The "out of any enemy's line of sight" conjunct
-    is DEFERRED to C16b — no per-enemy vision scan is wired to this seam
-    yet (comment mirrors the Dodge "if you can see the attacker" deferral).
-    A failed gate raises ``IntentRejectedError("target_invalid")`` with NO
-    d20 draw (zero stream perturbation on rejection).
+    Gate: the hider's own cell must be behind Three-Quarters/Total cover,
+    Heavily Obscured, or in Darkness (SRD 5.2 §Vision and Light glossary:
+    "An area of darkness is Heavily Obscured."). R1 (plan ruling): the
+    "out of any enemy's line of sight" conjunct then scans every living,
+    non-Incapacitated hostile via ``_combatant_can_see`` — but ONLY when
+    the hider's cell cover is not already Three-Quarters/Total, since
+    per-cell cover is omnidirectional and already breaks every enemy's
+    line of sight (SRD 5.2 §Cover). A failed gate raises
+    ``IntentRejectedError("target_invalid")`` with NO d20 draw (zero
+    stream perturbation on rejection).
 
     On success: emits ``ConditionApplied(condition="invisible")`` (the C12
     Invisible wiring already grants the hider's next attack Advantage and
@@ -2877,12 +2888,35 @@ def _handle_hide(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
     cell = live.actor_zone.get(actor_id)
     cover = live.topology.cover_on_cell(cell) if cell is not None else "none"
     obscurement = live.topology.obscurement_on_cell(cell) if cell is not None else "none"
-    if cover not in ("three_quarters", "total") and obscurement != "heavy":
+    light = live.topology.light_on_cell(cell) if cell is not None else "bright"
+    if cover not in ("three_quarters", "total") and obscurement != "heavy" and light != "dark":
         raise IntentRejectedError(
             "target_invalid",
-            f"actor_id={actor_id!r} is not behind Three-Quarters/Total cover "
-            "or Heavily Obscured — Hide requires one of those",
+            f"actor_id={actor_id!r} is not behind Three-Quarters/Total cover, "
+            "Heavily Obscured, or in Darkness — Hide requires one of those",
         )
+
+    # C16b (plan ruling R1) — "you must be out of any enemy's line of sight".
+    # Per-cell cover is omnidirectional, so Three-Quarters/Total cover on the
+    # hider's cell already breaks every enemy's line; the conjunct bites only
+    # for a hider relying on obscurement/darkness alone.
+    if cover not in ("three_quarters", "total"):
+        hider_side = _side_of(live, actor_id) or set()
+        for hostile in live.initiative:
+            if (
+                hostile.entity_id in hider_side
+                or hostile.entity_id in live.dead_ids
+                or not hostile.is_alive
+            ):
+                continue
+            if conditions_block_actions(_condition_names(hostile)):
+                continue
+            if _combatant_can_see(live, hostile, current):
+                raise IntentRejectedError(
+                    "target_invalid",
+                    f"actor_id={actor_id!r} is within line of sight of {hostile.entity_id!r} — "
+                    "Hide requires being out of every enemy's line of sight",
+                )
 
     # F3 — this attempt has cleared the cover gate and is now committed to
     # rolling; record it BEFORE the roll so a same-turn retry (success or

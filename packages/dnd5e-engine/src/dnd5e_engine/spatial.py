@@ -153,6 +153,8 @@ class SpatialTopology(Protocol):
 
     def obscurement_on_cell(self, cell: str) -> Literal["none", "light", "heavy"]: ...
 
+    def light_on_cell(self, cell: str) -> LightLevel: ...
+
     def can_see(self, a: str, b: str, senses: CombatantSenses | None = None) -> bool: ...
 
     def distance_ft(self, a: str, b: str) -> int | None: ...
@@ -365,6 +367,17 @@ class GridTopology:
         if not self._in_bounds(cell):
             return "none"
         return self._obscurement.get(cell, "none")
+
+    def light_on_cell(self, cell: str) -> LightLevel:
+        """SRD 5.2 §Vision and Light — the light level tagged on ``cell``.
+
+        "An area of Darkness is Heavily Obscured." Out-of-bounds cells carry
+        no tag and fall back to the scene's ``default_lighting``, same as an
+        untagged in-bounds cell.
+        """
+        if not self._in_bounds(cell):
+            return self._default_lighting
+        return self._lighting.get(cell, self._default_lighting)
 
     def can_see(self, a: str, b: str, senses: CombatantSenses | None = None) -> bool:
         """SRD 5.2 §Vision and Light — can a viewer in ``a`` with ``senses`` see

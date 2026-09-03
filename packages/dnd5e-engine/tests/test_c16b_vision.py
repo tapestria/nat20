@@ -5,10 +5,13 @@ Every rule quotes the SRD 5.2 sentence it pins."""
 
 from __future__ import annotations
 
+import pytest
+
 from dnd5e_engine import PlayerIntent
 from dnd5e_engine.activities.passive_stats import CombatantSenses
-from dnd5e_engine.events import AttackRolled
+from dnd5e_engine.events import AttackRolled, CheckRolled
 from dnd5e_engine.orchestrator import (
+    IntentRejectedError,
     _combatant_can_see,
     _fire_monster_opportunity_attacks_on_move,
     _fire_pc_opportunity_attacks_on_move,
@@ -396,3 +399,66 @@ def test_opportunity_attack_against_invisible_mover_seen_by_blindsight_is_normal
     assert no_sense == []
     assert len(blindsight) == 1
     assert "condition:target" not in blindsight[0].sources
+
+
+# ── Task 4: Hide line-of-sight gate ──────────────────────────────────────
+
+
+def test_hide_behind_three_quarters_cover_still_allowed_with_adjacent_enemy():
+    """R1: per-cell cover already breaks line of sight for every viewer —
+    the approved C14-S02 shape stays legal."""
+    grid = GridScene(width=10, height=10, cover_cells={cell(0, 0): "three_quarters"})
+    handle, live = _start([_hero()], [_foe()], grid)
+    _run(
+        submit_player_intent(handle, actor_id="char:hero", intent=PlayerIntent(intent_type="hide"))
+    )
+    assert [e for e in events_of(live, CheckRolled) if e.skill == "stealth"]
+
+
+def test_hide_in_darkness_is_allowed_and_rejected_when_enemy_has_darkvision():
+    """R2: "An area of darkness is Heavily Obscured." + R1: an enemy whose
+    darkvision reaches the dark cell can see the hider → target_invalid, no
+    d20 draw."""
+    grid = GridScene(width=10, height=10, lighting={cell(0, 0): "dark"})
+    handle, live = _start([_hero()], [_foe()], grid)
+    _run(
+        submit_player_intent(handle, actor_id="char:hero", intent=PlayerIntent(intent_type="hide"))
+    )
+    assert [e for e in events_of(live, CheckRolled) if e.skill == "stealth"]
+
+    handle2, live2 = _start([_hero()], [_foe()], grid, session="c16b-dv")
+    _give_senses(live2, "mon:foe", darkvision=60)
+    before = live2.rng.getstate() if hasattr(live2.rng, "getstate") else None
+    with pytest.raises(IntentRejectedError) as exc:
+        _run(
+            submit_player_intent(
+                handle2, actor_id="char:hero", intent=PlayerIntent(intent_type="hide")
+            )
+        )
+    assert exc.value.reason == "target_invalid"
+    if before is not None:
+        assert live2.rng.getstate() == before
+
+
+def test_hide_in_heavy_obscurement_rejected_when_enemy_has_blindsight():
+    grid = GridScene(width=10, height=10, obscurement_cells={cell(0, 0): "heavy"})
+    handle, live = _start([_hero()], [_foe()], grid)
+    _give_senses(live, "mon:foe", blindsight=30)
+    with pytest.raises(IntentRejectedError) as exc:
+        _run(
+            submit_player_intent(
+                handle, actor_id="char:hero", intent=PlayerIntent(intent_type="hide")
+            )
+        )
+    assert exc.value.reason == "target_invalid"
+
+
+def test_hide_ignores_incapacitated_and_dead_enemies_for_line_of_sight():
+    grid = GridScene(width=10, height=10, obscurement_cells={cell(0, 0): "heavy"})
+    handle, live = _start([_hero()], [_foe()], grid)
+    _give_senses(live, "mon:foe", blindsight=30)
+    _give_condition(live, "mon:foe", "incapacitated")
+    _run(
+        submit_player_intent(handle, actor_id="char:hero", intent=PlayerIntent(intent_type="hide"))
+    )
+    assert [e for e in events_of(live, CheckRolled) if e.skill == "stealth"]
