@@ -206,6 +206,8 @@ def resolve_attack(
                 natural=roll.kept,
                 modifier=attack_bonus,
                 sources=list(roll.sources),
+                advantage_sources=list(sources.advantage),
+                disadvantage_sources=list(sources.disadvantage),
             )
         )
 
@@ -348,6 +350,8 @@ def _resolve_cleave_chain(
             natural=roll.kept,
             modifier=attack_bonus,
             sources=list(roll.sources),
+            advantage_sources=list(sources.advantage),
+            disadvantage_sources=list(sources.disadvantage),
         )
     )
     ctx.mastery_procs.append(("cleave", cid))
@@ -399,11 +403,25 @@ def _attack_roll_sources(
         [],
         grappler_id=ctx.attacker_grappler_id,
         target_id=target.entity_id,
+        # C16b — SRD 5.2 Invisible "can somehow see you" carve-out: does THIS
+        # target's own Blindsight/Truesight pierce the attacker's Invisible
+        # condition (``_invisibility_pierced_maps`` via the orchestrator)?
+        attacker_invisibility_pierced=ctx.attacker_invisibility_pierced_by.get(
+            target.entity_id, False
+        ),
+        # C16b — SRD 5.2 Frightened line-of-sight gate: does the attacker's
+        # own fear source stay in sight (``_fear_source_in_sight`` via the
+        # orchestrator)? Not per-target — a property of the attacker's own
+        # perception.
+        fear_source_in_sight=ctx.attacker_fear_source_in_sight,
     )
     target_cond_adv, target_cond_dis = conditions_grant_advantage_on_attack(
         [],
         target_conditions,
         distance_ft=distance_ft,
+        # C16b — the reverse: does the ATTACKER's own Blindsight/Truesight
+        # pierce THIS target's Invisible condition?
+        target_invisibility_pierced=ctx.target_invisibility_pierced.get(target.entity_id, False),
     )
     adv_sources: list[AdvantageSource] = []
     dis_sources: list[AdvantageSource] = []
@@ -429,10 +447,10 @@ def _attack_roll_sources(
         dis_sources.append("unseen")
     # SRD 5.2 §Actions in Combat — Dodge: "any attack roll made against
     # you has Disadvantage if you can see the attacker". The "can see
-    # the attacker" conjunct is deferred to C16b (no vision model wired
-    # to this seam yet); ``target_dodging`` already folds in the SRD
-    # loss clause (Incapacitated / Speed 0) via
-    # ``_dodge_benefit_active``.
+    # the attacker" conjunct now lives in ``target_dodging`` itself —
+    # the orchestrator ANDs ``_dodge_benefit_active`` (SRD loss clause:
+    # Incapacitated / Speed 0) with ``_combatant_can_see(live, target,
+    # attacker)`` before this resolver ever sees the flag (C16b).
     if ctx.target_dodging.get(target.entity_id):
         dis_sources.append("dodge")
     # SRD 5.2 §Range — "Your attack roll has Disadvantage when your

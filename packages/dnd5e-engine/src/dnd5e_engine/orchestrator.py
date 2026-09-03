@@ -160,6 +160,7 @@ from dnd5e_engine.spatial import GridTopology, SpatialTopology, parse_cell
 from dnd5e_engine.specs import (
     EncounterMemberSpec,
     GridScene,
+    LightLevel,
     PartyMemberSpec,
     SceneTopology,
     ZoneEdge,
@@ -475,6 +476,12 @@ class _ZoneGraph:
         # Same permanent no-positional-model split as ``cover_on_cell`` above
         # — the zone graph has no obscurement geometry to hang a tag off of.
         return "none"
+
+    def light_on_cell(self, cell: str) -> LightLevel:
+        # Same permanent no-lighting-model split as ``obscurement_on_cell``
+        # above — the zone graph has no lighting geometry to hang a tag off
+        # of; every zone is treated as fully lit.
+        return "bright"
 
     def can_see(self, a: str, b: str, senses: CombatantSenses | None = None) -> bool:
         # Zone graph has no lighting model — everything in a known zone is
@@ -1174,6 +1181,166 @@ def _sneak_ally_adjacent_map(
     return out
 
 
+def _special_sense_reaches(live: _LiveCombat, viewer: Combatant, target: Combatant) -> bool:
+    """SRD 5.2 Blindsight — "you can see anything that isn't behind Total Cover
+    even if you have the Blinded condition or are in Darkness. Moreover, in
+    that range, you can see something has the Invisible condition." Truesight
+    — "You see creatures and objects that have the Invisible condition."
+    Reach test only (``within_range`` on the viewer's blindsight / truesight);
+    line of sight is re-checked by ``SpatialTopology.can_see``. Untracked
+    positions ⇒ False. Darkvision is NOT a special sense here (it only
+    re-grades light — SRD 5.2 Darkvision)."""
+    viewer_zone = live.actor_zone.get(viewer.entity_id)
+    target_zone = live.actor_zone.get(target.entity_id)
+    if viewer_zone is None or target_zone is None:
+        return False
+    for range_ft in (viewer.senses.blindsight, viewer.senses.truesight):
+        if range_ft and live.topology.within_range(viewer_zone, target_zone, range_ft):
+            return True
+    return False
+
+
+def _combatant_can_see(live: _LiveCombat, viewer: Combatant, target: Combatant) -> bool:
+    """C16b composite "can see" predicate (plan ruling R4) for every SRD 5.2
+    "can see" conjunct: Dodge, Ranged Attacks in Close Combat, Opportunity
+    Attacks, Hide's line-of-sight gate, Frightened's line-of-sight gate.
+
+    1. Untracked position on either side ⇒ True (a scene with no positional
+       data can never impose a penalty — same convention as
+       ``_target_visibility_maps``).
+    2. Blinded viewer (SRD 5.2 Blinded: "You can't see") ⇒ False unless a
+       special sense reaches (``_special_sense_reaches``).
+    3. Invisible target (SRD 5.2 Invisible: "If a creature can somehow see
+       you, you don't gain this benefit against that creature") ⇒ False
+       unless a special sense reaches — plan ruling R3. A creature hidden
+       via Hide carries the Invisible condition, so this covers it.
+    4. Otherwise the scene vision model: ``SpatialTopology.can_see`` with
+       the viewer's own projected senses (line of sight, light, obscurement).
+
+    NOT used by ``_target_visibility_maps`` (the ``"unseen"`` producer) —
+    Blinded / Invisible already emit their own ``condition:*`` sources.
+    """
+    viewer_zone = live.actor_zone.get(viewer.entity_id)
+    target_zone = live.actor_zone.get(target.entity_id)
+    if viewer_zone is None or target_zone is None:
+        return True
+    special = _special_sense_reaches(live, viewer, target)
+    if is_condition_active(Condition.BLINDED, _condition_names(viewer)) and not special:
+        return False
+    if is_condition_active(Condition.INVISIBLE, _condition_names(target)) and not special:
+        return False
+    return live.topology.can_see(viewer_zone, target_zone, viewer.senses)
+
+
+def _fear_source_in_sight(live: _LiveCombat, combatant: Combatant) -> bool:
+    """SRD 5.2 Frightened: "Disadvantage on ability checks and attack rolls
+    while the source of fear is within line of sight." (plan ruling R5):
+    True (penalty stays) when ``combatant`` isn't Frightened, when its fear
+    source is unknown (``_condition_source_entity`` returns ``None``), or
+    when the source is dead/untracked/no longer in the initiative order
+    (SRD-conservative — can't prove it's out of sight). False only for a
+    known, LIVING, tracked source that ``_combatant_can_see`` says the
+    Frightened creature cannot currently see.
+    """
+    if not is_condition_active(Condition.FRIGHTENED, _condition_names(combatant)):
+        return True
+    source_id = _condition_source_entity(live, combatant, "frightened")
+    if source_id is None:
+        return True
+    source = next((c for c in live.initiative if c.entity_id == source_id), None)
+    if source is None or not source.is_alive:
+        return True
+    return _combatant_can_see(live, combatant, source)
+
+
+def _frightened_approach_blocked(live: _LiveCombat, mover: Combatant, path: list[str]) -> bool:
+    """SRD 5.2 Frightened: "You can't willingly move closer to the source of
+    fear." (C16b) True iff ``mover`` is Frightened of a known, LIVING,
+    tracked source it can currently see (``_fear_source_in_sight``, reused
+    for the "visible" half — R5's unknown/dead/untracked ⇒ no restriction
+    carries over identically here), AND some consecutive pair of cells in
+    ``path`` strictly reduces ``live.topology.distance_ft`` to that source's
+    cell. An unresolvable pairwise distance (untracked/cross-topology) never
+    blocks.
+    """
+    if not is_condition_active(Condition.FRIGHTENED, _condition_names(mover)):
+        return False
+    source_id = _condition_source_entity(live, mover, "frightened")
+    if source_id is None:
+        return False
+    source = next((c for c in live.initiative if c.entity_id == source_id), None)
+    if source is None or not source.is_alive:
+        return False
+    if not _combatant_can_see(live, mover, source):
+        return False
+    source_cell = live.actor_zone.get(source_id)
+    if source_cell is None:
+        return False
+    for prev_cell, next_cell in itertools.pairwise(path):
+        prev_dist = live.topology.distance_ft(prev_cell, source_cell)
+        next_dist = live.topology.distance_ft(next_cell, source_cell)
+        if prev_dist is None or next_dist is None:
+            continue
+        if next_dist < prev_dist:
+            return True
+    return False
+
+
+def _pierces_invisibility(live: _LiveCombat, viewer: Combatant, target: Combatant) -> bool:
+    """Plan ruling R3: does ``viewer`` pierce ``target``'s Invisible condition
+    (whether or not ``target`` actually carries it — the maps below are
+    computed unconditionally; the SRD row in ``rules/conditions.py`` gates on
+    the condition itself)? SRD 5.2 Blindsight: "in that range, you can see
+    something has the Invisible condition." Truesight: "You see creatures and
+    objects that have the Invisible condition." Both need REACH
+    (``_special_sense_reaches``) AND line of sight
+    (``SpatialTopology.can_see`` with the viewer's own senses) — Darkvision
+    never pierces (it only re-grades light, and is excluded from
+    ``_special_sense_reaches``). Untracked positions ⇒ False (mirrors
+    ``_special_sense_reaches``; an untracked pair never grants a piercing
+    benefit, unlike the "everyone seen" convention used for the raw
+    visibility maps).
+    """
+    if not _special_sense_reaches(live, viewer, target):
+        return False
+    viewer_zone = live.actor_zone.get(viewer.entity_id)
+    target_zone = live.actor_zone.get(target.entity_id)
+    if viewer_zone is None or target_zone is None:
+        return False
+    return live.topology.can_see(viewer_zone, target_zone, viewer.senses)
+
+
+def _invisibility_pierced_maps(
+    live: _LiveCombat, caster: Combatant, targets: Sequence[Combatant]
+) -> tuple[dict[str, bool], dict[str, bool]]:
+    """SRD 5.2 Invisible "can somehow see you" carve-out (plan ruling R3).
+    Per target: (does the TARGET pierce the CASTER's Invisible condition,
+    does the CASTER pierce the TARGET's Invisible condition), via
+    ``_pierces_invisibility`` in each direction. Computed regardless of
+    whether anyone is actually Invisible — cheap, and the SRD row in
+    ``rules/conditions.py`` gates on the condition. Threaded into
+    ``ActivityResolutionContext.attacker_invisibility_pierced_by`` /
+    ``.target_invisibility_pierced`` so ``activities/attack.py`` can drop the
+    Invisible advantage/disadvantage without importing the spatial seam.
+    Untracked caster position ⇒ both maps empty (mirrors
+    ``_target_visibility_maps``).
+    """
+    caster_zone = live.actor_zone.get(caster.entity_id)
+    attacker_invisibility_pierced_by: dict[str, bool] = {}
+    target_invisibility_pierced: dict[str, bool] = {}
+    if caster_zone is None:
+        return attacker_invisibility_pierced_by, target_invisibility_pierced
+    for target in targets:
+        target_zone = live.actor_zone.get(target.entity_id)
+        if target_zone is None:
+            continue
+        attacker_invisibility_pierced_by[target.entity_id] = _pierces_invisibility(
+            live, target, caster
+        )
+        target_invisibility_pierced[target.entity_id] = _pierces_invisibility(live, caster, target)
+    return attacker_invisibility_pierced_by, target_invisibility_pierced
+
+
 def _hostile_adjacent_to_attacker(live: _LiveCombat, caster: Combatant) -> bool:
     """SRD 5.2 "Ranged Attacks in Close Combat": "you have Disadvantage on
     the roll if you are within 5 feet of an enemy who can see you and
@@ -1186,9 +1353,10 @@ def _hostile_adjacent_to_attacker(live: _LiveCombat, caster: Combatant) -> bool:
     and counts like any other hostile (SRD: "an enemy", not "an enemy other
     than your target"). Excludes an Incapacitated hostile
     (``conditions_block_actions`` — the SRD conjunct) and one that cannot
-    see the attacker (``SpatialTopology.can_see`` with the HOSTILE's own
-    senses — same call shape as ``_target_visibility_maps``). Threaded into
-    ``ActivityResolutionContext.attacker_ranged_in_melee`` so
+    see the attacker (the C16b composite ``_combatant_can_see`` — a Blinded
+    hostile or an Invisible attacker no longer imposes the disadvantage,
+    same call shape as ``_target_visibility_maps`` otherwise). Threaded
+    into ``ActivityResolutionContext.attacker_ranged_in_melee`` so
     ``activities/attack.py`` can add the ``"ranged_in_melee"`` disadvantage
     source without importing the spatial seam. An unregistered side or an
     untracked attacker position yields ``False``.
@@ -1213,7 +1381,7 @@ def _hostile_adjacent_to_attacker(live: _LiveCombat, caster: Combatant) -> bool:
             continue
         if not live.topology.within_range(attacker_zone, hostile_zone, 5):
             continue
-        if not live.topology.can_see(hostile_zone, attacker_zone, hostile.senses):
+        if not _combatant_can_see(live, hostile, caster):
             continue
         return True
     return False
@@ -2115,9 +2283,12 @@ def _dodge_benefit_active(live: _LiveCombat, c: Combatant) -> bool:
     a prior turn, "until the start of your next turn") AND has not lost it
     under the SRD loss clause — *"You lose these benefits if you have the
     Incapacitated condition or if your Speed is 0."* ``live`` feeds the
-    Slow-mastery Speed projection (C15 Task 7); the "if you can see the
-    attacker" conjunct on the attack-disadvantage half is still deferred to
-    C16b (no vision model wired to this seam yet).
+    Slow-mastery Speed projection (C15 Task 7). This predicate does NOT
+    itself apply the SRD "if you can see the attacker" conjunct on the
+    attack-disadvantage half — callers building a ``target_dodging`` map
+    (C16b) AND this result with ``_combatant_can_see(live, dodger,
+    attacker)`` at the call site, since only the caller has the attacker in
+    scope.
     """
     return (
         c.dodging
@@ -2736,12 +2907,16 @@ def _handle_hide(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
     script unsatisfiable against the hard Action gate the first attack
     swing enforces) — see BACKLOG.md.
 
-    Gate: the hider's own cell must be behind Three-Quarters/Total cover
-    OR Heavily Obscured. The "out of any enemy's line of sight" conjunct
-    is DEFERRED to C16b — no per-enemy vision scan is wired to this seam
-    yet (comment mirrors the Dodge "if you can see the attacker" deferral).
-    A failed gate raises ``IntentRejectedError("target_invalid")`` with NO
-    d20 draw (zero stream perturbation on rejection).
+    Gate: the hider's own cell must be behind Three-Quarters/Total cover,
+    Heavily Obscured, or in Darkness (SRD 5.2 §Vision and Light glossary:
+    "An area of darkness is Heavily Obscured."). R1 (plan ruling): the
+    "out of any enemy's line of sight" conjunct then scans every living,
+    non-Incapacitated hostile via ``_combatant_can_see`` — but ONLY when
+    the hider's cell cover is not already Three-Quarters/Total, since
+    per-cell cover is omnidirectional and already breaks every enemy's
+    line of sight (SRD 5.2 §Cover). A failed gate raises
+    ``IntentRejectedError("target_invalid")`` with NO d20 draw (zero
+    stream perturbation on rejection).
 
     On success: emits ``ConditionApplied(condition="invisible")`` (the C12
     Invisible wiring already grants the hider's next attack Advantage and
@@ -2767,12 +2942,35 @@ def _handle_hide(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
     cell = live.actor_zone.get(actor_id)
     cover = live.topology.cover_on_cell(cell) if cell is not None else "none"
     obscurement = live.topology.obscurement_on_cell(cell) if cell is not None else "none"
-    if cover not in ("three_quarters", "total") and obscurement != "heavy":
+    light = live.topology.light_on_cell(cell) if cell is not None else "bright"
+    if cover not in ("three_quarters", "total") and obscurement != "heavy" and light != "dark":
         raise IntentRejectedError(
             "target_invalid",
-            f"actor_id={actor_id!r} is not behind Three-Quarters/Total cover "
-            "or Heavily Obscured — Hide requires one of those",
+            f"actor_id={actor_id!r} is not behind Three-Quarters/Total cover, "
+            "Heavily Obscured, or in Darkness — Hide requires one of those",
         )
+
+    # C16b (plan ruling R1) — "you must be out of any enemy's line of sight".
+    # Per-cell cover is omnidirectional, so Three-Quarters/Total cover on the
+    # hider's cell already breaks every enemy's line; the conjunct bites only
+    # for a hider relying on obscurement/darkness alone.
+    if cover not in ("three_quarters", "total"):
+        hider_side = _side_of(live, actor_id) or set()
+        for hostile in live.initiative:
+            if (
+                hostile.entity_id in hider_side
+                or hostile.entity_id in live.dead_ids
+                or not hostile.is_alive
+            ):
+                continue
+            if conditions_block_actions(_condition_names(hostile)):
+                continue
+            if _combatant_can_see(live, hostile, current):
+                raise IntentRejectedError(
+                    "target_invalid",
+                    f"actor_id={actor_id!r} is within line of sight of {hostile.entity_id!r} — "
+                    "Hide requires being out of every enemy's line of sight",
+                )
 
     # F3 — this attempt has cleared the cover gate and is now committed to
     # rolling; record it BEFORE the roll so a same-turn retry (success or
@@ -4249,8 +4447,11 @@ def _build_hydration_payload(live: _LiveCombat, caster: Combatant | None = None)
     # with Advantage" while the benefit is active. Folded onto the SAME
     # per-target ``passive_save_adv`` list ``build_context.py`` reshapes
     # into ``ActivityResolutionContext.passive_save_adv`` — no separate
-    # sidecar. No "can see" conjunct on this half of Dodge (only the
-    # attack-disadvantage half carries one, deferred to C16b).
+    # sidecar. SRD 5.2 gives this DEX-save half no "can see" conjunct at
+    # all — unlike the sibling attack-disadvantage half, whose "if you can
+    # see the attacker" conjunct is applied at the ``target_dodging`` ctx
+    # sites (C16b, ``_combatant_can_see``), this half stays unconditioned
+    # on vision.
     for c in live.initiative:
         if _dodge_benefit_active(live, c):
             save_modifiers[c.entity_id]["passive_save_adv"].append("DEX")
@@ -6502,7 +6703,11 @@ def _handle_move(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
     the destination is adjacent but the step crosses a wall or cuts a blocked
     corner; ``unreachable`` — no legal route (enemy-occupied cells are
     impassable, allies may be passed through); ``insufficient_movement`` — the
-    whole route costs more than the remaining budget, and nothing moves.
+    whole route costs more than the remaining budget, and nothing moves;
+    ``frightened`` — SRD 5.2 Frightened: "You can't willingly move closer to
+    the source of fear" (C16b) — the mover is Frightened of a known, living,
+    tracked, currently-visible source and some step of the route would
+    reduce distance to it (``_frightened_approach_blocked``).
 
     Multi-hop routing, ``occupied`` and the enemy-impassability rule are all
     GRID-only: a zone is an area rather than a 5-ft square and ``_ZoneGraph``
@@ -6569,6 +6774,12 @@ def _handle_move(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
     total_cost = _path_total_distance(live.topology, path)
     if total_cost is None or current.movement_remaining < total_cost:
         _emit(live, MoveFailed(actor_id=actor_id, reason="insufficient_movement"))
+        return
+    # SRD 5.2 Frightened: "You can't willingly move closer to the source of
+    # fear." (C16b) — checked before any budget is spent or opportunity
+    # attack fires, so a rejection here is as atomic as the ones above.
+    if _frightened_approach_blocked(live, current, path):
+        _emit(live, MoveFailed(actor_id=actor_id, reason="frightened"))
         return
     spent = 0
     position = start_zone
@@ -7978,6 +8189,9 @@ async def submit_player_intent(
             [*targets, cleave_candidate] if cleave_candidate is not None else targets
         )
         target_unseen, attacker_unseen_by = _target_visibility_maps(live, current, geometry_targets)
+        attacker_invisibility_pierced_by, target_invisibility_pierced = _invisibility_pierced_maps(
+            live, current, geometry_targets
+        )
         # SRD 5.2 Versatile property (C15 Task 4) — the attacker's declared
         # two-handed grip (``intent.two_handed``) applies only when the
         # weapon carries VERSATILE AND this swing is an actual melee attack
@@ -8035,9 +8249,14 @@ async def submit_player_intent(
             ),
             target_distance_ft=_target_distance_map(live, current.entity_id, geometry_targets),
             # SRD 5.2 §Actions in Combat — Dodge: per-target dodge-benefit
-            # flag folded into attack disadvantage (attack.py) — the
-            # "if you can see the attacker" conjunct is deferred to C16b.
-            target_dodging={t.entity_id: _dodge_benefit_active(live, t) for t in geometry_targets},
+            # flag folded into attack disadvantage (attack.py). C16b: *"any
+            # attack roll made against you has Disadvantage if you can see
+            # the attacker"* — the dodging target must also see THIS
+            # attacker (``current``) for the benefit to apply here.
+            target_dodging={
+                t.entity_id: _dodge_benefit_active(live, t) and _combatant_can_see(live, t, current)
+                for t in geometry_targets
+            },
             # SRD 5.2 §Actions in Combat — Help, Assist an Attack Roll (C14
             # Task 4): per-target ally-of-attacker Help grant folded into
             # attack advantage (attack.py); the one-use pop fires after
@@ -8048,6 +8267,11 @@ async def submit_player_intent(
             attacker_grappler_id=_condition_source_entity(live, current, "grappled"),
             target_unseen=target_unseen,
             attacker_unseen_by=attacker_unseen_by,
+            attacker_invisibility_pierced_by=attacker_invisibility_pierced_by,
+            target_invisibility_pierced=target_invisibility_pierced,
+            # SRD 5.2 Frightened line-of-sight gate (C16b): PRE-RESOLVED
+            # attacker-own-perception flag.
+            attacker_fear_source_in_sight=_fear_source_in_sight(live, current),
             scale_values=scale_values,
             class_levels=class_levels,
             # A FEATURE invocation must not inherit the blanket spell
@@ -8243,8 +8467,9 @@ def _fire_pc_opportunity_attacks_on_move(
 
     *"You can make an Opportunity Attack when a creature that you can see
     leaves your reach using its action, its Bonus Action, its Reaction, or
-    one of its speeds."* (SRD 5.2; the "you can see" gate is not modeled —
-    no vision seam is wired to this path yet — deferred to C16b.)
+    one of its speeds."* (SRD 5.2; C16b: a reactor that can't see the mover
+    — ``_combatant_can_see(live, reactor, mover)`` — never triggers, no
+    Reaction spent, no event emitted, the same as any other gate below.)
 
     Phase-6 wires this for the **PC reactor / monster mover** direction
     only — the symmetric monster-AoO path requires the reaction-queue
@@ -8298,6 +8523,11 @@ def _fire_pc_opportunity_attacks_on_move(
         # the reactor's reach band).
         if to_zone == from_zone:
             continue
+        # SRD 5.2 §Opportunity Attacks — "a creature that you can see": a
+        # Blinded (or otherwise sight-blocked) reactor never triggers; no
+        # Reaction spent, no event emitted.
+        if not _combatant_can_see(live, reactor, mover):
+            continue
         # Roll the AoO attack through the shared SRD 5.2 D20 Test primitive
         # (C14) — same rules shape as effects/attack.py — nat 20 crit, nat 1
         # auto-miss, total ≥ AC on hit; now honors Exhaustion's flat penalty
@@ -8343,6 +8573,8 @@ def _fire_pc_opportunity_attacks_on_move(
                 natural=natural,
                 modifier=modifier,
                 sources=list(roll.sources),
+                advantage_sources=list(adv_sources),
+                disadvantage_sources=list(dis_sources),
             ),
         )
         # Consume the reaction regardless of hit/miss (SRD: reactions are
@@ -8382,8 +8614,11 @@ def _opportunity_attack_advantage_sources(
     """The typed advantage/disadvantage sources for an opportunity attack,
     assembled the same way ``activities/attack.py::resolve_attack`` does for
     a regular Attack: the condition-derived half (Prone/Grappled/etc, called
-    once per side so the emitted source names which side produced it) plus
-    the Dodge action's disadvantage. AoOs are always melee (same-zone reach
+    once per side so the emitted source names which side produced it — now
+    also threading the C16b Invisible "can somehow see you" carve-out via
+    ``_pierces_invisibility`` in each direction) plus the Dodge action's
+    disadvantage and the C16b "Unseen Attackers and Targets" advantage row
+    (mover can't see reactor). AoOs are always melee (same-zone reach
     approximation — see the callers' docstrings), so the Prone-target
     distance check always resolves within-5ft.
     """
@@ -8394,11 +8629,19 @@ def _opportunity_attack_advantage_sources(
         [],
         grappler_id=_condition_source_entity(live, reactor, "grappled"),
         target_id=mover.entity_id,
+        # C16b — does the mover (AoO TARGET) pierce the reactor's (AoO
+        # ATTACKER) Invisible condition?
+        attacker_invisibility_pierced=_pierces_invisibility(live, mover, reactor),
+        # C16b — SRD 5.2 Frightened line-of-sight gate: does the reactor's
+        # (AoO ATTACKER) own fear source stay in sight?
+        fear_source_in_sight=_fear_source_in_sight(live, reactor),
     )
     mover_cond_adv, mover_cond_dis = conditions_grant_advantage_on_attack(
         [],
         mover_conditions,
         distance_ft=5,
+        # C16b — does the reactor pierce the mover's Invisible condition?
+        target_invisibility_pierced=_pierces_invisibility(live, reactor, mover),
     )
     adv_sources: list[AdvantageSource] = []
     dis_sources: list[AdvantageSource] = []
@@ -8410,11 +8653,28 @@ def _opportunity_attack_advantage_sources(
         dis_sources.append("condition:attacker")
     if mover_cond_dis:
         dis_sources.append("condition:target")
-    # SRD 5.2 §Actions in Combat — Dodge: "any attack roll made against you
-    # has Disadvantage if you can see the attacker" — the "can see" conjunct
-    # is deferred to C16b (no vision seam wired here yet).
-    if _dodge_benefit_active(live, mover):
+    # SRD 5.2 §Actions in Combat — Dodge: "any attack roll made against
+    # you has Disadvantage if you can see the attacker" (C16b: the mover
+    # is the dodging "you" here, the reactor is "the attacker").
+    if _dodge_benefit_active(live, mover) and _combatant_can_see(live, mover, reactor):
         dis_sources.append("dodge")
+    # SRD 5.2 "Unseen Attackers and Targets": "When a creature can't see
+    # you, you have Advantage on attack rolls against it" — the mover
+    # (AoO target) can't see the reactor (AoO attacker). Plan ruling R4: this
+    # row uses raw scene vision (``SpatialTopology.can_see``), NOT the
+    # ``_combatant_can_see`` composite, mirroring ``_target_visibility_maps``
+    # exactly — Blinded/Invisible already emit their own ``condition:*``
+    # sources above, so folding them into "unseen" too would double-tag a
+    # Blinded mover. Untracked position on either side ⇒ skip the row (same
+    # "untracked ⇒ seen" convention as ``_target_visibility_maps``).
+    mover_zone = live.actor_zone.get(mover.entity_id)
+    reactor_zone = live.actor_zone.get(reactor.entity_id)
+    if (
+        mover_zone is not None
+        and reactor_zone is not None
+        and not live.topology.can_see(mover_zone, reactor_zone, mover.senses)
+    ):
+        adv_sources.append("unseen")
     return adv_sources, dis_sources
 
 
@@ -8429,8 +8689,9 @@ def _fire_monster_opportunity_attacks_on_move(
 
     *"You can make an Opportunity Attack when a creature that you can see
     leaves your reach using its action, its Bonus Action, its Reaction, or
-    one of its speeds."* (SRD 5.2; the "you can see" gate is not modeled —
-    no vision seam is wired to this path yet — deferred to C16b.)
+    one of its speeds."* (SRD 5.2; C16b: a reactor that can't see the mover
+    — ``_combatant_can_see(live, reactor, mover)`` — never triggers, no
+    Reaction spent, no event emitted, mirrors the PC direction.)
 
     The monster-reactor / PC-mover mirror of
     ``_fire_pc_opportunity_attacks_on_move`` same hit/crit rules,
@@ -8472,6 +8733,11 @@ def _fire_monster_opportunity_attacks_on_move(
         # adjacency; an out-of-zone move always provokes (the mover leaves
         # the reactor's reach band).
         if to_zone == from_zone:
+            continue
+        # SRD 5.2 §Opportunity Attacks — "a creature that you can see": a
+        # sight-blocked reactor never triggers; no Reaction spent, no event
+        # emitted.
+        if not _combatant_can_see(live, reactor, mover):
             continue
         # Roll the AoO attack through the shared SRD 5.2 D20 Test primitive
         # (C14) — see ``_fire_pc_opportunity_attacks_on_move`` for the
@@ -8517,6 +8783,8 @@ def _fire_monster_opportunity_attacks_on_move(
                 natural=natural,
                 modifier=modifier,
                 sources=list(roll.sources),
+                advantage_sources=list(adv_sources),
+                disadvantage_sources=list(dis_sources),
             ),
         )
         # Consume the reaction regardless of hit/miss (SRD: reactions are
@@ -8856,6 +9124,9 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
         # "Monster"`` branch — no per-call slot/spell parameters apply to a
         # mundane monster attack.
         target_unseen, attacker_unseen_by = _target_visibility_maps(live, current, target_list)
+        attacker_invisibility_pierced_by, target_invisibility_pierced = _invisibility_pierced_maps(
+            live, current, target_list
+        )
         actx = build_activity_context(
             current,
             target_list,
@@ -8878,9 +9149,13 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
             target_distance_ft=_target_distance_map(live, current.entity_id, target_list),
             # SRD 5.2 §Actions in Combat — Dodge: mirrors the PC site. A
             # dodging PC target imposes disadvantage on the monster's
-            # attack roll (attack.py); the "can see the attacker" conjunct
-            # is deferred to C16b.
-            target_dodging={t.entity_id: _dodge_benefit_active(live, t) for t in target_list},
+            # attack roll (attack.py) only while it can also see THIS
+            # attacker (``current``) — C16b's "can see the attacker"
+            # conjunct.
+            target_dodging={
+                t.entity_id: _dodge_benefit_active(live, t) and _combatant_can_see(live, t, current)
+                for t in target_list
+            },
             # SRD 5.2 §Actions in Combat — Help (C14 Task 4): mirrors the PC
             # site — a monster attacker can be granted Help by one of ITS
             # own allies (another monster) exactly like a PC can.
@@ -8888,6 +9163,11 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
             attacker_grappler_id=_condition_source_entity(live, current, "grappled"),
             target_unseen=target_unseen,
             attacker_unseen_by=attacker_unseen_by,
+            attacker_invisibility_pierced_by=attacker_invisibility_pierced_by,
+            target_invisibility_pierced=target_invisibility_pierced,
+            # SRD 5.2 Frightened line-of-sight gate (C16b): mirrors the PC
+            # site — PRE-RESOLVED attacker-own-perception flag.
+            attacker_fear_source_in_sight=_fear_source_in_sight(live, current),
             # SRD 5.2 §Weapon Proficiency — "A monster is proficient with any
             # weapon in its stat block." Left on the default (True): a
             # monster's Combatant.weapon_proficiencies is never explicitly

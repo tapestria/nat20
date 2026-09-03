@@ -226,12 +226,41 @@ class ActivityResolutionContext:
     # the orchestrator (``_dodge_benefit_active``). Consumed in
     # ``attack.py``, which folds it into disadvantage on an attack roll
     # against that target. SRD also conditions the attack-disadvantage half
-    # of Dodge on "if you can see the attacker" — that conjunct is deferred
-    # to C16b (no vision model wired to this seam yet); the DEX-save
-    # advantage half has no such conjunct and is folded separately via
-    # ``passive_save_adv`` in the hydration payload. Empty default keeps the
-    # golden corpus identical (no dodge geometry).
+    # of Dodge on "if you can see the attacker" — this map's value is now
+    # "dodging AND the dodger can see this attacker" (C16b: computed
+    # orchestrator-side via ``_combatant_can_see`` before the map is built);
+    # the DEX-save advantage half has no such conjunct and is folded
+    # separately via ``passive_save_adv`` in the hydration payload. Empty
+    # default keeps the golden corpus identical (no dodge geometry).
     target_dodging: dict[str, bool] = field(default_factory=dict)
+    # C16b — SRD 5.2 Invisible "can somehow see you" carve-out (plan ruling
+    # R3): per-TARGET, does that target's own Blindsight/Truesight reach the
+    # ATTACKER (and line of sight hold) — i.e. does the target pierce the
+    # attacker's Invisible condition? Projected once per resolution by the
+    # orchestrator (``_invisibility_pierced_maps`` / ``_pierces_invisibility``).
+    # Consumed in ``attack.py``, passed as
+    # ``conditions_grant_advantage_on_attack(..., attacker_invisibility_pierced=...)``
+    # to drop the attacker's Invisible advantage against that one target.
+    # Empty default keeps the golden corpus identical (no vision model wired).
+    attacker_invisibility_pierced_by: dict[str, bool] = field(default_factory=dict)
+    # C16b — the reverse direction: per-TARGET, does the ATTACKER's own
+    # Blindsight/Truesight reach that (Invisible) target — i.e. does the
+    # attacker pierce the target's Invisible condition? Consumed in
+    # ``attack.py`` as ``target_invisibility_pierced=...`` to drop the
+    # attacker's Invisible-target disadvantage against that one target. Empty
+    # default keeps the golden corpus identical.
+    target_invisibility_pierced: dict[str, bool] = field(default_factory=dict)
+    # C16b — SRD 5.2 Frightened line-of-sight gate (plan ruling R5): is the
+    # ATTACKER's own fear source in sight (or unknown/dead/untracked, in
+    # which case the penalty stays — SRD-conservative)? A single flag, not a
+    # per-target map: Frightened's disadvantage is a property of the
+    # attacker's own perception, not of which target is being attacked.
+    # Projected once per resolution by the orchestrator
+    # (``_fear_source_in_sight``). Consumed in ``attack.py`` as
+    # ``conditions_grant_advantage_on_attack(..., fear_source_in_sight=...)``
+    # on the ATTACKER-side call only. Default ``True`` keeps the golden
+    # corpus identical (no vision model wired ⇒ penalty always stays).
+    attacker_fear_source_in_sight: bool = True
     # SRD 5.2 §Actions in Combat — Help, Assist an Attack Roll (C14 Task 4).
     # Per-TARGET: does an outstanding Help grant against this target belong
     # to an ALLY of the attacker resolving THIS activity? Projected once per

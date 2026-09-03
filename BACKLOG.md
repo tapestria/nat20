@@ -193,32 +193,30 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   treated as a 1-cell ray and a wider `template.width` is ignored.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_walk_zone_path`,
   `packages/dnd5e-engine/src/dnd5e_engine/spatial.py::cells_in_template`)
-- **Vision is scene-lit only** (2026-08-27). No light sources (torches, *Light*,
-  *Darkness*), no viewer-side obscurement, no Blinded emission from darkness;
-  `can_see` reads `GridScene.lighting` / `obscurement_cells` plus the viewer's
-  projected senses. Sunlight Sensitivity is C18. C15's Ranged-Attacks-in-
-  Close-Combat gate (`orchestrator.py::_hostile_adjacent_to_attacker`, the
-  `"ranged_in_melee"` disadvantage source) calls this same `can_see` for its
-  "can see you" conjunct, so it inherits this exact limitation — pinned
-  scenarios only exercise lit, unobscured scenes.
+- **Vision is scene-lit only** (2026-08-27, amended 2026-09-02). No light
+  sources (torches, *Light*, *Darkness*), no viewer-side obscurement, no
+  Blinded emission from darkness; `can_see` reads `GridScene.lighting` /
+  `obscurement_cells` plus the viewer's projected senses. Sunlight
+  Sensitivity is C18. No *See Invisibility*-style effect flag pierces the
+  Invisible condition either (C16b plan ruling R3) — only blindsight/
+  truesight in range with line of sight do, via
+  `orchestrator.py::_pierces_invisibility`; an effect-vocabulary carve-out is
+  a future cluster's seam.
   (`packages/dnd5e-engine/src/dnd5e_engine/spatial.py::GridTopology.can_see`)
 - **Monster-cast AoE applies no forced-movement rider** (2026-08-27). Only the
   player-intent cast path calls `activities/forced_movement.py`, so a monster
   casting Thunderwave deals damage but pushes nobody.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::advance_monster_turn`)
-- **Mutual unseen is reported twice** (2026-08-27). When neither combatant can
-  see the other, `AttackRolled.sources` is `["unseen", "unseen"]` — one entry
-  for the disadvantage and one for the advantage — because an `AdvantageSource`
-  records presence only, not direction. A host rendering the source list shows
-  the same word twice.
-  (`packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py`)
-- **Opportunity attacks bypass the activity context** (2026-08-27, condition
-  gap closed 2026-09-01 C14 Task 9). The AoO path never calls
-  `build_activity_context`, so an opportunity attack still sees no cover and
-  no visibility — despite SRD 5.2's "a creature that you can see" trigger
-  (condition-derived advantage/disadvantage, Exhaustion's D20 Test penalty,
-  and Dodge now DO reach the roll via `roll_d20_test`, closing that half).
-  Remaining gap is C16b (visibility) and cover.
+- **Opportunity attacks bypass the activity context — cover only**
+  (2026-08-27, condition gap closed 2026-09-01 C14 Task 9, visibility gap
+  closed 2026-09-02 C16b). The AoO path never calls `build_activity_context`,
+  so an opportunity attack still sees no cover — despite SRD 5.2's cover
+  rules applying to any attack roll. Condition-derived advantage/
+  disadvantage, Exhaustion's D20 Test penalty, Dodge, the "a creature that
+  you can see" trigger (`_combatant_can_see` — no Reaction spent on
+  failure), the `unseen` advantage source, and the Invisible/Frightened
+  carve-outs all now reach the roll. Remaining gap is cover on the AoO roll
+  itself.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
 
 ## Reactions (2026-07-03)
@@ -522,8 +520,12 @@ stand-in, not an engine capability. Specifically:
   (Ability scores, save/skill proficiencies and the proficiency bonus DO
   hydrate as of F1b.)
 - **Target selection is hard-coded lowest-HP living PC** (`orchestrator.py:5069`)
-  with no reach/LoS/threat consideration; flee planning returns `None` on a
-  grid (`_plan_flee_destination:695`) so a fleeing monster holds still.
+  with no reach/LoS/threat consideration — the monster AI never consults
+  `_combatant_can_see` or a Frightened monster's own line-of-sight/
+  no-approach rule when choosing a target or walking (2026-09-02; C16b's
+  composite predicate exists but only PC-facing SRD rows consume it, C18);
+  flee planning returns `None` on a grid (`_plan_flee_destination:695`) so a
+  fleeing monster holds still.
 - **Corpus damage resistances must carry their magical-bypass qualifier when
   hydrated** (2026-08-27). `Combatant.physical_resistances_nonmagical_only`
   defaults True (host-authored "…from nonmagical attacks" convention, C22-S04).
@@ -674,17 +676,27 @@ C12 gave all 15 conditions teeth on the live combat path (see
 `docs/capabilities.md`). These rows are what is left; each needs a seam another
 cluster owns.
 
-- **Frightened's line-of-sight gate and "can't approach the source of fear".**
-  The disadvantage applies unconditionally (no `can_see` check) and movement
-  toward the fear source is not blocked. Needs C16b's `can_see`.
-  (`packages/dnd5e-engine/src/dnd5e_engine/rules/conditions.py`)
+- **Frightened's ability-check half of the line-of-sight gate** (2026-09-02).
+  SRD 5.2 Frightened: "Disadvantage on ability checks and attack rolls while
+  the source of fear is within line of sight." C16b gated the attack-roll
+  half (`conditions_grant_advantage_on_attack`'s `fear_source_in_sight`
+  kwarg) and the "can't willingly move closer to the source of fear"
+  movement rule (`MoveFailed(reason="frightened")`); the ability-check half
+  still applies the disadvantage unconditionally.
+  (`packages/dnd5e-engine/src/dnd5e_engine/rules/conditions.py::conditions_grant_disadvantage_on_ability_checks`)
+- **Frightened's no-approach rule is additionally gated on line of sight to
+  the source (plan ruling R5); SRD 5.2 imposes it unconditionally**
+  (2026-09-03). SRD 5.2 Frightened's "You can't willingly move closer to the
+  source of fear." sentence carries no line-of-sight conjunct — only the
+  disadvantage sentence does — but the engine's `_frightened_approach_blocked`
+  reuses `_combatant_can_see` for both, a deliberate (kept) deviation: a
+  Frightened creature that cannot currently see its fear source may move
+  toward it unimpeded, where SRD 5.2 would still block the approach.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_frightened_approach_blocked`)
 - **Blinded / Deafened "automatically fail ability checks that require
   sight/hearing".** There is no per-check sense vocabulary on `CheckSpec` /
   `CheckActivity`, so a check cannot declare it requires sight or hearing.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/check.py`)
-- **Invisible's "unless a creature can somehow see you" carve-out.** Both
-  attack directions apply unconditionally; the per-observer sense check is
-  C16b. (`packages/dnd5e-engine/src/dnd5e_engine/rules/conditions.py`)
 - **Charmed grants the charmer advantage on social ability checks.** The
   engine has no social-interaction check surface to attach it to (no
   `influence` intent, no interaction DC), so the row is unrepresentable rather

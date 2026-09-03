@@ -163,6 +163,34 @@ deltas (and the fixtures they move) are enumerated in
   `obscurement_cells` (`LightLevel` / `Obscurement` Literals) and
   `GridTopology.can_see(a, b, senses)`; `ActivityResolutionContext.target_unseen`
   / `attacker_unseen_by` feed the `unseen` `AdvantageSource` both directions.
+- **Vision & light consumers (C16b).** A new composite predicate,
+  `orchestrator.py::_combatant_can_see(live, viewer, target)`, folds Blinded
+  (viewer) and Invisible (target) — piercing only via blindsight/truesight
+  reach with line of sight, never darkvision — on top of `GridTopology.can_see`.
+  It now backs every SRD 5.2 "can see" conjunct outside the raw `unseen`
+  attack-roll row: Dodge's "if you can see the attacker" attack-disadvantage
+  half (both the regular-attack context sites and opportunity attacks),
+  Ranged Attacks in Close Combat's "enemy who can see you", the Opportunity
+  Attack "creature that you can see" trigger (both PC↔monster directions — a
+  sight-blocked reactor spends no Reaction), Hide's "out of any enemy's line
+  of sight" gate (skipped only when the hider's own cell already carries
+  Three-Quarters/Total cover), and Frightened's line-of-sight gate. The
+  Invisible "can somehow see you" carve-out is threaded through
+  `rules/conditions.py::conditions_grant_advantage_on_attack`'s new
+  keyword-only `attacker_invisibility_pierced` / `target_invisibility_pierced`
+  parameters (default `False`, preserving pre-C16b behaviour); Frightened's
+  attack-roll disadvantage gets a matching `fear_source_in_sight` keyword.
+  New `SpatialTopology.light_on_cell(cell) -> LightLevel` reports per-cell
+  light, so a dark cell now also satisfies Hide's "Heavily Obscured" gate
+  (SRD 5.2 glossary: "An area of darkness is Heavily Obscured"). New
+  `MoveFailed.reason` member `"frightened"`: a `"move"` intent that would
+  bring the mover strictly closer to a visible, known, living fear source is
+  now rejected (SRD 5.2 "You can't willingly move closer to the source of
+  fear"). `AttackRolled` gains additive `advantage_sources` /
+  `disadvantage_sources: list[AdvantageSource]` fields — the directional
+  split of `sources` — so a mutual-unseen swing now reports `["unseen"]` on
+  each list instead of the old `sources = ["unseen", "unseen"]` merge
+  (`sources` itself is unchanged).
 - `SaveBlock.ignore_cover` is honoured when present (`roll_save(...,
   ignore_cover=)`); the dataset field itself ships with C22.
 - **C22 dataset consumers.** `Combatant.trait_mechanics` (hydrated from the

@@ -159,6 +159,9 @@ def build_activity_context(
     suppress_positive_ability_damage_mod: bool = False,
     use_versatile_damage: bool = False,
     target_dodging: dict[str, bool] | None = None,
+    attacker_invisibility_pierced_by: dict[str, bool] | None = None,
+    target_invisibility_pierced: dict[str, bool] | None = None,
+    attacker_fear_source_in_sight: bool = True,
     target_help_advantage: dict[str, bool] | None = None,
     is_proficient_attack: bool = True,
     target_beyond_normal_range: dict[str, bool] | None = None,
@@ -396,6 +399,18 @@ def build_activity_context(
         # (``_dodge_benefit_active``). Absent (``None``) → empty, leaving
         # the golden corpus identical (no dodge geometry).
         target_dodging=target_dodging or {},
+        # C16b — SRD 5.2 Invisible "can somehow see you" carve-out: the two
+        # PRE-RESOLVED per-target piercing maps, computed by the orchestrator
+        # (``_invisibility_pierced_maps``, spatial-seam access there). Absent
+        # (``None``) → empty, leaving the golden corpus identical (no vision
+        # model ⇒ nobody pierces).
+        attacker_invisibility_pierced_by=attacker_invisibility_pierced_by or {},
+        target_invisibility_pierced=target_invisibility_pierced or {},
+        # C16b — SRD 5.2 Frightened line-of-sight gate: PRE-RESOLVED
+        # attacker-own-perception flag, computed by the orchestrator
+        # (``_fear_source_in_sight``). Default ``True`` leaves the golden
+        # corpus identical (no vision model ⇒ the penalty always stays).
+        attacker_fear_source_in_sight=attacker_fear_source_in_sight,
         # SRD 5.2 §Actions in Combat — Help (C14 Task 4): PRE-RESOLVED
         # per-target ally-of-attacker Help-grant flag, computed by the
         # orchestrator (``_target_help_advantage_map``). Absent (``None``) ->

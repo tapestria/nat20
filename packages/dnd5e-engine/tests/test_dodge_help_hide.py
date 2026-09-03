@@ -6,8 +6,9 @@ and you make Dexterity saving throws with Advantage. You lose these benefits
 if you have the Incapacitated condition or if your Speed is 0."
 
 The "if you can see the attacker" conjunct on the attack-disadvantage half is
-DEFERRED to C16b (no vision model wired to this seam yet) — see the comment
-in ``activities/attack.py``.
+now gated (C16b: ``orchestrator.py::_combatant_can_see``, folded into
+``ActivityResolutionContext.target_dodging`` before ``activities/attack.py``
+sees it) — see ``tests/test_c16b_vision.py`` for the vision-gated coverage.
 
 Tasks 4-5 (Help / Hide) append their own test classes to this module.
 """

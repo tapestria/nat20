@@ -231,3 +231,13 @@ def test_can_see_is_directional():
     g = _grid(lighting={"4,0": "dark"})
     assert g.can_see("0,0", "4,0") is False  # lit viewer → dark target: unseen
     assert g.can_see("4,0", "0,0") is True  # dark viewer → lit target: seen
+
+
+# ── Task 4: light_on_cell ─────────────────────────────────────────────────
+
+
+def test_light_on_cell_reads_scene_lighting_and_default():
+    g = _grid(default_lighting="dim", lighting={"4,0": "dark"})
+    assert g.light_on_cell("4,0") == "dark"
+    assert g.light_on_cell("0,0") == "dim"
+    assert g.light_on_cell("99,99") == "dim"  # out of bounds → default
