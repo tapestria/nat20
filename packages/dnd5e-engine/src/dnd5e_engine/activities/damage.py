@@ -42,6 +42,7 @@ from dnd5e_engine.activities.apply import apply_damage
 from dnd5e_engine.activities.dice import roll_damage_part, roll_expr
 from dnd5e_engine.activities.effects import apply_activity_effects
 from dnd5e_engine.activities.formula import resolve_damage_block, resolve_roll_data
+from dnd5e_engine.spellcasting import count_scales_with_cast_level
 
 if TYPE_CHECKING:
     from dnd5e_srd_data.schema.common import DamageActivity, DamagePartBlock
@@ -69,6 +70,24 @@ def resolve_damage(activity: DamageActivity, ctx: ActivityResolutionContext) -> 
     critical = activity.damage.critical
     is_crit = bool(critical.allow) and bool(ctx.variables.get("in_crit"))
 
+    # R5 (C17) — SRD 5.2 Magic Missile: "The spell creates one more dart for
+    # each spell slot level above 1", NOT more damage per dart. When the
+    # activity's own ``target.affects.count`` GENUINELY encodes the upcast
+    # (``count_scales_with_cast_level`` — references ``@item.level``, e.g.
+    # Magic Missile's "2 + @item.level"; see ``spellcasting.resolve_target_count``),
+    # the per-part ``scaling`` block would otherwise ALSO grow the dice count for
+    # the same slot level, double-counting the upcast (extra darts AND bigger
+    # darts). The count mechanic wins: the shared roll is computed at the
+    # activity's BASE level (``slot_level=None``) so every dart is the same fixed
+    # 1d4+1, no matter how many extra darts the count added. A FIXED count marker
+    # like ``"1"`` (Hex, Hunter's Mark, Wall of Fire, ...) does NOT trip this —
+    # those spells' damage scaling (if any) is untouched.
+    affects = activity.target.affects
+    count_scales_via_targets = affects.type == "creature" and count_scales_with_cast_level(
+        affects.count
+    )
+    dice_slot_level = None if count_scales_via_targets else ctx.slot_level
+
     by_type: dict[str, int] = defaultdict(int)
     first_type: str | None = None
     for part in activity.damage.parts:
@@ -83,7 +102,7 @@ def resolve_damage(activity: DamageActivity, ctx: ActivityResolutionContext) -> 
             ctx.rng,
             crit=is_crit,
             character_level=ctx.caster_level,
-            slot_level=ctx.slot_level,
+            slot_level=dice_slot_level,
             base_level=ctx.base_spell_level,
         )
 

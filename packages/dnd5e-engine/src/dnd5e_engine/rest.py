@@ -22,8 +22,10 @@ SRD 5.2 ground truth (2024 ruleset, ``content24/``):
 * §Long Rest — *"Regain All HP. You regain all lost Hit Points and all spent Hit Point
   Dice."* FULL recovery of both. (The 2014 sibling pack in this repo's raw sources
   reads a HALF-hit-dice rule; that edition is NOT what this repo pins — do not encode
-  it.) Exhaustion / HP-maximum reduction are out of scope: no producer of a reduced
-  HP maximum or ability score exists anywhere in the engine to restore.
+  it.) Exhaustion reduction is modelled as a pure level input/output (the caller
+  passes the creature's current Exhaustion level in, the resolver returns it
+  decreased by 1, floored at 0); HP-maximum / ability-score restoration still has no
+  producer anywhere in the engine to restore.
 """
 
 from __future__ import annotations
@@ -75,6 +77,13 @@ class RestOutcome:
     no dice). ``hp_current`` and ``pool`` are populated by ``resolve_long_rest``
     (the caller reads the post-rest HP and the fully-restored pool from them) and
     left ``None`` by ``resolve_short_rest``, which only mutates the dice pool.
+
+    ``spell_slots`` / ``pact_slots`` are populated only when the matching resolver
+    call was handed that pool's ``_max`` (a fresh, fully-restored ``dict``);
+    ``exhaustion_level`` is populated only when ``resolve_long_rest`` was handed one
+    (the reduced level, floored at 0). Each stays ``None`` when the caller supplied
+    no such input — see ``resolve_short_rest`` / ``resolve_long_rest`` for which
+    pools each rest type restores.
     """
 
     healed: int
@@ -83,6 +92,25 @@ class RestOutcome:
     rolls: tuple[int, ...]
     hp_current: int | None = None
     pool: HitDicePool | None = None
+    spell_slots: dict[int, int] | None = None
+    pact_slots: dict[int, int] | None = None
+    exhaustion_level: int | None = None
+
+
+def _restored_pool(
+    current: Mapping[int, int] | None, maximum: Mapping[int, int] | None, *, name: str
+) -> dict[int, int] | None:
+    """SRD §Long Rest / Pact Magic — a rest restores a pool to its maximum. ``None``
+    for both ⇒ ``None`` (caller tracks no such pool); a pool without its maximum is a
+    caller bug (``ValueError``) — the resolver never guesses a cap. Once ``maximum``
+    IS supplied, ``current``'s contents are irrelevant to the result (the restored
+    pool is simply ``dict(maximum)``) — ``current`` is consulted only to decide
+    whether the ``maximum is None`` branch returns ``None`` or raises."""
+    if maximum is None:
+        if current is None:
+            return None
+        raise ValueError(f"{name} given without {name}_max; the resolver never guesses a maximum")
+    return dict(maximum)
 
 
 def resolve_short_rest(
@@ -91,6 +119,8 @@ def resolve_short_rest(
     con_modifier: int,
     *,
     rng: random.Random,
+    pact_slots: Mapping[int, int] | None = None,
+    pact_slot_max: Mapping[int, int] | None = None,
 ) -> RestOutcome:
     """SRD 5.2 §Short Rest — spend ``dice_to_spend`` Hit Point Dice to heal.
 
@@ -100,6 +130,12 @@ def resolve_short_rest(
 
     Rejects an overspend (``dice_to_spend`` exceeding ``pool.dice_remaining``) and a
     negative spend with ``ValueError``; the resolver never silently clamps.
+
+    Pact Magic — *"You regain all expended Pact Magic spell slots when you finish a
+    Short or Long Rest."* — is the ONLY slot pool a Short Rest recovers; pass
+    ``pact_slots``/``pact_slot_max`` to restore it (``outcome.pact_slots`` is a fresh
+    ``dict`` set to the max). Regular Spellcasting slots are never touched here —
+    ``resolve_short_rest`` deliberately takes no ``spell_slots`` parameter.
     """
     if dice_to_spend < 0:
         raise ValueError(f"dice_to_spend must be non-negative, got {dice_to_spend}")
@@ -107,6 +143,9 @@ def resolve_short_rest(
         raise ValueError(
             f"cannot spend {dice_to_spend} Hit Dice; only {pool.dice_remaining} remaining"
         )
+    # Validate BEFORE any rng draw: a rejected call must never mutate rng state
+    # (determinism — seeded reproducibility is a hard engine promise).
+    restored_pact = _restored_pool(pact_slots, pact_slot_max, name="pact_slots")
     rolls = tuple(
         max(1, rng.randint(1, pool.hit_die_size) + con_modifier) for _ in range(dice_to_spend)
     )
@@ -122,22 +161,44 @@ def resolve_short_rest(
             dice_remaining=dice_remaining,
             dice_total=pool.dice_total,
         ),
+        pact_slots=restored_pact,
     )
 
 
-def resolve_long_rest(pool: HitDicePool, hp_current: int, hp_max: int) -> RestOutcome:
+def resolve_long_rest(
+    pool: HitDicePool,
+    hp_current: int,
+    hp_max: int,
+    *,
+    spell_slots: Mapping[int, int] | None = None,
+    spell_slot_max: Mapping[int, int] | None = None,
+    pact_slots: Mapping[int, int] | None = None,
+    pact_slot_max: Mapping[int, int] | None = None,
+    exhaustion_level: int | None = None,
+) -> RestOutcome:
     """SRD 5.2 §Long Rest — restore ALL HP and ALL spent Hit Point Dice.
 
     Full recovery per the 2024 ruleset (``content24/``): ``hp_current`` returns to
     ``hp_max`` and the Hit Dice pool refills to ``pool.dice_total`` — NOT the 2014
-    half-hit-dice rule. HP-maximum reduction / exhaustion are out of scope (no
-    producer exists in the engine). Pure: draws no dice.
+    half-hit-dice rule. Pure: draws no dice.
+
+    *"Finishing a Long Rest restores any expended spell slots."* — pass
+    ``spell_slots``/``spell_slot_max`` (regular Spellcasting) and/or
+    ``pact_slots``/``pact_slot_max`` (Pact Magic) to restore either pool; each
+    stays ``None`` when its inputs are omitted. *"Exhaustion Reduced. If you have
+    the Exhaustion condition, its level decreases by 1."* — pass ``exhaustion_level``
+    to get back ``max(0, exhaustion_level - 1)``; omit it (``None``) to leave
+    Exhaustion untouched. HP-maximum / ability-score restoration still has no
+    producer anywhere in the engine to restore.
     """
     restored_pool = HitDicePool(
         hit_die_size=pool.hit_die_size,
         dice_remaining=pool.dice_total,
         dice_total=pool.dice_total,
     )
+    restored_spell = _restored_pool(spell_slots, spell_slot_max, name="spell_slots")
+    restored_pact = _restored_pool(pact_slots, pact_slot_max, name="pact_slots")
+    reduced_exhaustion = None if exhaustion_level is None else max(0, exhaustion_level - 1)
     return RestOutcome(
         healed=max(0, hp_max - hp_current),
         dice_spent=0,
@@ -145,6 +206,9 @@ def resolve_long_rest(pool: HitDicePool, hp_current: int, hp_max: int) -> RestOu
         rolls=(),
         hp_current=hp_max,
         pool=restored_pool,
+        spell_slots=restored_spell,
+        pact_slots=restored_pact,
+        exhaustion_level=reduced_exhaustion,
     )
 
 

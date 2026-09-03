@@ -40,7 +40,7 @@ without failing CI.
 | Concentration, incl. damage-triggered saves and cascade drop | ✅ Resolved | Damage save with real CON modifier + DC clamped to [10, 30]; one-at-a-time (a new concentration cast cascades the old drop); ends on death and Incapacitated-implying conditions; voluntary "drop_concentration" intent (no action cost); maximum-duration expiry from the typed spell duration at the caster's turn end. Magic Resistance on this path is C18. |
 | Temporary HP, healing | ✅ Resolved | |
 | Conditions (the 15 SRD conditions) | ⚠️ Partial | Applied/removed and gated by immunities (an immune creature never acquires the condition on either store) — Weapon-mastery Topple honors condition immunity too (C15: the save still rolls, only the resulting `prone` is gated, via the shared `is_condition_immune` helper). Enforced on the live path: attack-roll advantage/disadvantage for every SRD 5.2 row incl. Prone (distance-aware), Grappled (grappler-aware), Frightened — now gated on line of sight to a known, living, tracked fear source (C16b `_fear_source_in_sight`; an unknown/dead/untracked source keeps the SRD-conservative disadvantage) — and Invisible — the "can somehow see you" carve-out now pierces only via blindsight/truesight in range with line of sight (C16b `_pierces_invisibility`), which also covers a hidden creature; Incapacitated (and Paralyzed/Stunned/Petrified/Unconscious) rejects action/bonus/reaction intents with `IntentRejectedError("actor_incapacitated")` and skips reactions; Speed 0 (`MoveFailed(reason="speed_zero")`) and Frightened's "can't willingly move closer" rule toward a fear source it can see (`MoveFailed(reason="frightened")`, C16b; SRD 5.2 imposes this unconditionally with no line-of-sight conjunct on the no-approach sentence — an engine deviation, see BACKLOG.md); auto-failed STR/DEX saves and Restrained DEX disadvantage on every save path; Paralyzed/Unconscious auto-crit within 5 ft; Charmed cannot attack or harmfully target the charmer (a charmed monster will not select them either); Characters fall Unconscious at 0 HP, including a Character hydrated into combat already at 0 HP (massive damage kills). **Partial because two SRD rows are still unenforced:** Frightened's ability-check line-of-sight gate (the attack-roll half and the no-approach movement rule are now enforced, C16b) and Blinded/Deafened sense-based check auto-fail — each needs a seam another cluster owns. Incapacitated's initiative disadvantage closed via C14 Task 8 (2026-09-01) — `start_combat` rolls Initiative at Disadvantage for entities with a seeded incapacitated-implying `active_effects` status. See BACKLOG.md "Conditions — SRD 5.2 rows not enforced". |
-| Exhaustion | ✅ Resolved | SRD 5.2: every D20 Test (attacks, saves incl. death saves, checks) is reduced by `2 × level`; Speed by `5 ft × level`. Level-6 death and Long-Rest recovery are C17. |
+| Exhaustion | ✅ Resolved | SRD 5.2: every D20 Test (attacks, saves incl. death saves, checks) is reduced by `2 × level`; Speed by `5 ft × level`. Long Rest reduces the level by 1 (`resolve_long_rest(exhaustion_level=)`); level-6 death is still unmodelled. |
 | Surprise | ✅ Resolved | `is_surprised=True` on a party/encounter spec (only consulted when that spec's `initiative` is `None`) imposes Disadvantage on the engine-rolled Initiative roll (C14 Task 8). Host is still responsible for deciding *who* is surprised. |
 | Grapple / Shove | ⚠️ Partial | Unarmed Strike options (C14): the target saves STR or DEX, whichever modifier is higher (tie → STR), vs DC `8 + STR mod + PB`; Grapple applies the Grappled condition with the escape DC stored on it, Shove applies Prone (default) or a 5-ft push per `PlayerIntent.shove_push`. Size gate, free-hand gate, and distance-exceeded auto-release are not modelled (BACKLOG.md). |
 | Two-weapon fighting | ✅ Resolved | A Light main-hand weapon opens a same-turn off-hand Bonus Action swing (C14); the ability modifier is added to off-hand damage only if negative. |
@@ -85,12 +85,12 @@ combat engine by nature.
 
 | Spell mechanic | Status |
 |---|---|
-| Spell slots, upcasting, at-will/innate casting | ⚠️ Partial — upcasting scales dice only (not target count); **rests never restore slots**; no Pact Magic |
+| Spell slots, upcasting, at-will/innate casting | ⚠️ Partial — per-class/multiclass/Pact tables derived engine-side (`derive_spell_slots`, `derive_multiclass_slots`, `derive_pact_slots`); rests restore slots; Pact Magic is a second pool; upcasting scales dice AND target count (`target.affects.count`); attack-kind repeat instances still not scaled |
 | Spell attack rolls & save DCs (incl. flat overrides) | ✅ Resolved |
 | Concentration | ✅ full lifecycle (C13) |
-| Counterspell, Shield, Hellish Rebuke, Magic Missile interactions | ⚠️ Partial | Implemented, but as named special cases rather than data-driven rules |
-| Ritual casting | ❌ Not modelled | 28 rituals flagged in the data; the flag is not read |
-| Material components / component pouches | ❌ Not modelled | Components are in the data; never enforced |
+| Counterspell, Shield, Hellish Rebuke, Magic Missile interactions | ⚠️ Partial | Implemented, but as named special cases rather than data-driven rules; slot-gated and range-gated at drain time |
+| Ritual casting | ⚠️ Partial | Out-of-combat via `resolve_ritual_cast`; in-combat rejected |
+| Material components / component pouches | ⚠️ Partial | Metadata on `SpellCast`, not enforced |
 | Dispel Magic | ❌ Not modelled | Inert (no mechanical activity) |
 | Summoning / polymorph / enchant-a-weapon | ❌ Not modelled | The three activity kinds are narrative no-ops |
 
@@ -120,8 +120,8 @@ combat engine by nature.
 | Class/species feature activities (Rage, Second Wind, …) | ⚠️ Partial | Data-driven where the corpus carries a typed activity. Extra Attack is now read from granted feature slugs (C14: `extra-attack` / `two-extra-attacks` / `three-extra-attacks`, highest tier wins, never summed). **Still prose-only, so inert:** Fighting Style, Divine Smite, Metamagic, Invocations; `selected_choices` is never read |
 | Weapon mastery (2024) | ✅ Resolved | All eight (C15): Graze, Topple, Vex, Sap, Slow, Push, Cleave, Nick. Push ignores the "Large or smaller" size gate (no creature-size attribute yet) |
 | Sneak Attack | ✅ Resolved | Once per turn, ally-adjacency or advantage trigger |
-| Short/long rest, hit dice, feature & item recharge | ✅ Resolved | |
-| **Multiclassing** | ❌ Not modelled | `CharacterBuildSpec` takes a single class |
+| Short/long rest, hit dice, feature & item recharge | ✅ Resolved | Long Rest also restores Spellcasting/Pact Magic slots and reduces Exhaustion by 1; Short Rest restores only the Pact Magic pool |
+| **Multiclassing** | ⚠️ Partial | `CharacterBuildSpec.classes` carrier + multiclass/Pact slot-table derivation (C17); per-class feature grants, proficiencies and HP accumulation are C19 |
 | Feats | ⚠️ Partial | 1 of 17 corpus feats carries a mechanical activity |
 
 ## Reactions
@@ -136,8 +136,8 @@ Reactions work, with one constraint that shapes any host integration:
 |---|---|
 | Opportunity attack | ✅ Resolved (both directions) |
 | Shield (incl. vs. Magic Missile) | ✅ Resolved |
-| Counterspell | ⚠️ Partial — fires regardless of the 60 ft range limit |
-| Readied spell cast | ⚠️ Partial — fires even with no slot available |
+| Counterspell | ✅ Resolved — slot-gated at the readied level and 60 ft range/LoS-gated at drain time (an ineligible reactor's armed reaction is skipped, not popped) |
+| Readied spell cast | ✅ Resolved — a readied leveled spell (e.g. Shield) needs an unexpended slot at its readied level; an ineligible reactor's armed reaction is skipped, not popped |
 | Arbitrary SRD "Ready an action with a custom trigger" | ❌ Not modelled |
 
 ## Environment & exploration

@@ -129,6 +129,7 @@ from dnd5e_engine.events import (
     ReactionTriggered,
     RoundStarted,
     SaveRolled,
+    SpellCast,
     TempHpApplied,
     TurnEnded,
     TurnPhase,
@@ -164,6 +165,11 @@ from dnd5e_engine.specs import (
     PartyMemberSpec,
     SceneTopology,
     ZoneEdge,
+)
+from dnd5e_engine.spellcasting import (
+    count_scales_with_cast_level,
+    resolve_target_count,
+    spell_component_metadata,
 )
 from dnd5e_engine.turn_lifecycle import (
     TurnLifecycle,
@@ -214,6 +220,11 @@ class PlayerIntent(BaseModel):
     intent_type: IntentType
     spell_id: str | None = None
     target_id: str | None = None
+    # C17 — SRD 5.2 "one creature or several": per-instance targets for a spell
+    # whose activity carries ``target.affects.count`` (Magic Missile darts, Hold
+    # Person's extra Humanoids). Duplicates = several darts on one creature.
+    # Ignored (with ``target_id`` used) for activities without a count.
+    target_ids: tuple[str, ...] | None = None
     item_id: str | None = None
     weapon_id: str | None = None
     feature_id: str | None = None
@@ -264,6 +275,13 @@ class PlayerIntent(BaseModel):
     # actual melee swing (a two-handed grip declared on a thrown/ranged use
     # of the same weapon is ignored, per SRD "to make a melee attack").
     two_handed: bool = False
+    # SRD 5.2 §Rituals: "To cast a spell as a Ritual, a spellcaster must have
+    # it prepared" — the Ritual version "takes 10 minutes longer to cast than
+    # normal, but it doesn't expend a spell slot." The turn economy has no
+    # room to host that extra 10 minutes, so in combat this flag is a hard
+    # reject (``CastFailed(reason="ritual_in_combat")``, slot untouched).
+    # Out-of-combat rituals resolve via ``spellcasting.resolve_ritual_cast``.
+    as_ritual: bool = False
 
     @field_validator("direction")
     @classmethod
@@ -1958,6 +1976,10 @@ class _LiveCombat:
     # sidecar payload before each evaluator invocation. Non-PCs are absent
     # from these maps (treated as "no spells / no counters" by the handlers).
     spell_slots_by_entity: dict[str, dict[int, int]] = field(default_factory=dict)
+    # SRD §Multiclassing — Pact Magic: a second, independent slot pool
+    # (Warlock's Pact Magic feature); R3 draws from Spellcasting first,
+    # then Pact — see ``_take_spell_slot``.
+    pact_slots_by_entity: dict[str, dict[int, int]] = field(default_factory=dict)
     spells_known_by_entity: dict[str, list[str]] = field(default_factory=dict)
     custom_counters_by_entity: dict[str, dict[str, dict[str, int]]] = field(default_factory=dict)
     # SRD §Concentration — persistent IEffect parent/child lifecycle graph.
@@ -5550,12 +5572,14 @@ def _build_pc_combatants(
     actor_zone: dict[str, str],
     tracked_hp: dict[str, int],
     spell_slots_by_entity: dict[str, dict[int, int]],
+    pact_slots_by_entity: dict[str, dict[int, int]],
     spells_known_by_entity: dict[str, list[str]],
     custom_counters_by_entity: dict[str, dict[str, dict[str, int]]],
 ) -> None:
     """Append a ``Combatant`` per party member and populate the passed
-    accumulator dicts (actor_zone, tracked_hp, spell_slots/spells_known/
-    custom_counters) in place. Mutation-only helper — returns ``None``.
+    accumulator dicts (actor_zone, tracked_hp, spell_slots/pact_slots/
+    spells_known/custom_counters) in place. Mutation-only helper — returns
+    ``None``.
     """
     for pc in party:
         combatants.append(
@@ -5614,6 +5638,8 @@ def _build_pc_combatants(
         tracked_hp[pc.entity_id] = pc.hp_current
         if pc.spell_slots:
             spell_slots_by_entity[pc.entity_id] = dict(pc.spell_slots)
+        if pc.pact_slots:
+            pact_slots_by_entity[pc.entity_id] = dict(pc.pact_slots)
         if pc.spells_known:
             spells_known_by_entity[pc.entity_id] = list(pc.spells_known)
         if pc.custom_counters:
@@ -5938,6 +5964,7 @@ async def start_combat(
     tracked_hp: dict[str, int] = {}
     tracked_temp_hp: dict[str, int] = {}
     spell_slots_by_entity: dict[str, dict[int, int]] = {}
+    pact_slots_by_entity: dict[str, dict[int, int]] = {}
     spells_known_by_entity: dict[str, list[str]] = {}
     custom_counters_by_entity: dict[str, dict[str, dict[str, int]]] = {}
     _build_pc_combatants(
@@ -5946,6 +5973,7 @@ async def start_combat(
         actor_zone,
         tracked_hp,
         spell_slots_by_entity,
+        pact_slots_by_entity,
         spells_known_by_entity,
         custom_counters_by_entity,
     )
@@ -5981,6 +6009,7 @@ async def start_combat(
         tracked_hp=tracked_hp,
         tracked_temp_hp=tracked_temp_hp,
         spell_slots_by_entity=spell_slots_by_entity,
+        pact_slots_by_entity=pact_slots_by_entity,
         spells_known_by_entity=spells_known_by_entity,
         custom_counters_by_entity=custom_counters_by_entity,
     )
@@ -7181,6 +7210,121 @@ def _record_loading_weapon_fired(live: _LiveCombat, actor_id: str, current: Comb
     return _current_actor(live)
 
 
+def _slot_available(live: _LiveCombat, entity_id: str, slot_level: int) -> bool:
+    """SRD §Spell Slots — does ``entity_id`` hold an unexpended slot at ``slot_level``
+    in EITHER pool (Spellcasting feature or Pact Magic)? SRD §Multiclassing lets
+    either pool cast either prepared spell; the engine has no spell-list gate."""
+    spell = live.spell_slots_by_entity.get(entity_id, {})
+    pact = live.pact_slots_by_entity.get(entity_id, {})
+    return int(spell.get(slot_level, 0)) > 0 or int(pact.get(slot_level, 0)) > 0
+
+
+def _take_spell_slot(live: _LiveCombat, entity_id: str, slot_level: int) -> bool:
+    """Expend one slot at ``slot_level`` — Spellcasting pool first, then Pact (R3).
+    Returns ``False`` and mutates nothing when neither pool has one."""
+    for pool in (
+        live.spell_slots_by_entity.get(entity_id),
+        live.pact_slots_by_entity.get(entity_id),
+    ):
+        if pool is not None and int(pool.get(slot_level, 0)) > 0:
+            pool[slot_level] = int(pool[slot_level]) - 1
+            return True
+    return False
+
+
+def _reject_over_count_targets(
+    live: _LiveCombat, current: Combatant, actor_id: str, intent: PlayerIntent
+) -> bool:
+    """R5 — validation-only pre-check for a cast whose resolving activity carries
+    ``target.affects.count`` (Magic Missile darts, Hold Person's extra Humanoids).
+    Runs BEFORE ``_consume_spell_slot`` so a rejected upcast never spends a slot —
+    ``_resolve_intent_activities`` (which fetches ``activities``) does not run
+    until AFTER the slot gate, so this loads the spell itself via the cached lib
+    loader and inspects ``spell.activities`` directly.
+
+    Returns ``True`` iff the cast was REJECTED (``CastFailed(reason=
+    "target_invalid")`` emitted and the turn already advanced — the caller must
+    return). ``False`` means not applicable (no count-bearing activity) or the
+    named targets are all live and within the resolved count N — either way the
+    cast proceeds unchanged; ``_count_scaled_targets`` later assumes validity and
+    never rejects.
+    """
+    if not (intent.intent_type == "cast_spell" and intent.spell_id):
+        return False
+    spell = get_lib_loader().get_spell(intent.spell_id)
+    if spell is None:
+        return False
+    activity = _find_count_activity(list(spell.activities))
+    if activity is None:
+        return False
+    cast_level = intent.slot_level if intent.slot_level is not None else spell.level
+    n = resolve_target_count(activity.target.affects.count, cast_level=cast_level)
+    if n is None:
+        return False
+    ids = (
+        list(intent.target_ids)
+        if intent.target_ids
+        else ([intent.target_id] if intent.target_id else [])
+    )
+    live_ids = {c.entity_id for c in live.initiative}
+    if len(ids) > n or any(i not in live_ids for i in ids):
+        _emit(
+            live,
+            CastFailed(
+                actor_id=current.entity_id,
+                spell_id=intent.spell_id,
+                reason="target_invalid",
+            ),
+        )
+        _end_turn_and_advance(live, actor_id)
+        return True
+    return False
+
+
+def _apply_pre_slot_cast_gates(
+    live: _LiveCombat, current: Combatant, actor_id: str, intent: PlayerIntent
+) -> bool:
+    """Run every gate that MUST fire before ``_consume_spell_slot`` — the R8
+    in-combat-ritual rejection, a Counterspell interrupt
+    (``_drain_counterspell_reaction``) and the C17/R5 target-count validation
+    (``_reject_over_count_targets``) all need to reject (when applicable)
+    before the slot is ever touched, so neither an illegal ritual cast, a
+    countered cast, nor a rejected-target cast spends the caster's slot.
+    Merged into one early-return call site (rather than separate ``if``s in
+    ``submit_player_intent``) to keep that function's branch count down.
+
+    The ritual check runs FIRST and unconditionally: an in-combat
+    ``as_ritual=True`` cast is illegal regardless of anything else about the
+    intent, so it must never reach ``_drain_counterspell_reaction`` — an
+    armed Counterspell must not be triggered (or its slot spent) by a cast
+    that was never going to resolve. The remaining two checks are
+    independent and order-insensitive (each returns ``False`` fast when not
+    applicable to the intent).
+
+    Returns ``True`` iff any gate emitted ``CastFailed`` and already
+    advanced the turn — the caller must return.
+    """
+    if (
+        intent.intent_type == "cast_spell"
+        and intent.spell_id
+        and intent.as_ritual
+        and get_lib_loader().get_spell(intent.spell_id) is not None
+    ):
+        _emit(
+            live,
+            CastFailed(
+                actor_id=current.entity_id,
+                spell_id=intent.spell_id,
+                reason="ritual_in_combat",
+            ),
+        )
+        _end_turn_and_advance(live, actor_id)
+        return True
+    if _drain_counterspell_reaction(live, current, actor_id, intent):
+        return True
+    return _reject_over_count_targets(live, current, actor_id, intent)
+
+
 def _consume_spell_slot(
     live: _LiveCombat, current: Combatant, actor_id: str, intent: PlayerIntent
 ) -> bool:
@@ -7191,7 +7335,9 @@ def _consume_spell_slot(
     never reaches a slot-consuming handler — the orchestrator owns the
     gate + decrement for this PC seam. The decrement is final here; the
     typed resolver does not mutate any per-evaluation slot sidecar, so there
-    is no post-resolution slot writeback to reconcile with.
+    is no post-resolution slot writeback to reconcile with. Two independent
+    pools may hold a slot at the same level (Spellcasting + Pact Magic); R3
+    draws from Spellcasting first, then Pact — see ``_take_spell_slot``.
 
     Returns ``True`` if the cast was REJECTED (a ``CastFailed`` was emitted
     and the turn advanced — the caller must return); ``False`` otherwise.
@@ -7221,25 +7367,66 @@ def _consume_spell_slot(
         )
         _end_turn_and_advance(live, actor_id)
         return True
-    if base_level > 0:
-        slots = live.spell_slots_by_entity.get(current.entity_id, {})
-        available = int(slots.get(slot_level, 0))
-        if available <= 0:
-            _emit(
-                live,
-                CastFailed(
-                    actor_id=current.entity_id,
-                    spell_id=intent.spell_id,
-                    reason="no_slot",
-                ),
-            )
-            _end_turn_and_advance(live, actor_id)
-            return True
-        # Consume the slot. The typed PC resolver does not touch
-        # ``_counter_state``, so this subtract is the authoritative
-        # decrement — no post-evaluation writeback overwrites it.
-        slots[slot_level] = available - 1
+    # Consume the slot. The typed PC resolver does not touch
+    # ``_counter_state``, so this subtract is the authoritative
+    # decrement — no post-evaluation writeback overwrites it.
+    if base_level > 0 and not _take_spell_slot(live, current.entity_id, slot_level):
+        _emit(
+            live,
+            CastFailed(
+                actor_id=current.entity_id,
+                spell_id=intent.spell_id,
+                reason="no_slot",
+            ),
+        )
+        _end_turn_and_advance(live, actor_id)
+        return True
     return False
+
+
+def _emit_spell_cast(
+    live: _LiveCombat, caster_id: str, spell: Spell, slot_level: int | None
+) -> None:
+    """C17 — ``SpellCast`` with component metadata (SRD §Components; never enforced).
+
+    Normalises ``slot_level`` to ``None`` for a cantrip (``spell.level == 0``)
+    regardless of what the caller computed — ``events.py`` declares
+    ``SpellCast.slot_level: int | None  # None for a cantrip`` and every call
+    site (on-turn cast, readied-reaction resolve, Counterspell's own cast)
+    shares this single normalisation point rather than each re-deriving it.
+    """
+    normalized_slot_level = None if spell.level == 0 else slot_level
+    comps, material, consumed, cost = spell_component_metadata(spell)
+    _emit(
+        live,
+        SpellCast(
+            actor_id=caster_id,
+            spell_id=spell.slug,
+            slot_level=normalized_slot_level,
+            ritual=bool(spell.ritual),
+            components=list(comps),
+            material=material,
+            material_consumed=consumed,
+            material_cost_gp=cost,
+        ),
+    )
+
+
+def _emit_spell_cast_for_on_turn_intent(
+    live: _LiveCombat, actor_id: str, intent: PlayerIntent
+) -> None:
+    """C17 — the on-turn ``SpellCast`` call site: fetch the spell the intent just
+    successfully cast (the slot gate has already passed by the time the caller
+    reaches this) and emit its component metadata. No-op for non-cast intents
+    or an unknown ``spell_id`` (mirrors every other lib-loader miss in this
+    module — silently skip rather than raise)."""
+    if not (intent.intent_type == "cast_spell" and intent.spell_id):
+        return
+    spell = get_lib_loader().get_spell(intent.spell_id)
+    if spell is None:
+        return
+    slot_level = intent.slot_level if intent.slot_level is not None else spell.level
+    _emit_spell_cast(live, actor_id, spell, slot_level)
 
 
 @dataclass
@@ -7402,6 +7589,72 @@ def _item_cast_level_override(intent: PlayerIntent) -> int | None:
     return int(base_level) + (intent.charges_to_spend - base_cost)
 
 
+def _find_count_activity(activities: list[Any]) -> Any | None:
+    """R5 — the first activity whose ``target.affects.count`` GENUINELY encodes
+    the upcast mechanic (``count_scales_with_cast_level`` — references
+    ``@item.level``; Magic Missile's dart count, Hold Person's extra Humanoids).
+    A fixed marker like ``"1"`` (the schema default a plain single-target
+    damage/save/utility activity carries — Hex, Hunter's Mark, Revivify, ...) is
+    NOT a count mechanic and must not engage this machinery at all. ``None``
+    when no activity in the list carries a genuine count formula."""
+    for activity in activities:
+        target = getattr(activity, "target", None)
+        affects = getattr(target, "affects", None) if target is not None else None
+        if (
+            affects is not None
+            and affects.type == "creature"
+            and count_scales_with_cast_level(affects.count)
+        ):
+            return activity
+    return None
+
+
+def _count_scaled_targets(
+    live: _LiveCombat,
+    intent: PlayerIntent,
+    activities: list[Any],
+    cast_spell: Spell | None,
+) -> list[Combatant] | None:
+    """R5 — expand the target list for a cast whose resolving activity carries a
+    ``target.affects.count`` (Foundry roll-data, ``@item.level`` = cast level;
+    SRD 5.2 Magic Missile: "The spell creates one more dart for each spell slot
+    level above 1.").
+
+    The validation half (named ids exist, count doesn't exceed the resolved N)
+    already ran in ``_reject_over_count_targets`` BEFORE the slot gate — this is a
+    pure expander with NO rejection branch. Returns ``None`` when not applicable
+    (not a cast / no count-bearing activity / not a creature count / the formula
+    resolves to no count) so the caller falls through to the plain ``target_id``
+    lookup.
+    """
+    if intent.intent_type != "cast_spell" or cast_spell is None:
+        return None
+    activity = _find_count_activity(activities)
+    if activity is None:
+        return None
+    cast_level = intent.slot_level if intent.slot_level is not None else cast_spell.level
+    n = resolve_target_count(activity.target.affects.count, cast_level=cast_level)
+    if n is None:
+        return None
+    ids = (
+        list(intent.target_ids)
+        if intent.target_ids
+        else ([intent.target_id] if intent.target_id else [])
+    )
+    by_id = {c.entity_id: c for c in live.initiative}
+    targets = [by_id[i] for i in ids if i in by_id]
+    # A single implicit target on a damage-kind count activity (Magic Missile
+    # with a bare ``target_id``, no explicit ``target_ids``) fans every dart at
+    # that one creature — R5, one shared damage roll applied N times.
+    if (
+        intent.target_ids is None
+        and len(targets) == 1
+        and getattr(activity, "kind", None) == "damage"
+    ):
+        targets = targets * n
+    return targets
+
+
 def _resolve_targets(
     live: _LiveCombat,
     current: Combatant,
@@ -7415,12 +7668,18 @@ def _resolve_targets(
     effect from the point of origin; on the legacy zone graph: every creature
     in the anchor zone). Otherwise the named target is used, defaulting to the
     caster for an effect-bearing self/targetless buff or a self-targeting
-    feature."""
+    feature. A count-bearing activity (R5 — Magic Missile darts) expands via
+    ``_count_scaled_targets`` in place of the plain ``target_id`` lookup."""
     targets: list[Combatant]
     if intent.intent_type == "cast_spell" and _typed_spell_broadcasts(activities):
         targets = _expand_aoe_target_list(live, current, intent, activities)
     else:
-        targets = [c for c in live.initiative if c.entity_id == intent.target_id]
+        expanded = _count_scaled_targets(live, intent, activities, cast_spell)
+        targets = (
+            expanded
+            if expanded is not None
+            else [c for c in live.initiative if c.entity_id == intent.target_id]
+        )
         # SRD §Range: Self — an effect-bearing self/targetless buff (Shield,
         # Mirror Image, Disguise Self) names no foe, so the named-target filter
         # above yields []. Its riders would then apply to nobody and the buff
@@ -7546,6 +7805,7 @@ def _pop_pending_reaction(
     *,
     triggering_actor_id: str,
     only_owner_id: str | None = None,
+    eligible: Callable[[Combatant, _PendingReaction], bool] | None = None,
 ) -> _PendingReaction | None:
     """SRD §Reactions — pop the first pending reaction matching ``trigger``,
     scanning ``live.initiative`` in INITIATIVE ORDER (the documented firing
@@ -7556,6 +7816,10 @@ def _pop_pending_reaction(
     under attack/targeted, not any bystander), must be alive, and must have
     ``reaction_available``. Removes + returns the match (a reaction fires — and
     is spent — at most once); ``None`` when nothing qualifies.
+
+    An armed reaction whose owner fails ``eligible`` is SKIPPED (left queued,
+    no Reaction spent) — R4. The scan continues in initiative order to the
+    next candidate rather than stopping.
     """
     for reactor in live.initiative:
         if reactor.entity_id == triggering_actor_id:
@@ -7578,6 +7842,8 @@ def _pop_pending_reaction(
             None,
         )
         if match is not None:
+            if eligible is not None and not eligible(reactor, match):
+                continue
             live.pending_reactions.remove(match)
             return match
     return None
@@ -7608,9 +7874,10 @@ def _resolve_readied_spell_cast(
 
     slot_level = popped.slot_level if popped.slot_level is not None else spell.level
     if spell.level > 0:
-        slots = live.spell_slots_by_entity.get(reactor.entity_id, {})
-        if slots.get(slot_level, 0) > 0:
-            slots[slot_level] = slots[slot_level] - 1
+        _take_spell_slot(live, reactor.entity_id, slot_level)
+    # ``_emit_spell_cast`` normalises ``slot_level`` to ``None`` for a
+    # cantrip; ``slot_level`` here stays the raw popped/derived value for the
+    # slot-take check above.
 
     _emit(
         live,
@@ -7620,6 +7887,7 @@ def _resolve_readied_spell_cast(
             trigger_event_uuid="",
         ),
     )
+    _emit_spell_cast(live, reactor.entity_id, spell, slot_level)
 
     spellcasting_ability = _resolve_caster_spellcasting_ability(reactor)
     payload = _build_hydration_payload(live, caster=reactor)
@@ -7663,6 +7931,20 @@ def _resolve_readied_spell_cast(
             )
 
 
+def _readied_cast_eligible(
+    live: _LiveCombat, reactor: Combatant, pending: _PendingReaction
+) -> bool:
+    """R4 — a readied leveled spell (Shield) needs an unexpended slot at its
+    readied level. SRD §Spell Slots: "When you cast a spell, you expend a
+    slot of that spell's level or higher"; a cantrip (level 0) has no slot
+    to expend and is always eligible."""
+    spell = get_lib_loader().get_spell(pending.spell_id or "")
+    if spell is None or spell.level == 0:
+        return True
+    level = pending.slot_level if pending.slot_level is not None else spell.level
+    return _slot_available(live, reactor.entity_id, level)
+
+
 def _drain_targeted_reactions(
     live: _LiveCombat,
     *,
@@ -7681,6 +7963,7 @@ def _drain_targeted_reactions(
             trigger,
             triggering_actor_id=triggering_actor_id,
             only_owner_id=target.entity_id,
+            eligible=lambda reactor, pending: _readied_cast_eligible(live, reactor, pending),
         )
         if popped is None:
             continue
@@ -7707,15 +7990,44 @@ def _drain_counterspell_reaction(
     ``docs/dev/reaction-queue.md``, "Slot-consumption redesign"). ``False``
     means no reaction fired OR the save succeeded; either way the triggering
     cast proceeds exactly as if this function had never been called.
+
+    Gates (R4): the reactor must hold a slot at the readied level in either
+    pool and be within Counterspell's own ``range.value`` with line of
+    sight — an ineligible reactor's armed reaction is skipped, not
+    consumed.
     """
     if intent.intent_type != "cast_spell" or not intent.spell_id:
         return False
-    popped = _pop_pending_reaction(live, "cast_spell", triggering_actor_id=actor_id)
+
+    caster_zone = live.actor_zone.get(actor_id)
+
+    def _eligible(reactor: Combatant, pending: _PendingReaction) -> bool:
+        spell = get_lib_loader().get_spell(pending.spell_id or "counterspell")
+        if spell is None:
+            return False
+        level = pending.slot_level if pending.slot_level is not None else spell.level
+        if spell.level > 0 and not _slot_available(live, reactor.entity_id, level):
+            return False
+        range_ft = spell.range.value
+        reactor_zone = live.actor_zone.get(reactor.entity_id)
+        if range_ft is None or reactor_zone is None or caster_zone is None:
+            return True  # no geometry ⇒ no penalty (engine-wide convention)
+        return _in_range_with_los(live.topology, reactor_zone, caster_zone, int(range_ft))
+
+    popped = _pop_pending_reaction(
+        live, "cast_spell", triggering_actor_id=actor_id, eligible=_eligible
+    )
     if popped is None:
         return False
     reactor = _find_combatant(live, popped.owner_id)
     if reactor is None:
         return False
+    # The spell lookup here duplicates ``_eligible``'s (identical
+    # ``pending.spell_id or "counterspell"`` / ``popped.spell_id or
+    # "counterspell"`` expression): ``_eligible`` runs once per CANDIDATE
+    # during the scan inside ``_pop_pending_reaction`` — the armed entry is
+    # not known yet, so its spell can't be pre-fetched — and this second
+    # lookup is against ``popped``, the one entry the scan actually selected.
     counterspell = get_lib_loader().get_spell(popped.spell_id or "counterspell")
     if counterspell is None:
         return False
@@ -7731,9 +8043,7 @@ def _drain_counterspell_reaction(
             break
     cs_level = popped.slot_level if popped.slot_level is not None else counterspell.level
     if counterspell.level > 0:
-        reactor_slots = live.spell_slots_by_entity.get(reactor.entity_id, {})
-        if reactor_slots.get(cs_level, 0) > 0:
-            reactor_slots[cs_level] = reactor_slots[cs_level] - 1
+        _take_spell_slot(live, reactor.entity_id, cs_level)
 
     _emit(
         live,
@@ -7743,6 +8053,7 @@ def _drain_counterspell_reaction(
             trigger_event_uuid="",
         ),
     )
+    _emit_spell_cast(live, reactor.entity_id, counterspell, cs_level)
 
     reactor_spellcasting_ability = _resolve_caster_spellcasting_ability(reactor)
     payload = _build_hydration_payload(live, caster=reactor)
@@ -8065,13 +8376,15 @@ async def submit_player_intent(
             ),
         )
 
-    # SRD 5.2 Counterspell — drain a pending "cast_spell" reaction BEFORE
-    # the slot gate: a countered cast never reaches ``_consume_spell_slot``,
-    # so the interrupted caster's slot is never expended ; see
-    # docs/dev/reaction-queue.md, "Slot-consumption redesign"). Returns True
-    # iff the cast was countered — CastFailed(reason="countered") emitted
-    # and the turn already advanced (the wasted action).
-    if _drain_counterspell_reaction(live, current, actor_id, intent):
+    # SRD 5.2 Counterspell (drain a pending "cast_spell" reaction) + C17/R5
+    # (validate a count-bearing cast's named targets — Magic Missile darts,
+    # Hold Person's extra Humanoids) — BOTH run BEFORE the slot gate, so a
+    # countered or rejected cast never reaches ``_consume_spell_slot`` and the
+    # interrupted/rejected caster's slot is never expended; see
+    # docs/dev/reaction-queue.md, "Slot-consumption redesign". Returns True
+    # iff either gate fired a ``CastFailed`` and already advanced the turn
+    # (the wasted action) — the caller must return.
+    if _apply_pre_slot_cast_gates(live, current, actor_id, intent):
         return
 
     # SRD §Spellcasting — Spell Slots. Gate + decrement live on the
@@ -8079,6 +8392,11 @@ async def submit_player_intent(
     # and signals the caller to return.
     if _consume_spell_slot(live, current, actor_id, intent):
         return
+
+    # C17 — ``SpellCast`` metadata event (component/material/ritual bookkeeping,
+    # never enforced). Emitted right after the slot gate passes so it is
+    # ordered before any resolution events (damage, saves, ...) the cast produces.
+    _emit_spell_cast_for_on_turn_intent(live, actor_id, intent)
 
     # SRD §Limited-Use Features — every action-economy / slot gate has
     # passed and the invocation is now committed to resolving; record the spend on

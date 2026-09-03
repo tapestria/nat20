@@ -16,10 +16,9 @@ from dnd5e_engine.events import DamageApplied, ReactionTriggered
 from dnd5e_engine.orchestrator import _get_live, start_combat, submit_player_intent
 from dnd5e_engine.rest import HitDicePool
 from dnd5e_engine.specs import EncounterMemberSpec, GridScene, PartyMemberSpec
-from tests.e2e.harness import cell, events_of, grid_scene, run_async, xfail_cluster
+from tests.e2e.harness import cell, events_of, grid_scene, run_async
 
 
-@xfail_cluster(17, "spell slots & rests")
 def test_c17_s01_wizard_full_caster_slot_table_has_no_engine_derivation():
     """C17-S01: SRD 5.2 — "a level 3 Wizard has four level 1 spell slots
     and two level 2 slots." (packs/_source/content24/chapter-7/spells.yml:503-517,
@@ -36,7 +35,6 @@ def test_c17_s01_wizard_full_caster_slot_table_has_no_engine_derivation():
     assert slots == {1: 4, 2: 3, 3: 2}
 
 
-@xfail_cluster(17, "spell slots & rests")
 def test_c17_s02_pact_magic_has_no_separate_pool_and_recovers_on_short_rest():
     """C17-S02: SRD 5.2 — "You regain all expended Pact Magic spell slots
     when you finish a Short or Long Rest. ... when you're a level 5
@@ -63,7 +61,6 @@ def test_c17_s02_pact_magic_has_no_separate_pool_and_recovers_on_short_rest():
     assert outcome.pact_slots == {3: 2}
 
 
-@xfail_cluster(17, "spell slots & rests")
 def test_c17_s03_multiclass_paladin_wizard_has_no_per_class_level_input():
     """C17-S03: SRD 5.2 — "You determine your available spell slots by
     adding together the following: All your levels in the Bard, Cleric,
@@ -86,7 +83,6 @@ def test_c17_s03_multiclass_paladin_wizard_has_no_per_class_level_input():
     assert slots == {1: 4, 2: 3}
 
 
-@xfail_cluster(17, "spell slots & rests")
 def test_c17_s04_long_rest_restores_slots_and_reduces_exhaustion():
     """C17-S04: SRD 5.2 §Long Rest — "Exhaustion Reduced. If you have the
     Exhaustion condition, its level decreases by 1."
@@ -116,7 +112,6 @@ def test_c17_s04_long_rest_restores_slots_and_reduces_exhaustion():
     assert outcome.exhaustion_level == 1
 
 
-@xfail_cluster(17, "spell slots & rests")
 def test_c17_s05_magic_missile_upcast_at_slot_3_should_fire_5_darts():
     """C17-S05: Magic Missile — "You create three glowing darts of
     magical force. ... Using a Higher-Level Spell Slot. The spell
@@ -186,7 +181,6 @@ def test_c17_s05_magic_missile_upcast_at_slot_3_should_fire_5_darts():
         assert 2 <= dart.amount <= 5
 
 
-@xfail_cluster(17, "spell slots & rests")
 def test_c17_s06_counterspell_with_empty_slot_pool_or_out_of_range_still_fires_for_free():
     """C17-S06: two independent, co-located gates in
     ``_drain_counterspell_reaction`` — "No-slot readied reactions fire for

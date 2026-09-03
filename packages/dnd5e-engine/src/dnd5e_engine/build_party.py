@@ -16,7 +16,12 @@ from dnd5e_srd_data.schema.refs import GrantRef
 from dnd5e_srd_data.schema.species import Species
 
 from dnd5e_engine.activities.passive_stats import interpret_passive_stats
-from dnd5e_engine.build_spec import CharacterBuildSpec, CombatInstance
+from dnd5e_engine.build_spec import (
+    CharacterBuildSpec,
+    CombatInstance,
+    derive_multiclass_pact_slots,
+    derive_multiclass_slots,
+)
 from dnd5e_engine.specs import PartyMemberSpec
 
 _log = logging.getLogger(__name__)
@@ -116,7 +121,10 @@ def build_party_member(
         wisdom=ab.wisdom,
         charisma=ab.charisma,
         zone_id=instance.zone_id,
-        spell_slots=dict(instance.spell_slots),
+        spell_slots=dict(instance.spell_slots)
+        or derive_multiclass_slots(build_spec.classes, loader=loader),
+        pact_slots=dict(instance.pact_slots)
+        or derive_multiclass_pact_slots(build_spec.classes, loader=loader),
         spells_known=list(instance.spells_known),
         concentration_effect_id=instance.concentration_effect_id,
         character_level=build_spec.level,
