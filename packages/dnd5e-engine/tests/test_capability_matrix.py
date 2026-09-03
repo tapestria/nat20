@@ -422,9 +422,10 @@ _PROBES: dict[str, tuple[Any, str]] = {
         "slot-gated at the readied level and 60 ft range/LoS-gated at drain time",
     ),
     # C17 Task 4 (R4): a readied leveled spell (Shield) is gated on slot
-    # availability at drain time via the same ``eligible=`` predicate shape.
+    # availability at drain time via its own ``_readied_cast_eligible``
+    # predicate (distinct from Counterspell's inline ``_eligible`` above).
     "an unexpended slot at its readied level": (
-        lambda: "eligible=" in _src("orchestrator.py"),
+        lambda: "def _readied_cast_eligible(" in _src("orchestrator.py"),
         "an unexpended slot at its readied level",
     ),
     # C17 Task 1: per-class/multiclass/Pact slot tables are derived
@@ -433,10 +434,11 @@ _PROBES: dict[str, tuple[Any, str]] = {
         lambda: "def derive_multiclass_slots(" in _src("build_spec.py"),
         "derive_spell_slots`, `derive_multiclass_slots`, `derive_pact_slots",
     ),
-    # C17 Task 1: the multiclass carrier + per-class rounded slot derivation
-    # landed; per-class feature grants/proficiencies/HP remain C19.
+    # C17 Task 1: the multiclass carrier itself (``classes: dict[str, int]``)
+    # is the field this row names — distinct from the derivation function
+    # probed above.
     "`CharacterBuildSpec.classes` carrier": (
-        lambda: "def derive_multiclass_slots(" in _src("build_spec.py"),
+        lambda: "classes: dict[str, int]" in _src("build_spec.py"),
         "`CharacterBuildSpec.classes` carrier",
     ),
     # C17 Task 6 (R8): a Ritual-tagged spell resolves out-of-combat only,

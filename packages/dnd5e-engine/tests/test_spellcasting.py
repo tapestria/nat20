@@ -180,12 +180,18 @@ def test_ritual_cast_rejects_spell_without_ritual_tag():
 
 
 def test_ritual_cast_minute_and_hour_casting_times_are_additive():
-    # pick a corpus ritual with a 1-minute casting time; verify by loading and asserting
-    # ``spell.casting_time.unit == "minute"`` first (e.g. "identify"), then 1 + 10 == 11.
+    # "identify": a corpus ritual with a 1-minute casting time -> 1 + 10 == 11.
     spell = BundledAssetLoader().get_spell("identify")
     assert spell is not None
     assert spell.ritual
-    assert (
-        resolve_ritual_cast(spell, prepared=True).casting_time_minutes
-        == spell.casting_time.value + 10
-    )
+    assert spell.casting_time.unit == "minute"
+    assert spell.casting_time.value == 1
+    assert resolve_ritual_cast(spell, prepared=True).casting_time_minutes == 11
+
+    # "find-familiar": a corpus ritual with a 1-HOUR casting time -> 60 + 10 == 70.
+    hour_spell = BundledAssetLoader().get_spell("find-familiar")
+    assert hour_spell is not None
+    assert hour_spell.ritual
+    assert hour_spell.casting_time.unit == "hour"
+    assert hour_spell.casting_time.value == 1
+    assert resolve_ritual_cast(hour_spell, prepared=True).casting_time_minutes == 70

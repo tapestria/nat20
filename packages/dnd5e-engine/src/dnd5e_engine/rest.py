@@ -102,7 +102,10 @@ def _restored_pool(
 ) -> dict[int, int] | None:
     """SRD §Long Rest / Pact Magic — a rest restores a pool to its maximum. ``None``
     for both ⇒ ``None`` (caller tracks no such pool); a pool without its maximum is a
-    caller bug (``ValueError``) — the resolver never guesses a cap."""
+    caller bug (``ValueError``) — the resolver never guesses a cap. Once ``maximum``
+    IS supplied, ``current``'s contents are irrelevant to the result (the restored
+    pool is simply ``dict(maximum)``) — ``current`` is consulted only to decide
+    whether the ``maximum is None`` branch returns ``None`` or raises."""
     if maximum is None:
         if current is None:
             return None

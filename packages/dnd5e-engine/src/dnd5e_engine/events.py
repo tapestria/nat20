@@ -568,8 +568,9 @@ class SpellCast(BaseModel):
     actor_id: str
     spell_id: str
     slot_level: int | None  # None for a cantrip
-    ritual: bool  # the spell CARRIES the Ritual tag (never True for an in-combat
-    # ritual cast — that path is rejected before this event is ever emitted)
+    # ritual: the spell CARRIES the Ritual tag (never True for an in-combat
+    # ritual cast — that path is rejected before this event is ever emitted).
+    ritual: bool
     components: list[Literal["V", "S", "M"]]  # sorted V, S, M
     material: str | None  # Spell.materials.value or None when empty
     material_consumed: bool

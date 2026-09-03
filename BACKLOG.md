@@ -358,8 +358,6 @@ zone + apply logic:
   model, so `PlayerIntent.two_handed` is accepted at face value with no
   legality check. Equip-slot bookkeeping is a host concern.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py`)
-- **Upcasting scales dice only, never target count** (Magic Missile darts,
-  Hold Person extra targets). (`packages/dnd5e-engine/src/dnd5e_engine/activities/dice.py`)
 
 ## Audit 2026-08-26 — action economy & turn structure
 
@@ -459,6 +457,15 @@ zone + apply logic:
   a decision on whether `""` should mean "none" (would shift results for
   hosts upcasting such spells).
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/dice.py`)
+- **Magic Missile darts share ONE damage roll applied N times, not N
+  independent rolls (2026-09-03, C17, ruling R5).** SRD RAW rolls each
+  dart's `1d4+1` separately; `resolve_damage` rolls the part once per
+  activity and applies that single result to every target in the
+  count-scaled fan-out, so all darts in one cast always deal identical
+  damage. This is a documented deviation kept deliberately for draw-count
+  determinism (a seeded replay's RNG draw count does not grow with slot
+  level) rather than a gap to close.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/damage.py::resolve_damage`)
 - **Pool choice for a multiclass Warlock cast is Spellcasting-first
   (2026-09-03, C17 R3); no per-class spell-list gate or `use_pact_slot`
   flag.** `_slot_available`/`_take_spell_slot` always try the regular
@@ -477,10 +484,10 @@ zone + apply logic:
   one attack roll regardless of slot level.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py`)
 - **Long Rest 16-hour cooldown / rest interruption are host time-model
-  concerns (2026-09-03, C17).** SRD 5.2 §Long Rest requires 8 hours plus "a
-  Long Rest can't be used more than once every 24 hours" (spirit: no
-  back-to-back rests) and lists interrupting activity (walking, fighting,
-  casting a spell) as voiding progress; `resolve_long_rest`/
+  concerns (2026-09-03, C17).** SRD 5.2 §Long Rest: "After you finish a
+  Long Rest, you must wait at least 16 hours before starting another one."
+  It also lists interrupting activity (walking, fighting, casting a spell)
+  as voiding progress; `resolve_long_rest`/
   `resolve_short_rest` are pure functions with no calendar/clock input, so
   neither the cooldown nor interruption tracking exists — a host wanting
   either must gate its OWN call to these resolvers.

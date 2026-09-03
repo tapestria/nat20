@@ -107,9 +107,14 @@ fixtures they move) are enumerated in
   metadata (never enforced) on every PC cast path. `PlayerIntent.
   as_ritual` + `spellcasting.resolve_ritual_cast` resolve Ritual-tagged
   spells out-of-combat only; an in-combat ritual cast is rejected
-  (`CastFailedReason` gains `"ritual_in_combat"`). See the migration guide
-  for the full behavioural-delta list, including the Magic Missile
-  event-count change and the `build_party_member` empty-pool fallback.
+  (`CastFailedReason` gains `"ritual_in_combat"`). An **upcast** Magic
+  Missile previously over-rolled its single dart (`Nd4+1`, reading the
+  corpus's empty `scaling.mode` as whole-mode scaling); it now rolls
+  `1d4+1` once per cast and applies it to N darts, changing the RNG draw
+  count for that one path (base-level Magic Missile is unaffected). See
+  the migration guide for the full behavioural-delta list, including the
+  Magic Missile event-count change and the `build_party_member`
+  empty-pool fallback.
 
 ### Added
 

@@ -15,7 +15,12 @@ SRD 5.2 ground truth (``content24/``):
   Foundry parity: ``half`` = divisor 2 round UP, ``third`` = divisor 3 round DOWN,
   rounding applied PER CLASS before summing (``computeProgression``). A single
   half-caster therefore has slots at level 1 (``ceil(1/2) == 1``) — the 2014
-  table's empty level-1 row is NOT what this repo pins.
+  table's empty level-1 row is NOT what this repo pins. Foundry's own
+  ``computeProgression`` also treats ``artificer`` as a half-caster (divisor
+  2, round up) rather than the 0-contribution the plan prose originally
+  assumed; that Foundry-parity behaviour is kept here even though it is
+  corpus-inert — no SRD class in this repo's dataset carries the
+  ``artificer`` progression.
 * Pact Magic — *"You regain all expended Pact Magic spell slots when you finish a
   Short or Long Rest. … when you're a level 5 Warlock, you have two level 3 spell
   slots."* Foundry ``pactCastingProgression`` (``config.mjs:3053``); Pact levels
@@ -102,7 +107,9 @@ def effective_caster_level(progression: SpellcastingProgression, level: int) -> 
     """Levels a single class contributes to the Spellcasting-feature total.
 
     ``full`` 1:1; ``half`` ``ceil(level / 2)``; ``third`` ``floor(level / 3)``;
-    ``pact`` / ``none`` contribute 0 (Pact Magic is its own pool).
+    ``artificer`` is also a half-caster (``ceil(level / 2)``, Foundry parity —
+    corpus-inert, no SRD class here carries it); ``pact`` / ``none`` contribute
+    0 (Pact Magic is its own pool).
     """
     _check_level(level)
     rule = _DIVISOR.get(progression)

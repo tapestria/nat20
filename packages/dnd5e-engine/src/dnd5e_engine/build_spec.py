@@ -51,6 +51,13 @@ class CharacterBuildSpec(BaseModel):
     of class levels) are kept as single-class aliases and always populated, so
     existing single-class callers (``CharacterBuildSpec(class_slug=..., level=...)``)
     keep working exactly as before.
+
+    Caveat: ``model_copy(update=...)`` bypasses the ``mode="before"``
+    validator below (Pydantic does not re-run before-validators on
+    ``model_copy``), so a ``model_copy`` that changes only ``level`` or only
+    ``classes`` can desync the two fields. Construct a fresh
+    ``CharacterBuildSpec(...)`` instead of ``model_copy`` when changing
+    either field.
     """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
