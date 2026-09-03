@@ -684,6 +684,15 @@ cluster owns.
   movement rule (`MoveFailed(reason="frightened")`); the ability-check half
   still applies the disadvantage unconditionally.
   (`packages/dnd5e-engine/src/dnd5e_engine/rules/conditions.py::conditions_grant_disadvantage_on_ability_checks`)
+- **Frightened's no-approach rule is additionally gated on line of sight to
+  the source (plan ruling R5); SRD 5.2 imposes it unconditionally**
+  (2026-09-03). SRD 5.2 Frightened's "You can't willingly move closer to the
+  source of fear." sentence carries no line-of-sight conjunct — only the
+  disadvantage sentence does — but the engine's `_frightened_approach_blocked`
+  reuses `_combatant_can_see` for both, a deliberate (kept) deviation: a
+  Frightened creature that cannot currently see its fear source may move
+  toward it unimpeded, where SRD 5.2 would still block the approach.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_frightened_approach_blocked`)
 - **Blinded / Deafened "automatically fail ability checks that require
   sight/hearing".** There is no per-check sense vocabulary on `CheckSpec` /
   `CheckActivity`, so a check cannot declare it requires sight or hearing.
