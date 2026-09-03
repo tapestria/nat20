@@ -585,3 +585,16 @@ def test_invisible_target_disadvantage_dropped_when_attacker_pierces() -> None:
     assert conditions_grant_advantage_on_attack(
         [], ["invisible"], target_invisibility_pierced=True
     ) == (False, False)
+
+
+# ── Task 5: Frightened line-of-sight gate (C16b) ─────────────────────────
+
+
+def test_frightened_disadvantage_requires_fear_source_in_sight() -> None:
+    """SRD 5.2 Frightened: "Disadvantage on ... attack rolls while the source
+    of fear is within line of sight"."""
+    assert conditions_grant_advantage_on_attack(["frightened"], []) == (False, True)
+    assert conditions_grant_advantage_on_attack(["frightened"], [], fear_source_in_sight=False) == (
+        False,
+        False,
+    )

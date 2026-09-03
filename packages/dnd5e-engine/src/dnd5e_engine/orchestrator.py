@@ -1232,6 +1232,60 @@ def _combatant_can_see(live: _LiveCombat, viewer: Combatant, target: Combatant) 
     return live.topology.can_see(viewer_zone, target_zone, viewer.senses)
 
 
+def _fear_source_in_sight(live: _LiveCombat, combatant: Combatant) -> bool:
+    """SRD 5.2 Frightened: "Disadvantage on ability checks and attack rolls
+    while the source of fear is within line of sight." (plan ruling R5):
+    True (penalty stays) when ``combatant`` isn't Frightened, when its fear
+    source is unknown (``_condition_source_entity`` returns ``None``), or
+    when the source is dead/untracked/no longer in the initiative order
+    (SRD-conservative — can't prove it's out of sight). False only for a
+    known, LIVING, tracked source that ``_combatant_can_see`` says the
+    Frightened creature cannot currently see.
+    """
+    if not is_condition_active(Condition.FRIGHTENED, _condition_names(combatant)):
+        return True
+    source_id = _condition_source_entity(live, combatant, "frightened")
+    if source_id is None:
+        return True
+    source = next((c for c in live.initiative if c.entity_id == source_id), None)
+    if source is None or not source.is_alive:
+        return True
+    return _combatant_can_see(live, combatant, source)
+
+
+def _frightened_approach_blocked(live: _LiveCombat, mover: Combatant, path: list[str]) -> bool:
+    """SRD 5.2 Frightened: "You can't willingly move closer to the source of
+    fear." (C16b) True iff ``mover`` is Frightened of a known, LIVING,
+    tracked source it can currently see (``_fear_source_in_sight``, reused
+    for the "visible" half — R5's unknown/dead/untracked ⇒ no restriction
+    carries over identically here), AND some consecutive pair of cells in
+    ``path`` strictly reduces ``live.topology.distance_ft`` to that source's
+    cell. An unresolvable pairwise distance (untracked/cross-topology) never
+    blocks.
+    """
+    if not is_condition_active(Condition.FRIGHTENED, _condition_names(mover)):
+        return False
+    source_id = _condition_source_entity(live, mover, "frightened")
+    if source_id is None:
+        return False
+    source = next((c for c in live.initiative if c.entity_id == source_id), None)
+    if source is None or not source.is_alive:
+        return False
+    if not _combatant_can_see(live, mover, source):
+        return False
+    source_cell = live.actor_zone.get(source_id)
+    if source_cell is None:
+        return False
+    for prev_cell, next_cell in itertools.pairwise(path):
+        prev_dist = live.topology.distance_ft(prev_cell, source_cell)
+        next_dist = live.topology.distance_ft(next_cell, source_cell)
+        if prev_dist is None or next_dist is None:
+            continue
+        if next_dist < prev_dist:
+            return True
+    return False
+
+
 def _pierces_invisibility(live: _LiveCombat, viewer: Combatant, target: Combatant) -> bool:
     """Plan ruling R3: does ``viewer`` pierce ``target``'s Invisible condition
     (whether or not ``target`` actually carries it — the maps below are
@@ -6717,6 +6771,12 @@ def _handle_move(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
     if total_cost is None or current.movement_remaining < total_cost:
         _emit(live, MoveFailed(actor_id=actor_id, reason="insufficient_movement"))
         return
+    # SRD 5.2 Frightened: "You can't willingly move closer to the source of
+    # fear." (C16b) — checked before any budget is spent or opportunity
+    # attack fires, so a rejection here is as atomic as the ones above.
+    if _frightened_approach_blocked(live, current, path):
+        _emit(live, MoveFailed(actor_id=actor_id, reason="frightened"))
+        return
     spent = 0
     position = start_zone
     for next_zone in path[1:]:
@@ -8205,6 +8265,9 @@ async def submit_player_intent(
             attacker_unseen_by=attacker_unseen_by,
             attacker_invisibility_pierced_by=attacker_invisibility_pierced_by,
             target_invisibility_pierced=target_invisibility_pierced,
+            # SRD 5.2 Frightened line-of-sight gate (C16b): PRE-RESOLVED
+            # attacker-own-perception flag.
+            attacker_fear_source_in_sight=_fear_source_in_sight(live, current),
             scale_values=scale_values,
             class_levels=class_levels,
             # A FEATURE invocation must not inherit the blanket spell
@@ -8563,6 +8626,9 @@ def _opportunity_attack_advantage_sources(
         # C16b — does the mover (AoO TARGET) pierce the reactor's (AoO
         # ATTACKER) Invisible condition?
         attacker_invisibility_pierced=_pierces_invisibility(live, mover, reactor),
+        # C16b — SRD 5.2 Frightened line-of-sight gate: does the reactor's
+        # (AoO ATTACKER) own fear source stay in sight?
+        fear_source_in_sight=_fear_source_in_sight(live, reactor),
     )
     mover_cond_adv, mover_cond_dis = conditions_grant_advantage_on_attack(
         [],
@@ -9079,6 +9145,9 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
             attacker_unseen_by=attacker_unseen_by,
             attacker_invisibility_pierced_by=attacker_invisibility_pierced_by,
             target_invisibility_pierced=target_invisibility_pierced,
+            # SRD 5.2 Frightened line-of-sight gate (C16b): mirrors the PC
+            # site — PRE-RESOLVED attacker-own-perception flag.
+            attacker_fear_source_in_sight=_fear_source_in_sight(live, current),
             # SRD 5.2 §Weapon Proficiency — "A monster is proficient with any
             # weapon in its stat block." Left on the default (True): a
             # monster's Combatant.weapon_proficiencies is never explicitly

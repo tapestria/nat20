@@ -405,6 +405,11 @@ def _attack_roll_sources(
         attacker_invisibility_pierced=ctx.attacker_invisibility_pierced_by.get(
             target.entity_id, False
         ),
+        # C16b — SRD 5.2 Frightened line-of-sight gate: does the attacker's
+        # own fear source stay in sight (``_fear_source_in_sight`` via the
+        # orchestrator)? Not per-target — a property of the attacker's own
+        # perception.
+        fear_source_in_sight=ctx.attacker_fear_source_in_sight,
     )
     target_cond_adv, target_cond_dis = conditions_grant_advantage_on_attack(
         [],

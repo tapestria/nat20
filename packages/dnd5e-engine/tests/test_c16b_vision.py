@@ -9,7 +9,7 @@ import pytest
 
 from dnd5e_engine import PlayerIntent
 from dnd5e_engine.activities.passive_stats import CombatantSenses
-from dnd5e_engine.events import AttackRolled, CheckRolled
+from dnd5e_engine.events import ActorMoved, AttackRolled, CheckRolled, MoveFailed
 from dnd5e_engine.orchestrator import (
     IntentRejectedError,
     _combatant_can_see,
@@ -462,3 +462,123 @@ def test_hide_ignores_incapacitated_and_dead_enemies_for_line_of_sight():
         submit_player_intent(handle, actor_id="char:hero", intent=PlayerIntent(intent_type="hide"))
     )
     assert [e for e in events_of(live, CheckRolled) if e.skill == "stealth"]
+
+
+# ── Task 5: Frightened line-of-sight gate + no-approach ──────────────────
+
+
+def test_frightened_attack_disadvantage_dropped_when_source_out_of_sight():
+    """Hero Frightened of a known, tracked mon:foe (source_entity_id
+    matching its own entity id); foe stands in darkness, hero has no
+    darkvision → no "condition:attacker" source. With a lit foe the source
+    is present."""
+
+    async def run(dark: bool):
+        grid = GridScene(width=10, height=10, lighting={cell(1, 0): "dark"} if dark else {})
+        start = await start_combat(
+            session_id=f"c16b-frightened-attack-{dark}",
+            party=[_hero()],
+            encounter=[_foe(entity_id="mon:0123456789ab")],
+            scene_zones=None,
+            grid_scene=grid,
+            rng_seed=1,
+        )
+        live = _get_live(start.handle)
+        _give_condition(live, "char:hero", "frightened", source="mon:0123456789ab")
+        await submit_player_intent(
+            start.handle,
+            actor_id="char:hero",
+            intent=PlayerIntent(
+                intent_type="attack", weapon_id="dagger", target_id="mon:0123456789ab"
+            ),
+        )
+        return _attacks(live, "char:hero")[0]
+
+    lit = run_async(run(False))
+    dark = run_async(run(True))
+    assert "condition:attacker" in lit.sources
+    assert "condition:attacker" not in dark.sources
+
+
+def test_frightened_attack_disadvantage_stays_when_source_unknown():
+    """Unknown fear source (default ``implied:test``) ⇒ R5: the penalty
+    stays even though the hero can't see the (untracked-as-source) foe."""
+    grid = GridScene(width=10, height=10, lighting={cell(1, 0): "dark"})
+    start = _start([_hero()], [_foe()], grid)
+    handle, live = start
+    _give_condition(live, "char:hero", "frightened")  # default implied:test source
+    _run(
+        submit_player_intent(
+            handle,
+            actor_id="char:hero",
+            intent=PlayerIntent(intent_type="attack", weapon_id="dagger", target_id="mon:foe"),
+        )
+    )
+    rolled = _attacks(live, "char:hero")[0]
+    assert "condition:attacker" in rolled.sources
+
+
+def test_frightened_mover_cannot_approach_visible_source():
+    """SRD 5.2 Frightened: "You can't willingly move closer to the source of
+    fear." Hero at cell(0,0) frightened of a known, tracked foe at cell(5,0):
+    move to cell(1,0) → MoveFailed(reason="frightened"), hero still at
+    cell(0,0), movement budget untouched; move to cell(0,1) (same Chebyshev
+    distance) → ActorMoved."""
+    grid = GridScene(width=10, height=10)
+    handle, live = _start(
+        [_hero()],
+        [_foe(entity_id="mon:0123456789ab", zone_id=cell(5, 0))],
+        grid,
+        session="c16b-frightened-move-closer",
+    )
+    _give_condition(live, "char:hero", "frightened", source="mon:0123456789ab")
+    hero = _combatant(live, "char:hero")
+    remaining_before = hero.movement_remaining
+    _run(
+        submit_player_intent(
+            handle,
+            actor_id="char:hero",
+            intent=PlayerIntent(intent_type="move", target_zone_id=cell(1, 0)),
+        )
+    )
+    failed = events_of(live, MoveFailed)
+    assert failed
+    assert failed[-1].reason == "frightened"
+    assert live.actor_zone["char:hero"] == cell(0, 0)
+    assert hero.movement_remaining == remaining_before
+    assert not events_of(live, ActorMoved)
+
+    _run(
+        submit_player_intent(
+            handle,
+            actor_id="char:hero",
+            intent=PlayerIntent(intent_type="move", target_zone_id=cell(0, 1)),
+        )
+    )
+    moved = events_of(live, ActorMoved)
+    assert moved
+    assert live.actor_zone["char:hero"] == cell(0, 1)
+
+
+def test_frightened_mover_may_approach_source_it_cannot_see():
+    """Same as above but the foe stands in a dark cell → the approach is
+    legal."""
+    grid = GridScene(width=10, height=10, lighting={cell(5, 0): "dark"})
+    handle, live = _start(
+        [_hero()],
+        [_foe(entity_id="mon:0123456789ab", zone_id=cell(5, 0))],
+        grid,
+        session="c16b-frightened-move-closer-dark",
+    )
+    _give_condition(live, "char:hero", "frightened", source="mon:0123456789ab")
+    _run(
+        submit_player_intent(
+            handle,
+            actor_id="char:hero",
+            intent=PlayerIntent(intent_type="move", target_zone_id=cell(1, 0)),
+        )
+    )
+    assert not events_of(live, MoveFailed)
+    moved = events_of(live, ActorMoved)
+    assert moved
+    assert live.actor_zone["char:hero"] == cell(1, 0)

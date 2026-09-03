@@ -494,6 +494,9 @@ class MoveFailed(BaseModel):
         # SRD 5.2 "Speed 0" conditions (Grappled / Restrained / Paralyzed /
         # Petrified / Unconscious) or Exhaustion reducing Speed to 0 (C12).
         "speed_zero",
+        # SRD 5.2 Frightened: "You can't willingly move closer to the
+        # source of fear." (C16b)
+        "frightened",
     ]
 
 

@@ -289,6 +289,7 @@ def conditions_grant_advantage_on_attack(
     target_id: str | None = None,
     attacker_invisibility_pierced: bool = False,
     target_invisibility_pierced: bool = False,
+    fear_source_in_sight: bool = True,
 ) -> tuple[bool, bool]:
     """
     Returns (attacker_has_advantage, attacker_has_disadvantage) based on conditions.
@@ -309,6 +310,13 @@ def conditions_grant_advantage_on_attack(
       ``False`` preserves pre-C16b behaviour (no vision model wired).
     * ``target_invisibility_pierced`` — the same, but for the ATTACKER seeing
       the Invisible TARGET.
+    * ``fear_source_in_sight`` — SRD 5.2 Frightened: "Disadvantage on ...
+      attack rolls while the source of fear is within line of sight." True
+      (the SRD-conservative default) means either the attacker isn't
+      Frightened, or the gate doesn't apply / can't be evaluated (unknown
+      source), or the source is actually visible — so the disadvantage row
+      below still fires. Only an explicit ``False`` — a known, tracked
+      source the Frightened attacker cannot currently see — drops it.
     """
     advantage = False
     disadvantage = False
@@ -322,7 +330,10 @@ def conditions_grant_advantage_on_attack(
         disadvantage = True
     if is_condition_active(Condition.POISONED, attacker_conditions):
         disadvantage = True
-    if is_condition_active(Condition.FRIGHTENED, attacker_conditions):
+    # SRD 5.2 glossary, Frightened: "Disadvantage on ... attack rolls while
+    # the source of fear is within line of sight." (C16b: ``fear_source_in_sight``
+    # defaults True — SRD-conservative — so pre-C16b callers are unaffected.)
+    if is_condition_active(Condition.FRIGHTENED, attacker_conditions) and fear_source_in_sight:
         disadvantage = True
     if is_condition_active(Condition.RESTRAINED, attacker_conditions):
         disadvantage = True
