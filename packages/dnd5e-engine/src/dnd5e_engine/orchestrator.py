@@ -1958,6 +1958,10 @@ class _LiveCombat:
     # sidecar payload before each evaluator invocation. Non-PCs are absent
     # from these maps (treated as "no spells / no counters" by the handlers).
     spell_slots_by_entity: dict[str, dict[int, int]] = field(default_factory=dict)
+    # SRD §Multiclassing — Pact Magic: a second, independent slot pool
+    # (Warlock's Pact Magic feature); R3 draws from Spellcasting first,
+    # then Pact — see ``_take_spell_slot``.
+    pact_slots_by_entity: dict[str, dict[int, int]] = field(default_factory=dict)
     spells_known_by_entity: dict[str, list[str]] = field(default_factory=dict)
     custom_counters_by_entity: dict[str, dict[str, dict[str, int]]] = field(default_factory=dict)
     # SRD §Concentration — persistent IEffect parent/child lifecycle graph.
@@ -5550,12 +5554,14 @@ def _build_pc_combatants(
     actor_zone: dict[str, str],
     tracked_hp: dict[str, int],
     spell_slots_by_entity: dict[str, dict[int, int]],
+    pact_slots_by_entity: dict[str, dict[int, int]],
     spells_known_by_entity: dict[str, list[str]],
     custom_counters_by_entity: dict[str, dict[str, dict[str, int]]],
 ) -> None:
     """Append a ``Combatant`` per party member and populate the passed
-    accumulator dicts (actor_zone, tracked_hp, spell_slots/spells_known/
-    custom_counters) in place. Mutation-only helper — returns ``None``.
+    accumulator dicts (actor_zone, tracked_hp, spell_slots/pact_slots/
+    spells_known/custom_counters) in place. Mutation-only helper — returns
+    ``None``.
     """
     for pc in party:
         combatants.append(
@@ -5614,6 +5620,8 @@ def _build_pc_combatants(
         tracked_hp[pc.entity_id] = pc.hp_current
         if pc.spell_slots:
             spell_slots_by_entity[pc.entity_id] = dict(pc.spell_slots)
+        if pc.pact_slots:
+            pact_slots_by_entity[pc.entity_id] = dict(pc.pact_slots)
         if pc.spells_known:
             spells_known_by_entity[pc.entity_id] = list(pc.spells_known)
         if pc.custom_counters:
@@ -5938,6 +5946,7 @@ async def start_combat(
     tracked_hp: dict[str, int] = {}
     tracked_temp_hp: dict[str, int] = {}
     spell_slots_by_entity: dict[str, dict[int, int]] = {}
+    pact_slots_by_entity: dict[str, dict[int, int]] = {}
     spells_known_by_entity: dict[str, list[str]] = {}
     custom_counters_by_entity: dict[str, dict[str, dict[str, int]]] = {}
     _build_pc_combatants(
@@ -5946,6 +5955,7 @@ async def start_combat(
         actor_zone,
         tracked_hp,
         spell_slots_by_entity,
+        pact_slots_by_entity,
         spells_known_by_entity,
         custom_counters_by_entity,
     )
@@ -5981,6 +5991,7 @@ async def start_combat(
         tracked_hp=tracked_hp,
         tracked_temp_hp=tracked_temp_hp,
         spell_slots_by_entity=spell_slots_by_entity,
+        pact_slots_by_entity=pact_slots_by_entity,
         spells_known_by_entity=spells_known_by_entity,
         custom_counters_by_entity=custom_counters_by_entity,
     )
@@ -7181,6 +7192,28 @@ def _record_loading_weapon_fired(live: _LiveCombat, actor_id: str, current: Comb
     return _current_actor(live)
 
 
+def _slot_available(live: _LiveCombat, entity_id: str, slot_level: int) -> bool:
+    """SRD §Spell Slots — does ``entity_id`` hold an unexpended slot at ``slot_level``
+    in EITHER pool (Spellcasting feature or Pact Magic)? SRD §Multiclassing lets
+    either pool cast either prepared spell; the engine has no spell-list gate."""
+    spell = live.spell_slots_by_entity.get(entity_id, {})
+    pact = live.pact_slots_by_entity.get(entity_id, {})
+    return int(spell.get(slot_level, 0)) > 0 or int(pact.get(slot_level, 0)) > 0
+
+
+def _take_spell_slot(live: _LiveCombat, entity_id: str, slot_level: int) -> bool:
+    """Expend one slot at ``slot_level`` — Spellcasting pool first, then Pact (R3).
+    Returns ``False`` and mutates nothing when neither pool has one."""
+    for pool in (
+        live.spell_slots_by_entity.get(entity_id),
+        live.pact_slots_by_entity.get(entity_id),
+    ):
+        if pool is not None and int(pool.get(slot_level, 0)) > 0:
+            pool[slot_level] = int(pool[slot_level]) - 1
+            return True
+    return False
+
+
 def _consume_spell_slot(
     live: _LiveCombat, current: Combatant, actor_id: str, intent: PlayerIntent
 ) -> bool:
@@ -7191,7 +7224,9 @@ def _consume_spell_slot(
     never reaches a slot-consuming handler — the orchestrator owns the
     gate + decrement for this PC seam. The decrement is final here; the
     typed resolver does not mutate any per-evaluation slot sidecar, so there
-    is no post-resolution slot writeback to reconcile with.
+    is no post-resolution slot writeback to reconcile with. Two independent
+    pools may hold a slot at the same level (Spellcasting + Pact Magic); R3
+    draws from Spellcasting first, then Pact — see ``_take_spell_slot``.
 
     Returns ``True`` if the cast was REJECTED (a ``CastFailed`` was emitted
     and the turn advanced — the caller must return); ``False`` otherwise.
@@ -7221,24 +7256,20 @@ def _consume_spell_slot(
         )
         _end_turn_and_advance(live, actor_id)
         return True
-    if base_level > 0:
-        slots = live.spell_slots_by_entity.get(current.entity_id, {})
-        available = int(slots.get(slot_level, 0))
-        if available <= 0:
-            _emit(
-                live,
-                CastFailed(
-                    actor_id=current.entity_id,
-                    spell_id=intent.spell_id,
-                    reason="no_slot",
-                ),
-            )
-            _end_turn_and_advance(live, actor_id)
-            return True
-        # Consume the slot. The typed PC resolver does not touch
-        # ``_counter_state``, so this subtract is the authoritative
-        # decrement — no post-evaluation writeback overwrites it.
-        slots[slot_level] = available - 1
+    # Consume the slot. The typed PC resolver does not touch
+    # ``_counter_state``, so this subtract is the authoritative
+    # decrement — no post-evaluation writeback overwrites it.
+    if base_level > 0 and not _take_spell_slot(live, current.entity_id, slot_level):
+        _emit(
+            live,
+            CastFailed(
+                actor_id=current.entity_id,
+                spell_id=intent.spell_id,
+                reason="no_slot",
+            ),
+        )
+        _end_turn_and_advance(live, actor_id)
+        return True
     return False
 
 
@@ -7608,9 +7639,7 @@ def _resolve_readied_spell_cast(
 
     slot_level = popped.slot_level if popped.slot_level is not None else spell.level
     if spell.level > 0:
-        slots = live.spell_slots_by_entity.get(reactor.entity_id, {})
-        if slots.get(slot_level, 0) > 0:
-            slots[slot_level] = slots[slot_level] - 1
+        _take_spell_slot(live, reactor.entity_id, slot_level)
 
     _emit(
         live,
@@ -7731,9 +7760,7 @@ def _drain_counterspell_reaction(
             break
     cs_level = popped.slot_level if popped.slot_level is not None else counterspell.level
     if counterspell.level > 0:
-        reactor_slots = live.spell_slots_by_entity.get(reactor.entity_id, {})
-        if reactor_slots.get(cs_level, 0) > 0:
-            reactor_slots[cs_level] = reactor_slots[cs_level] - 1
+        _take_spell_slot(live, reactor.entity_id, cs_level)
 
     _emit(
         live,

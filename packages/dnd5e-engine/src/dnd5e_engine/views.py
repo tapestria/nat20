@@ -41,6 +41,7 @@ class LiveCombatView:
     active_conditions: dict[str, set[str]]
     actor_zone: dict[str, str]
     spell_slots_by_entity: dict[str, dict[int, int]]
+    pact_slots_by_entity: dict[str, dict[int, int]]
     spells_known_by_entity: dict[str, list[str]]
     custom_counters_by_entity: dict[str, dict[str, dict[str, int]]]
     current_turn_index: int
@@ -73,6 +74,7 @@ class LiveCombatView:
             active_conditions={k: set(v) for k, v in live.active_conditions.items()},
             actor_zone=dict(live.actor_zone),
             spell_slots_by_entity={k: dict(v) for k, v in live.spell_slots_by_entity.items()},
+            pact_slots_by_entity={k: dict(v) for k, v in live.pact_slots_by_entity.items()},
             spells_known_by_entity={k: list(v) for k, v in live.spells_known_by_entity.items()},
             custom_counters_by_entity={
                 entity_id: {key: dict(counter) for key, counter in counters.items()}
