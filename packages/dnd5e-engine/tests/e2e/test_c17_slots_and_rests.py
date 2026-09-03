@@ -35,7 +35,6 @@ def test_c17_s01_wizard_full_caster_slot_table_has_no_engine_derivation():
     assert slots == {1: 4, 2: 3, 3: 2}
 
 
-@xfail_cluster(17, "spell slots & rests")
 def test_c17_s02_pact_magic_has_no_separate_pool_and_recovers_on_short_rest():
     """C17-S02: SRD 5.2 — "You regain all expended Pact Magic spell slots
     when you finish a Short or Long Rest. ... when you're a level 5
@@ -84,7 +83,6 @@ def test_c17_s03_multiclass_paladin_wizard_has_no_per_class_level_input():
     assert slots == {1: 4, 2: 3}
 
 
-@xfail_cluster(17, "spell slots & rests")
 def test_c17_s04_long_rest_restores_slots_and_reduces_exhaustion():
     """C17-S04: SRD 5.2 §Long Rest — "Exhaustion Reduced. If you have the
     Exhaustion condition, its level decreases by 1."

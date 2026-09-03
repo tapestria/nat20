@@ -215,3 +215,86 @@ def test_recover_feature_uses_still_literal_int_without_rng():
     counters = {"feature_use:second-wind": {"spent": 1}}
     out = recover_feature_uses(counters, "sr", {"second-wind": [_Rule("sr", "formula", "1")]})
     assert out == {"second-wind": 0}
+
+
+# ── C17: slot recovery + exhaustion ──────────────────────────────────────────
+
+
+def test_short_rest_restores_pact_slots_only():
+    """SRD Pact Magic: "You regain all expended Pact Magic spell slots when you
+    finish a Short or Long Rest." — the only Short-Rest-recovering pool (C17-S02)."""
+    pool = HitDicePool(hit_die_size=8, dice_remaining=5, dice_total=5)
+    outcome = resolve_short_rest(
+        pool,
+        dice_to_spend=0,
+        con_modifier=3,
+        rng=random.Random(1),
+        pact_slots={3: 0},
+        pact_slot_max={3: 2},
+    )
+    assert outcome.pact_slots == {3: 2}
+    assert outcome.spell_slots is None  # a Short Rest never touches Spellcasting slots
+    assert outcome.exhaustion_level is None
+
+
+def test_short_rest_without_pact_args_is_byte_identical():
+    pool = HitDicePool(hit_die_size=10, dice_remaining=5, dice_total=5)
+    a = resolve_short_rest(pool, dice_to_spend=2, con_modifier=1, rng=random.Random(3))
+    b = resolve_short_rest(
+        pool, dice_to_spend=2, con_modifier=1, rng=random.Random(3), pact_slots=None
+    )
+    assert a == b
+    assert a.pact_slots is None
+
+
+def test_long_rest_restores_all_slots_and_reduces_exhaustion_by_one():
+    """SRD 5.2 §Long Rest: "Finishing a Long Rest restores any expended spell slots." /
+    "Exhaustion Reduced. … its level decreases by 1." (C17-S04)."""
+    pool = HitDicePool(hit_die_size=6, dice_remaining=1, dice_total=3)
+    outcome = resolve_long_rest(
+        pool,
+        hp_current=8,
+        hp_max=20,
+        spell_slots={1: 0, 2: 0},
+        spell_slot_max={1: 4, 2: 2},
+        pact_slots={2: 0},
+        pact_slot_max={2: 2},
+        exhaustion_level=2,
+    )
+    assert outcome.hp_current == 20
+    assert outcome.spell_slots == {1: 4, 2: 2}
+    assert outcome.pact_slots == {2: 2}
+    assert outcome.exhaustion_level == 1
+
+
+def test_long_rest_exhaustion_floors_at_zero_and_none_passes_through():
+    pool = HitDicePool(hit_die_size=6, dice_remaining=3, dice_total=3)
+    assert resolve_long_rest(pool, hp_current=1, hp_max=1, exhaustion_level=0).exhaustion_level == 0
+    assert resolve_long_rest(pool, hp_current=1, hp_max=1).exhaustion_level is None
+    assert resolve_long_rest(pool, hp_current=1, hp_max=1).spell_slots is None
+
+
+def test_rest_pool_without_max_is_rejected():
+    """R7: never guess a maximum."""
+    pool = HitDicePool(hit_die_size=6, dice_remaining=3, dice_total=3)
+    with pytest.raises(ValueError):
+        resolve_long_rest(pool, hp_current=1, hp_max=1, spell_slots={1: 0})
+    with pytest.raises(ValueError):
+        resolve_short_rest(
+            pool, dice_to_spend=0, con_modifier=0, rng=random.Random(1), pact_slots={1: 0}
+        )
+
+
+def test_rest_max_alone_restores_to_it():
+    pool = HitDicePool(hit_die_size=6, dice_remaining=3, dice_total=3)
+    assert resolve_long_rest(pool, hp_current=1, hp_max=1, spell_slot_max={1: 2}).spell_slots == {
+        1: 2
+    }
+
+
+def test_rest_outputs_are_fresh_dicts():
+    pool = HitDicePool(hit_die_size=6, dice_remaining=3, dice_total=3)
+    mx = {1: 2}
+    out = resolve_long_rest(pool, hp_current=1, hp_max=1, spell_slot_max=mx)
+    assert out.spell_slots == mx
+    assert out.spell_slots is not mx
