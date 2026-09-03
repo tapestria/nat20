@@ -14,6 +14,7 @@ from dnd5e_engine.spellcasting import (
     derive_spell_slots,
     effective_caster_level,
     multiclass_caster_level,
+    resolve_target_count,
     slots_for_caster_level,
 )
 
@@ -108,3 +109,27 @@ def test_multiclass_caster_level_rounds_per_class_then_sums():
 def test_slots_for_caster_level_zero_is_empty():
     assert slots_for_caster_level(0) == {}
     assert slots_for_caster_level(4) == {1: 4, 2: 3}
+
+
+@pytest.mark.parametrize(
+    ("formula", "cast_level", "expected"),
+    [
+        ("2 + @item.level", 1, 3),  # Magic Missile: three darts
+        ("2 + @item.level", 3, 5),
+        ("@item.level - 1", 2, 1),  # Hold Person at base level: one Humanoid
+        ("@item.level - 1", 4, 3),
+        ("3", 9, 3),
+        ("", 1, None),
+        ("   ", 1, None),
+    ],
+)
+def test_resolve_target_count(formula, cast_level, expected):
+    assert resolve_target_count(formula, cast_level=cast_level) == expected
+
+
+def test_resolve_target_count_floors_at_one_and_rejects_foreign_tokens():
+    assert resolve_target_count("@item.level - 5", cast_level=1) == 1
+    with pytest.raises(ValueError):
+        resolve_target_count("@abilities.cha.mod + 1", cast_level=1)
+    with pytest.raises(ValueError):
+        resolve_target_count("__import__('os')", cast_level=1)

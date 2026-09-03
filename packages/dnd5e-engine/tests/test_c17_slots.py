@@ -331,3 +331,72 @@ def test_readied_shield_with_empty_pool_does_not_fire():
 
     live_full = _run(_go({1: 1}))
     assert [e.reaction_name for e in _events(live_full, ReactionTriggered)] == ["shield"]
+
+
+# ── Task 5: darts ────────────────────────────────────────────────────────────
+
+
+def _cast_mm(*, slot_level, target_id="mon:foe", target_ids=None, extra_foes=()):
+    async def _go():
+        handle, live = await _start(
+            [_caster(spells=["magic-missile"], spell_slots={1: 1, 3: 1})],
+            [_foe(), *extra_foes],
+        )
+        await submit_player_intent(
+            handle,
+            actor_id="char:caster",
+            intent=PlayerIntent(
+                intent_type="cast_spell",
+                spell_id="magic-missile",
+                target_id=target_id,
+                target_ids=target_ids,
+                slot_level=slot_level,
+            ),
+        )
+        return live
+
+    return _run(_go())
+
+
+def test_magic_missile_base_level_fires_three_darts_sharing_one_roll():
+    """SRD: "You create three glowing darts" — one DamageApplied per dart, same amount (R5)."""
+    live = _cast_mm(slot_level=1)
+    darts = [e for e in _events(live, DamageApplied) if e.target_id == "mon:foe"]
+    assert len(darts) == 3
+    assert len({d.amount for d in darts}) == 1
+    assert all(2 <= d.amount <= 5 and d.damage_type == "force" for d in darts)
+
+
+def test_magic_missile_slot_3_fires_five_darts_and_hp_drops_by_their_sum():
+    live = _cast_mm(slot_level=3)
+    darts = [e for e in _events(live, DamageApplied) if e.target_id == "mon:foe"]
+    assert len(darts) == 5
+    assert live.tracked_hp["mon:foe"] == 100 - sum(d.amount for d in darts)
+
+
+def test_magic_missile_target_ids_spread_darts_across_creatures():
+    live = _cast_mm(
+        slot_level=1,
+        target_id=None,
+        target_ids=("mon:foe", "mon:foe", "mon:foe2"),
+        extra_foes=(_foe("mon:foe2", col=4),),
+    )
+    by_target = {}
+    for e in _events(live, DamageApplied):
+        by_target[e.target_id] = by_target.get(e.target_id, 0) + 1
+    assert by_target == {"mon:foe": 2, "mon:foe2": 1}
+
+
+def test_magic_missile_too_many_target_ids_is_target_invalid():
+    live = _cast_mm(slot_level=1, target_id=None, target_ids=("mon:foe",) * 4)
+    assert [e.reason for e in _events(live, CastFailed)] == ["target_invalid"]
+    assert not _events(live, DamageApplied)
+    assert live.spell_slots_by_entity["char:caster"][1] == 1  # rejected before the slot gate
+
+
+def test_dart_count_adds_no_rng_draws():
+    """Determinism: the 5-dart cast and a 1-target single-dart-shaped cast consume the
+    same number of draws — compare the rng state after each."""
+    live_a = _cast_mm(slot_level=1)
+    live_b = _cast_mm(slot_level=3)
+    assert live_a.rng.getstate() == live_b.rng.getstate()

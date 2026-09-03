@@ -24,6 +24,7 @@ SRD 5.2 ground truth (``content24/``):
 
 from __future__ import annotations
 
+import ast
 import math
 from collections.abc import Mapping
 from typing import Final, Literal
@@ -146,6 +147,54 @@ def multiclass_caster_level(
     return sum(effective_caster_level(prog, lvl) for prog, lvl in classes.values())
 
 
+_ITEM_LEVEL_TOKEN: Final = "@item.level"
+
+
+def resolve_target_count(count_formula: str, *, cast_level: int) -> int | None:
+    """Foundry ``target.affects.count`` roll-data → int, with ``@item.level`` = the
+    cast's slot level (R5) — SRD 5.2 Magic Missile: "You create three glowing darts
+    of magical force. … The spell creates one more dart for each spell slot level
+    above 1." (``target.affects.count == "2 + @item.level"``). Supports integer
+    literals, ``+ - *`` and parentheses; any other ``@`` token or AST node raises
+    ``ValueError`` (loud — never a silent ``eval``/``exec``, which bandit forbids
+    here anyway). Blank/whitespace-only ⇒ ``None`` (no count semantics). Floors
+    at 1 (a spell never targets fewer than one creature via this path).
+    """
+    if not count_formula.strip():
+        return None
+    expr = count_formula.replace(_ITEM_LEVEL_TOKEN, str(cast_level))
+    if "@" in expr:
+        raise ValueError(f"unsupported roll-data token in target count: {count_formula!r}")
+    try:
+        tree = ast.parse(expr, mode="eval")
+    except SyntaxError as exc:
+        raise ValueError(f"unparseable target count: {count_formula!r}") from exc
+    return max(1, _eval_int(tree.body))
+
+
+def _eval_int(node: ast.AST) -> int:
+    """Restricted AST evaluator for ``resolve_target_count`` — literal ints, unary
+    +/-, and binary +/-/* only. No name lookups, no calls, no attribute access:
+    this is deliberately not ``eval``/``exec`` (bandit-forbidden in this repo)."""
+    if (
+        isinstance(node, ast.Constant)
+        and isinstance(node.value, int)
+        and not isinstance(node.value, bool)
+    ):
+        return node.value
+    if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.UAdd, ast.USub)):
+        v = _eval_int(node.operand)
+        return v if isinstance(node.op, ast.UAdd) else -v
+    if isinstance(node, ast.BinOp) and isinstance(node.op, (ast.Add, ast.Sub, ast.Mult)):
+        a, b = _eval_int(node.left), _eval_int(node.right)
+        if isinstance(node.op, ast.Add):
+            return a + b
+        if isinstance(node.op, ast.Sub):
+            return a - b
+        return a * b
+    raise ValueError(f"unsupported expression node in target count: {type(node).__name__}")
+
+
 __all__ = [
     "PACT_SLOT_TABLE",
     "SPELL_SLOT_TABLE",
@@ -154,5 +203,6 @@ __all__ = [
     "derive_spell_slots",
     "effective_caster_level",
     "multiclass_caster_level",
+    "resolve_target_count",
     "slots_for_caster_level",
 ]

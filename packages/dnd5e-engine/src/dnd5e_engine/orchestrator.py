@@ -165,6 +165,7 @@ from dnd5e_engine.specs import (
     SceneTopology,
     ZoneEdge,
 )
+from dnd5e_engine.spellcasting import resolve_target_count
 from dnd5e_engine.turn_lifecycle import (
     TurnLifecycle,
     run_round_start,
@@ -214,6 +215,11 @@ class PlayerIntent(BaseModel):
     intent_type: IntentType
     spell_id: str | None = None
     target_id: str | None = None
+    # C17 — SRD 5.2 "one creature or several": per-instance targets for a spell
+    # whose activity carries ``target.affects.count`` (Magic Missile darts, Hold
+    # Person's extra Humanoids). Duplicates = several darts on one creature.
+    # Ignored (with ``target_id`` used) for activities without a count.
+    target_ids: tuple[str, ...] | None = None
     item_id: str | None = None
     weapon_id: str | None = None
     feature_id: str | None = None
@@ -7214,6 +7220,76 @@ def _take_spell_slot(live: _LiveCombat, entity_id: str, slot_level: int) -> bool
     return False
 
 
+def _reject_over_count_targets(
+    live: _LiveCombat, current: Combatant, actor_id: str, intent: PlayerIntent
+) -> bool:
+    """R5 — validation-only pre-check for a cast whose resolving activity carries
+    ``target.affects.count`` (Magic Missile darts, Hold Person's extra Humanoids).
+    Runs BEFORE ``_consume_spell_slot`` so a rejected upcast never spends a slot —
+    ``_resolve_intent_activities`` (which fetches ``activities``) does not run
+    until AFTER the slot gate, so this loads the spell itself via the cached lib
+    loader and inspects ``spell.activities`` directly.
+
+    Returns ``True`` iff the cast was REJECTED (``CastFailed(reason=
+    "target_invalid")`` emitted and the turn already advanced — the caller must
+    return). ``False`` means not applicable (no count-bearing activity) or the
+    named targets are all live and within the resolved count N — either way the
+    cast proceeds unchanged; ``_count_scaled_targets`` later assumes validity and
+    never rejects.
+    """
+    if not (intent.intent_type == "cast_spell" and intent.spell_id):
+        return False
+    spell = get_lib_loader().get_spell(intent.spell_id)
+    if spell is None:
+        return False
+    activity = _find_count_activity(list(spell.activities))
+    if activity is None:
+        return False
+    cast_level = intent.slot_level if intent.slot_level is not None else spell.level
+    n = resolve_target_count(activity.target.affects.count, cast_level=cast_level)
+    if n is None:
+        return False
+    ids = (
+        list(intent.target_ids)
+        if intent.target_ids
+        else ([intent.target_id] if intent.target_id else [])
+    )
+    live_ids = {c.entity_id for c in live.initiative}
+    if len(ids) > n or any(i not in live_ids for i in ids):
+        _emit(
+            live,
+            CastFailed(
+                actor_id=current.entity_id,
+                spell_id=intent.spell_id,
+                reason="target_invalid",
+            ),
+        )
+        _end_turn_and_advance(live, actor_id)
+        return True
+    return False
+
+
+def _apply_pre_slot_cast_gates(
+    live: _LiveCombat, current: Combatant, actor_id: str, intent: PlayerIntent
+) -> bool:
+    """Run every gate that MUST fire before ``_consume_spell_slot`` — a
+    Counterspell interrupt (``_drain_counterspell_reaction``) and the C17/R5
+    target-count validation (``_reject_over_count_targets``) both need to reject
+    (when applicable) before the slot is ever touched, so neither a countered
+    nor a rejected-target cast spends the caster's slot. Merged into one
+    early-return call site (rather than two separate ``if``s in
+    ``submit_player_intent``) to keep that function's branch count down; the two
+    checks are independent and order-insensitive (each returns ``False`` fast
+    when not applicable to the intent).
+
+    Returns ``True`` iff either gate emitted ``CastFailed`` and already
+    advanced the turn — the caller must return.
+    """
+    if _drain_counterspell_reaction(live, current, actor_id, intent):
+        return True
+    return _reject_over_count_targets(live, current, actor_id, intent)
+
+
 def _consume_spell_slot(
     live: _LiveCombat, current: Combatant, actor_id: str, intent: PlayerIntent
 ) -> bool:
@@ -7433,6 +7509,64 @@ def _item_cast_level_override(intent: PlayerIntent) -> int | None:
     return int(base_level) + (intent.charges_to_spend - base_cost)
 
 
+def _find_count_activity(activities: list[Any]) -> Any | None:
+    """R5 — the first activity whose ``target.affects.count`` is non-blank
+    creature-count roll-data (Magic Missile's dart count, Hold Person's extra
+    Humanoids). ``None`` when no activity in the list carries one."""
+    for activity in activities:
+        target = getattr(activity, "target", None)
+        affects = getattr(target, "affects", None) if target is not None else None
+        if affects is not None and affects.count.strip() and affects.type == "creature":
+            return activity
+    return None
+
+
+def _count_scaled_targets(
+    live: _LiveCombat,
+    intent: PlayerIntent,
+    activities: list[Any],
+    cast_spell: Spell | None,
+) -> list[Combatant] | None:
+    """R5 — expand the target list for a cast whose resolving activity carries a
+    ``target.affects.count`` (Foundry roll-data, ``@item.level`` = cast level;
+    SRD 5.2 Magic Missile: "The spell creates one more dart for each spell slot
+    level above 1.").
+
+    The validation half (named ids exist, count doesn't exceed the resolved N)
+    already ran in ``_reject_over_count_targets`` BEFORE the slot gate — this is a
+    pure expander with NO rejection branch. Returns ``None`` when not applicable
+    (not a cast / no count-bearing activity / not a creature count / the formula
+    resolves to no count) so the caller falls through to the plain ``target_id``
+    lookup.
+    """
+    if intent.intent_type != "cast_spell" or cast_spell is None:
+        return None
+    activity = _find_count_activity(activities)
+    if activity is None:
+        return None
+    cast_level = intent.slot_level if intent.slot_level is not None else cast_spell.level
+    n = resolve_target_count(activity.target.affects.count, cast_level=cast_level)
+    if n is None:
+        return None
+    ids = (
+        list(intent.target_ids)
+        if intent.target_ids
+        else ([intent.target_id] if intent.target_id else [])
+    )
+    by_id = {c.entity_id: c for c in live.initiative}
+    targets = [by_id[i] for i in ids if i in by_id]
+    # A single implicit target on a damage-kind count activity (Magic Missile
+    # with a bare ``target_id``, no explicit ``target_ids``) fans every dart at
+    # that one creature — R5, one shared damage roll applied N times.
+    if (
+        intent.target_ids is None
+        and len(targets) == 1
+        and getattr(activity, "kind", None) == "damage"
+    ):
+        targets = targets * n
+    return targets
+
+
 def _resolve_targets(
     live: _LiveCombat,
     current: Combatant,
@@ -7446,12 +7580,18 @@ def _resolve_targets(
     effect from the point of origin; on the legacy zone graph: every creature
     in the anchor zone). Otherwise the named target is used, defaulting to the
     caster for an effect-bearing self/targetless buff or a self-targeting
-    feature."""
+    feature. A count-bearing activity (R5 — Magic Missile darts) expands via
+    ``_count_scaled_targets`` in place of the plain ``target_id`` lookup."""
     targets: list[Combatant]
     if intent.intent_type == "cast_spell" and _typed_spell_broadcasts(activities):
         targets = _expand_aoe_target_list(live, current, intent, activities)
     else:
-        targets = [c for c in live.initiative if c.entity_id == intent.target_id]
+        expanded = _count_scaled_targets(live, intent, activities, cast_spell)
+        targets = (
+            expanded
+            if expanded is not None
+            else [c for c in live.initiative if c.entity_id == intent.target_id]
+        )
         # SRD §Range: Self — an effect-bearing self/targetless buff (Shield,
         # Mirror Image, Disguise Self) names no foe, so the named-target filter
         # above yields []. Its riders would then apply to nobody and the buff
@@ -8137,13 +8277,15 @@ async def submit_player_intent(
             ),
         )
 
-    # SRD 5.2 Counterspell — drain a pending "cast_spell" reaction BEFORE
-    # the slot gate: a countered cast never reaches ``_consume_spell_slot``,
-    # so the interrupted caster's slot is never expended ; see
-    # docs/dev/reaction-queue.md, "Slot-consumption redesign"). Returns True
-    # iff the cast was countered — CastFailed(reason="countered") emitted
-    # and the turn already advanced (the wasted action).
-    if _drain_counterspell_reaction(live, current, actor_id, intent):
+    # SRD 5.2 Counterspell (drain a pending "cast_spell" reaction) + C17/R5
+    # (validate a count-bearing cast's named targets — Magic Missile darts,
+    # Hold Person's extra Humanoids) — BOTH run BEFORE the slot gate, so a
+    # countered or rejected cast never reaches ``_consume_spell_slot`` and the
+    # interrupted/rejected caster's slot is never expended; see
+    # docs/dev/reaction-queue.md, "Slot-consumption redesign". Returns True
+    # iff either gate fired a ``CastFailed`` and already advanced the turn
+    # (the wasted action) — the caller must return.
+    if _apply_pre_slot_cast_gates(live, current, actor_id, intent):
         return
 
     # SRD §Spellcasting — Spell Slots. Gate + decrement live on the

@@ -16,7 +16,7 @@ from dnd5e_engine.events import DamageApplied, ReactionTriggered
 from dnd5e_engine.orchestrator import _get_live, start_combat, submit_player_intent
 from dnd5e_engine.rest import HitDicePool
 from dnd5e_engine.specs import EncounterMemberSpec, GridScene, PartyMemberSpec
-from tests.e2e.harness import cell, events_of, grid_scene, run_async, xfail_cluster
+from tests.e2e.harness import cell, events_of, grid_scene, run_async
 
 
 def test_c17_s01_wizard_full_caster_slot_table_has_no_engine_derivation():
@@ -112,7 +112,6 @@ def test_c17_s04_long_rest_restores_slots_and_reduces_exhaustion():
     assert outcome.exhaustion_level == 1
 
 
-@xfail_cluster(17, "spell slots & rests")
 def test_c17_s05_magic_missile_upcast_at_slot_3_should_fire_5_darts():
     """C17-S05: Magic Missile — "You create three glowing darts of
     magical force. ... Using a Higher-Level Spell Slot. The spell

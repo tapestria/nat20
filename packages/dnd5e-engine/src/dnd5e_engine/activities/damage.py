@@ -69,6 +69,20 @@ def resolve_damage(activity: DamageActivity, ctx: ActivityResolutionContext) -> 
     critical = activity.damage.critical
     is_crit = bool(critical.allow) and bool(ctx.variables.get("in_crit"))
 
+    # R5 (C17) — SRD 5.2 Magic Missile: "The spell creates one more dart for
+    # each spell slot level above 1", NOT more damage per dart. When the
+    # activity's own ``target.affects.count`` already expresses the upcast
+    # (creature-count roll-data, e.g. "2 + @item.level" — see
+    # ``spellcasting.resolve_target_count``), the per-part ``scaling`` block
+    # would otherwise ALSO grow the dice count for the same slot level,
+    # double-counting the upcast (extra darts AND bigger darts). The count
+    # mechanic wins: the shared roll is computed at the activity's BASE level
+    # (``slot_level=None``) so every dart is the same fixed 1d4+1, no matter
+    # how many extra darts the count added.
+    affects = activity.target.affects
+    count_scales_via_targets = bool(affects.count.strip()) and affects.type == "creature"
+    dice_slot_level = None if count_scales_via_targets else ctx.slot_level
+
     by_type: dict[str, int] = defaultdict(int)
     first_type: str | None = None
     for part in activity.damage.parts:
@@ -83,7 +97,7 @@ def resolve_damage(activity: DamageActivity, ctx: ActivityResolutionContext) -> 
             ctx.rng,
             crit=is_crit,
             character_level=ctx.caster_level,
-            slot_level=ctx.slot_level,
+            slot_level=dice_slot_level,
             base_level=ctx.base_spell_level,
         )
 
