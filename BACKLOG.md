@@ -85,10 +85,23 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   and pushes every target.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_handle_grapple`,
   `::_handle_shove`, `::_fold_mastery_procs`)
-- **Ritual casting is not modelled.** 28 spells carry `ritual: true`; the flag
-  is never read.
-- **Spell components are not enforced.** `components` / `materials` ship on
-  every spell and are never checked.
+- **Ritual casting is out-of-combat only (2026-09-03, C17).** `spellcasting.
+  resolve_ritual_cast(spell, *, prepared, ritual_adept=False)` is the host
+  seam: it validates the Ritual tag + prepared/Ritual-Adept gate and returns
+  the `RitualCast` (10-minute tax, no slot expended). An in-combat
+  `PlayerIntent.as_ritual=True` is rejected (`CastFailed(reason=
+  "ritual_in_combat")`) before any slot logic — the turn economy has no model
+  for a 10-minute action, so ritual casting only resolves between combats,
+  through the host calling `resolve_ritual_cast` directly.
+  (`packages/dnd5e-engine/src/dnd5e_engine/spellcasting.py`)
+- **Spell components are metadata-only, not enforced (2026-09-03, C17).**
+  `SpellCast` now carries `components` / `material` / `material_consumed` /
+  `material_cost_gp` (via `spellcasting.spell_component_metadata`) on every
+  PC cast path, but nothing gates a cast on a gagged/Silenced caster, a free
+  hand, a component pouch/focus, or a costed material's gold cost — a host
+  decision per spec §5 C17.
+  (`packages/dnd5e-engine/src/dnd5e_engine/spellcasting.py`,
+  `packages/dnd5e-engine/src/dnd5e_engine/events.py::SpellCast`)
 - **The Cleave chain's damage routes through `_apply_on_hit_damage`, which
   folds Sneak Attack BEFORE the orchestrator writes the once-per-turn cap
   — the chained hit is structurally unguarded against a second Sneak
@@ -122,9 +135,17 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
 
 ## Character building (2026-08-22)
 
-- **No multiclassing.** `CharacterBuildSpec` carries a single `class_slug` +
-  `level`. Multiclass spell-slot progression and per-class feature grants are
-  unmodelled.
+- **Multiclassing: carrier + slot derivation landed, feature grants remain
+  (amended 2026-09-03, C17).** `CharacterBuildSpec.classes: dict[str, int]`
+  (a `{class_slug: level}` map, reconciled with the single-class
+  `class_slug`/`level` aliases) is the multiclass carrier; `derive_multiclass_
+  slots` / `derive_multiclass_pact_slots` (`build_spec.py`) project it
+  through `spellcasting.multiclass_caster_level` (per-class half/third
+  rounding, summed, ONE table lookup — SRD §Multiclassing) into the
+  Spellcasting and Pact Magic pools, and `build_party_member` fills an empty
+  `CombatInstance.spell_slots`/`pact_slots` from them. Per-class feature
+  grants, proficiencies, and HP accumulation across classes are still
+  unmodelled — C19.
   (`packages/dnd5e-engine/src/dnd5e_engine/build_spec.py`)
 - **Feats are almost entirely inert.** 1 of the 17 corpus feats carries a
   mechanical activity; the rest resolve to nothing.
@@ -426,9 +447,43 @@ zone + apply logic:
 
 ## Audit 2026-08-26 — spellcasting & concentration
 
-- **Rests never restore spell slots.** `rest.py` has no slot handling; hosts
-  must reset `spell_slots` themselves. Pact Magic and per-class slot tables do
-  not exist — `spell_slots` is a host-supplied `dict[int, int]`.
+- **Empty `scaling.mode` is treated as whole-mode dice scaling on upcast
+  (2026-09-03, C17).** `activities/dice.py::_scaling_steps` scales dice for
+  any leveled spell whose damage part carries the corpus-default
+  `scaling {number: 1, mode: ""}`; Foundry treats `mode: ""` as no scaling.
+  C17 added a narrow guard in `activities/damage.py` (count-bearing
+  activities — those whose `target.affects.count` contains `@item.level`,
+  per `spellcasting.count_scales_with_cast_level` — roll at base level so
+  Magic Missile darts stay 1d4+1), but every OTHER leveled spell with an
+  empty mode still gains dice per slot above base. Needs a corpus scan and
+  a decision on whether `""` should mean "none" (would shift results for
+  hosts upcasting such spells).
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/dice.py`)
+- **Pool choice for a multiclass Warlock cast is Spellcasting-first
+  (2026-09-03, C17 R3); no per-class spell-list gate or `use_pact_slot`
+  flag.** `_slot_available`/`_take_spell_slot` always try the regular
+  Spellcasting pool before Pact Magic; SRD §Multiclassing lets either pool
+  cast either prepared spell, so this is correct for slot AVAILABILITY, but
+  a caller cannot force a specific pool to be spent (e.g. to bank
+  Spellcasting slots and burn Pact Magic first, or vice versa).
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_take_spell_slot`)
+- **Attack-kind repeat instances (Scorching Ray's rays) are not
+  count-scaled (2026-09-03, C17).** R5's target-count scaling
+  (`resolve_target_count` / `target.affects.count`) only expands a
+  `damage`-kind activity's target list; the corpus encodes an
+  `attack`-kind spell's multiple-instances count (Scorching Ray: "three
+  rays", one attack roll each) only in description prose, not in a typed
+  field the resolver reads, so a single Scorching Ray cast still resolves
+  one attack roll regardless of slot level.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py`)
+- **Long Rest 16-hour cooldown / rest interruption are host time-model
+  concerns (2026-09-03, C17).** SRD 5.2 §Long Rest requires 8 hours plus "a
+  Long Rest can't be used more than once every 24 hours" (spirit: no
+  back-to-back rests) and lists interrupting activity (walking, fighting,
+  casting a spell) as voiding progress; `resolve_long_rest`/
+  `resolve_short_rest` are pure functions with no calendar/clock input, so
+  neither the cooldown nor interruption tracking exists — a host wanting
+  either must gate its OWN call to these resolvers.
   (`packages/dnd5e-engine/src/dnd5e_engine/rest.py`)
 - **Monster spellcasting never happens.** `_activity_is_offensive`
   (`monster_actions.py:83`) accepts attack/save only, so a `cast`-only
@@ -545,33 +600,6 @@ footprints. Exploration-tier; revisit only if a host asks.
   test_status_rows_match_code_probes` now pins ten representative rows to a
   grep-level code probe in both directions (five added by C16, 2026-08-27). The probe set is a sample, not
   exhaustive — **add a probe entry whenever a status row is flipped.**
-
-## Catalog v2 scenarios without a prior entry (2026-08-26)
-
-Seven e2e catalog-v2 scenarios (`specs/catalog-v2/c12.md`, `c13.md`, `c17.md`)
-name a gap with no standalone bullet filed anywhere above — recorded here so
-the close-gap protocol (delete-on-close) has an entry to delete.
-
-- **C17-S01 — No engine-side per-class spell-slot table derivation.** The
-  engine only accepts a host-precomputed flat `spell_slots` dict; nothing
-  reads a class's `spellcasting.progression` to project a level → slot-table
-  row. (`packages/dnd5e-engine/src/dnd5e_engine/build_spec.py`)
-- **C17-S02 — Pact Magic has no separate slot pool.** Warlock spell slots
-  are folded into the same flat `spell_slots` dict as every other caster;
-  Pact Magic's Short-Rest recovery (the SRD's only Short-Rest-recovering
-  pool) has no seam — `resolve_short_rest` carries no `pact_slots` param.
-  (`packages/dnd5e-engine/src/dnd5e_engine/rest.py`)
-- **C17-S04 — Long Rest doesn't restore spell slots or reduce Exhaustion.**
-  `resolve_long_rest`'s signature is `(pool, hp_current, hp_max) ->
-  RestOutcome` — no `spell_slots`/`exhaustion_level` parameter exists, and
-  `RestOutcome` has no field to report either.
-  (`packages/dnd5e-engine/src/dnd5e_engine/rest.py`)
-- **C17-S05 — Upcast target-count scaling never fires (Magic Missile).**
-  `activities/dice.py`'s scaling machinery reads only `DamagePart.scaling`,
-  never a target's `target.affects.count` field; `PlayerIntent.target_id`
-  is a single `str | None` with no multi-target/dart-count shape to route
-  through, so a 3rd-level Magic Missile still fires only 1 dart, not 5.
-  (`packages/dnd5e-engine/src/dnd5e_engine/activities/dice.py`)
 
 ## Foundations follow-ups (2026-08-26)
 
@@ -736,6 +764,17 @@ re-discovered.
 The SillyTavern sidecar (`packages/nat20-bridge`) is a thin FastAPI routing
 layer over the engine — see `docs/bridge.md`. Gaps found while shipping it:
 
+- **Bridge `slots.py` duplicates the engine table with the 2014 level-1
+  half-caster row (2026-09-03, C17).** The bridge's own transcribed
+  `_HALF_CASTER_SLOTS` table gives a level-1 half-caster `{}` (no slots);
+  the engine's `spellcasting.py` (C17, per the SRD 5.2/Foundry parity
+  ruling R2 — per-class rounding, `half` = `ceil(level / 2)`) gives a
+  level-1 half-caster `{1: 2}`. The bridge does not yet call the engine's
+  `derive_spell_slots`/`derive_multiclass_slots`, so its own party-derivation
+  path still disagrees with the engine on this one row. Migrate the bridge
+  onto the engine's public spellcasting functions and delete the duplicate
+  table.
+  (`packages/nat20-bridge/src/nat20_bridge/slots.py`)
 - **Global-`random` seeding is not safe under concurrent requests**
   (2026-08-21). `_start_route` (and `app.py`'s `_do_roll`/`_do_check`) seed the
   stdlib global `random` module to make the engine's legacy dice seam

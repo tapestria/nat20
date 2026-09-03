@@ -408,6 +408,50 @@ _PROBES: dict[str, tuple[Any, str]] = {
         lambda: 'is_condition_immune(target, "prone")' in _src("activities/mastery.py"),
         "Weapon-mastery Topple honors condition immunity",
     ),
+    # C17: Long Rest reduces Exhaustion by 1, floored at 0, via an additive
+    # kwarg on ``resolve_long_rest``.
+    "Long Rest reduces the level by 1": (
+        lambda: "exhaustion_level" in _src("rest.py"),
+        "Long Rest reduces the level by 1",
+    ),
+    # C17 Task 4 (R4): Counterspell's reaction-drain eligibility check is
+    # threaded through ``_pop_pending_reaction``'s ``eligible=`` predicate —
+    # an ineligible reactor's armed reaction is skipped, not popped.
+    "slot-gated at the readied level and 60 ft range/LoS-gated at drain time": (
+        lambda: "eligible=" in _src("orchestrator.py"),
+        "slot-gated at the readied level and 60 ft range/LoS-gated at drain time",
+    ),
+    # C17 Task 4 (R4): a readied leveled spell (Shield) is gated on slot
+    # availability at drain time via the same ``eligible=`` predicate shape.
+    "an unexpended slot at its readied level": (
+        lambda: "eligible=" in _src("orchestrator.py"),
+        "an unexpended slot at its readied level",
+    ),
+    # C17 Task 1: per-class/multiclass/Pact slot tables are derived
+    # engine-side rather than accepted as a host-precomputed flat dict.
+    "derive_spell_slots`, `derive_multiclass_slots`, `derive_pact_slots": (
+        lambda: "def derive_multiclass_slots(" in _src("build_spec.py"),
+        "derive_spell_slots`, `derive_multiclass_slots`, `derive_pact_slots",
+    ),
+    # C17 Task 1: the multiclass carrier + per-class rounded slot derivation
+    # landed; per-class feature grants/proficiencies/HP remain C19.
+    "`CharacterBuildSpec.classes` carrier": (
+        lambda: "def derive_multiclass_slots(" in _src("build_spec.py"),
+        "`CharacterBuildSpec.classes` carrier",
+    ),
+    # C17 Task 6 (R8): a Ritual-tagged spell resolves out-of-combat only,
+    # through the pure ``resolve_ritual_cast`` host seam; an in-combat
+    # ``as_ritual`` cast is rejected before any slot logic.
+    "Out-of-combat via `resolve_ritual_cast`": (
+        lambda: "def resolve_ritual_cast(" in _src("spellcasting.py"),
+        "Out-of-combat via `resolve_ritual_cast`",
+    ),
+    # C17 Task 6: component/material metadata now rides on every PC-path
+    # cast via the ``SpellCast`` event, but nothing gates on it.
+    "Metadata on `SpellCast`, not enforced": (
+        lambda: "class SpellCast(" in _src("events.py"),
+        "Metadata on `SpellCast`, not enforced",
+    ),
     # C15: all eight 2024 weapon masteries are live. F6 — this used to be a
     # bare substring grep for each mastery slug over mastery.py, which
     # passed on COMMENT text alone: cleave and nick are documented there

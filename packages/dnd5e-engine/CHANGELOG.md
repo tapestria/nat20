@@ -12,14 +12,18 @@ F3 turn lifecycle) and clusters **C12 — conditions enforced**, **C13 —
 concentration lifecycle**, **C14 — action economy** (Dodge, Help, Hide,
 Extra Attack, two-weapon fighting, Grapple/Shove/`stand_up`, engine-rolled
 initiative with Surprise, and opportunity attacks through the shared d20
-primitive) and **C15 — attack rules** (weapon proficiency, range tiers,
+primitive), **C15 — attack rules** (weapon proficiency, range tiers,
 thrown weapons, Ranged Attacks in Close Combat, Heavy, versatile grip,
 damage attribution, crit-at-0-HP, Loading, and all eight 2024 weapon
-masteries). Nothing is removed and no signature changes shape — every new
-field is optional and defaults to the pre-0.6 behaviour. C12/C14/C15 do
-change *results* for hosts that carry conditions, exhaustion, turn-keeping
-attacks, or weapon proficiency/mastery data on a combatant. Behavioural
-deltas (and the fixtures they move) are enumerated in
+masteries) and **C17 — spell slots, rests and upcasting** (per-class/
+multiclass/Pact Magic slot derivation, rest-based slot recovery and
+Exhaustion reduction, upcast target-count scaling, Counterspell/readied-cast
+slot+range gating, and out-of-combat Ritual resolution). Nothing is removed
+and no signature changes shape — every new field is optional and defaults
+to the pre-0.6 behaviour. C12/C14/C15/C17 do change *results* for hosts that
+carry conditions, exhaustion, turn-keeping attacks, weapon proficiency/
+mastery data, or casters on a combatant. Behavioural deltas (and the
+fixtures they move) are enumerated in
 [`docs/migration/v0.5-to-v0.6.md`](../../docs/migration/v0.5-to-v0.6.md).
 
 - **Action economy (C14).** Extra Attack reads a caster's granted
@@ -83,6 +87,29 @@ deltas (and the fixtures they move) are enumerated in
   chained attack against the nearest eligible living hostile within 5 ft of
   the first target and within reach) and Nick (the off-hand extra attack
   spends no Bonus Action — SRD 5.2 lets it ride the Attack action instead).
+
+- **Spell slots, rests and upcasting (C17).** `spellcasting.py` derives
+  per-class Spellcasting slots (`derive_spell_slots`), multiclass slots
+  (`derive_multiclass_slots`, per-class half/third rounding summed, SRD
+  §Multiclassing) and Pact Magic (`derive_pact_slots`,
+  `derive_multiclass_pact_slots`); `CharacterBuildSpec.classes: dict[str,
+  int]` is the multiclass carrier, reconciled with the existing
+  `class_slug`/`level` single-class fields. `resolve_long_rest` restores
+  Spellcasting/Pact Magic slots and reduces Exhaustion by 1 (floored at 0);
+  `resolve_short_rest` restores only Pact Magic (SRD's only
+  Short-Rest-recovering slot pool). A Magic Missile-shaped cast now scales
+  its DART COUNT, not just its damage dice, via `target.affects.count` /
+  `spellcasting.resolve_target_count` and `PlayerIntent.target_ids`. An
+  armed Counterspell/readied-cast reaction is now gated on slot
+  availability at its readied level and, for Counterspell, its own 60 ft
+  range with line of sight — an ineligible reactor's reaction is skipped,
+  not consumed. A new `SpellCast` event carries component/material
+  metadata (never enforced) on every PC cast path. `PlayerIntent.
+  as_ritual` + `spellcasting.resolve_ritual_cast` resolve Ritual-tagged
+  spells out-of-combat only; an in-combat ritual cast is rejected
+  (`CastFailedReason` gains `"ritual_in_combat"`). See the migration guide
+  for the full behavioural-delta list, including the Magic Missile
+  event-count change and the `build_party_member` empty-pool fallback.
 
 ### Added
 
@@ -207,6 +234,40 @@ deltas (and the fixtures they move) are enumerated in
   the tag on that cell (`cover_between` itself is unchanged — its target-cell
   walk shipped with C16). Multiattacks for the five opaque-key monsters
   resolve to their exact attack mix.
+- **`dnd5e_engine.spellcasting` (C17)** — pure SRD 5.2 spell-slot tables and
+  derivations, zero I/O. `derive_spell_slots(class_slug, progression,
+  level)`, `derive_pact_slots(level)`, `multiclass_caster_level(classes)`,
+  `slots_for_caster_level(caster_level)`, `effective_caster_level(
+  progression, level)`, `resolve_target_count(count_formula, *,
+  cast_level=)` (a restricted `ast`-walker roll-data evaluator — never
+  `eval`), `count_scales_with_cast_level(count_formula)`,
+  `spell_component_metadata(spell)`, `resolve_ritual_cast(spell, *,
+  prepared, ritual_adept=False) -> RitualCast`, and the `SPELL_SLOT_TABLE`
+  / `PACT_SLOT_TABLE` constants. `derive_spell_slots`, `derive_multiclass_
+  slots`, `derive_pact_slots`, `resolve_ritual_cast` and `RitualCast` are
+  new top-level `dnd5e_engine` exports.
+- **`build_spec.derive_multiclass_slots` / `derive_multiclass_pact_slots`**
+  — project `CharacterBuildSpec.classes` through a `loader` (explicit or the
+  lazy default `get_lib_loader()`) into a Spellcasting/Pact Magic pool;
+  `build_party_member` calls both to fill an empty `CombatInstance.
+  spell_slots`/`pact_slots`.
+- **`PartyMemberSpec.pact_slots` / `CombatInstance.pact_slots` /
+  `LiveCombatView.pact_slots_by_entity`** — the Pact Magic pool, all
+  defaulting to `{}` and mirroring the existing `spell_slots` shape.
+- **`PlayerIntent.target_ids: tuple[str, ...] | None`** — explicit
+  multi-target aiming for a count-scaled cast (Magic Missile darts);
+  `PlayerIntent.as_ritual: bool = False` — request a Ritual cast (rejected
+  in-combat).
+- **`resolve_short_rest(..., *, pact_slots=None, pact_slot_max=None)`** and
+  **`resolve_long_rest(..., *, spell_slots=None, spell_slot_max=None,
+  pact_slots=None, pact_slot_max=None, exhaustion_level=None)`** — all
+  keyword-only, all default `None`. `RestOutcome` gains `spell_slots`,
+  `pact_slots`, `exhaustion_level`, each populated only when its matching
+  input pair was supplied.
+- **`SpellCast` event** — `actor_id`, `spell_id`, `slot_level`, `ritual`,
+  `components`, `material`, `material_consumed`, `material_cost_gp`.
+  Emitted after the slot gate on every PC cast path (on-turn, readied
+  reaction, Counterspell). `CastFailedReason` gains `"ritual_in_combat"`.
 
 ### Changed
 
@@ -343,6 +404,34 @@ deltas (and the fixtures they move) are enumerated in
 - **`test_capability_matrix.py`** gains six probes pinning the C15 rows in
   `docs/capabilities.md` (attack rolls, conditions, forced movement, weapon
   mastery).
+- **A count-scaled cast now emits N `DamageApplied`, not one (C17).** A
+  `damage`-kind activity whose `target.affects.count` formula references
+  `@item.level` (Magic Missile) resolves N separate `DamageApplied` events
+  sharing one rolled damage instance — 3 darts at slot level 1, +1 per slot
+  level above 1. Total damage now scales ×N for every such cast; the draw
+  count is unchanged (shared roll, applied N times). Targeting more
+  entities than the resolved count, or an unknown `target_ids` entry, is
+  rejected pre-slot with `CastFailed(reason="target_invalid")`.
+- **An armed Counterspell/readied-cast reaction with no slot at its readied
+  level is now skipped, not fired (C17).** `_pop_pending_reaction` gained
+  an `eligible=` predicate; an ineligible reactor's reaction stays queued
+  and its Reaction/slot are untouched. Counterspell is additionally gated
+  on its own 60 ft range with line of sight (`_in_range_with_los`) — an
+  out-of-range or LoS-blocked reactor's Counterspell is likewise skipped.
+- **`build_party_member` fills an empty `spell_slots`/`pact_slots` from
+  `CharacterBuildSpec.classes` (C17).** Previously an empty
+  `CombatInstance.spell_slots` was copied verbatim (a caster with no
+  slots); now an empty (falsy) pool falls back to `derive_multiclass_slots`
+  / `derive_multiclass_pact_slots`. A host that relied on an empty
+  `spell_slots` dict to make every cast fail with `CastFailed(reason=
+  "no_slot")` will now see real, derived slots instead. A non-empty pool
+  is untouched.
+- **`CharacterBuildSpec.classes: dict[str, int]`** is the multiclass
+  carrier (C17), reconciled with the single-class `class_slug`/`level`
+  fields by a `model_validator(mode="before")`; `model_copy(update=...)`
+  bypasses that validator (Pydantic does not re-run `mode="before"` on
+  `model_copy`), so changing only one of `level`/`classes` via `model_copy`
+  can desync them — construct a fresh instance instead.
 
 ### Fixed
 

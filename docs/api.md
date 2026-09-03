@@ -87,6 +87,30 @@ drive the engine from a different corpus.
         - CharacterBuildSpec
         - AbilityScores
         - CombatInstance
+        - derive_multiclass_slots
+        - derive_multiclass_pact_slots
+
+## Spellcasting
+
+Pure SRD 5.2 spell-slot tables and derivations (C17) — per-class Spellcasting
+slots, Pact Magic, multiclass slot-table lookups, upcast target-count
+scaling, and out-of-combat Ritual resolution. Zero I/O, zero host imports.
+
+::: dnd5e_engine.spellcasting
+    options:
+      members_order: source
+      members:
+        - derive_spell_slots
+        - derive_pact_slots
+        - multiclass_caster_level
+        - slots_for_caster_level
+        - effective_caster_level
+        - resolve_target_count
+        - count_scales_with_cast_level
+        - resolve_ritual_cast
+        - RitualCast
+        - SPELL_SLOT_TABLE
+        - PACT_SLOT_TABLE
 
 ::: dnd5e_engine.build_party
     options:

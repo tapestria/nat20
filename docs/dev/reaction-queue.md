@@ -214,6 +214,41 @@ sub-bug needed no fix in this design; it is called out here so the
 "compounding gap" language in the BACKLOG/brief is not silently
 re-litigated by a future reader.
 
+### Slot and range gating (C17 R4) — skip, don't pop
+
+C17 added an `eligible=` predicate to `_pop_pending_reaction` (the shared
+queue-pop primitive both Counterspell and readied-cast drains call): a
+candidate reaction that matches the trigger and owner is only popped when
+`eligible(reactor, pending)` also returns `True`. `_drain_counterspell_
+reaction`'s own `_eligible` closure looks up the ARMED spell per candidate
+(`get_lib_loader().get_spell(pending.spell_id or "counterspell")`) — a
+non-Counterspell readied spell armed on the `"cast_spell"` trigger is
+therefore gated by ITS OWN level and range, not Counterspell's — and checks
+two things: an unexpended slot at the readied level (`_slot_available`,
+checked against BOTH pools — see below) when the spell's `level > 0`, and,
+when the spell carries a `range.value`, `_in_range_with_los(topology,
+reactor_zone, caster_zone, range.value)`. Geometry-free setups (zone
+topology, or either zone untracked) skip the range check entirely — "no
+geometry ⇒ no penalty" is the engine-wide convention, unchanged. A
+candidate that fails `eligible` is left in `live.pending_reactions` (still
+armed for a later trigger) and the scan continues to the next candidate in
+initiative order — the reactor's own Reaction and slot are both untouched.
+This is a **skip**, never a pop-then-refund: the reaction was never
+consumed in the first place.
+
+### Two-pool slot consumption (C17 R3)
+
+Every slot-consuming site in this module — the Counterspell drain, a
+readied-cast resolve (Shield), and the on-turn cast gate — now routes
+through `_slot_available(live, entity_id, slot_level)` /
+`_take_spell_slot(live, entity_id, slot_level)` rather than reading
+`live.spell_slots_by_entity` directly. SRD §Multiclassing lets either pool
+cast either prepared spell (the engine has no spell-list gate), so both
+functions check/draw from the regular Spellcasting pool FIRST, then Pact
+Magic — a caster holding a slot at the same level in both pools always
+spends the Spellcasting one. There is no way to force a specific pool
+(BACKLOG.md).
+
 ## Shield (a pinned scenario, S04)
 
 > "Until the start of your next turn, you have a +5 bonus to AC, including
@@ -307,6 +342,22 @@ documented "never a suppressed event" contract). No new field, no general
 force-immunity flag on `Combatant` — deliberately narrower than a real
 force-resistance mechanic, matching the SRD's spell-specific wording and
 the smallest change that satisfies it.
+
+### Slot gating on the readied-cast path (C17 R4)
+
+Shield's own hook, `_drain_targeted_reactions`, passes `eligible=lambda
+reactor, pending: _readied_cast_eligible(live, reactor, pending)` into
+every `_pop_pending_reaction` call it makes. `_readied_cast_eligible` is
+the readied-cast mirror of Counterspell's `_eligible` closure above, minus
+the range check (Shield's own canonical activity carries no `range`): a
+cantrip-level readied spell (`level == 0`) is always eligible; a leveled
+one needs an unexpended slot at its readied level via `_slot_available`
+(same Spellcasting-then-Pact-Magic order as everywhere else — see the
+Counterspell section's "Two-pool slot consumption"). A zero-slot reactor's
+readied Shield is skipped exactly like an ineligible Counterspell — left
+armed, Reaction and slot both untouched — so a Magic Missile or melee hit
+against a reactor with no slot left at the readied level now actually
+lands, where it previously always triggered the buff for free.
 
 ## Monster opportunity attack (a pinned scenario) + Disengage (a pinned scenario)
 
