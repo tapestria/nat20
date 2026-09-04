@@ -39,6 +39,12 @@ new keys still validates.
   whose trigger text matches the shapes: Superior Hunter's Defense,
   Retaliation, Stone's Endurance, Storm's Thunder, Mummy Lord's Whirlwind of
   Sand, Gloves of Missile Snaring.
+- **`Monster.spellcasting_ability: Ability | None`** — the monster's innate
+  spellcasting ability (int/wis/cha) from Foundry's
+  `system.attributes.spellcasting`, e.g. Mage → `int`, adult+ dragons →
+  `cha`. Foundry leaves this field at a non-spellcasting placeholder
+  (`"str"`, occasionally `"dex"`/`"con"`, or empty) for non-casters; the
+  translator normalizes anything outside `{int, wis, cha}` to `None`.
 
 ### Changed
 

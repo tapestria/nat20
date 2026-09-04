@@ -483,5 +483,6 @@
     "survival": null
   },
   "slug": "minotaur-skeleton",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": null
 }

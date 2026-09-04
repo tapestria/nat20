@@ -913,5 +913,6 @@
       "slug": "shared-resistances",
       "uses_per_day": null
     }
-  ]
+  ],
+  "spellcasting_ability": "int"
 }

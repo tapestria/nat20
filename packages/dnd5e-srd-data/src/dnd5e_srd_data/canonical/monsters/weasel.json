@@ -224,5 +224,6 @@
     "survival": null
   },
   "slug": "weasel",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": null
 }

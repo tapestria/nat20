@@ -863,5 +863,6 @@
     "survival": null
   },
   "slug": "wererat",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": null
 }

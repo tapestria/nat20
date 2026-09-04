@@ -589,5 +589,6 @@
       "slug": "sunlight-weakness",
       "uses_per_day": null
     }
-  ]
+  ],
+  "spellcasting_ability": null
 }

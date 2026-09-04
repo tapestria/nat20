@@ -313,5 +313,6 @@
     "survival": null
   },
   "slug": "ankylosaurus",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": null
 }

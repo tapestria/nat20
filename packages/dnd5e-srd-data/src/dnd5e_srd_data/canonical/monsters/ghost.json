@@ -694,5 +694,6 @@
       "slug": "incorporeal-movement",
       "uses_per_day": null
     }
-  ]
+  ],
+  "spellcasting_ability": null
 }

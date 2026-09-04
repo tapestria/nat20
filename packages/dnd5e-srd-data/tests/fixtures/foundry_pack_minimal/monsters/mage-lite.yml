@@ -1,0 +1,40 @@
+_id: mage-lite
+name: Mage Lite
+type: npc
+system:
+  description:
+    value: "A humanoid spellcaster."
+  details:
+    type:
+      value: humanoid
+    cr: 6
+    alignment: "any alignment"
+  abilities:
+    str: {value: 9, proficient: 0, save: null}
+    dex: {value: 14, proficient: 0, save: null}
+    con: {value: 11, proficient: 0, save: null}
+    int: {value: 17, proficient: 0, save: null}
+    wis: {value: 12, proficient: 0, save: null}
+    cha: {value: 11, proficient: 0, save: null}
+  attributes:
+    ac:
+      flat: 12
+    hp:
+      value: 40
+      max: 40
+      formula: "9d8"
+    movement:
+      walk: 30
+      units: "ft"
+    senses: {}
+    prof: 3
+    spellcasting: int
+  traits:
+    size: "med"
+    languages:
+      value: ["common"]
+  skills:
+    arc: {value: 1, bonus: 0}
+    his: {value: 1, bonus: 0}
+flags:
+  srd: true

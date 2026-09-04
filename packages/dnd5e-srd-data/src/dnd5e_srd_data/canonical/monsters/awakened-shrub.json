@@ -216,5 +216,6 @@
     "survival": null
   },
   "slug": "awakened-shrub",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": null
 }

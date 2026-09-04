@@ -1047,5 +1047,6 @@
     "survival": null
   },
   "slug": "lamia",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": "cha"
 }

@@ -343,5 +343,6 @@
     "survival": null
   },
   "slug": "skeleton",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": null
 }

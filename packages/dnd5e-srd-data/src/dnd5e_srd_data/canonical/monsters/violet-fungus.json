@@ -303,5 +303,6 @@
     "survival": null
   },
   "slug": "violet-fungus",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": null
 }

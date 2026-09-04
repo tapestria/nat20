@@ -555,5 +555,6 @@
     "survival": null
   },
   "slug": "brass-dragon-wyrmling",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": null
 }

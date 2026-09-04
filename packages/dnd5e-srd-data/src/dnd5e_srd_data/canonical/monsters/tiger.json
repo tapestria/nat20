@@ -323,5 +323,6 @@
     "survival": null
   },
   "slug": "tiger",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": null
 }

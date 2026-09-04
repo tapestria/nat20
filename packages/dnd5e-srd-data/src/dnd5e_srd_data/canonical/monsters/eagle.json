@@ -209,5 +209,6 @@
     "survival": null
   },
   "slug": "eagle",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": null
 }

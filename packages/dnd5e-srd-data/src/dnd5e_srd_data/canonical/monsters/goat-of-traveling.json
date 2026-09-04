@@ -209,5 +209,6 @@
     "survival": null
   },
   "slug": "goat-of-traveling",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": "int"
 }

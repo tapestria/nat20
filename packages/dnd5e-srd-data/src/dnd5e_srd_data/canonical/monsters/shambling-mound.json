@@ -640,5 +640,6 @@
       "slug": "lightning-absorption",
       "uses_per_day": null
     }
-  ]
+  ],
+  "spellcasting_ability": null
 }

@@ -984,5 +984,6 @@
     "survival": null
   },
   "slug": "behir",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": null
 }

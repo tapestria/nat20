@@ -233,5 +233,6 @@
       "slug": "pack-tactics",
       "uses_per_day": null
     }
-  ]
+  ],
+  "spellcasting_ability": null
 }

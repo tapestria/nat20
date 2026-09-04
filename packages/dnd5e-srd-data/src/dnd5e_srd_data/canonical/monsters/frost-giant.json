@@ -599,5 +599,6 @@
     "survival": null
   },
   "slug": "frost-giant",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": null
 }

@@ -315,5 +315,6 @@
       "slug": "hold-breath",
       "uses_per_day": null
     }
-  ]
+  ],
+  "spellcasting_ability": null
 }

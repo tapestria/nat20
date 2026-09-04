@@ -455,5 +455,6 @@
     "survival": null
   },
   "slug": "copper-dragon-wyrmling",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": null
 }

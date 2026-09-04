@@ -178,5 +178,6 @@
     "survival": null
   },
   "slug": "shrieker-fungus",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": null
 }

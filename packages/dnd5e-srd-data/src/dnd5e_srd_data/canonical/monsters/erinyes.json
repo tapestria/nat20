@@ -588,5 +588,6 @@
       "slug": "magic-rope",
       "uses_per_day": null
     }
-  ]
+  ],
+  "spellcasting_ability": null
 }

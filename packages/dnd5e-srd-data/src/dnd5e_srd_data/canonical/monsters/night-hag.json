@@ -1658,5 +1658,6 @@
       "slug": "soul-bag",
       "uses_per_day": null
     }
-  ]
+  ],
+  "spellcasting_ability": "int"
 }

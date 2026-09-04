@@ -985,5 +985,6 @@
       "slug": "succubus-form",
       "uses_per_day": null
     }
-  ]
+  ],
+  "spellcasting_ability": "cha"
 }

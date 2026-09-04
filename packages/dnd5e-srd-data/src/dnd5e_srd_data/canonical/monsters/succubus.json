@@ -754,5 +754,6 @@
     "survival": null
   },
   "slug": "succubus",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": "cha"
 }

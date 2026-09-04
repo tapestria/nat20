@@ -209,5 +209,6 @@
     "survival": null
   },
   "slug": "phantom-steed",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": "int"
 }

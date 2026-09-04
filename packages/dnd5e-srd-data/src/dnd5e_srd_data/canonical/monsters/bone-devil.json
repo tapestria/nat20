@@ -488,5 +488,6 @@
       "slug": "magic-resistance",
       "uses_per_day": null
     }
-  ]
+  ],
+  "spellcasting_ability": null
 }

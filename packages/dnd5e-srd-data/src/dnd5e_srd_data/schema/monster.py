@@ -4,6 +4,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel, Field, PositiveInt
 
+from dnd5e_srd_data.schema.background import Ability
 from dnd5e_srd_data.schema.common import (
     Activity,
     Movement,
@@ -171,6 +172,10 @@ class Monster(BaseModel):
 
     cr: float
     proficiency_bonus: PositiveInt
+    spellcasting_ability: Ability | None = None
+    """The monster's innate spellcasting ability code (SRD save DC =
+    8 + proficiency bonus + this ability's modifier), from Foundry's
+    ``system.attributes.spellcasting``. ``None`` for non-spellcasters."""
 
     saving_throws: SavingThrowProficiencies
     skills: SkillProficiencies

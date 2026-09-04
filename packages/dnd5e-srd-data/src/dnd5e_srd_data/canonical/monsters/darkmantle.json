@@ -418,5 +418,6 @@
     "survival": null
   },
   "slug": "darkmantle",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": null
 }

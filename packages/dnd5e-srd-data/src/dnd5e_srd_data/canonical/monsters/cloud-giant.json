@@ -1154,5 +1154,6 @@
     "survival": null
   },
   "slug": "cloud-giant",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": "cha"
 }

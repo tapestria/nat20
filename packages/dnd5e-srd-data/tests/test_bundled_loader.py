@@ -43,6 +43,19 @@ def test_bundled_get_spell_by_uuid():
     assert loader.get_spell_by_uuid("Compendium.dnd5e.spells24.Item.missing") is None
 
 
+def test_bundled_mage_and_dragon_carry_their_spellcasting_ability():
+    loader = BundledAssetLoader()
+    assert loader.get_monster("mage").spellcasting_ability == "int"
+    # Verified against raw_sources/foundry/packs/_source/actors24/dragon/
+    # adult-red-dragon.yml: the 2024 SRD adult red dragon carries an innate
+    # Charisma-based spellcasting ability.
+    assert loader.get_monster("adult-red-dragon").spellcasting_ability == "cha"
+    # The wolf's raw field is "str" — a placeholder Foundry leaves on non-
+    # spellcasting NPCs (SRD 5.2 spellcasting is always int/wis/cha), which
+    # the translator normalizes to None.
+    assert loader.get_monster("wolf").spellcasting_ability is None
+
+
 # Known legacy-pack cast reference: rod-of-alertness delegates to the 2014
 # "spells" compendium, which the SRD 5.2 corpus does not carry. Tracked as
 # upstream data debt — every other cast uuid must resolve.

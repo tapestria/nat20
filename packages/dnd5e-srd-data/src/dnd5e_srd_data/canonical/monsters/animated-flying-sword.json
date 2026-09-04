@@ -220,5 +220,6 @@
     "survival": null
   },
   "slug": "animated-flying-sword",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": null
 }

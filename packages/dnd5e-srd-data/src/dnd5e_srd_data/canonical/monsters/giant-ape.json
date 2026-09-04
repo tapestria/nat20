@@ -527,5 +527,6 @@
     "survival": 4
   },
   "slug": "giant-ape",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": null
 }

@@ -332,5 +332,6 @@
     "survival": null
   },
   "slug": "goat",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": null
 }

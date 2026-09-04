@@ -1032,5 +1032,6 @@
       "slug": "speak-with-beasts-and-plants",
       "uses_per_day": null
     }
-  ]
+  ],
+  "spellcasting_ability": "cha"
 }

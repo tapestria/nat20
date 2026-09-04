@@ -1361,5 +1361,6 @@
       "slug": "shielded-mind",
       "uses_per_day": null
     }
-  ]
+  ],
+  "spellcasting_ability": "wis"
 }

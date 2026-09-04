@@ -837,5 +837,6 @@
     "survival": null
   },
   "slug": "priest-acolyte",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": "wis"
 }

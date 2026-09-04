@@ -525,5 +525,6 @@
     "survival": null
   },
   "slug": "grick",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": null
 }

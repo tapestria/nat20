@@ -600,5 +600,6 @@
       "slug": "death-burst",
       "uses_per_day": null
     }
-  ]
+  ],
+  "spellcasting_ability": "cha"
 }

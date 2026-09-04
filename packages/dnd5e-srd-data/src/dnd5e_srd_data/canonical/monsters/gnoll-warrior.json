@@ -336,5 +336,6 @@
     "survival": null
   },
   "slug": "gnoll-warrior",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": null
 }

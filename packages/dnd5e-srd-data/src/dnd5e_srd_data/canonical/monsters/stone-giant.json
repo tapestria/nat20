@@ -663,5 +663,6 @@
     "survival": null
   },
   "slug": "stone-giant",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": null
 }

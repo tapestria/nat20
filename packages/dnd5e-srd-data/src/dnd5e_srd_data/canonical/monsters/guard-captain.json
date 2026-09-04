@@ -430,5 +430,6 @@
     "survival": null
   },
   "slug": "guard-captain",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": null
 }

@@ -1042,6 +1042,21 @@ def _ability_mod(score: int) -> int:
     return (score - 10) // 2
 
 
+# SRD 5.2 spellcasting is always Intelligence, Wisdom, or Charisma. Foundry's
+# ``system.attributes.spellcasting`` NPC field is a UI dropdown that is left
+# at an unfilled placeholder ("str", occasionally "dex"/"con", or "") for the
+# large majority of non-spellcasting monsters rather than left blank — e.g.
+# the Zombie (CON 16, no spells) carries ``spellcasting: str``. Only int/wis/
+# cha values are ever load-bearing (mage → int, adult+ dragons → cha), so
+# anything outside that set is treated as "no spellcasting ability".
+_VALID_SPELLCASTING_ABILITIES = {"int", "wis", "cha"}
+
+
+def _spellcasting_ability(attrs: dict[str, Any]) -> str | None:
+    raw = attrs.get("spellcasting")
+    return raw if raw in _VALID_SPELLCASTING_ABILITIES else None
+
+
 def _sense_value(raw: Any) -> int | None:
     """Foundry ships 0 for senses the creature lacks. Schema uses None as
     'unavailable'; 0 would falsely say 'has the sense with range 0 ft'."""
@@ -1615,6 +1630,7 @@ def translate_monster_yaml(
         senses=senses,
         cr=cr_value,
         proficiency_bonus=prof_bonus,
+        spellcasting_ability=_spellcasting_ability(attrs),
         saving_throws=saving_throws,
         skills=skills,
         damage_resistances=_trait_list(traits, "dr"),

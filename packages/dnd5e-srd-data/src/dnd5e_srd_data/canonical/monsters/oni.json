@@ -1190,5 +1190,6 @@
       "slug": "regeneration",
       "uses_per_day": null
     }
-  ]
+  ],
+  "spellcasting_ability": "cha"
 }

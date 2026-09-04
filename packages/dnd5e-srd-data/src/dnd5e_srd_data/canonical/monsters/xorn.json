@@ -553,5 +553,6 @@
       "slug": "treasure-sense",
       "uses_per_day": null
     }
-  ]
+  ],
+  "spellcasting_ability": null
 }

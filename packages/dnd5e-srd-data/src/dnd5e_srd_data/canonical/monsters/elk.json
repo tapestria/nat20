@@ -349,5 +349,6 @@
     "survival": null
   },
   "slug": "elk",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": null
 }

@@ -426,5 +426,6 @@
     "survival": null
   },
   "slug": "constrictor-snake",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": null
 }

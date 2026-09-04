@@ -231,5 +231,6 @@
     "survival": null
   },
   "slug": "pegasus",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": null
 }

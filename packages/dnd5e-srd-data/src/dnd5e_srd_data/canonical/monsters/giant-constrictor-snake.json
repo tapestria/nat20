@@ -520,5 +520,6 @@
     "survival": null
   },
   "slug": "giant-constrictor-snake",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": null
 }

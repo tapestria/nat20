@@ -1143,5 +1143,6 @@
     "survival": null
   },
   "slug": "druid",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": "wis"
 }

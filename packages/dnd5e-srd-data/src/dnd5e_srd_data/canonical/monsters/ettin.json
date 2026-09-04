@@ -450,5 +450,6 @@
     "survival": null
   },
   "slug": "ettin",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": null
 }

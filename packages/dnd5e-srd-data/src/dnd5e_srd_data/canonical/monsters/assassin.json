@@ -583,5 +583,6 @@
       "slug": "evasion",
       "uses_per_day": null
     }
-  ]
+  ],
+  "spellcasting_ability": null
 }

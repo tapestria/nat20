@@ -220,5 +220,6 @@
     "survival": null
   },
   "slug": "huge-animated-object",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": "int"
 }

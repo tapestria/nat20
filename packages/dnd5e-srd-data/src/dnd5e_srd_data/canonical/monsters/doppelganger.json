@@ -625,5 +625,6 @@
     "survival": null
   },
   "slug": "doppelganger",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": null
 }

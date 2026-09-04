@@ -558,5 +558,6 @@
     "survival": null
   },
   "slug": "silver-dragon-wyrmling",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": null
 }

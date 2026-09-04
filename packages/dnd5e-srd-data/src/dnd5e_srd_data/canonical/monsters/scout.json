@@ -430,5 +430,6 @@
     "survival": 5
   },
   "slug": "scout",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": null
 }
