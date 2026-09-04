@@ -301,7 +301,6 @@ def test_c18_s03_legendary_resistance_converts_failed_save_and_saves_ignore_prof
     assert not paralyzed_b, "a Legendary-Resistance-converted save must not apply the condition"
 
 
-@xfail_cluster(18, "monster action economy")
 def test_c18_s04_troll_regeneration_heals_at_start_of_turn_above_zero_hp():
     """C18-S04: SRD 5.2 "The [monster] regains [N] Hit Points at the
     start of each of its turns if it has at least 1 Hit Point."

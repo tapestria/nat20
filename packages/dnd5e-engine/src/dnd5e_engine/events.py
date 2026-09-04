@@ -323,6 +323,19 @@ class TempHpApplied(BaseModel):
     amount: int
 
 
+class RechargeRolled(BaseModel):
+    """SRD 5.2 "Recharge X–Y": the 1d6 rolled at the start of the monster's
+    turn for a spent part. ``threshold`` is the stat block's notation
+    (``"5-6"``, ``"6"``); ``succeeded`` means the part is usable again."""
+
+    type: Literal["recharge_rolled"] = "recharge_rolled"
+    monster_id: str
+    action_slug: str
+    roll: int
+    threshold: str
+    succeeded: bool
+
+
 # ── effects + conditions ────────────────────────────────────────────────────
 
 
@@ -625,7 +638,8 @@ CombatEvent = Annotated[
     | CastFailed
     | SpellCast
     | ReactionTriggered
-    | CombatEnded,
+    | CombatEnded
+    | RechargeRolled,
     Field(discriminator="type"),
 ]
 
@@ -667,6 +681,7 @@ ALL_COMBAT_EVENT_TYPES: tuple[type[BaseModel], ...] = (
     SpellCast,
     ReactionTriggered,
     CombatEnded,
+    RechargeRolled,
 )
 
 
@@ -703,6 +718,7 @@ __all__ = [
     "IntentType",
     "MoveFailed",
     "ReactionTriggered",
+    "RechargeRolled",
     "RoundEnded",
     "RoundStarted",
     "SaveRolled",

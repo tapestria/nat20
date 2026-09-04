@@ -63,9 +63,11 @@ from dnd5e_srd_data.schema.common import (
     AttackActivity,
     AttackDamageBlock,
     DamagePartBlock,
+    HealActivity,
     SaveActivity,
 )
 from dnd5e_srd_data.schema.item import Weapon, WeaponProperty
+from dnd5e_srd_data.schema.monster import Monster, MonsterTraitMechanic
 from dnd5e_srd_data.schema.spell import (
     CastingTimeUnit,
     Spell,
@@ -90,6 +92,7 @@ from dnd5e_engine.activities.attack import (
 from dnd5e_engine.activities.build_context import build_activity_context
 from dnd5e_engine.activities.context import ActivityResolutionContext
 from dnd5e_engine.activities.d20 import AdvantageSources, roll_d20_test
+from dnd5e_engine.activities.dice import roll_damage_part
 from dnd5e_engine.activities.forced_movement import FORCED_MOVEMENT_RIDERS
 from dnd5e_engine.activities.monster_actions import (
     expand_action_to_activities,
@@ -127,6 +130,7 @@ from dnd5e_engine.events import (
     IntentType,
     MoveFailed,
     ReactionTriggered,
+    RechargeRolled,
     RoundStarted,
     SaveRolled,
     SpellCast,
@@ -177,7 +181,7 @@ from dnd5e_engine.turn_lifecycle import (
     run_turn_end,
     run_turn_start,
 )
-from dnd5e_engine.types.combat import BehaviorProfile, Combatant
+from dnd5e_engine.types.combat import BehaviorProfile, Combatant, MonsterActionUses
 from dnd5e_engine.types.conditions import ActiveCondition
 from dnd5e_engine.types.effects import ActiveEffect, ActiveEffectChange, ActiveEffectDuration
 from dnd5e_engine.views import LiveCombatView
@@ -695,6 +699,142 @@ def _monster_attack_range_ft(activities: Sequence[Any], melee_reach_ft: int) -> 
         # monster's reach governs.
         return melee_reach_ft if melee_reach_ft > 0 else None
     return None
+
+
+def _recharge_threshold(notation: str) -> int:
+    """``"5-6"`` -> 5, ``"6"`` -> 6 (the low end of the SRD 5.2 X–Y range)."""
+    return int(notation.split("-", 1)[0])
+
+
+def _hydrate_monster_action_uses(monster: Monster) -> dict[str, MonsterActionUses]:
+    """Build the initial ``MonsterActionUses`` map for one monster template.
+
+    One entry per action slug (in ``monster.actions`` / ``legendary_actions``)
+    that carries either a ``recharge`` notation or a typed N/Day activity
+    ``uses.max``. Actions with neither are omitted — nothing to track.
+    """
+    uses: dict[str, MonsterActionUses] = {}
+    for action in (*monster.actions, *monster.legendary_actions):
+        entry = MonsterActionUses()
+        for activity in action.activities:
+            max_raw = activity.uses.max
+            if max_raw.strip().isdigit():
+                entry.uses_remaining[f"{action.slug}:{activity.id}"] = int(max_raw)
+        if action.recharge or entry.uses_remaining:
+            uses[action.slug] = entry
+    return uses
+
+
+def _legendary_resistance_max(monster: Monster) -> int:
+    """SRD 5.2 Legendary Resistance's "N/Day" pool size.
+
+    Prefers a typed ``uses_per_day`` on the trait; falls back to a
+    ``"N/Day"`` match in the trait's name; defaults to 3 — every SRD 5.2
+    Legendary Resistance bearer in the bundled corpus carries the pool count
+    only in prose (neither ``uses_per_day`` nor the name), so the default is
+    the operative value everywhere today (see BACKLOG).
+    """
+    for trait in monster.special_abilities:
+        if trait.mechanic == MonsterTraitMechanic.LEGENDARY_RESISTANCE:
+            if trait.uses_per_day:
+                return int(trait.uses_per_day)
+            match = re.search(r"(\d+)/Day", trait.name)
+            return int(match.group(1)) if match else 3
+    return 0
+
+
+def _legendary_action_uses_max(monster: Monster) -> int:
+    """SRD 5.2 Legendary Actions pool size ("can take 3 legendary actions").
+
+    No bundled monster types this count anywhere (typed field or prose) —
+    every stat block with a non-empty ``legendary_actions`` list defaults to
+    3, the SRD 5.2 baseline for every legendary-action monster in the corpus
+    (see BACKLOG for the translator follow-up).
+    """
+    return 3 if monster.legendary_actions else 0
+
+
+def _run_monster_turn_start(live: _LiveCombat, current: Combatant) -> None:
+    """SRD 5.2 "at the start of each of its turns" monster mechanics.
+
+    Runs once per driven monster turn (idempotent on
+    ``(round_number, current_turn_index)``): legendary-action pool reset,
+    recharge rolls, then regeneration — in that fixed order. Lives here
+    rather than as a ``turn_lifecycle`` ``turn_start`` hook because the
+    engine emits ``TurnStarted`` at the PREVIOUS turn's end, before the
+    legendary-action window a host drives afterwards (C18 Task 6); running
+    from a ``turn_start`` hook would fire these too early relative to that
+    window. Incapacitated and fleeing monsters still run all three — the SRD
+    ties them to "the start of its turn", not to whether it acts.
+    """
+    key = (live.round_number, live.current_turn_index)
+    if live.monster_turn_start_done == key:
+        return
+    live.monster_turn_start_done = key
+    if current.legendary_actions_max:
+        current.legendary_actions_remaining = current.legendary_actions_max
+    slug = live.monster_slug_by_entity.get(current.entity_id)
+    monster = get_lib_loader().get_monster(slug) if slug else None
+    if monster is None:
+        return
+    _roll_recharges(live, current, monster)
+    _apply_regeneration(live, current, monster)
+
+
+def _roll_recharges(live: _LiveCombat, current: Combatant, monster: Monster) -> None:
+    """SRD 5.2 "Recharge X–Y": roll 1d6 for each SPENT recharge action.
+
+    Only actions whose tracked ``MonsterActionUses.recharge_spent`` is True
+    draw a die — an unspent part is never rolled for (Foundry parity).
+    """
+    uses = live.monster_action_uses_by_entity.get(current.entity_id, {})
+    for action in monster.actions:
+        entry = uses.get(action.slug)
+        if not action.recharge or entry is None or not entry.recharge_spent:
+            continue
+        roll = live.rng.randint(1, 6)
+        succeeded = roll >= _recharge_threshold(action.recharge)
+        if succeeded:
+            entry.recharge_spent = False
+        _emit(
+            live,
+            RechargeRolled(
+                monster_id=current.entity_id,
+                action_slug=action.slug,
+                roll=roll,
+                threshold=action.recharge,
+                succeeded=succeeded,
+            ),
+        )
+
+
+def _apply_regeneration(live: _LiveCombat, current: Combatant, monster: Monster) -> None:
+    """SRD 5.2 Regeneration: "regains N Hit Points at the start of each of
+    its turns if it has at least 1 Hit Point," capped at ``hp_max``.
+
+    Reuses the ``HealingApplied`` emission path (``_emit`` ->
+    ``_emit_apply_healing``) for the tracked-HP write instead of a second HP
+    updater; emits nothing when the trait isn't present, the monster is at
+    or below 0 HP, or it is already at full HP (no heal actually occurs).
+    """
+    if MonsterTraitMechanic.REGENERATION not in current.trait_mechanics:
+        return
+    if not current.is_alive or current.hp_current < 1:
+        return
+    if current.hp_current >= current.hp_max:
+        return
+    for trait in monster.special_abilities:
+        if trait.mechanic != MonsterTraitMechanic.REGENERATION:
+            continue
+        for activity in trait.activities:
+            if not isinstance(activity, HealActivity):
+                continue
+            amount = roll_damage_part(activity.healing, live.rng)
+            healed = min(amount, current.hp_max - current.hp_current)
+            if healed <= 0:
+                return
+            _emit(live, HealingApplied(target_id=current.entity_id, amount=healed))
+            return
 
 
 def _monster_is_fleeing(monster: Combatant) -> bool:
@@ -2114,6 +2254,19 @@ class _LiveCombat:
     # set empties is dropped. Populated by folding
     # ``ActivityResolutionContext.mastery_procs`` post-resolution (R4).
     slow_marks: dict[str, set[str]] = field(default_factory=dict)
+    # C18 §Monster action economy — per-entity, per-action-slug limited-use
+    # state (recharge actions, N/Day trait uses). Hydrated at ``start_combat``
+    # from the monster template (``_hydrate_monster_action_uses``); mutated by
+    # ``_roll_recharges`` at the owner's own turn start. Absent for PCs and
+    # template-less foes.
+    monster_action_uses_by_entity: dict[str, dict[str, MonsterActionUses]] = field(
+        default_factory=dict
+    )
+    # C18 — idempotency guard for ``_run_monster_turn_start``: the
+    # ``(round_number, current_turn_index)`` pair the turn-start mechanics
+    # (legendary reset, recharge rolls, regeneration) last ran for. ``None``
+    # before the first driven monster turn.
+    monster_turn_start_done: tuple[int, int] | None = None
     # Turn-boundary hook registry (``dnd5e_engine.turn_lifecycle``). Populated
     # by ``_register_default_turn_hooks`` in ``start_combat``; run by
     # ``_end_turn_and_advance`` / ``_begin_turn``. Every rule that fires "at the
@@ -5096,7 +5249,12 @@ def _register_default_turn_hooks(live: _LiveCombat) -> None:
     ``TurnPhase(turn_end)`` marker, which also let a bonus action trigger a
     second repeat save in the same turn; as a hook it runs exactly once per turn
     end, inside the phase it belongs to.
-    Later clusters (ongoing damage, regeneration, recharge, legendary reset)
+    Monster-side "start of turn" mechanics (recharge rolls, regeneration,
+    legendary-action reset) do NOT append here — they run once per driven
+    turn from ``_run_monster_turn_start``, called at the top of
+    ``advance_monster_turn`` BEFORE the ``TurnStarted`` a host's legendary-
+    action window is driven from. Later ongoing-damage-style clusters that
+    genuinely fire on the engine's own ``TurnStarted``/``TurnEnded`` boundary
     append here rather than editing the advance path.
     """
     live.lifecycle.register("turn_end", _hook_run_end_of_turn_saves, key="engine:repeat-save")
@@ -5667,6 +5825,16 @@ def _build_foe_combatants(
         # this cannot change any existing combat's behavior; resistances/
         # immunities stay host-populated by the existing convention.
         vulnerabilities = list(foe.damage_vulnerabilities)
+        # C18 — hydrate damage resistances/immunities from the SRD 5.2
+        # template when the spec leaves BOTH empty (host never authored
+        # them). SRD 5.2 stat blocks are unconditional (no "from nonmagical
+        # attacks" carve-out), so a template-hydrated resistance list always
+        # pairs with ``physical_resistances_nonmagical_only=False`` — unlike
+        # ``foe.physical_resistances_nonmagical_only`` (host-authored,
+        # defaults True for the SRD 5.1 convention).
+        resistances = list(foe.damage_resistances)
+        immunities = list(foe.damage_immunities)
+        nonmagical_only = foe.physical_resistances_nonmagical_only
         # F1b (2026-08-26) — hydrate the five non-DEX ability scores,
         # proficiency bonus, and save/skill proficiencies from the SRD
         # monster template when one is set. Dexterity is spec-authoritative
@@ -5681,6 +5849,10 @@ def _build_foe_combatants(
             if monster is not None:
                 if not vulnerabilities:
                     vulnerabilities = list(monster.damage_vulnerabilities)
+                if not resistances and not immunities:
+                    resistances = list(monster.damage_resistances)
+                    immunities = list(monster.damage_immunities)
+                    nonmagical_only = False
                 sc = monster.ability_scores
                 template_kw = {
                     "strength": sc.str,
@@ -5701,6 +5873,14 @@ def _build_foe_combatants(
                         a.mechanic for a in monster.special_abilities if a.mechanic is not None
                     ],
                 }
+                legendary_actions_max = _legendary_action_uses_max(monster)
+                if legendary_actions_max:
+                    template_kw["legendary_actions_max"] = legendary_actions_max
+                    template_kw["legendary_actions_remaining"] = legendary_actions_max
+                legendary_resistances_max = _legendary_resistance_max(monster)
+                if legendary_resistances_max:
+                    template_kw["legendary_resistances_max"] = legendary_resistances_max
+                    template_kw["legendary_resistances_remaining"] = legendary_resistances_max
                 if foe.dexterity == 10:
                     template_kw["dexterity"] = sc.dex
         combatants.append(
@@ -5718,11 +5898,11 @@ def _build_foe_combatants(
                 behavior_profile=foe.behavior_profile,
                 dexterity=template_kw.pop("dexterity", foe.dexterity),
                 creature_type=foe.creature_type,
-                damage_resistances=list(foe.damage_resistances),
-                damage_immunities=list(foe.damage_immunities),
+                damage_resistances=resistances,
+                damage_immunities=immunities,
                 damage_vulnerabilities=vulnerabilities,
                 condition_immunities=list(foe.condition_immunities),
-                physical_resistances_nonmagical_only=foe.physical_resistances_nonmagical_only,
+                physical_resistances_nonmagical_only=nonmagical_only,
                 base_speed=foe.base_speed,
                 movement_remaining=foe.base_speed,
                 **template_kw,
@@ -6013,6 +6193,13 @@ async def start_combat(
         spells_known_by_entity=spells_known_by_entity,
         custom_counters_by_entity=custom_counters_by_entity,
     )
+    # C18 — per-foe limited-use state (recharge actions, N/Day trait uses),
+    # hydrated from the same monster template each foe's other stats came
+    # from. Absent for foes with no resolvable ``monster_template_slug``.
+    for entity_id, slug in monster_slug_by_entity.items():
+        monster = get_lib_loader().get_monster(slug)
+        if monster is not None:
+            live.monster_action_uses_by_entity[entity_id] = _hydrate_monster_action_uses(monster)
     _REGISTRY[handle_id] = live
     _register_default_turn_hooks(live)
 
@@ -9204,6 +9391,12 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
             "not_actor_turn",
             f"current_turn={current.entity_id!r} is a Character, not a monster",
         )
+
+    # C18 §Monster action economy — legendary-action reset, recharge rolls,
+    # regeneration. Runs once per driven turn regardless of the flee/
+    # incapacitated gate below (SRD ties these to turn start, not to
+    # whether the monster acts).
+    _run_monster_turn_start(live, current)
 
     # Dead / unconscious monsters skip with a no-op record. The legacy
     # behavior-based flee gate (monster_ai.select_monster_action) is reapplied
