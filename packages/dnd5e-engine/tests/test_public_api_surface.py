@@ -52,6 +52,7 @@ TOP_LEVEL = {
     "recover_feature_uses",
     "recover_item_uses",
     "resolve_check",
+    "resolve_legendary_resistance",
     "resolve_long_rest",
     "resolve_ritual_cast",
     "resolve_short_rest",

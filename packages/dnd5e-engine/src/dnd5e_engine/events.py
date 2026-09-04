@@ -617,6 +617,18 @@ class LegendaryActionUsed(BaseModel):
     uses_remaining: int
 
 
+class LegendaryResistanceUsed(BaseModel):
+    """A monster spent one of its per-day Legendary Resistance uses to
+    convert a saving throw it had just failed into a success. Emitted AFTER
+    the ``SaveRolled`` it converts (which already carries ``succeeded=True``)
+    so a host sees the roll before the narration of the resistance spend.
+    """
+
+    type: Literal["legendary_resistance_used"] = "legendary_resistance_used"
+    actor_id: str
+    uses_remaining: int
+
+
 CombatEvent = Annotated[
     RoundStarted
     | RoundEnded
@@ -652,7 +664,8 @@ CombatEvent = Annotated[
     | ReactionTriggered
     | CombatEnded
     | RechargeRolled
-    | LegendaryActionUsed,
+    | LegendaryActionUsed
+    | LegendaryResistanceUsed,
     Field(discriminator="type"),
 ]
 
@@ -696,6 +709,7 @@ ALL_COMBAT_EVENT_TYPES: tuple[type[BaseModel], ...] = (
     CombatEnded,
     RechargeRolled,
     LegendaryActionUsed,
+    LegendaryResistanceUsed,
 )
 
 
@@ -731,6 +745,7 @@ __all__ = [
     "IntentSubmitted",
     "IntentType",
     "LegendaryActionUsed",
+    "LegendaryResistanceUsed",
     "MoveFailed",
     "ReactionTriggered",
     "RechargeRolled",

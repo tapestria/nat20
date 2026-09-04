@@ -33,15 +33,18 @@ from dnd5e_engine import (
     PlayerIntent,
     advance_monster_turn,
     get_live,
+    resolve_legendary_resistance,
     start_combat,
     submit_player_intent,
 )
 from dnd5e_engine.events import (
     AttackRolled,
+    ConditionApplied,
     DamageApplied,
     HealingApplied,
     IntentSubmitted,
     LegendaryActionUsed,
+    LegendaryResistanceUsed,
     RechargeRolled,
     SaveRolled,
     SpellCast,
@@ -597,6 +600,164 @@ def test_legendary_kwarg_is_rejected_when_no_foe_has_legendary_actions():
 
     err = _run(go())
     assert err.reason == "no_legendary_action"
+
+
+# -- C18 Task 7 -- Legendary Resistance (S03) --------------------------------
+
+
+async def _wizard_vs_dragon(seed, *, hp=256, ac=19, slug="adult-red-dragon"):
+    party = [
+        PartyMemberSpec(
+            entity_id="char:wiz",
+            name="Wizard",
+            initiative=20,
+            hp_current=30,
+            hp_max=30,
+            wisdom=10,
+            character_level=9,
+            class_slug="wizard",
+            spells_known=["hold-monster"],
+            spell_slots={5: 1},
+            zone_id=cell(0, 0),
+        )
+    ]
+    encounter = [
+        EncounterMemberSpec(
+            entity_id="mon:foe",
+            entity_type="Monster",
+            name="Dragon",
+            initiative=1,
+            hp_current=hp,
+            hp_max=hp,
+            ac=ac,
+            zone_id=cell(2, 0),
+            monster_template_slug=slug,
+        )
+    ]
+    return await _start(party, encounter, seed=seed)
+
+
+async def _cast_hold_monster(handle):
+    await submit_player_intent(
+        handle,
+        actor_id="char:wiz",
+        intent=PlayerIntent(intent_type="cast_spell", spell_id="hold-monster", target_id="mon:foe"),
+    )
+
+
+def test_arming_requires_the_trait_and_remaining_uses():
+    """R7 — arming validates the trait AND the remaining per-day pool: a
+    goblin (no Legendary Resistance) is rejected outright; the dragon's 3/day
+    pool arms exactly three times, then rejects a fourth."""
+
+    async def go():
+        handle, live = await _start(
+            [_hero()],
+            [
+                _foe("goblin-warrior", entity_id="mon:goblin", hp=7, ac=15, col=3),
+                _foe("adult-red-dragon", entity_id="mon:dragon", hp=256, ac=19, col=5),
+            ],
+            seed=1,
+        )
+        with pytest.raises(IntentRejectedError) as excinfo:
+            resolve_legendary_resistance(handle, "mon:goblin")
+        assert excinfo.value.reason == "no_legendary_resistance"
+
+        assert resolve_legendary_resistance(handle, "mon:dragon") == 1
+        assert resolve_legendary_resistance(handle, "mon:dragon") == 2
+        assert resolve_legendary_resistance(handle, "mon:dragon") == 3
+        with pytest.raises(IntentRejectedError) as excinfo2:
+            resolve_legendary_resistance(handle, "mon:dragon")
+        assert excinfo2.value.reason == "no_legendary_resistance"
+        return live
+
+    _run(go())
+
+
+def test_armed_dragon_converts_the_next_failed_save_and_skips_the_condition():
+    """SRD 5.2 Legendary Resistance: "If the monster fails a saving throw,
+    it can choose to succeed instead." Catalog S03 fixture, seed 2 (natural
+    2 vs Hold Monster's DC): an ARMED dragon converts the failure — the
+    emitted ``SaveRolled`` already carries ``succeeded=True``, no Paralyzed
+    condition applies, and ``LegendaryResistanceUsed`` follows it."""
+
+    async def go():
+        handle, live = await _wizard_vs_dragon(seed=2)
+        assert resolve_legendary_resistance(handle, "mon:foe") == 1
+        await _cast_hold_monster(handle)
+        return live
+
+    live = _run(go())
+    save = next(e for e in _events(live, SaveRolled) if e.target_id == "mon:foe")
+    assert save.succeeded is True
+    assert save.natural == 2
+    used = _events(live, LegendaryResistanceUsed)
+    assert used
+    assert used[0].actor_id == "mon:foe"
+    assert used[0].uses_remaining == 2
+    assert not [e for e in _events(live, ConditionApplied) if e.condition == "paralyzed"]
+    assert live.event_log.index(save) < live.event_log.index(used[0])
+
+
+def test_unarmed_dragon_is_unchanged():
+    """Same seed-2 fixture, no arming: the failure applies Paralyzed exactly
+    as before this feature, no ``LegendaryResistanceUsed`` fires, and the
+    pool stays untouched."""
+
+    async def go():
+        handle, live = await _wizard_vs_dragon(seed=2)
+        await _cast_hold_monster(handle)
+        return handle, live
+
+    handle, live = _run(go())
+    save = next(e for e in _events(live, SaveRolled) if e.target_id == "mon:foe")
+    assert save.succeeded is False
+    assert [e for e in _events(live, ConditionApplied) if e.condition == "paralyzed"]
+    assert not _events(live, LegendaryResistanceUsed)
+    assert get_live(handle).legendary_resistances_by_entity["mon:foe"] == 3
+
+
+def test_armed_use_is_kept_for_a_successful_save():
+    """SRD 5.2 Legendary Resistance only triggers on a FAILURE — seed 9's
+    save succeeds on its own, so the armed declaration is neither consumed
+    nor does it emit ``LegendaryResistanceUsed``."""
+
+    async def go():
+        handle, live = await _wizard_vs_dragon(seed=9)
+        assert resolve_legendary_resistance(handle, "mon:foe") == 1
+        await _cast_hold_monster(handle)
+        return handle, live
+
+    handle, live = _run(go())
+    save = next(e for e in _events(live, SaveRolled) if e.target_id == "mon:foe")
+    assert save.succeeded is True
+    assert not _events(live, LegendaryResistanceUsed)
+    assert get_live(handle).legendary_resistances_by_entity["mon:foe"] == 3
+    assert _get_live(handle).legendary_resistance_armed.get("mon:foe") == 1
+
+
+def test_repeat_save_path_honours_an_armed_use():
+    """SRD §Hold Monster's end-of-turn repeat save bypasses the typed
+    activity resolver entirely (``_run_end_of_turn_saves`` rolls its own
+    d20) — the orchestrator-level ``_convert_failed_save_if_armed`` helper
+    must honour an armed declaration there too."""
+
+    async def go():
+        handle, live = await _wizard_vs_dragon(seed=2)
+        await _cast_hold_monster(handle)  # unarmed: seed 2 fails -> Paralyzed
+        assert resolve_legendary_resistance(handle, "mon:foe") == 1
+        pre_event_count = len(live.event_log)
+        await advance_monster_turn(handle)  # the dragon's own turn ends here
+        return live, pre_event_count
+
+    live, pre_event_count = _run(go())
+    tail = live.event_log[pre_event_count:]
+    repeat_saves = [e for e in tail if isinstance(e, SaveRolled)]
+    assert repeat_saves, "expected the end-of-turn repeat save to fire"
+    assert repeat_saves[0].succeeded is True
+    used = [e for e in tail if isinstance(e, LegendaryResistanceUsed)]
+    assert used
+    assert used[0].uses_remaining == 2
 
 
 def test_dead_dragon_cannot_take_legendary_actions():

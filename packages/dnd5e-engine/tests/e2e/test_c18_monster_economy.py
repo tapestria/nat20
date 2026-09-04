@@ -164,7 +164,6 @@ def test_c18_s02_legendary_actions_spent_after_pc_turn_pool_resets_on_own_turn()
     assert used_events[0].actor_id == "mon:dragon"
 
 
-@xfail_cluster(18, "monster action economy")
 def test_c18_s03_legendary_resistance_converts_failed_save_and_saves_ignore_proficiency():
     """C18-S03: SRD 5.2 "If the monster fails a saving throw, it can
     choose to succeed instead."

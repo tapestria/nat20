@@ -189,6 +189,8 @@ def build_activity_context(
     attacker_sapped: bool = False,
     cleave_available: bool = False,
     cleave_candidate: Combatant | None = None,
+    legendary_resistance_armed: dict[str, int] | None = None,
+    legendary_resistances_remaining_by_entity: dict[str, int] | None = None,
 ) -> ActivityResolutionContext:
     """Adapt the caster + the pre-computed hydration sidecars into the typed
     ``ActivityResolutionContext`` the new resolver consumes.
@@ -472,4 +474,13 @@ def build_activity_context(
         # golden corpus identical.
         cleave_available=cleave_available,
         cleave_candidate=cleave_candidate,
+        # C18 §Monster action economy — Legendary Resistance (Task 7):
+        # PRE-RESOLVED per-entity armed-declaration + remaining-pool sidecars,
+        # projected by the orchestrator (``_build_hydration_payload``) as
+        # disposable COPIES ``activities/save_primitive.roll_save`` mutates in
+        # place on a conversion. Absent (``None``) -> empty, leaving the
+        # golden corpus identical (no armed declaration ⇒ every save resolves
+        # exactly as before this feature).
+        legendary_resistance_armed=legendary_resistance_armed or {},
+        legendary_resistances_remaining_by_entity=legendary_resistances_remaining_by_entity or {},
     )

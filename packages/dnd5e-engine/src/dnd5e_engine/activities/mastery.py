@@ -66,7 +66,7 @@ from typing import TYPE_CHECKING
 from dnd5e_engine.activities.apply import apply_damage
 from dnd5e_engine.activities.effects import is_condition_immune
 from dnd5e_engine.activities.save_primitive import roll_save
-from dnd5e_engine.events import ConditionApplied, SaveRolled
+from dnd5e_engine.events import ConditionApplied, LegendaryResistanceUsed, SaveRolled
 
 if TYPE_CHECKING:
     from dnd5e_srd_data.schema.item import Weapon
@@ -249,6 +249,13 @@ def _resolve_topple(
             sources=list(roll.sources),
         )
     )
+    if roll.legendary_resistance_remaining is not None:
+        ctx.event_emitter(
+            LegendaryResistanceUsed(
+                actor_id=target.entity_id,
+                uses_remaining=roll.legendary_resistance_remaining,
+            )
+        )
 
     if not roll.succeeded and not is_condition_immune(target, "prone"):
         ctx.event_emitter(ConditionApplied(target_id=target.entity_id, condition="prone"))

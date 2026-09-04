@@ -50,6 +50,7 @@ from dnd5e_engine.orchestrator import (
     get_actor_active_effects,
     get_live,
     narration_events,
+    resolve_legendary_resistance,
     start_combat,
     submit_player_intent,
 )
@@ -134,6 +135,7 @@ __all__ = [
     "recover_feature_uses",
     "recover_item_uses",
     "resolve_check",
+    "resolve_legendary_resistance",
     "resolve_long_rest",
     "resolve_ritual_cast",
     "resolve_short_rest",

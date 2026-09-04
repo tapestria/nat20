@@ -53,7 +53,7 @@ from dnd5e_engine.activities.dice import roll_damage_part, roll_expr
 from dnd5e_engine.activities.effects import apply_activity_effects
 from dnd5e_engine.activities.formula import resolve_damage_block, resolve_roll_data
 from dnd5e_engine.activities.save_primitive import roll_save
-from dnd5e_engine.events import Ability, SaveRolled
+from dnd5e_engine.events import Ability, LegendaryResistanceUsed, SaveRolled
 
 if TYPE_CHECKING:
     from dnd5e_srd_data.schema.common import DamagePartBlock, SaveActivity
@@ -118,6 +118,13 @@ def resolve_save(activity: SaveActivity, ctx: ActivityResolutionContext) -> None
                 sources=list(roll.sources),
             )
         )
+        if roll.legendary_resistance_remaining is not None:
+            ctx.event_emitter(
+                LegendaryResistanceUsed(
+                    actor_id=target.entity_id,
+                    uses_remaining=roll.legendary_resistance_remaining,
+                )
+            )
 
         _apply_save_damage(activity, ctx, target, shared_parts, succeeded=succeeded)
         apply_activity_effects(

@@ -131,6 +131,7 @@ from dnd5e_engine.events import (
     IntentSubmitted,
     IntentType,
     LegendaryActionUsed,
+    LegendaryResistanceUsed,
     MoveFailed,
     ReactionTriggered,
     RechargeRolled,
@@ -349,6 +350,10 @@ class IntentRejectedError(CombatSeamError):
         # when no encounter member currently qualifies (see
         # ``_eligible_legendary_actor``).
         "no_legendary_action",
+        # C18 §Monster action economy — ``resolve_legendary_resistance``
+        # when ``entity_id`` is not an encounter member with the Legendary
+        # Resistance trait, or has no unarmed use left in its per-day pool.
+        "no_legendary_resistance",
     ]
 
     def __init__(self, reason: RejectionReason, detail: str) -> None:
@@ -748,6 +753,63 @@ def _legendary_resistance_max(monster: Monster) -> int:
             match = re.search(r"(\d+)/Day", trait.name)
             return int(match.group(1)) if match else 3
     return 0
+
+
+def _sync_legendary_resistance(live: _LiveCombat, pre_event_count: int) -> None:
+    """C18 §Monster action economy — reconcile Legendary Resistance state
+    after a resolution that may have rolled a save.
+
+    Scans ``live.event_log[pre_event_count:]`` for ``LegendaryResistanceUsed``
+    (the "read the events" pattern the reaction drains use) and, for each,
+    decrements the AUTHORITATIVE ``Combatant.legendary_resistances_remaining``
+    and ``live.legendary_resistance_armed`` — the per-resolution hydration
+    payload the conversion actually mutated was a disposable COPY
+    (``_build_hydration_payload``), so this is the one place those two
+    canonical stores are ever written down. A no-op when the resolution
+    converted nothing (the common case — every currently-legal combat is
+    byte-identical).
+    """
+    for ev in live.event_log[pre_event_count:]:
+        if not isinstance(ev, LegendaryResistanceUsed):
+            continue
+        armed = live.legendary_resistance_armed.get(ev.actor_id, 0)
+        if armed > 0:
+            live.legendary_resistance_armed[ev.actor_id] = armed - 1
+        bearer = _find_combatant(live, ev.actor_id)
+        if bearer is not None:
+            bearer.legendary_resistances_remaining = ev.uses_remaining
+
+
+def _convert_failed_save_if_armed(live: _LiveCombat, target: Combatant) -> bool:
+    """SRD 5.2 Legendary Resistance for the two orchestrator-level save rolls
+    that bypass the typed activity resolver entirely (the end-of-turn repeat
+    save and the concentration check) — ``activities/save_primitive.roll_save``
+    never runs for either, so its conversion never sees them.
+
+    Mirrors that conversion's gate exactly: a no-op unless ``target`` has an
+    armed use (``live.legendary_resistance_armed``) AND at least one use
+    remains (``Combatant.legendary_resistances_remaining``). On a hit,
+    decrements both AUTHORITATIVE stores directly (no disposable hydration
+    copy is in play on these two paths) and emits ``LegendaryResistanceUsed``
+    itself — unlike the primary conversion, the caller has not yet emitted
+    its own ``SaveRolled`` at the point it must decide whether to flip
+    ``succeeded``, so this event necessarily precedes it on these two paths.
+    Returns whether the conversion applied so the caller can flip its own
+    ``succeeded`` flag. Draws no dice.
+    """
+    armed = live.legendary_resistance_armed.get(target.entity_id, 0)
+    if armed <= 0 or target.legendary_resistances_remaining <= 0:
+        return False
+    live.legendary_resistance_armed[target.entity_id] = armed - 1
+    target.legendary_resistances_remaining -= 1
+    _emit(
+        live,
+        LegendaryResistanceUsed(
+            actor_id=target.entity_id,
+            uses_remaining=target.legendary_resistances_remaining,
+        ),
+    )
+    return True
 
 
 def _legendary_action_uses_max(monster: Monster) -> int:
@@ -2283,6 +2345,15 @@ def _monster_context_kwargs(
         # vex-grant target or sap-mark holder from a prior PC weapon hit.
         "attacker_vex_advantage": _attacker_vex_advantage_map(live, current.entity_id, target_list),
         "attacker_sapped": current.entity_id in live.sap_marks,
+        # C18 §Monster action economy — Legendary Resistance sidecars
+        # (Task 7): a monster's own attack/cast/legendary-action resolution
+        # can roll a save against IT (e.g. a Counterspell-style effect, or
+        # this same monster as the target of another monster's save-kind
+        # activity) just as readily as the PC path can.
+        "legendary_resistance_armed": payload["legendary_resistance_armed"],
+        "legendary_resistances_remaining_by_entity": payload[
+            "legendary_resistances_remaining_by_entity"
+        ],
     }
 
 
@@ -2369,6 +2440,7 @@ def _resolve_monster_cast(
     # same recorded follow-up as the mundane monster-attack site).
     _writeback_concentration(live, current, pre_event_count)
     _record_effect_lifecycle_links(live, current, pre_event_count)
+    _sync_legendary_resistance(live, pre_event_count)
 
 
 def _eligible_legendary_actor(live: _LiveCombat, actor_id: str | None) -> Combatant:
@@ -2536,6 +2608,7 @@ def _resolve_monster_attack_activities(
     # concentration effects therefore remain cascade-governed only —
     # no timed expiry — same as before this task.
     _record_effect_lifecycle_links(live, actor, pre_event_count)
+    _sync_legendary_resistance(live, pre_event_count)
 
 
 def _take_legendary_action(live: _LiveCombat, monster: Combatant) -> None:
@@ -2828,6 +2901,19 @@ class _LiveCombat:
     # pair, which never repeats, so old entries are simply inert going
     # forward rather than needing eviction.
     legendary_windows_used: set[tuple[int, str, str]] = field(default_factory=set)
+    # C18 §Monster action economy — Legendary Resistance (Task 7). SRD 5.2:
+    # "If the monster fails a saving throw, it can choose to succeed
+    # instead." The engine has no mid-resolution round-trip to a host, so the
+    # choice is a PRE-ARMED declaration: ``resolve_legendary_resistance``
+    # increments the bearer's count here BEFORE the save it will convert is
+    # even rolled. Keyed entity_id -> armed-but-not-yet-consumed use count.
+    # ``activities/save_primitive.roll_save`` consults + decrements a
+    # per-resolution COPY of this dict (projected by
+    # ``_build_hydration_payload``); ``_sync_legendary_resistance`` reconciles
+    # this authoritative dict (and ``Combatant.legendary_resistances_remaining``)
+    # from the ``LegendaryResistanceUsed`` events a resolution actually
+    # emitted (the "read the events" pattern the reaction drains use).
+    legendary_resistance_armed: dict[str, int] = field(default_factory=dict)
     # Turn-boundary hook registry (``dnd5e_engine.turn_lifecycle``). Populated
     # by ``_register_default_turn_hooks`` in ``start_combat``; run by
     # ``_end_turn_and_advance`` / ``_begin_turn``. Every rule that fires "at the
@@ -2867,6 +2953,54 @@ def _get_live(handle: CombatHandle) -> _LiveCombat:
 # owns. Engine-internal callers use _get_live (the private _LiveCombat).
 def get_live(handle: CombatHandle) -> LiveCombatView:
     return LiveCombatView.from_live(_get_live(handle))
+
+
+def resolve_legendary_resistance(handle: CombatHandle, entity_id: str) -> int:
+    """SRD 5.2 Legendary Resistance — *"If the monster fails a saving throw,
+    it can choose to succeed instead."*
+
+    A PRE-ARMED declaration: the engine has no mid-resolution round-trip to a
+    host, so a monster's Legendary Resistance choice must be committed
+    BEFORE the save it will convert is even rolled — call this any time
+    before submitting the intent that will force ``entity_id``'s save.
+    Synchronous (no roll, no I/O): it only arms a declaration that
+    ``activities/save_primitive.roll_save`` consults the next time this
+    entity's save fails.
+
+    Validates: the combat is live (``IntentRejectedError("combat_ended", …)``,
+    mirroring every other seam entry point); ``entity_id`` is an encounter
+    member carrying the Legendary Resistance trait
+    (``MonsterTraitMechanic.LEGENDARY_RESISTANCE in combatant.trait_mechanics``);
+    and its REMAINING per-day pool exceeds the count already armed (arming a
+    4th use against a 3/day pool is rejected, not silently capped). On
+    success, increments ``live.legendary_resistance_armed[entity_id]`` and
+    returns the new armed count; otherwise raises
+    ``IntentRejectedError("no_legendary_resistance", …)``.
+    """
+    live = _get_live(handle)
+    if live.ended:
+        raise IntentRejectedError("combat_ended", f"handle={handle.handle_id}")
+    bearer = _find_combatant(live, entity_id)
+    if (
+        bearer is None
+        or entity_id not in live.encounter_ids
+        or MonsterTraitMechanic.LEGENDARY_RESISTANCE not in bearer.trait_mechanics
+    ):
+        raise IntentRejectedError(
+            "no_legendary_resistance",
+            f"entity_id={entity_id!r} has no Legendary Resistance trait",
+        )
+    already_armed = live.legendary_resistance_armed.get(entity_id, 0)
+    if bearer.legendary_resistances_remaining <= already_armed:
+        raise IntentRejectedError(
+            "no_legendary_resistance",
+            f"entity_id={entity_id!r} has no unarmed Legendary Resistance use "
+            f"left (remaining={bearer.legendary_resistances_remaining}, "
+            f"already_armed={already_armed})",
+        )
+    new_armed = already_armed + 1
+    live.legendary_resistance_armed[entity_id] = new_armed
+    return new_armed
 
 
 def get_actor_active_effects(handle: CombatHandle, entity_id: str) -> tuple[ActiveEffect, ...]:
@@ -4288,6 +4422,18 @@ def _emit_apply_damage(live: _LiveCombat, event: DamageApplied) -> None:
         roll = roll_d20_test(live.rng, modifier, AdvantageSources())
         roll_total = roll.total
         succeeded = roll_total >= dc
+        # C18 §Monster action economy — Legendary Resistance: the
+        # concentration check bypasses ``activities/save_primitive.roll_save``
+        # (it rolls its own d20 above) and emits TWO events sharing this one
+        # ``succeeded`` flag (``SaveRolled`` + ``ConcentrationCheck``, below),
+        # so the conversion must land before either — via the same shared
+        # helper the repeat save uses.
+        if (
+            not succeeded
+            and concentrator is not None
+            and _convert_failed_save_if_armed(live, concentrator)
+        ):
+            succeeded = True
         # TRANSITIONAL (F2c): the concentration check emits BOTH the
         # generic ``SaveRolled(ability="con")`` it has always emitted and
         # the specific ``ConcentrationCheck``. Hosts should migrate to the
@@ -5226,6 +5372,18 @@ def _build_hydration_payload(live: _LiveCombat, caster: Combatant | None = None)
     # IEffect parent/child graph: empty initially; the per-evaluation
     # ``triggering_ieffect`` flows through ``ctx.variables`` for now.
     ieffect_graph: dict[str, Any] = {}
+
+    # C18 §Monster action economy — Legendary Resistance (Task 7). Fresh
+    # COPIES per resolution: ``activities/save_primitive.roll_save`` mutates
+    # both dicts in place on a conversion, and ``_sync_legendary_resistance``
+    # reads the resulting ``LegendaryResistanceUsed`` events afterward rather
+    # than these dicts directly, so mutating a throwaway copy here is safe.
+    legendary_resistance_armed = dict(live.legendary_resistance_armed)
+    legendary_resistances_remaining_by_entity = {
+        c.entity_id: c.legendary_resistances_remaining
+        for c in live.initiative
+        if MonsterTraitMechanic.LEGENDARY_RESISTANCE in c.trait_mechanics
+    }
     return {
         "passive_damage_modifiers": passive_damage_modifiers,
         "save_modifiers": save_modifiers,
@@ -5237,6 +5395,8 @@ def _build_hydration_payload(live: _LiveCombat, caster: Combatant | None = None)
         "available_slots": available_slots,
         "existing_concentration": existing_concentration,
         "ieffect_graph": ieffect_graph,
+        "legendary_resistance_armed": legendary_resistance_armed,
+        "legendary_resistances_remaining_by_entity": legendary_resistances_remaining_by_entity,
     }
 
 
@@ -6161,6 +6321,14 @@ def _run_end_of_turn_saves(live: _LiveCombat, actor_id: str) -> None:
                 roll_total, succeeded = roll.total, roll.total >= dc
                 mode, natural, roll_modifier = roll.mode, roll.kept, roll.modifier
                 roll_sources = list(roll.sources)
+            # C18 §Monster action economy — Legendary Resistance: this save
+            # bypasses ``activities/save_primitive.roll_save`` entirely (it
+            # rolls its own d20 above), so the conversion is applied here,
+            # BEFORE ``SaveRolled`` is emitted, via the shared orchestrator-
+            # level helper (``_convert_failed_save_if_armed`` — also used by
+            # the concentration check below).
+            if not succeeded and target is not None and _convert_failed_save_if_armed(live, target):
+                succeeded = True
             _emit(
                 live,
                 SaveRolled(
@@ -8672,10 +8840,15 @@ def _resolve_readied_spell_cast(
         # fetched Weapon, so the proficiency gate never applies here.
         target_distance_ft=_target_distance_map(live, reactor.entity_id, [reactor]),
         attacker_grappler_id=_condition_source_entity(live, reactor, "grappled"),
+        legendary_resistance_armed=payload["legendary_resistance_armed"],
+        legendary_resistances_remaining_by_entity=payload[
+            "legendary_resistances_remaining_by_entity"
+        ],
     )
     pre_event_count = len(live.event_log)
     for activity in spell.activities:
         resolve_activity(activity, actx, weapon=None)
+    _sync_legendary_resistance(live, pre_event_count)
 
     for ev in live.event_log[pre_event_count:]:
         if (
@@ -8837,9 +9010,14 @@ def _drain_counterspell_reaction(
         # resolves a SaveActivity, never an AttackActivity with a fetched
         # Weapon, so the proficiency gate never applies here.
         attacker_grappler_id=_condition_source_entity(live, reactor, "grappled"),
+        legendary_resistance_armed=payload["legendary_resistance_armed"],
+        legendary_resistances_remaining_by_entity=payload[
+            "legendary_resistances_remaining_by_entity"
+        ],
     )
     pre_event_count = len(live.event_log)
     resolve_activity(save_activity, actx, weapon=None)
+    _sync_legendary_resistance(live, pre_event_count)
     save_events = [
         ev
         for ev in live.event_log[pre_event_count:]
@@ -9401,6 +9579,13 @@ async def submit_player_intent(
             # carries no ``Weapon``, so it can never cleave today.
             cleave_available=cleave_available,
             cleave_candidate=cleave_candidate,
+            # C18 §Monster action economy — Legendary Resistance sidecars
+            # (Task 7): a PC attack/cast/item/feature can force a save on a
+            # monster target holding a pre-armed conversion.
+            legendary_resistance_armed=payload["legendary_resistance_armed"],
+            legendary_resistances_remaining_by_entity=payload[
+                "legendary_resistances_remaining_by_entity"
+            ],
         )
         for activity in activities:
             resolve_activity(activity, actx, weapon=fetched_weapon)
@@ -9480,6 +9665,7 @@ async def submit_player_intent(
     # EffectApplied→ConditionApplied emit order, so this seam and
     # ``_record_effect_lifecycle_links`` below keep working unchanged.
     _writeback_concentration(live, current, pre_event_count)
+    _sync_legendary_resistance(live, pre_event_count)
 
     # Persistent IEffect-graph linkage — record concentration ownership,
     # effect→condition bijection, and any end-of-turn repeat-save specs

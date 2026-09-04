@@ -377,6 +377,26 @@ class ActivityResolutionContext:
     # touches the spatial seam. Absent target ⇒ no adjacent ally. Empty default
     # keeps the golden corpus identical.
     sneak_attack_ally_adjacent: dict[str, bool] = field(default_factory=dict)
+    # C18 §Monster action economy — SRD 5.2 Legendary Resistance: "If the
+    # monster fails a saving throw, it can choose to succeed instead." The
+    # engine has no mid-resolution round-trip to a host, so the choice is a
+    # PRE-ARMED declaration (``resolve_legendary_resistance``, orchestrator
+    # public seam) consulted by ``activities/save_primitive.roll_save`` the
+    # next time THAT entity's save fails. Keyed by the SAVING entity's
+    # ``entity_id`` -> the number of armed-but-not-yet-consumed uses (mirrors
+    # ``_LiveCombat.legendary_resistance_armed``, projected fresh by
+    # ``_build_hydration_payload`` for every resolution). Empty default keeps
+    # every combat without an armed declaration byte-identical.
+    legendary_resistance_armed: dict[str, int] = field(default_factory=dict)
+    # The same entity's REMAINING per-day pool (mirrors
+    # ``Combatant.legendary_resistances_remaining``), consulted alongside
+    # ``legendary_resistance_armed`` so a conversion never drops a pool
+    # already exhausted by another resolution earlier in the SAME hydration
+    # payload's lifetime. Decremented in lockstep with ``legendary_resistance_
+    # armed`` by the conversion; the orchestrator reconciles the authoritative
+    # ``Combatant`` field afterward via ``_sync_legendary_resistance``. Empty
+    # default keeps every non-bearer byte-identical.
+    legendary_resistances_remaining_by_entity: dict[str, int] = field(default_factory=dict)
     # Test-determinism seams (our own code): variables["force_d20"],
     # variables["force_save_d20"], variables["in_crit"].
     variables: dict[str, int] = field(default_factory=dict)
