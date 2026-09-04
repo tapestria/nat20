@@ -760,6 +760,106 @@ def test_repeat_save_path_honours_an_armed_use():
     assert used[0].uses_remaining == 2
 
 
+# -- C18 Task 7 fix round 1 -- Grapple/Shove bypass + double-decrement -------
+
+
+def test_grapple_of_an_armed_dragon_converts_the_failed_save():
+    """Fix round 1, Finding 1 — ``_roll_unarmed_option_save`` (Grapple/Shove)
+    bypasses ``activities/save_primitive.roll_save`` entirely, just like the
+    repeat save and the concentration check; an armed dragon must not be
+    Grappled on a save that would otherwise fail, and the spent use must not
+    leak into a later save."""
+
+    async def go():
+        handle, live = await _start(
+            [_hero(col=0)],
+            [_foe("adult-red-dragon", hp=256, ac=19, col=1)],
+            seed=1,
+        )
+        # STR 1 / DEX 1 guarantees the save fails regardless of the d20
+        # (mirrors the C14 grapple-save-fail idiom — this path has no
+        # ``force_save_d20`` seam).
+        for idx, c in enumerate(live.initiative):
+            if c.entity_id == "mon:foe":
+                live.initiative[idx] = c.model_copy(update={"strength": 1, "dexterity": 1})
+                break
+        assert resolve_legendary_resistance(handle, "mon:foe") == 1
+        await submit_player_intent(
+            handle,
+            actor_id="char:hero",
+            intent=PlayerIntent(intent_type="grapple", target_id="mon:foe"),
+        )
+        return handle, live
+
+    handle, live = _run(go())
+    save = next(e for e in _events(live, SaveRolled) if e.target_id == "mon:foe")
+    assert save.succeeded is True
+    used = _events(live, LegendaryResistanceUsed)
+    assert used
+    assert used[0].uses_remaining == 2
+    assert not [e for e in _events(live, ConditionApplied) if e.condition == "grappled"]
+    assert _get_live(handle).legendary_resistance_armed.get("mon:foe", 0) == 0
+
+
+def test_concentration_check_double_decrement_is_prevented_with_two_armed_uses():
+    """Fix round 1, Finding 2 — ``_convert_failed_save_if_armed`` fires from
+    INSIDE ``resolve_activity`` (via ``_emit_apply_damage``) on the
+    concentration-check path, so its ``LegendaryResistanceUsed`` lands inside
+    the very ``[pre_event_count, ...)`` window an enclosing
+    ``_sync_legendary_resistance`` call scans afterward. With TWO armed uses
+    the (pre-fix) bug silently drops one for free; the single-authoritative-
+    writer fix must leave exactly one use spent per failed check."""
+
+    async def go():
+        handle, live = await _wizard_vs_dragon(seed=1)
+        assert resolve_legendary_resistance(handle, "mon:foe") == 1
+        assert resolve_legendary_resistance(handle, "mon:foe") == 2
+        dragon = next(c for c in live.initiative if c.entity_id == "mon:foe")
+        # CON 1 + no save proficiency guarantees the concentration CON save
+        # fails against a massive-damage DC (capped at 30) regardless of the
+        # seeded roll (this path has no ``force_save_d20`` seam either).
+        dragon.constitution = 1
+        dragon.save_proficiencies = []
+        return handle, live
+
+    handle, live = _run(go())
+
+    from dnd5e_engine import orchestrator as orch
+
+    def _fail_a_concentration_check() -> list[LegendaryResistanceUsed]:
+        live.concentration_chain["mon:foe"] = [("mon:foe", "eff:test", "spell:test")]
+        pre = len(live.event_log)
+        orch._emit_apply_damage(
+            live,
+            orch.DamageApplied(
+                target_id="mon:foe",
+                amount=1000,
+                damage_type="fire",
+                source_id="char:wiz",
+                is_overkill=False,
+            ),
+        )
+        # Mirrors the enclosing resolution's own post-``resolve_activity``
+        # call — the exact window Finding 2 identified as re-processing the
+        # helper's own event.
+        orch._sync_legendary_resistance(live, pre)
+        return [e for e in live.event_log[pre:] if isinstance(e, LegendaryResistanceUsed)]
+
+    first = _fail_a_concentration_check()
+    assert first
+    assert first[0].uses_remaining == 2
+    assert _get_live(handle).legendary_resistance_armed.get("mon:foe") == 1
+    dragon = next(c for c in live.initiative if c.entity_id == "mon:foe")
+    assert dragon.legendary_resistances_remaining == 2
+
+    second = _fail_a_concentration_check()
+    assert second
+    assert second[0].uses_remaining == 1
+    assert _get_live(handle).legendary_resistance_armed.get("mon:foe", 0) == 0
+    dragon = next(c for c in live.initiative if c.entity_id == "mon:foe")
+    assert dragon.legendary_resistances_remaining == 1
+
+
 def test_dead_dragon_cannot_take_legendary_actions():
     """A dragon at 0 HP is no longer a legal legendary actor — SRD 5.2
     legendary actions are a living creature's option, not a corpse's."""

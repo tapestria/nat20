@@ -760,17 +760,28 @@ def _sync_legendary_resistance(live: _LiveCombat, pre_event_count: int) -> None:
     after a resolution that may have rolled a save.
 
     Scans ``live.event_log[pre_event_count:]`` for ``LegendaryResistanceUsed``
-    (the "read the events" pattern the reaction drains use) and, for each,
-    decrements the AUTHORITATIVE ``Combatant.legendary_resistances_remaining``
+    (the "read the events" pattern the reaction drains use) and, for each NOT
+    already applied by ``_convert_failed_save_if_armed`` (see
+    ``live.legendary_resistance_applied_event_indices`` — fix round 1: that
+    helper's own conversion, fired synchronously from INSIDE
+    ``resolve_activity`` on the concentration-check path, would otherwise sit
+    inside this very ``[pre_event_count, …)`` window and get decremented
+    TWICE), decrements the AUTHORITATIVE ``Combatant.legendary_resistances_remaining``
     and ``live.legendary_resistance_armed`` — the per-resolution hydration
-    payload the conversion actually mutated was a disposable COPY
-    (``_build_hydration_payload``), so this is the one place those two
-    canonical stores are ever written down. A no-op when the resolution
-    converted nothing (the common case — every currently-legal combat is
-    byte-identical).
+    payload the primary conversion (``save_primitive.roll_save``) actually
+    mutated was a disposable COPY (``_build_hydration_payload``), so this is
+    the one place those two canonical stores are written down for THAT path.
+    A no-op when the resolution converted nothing (the common case — every
+    currently-legal combat is byte-identical).
     """
-    for ev in live.event_log[pre_event_count:]:
+    for index, ev in enumerate(live.event_log[pre_event_count:], start=pre_event_count):
         if not isinstance(ev, LegendaryResistanceUsed):
+            continue
+        if index in live.legendary_resistance_applied_event_indices:
+            # Already applied synchronously by ``_convert_failed_save_if_armed``
+            # (the concentration-check path) — consume the marker and skip,
+            # rather than decrementing a second time.
+            live.legendary_resistance_applied_event_indices.discard(index)
             continue
         armed = live.legendary_resistance_armed.get(ev.actor_id, 0)
         if armed > 0:
@@ -781,19 +792,39 @@ def _sync_legendary_resistance(live: _LiveCombat, pre_event_count: int) -> None:
 
 
 def _convert_failed_save_if_armed(live: _LiveCombat, target: Combatant) -> bool:
-    """SRD 5.2 Legendary Resistance for the two orchestrator-level save rolls
+    """SRD 5.2 Legendary Resistance for the orchestrator-level save rolls
     that bypass the typed activity resolver entirely (the end-of-turn repeat
-    save and the concentration check) — ``activities/save_primitive.roll_save``
-    never runs for either, so its conversion never sees them.
+    save, the concentration check, and the Grapple/Shove unarmed-option save)
+    — ``activities/save_primitive.roll_save`` never runs for any of these, so
+    its conversion never sees them. Death saves are OUT OF SCOPE by design —
+    SRD 5.2 Legendary Resistance converts a FAILED saving throw, and a death
+    save has no DC/pass-fail shape this helper's gate applies to.
 
-    Mirrors that conversion's gate exactly: a no-op unless ``target`` has an
-    armed use (``live.legendary_resistance_armed``) AND at least one use
-    remains (``Combatant.legendary_resistances_remaining``). On a hit,
+    Mirrors the primary conversion's gate exactly: a no-op unless ``target``
+    has an armed use (``live.legendary_resistance_armed``) AND at least one
+    use remains (``Combatant.legendary_resistances_remaining``). On a hit,
     decrements both AUTHORITATIVE stores directly (no disposable hydration
-    copy is in play on these two paths) and emits ``LegendaryResistanceUsed``
-    itself — unlike the primary conversion, the caller has not yet emitted
-    its own ``SaveRolled`` at the point it must decide whether to flip
-    ``succeeded``, so this event necessarily precedes it on these two paths.
+    copy is in play on these paths) and emits ``LegendaryResistanceUsed``
+    itself — unlike the primary conversion (which emits ``SaveRolled`` FIRST,
+    then ``LegendaryResistanceUsed``), the caller here has not yet emitted
+    its own ``SaveRolled``/``ConcentrationCheck`` at the point it must decide
+    whether to flip ``succeeded``, so ``LegendaryResistanceUsed`` necessarily
+    PRECEDES the caller's own roll event on every path that uses this helper.
+
+    Single-authoritative-writer note (fix round 1): the concentration-check
+    caller fires from INSIDE ``resolve_activity`` (via ``_emit_apply_damage``),
+    so its ``LegendaryResistanceUsed`` lands inside the very
+    ``[pre_event_count, …)`` window the enclosing resolution's own
+    ``_sync_legendary_resistance`` call scans afterwards. Recording this
+    event's log index in ``live.legendary_resistance_applied_event_indices``
+    lets that later scan skip it instead of decrementing a second time. The
+    repeat-save and Grapple/Shove callers need no such guard in practice (no
+    enclosing ``_sync_legendary_resistance`` window wraps either — the repeat
+    save fires from a ``turn_end`` hook strictly after one, and Grapple/Shove
+    resolve outside the typed-activity path entirely) but marking the index
+    unconditionally is harmless and keeps this helper's contract uniform
+    across every caller.
+
     Returns whether the conversion applied so the caller can flip its own
     ``succeeded`` flag. Draws no dice.
     """
@@ -809,6 +840,7 @@ def _convert_failed_save_if_armed(live: _LiveCombat, target: Combatant) -> bool:
             uses_remaining=target.legendary_resistances_remaining,
         ),
     )
+    live.legendary_resistance_applied_event_indices.add(len(live.event_log) - 1)
     return True
 
 
@@ -2914,6 +2946,24 @@ class _LiveCombat:
     # from the ``LegendaryResistanceUsed`` events a resolution actually
     # emitted (the "read the events" pattern the reaction drains use).
     legendary_resistance_armed: dict[str, int] = field(default_factory=dict)
+    # C18 §Monster action economy — Legendary Resistance (Task 7 fix round
+    # 1). Single-authoritative-writer guard: ``_sync_legendary_resistance``
+    # is the ONE place ``legendary_resistance_armed`` /
+    # ``Combatant.legendary_resistances_remaining`` are ever decremented from
+    # a ``LegendaryResistanceUsed`` event — EXCEPT the two orchestrator-level
+    # bypass paths (``_convert_failed_save_if_armed``, the repeat save +
+    # concentration check), which apply their own conversion synchronously
+    # (no later sync call wraps the repeat-save path at all — it fires from a
+    # ``turn_end`` hook, strictly after any enclosing resolution's own
+    # ``_sync_legendary_resistance`` call). The concentration check, however,
+    # fires DURING ``resolve_activity`` (from ``_emit_apply_damage``), inside
+    # the very ``[pre_event_count, …)`` window an enclosing
+    # ``_sync_legendary_resistance`` call scans afterwards — so without this
+    # guard that event would be double-applied. Records the ``live.event_log``
+    # index of every ``LegendaryResistanceUsed`` a bypass path already applied
+    # itself; ``_sync_legendary_resistance`` skips (and consumes) any index
+    # found here rather than re-decrementing.
+    legendary_resistance_applied_event_indices: set[int] = field(default_factory=set)
     # Turn-boundary hook registry (``dnd5e_engine.turn_lifecycle``). Populated
     # by ``_register_default_turn_hooks`` in ``start_combat``; run by
     # ``_end_turn_and_advance`` / ``_begin_turn``. Every rule that fires "at the
@@ -3478,7 +3528,16 @@ def _roll_unarmed_option_save(
 
     Emits the ``SaveRolled`` event and returns it so callers can branch on
     ``.succeeded`` (and read back the resolved ``.dc``) without recomputing
-    either."""
+    either.
+
+    Fix round 1: this save bypasses ``activities/save_primitive.roll_save``
+    just like the repeat save and concentration check, so it never saw the
+    C18 Legendary Resistance conversion — an armed target would be
+    grappled/shoved on a failed save with its armed use silently leaking
+    into a LATER save. Wired via the shared ``_convert_failed_save_if_armed``
+    helper, BEFORE the caller (``_handle_grapple``/``_handle_shove``)
+    branches on the outcome, so ``SaveRolled`` carries the final (possibly
+    converted) result."""
     target_id = target.entity_id
     dc = _unarmed_option_dc(attacker)
     ability = _resolve_grapple_save_ability(target)
@@ -3499,6 +3558,8 @@ def _roll_unarmed_option_save(
         roll_total, succeeded = roll.total, roll.total >= dc
         mode, natural, roll_modifier = roll.mode, roll.kept, roll.modifier
         roll_sources = list(roll.sources)
+    if not succeeded and _convert_failed_save_if_armed(live, target):
+        succeeded = True
     event = SaveRolled(
         target_id=target_id,
         ability=ability,
