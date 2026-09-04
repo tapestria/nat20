@@ -6,9 +6,24 @@ pins. Later C18 tasks append to this file."""
 from __future__ import annotations
 
 import asyncio
+from datetime import date
 
 import pytest
+from dnd5e_srd_data import MemoryAssetLoader, Provenance, ReviewState
 from dnd5e_srd_data.loader import BundledAssetLoader
+from dnd5e_srd_data.schema.common import CastActivity, CastSpellBlock
+from dnd5e_srd_data.schema.monster import (
+    AbilityScores,
+    CreatureSize,
+    CreatureType,
+    Monster,
+    MonsterAction,
+    MonsterActionKind,
+    Movement,
+    SavingThrowProficiencies,
+    Senses,
+    SkillProficiencies,
+)
 
 from dnd5e_engine import (
     EncounterMemberSpec,
@@ -21,6 +36,7 @@ from dnd5e_engine import (
     submit_player_intent,
 )
 from dnd5e_engine.events import (
+    AttackRolled,
     DamageApplied,
     HealingApplied,
     IntentSubmitted,
@@ -323,3 +339,126 @@ def test_exhausted_daily_spell_falls_back_to_the_next_candidate():
     uses = live.monster_action_uses_by_entity["mon:foe"]["spellcasting"].uses_remaining
     cone_key = next(k for k in uses if k.endswith(f":{_MAGE_CONE_OF_COLD_ACTIVITY_ID}"))
     assert uses[cone_key] == 0
+
+
+# -- Fix round 1 (reviewer finding) -- an attack-roll monster cast must ----
+# consume Help/Vex/Sap grants exactly like a mundane monster attack does; a
+# save-only cast must never touch them.
+
+_FIRE_BOLT_UUID = "Compendium.dnd5e.spells24.Item.phbsplFireBolt00"
+
+
+def _provenance() -> Provenance:
+    return Provenance(
+        source="foundry",
+        source_url="x",
+        ingest_date=date(2026, 6, 3),
+        ingest_version="v1",
+        srd_version=frozenset({"5.1"}),
+    )
+
+
+def _cast_striker_monster(slug: str = "cast-striker") -> Monster:
+    """A minimal stat-block spellcaster whose ONLY action is an at-will cast
+    of the bundled Fire Bolt (a ranged spell ATTACK roll cantrip) -- mirrors
+    ``tests/test_orchestrator_monster_typed.py::_monster``.
+    """
+    return Monster(
+        slug=slug,
+        name="Cast Striker",
+        description="A test spellcaster.",
+        creature_type=CreatureType.HUMANOID,
+        creature_size=CreatureSize.MEDIUM,
+        hp=20,
+        hp_dice="3d8+3",
+        ability_scores=AbilityScores(str=10, dex=10, con=10, int=16, wis=10, cha=10),
+        movement=Movement(walk=30),
+        senses=Senses(),
+        cr=1.0,
+        proficiency_bonus=2,
+        saving_throws=SavingThrowProficiencies(),
+        skills=SkillProficiencies(),
+        provenance=_provenance(),
+        review=ReviewState(),
+        spellcasting_ability="int",
+        actions=[
+            MonsterAction(
+                slug="spellcasting",
+                name="Spellcasting",
+                kind=MonsterActionKind.ACTION,
+                description="The creature casts a spell.",
+                activities=[
+                    CastActivity(
+                        name="Spellcasting",
+                        spell=CastSpellBlock(uuid=_FIRE_BOLT_UUID),
+                    )
+                ],
+            )
+        ],
+    )
+
+
+def test_attack_roll_monster_cast_consumes_a_help_grant():
+    """An armed Help grant against the PC target folds "help" advantage
+    into the monster's spell ATTACK roll (Fire Bolt) exactly like a mundane
+    monster attack -- and, unlike the pre-fix behaviour, is CONSUMED
+    afterward so it can't leak into a later, unrelated roll.
+
+    Self-help (mon:foe grants against its own attack): keeps the
+    differential clean of the UNRELATED "Help expires at the start of the
+    HELPER's own next turn" sweep (SRD 5.2 Actions in Combat) -- with only
+    hero + mon:foe in the encounter, the helper's own next turn never
+    starts within this single ``advance_monster_turn`` call, so a survived
+    grant can only mean the attack-roll consumption never ran.
+    """
+    fire_bolt = BundledAssetLoader().get_spell("fire-bolt")
+    assert fire_bolt is not None  # verify the bundled cantrip resolves first
+    set_lib_loader_for_tests(
+        MemoryAssetLoader(monsters=[_cast_striker_monster()], spells=[fire_bolt])
+    )
+
+    async def go():
+        handle, live = await _start(
+            [_hero(initiative=1)],
+            [_foe("cast-striker", initiative=20, hp=20, ac=10)],
+        )
+        # SRD 5.2 Actions in Combat -- Help: armed directly (no monster
+        # "help" PlayerIntent path exists), mirroring
+        # ``tests/test_dodge_help_hide.py``'s ``live.help_grants`` shape.
+        live.help_grants["char:hero"] = ["mon:foe"]
+        await advance_monster_turn(handle)
+        return live
+
+    live = _run(go())
+    rolled = [
+        e
+        for e in _events(live, AttackRolled)
+        if e.attacker_id == "mon:foe" and e.target_id == "char:hero"
+    ]
+    assert rolled
+    assert rolled[0].advantage == "advantage"
+    assert "help" in rolled[0].sources
+    # The grant was CONSUMED by this attack roll -- the fix under test.
+    assert live.help_grants.get("char:hero") in (None, [])
+
+
+def test_save_only_monster_cast_leaves_an_armed_help_grant_untouched():
+    """A save-only cast (the mage's Fireball, seed 5) never reads OR pops a
+    Help grant -- Help only ever assists an ATTACK roll (SRD 5.2 Actions in
+    Combat, "Assist an Attack Roll"), and an armed grant against the PC
+    target must survive a same-turn save-based spell untouched.
+    """
+
+    async def go():
+        handle, live = await _start(
+            [_hero(initiative=1)], [_foe("mage", initiative=20, hp=40, ac=12)], seed=5
+        )
+        live.help_grants["char:hero"] = ["mon:foe"]
+        await advance_monster_turn(handle)
+        return live
+
+    live = _run(go())
+    # Fireball (a save, not an attack roll) resolved -- sanity check we're
+    # actually exercising the save-only path this test claims to.
+    assert [e for e in _events(live, SaveRolled) if e.target_id == "char:hero"]
+    assert live.help_grants.get("char:hero") == ["mon:foe"]

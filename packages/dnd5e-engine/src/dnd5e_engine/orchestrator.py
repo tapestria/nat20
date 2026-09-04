@@ -1145,6 +1145,33 @@ def _pop_sap_mark(live: _LiveCombat, attacker_id: str, pre_event_count: int) -> 
         del live.sap_marks[attacker_id]
 
 
+def _consume_attack_roll_grants(
+    live: _LiveCombat,
+    current: Combatant,
+    target_list: list[Combatant],
+    pre_event_count: int,
+) -> None:
+    """SRD 5.2 §Actions in Combat — Help; §Weapon Mastery — Vex / Sap: pop
+    the one-use grants an ATTACK ROLL this resolution may have consumed.
+
+    Shared by the mundane monster-attack site and a monster stat-block cast
+    whose resolved spell includes an ``AttackActivity`` (C18 Task 5 fix
+    round 1) so the two branches cannot drift apart. A save-only resolution
+    must never call this: the three pop helpers only remove a grant when an
+    ``AttackRolled`` by ``current`` actually fired in this resolution's
+    event slice, so calling them here is a correctness-relevant gate, not
+    a redundant no-op.
+
+    Mastery-proc FOLDING (``_fold_mastery_procs``) is deliberately NOT
+    included here — it needs the resolved ``ActivityResolutionContext`` and
+    only ever matters for an actual ``Weapon`` swing, which neither a
+    monster attack nor a monster cast ever has; callers fold it separately.
+    """
+    _pop_help_grant(live, current.entity_id, target_list, pre_event_count)
+    _pop_vex_grants(live, current.entity_id, target_list, pre_event_count)
+    _pop_sap_mark(live, current.entity_id, pre_event_count)
+
+
 def _fold_mastery_procs(
     live: _LiveCombat, attacker_id: str, ctx: ActivityResolutionContext
 ) -> None:
@@ -2284,6 +2311,20 @@ def _resolve_monster_cast(
     _emit_spell_cast(live, current.entity_id, spell, slot_level)
     for child_activity in spell.activities:
         resolve_activity(child_activity, actx)
+
+    # SRD 5.2 §Actions in Combat — Help; §Weapon Mastery — Vex / Sap: a
+    # monster cast whose resolved spell includes an ``AttackActivity``
+    # (e.g. Scorching Ray, reached via Task 6's Fiery Rays legendary
+    # action) is an attack roll like any other — a Help/Vex grant folded
+    # into it above must be consumed here too, or it leaks into a later,
+    # unrelated roll. A save-only spell (Fireball, Cone of Cold, ...) never
+    # calls this: the shared helper's pop functions only remove a grant
+    # when an ``AttackRolled`` actually fired, but gating on the activity
+    # SHAPE here (rather than relying on that) keeps a save-only cast from
+    # even attempting the lookup. No mastery-proc fold either way — a
+    # monster cast has no ``Weapon``.
+    if any(isinstance(a, AttackActivity) for a in spell.activities):
+        _consume_attack_roll_grants(live, current, target_list, pre_event_count)
 
     # SRD §Innate/Prepared Spellcasting "N/Day" — spend the chosen
     # activity's per-day use. A ``None`` lookup (no tracked entry — an
@@ -9939,14 +9980,13 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
             # Monster attacks carry their damage on the AttackActivity itself,
             # not a separate Weapon (unlike the PC weapon path).
             resolve_activity(activity, actx, weapon=None)
-        # SRD 5.2 §Actions in Combat — Help: one-use pop, mirrors the PC site.
-        _pop_help_grant(live, current.entity_id, target_list, pre_event_count)
-        # SRD 5.2 §Weapon Mastery — Vex / Sap (C15 Task 6): mirrors the PC
-        # site's pop-then-fold ordering. A monster attack never produces a
-        # proc itself (no ``Weapon``, see above), so the fold is a no-op
-        # here in practice — wired for symmetry / future monster weapons.
-        _pop_vex_grants(live, current.entity_id, target_list, pre_event_count)
-        _pop_sap_mark(live, current.entity_id, pre_event_count)
+        # SRD 5.2 §Actions in Combat — Help; §Weapon Mastery — Vex / Sap
+        # (C15 Task 6): one-use pops, shared with the C18 monster-cast
+        # attack-roll branch via ``_consume_attack_roll_grants``. A monster
+        # attack never produces a Vex/Sap proc itself (no ``Weapon``), so
+        # the fold below is a no-op here in practice — wired for symmetry /
+        # future monster weapons.
+        _consume_attack_roll_grants(live, current, target_list, pre_event_count)
         _fold_mastery_procs(live, current.entity_id, actx)
         # SRD 5.2 §Actions in Combat — Hide, break clause: mirrors the PC
         # site. A monster hidden via a prior Hide loses Invisible the
