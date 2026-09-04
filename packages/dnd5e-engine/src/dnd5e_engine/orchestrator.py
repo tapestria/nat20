@@ -2443,30 +2443,55 @@ def _spend_legendary_use(live: _LiveCombat, monster: Combatant, action_slug: str
     )
 
 
-def _resolve_legendary_attack(
-    live: _LiveCombat, monster: Combatant, target: Combatant, activities: Sequence[Any]
+def _resolve_monster_attack_activities(
+    live: _LiveCombat,
+    actor: Combatant,
+    target_list: list[Combatant],
+    activities: Sequence[Any],
 ) -> None:
-    """Resolve a legendary action's own attack/save activities against
-    ``target``. Mirrors the mundane monster-attack branch of
-    ``advance_monster_turn`` (Shield drain, ``_monster_context_kwargs`` +
-    ``build_activity_context`` + ``resolve_activity``, Help/Vex/Sap grant
-    consumption, mastery-proc fold, Hide break, concentration writeback) —
-    but skips the movement-closing gambit: ``expand_action_to_activities``
-    is not needed for a single listed legendary action, and it always
-    resolves from the monster's current position, exactly like a
-    stat-block spellcast (``_resolve_monster_cast``).
+    """Resolve a monster's own attack/save ``Activity`` list against
+    ``target_list``: Shield drain, ``build_activity_context`` (via
+    ``_monster_context_kwargs``), the ``resolve_activity`` loop,
+    Help/Vex/Sap grant consumption, mastery-proc fold, the Hide break
+    clause, and concentration/effect-lifecycle writeback — the ONE
+    resolution sequence shared by the mundane monster-attack branch of
+    ``advance_monster_turn`` (which first expands multiattack via
+    ``expand_action_to_activities`` and may close distance with a move
+    before calling this) and a legendary action's own attack/save entry
+    (``_take_legendary_action``, which never moves and always resolves
+    from the monster's current position — same as a stat-block spellcast,
+    ``_resolve_monster_cast``). Extracted (C18 Task 6 fix round 1) so a
+    future hook added to one caller can't silently miss the other.
     """
-    target_list = [target]
+    # SRD §Reactions — drain the attacked PC's pending ``hit_by_attack``
+    # reaction (Shield) BEFORE the sidecar projection below, so the
+    # just-applied +5 AC effect folds into THIS attack's hydration
+    # payload — the monster-attacker / PC-defender direction. Shield's own
+    # resolution draws no dice, so the attack's d20 keeps its seed-stream
+    # position.
     _drain_targeted_reactions(
         live,
         trigger="hit_by_attack",
-        triggering_actor_id=monster.entity_id,
+        triggering_actor_id=actor.entity_id,
         targets=target_list,
     )
-    payload = _build_hydration_payload(live, caster=monster)
+    # The orchestrator owns the per-entity passive sidecars; project them
+    # once and hand the two dicts ``build_activity_context`` needs in (it
+    # stays pure — no orchestrator import, no double-compute). Mirrors the
+    # PC site.
+    payload = _build_hydration_payload(live, caster=actor)
     pre_event_count = len(live.event_log)
+    # Monster magnitudes (save DC = 8 + attack_bonus, mod = attack_bonus)
+    # are reproduced by ``build_activity_context``'s ``entity_type ==
+    # "Monster"`` branch — no per-call slot/spell parameters apply to a
+    # mundane monster attack. SRD 5.2 §Weapon Proficiency — "A monster is
+    # proficient with any weapon in its stat block": left on the default
+    # (True) — a monster's ``Combatant.weapon_proficiencies`` is never
+    # explicitly set (the R1 sentinel), so it would resolve to True via
+    # ``_is_proficient_with_weapon`` anyway; the SRD rule makes the gate
+    # a no-op for every monster.
     actx = build_activity_context(
-        monster,
+        actor,
         target_list,
         rng=live.rng,
         event_emitter=lambda ev: _emit(live, ev),
@@ -2475,18 +2500,42 @@ def _resolve_legendary_attack(
         spellcasting_ability=None,
         concentration=False,
         source_passive_effects=[],
+        # Monster/reaction paths don't delegate casts yet — PC-path
+        # delegation lives in _build_cast_spell_book; extending it here
+        # is a recorded follow-up.
         spell_book={},
-        **_monster_context_kwargs(live, monster, target_list, payload),
+        **_monster_context_kwargs(live, actor, target_list, payload),
     )
     for activity in activities:
+        # Monster attacks carry their damage on the AttackActivity itself,
+        # not a separate Weapon (unlike the PC weapon path).
         resolve_activity(activity, actx, weapon=None)
-    _consume_attack_roll_grants(live, monster, target_list, pre_event_count)
-    _fold_mastery_procs(live, monster.entity_id, actx)
-    if monster.entity_id in live.hidden_entities:
-        _emit(live, ConditionRemoved(target_id=monster.entity_id, condition="invisible"))
-        live.hidden_entities.discard(monster.entity_id)
-    _writeback_concentration(live, monster, pre_event_count)
-    _record_effect_lifecycle_links(live, monster, pre_event_count)
+    # SRD 5.2 §Actions in Combat — Help; §Weapon Mastery — Vex / Sap
+    # (C15 Task 6): one-use pops, shared with the C18 monster-cast
+    # attack-roll branch via ``_consume_attack_roll_grants``. A monster
+    # attack never produces a Vex/Sap proc itself (no ``Weapon``), so
+    # the fold below is a no-op here in practice — wired for symmetry /
+    # future monster weapons.
+    _consume_attack_roll_grants(live, actor, target_list, pre_event_count)
+    _fold_mastery_procs(live, actor.entity_id, actx)
+    # SRD 5.2 §Actions in Combat — Hide, break clause: mirrors the PC
+    # site. A monster hidden via a prior Hide loses Invisible the
+    # moment IT makes an attack roll (no monster gambit currently
+    # issues a Hide intent, so this is defensive symmetry, not a
+    # reachable path today).
+    if actor.entity_id in live.hidden_entities:
+        _emit(live, ConditionRemoved(target_id=actor.entity_id, condition="invisible"))
+        live.hidden_entities.discard(actor.entity_id)
+    # Symmetric concentration writeback for spellcaster monsters
+    # (mirrors the PC path; no-op for non-caster monsters).
+    _writeback_concentration(live, actor, pre_event_count)
+    # ``concentration_max_rounds`` stays on the default (None) here: the
+    # monster path has no typed ``Spell`` in scope (monster stat-block
+    # casts resolve straight off the monster's own activities, not a
+    # fetched Spell) until C18 threads one through. Monster
+    # concentration effects therefore remain cascade-governed only —
+    # no timed expiry — same as before this task.
+    _record_effect_lifecycle_links(live, actor, pre_event_count)
 
 
 def _take_legendary_action(live: _LiveCombat, monster: Combatant) -> None:
@@ -2500,7 +2549,7 @@ def _take_legendary_action(live: _LiveCombat, monster: Combatant) -> None:
     at-will/N-per-day gating and Spell lookup a stat-block spellcast on the
     monster's own turn uses; a non-cast action qualifies when it carries an
     ``AttackActivity``/``SaveActivity``/``DamageActivity`` and resolves
-    through ``_resolve_legendary_attack``. A ``utility``-only entry (e.g.
+    through ``_resolve_monster_attack_activities``. A ``utility``-only entry (e.g.
     Pounce) is never offensive and is skipped. Only entries whose
     ``legendary_cost`` is unset or ``1`` are considered — the bundled
     corpus carries no multi-point legendary action today (see BACKLOG for
@@ -2541,7 +2590,7 @@ def _take_legendary_action(live: _LiveCombat, monster: Combatant) -> None:
         if not is_offensive:
             continue
         _spend_legendary_use(live, monster, action.slug)
-        _resolve_legendary_attack(live, monster, target, activities)
+        _resolve_monster_attack_activities(live, monster, [target], activities)
         return
 
     raise IntentRejectedError(
@@ -10158,81 +10207,7 @@ async def advance_monster_turn(
         current = next(c for c in live.initiative if c.entity_id == current.entity_id)
         assert chosen_target is not None  # mypy: narrowed by will_attack
         target_list = [chosen_target]
-
-        # SRD §Reactions — drain the attacked PC's pending ``hit_by_attack``
-        # reaction (Shield) BEFORE the sidecar projection below, so the
-        # just-applied +5 AC effect folds into THIS attack's hydration
-        # payload — the monster-attacker / PC-defender direction. Shield's own
-        # resolution draws no dice, so the attack's d20 keeps its seed-stream
-        # position.
-        _drain_targeted_reactions(
-            live,
-            trigger="hit_by_attack",
-            triggering_actor_id=current.entity_id,
-            targets=target_list,
-        )
-
-        # The orchestrator owns the per-entity passive sidecars; project them
-        # once and hand the two dicts ``build_activity_context`` needs in (it
-        # stays pure — no orchestrator import, no double-compute). Mirrors the
-        # PC site.
-        payload = _build_hydration_payload(live, caster=current)
-        pre_event_count = len(live.event_log)
-        # Monster magnitudes (save DC = 8 + attack_bonus, mod = attack_bonus)
-        # are reproduced by ``build_activity_context``'s ``entity_type ==
-        # "Monster"`` branch — no per-call slot/spell parameters apply to a
-        # mundane monster attack. SRD 5.2 §Weapon Proficiency — "A monster is
-        # proficient with any weapon in its stat block": left on the default
-        # (True) — a monster's ``Combatant.weapon_proficiencies`` is never
-        # explicitly set (the R1 sentinel), so it would resolve to True via
-        # ``_is_proficient_with_weapon`` anyway; the SRD rule makes the gate
-        # a no-op for every monster.
-        actx = build_activity_context(
-            current,
-            target_list,
-            rng=live.rng,
-            event_emitter=lambda ev: _emit(live, ev),
-            slot_level=None,
-            base_spell_level=None,
-            spellcasting_ability=None,
-            concentration=False,
-            source_passive_effects=[],
-            # Monster/reaction paths don't delegate casts yet — PC-path
-            # delegation lives in _build_cast_spell_book; extending it here
-            # is a recorded follow-up.
-            spell_book={},
-            **_monster_context_kwargs(live, current, target_list, payload),
-        )
-        for activity in monster_activities:
-            # Monster attacks carry their damage on the AttackActivity itself,
-            # not a separate Weapon (unlike the PC weapon path).
-            resolve_activity(activity, actx, weapon=None)
-        # SRD 5.2 §Actions in Combat — Help; §Weapon Mastery — Vex / Sap
-        # (C15 Task 6): one-use pops, shared with the C18 monster-cast
-        # attack-roll branch via ``_consume_attack_roll_grants``. A monster
-        # attack never produces a Vex/Sap proc itself (no ``Weapon``), so
-        # the fold below is a no-op here in practice — wired for symmetry /
-        # future monster weapons.
-        _consume_attack_roll_grants(live, current, target_list, pre_event_count)
-        _fold_mastery_procs(live, current.entity_id, actx)
-        # SRD 5.2 §Actions in Combat — Hide, break clause: mirrors the PC
-        # site. A monster hidden via a prior Hide loses Invisible the
-        # moment IT makes an attack roll (no monster gambit currently
-        # issues a Hide intent, so this is defensive symmetry, not a
-        # reachable path today).
-        if current.entity_id in live.hidden_entities:
-            _emit(live, ConditionRemoved(target_id=current.entity_id, condition="invisible"))
-            live.hidden_entities.discard(current.entity_id)
-        # Symmetric concentration writeback for spellcaster monsters
-        # (mirrors the PC path; no-op for non-caster monsters).
-        _writeback_concentration(live, current, pre_event_count)
-        # ``concentration_max_rounds`` stays on the default (None) here: the
-        # monster path has no typed ``Spell`` in scope (monster stat-block
-        # casts resolve straight off the monster's own activities, not a
-        # fetched Spell) until C18 threads one through. Monster
-        # concentration effects therefore remain cascade-governed only —
-        # no timed expiry — same as before this task.
-        _record_effect_lifecycle_links(live, current, pre_event_count)
+        _resolve_monster_attack_activities(live, current, target_list, monster_activities)
 
     # Advance the turn — the single shared path (F3a); this site used to carry
     # its own copy of the wrap-and-emit block.

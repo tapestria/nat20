@@ -597,3 +597,20 @@ def test_legendary_kwarg_is_rejected_when_no_foe_has_legendary_actions():
 
     err = _run(go())
     assert err.reason == "no_legendary_action"
+
+
+def test_dead_dragon_cannot_take_legendary_actions():
+    """A dragon at 0 HP is no longer a legal legendary actor — SRD 5.2
+    legendary actions are a living creature's option, not a corpse's."""
+
+    async def go():
+        handle, live = await _dragon_fight()
+        await _pass(handle)
+        live.initiative[1].hp_current = 0
+        live.initiative[1].is_alive = False
+        with pytest.raises(IntentRejectedError) as excinfo:
+            await advance_monster_turn(handle, legendary=True)
+        return excinfo.value
+
+    err = _run(go())
+    assert err.reason == "no_legendary_action"
