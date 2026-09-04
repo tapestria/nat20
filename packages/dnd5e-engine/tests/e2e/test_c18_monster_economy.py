@@ -512,16 +512,16 @@ def test_c18_s06_pack_tactics_grants_attack_advantage_with_adjacent_ally():
     assert rolled_b.advantage == "advantage"
 
 
-@xfail_cluster(18, "monster action economy")
-def test_c18_s07_stat_block_spellcaster_monster_actually_casting_is_unreachable():
+def test_c18_s07_stat_block_spellcaster_monster_actually_casts():
     """C18-S07: SRD 5.2 "If a monster can cast any spells, its stat block
     lists the spells and provides the monster's spellcasting ability,
     spell save DC ..., and spell attack bonus ..."
     (packs/_source/content24/monsters/monsters.yml:262-286,
-    "Spellcasting"). ``Monster`` has no ``spellcasting`` field at all;
-    ``select_typed_monster_action`` excludes ``CastActivity`` from
-    "offensive" entirely, and the monster-turn path builds
-    ``spell_book={}`` unconditionally.
+    "Spellcasting"). ``Monster.spellcasting_ability`` (C18) hydrates onto
+    the live ``Combatant``; ``_monster_cast_candidate`` picks the mage's
+    first offensive limited-use spell (Fireball, listed ahead of the two
+    other N/Day tiers) and ``_resolve_monster_cast`` resolves it against
+    the stat block's own ability/PB — int 17 (+3) + PB +3 -> DC 14.
     """
 
     async def _run():
@@ -569,6 +569,7 @@ def test_c18_s07_stat_block_spellcaster_monster_actually_casting_is_unreachable(
     saves = [e for e in events_of(live, SaveRolled) if e.target_id == "char:hero"]
     assert saves
     assert saves[0].ability == "dex"
+    assert saves[0].dc == 14
 
 
 @xfail_cluster(18, "monster action economy")

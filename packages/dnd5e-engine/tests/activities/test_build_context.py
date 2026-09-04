@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import random
 
-from dnd5e_engine.activities.build_context import build_activity_context
+from dnd5e_engine.activities.build_context import _save_dc, build_activity_context
 from dnd5e_engine.activities.save_primitive import roll_save
 from dnd5e_engine.types.combat import Combatant
 
@@ -98,13 +98,63 @@ def test_pc_level5_pb_is_three():
 
 def test_monster_caster_magnitudes_uniform_mod_and_flat_dc():
     # Monster: mod = attack_bonus (monster_ai), save_dc = 8 + attack_bonus
-    # (_monster_save_dc), uniform across all six abilities.
+    # (_monster_save_dc), uniform across all six abilities. C18 Task 5: the
+    # flat approximation only applies with no resolvable
+    # ``spellcasting_ability`` (the real mundane-attack call site always
+    # passes ``None``) — explicit here rather than relying on ``_build``'s
+    # PC-oriented "int" default, which now takes the honest stat-block-DC
+    # branch for a Monster caster too.
     caster = _monster(attack_bonus=4)
-    ctx = _build(caster, [caster])
+    ctx = _build(caster, [caster], spellcasting_ability=None)
     assert ctx.attack_bonus_override == 4
     assert ctx.save_dc_override == 8 + 4
     for ability in ("str", "dex", "con", "int", "wis", "cha"):
         assert ctx.ability_mod(ability) == 4
+
+
+def test_monster_save_dc_uses_the_stat_block_spellcasting_ability():
+    """C18 Task 5: a Monster caster with a resolved ``spellcasting_ability``
+    (hydrated from the SRD 5.2 stat block, not the mundane-attack flat
+    approximation) uses the same honest ``8 + PB + ability mod`` formula a PC
+    caster does, against ITS OWN real ability score. Pinned against the
+    bundled mage (int 17 -> mod +3, PB +3 -> DC 14) and adult red dragon
+    (cha 23 -> mod +6, PB +6 -> DC 20) canonical stat blocks.
+    """
+    mage = _monster(intelligence=17, proficiency_bonus_override=3)
+    assert (
+        _save_dc(
+            mage,
+            0,
+            caster_abilities={},
+            caster_proficiency_bonus=2,
+            spellcasting_ability="int",
+        )
+        == 14
+    )
+    dragon = _monster(charisma=23, proficiency_bonus_override=6)
+    assert (
+        _save_dc(
+            dragon,
+            0,
+            caster_abilities={},
+            caster_proficiency_bonus=2,
+            spellcasting_ability="cha",
+        )
+        == 20
+    )
+    # No resolvable spellcasting ability: falls back to the old flat
+    # approximation, byte-for-byte (unaffected by this task).
+    flat = _monster(attack_bonus=4)
+    assert (
+        _save_dc(
+            flat,
+            0,
+            caster_abilities={},
+            caster_proficiency_bonus=2,
+            spellcasting_ability=None,
+        )
+        == 8 + 4
+    )
 
 
 def test_passive_damage_modifiers_passed_through():

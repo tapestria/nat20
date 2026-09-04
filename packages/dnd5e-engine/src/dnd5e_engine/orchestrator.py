@@ -63,6 +63,7 @@ from dnd5e_srd_data.schema.common import (
     AttackActivity,
     AttackDamageBlock,
     CastActivity,
+    DamageActivity,
     DamagePartBlock,
     HealActivity,
     SaveActivity,
@@ -2004,16 +2005,57 @@ def _synthesize_attack_from_legacy_fields(current: Combatant) -> AttackActivity 
     )
 
 
-def _monster_cast_candidate(live: _LiveCombat, current: Combatant, action: MonsterAction) -> None:
-    """Which spell/target a cast-only monster action resolves to, or
-    ``None`` when it can't (nothing selectable this task).
+def _monster_cast_candidate(
+    live: _LiveCombat, current: Combatant, action: MonsterAction
+) -> tuple[CastActivity, Spell] | None:
+    """Which spell a cast-only monster action (SRD 5.2 §Spellcasting /
+    Innate Spellcasting) resolves to, or ``None`` when nothing on it
+    qualifies.
 
-    Stub: Task 5 (C18) fills this in with real spell selection, slot/uses
-    bookkeeping, and target choice. Returning ``None`` unconditionally keeps
-    every cast-only action unavailable via ``_monster_action_available``, so
-    the 48 bundled stat-block spellcasters keep today's byte-identical
-    turn-selection behaviour until that task lands.
+    Walks ``action``'s ``CastActivity`` entries in LIST ORDER (the stat
+    block's own listed order — At Will first, then N/Day tiers) and returns
+    the FIRST one that:
+
+      * still has a use remaining (a tracked ``uses_remaining`` entry that
+        isn't zero) — an unlimited (at-will) activity has no tracked entry
+        at all and always qualifies here;
+      * resolves to a real ``Spell`` via ``activity.spell.uuid`` (an
+        unresolvable uuid logs ``cast_spell_unresolved`` and is skipped,
+        mirroring ``activities/cast.py``'s loud-miss idiom);
+      * casts on the monster's own turn (``casting_time.unit`` one of
+        ``action``/``bonus``/``reaction`` — a ritual-only or 1-minute+ prep
+        spell in the repertoire, e.g. the mage's Detect Magic at 10 minutes'
+        notice, is never a combat-turn action);
+      * carries at least one offensive activity of its own (an
+        ``AttackActivity``/``SaveActivity``/``DamageActivity`` — a buff/
+        utility spell like Mage Armor or Invisibility is never worth the
+        monster's action over an attack).
+
+    A monster's spells are stat-block resources tracked entirely through
+    ``monster_action_uses_by_entity`` — this never touches
+    ``spell_slots_by_entity`` (PC-only).
     """
+    entry = live.monster_action_uses_by_entity.get(current.entity_id, {}).get(action.slug)
+    for activity in action.activities:
+        if not isinstance(activity, CastActivity):
+            continue
+        key = f"{action.slug}:{activity.id}"
+        if entry is not None:
+            remaining = entry.uses_remaining.get(key)
+            if remaining is not None and remaining <= 0:
+                continue
+        uuid = activity.spell.uuid
+        spell = _build_cast_spell_book([activity]).get(uuid)
+        if spell is None:
+            _LOGGER.warning("cast_spell_unresolved uuid=%s", uuid)
+            continue
+        if spell.casting_time.unit not in ("action", "bonus", "reaction"):
+            continue
+        if not any(
+            isinstance(a, (AttackActivity, SaveActivity, DamageActivity)) for a in spell.activities
+        ):
+            continue
+        return activity, spell
     return None
 
 
@@ -2023,21 +2065,18 @@ def _monster_action_available(live: _LiveCombat, current: Combatant, action: Mon
     ``False`` when: its tracked ``MonsterActionUses.recharge_spent`` is
     True (SRD 5.2 "Recharge X-Y" — spent and not yet rolled back in); its
     activities are ALL ``CastActivity`` and ``_monster_cast_candidate``
-    can't resolve one (the stub above — always the case today); or its
-    limited-use activities are all exhausted (``uses_remaining`` tracked and
-    all zero) with no unlimited activity on the same action to fall back to.
-    ``True`` otherwise, including for an action with no tracked
-    ``MonsterActionUses`` entry at all (nothing to gate).
+    can't resolve one (every candidate exhausted/unresolvable/non-offensive);
+    or its limited-use activities are all exhausted (``uses_remaining``
+    tracked and all zero) with no unlimited activity on the same action to
+    fall back to. ``True`` otherwise, including for an action with no
+    tracked ``MonsterActionUses`` entry at all (nothing to gate).
     """
     entry = live.monster_action_uses_by_entity.get(current.entity_id, {}).get(action.slug)
     if entry is not None and entry.recharge_spent:
         return False
     activities = action.activities
     if activities and all(isinstance(a, CastActivity) for a in activities):
-        # Task 5 (C18) fills in real spell selection; the stub above always
-        # returns None, so every cast-only action is unavailable until then.
-        _monster_cast_candidate(live, current, action)
-        return False
+        return _monster_cast_candidate(live, current, action) is not None
     if entry is not None and entry.uses_remaining:
         has_unlimited_activity = any(
             not activity.uses.max.strip().isdigit() for activity in activities
@@ -2053,9 +2092,10 @@ def _mark_monster_action_used(live: _LiveCombat, current: Combatant, action: Mon
 
     Only the recharge half is handled here: a chosen recharge action is
     marked spent (``_roll_recharges`` then rolls for it at the monster's
-    NEXT turn start). Per-day ``uses_remaining`` decrements are C18 Task 5's
-    (cast-action selection isn't reachable yet — see
-    ``_monster_cast_candidate``).
+    NEXT turn start). The per-day cast-activity ``uses_remaining`` decrement
+    happens in ``_resolve_monster_cast`` instead — this function only ever
+    sees the ``MonsterAction``, never the specific ``CastActivity``
+    ``_monster_cast_candidate`` chose off it.
     """
     if not action.recharge:
         return
@@ -2070,16 +2110,23 @@ def _resolve_monster_activities(
     monster_slug: str | None,
     skip_to_record_pass: bool,
     chosen_target: Combatant | None,
-) -> list[Any]:
+) -> tuple[list[Any], tuple[MonsterAction, CastActivity, Spell] | None]:
     """Resolve monster activities: legacy-fallback when no template, or typed
     activity selection from a ``Monster`` template.
 
-    Returns a list of ``Activity`` objects (typically empty or one element,
-    expanded to multiple on multiattack). Empty list when the monster has
-    no template and ``damage_dice`` doesn't parse, or when a slug is
-    unresolvable from the lib.
+    Returns ``(activities, cast_selection)``. ``activities`` is a list of
+    ``Activity`` objects (typically empty or one element, expanded to
+    multiple on multiattack) — empty when the monster has no template and
+    ``damage_dice`` doesn't parse, when a slug is unresolvable from the
+    lib, or when the chosen action is a stat-block spellcast (its own
+    activities are ``CastActivity`` wrappers, never resolver-ready
+    directly). ``cast_selection`` is the ``(action, activity, spell)``
+    tuple ``_monster_cast_candidate`` resolved when the ranked pick is a
+    cast-only action, else ``None`` — mutually exclusive with a non-empty
+    ``activities`` list.
     """
     monster_activities: list[Any] = []
+    cast_selection: tuple[MonsterAction, CastActivity, Spell] | None = None
     if not skip_to_record_pass and monster_slug is None:
         # Legacy-fixture fallback — see _synthesize_attack_from_legacy_fields.
         synthesized = _synthesize_attack_from_legacy_fields(current)
@@ -2099,21 +2146,160 @@ def _resolve_monster_activities(
             monster_action = ranked[0] if ranked else None
             if monster_action is not None:
                 _mark_monster_action_used(live, current, monster_action)
-                # hand the labelless-multiattack fallback the live
-                # distance + profile so it can prefer a sibling whose own range
-                # already covers the target (scout → longbow at 100 ft) instead
-                # of the first-listed melee weapon. Distance is the same zone-path
-                # cost the movement gate below reads, so the two agree.
-                monster_activities = expand_action_to_activities(
-                    monster,
-                    monster_action,
-                    target_distance_ft=_monster_target_distance_ft(
-                        live, current.entity_id, chosen_target
-                    ),
-                    behavior_profile=current.behavior_profile,
-                    melee_reach_ft=current.melee_reach_ft,
-                )
-    return monster_activities
+                action_activities = monster_action.activities
+                if action_activities and all(
+                    isinstance(a, CastActivity) for a in action_activities
+                ):
+                    candidate = _monster_cast_candidate(live, current, monster_action)
+                    if candidate is not None:
+                        cast_activity, spell = candidate
+                        cast_selection = (monster_action, cast_activity, spell)
+                else:
+                    # hand the labelless-multiattack fallback the live
+                    # distance + profile so it can prefer a sibling whose own range
+                    # already covers the target (scout → longbow at 100 ft) instead
+                    # of the first-listed melee weapon. Distance is the same zone-path
+                    # cost the movement gate below reads, so the two agree.
+                    monster_activities = expand_action_to_activities(
+                        monster,
+                        monster_action,
+                        target_distance_ft=_monster_target_distance_ft(
+                            live, current.entity_id, chosen_target
+                        ),
+                        behavior_profile=current.behavior_profile,
+                        melee_reach_ft=current.melee_reach_ft,
+                    )
+    return monster_activities, cast_selection
+
+
+def _monster_context_kwargs(
+    live: _LiveCombat,
+    current: Combatant,
+    target_list: list[Combatant],
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    """The ``build_activity_context`` keyword block shared by every monster
+    resolution path (the mundane attack site; the C18 Task 5 stat-block
+    spellcast path) — every argument that depends only on the caster + its
+    target list + the per-entity hydration ``payload`` the caller already
+    computed, never on the specific activity/spell being resolved (those
+    stay per-call: ``slot_level``, ``base_spell_level``,
+    ``spellcasting_ability``, ``concentration``, ``source_passive_effects``,
+    ``spell_book``). Extracted from the historical single monster attack
+    site so a second monster resolution branch can share it byte-for-byte
+    rather than re-deriving it (and to hold ``advance_monster_turn`` under
+    the McCabe ceiling).
+    """
+    target_unseen, attacker_unseen_by = _target_visibility_maps(live, current, target_list)
+    attacker_invisibility_pierced_by, target_invisibility_pierced = _invisibility_pierced_maps(
+        live, current, target_list
+    )
+    return {
+        "passive_damage_modifiers": payload["passive_damage_modifiers"],
+        "save_modifiers": payload["save_modifiers"],
+        "check_modifiers": payload["check_modifiers"],
+        "d20_test_penalty": payload["d20_test_penalty"],
+        "target_cover": _target_cover_map(live, current.entity_id, target_list),
+        "target_distance_ft": _target_distance_map(live, current.entity_id, target_list),
+        # SRD 5.2 §Actions in Combat — Dodge: a dodging target imposes
+        # disadvantage only while it can also see THIS attacker (C16b's
+        # "can see the attacker" conjunct).
+        "target_dodging": {
+            t.entity_id: _dodge_benefit_active(live, t) and _combatant_can_see(live, t, current)
+            for t in target_list
+        },
+        # SRD 5.2 §Actions in Combat — Help (C14 Task 4): a monster attacker
+        # can be granted Help by one of ITS OWN allies (another monster).
+        "target_help_advantage": _target_help_advantage_map(live, current.entity_id, target_list),
+        "attacker_grappler_id": _condition_source_entity(live, current, "grappled"),
+        "target_unseen": target_unseen,
+        "attacker_unseen_by": attacker_unseen_by,
+        "attacker_invisibility_pierced_by": attacker_invisibility_pierced_by,
+        "target_invisibility_pierced": target_invisibility_pierced,
+        # SRD 5.2 Frightened line-of-sight gate (C16b): PRE-RESOLVED
+        # attacker-own-perception flag.
+        "attacker_fear_source_in_sight": _fear_source_in_sight(live, current),
+        # SRD 5.2 "Ranged Attacks in Close Combat" (C15 Task 3): per-attacker
+        # flag; a monster attack/cast carries no ``Weapon``, so this only
+        # ever matters via the shared attack.py penalty gate.
+        "attacker_ranged_in_melee": _hostile_adjacent_to_attacker(live, current),
+        # SRD 5.2 §Weapon Mastery — Vex / Sap (C15 Task 6): a monster attack
+        # never PRODUCES a proc itself (no ``Weapon``), but it can be a
+        # vex-grant target or sap-mark holder from a prior PC weapon hit.
+        "attacker_vex_advantage": _attacker_vex_advantage_map(live, current.entity_id, target_list),
+        "attacker_sapped": current.entity_id in live.sap_marks,
+    }
+
+
+def _resolve_monster_cast(
+    live: _LiveCombat,
+    current: Combatant,
+    chosen_target: Combatant,
+    action: MonsterAction,
+    activity: CastActivity,
+    spell: Spell,
+) -> None:
+    """Resolve a stat-block spellcast (C18 Task 5, SRD 5.2 §Spellcasting)
+    chosen by ``_resolve_monster_activities``/``_monster_cast_candidate``.
+
+    Mirrors the PC on-turn ``cast_spell`` path structurally — the same
+    ``build_activity_context`` + ``resolve_activity`` loop over
+    ``spell.activities``, the same ``_emit_spell_cast`` metadata event — but
+    against the monster's OWN stat block instead of a slot pool:
+    ``spell_slots_by_entity`` (PC-only) is never touched here. ``slot_level``
+    is the stat block's own PRINTED cast level (``activity.spell.level``,
+    e.g. the mage's Fireball at level 4) when set, else the spell's own
+    base ``level`` — the same "wrapper override, else the referenced
+    spell's own level" split ``resolve_cast`` (``activities/cast.py``) uses
+    for an item wrapper. Spellcasting ability precedence (controller
+    ruling): ``activity.spell.ability`` when the stat-block entry forces one
+    (Foundry's "" sentinel means "use the caster's own"), else the
+    monster's own ``Combatant.spellcasting_ability`` (hydrated from
+    ``Monster.spellcasting_ability`` in ``_build_foe_combatants``).
+
+    No AoE template expansion (single ``chosen_target`` only — out of
+    scope for this task) and no movement-closing gambit (the caller never
+    reads ``monster_activities`` for range on this path, so a cast always
+    resolves from the monster's current position).
+    """
+    target_list = [chosen_target]
+    slot_level = activity.spell.level if activity.spell.level is not None else spell.level
+    spellcasting_ability = activity.spell.ability or current.spellcasting_ability
+
+    payload = _build_hydration_payload(live, caster=current)
+    pre_event_count = len(live.event_log)
+    actx = build_activity_context(
+        current,
+        target_list,
+        rng=live.rng,
+        event_emitter=lambda ev: _emit(live, ev),
+        slot_level=slot_level,
+        base_spell_level=spell.level,
+        spellcasting_ability=spellcasting_ability,
+        concentration=spell.concentration,
+        source_passive_effects=list(spell.passive_effects),
+        spell_book=_build_cast_spell_book(spell.activities),
+        **_monster_context_kwargs(live, current, target_list, payload),
+    )
+    _emit_spell_cast(live, current.entity_id, spell, slot_level)
+    for child_activity in spell.activities:
+        resolve_activity(child_activity, actx)
+
+    # SRD §Innate/Prepared Spellcasting "N/Day" — spend the chosen
+    # activity's per-day use. A ``None`` lookup (no tracked entry — an
+    # at-will spell) is a no-op; guarded rather than asserted since
+    # ``_monster_cast_candidate`` already filtered to a use-bearing or
+    # unlimited activity, but this stays defensive against a future caller.
+    entry = live.monster_action_uses_by_entity.get(current.entity_id, {}).get(action.slug)
+    key = f"{action.slug}:{activity.id}"
+    if entry is not None and key in entry.uses_remaining:
+        entry.uses_remaining[key] = max(0, entry.uses_remaining[key] - 1)
+
+    # Symmetric concentration writeback for spellcaster monsters (mirrors
+    # the PC path; ``concentration_max_rounds`` stays on the default here —
+    # same recorded follow-up as the mundane monster-attack site).
+    _writeback_concentration(live, current, pre_event_count)
+    _record_effect_lifecycle_links(live, current, pre_event_count)
 
 
 # ── Internal live-combat state ──────────────────────────────────────────────
@@ -5938,6 +6124,11 @@ def _build_foe_combatants(
                     "trait_mechanics": [
                         a.mechanic for a in monster.special_abilities if a.mechanic is not None
                     ],
+                    # SRD §Spellcasting — the ability a monster's innate/
+                    # prepared spells key off (C18 Task 5). ``None`` for a
+                    # template with no cast-bearing actions (unchanged
+                    # ``Combatant`` default).
+                    "spellcasting_ability": monster.spellcasting_ability,
                 }
                 legendary_actions_max = _legendary_action_uses_max(monster)
                 if legendary_actions_max:
@@ -9525,10 +9716,10 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
     # out multiattack. This is the sole monster-turn path; the old the legacy evaluator IR
     # path was retired in .
     monster_slug = live.monster_slug_by_entity.get(current.entity_id)
-    monster_activities = _resolve_monster_activities(
+    monster_activities, cast_selection = _resolve_monster_activities(
         live, current, monster_slug, skip_to_record_pass, chosen_target
     )
-    has_action = bool(monster_activities)
+    has_action = bool(monster_activities) or cast_selection is not None
 
     # Phase-5: monster gambit zone awareness. When the chosen attack is
     # out of range, the monster MOVEs toward the target along the
@@ -9652,14 +9843,31 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
     # still advances through the IntentSubmitted(pass) / TurnEnded shape so
     # initiative progresses to the next actor.
     mover_dead_post_aoo = current.entity_id in live.dead_ids
+    # C18 Task 5 — a resolved cast candidate takes its own branch below
+    # (``_resolve_monster_cast``), never the mundane-attack one: it has no
+    # ``monster_activities`` to walk and never engages the movement-closing
+    # gambit above (``attack_skipped_due_to_range``/``dashed_this_turn`` stay
+    # at their defaults for a cast turn — a stat-block spell resolves from
+    # the monster's current position).
+    will_cast = (
+        cast_selection is not None
+        and chosen_target is not None
+        and not mover_dead_post_aoo
+        and not dashed_this_turn
+    )
     will_attack = (
         has_action
+        and cast_selection is None
         and chosen_target is not None
         and not attack_skipped_due_to_range
         and not mover_dead_post_aoo
         and not dashed_this_turn
     )
-    intent_type: IntentType = "dash" if dashed_this_turn else ("attack" if will_attack else "pass")
+    intent_type: IntentType = (
+        "dash"
+        if dashed_this_turn
+        else ("cast_spell" if will_cast else ("attack" if will_attack else "pass"))
+    )
     _emit(
         live,
         IntentSubmitted(
@@ -9669,7 +9877,13 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
         ),
     )
 
-    if will_attack:
+    if will_cast:
+        assert cast_selection is not None  # mypy: narrowed by will_cast
+        assert chosen_target is not None  # mypy: narrowed by will_cast
+        current = next(c for c in live.initiative if c.entity_id == current.entity_id)
+        monster_action, cast_activity, spell = cast_selection
+        _resolve_monster_cast(live, current, chosen_target, monster_action, cast_activity, spell)
+    elif will_attack:
         # Re-read the actor snapshot — the move loop above may have
         # rebuilt the initiative slot with decremented movement_remaining;
         # the resolver runs against the post-move Combatant.
@@ -9699,11 +9913,12 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
         # Monster magnitudes (save DC = 8 + attack_bonus, mod = attack_bonus)
         # are reproduced by ``build_activity_context``'s ``entity_type ==
         # "Monster"`` branch — no per-call slot/spell parameters apply to a
-        # mundane monster attack.
-        target_unseen, attacker_unseen_by = _target_visibility_maps(live, current, target_list)
-        attacker_invisibility_pierced_by, target_invisibility_pierced = _invisibility_pierced_maps(
-            live, current, target_list
-        )
+        # mundane monster attack. SRD 5.2 §Weapon Proficiency — "A monster is
+        # proficient with any weapon in its stat block": left on the default
+        # (True) — a monster's ``Combatant.weapon_proficiencies`` is never
+        # explicitly set (the R1 sentinel), so it would resolve to True via
+        # ``_is_proficient_with_weapon`` anyway; the SRD rule makes the gate
+        # a no-op for every monster.
         actx = build_activity_context(
             current,
             target_list,
@@ -9718,56 +9933,7 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
             # delegation lives in _build_cast_spell_book; extending it here
             # is a recorded follow-up.
             spell_book={},
-            passive_damage_modifiers=payload["passive_damage_modifiers"],
-            save_modifiers=payload["save_modifiers"],
-            check_modifiers=payload["check_modifiers"],
-            d20_test_penalty=payload["d20_test_penalty"],
-            target_cover=_target_cover_map(live, current.entity_id, target_list),
-            target_distance_ft=_target_distance_map(live, current.entity_id, target_list),
-            # SRD 5.2 §Actions in Combat — Dodge: mirrors the PC site. A
-            # dodging PC target imposes disadvantage on the monster's
-            # attack roll (attack.py) only while it can also see THIS
-            # attacker (``current``) — C16b's "can see the attacker"
-            # conjunct.
-            target_dodging={
-                t.entity_id: _dodge_benefit_active(live, t) and _combatant_can_see(live, t, current)
-                for t in target_list
-            },
-            # SRD 5.2 §Actions in Combat — Help (C14 Task 4): mirrors the PC
-            # site — a monster attacker can be granted Help by one of ITS
-            # own allies (another monster) exactly like a PC can.
-            target_help_advantage=_target_help_advantage_map(live, current.entity_id, target_list),
-            attacker_grappler_id=_condition_source_entity(live, current, "grappled"),
-            target_unseen=target_unseen,
-            attacker_unseen_by=attacker_unseen_by,
-            attacker_invisibility_pierced_by=attacker_invisibility_pierced_by,
-            target_invisibility_pierced=target_invisibility_pierced,
-            # SRD 5.2 Frightened line-of-sight gate (C16b): mirrors the PC
-            # site — PRE-RESOLVED attacker-own-perception flag.
-            attacker_fear_source_in_sight=_fear_source_in_sight(live, current),
-            # SRD 5.2 §Weapon Proficiency — "A monster is proficient with any
-            # weapon in its stat block." Left on the default (True): a
-            # monster's Combatant.weapon_proficiencies is never explicitly
-            # set (the R1 sentinel), so it would resolve to True via
-            # ``_is_proficient_with_weapon`` anyway — this IS a real attack
-            # site (monster_activities below), but the SRD rule makes the
-            # gate a no-op for every monster.
-            # SRD 5.2 "Ranged Attacks in Close Combat" (C15 Task 3): mirrors
-            # the PC site — a monster archer adjacent to a PC gets the same
-            # SRD penalty. A monster attack carries no ``Weapon`` (its
-            # damage rides on the ``AttackActivity`` itself), so
-            # ``attack.py``'s weapon-based "effectively ranged" gate never
-            # fires for a monster attack today — a recorded follow-up.
-            attacker_ranged_in_melee=_hostile_adjacent_to_attacker(live, current),
-            # SRD 5.2 §Weapon Mastery — Vex / Sap (C15 Task 6): mirrors the
-            # PC site. A monster attack carries no ``Weapon`` (see below), so
-            # a monster attacker can never itself PRODUCE a vex/sap proc —
-            # but it CAN be a vex-grant target or a sap-mark holder from a
-            # prior PC weapon hit, so both flags are wired for symmetry.
-            attacker_vex_advantage=_attacker_vex_advantage_map(
-                live, current.entity_id, target_list
-            ),
-            attacker_sapped=current.entity_id in live.sap_marks,
+            **_monster_context_kwargs(live, current, target_list, payload),
         )
         for activity in monster_activities:
             # Monster attacks carry their damage on the AttackActivity itself,

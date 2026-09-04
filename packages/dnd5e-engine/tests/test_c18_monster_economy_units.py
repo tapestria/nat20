@@ -20,7 +20,14 @@ from dnd5e_engine import (
     start_combat,
     submit_player_intent,
 )
-from dnd5e_engine.events import DamageApplied, HealingApplied, IntentSubmitted, RechargeRolled
+from dnd5e_engine.events import (
+    DamageApplied,
+    HealingApplied,
+    IntentSubmitted,
+    RechargeRolled,
+    SaveRolled,
+    SpellCast,
+)
 from dnd5e_engine.lib_loader import set_lib_loader_for_tests
 from dnd5e_engine.orchestrator import _get_live
 from dnd5e_engine.spatial import cell_id as cell
@@ -242,3 +249,77 @@ def test_template_damage_immunities_hydrate_unconditionally():
     z = _run(go())
     assert "poison" in z.damage_immunities  # verify the zombie's corpus immunities first
     assert z.physical_resistances_nonmagical_only is False
+
+
+# C18 Task 5 — the mage's canonical "Spellcasting" action lists nine cast
+# activities in a fixed order (At Will: Detect Magic, Light, Mage Armor, Mage
+# Hand, Prestidigitation; 2/Day: Fireball, Invisibility; 1/Day: Cone of Cold,
+# Fly). Fireball is the FIRST offensive one (a buff/utility spell carries no
+# attack/save/damage activity of its own, so it's skipped regardless of
+# uses); Cone of Cold is the next offensive one after Fireball. Foundry
+# activity ids, read once from the bundled corpus while drafting this test.
+_MAGE_FIREBALL_ACTIVITY_ID = "OMMdgcswZDwcu4P9"
+_MAGE_INVISIBILITY_ACTIVITY_ID = "PsQU2yHchoO5kFLT"
+_MAGE_CONE_OF_COLD_ACTIVITY_ID = "cDga1NaxiuzNOPlP"
+
+
+def test_mage_opens_with_fireball_and_tracks_the_daily_use():
+    """C18-S07 (units): hero initiative 1, mage initiative 20, seed 5 — the
+    mage selects its stat-block Spellcasting action and casts Fireball (the
+    first offensive activity in list order with a use remaining), at its
+    printed stat-block level (4), against its own real int/PB DC (14).
+    """
+
+    async def go():
+        handle, live = await _start(
+            [_hero(initiative=1)], [_foe("mage", initiative=20, hp=40, ac=12)], seed=5
+        )
+        await advance_monster_turn(handle)
+        return live
+
+    live = _run(go())
+    saves = [e for e in _events(live, SaveRolled) if e.target_id == "char:hero"]
+    assert saves
+    assert saves[0].ability == "dex"
+    assert saves[0].dc == 14
+    assert [e for e in _events(live, DamageApplied) if e.damage_type == "fire"]
+    cast = _events(live, SpellCast)
+    assert cast
+    assert cast[0].spell_id == "fireball"
+    assert cast[0].slot_level == 4
+    uses = live.monster_action_uses_by_entity["mon:foe"]["spellcasting"].uses_remaining
+    fireball_key = next(k for k in uses if k.endswith(f":{_MAGE_FIREBALL_ACTIVITY_ID}"))
+    assert uses[fireball_key] == 1
+    assert "mon:foe" not in live.spell_slots_by_entity  # no slot pool for monsters
+
+
+def test_exhausted_daily_spell_falls_back_to_the_next_candidate():
+    """With Fireball and Invisibility both pre-exhausted, the mage's next
+    offensive candidate in list order is Cone of Cold (cold damage, a con
+    save) — Fly (1/Day, after it) is a self-buff and never qualifies.
+    """
+
+    async def go():
+        handle, live = await _start(
+            [_hero(initiative=1)], [_foe("mage", initiative=20, hp=40, ac=12)], seed=5
+        )
+        uses = live.monster_action_uses_by_entity["mon:foe"]["spellcasting"].uses_remaining
+        for key in list(uses):
+            if key.endswith(f":{_MAGE_FIREBALL_ACTIVITY_ID}") or key.endswith(
+                f":{_MAGE_INVISIBILITY_ACTIVITY_ID}"
+            ):
+                uses[key] = 0
+        await advance_monster_turn(handle)
+        return live
+
+    live = _run(go())
+    saves = [e for e in _events(live, SaveRolled) if e.target_id == "char:hero"]
+    assert saves
+    assert saves[0].ability == "con"
+    assert [e for e in _events(live, DamageApplied) if e.damage_type == "cold"]
+    cast = _events(live, SpellCast)
+    assert cast
+    assert cast[0].spell_id == "cone-of-cold"
+    uses = live.monster_action_uses_by_entity["mon:foe"]["spellcasting"].uses_remaining
+    cone_key = next(k for k in uses if k.endswith(f":{_MAGE_CONE_OF_COLD_ACTIVITY_ID}"))
+    assert uses[cone_key] == 0

@@ -14,11 +14,12 @@ from __future__ import annotations
 
 import random
 from collections.abc import Callable, Sequence
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
+from dnd5e_engine.activities.actor_stats import ability_modifier_of, proficiency_bonus_of
 from dnd5e_engine.activities.context import ActivityResolutionContext
 from dnd5e_engine.activities.dice import roll_expr
-from dnd5e_engine.events import CombatEvent
+from dnd5e_engine.events import Ability, CombatEvent
 from dnd5e_engine.rules.conditions import active_condition_names
 from dnd5e_engine.rules.dice import proficiency_bonus
 from dnd5e_engine.types.combat import Combatant
@@ -63,14 +64,32 @@ def _save_dc(
     A Character caster with a resolved ``spellcasting_ability`` (the real
     class -> ability mapping, e.g. cleric -> wis) uses the honest formula
     against its real ability scores + proficiency bonus (both already
-    computed for real above). Monster path AND a Character with no resolvable
-    spellcasting ability (unknown class / a non-caster class / a non-cast_spell
-    intent such as ``use_item``, which never sets ``spellcasting_ability``)
-    fall back to the OLD flat approximation byte-for-byte: Monster
-    ``8 + attack_bonus`` (``_monster_save_dc``); PC ``8 + 2 + mod`` (the
-    the legacy evaluator-era ``_spell_save_dc``, ``pb`` hardcoded to ``2``).
+    computed for real above). A Monster caster with a resolved
+    ``spellcasting_ability`` (C18 Task 5 — hydrated from
+    ``Monster.spellcasting_ability`` onto ``Combatant.spellcasting_ability``)
+    uses the same honest formula against ITS OWN real ability score +
+    proficiency bonus (``ability_modifier_of``/``proficiency_bonus_of``,
+    not the uniform ``caster_abilities`` fake this builder projects for a
+    mundane monster attack) — verified against the mage ("Intelligence as
+    the spellcasting ability", int 17 -> mod +3, PB +3 -> DC 14) and the
+    adult red dragon ("Charisma as the spellcasting ability", cha 23 ->
+    mod +6, PB +6 -> DC 20) canonical stat blocks.
+
+    Every other caster falls back to the OLD flat approximation byte-for-
+    byte: Monster with no resolvable spellcasting ability (a template-less
+    foe, or one with no cast-bearing actions) ``8 + attack_bonus``
+    (``_monster_save_dc``); PC with no resolvable spellcasting ability
+    (unknown class / a non-caster class / a non-cast_spell intent such as
+    ``use_item``, which never sets ``spellcasting_ability``) ``8 + 2 + mod``
+    (the legacy evaluator-era ``_spell_save_dc``, ``pb`` hardcoded to ``2``).
     """
     if caster.entity_type == "Monster":
+        if spellcasting_ability:
+            return (
+                8
+                + proficiency_bonus_of(caster)
+                + ability_modifier_of(caster, cast("Ability", spellcasting_ability))
+            )
         return 8 + (caster.attack_bonus or 0)
     if spellcasting_ability:
         ability_mod = (caster_abilities.get(spellcasting_ability, 10) - 10) // 2
