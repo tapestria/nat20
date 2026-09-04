@@ -39,12 +39,18 @@ new keys still validates.
   whose trigger text matches the shapes: Superior Hunter's Defense,
   Retaliation, Stone's Endurance, Storm's Thunder, Mummy Lord's Whirlwind of
   Sand, Gloves of Missile Snaring.
-- **`Monster.spellcasting_ability: Ability | None`** — the monster's innate
-  spellcasting ability (int/wis/cha) from Foundry's
-  `system.attributes.spellcasting`, e.g. Mage → `int`, adult+ dragons →
-  `cha`. Foundry leaves this field at a non-spellcasting placeholder
-  (`"str"`, occasionally `"dex"`/`"con"`, or empty) for non-casters; the
-  translator normalizes anything outside `{int, wis, cha}` to `None`.
+- **`Monster.spellcasting_ability: Ability | None`** — set only for monsters
+  with at least one `cast`-kind activity (`actions`/`legendary_actions`/
+  `special_abilities`), e.g. Mage → `int`, adult+ dragons → `cha`, Stone
+  Golem → `con`. Sourced primarily from each cast activity's own
+  `spell.ability` (the most common non-empty value among them), falling
+  back to the top-level `system.attributes.spellcasting` only when every
+  cast activity's ability is empty; valid abilities are `{int, wis, cha,
+  con}` (`str`/`dex` are never valid — they are Foundry dropdown
+  placeholders left on non-casters, e.g. Zombie's `str`). Every
+  non-spellcasting monster is `None`. One residual: Mummy Lord's
+  spellcasting ability is stated only in trait prose, not in any structured
+  field, so it resolves to `None` (tracked in `BACKLOG.md`).
 
 ### Changed
 

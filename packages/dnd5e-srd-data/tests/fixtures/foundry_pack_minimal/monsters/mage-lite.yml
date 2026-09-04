@@ -36,5 +36,19 @@ system:
   skills:
     arc: {value: 1, bonus: 0}
     his: {value: 1, bonus: 0}
+items:
+  - _id: mageLiteSpell001
+    name: Spellcasting
+    type: feat
+    system:
+      type:
+        value: monster
+        subtype: ''
+      activities:
+        mageLiteCast0001:
+          type: cast
+          spell:
+            uuid: Compendium.dnd5e.spells24.Item.phbsplLight00000
+            ability: ''
 flags:
   srd: true

@@ -764,5 +764,5 @@
       "uses_per_day": null
     }
   ],
-  "spellcasting_ability": null
+  "spellcasting_ability": "wis"
 }

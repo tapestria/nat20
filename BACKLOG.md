@@ -865,6 +865,26 @@ layer over the engine — see `docs/bridge.md`. Gaps found while shipping it:
 - **`lair_actions` is empty for all 341 monsters** even though SRD 5.2 defines
   them for several creatures, and the schema field exists.
 
+## Monster spellcasting ability gaps (2026-09-04)
+
+- **`mummy-lord.spellcasting_ability` is `None` despite the monster casting
+  spells.** Its Foundry source (`actors24/undead/mummy-lord.yml`) carries no
+  usable signal: the top-level `attributes.spellcasting` is the `"str"`
+  non-caster placeholder and every one of its cast activities' own
+  `spell.ability` is empty — the ability is stated only in trait prose. It is
+  the sole cast-bearing monster (of 65) the translator cannot resolve.
+  (`packages/dnd5e-srd-data/tools/translators/foundry.py::_spellcasting_ability`)
+- **Coven-shared casting can outvote a monster's own spellcasting ability.**
+  `sea-hag.spellcasting_ability` resolves to `"int"` because its shared
+  "Coven Magic" trait contributes 6 cast activities at `int` versus 1 at its
+  true personal ability (`con`, per `attributes.spellcasting: con` and its
+  own "Illusory Appearance" cast activity) — majority-vote-by-activity-count
+  picks the coven ability over the personal one. `green-hag` has the
+  equivalent issue (resolves `"int"` via Coven Magic instead of its personal
+  `"wis"`). A future pass could special-case or exclude coven/shared-trait
+  cast activities from the vote.
+  (`packages/dnd5e-srd-data/tools/translators/foundry.py::_spellcasting_ability`)
+
 ---
 
 # Test & fidelity

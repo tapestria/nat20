@@ -7,7 +7,7 @@ import json
 import math
 import re
 import sys
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from datetime import date
 from pathlib import Path
 from typing import Any, Literal, TypeVar
@@ -1042,19 +1042,62 @@ def _ability_mod(score: int) -> int:
     return (score - 10) // 2
 
 
-# SRD 5.2 spellcasting is always Intelligence, Wisdom, or Charisma. Foundry's
-# ``system.attributes.spellcasting`` NPC field is a UI dropdown that is left
-# at an unfilled placeholder ("str", occasionally "dex"/"con", or "") for the
-# large majority of non-spellcasting monsters rather than left blank — e.g.
-# the Zombie (CON 16, no spells) carries ``spellcasting: str``. Only int/wis/
-# cha values are ever load-bearing (mage → int, adult+ dragons → cha), so
-# anything outside that set is treated as "no spellcasting ability".
-_VALID_SPELLCASTING_ABILITIES = {"int", "wis", "cha"}
+# SRD 5.2 spellcasting is always Intelligence, Wisdom, Charisma, or (rarely —
+# Sea Hag, Stone Golem) Constitution. Foundry's top-level
+# ``system.attributes.spellcasting`` NPC field is a UI dropdown left at an
+# unfilled placeholder ("str", occasionally "dex", or "") for the large
+# majority of non-spellcasting monsters rather than left blank — e.g. the
+# Zombie (CON 16, no spells) carries ``spellcasting: str`` — so it is only a
+# fallback signal, never the primary one. The primary signal is each cast
+# activity's own ``spell.ability`` (Ghost/Sprite/Doppelganger/Imp carry the
+# real ability there — cha — while their top-level field is the "str"
+# placeholder; Cloaker's is wis with an empty top-level field). We only ever
+# emit a value for monsters with at least one ``cast``-kind activity;
+# everyone else gets ``None``. One residual: Mummy Lord's spellcasting
+# ability is stated only in its trait prose, not in any structured field
+# (top-level "str" placeholder, every cast activity's ability is empty) — it
+# resolves to ``None`` (tracked in BACKLOG.md as upstream data debt).
+_VALID_SPELLCASTING_ABILITIES = {"int", "wis", "cha", "con"}
 
 
-def _spellcasting_ability(attrs: dict[str, Any]) -> str | None:
-    raw = attrs.get("spellcasting")
-    return raw if raw in _VALID_SPELLCASTING_ABILITIES else None
+def _cast_activities(actions: Iterable[MonsterAction]) -> list[CastActivity]:
+    return [
+        activity
+        for action in actions
+        for activity in action.activities
+        if isinstance(activity, CastActivity)
+    ]
+
+
+def _spellcasting_ability(
+    attrs: dict[str, Any],
+    actions: list[MonsterAction],
+    legendary_actions: list[MonsterAction],
+    special_abilities: list[MonsterAction],
+) -> str | None:
+    cast_activities = [
+        *_cast_activities(actions),
+        *_cast_activities(legendary_actions),
+        *_cast_activities(special_abilities),
+    ]
+    if not cast_activities:
+        return None
+    counts: dict[str, int] = {}
+    first_seen: list[str] = []
+    for activity in cast_activities:
+        ability = activity.spell.ability
+        if ability not in _VALID_SPELLCASTING_ABILITIES:
+            continue
+        if ability not in counts:
+            counts[ability] = 0
+            first_seen.append(ability)
+        counts[ability] += 1
+    if first_seen:
+        # `max` returns the first item achieving the max when iterating a
+        # list, so ties resolve to first occurrence in `first_seen` order.
+        return max(first_seen, key=lambda ability: counts[ability])
+    top_level = attrs.get("spellcasting")
+    return top_level if top_level in _VALID_SPELLCASTING_ABILITIES else None
 
 
 def _sense_value(raw: Any) -> int | None:
@@ -1630,7 +1673,9 @@ def translate_monster_yaml(
         senses=senses,
         cr=cr_value,
         proficiency_bonus=prof_bonus,
-        spellcasting_ability=_spellcasting_ability(attrs),
+        spellcasting_ability=_spellcasting_ability(
+            attrs, actions, legendary_actions, special_abilities
+        ),
         saving_throws=saving_throws,
         skills=skills,
         damage_resistances=_trait_list(traits, "dr"),

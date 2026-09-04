@@ -626,5 +626,5 @@
   },
   "slug": "doppelganger",
   "special_abilities": [],
-  "spellcasting_ability": null
+  "spellcasting_ability": "cha"
 }
