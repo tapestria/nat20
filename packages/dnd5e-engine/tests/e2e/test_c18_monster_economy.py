@@ -67,6 +67,11 @@ def test_c18_s01_recharge_gates_a_breath_weapon_ai_cannot_select_it():
         )
         live = _get_live(start.handle)
         await advance_monster_turn(start.handle)  # mephit's turn 1
+        # Contract repair (R1): the hero's turn must be driven before the
+        # mephit's second turn — advance_monster_turn rejects a PC turn.
+        await submit_player_intent(
+            start.handle, actor_id="char:hero", intent=PlayerIntent(intent_type="pass")
+        )
         await advance_monster_turn(start.handle)  # mephit's turn 2 (round 2)
         return live
 
@@ -190,7 +195,7 @@ def test_c18_s03_legendary_resistance_converts_failed_save_and_saves_ignore_prof
     hook, which does not exist anywhere in ``orchestrator.py`` today.
     """
 
-    def _run(slug: str, hp: int, ac: int, seed: int):
+    def _run(slug: str, hp: int, ac: int, seed: int, *, arm_legendary_resistance: bool = False):
         async def _inner():
             start = await start_combat(
                 session_id=f"e2e-c18-s03-{slug}-{seed}",
@@ -227,6 +232,13 @@ def test_c18_s03_legendary_resistance_converts_failed_save_and_saves_ignore_prof
                 rng_seed=seed,
             )
             live = _get_live(start.handle)
+            if arm_legendary_resistance:
+                # Contract repair (R1/R7): the choice is declared BEFORE the
+                # save it converts — the engine has no mid-resolution
+                # round-trip.
+                from dnd5e_engine import orchestrator as orchestrator_module
+
+                orchestrator_module.resolve_legendary_resistance(start.handle, "mon:dragon")
             await submit_player_intent(
                 start.handle,
                 actor_id="char:wiz",
@@ -271,10 +283,7 @@ def test_c18_s03_legendary_resistance_converts_failed_save_and_saves_ignore_prof
     # Legendary Resistance use, converting the failure to success. API delta
     # (C18): resolve_legendary_resistance does not exist anywhere in
     # orchestrator.py today.
-    from dnd5e_engine import orchestrator as orchestrator_module
-
-    handle_b, live_b = _run("adult-red-dragon", 256, 19, 2)
-    orchestrator_module.resolve_legendary_resistance(handle_b, "mon:dragon")
+    _, live_b = _run("adult-red-dragon", 256, 19, 2, arm_legendary_resistance=True)
 
     from dnd5e_engine import events as events_module
 
@@ -334,6 +343,11 @@ def test_c18_s04_troll_regeneration_heals_at_start_of_turn_above_zero_hp():
             rng_seed=2,
         )
         live = _get_live(start.handle)
+        # Contract repair (R1): drive the hero's turn before the troll's —
+        # advance_monster_turn rejects a PC turn.
+        await submit_player_intent(
+            start.handle, actor_id="char:hero", intent=PlayerIntent(intent_type="pass")
+        )
         await advance_monster_turn(start.handle)  # troll's own turn begins
         return live
 
@@ -343,14 +357,18 @@ def test_c18_s04_troll_regeneration_heals_at_start_of_turn_above_zero_hp():
     assert heals[0].amount == 10
 
 
-@xfail_cluster(18, "monster action economy")
 def test_c18_s05_magic_resistance_grants_advantage_on_saves_vs_spells():
     """C18-S05: SRD 5.2 "The [monster] has Advantage on saving throws
     against spells and other magical effects."
     (packs/_source/monsterfeatures24/traits/magic-resistance.yml).
-    ``activities/save.py``'s save-roll primitive draws exactly one
-    natural d20 regardless of target — same-seed A/B: an Ogre (no Magic
-    Resistance) and a Hezrou (has it) resolve byte-identically today.
+    Magic Resistance landed in C22 (``activities/save_primitive.py``),
+    which grants advantage and records ``"trait"`` in the ``SaveRolled``
+    event's ``sources``. This scenario pins that behavior directly on the
+    two ``SaveRolled`` events rather than through an RNG-divergence proxy:
+    the old ``roll_a != roll_b`` proxy was seed-fragile — at seed 6 both
+    monsters' natural d20 draws are 16, so the two rolls coincidentally
+    matched even once Magic Resistance was wired up, and the assertion
+    could not distinguish "advantage landed" from "no extra draw at all".
 
     Dexterity is pinned to a non-default 11 (not the EncounterMemberSpec
     ``10`` sentinel) so F1b's monster-template ability-score hydration
@@ -411,15 +429,14 @@ def test_c18_s05_magic_resistance_grants_advantage_on_saves_vs_spells():
         return live
 
     live_a = run_async(_run("ogre", 59, 11))
-    roll_a = next(e for e in events_of(live_a, SaveRolled) if e.target_id == "mon:foe").roll_total
+    save_a = next(e for e in events_of(live_a, SaveRolled) if e.target_id == "mon:foe")
 
     live_b = run_async(_run("hezrou", 175, 17))
-    roll_b = next(e for e in events_of(live_b, SaveRolled) if e.target_id == "mon:foe").roll_total
+    save_b = next(e for e in events_of(live_b, SaveRolled) if e.target_id == "mon:foe")
 
-    assert roll_a != roll_b, (
-        "Magic Resistance should consume an extra d20 draw (advantage), "
-        "diverging the RNG stream from the non-resistant baseline"
-    )
+    assert save_a.advantage == "normal" and save_a.sources == []  # noqa: PT018
+    assert save_b.advantage == "advantage", "Magic Resistance must roll the save with advantage"
+    assert "trait" in save_b.sources
 
 
 @xfail_cluster(18, "monster action economy")
@@ -468,6 +485,11 @@ def test_c18_s06_pack_tactics_grants_attack_advantage_with_adjacent_ally():
             rng_seed=3,
         )
         live = _get_live(start.handle)
+        # Contract repair (R1): drive the hero's turn before the wolf's —
+        # advance_monster_turn rejects a PC turn.
+        await submit_player_intent(
+            start.handle, actor_id="char:hero", intent=PlayerIntent(intent_type="pass")
+        )
         await advance_monster_turn(start.handle)  # mon:wolf1 attacks char:hero
         return live
 
@@ -596,6 +618,11 @@ def test_c18_s08_combat_ends_flee_when_every_foe_has_fled():
             rng_seed=1,
         )
         handle = start.handle
+        # Contract repair (R1): drive the hero's turn before the goblin's —
+        # advance_monster_turn rejects a PC turn.
+        await submit_player_intent(
+            handle, actor_id="char:hero", intent=PlayerIntent(intent_type="pass")
+        )
         await advance_monster_turn(handle)  # below flee threshold: retreats/passes
         result = await end_combat(handle)
         return result
