@@ -93,15 +93,22 @@ def test_c18_s01_recharge_gates_a_breath_weapon_ai_cannot_select_it():
     assert fire_breath_dmg, "Fire Breath should be selectable while available (turn 1)"
 
 
-@xfail_cluster(18, "monster action economy")
 def test_c18_s02_legendary_actions_spent_after_pc_turn_pool_resets_on_own_turn():
     """C18-S02: SRD 5.2 "A Legendary Action is an action that a monster
     can take immediately after another creature's turn. ... The monster
     expends one use whenever it takes a Legendary Action, and it regains
     all expended uses at the start of each of its turns."
     (packs/_source/content24/monsters/monsters.yml, "Legendary Actions").
-    ``advance_monster_turn(handle, legendary=True)`` raises ``TypeError``
-    today — no legendary-action pool is tracked anywhere.
+
+    Catalog fidelity note: the catalog's "Script" step 2 lists a
+    ``weapon_id="longsword"`` attack — a melee swing from ``cell(0, 0)``
+    against ``cell(3, 0)`` (15 ft) is out of a longsword's 5 ft reach, so
+    that intent is rejected pre-resolution (``AttackFailed(out_of_range)``)
+    WITHOUT spending the hero's Action, and the hero's turn never ends —
+    the scenario's own premise. Swapping to ``weapon_id="longbow"`` (a
+    ranged weapon whose normal range covers 15 ft) keeps the catalog's
+    approved ``Setup`` positions/HP/AC exactly as documented and still ends
+    the hero's turn on a single Action, which is all this scenario needs.
     """
 
     async def _run():
@@ -141,12 +148,8 @@ def test_c18_s02_legendary_actions_spent_after_pc_turn_pool_resets_on_own_turn()
         await submit_player_intent(
             start.handle,
             actor_id="char:hero",
-            intent=PlayerIntent(
-                intent_type="attack", weapon_id="longsword", target_id="mon:dragon"
-            ),
+            intent=PlayerIntent(intent_type="attack", weapon_id="longbow", target_id="mon:dragon"),
         )
-        # API delta (C18): the legendary=True kwarg does not exist today —
-        # this raises TypeError, driving the xfail.
         await advance_monster_turn(start.handle, legendary=True)
         await advance_monster_turn(start.handle)
         return live

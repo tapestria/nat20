@@ -28,6 +28,7 @@ from dnd5e_srd_data.schema.monster import (
 from dnd5e_engine import (
     EncounterMemberSpec,
     GridScene,
+    IntentRejectedError,
     PartyMemberSpec,
     PlayerIntent,
     advance_monster_turn,
@@ -40,6 +41,7 @@ from dnd5e_engine.events import (
     DamageApplied,
     HealingApplied,
     IntentSubmitted,
+    LegendaryActionUsed,
     RechargeRolled,
     SaveRolled,
     SpellCast,
@@ -47,6 +49,25 @@ from dnd5e_engine.events import (
 from dnd5e_engine.lib_loader import set_lib_loader_for_tests
 from dnd5e_engine.orchestrator import _get_live
 from dnd5e_engine.spatial import cell_id as cell
+from dnd5e_engine.types.conditions import ActiveCondition
+
+
+def _set_condition(live, entity_id: str, condition: str) -> None:
+    for idx, c in enumerate(live.initiative):
+        if c.entity_id == entity_id:
+            live.initiative[idx] = c.model_copy(
+                update={
+                    "conditions": [
+                        ActiveCondition(
+                            condition=condition,
+                            source_entity_id="implied:scenario",
+                            scope="combat",
+                        )
+                    ]
+                }
+            )
+            return
+    raise AssertionError(f"{entity_id} not found in initiative")
 
 
 @pytest.fixture(autouse=True)
@@ -462,3 +483,117 @@ def test_save_only_monster_cast_leaves_an_armed_help_grant_untouched():
     # actually exercising the save-only path this test claims to.
     assert [e for e in _events(live, SaveRolled) if e.target_id == "char:hero"]
     assert live.help_grants.get("char:hero") == ["mon:foe"]
+
+
+# -- C18 Task 6 -- legendary actions (S02) ----------------------------------
+
+
+async def _dragon_fight(seed=4):
+    return await _start(
+        [_hero(initiative=25, hp=60, ac=18, attack_bonus=7)],
+        [_foe("adult-red-dragon", initiative=10, hp=256, ac=19, col=3)],
+        seed=seed,
+    )
+
+
+def test_legendary_action_after_pc_turn_spends_one_use_and_keeps_the_turn_index():
+    """SRD 5.2 §Legendary Actions: "immediately after another creature's
+    turn" -- driving the hero's turn opens a legendary-action window for the
+    dragon without touching whose turn it is."""
+
+    async def go():
+        handle, live = await _dragon_fight()
+        await _pass(handle)
+        idx = live.current_turn_index
+        await advance_monster_turn(handle, legendary=True)
+        assert live.current_turn_index == idx
+        return live
+
+    live = _run(go())
+    used = _events(live, LegendaryActionUsed)
+    assert used
+    assert used[0].actor_id == "mon:foe"
+    assert used[0].uses_remaining == 2
+    assert used[0].action_slug in {"commanding-presence", "fiery-rays"}  # Pounce (utility) never
+    assert live.initiative[1].legendary_actions_remaining == 2
+
+
+def test_only_one_legendary_action_per_creature_turn_end():
+    """SRD 5.2 §Legendary Actions: "only one of these actions can be taken
+    at a time" -- a second ``legendary=True`` in the SAME window (the hero's
+    turn end) is rejected even though the dragon still has uses left."""
+
+    async def go():
+        handle, _live = await _dragon_fight()
+        await _pass(handle)
+        await advance_monster_turn(handle, legendary=True)
+        with pytest.raises(IntentRejectedError) as excinfo:
+            await advance_monster_turn(handle, legendary=True)
+        return excinfo.value
+
+    err = _run(go())
+    assert err.reason == "no_legendary_action"
+
+
+def test_no_legendary_action_after_its_own_turn():
+    """SRD 5.2 §Legendary Actions: "immediately after ANOTHER creature's
+    turn" -- the dragon may not spend a legendary action right after its own
+    turn ends."""
+
+    async def go():
+        handle, _live = await _dragon_fight()
+        await _pass(handle)
+        await advance_monster_turn(handle)  # the dragon's own driven turn
+        with pytest.raises(IntentRejectedError) as excinfo:
+            await advance_monster_turn(handle, legendary=True)
+        return excinfo.value
+
+    err = _run(go())
+    assert err.reason == "no_legendary_action"
+
+
+def test_incapacitated_dragon_cannot_take_legendary_actions():
+    """SRD 5.2 Incapacitated: "can't take any action" -- applies to a
+    legendary action too."""
+
+    async def go():
+        handle, live = await _dragon_fight()
+        _set_condition(live, "mon:foe", "paralyzed")
+        await _pass(handle)
+        with pytest.raises(IntentRejectedError) as excinfo:
+            await advance_monster_turn(handle, legendary=True)
+        return excinfo.value
+
+    err = _run(go())
+    assert err.reason == "no_legendary_action"
+
+
+def test_pool_resets_when_the_dragon_takes_its_own_turn():
+    """SRD 5.2 §Legendary Actions: "regains all expended uses at the start
+    of each of its turns" -- 2 left after the spend, 3 again once the dragon
+    takes its own driven turn (R2)."""
+
+    async def go():
+        handle, live = await _dragon_fight()
+        await _pass(handle)
+        await advance_monster_turn(handle, legendary=True)
+        assert live.initiative[1].legendary_actions_remaining == 2
+        await advance_monster_turn(handle)  # the dragon's own driven turn
+        return live
+
+    live = _run(go())
+    assert live.initiative[1].legendary_actions_remaining == 3
+
+
+def test_legendary_kwarg_is_rejected_when_no_foe_has_legendary_actions():
+    async def go():
+        handle, _live = await _start(
+            [_hero(initiative=25)], [_foe("goblin-warrior", initiative=10, hp=7, ac=15)], seed=4
+        )
+        await _pass(handle)
+        with pytest.raises(IntentRejectedError) as excinfo:
+            await advance_monster_turn(handle, legendary=True)
+        return excinfo.value
+
+    err = _run(go())
+    assert err.reason == "no_legendary_action"

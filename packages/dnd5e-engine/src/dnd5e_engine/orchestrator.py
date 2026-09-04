@@ -130,6 +130,7 @@ from dnd5e_engine.events import (
     HealingApplied,
     IntentSubmitted,
     IntentType,
+    LegendaryActionUsed,
     MoveFailed,
     ReactionTriggered,
     RechargeRolled,
@@ -344,6 +345,10 @@ class IntentRejectedError(CombatSeamError):
         # same SRD rule, different seam.
         "speed_zero",
         "insufficient_movement",
+        # C18 §Monster action economy — ``advance_monster_turn(legendary=True)``
+        # when no encounter member currently qualifies (see
+        # ``_eligible_legendary_actor``).
+        "no_legendary_action",
     ]
 
     def __init__(self, reason: RejectionReason, detail: str) -> None:
@@ -2131,6 +2136,29 @@ def _mark_monster_action_used(live: _LiveCombat, current: Combatant, action: Mon
         entry.recharge_spent = True
 
 
+def _select_monster_targets(live: _LiveCombat, current: Combatant) -> list[Combatant]:
+    """Alive-PC target pool for ``current``'s attack/legendary action: every
+    living party member, minus a charmer (SRD 5.2 Charmed — "You can't
+    attack the charmer"). Extracted from the main-turn targeting block so
+    a legendary action (Task 6) can share it byte-for-byte.
+    """
+    alive_pcs = [
+        c
+        for c in live.initiative
+        if c.entity_id in live.party_ids and c.is_alive and c.hp_current > 0
+    ]
+    charmer_id = _condition_source_entity(live, current, "charmed")
+    if charmer_id is not None:
+        alive_pcs = [c for c in alive_pcs if c.entity_id != charmer_id]
+    return alive_pcs
+
+
+def _lowest_hp_target(pcs: list[Combatant]) -> Combatant | None:
+    """SRD 5.2 monster gambit targeting — lowest current HP among ``pcs``,
+    or ``None`` when the list is empty."""
+    return min(pcs, key=lambda c: c.hp_current) if pcs else None
+
+
 def _resolve_monster_activities(
     live: _LiveCombat,
     current: Combatant,
@@ -2341,6 +2369,184 @@ def _resolve_monster_cast(
     # same recorded follow-up as the mundane monster-attack site).
     _writeback_concentration(live, current, pre_event_count)
     _record_effect_lifecycle_links(live, current, pre_event_count)
+
+
+def _eligible_legendary_actor(live: _LiveCombat, actor_id: str | None) -> Combatant:
+    """SRD 5.2 §Legendary Actions — which encounter member (if any) may
+    spend a legendary action right now.
+
+    A candidate qualifies when: it is an encounter member with a
+    legendary-action pool (``legendary_actions_max > 0``); it is alive and
+    above 0 HP; it is not Incapacitated (``conditions_block_actions``); it
+    has at least one use left; a turn has ended ("immediately after
+    another creature's turn") and that turn was NOT the candidate's own;
+    and that turn-end window hasn't already spent a legendary action
+    ("only one of these actions can be taken at a time").
+
+    ``actor_id=None`` picks the first eligible member in initiative order;
+    an explicit ``actor_id`` picks that member or nothing. Either way,
+    raises ``IntentRejectedError("no_legendary_action", ...)`` when the
+    result is empty.
+    """
+    if live.last_ended_turn is None:
+        raise IntentRejectedError("no_legendary_action", "no turn has ended yet")
+    ended_round, ended_actor_id = live.last_ended_turn
+
+    def qualifies(monster: Combatant) -> bool:
+        if monster.entity_id not in live.encounter_ids:
+            return False
+        if monster.legendary_actions_max <= 0:
+            return False
+        if not monster.is_alive or monster.hp_current <= 0:
+            return False
+        if conditions_block_actions(_condition_names(monster)):
+            return False
+        if monster.legendary_actions_remaining < 1:
+            return False
+        if ended_actor_id == monster.entity_id:
+            return False
+        return (ended_round, ended_actor_id, monster.entity_id) not in live.legendary_windows_used
+
+    if actor_id is not None:
+        candidate = next((c for c in live.initiative if c.entity_id == actor_id), None)
+        if candidate is None or not qualifies(candidate):
+            raise IntentRejectedError(
+                "no_legendary_action",
+                f"actor_id={actor_id!r} is not eligible for a legendary action right now",
+            )
+        return candidate
+
+    for combatant in live.initiative:
+        if qualifies(combatant):
+            return combatant
+    raise IntentRejectedError(
+        "no_legendary_action", "no encounter member is eligible for a legendary action right now"
+    )
+
+
+def _spend_legendary_use(live: _LiveCombat, monster: Combatant, action_slug: str) -> None:
+    """SRD 5.2 §Legendary Actions — "expends one use whenever it takes a
+    Legendary Action": decrement the pool, close the turn-end window
+    (``live.legendary_windows_used``), then emit ``LegendaryActionUsed``
+    BEFORE the chosen action's own events (per ``_take_legendary_action``).
+    """
+    assert live.last_ended_turn is not None  # narrowed by the eligibility gate
+    monster.legendary_actions_remaining -= 1
+    live.legendary_windows_used.add((*live.last_ended_turn, monster.entity_id))
+    _emit(
+        live,
+        LegendaryActionUsed(
+            actor_id=monster.entity_id,
+            action_slug=action_slug,
+            uses_remaining=monster.legendary_actions_remaining,
+        ),
+    )
+
+
+def _resolve_legendary_attack(
+    live: _LiveCombat, monster: Combatant, target: Combatant, activities: Sequence[Any]
+) -> None:
+    """Resolve a legendary action's own attack/save activities against
+    ``target``. Mirrors the mundane monster-attack branch of
+    ``advance_monster_turn`` (Shield drain, ``_monster_context_kwargs`` +
+    ``build_activity_context`` + ``resolve_activity``, Help/Vex/Sap grant
+    consumption, mastery-proc fold, Hide break, concentration writeback) —
+    but skips the movement-closing gambit: ``expand_action_to_activities``
+    is not needed for a single listed legendary action, and it always
+    resolves from the monster's current position, exactly like a
+    stat-block spellcast (``_resolve_monster_cast``).
+    """
+    target_list = [target]
+    _drain_targeted_reactions(
+        live,
+        trigger="hit_by_attack",
+        triggering_actor_id=monster.entity_id,
+        targets=target_list,
+    )
+    payload = _build_hydration_payload(live, caster=monster)
+    pre_event_count = len(live.event_log)
+    actx = build_activity_context(
+        monster,
+        target_list,
+        rng=live.rng,
+        event_emitter=lambda ev: _emit(live, ev),
+        slot_level=None,
+        base_spell_level=None,
+        spellcasting_ability=None,
+        concentration=False,
+        source_passive_effects=[],
+        spell_book={},
+        **_monster_context_kwargs(live, monster, target_list, payload),
+    )
+    for activity in activities:
+        resolve_activity(activity, actx, weapon=None)
+    _consume_attack_roll_grants(live, monster, target_list, pre_event_count)
+    _fold_mastery_procs(live, monster.entity_id, actx)
+    if monster.entity_id in live.hidden_entities:
+        _emit(live, ConditionRemoved(target_id=monster.entity_id, condition="invisible"))
+        live.hidden_entities.discard(monster.entity_id)
+    _writeback_concentration(live, monster, pre_event_count)
+    _record_effect_lifecycle_links(live, monster, pre_event_count)
+
+
+def _take_legendary_action(live: _LiveCombat, monster: Combatant) -> None:
+    """SRD 5.2 §Legendary Actions — spend one of ``monster``'s legendary-
+    action uses on the first offensive entry in its ``legendary_actions``
+    list (stat-block order) that is currently available.
+
+    "Offensive" mirrors ``_monster_cast_candidate``'s bar: a cast-only
+    action (all ``CastActivity``) resolves through
+    ``_monster_cast_candidate``/``_resolve_monster_cast`` — the same
+    at-will/N-per-day gating and Spell lookup a stat-block spellcast on the
+    monster's own turn uses; a non-cast action qualifies when it carries an
+    ``AttackActivity``/``SaveActivity``/``DamageActivity`` and resolves
+    through ``_resolve_legendary_attack``. A ``utility``-only entry (e.g.
+    Pounce) is never offensive and is skipped. Only entries whose
+    ``legendary_cost`` is unset or ``1`` are considered — the bundled
+    corpus carries no multi-point legendary action today (see BACKLOG for
+    the point-pool follow-up).
+
+    Raises ``IntentRejectedError("no_legendary_action", ...)`` when the
+    monster's template is unresolvable, no PC target is legal, or nothing
+    on the list qualifies.
+    """
+    slug = live.monster_slug_by_entity.get(monster.entity_id)
+    template = get_lib_loader().get_monster(slug) if slug else None
+    if template is None:
+        raise IntentRejectedError(
+            "no_legendary_action",
+            f"actor_id={monster.entity_id!r} has no resolvable monster template",
+        )
+    target = _lowest_hp_target(_select_monster_targets(live, monster))
+    if target is None:
+        raise IntentRejectedError(
+            "no_legendary_action", f"actor_id={monster.entity_id!r} has no legal target"
+        )
+
+    for action in template.legendary_actions:
+        if action.legendary_cost not in (None, 1):
+            continue
+        activities = action.activities
+        if activities and all(isinstance(a, CastActivity) for a in activities):
+            candidate = _monster_cast_candidate(live, monster, action)
+            if candidate is None:
+                continue
+            cast_activity, spell = candidate
+            _spend_legendary_use(live, monster, action.slug)
+            _resolve_monster_cast(live, monster, target, action, cast_activity, spell)
+            return
+        is_offensive = any(
+            isinstance(a, (AttackActivity, SaveActivity, DamageActivity)) for a in activities
+        )
+        if not is_offensive:
+            continue
+        _spend_legendary_use(live, monster, action.slug)
+        _resolve_legendary_attack(live, monster, target, activities)
+        return
+
+    raise IntentRejectedError(
+        "no_legendary_action", f"actor_id={monster.entity_id!r} has no usable legendary action"
+    )
 
 
 # ── Internal live-combat state ──────────────────────────────────────────────
@@ -2560,6 +2766,19 @@ class _LiveCombat:
     # (legendary reset, recharge rolls, regeneration) last ran for. ``None``
     # before the first driven monster turn.
     monster_turn_start_done: tuple[int, int] | None = None
+    # C18 §Monster action economy — legendary actions (Task 6). The
+    # ``(round_number, actor_id)`` of the LAST turn to end (recorded in
+    # ``_end_turn_and_advance`` before the round/turn-index bump), read by
+    # ``_eligible_legendary_actor``'s "immediately after ANOTHER creature's
+    # turn" gate. ``None`` before any turn has ended.
+    last_ended_turn: tuple[int, str] | None = None
+    # C18 §Monster action economy — one-shot guard for "only one of these
+    # actions can be taken at a time": every ``(round, ended_actor_id,
+    # monster_id)`` window that has already spent a legendary action.
+    # Never cleared — a window is identified by the (round, ended actor)
+    # pair, which never repeats, so old entries are simply inert going
+    # forward rather than needing eviction.
+    legendary_windows_used: set[tuple[int, str, str]] = field(default_factory=set)
     # Turn-boundary hook registry (``dnd5e_engine.turn_lifecycle``). Populated
     # by ``_register_default_turn_hooks`` in ``start_combat``; run by
     # ``_end_turn_and_advance`` / ``_begin_turn``. Every rule that fires "at the
@@ -7151,6 +7370,10 @@ def _end_turn_and_advance(live: _LiveCombat, actor_id: str) -> None:
     )
     run_turn_end(live, actor_id)
     _emit(live, TurnEnded(actor_id=actor_id))
+    # C18 §Monster action economy — record the window a legendary action may
+    # be taken in, BEFORE the round/turn-index bump below moves
+    # ``live.round_number`` past the round this turn just ended in.
+    live.last_ended_turn = (live.round_number, actor_id)
     live.current_turn_index += 1
     new_round = live.current_turn_index >= len(live.initiative)
     if new_round:
@@ -9654,7 +9877,9 @@ def _roll_damage_expression(live: _LiveCombat, expr: str, *, crit: bool) -> int:
     return max(0, total)
 
 
-async def advance_monster_turn(handle: CombatHandle) -> None:
+async def advance_monster_turn(
+    handle: CombatHandle, *, legendary: bool = False, actor_id: str | None = None
+) -> None:
     """Drive one monster turn through typed selection + the Activity resolver.
 
     Validation mirrors ``submit_player_intent``:
@@ -9678,10 +9903,25 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
     threshold, no attack, no PC targets), the orchestrator records
     ``IntentSubmitted(pass)`` and advances the turn without resolving any
     activity — the safe no-op the legacy dispatch also produced.
+
+    ``legendary=True`` (C18 §Monster action economy) takes a SEPARATE path:
+    a host calls this ANY time another creature's turn has just ended
+    (including a PC's) to let one eligible encounter member spend a
+    legendary action. It never touches ``current_turn_index``, never emits
+    ``TurnStarted``/``TurnEnded``/``TurnPhase``, spends no action economy,
+    and runs no turn-lifecycle hooks — see ``_eligible_legendary_actor`` and
+    ``_take_legendary_action``. ``actor_id`` picks a specific encounter
+    member (else the first eligible one in initiative order); both raise
+    ``IntentRejectedError("no_legendary_action", ...)`` when nothing
+    qualifies right now.
     """
     live = _get_live(handle)
     if live.ended:
         raise IntentRejectedError("combat_ended", f"handle={handle.handle_id}")
+
+    if legendary:
+        _take_legendary_action(live, _eligible_legendary_actor(live, actor_id))
+        return
 
     current = _current_actor(live)
     if current.entity_type == "Character":
@@ -9711,33 +9951,20 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
     )
 
     # Build alive-PC target list (lowest_hp priority — the legacy
-    # gambit's target rule). Empty targets degrades to pass.
-    alive_pcs: list[Combatant] = [
-        c
-        for c in live.initiative
-        if c.entity_id in live.party_ids and c.is_alive and c.hp_current > 0
-    ]
-    # SRD 5.2 Charmed — "You can't attack the charmer or target the charmer
-    # with damaging abilities or magical effects." The player path enforces
-    # this as a pre-resolution reject gate (``_charmed_target_failure``); the
-    # monster path has no intent to reject, so the charmer is removed from the
-    # selectable targets instead. A charmed monster still attacks anyone else;
-    # with no other target left it passes the turn. Unknown charmer (no
-    # resolvable source) imposes no restriction, exactly as on the player path.
-    charmer_id = _condition_source_entity(live, current, "charmed")
-    if charmer_id is not None:
-        alive_pcs = [c for c in alive_pcs if c.entity_id != charmer_id]
-        # Knock-on, accepted deliberately: ``alive_pcs`` is also the threat list
-        # ``_execute_flee_retreat`` measures distance against, so a charmed
-        # FLEEING monster no longer counts its charmer as someone to run from.
-        # Flavour-defensible (you do not flee the creature that has charmed you)
-        # and SRD-silent, but it is a second consequence of this one filter.
+    # gambit's target rule). Empty targets degrades to pass. SRD 5.2
+    # Charmed — "You can't attack the charmer or target the charmer with
+    # damaging abilities or magical effects" — is folded into
+    # ``_select_monster_targets``. Knock-on, accepted deliberately:
+    # ``alive_pcs`` is also the threat list ``_execute_flee_retreat``
+    # measures distance against, so a charmed FLEEING monster no longer
+    # counts its charmer as someone to run from. Flavour-defensible (you do
+    # not flee the creature that has charmed you) and SRD-silent, but it is
+    # a second consequence of this one filter.
+    alive_pcs = _select_monster_targets(live, current)
     if not alive_pcs:
         skip_to_record_pass = True
 
-    chosen_target: Combatant | None = (
-        min(alive_pcs, key=lambda c: c.hp_current) if alive_pcs else None
-    )
+    chosen_target: Combatant | None = _lowest_hp_target(alive_pcs)
 
     # ── Fleeing retreat ──────────────────────────────────────────
     # A live monster over the flee threshold spends its movement putting

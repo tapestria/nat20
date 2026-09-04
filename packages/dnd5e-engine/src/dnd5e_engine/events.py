@@ -605,6 +605,18 @@ class CombatEnded(BaseModel):
     reason: Literal["victory", "defeat_tpk", "flee", "forced"]
 
 
+class LegendaryActionUsed(BaseModel):
+    """A monster spent one of its per-round legendary-action uses. Emitted
+    before the chosen action's own events (attack/save/cast) so a host can
+    narrate "the dragon takes a legendary action" ahead of its resolution.
+    """
+
+    type: Literal["legendary_action_used"] = "legendary_action_used"
+    actor_id: str
+    action_slug: str
+    uses_remaining: int
+
+
 CombatEvent = Annotated[
     RoundStarted
     | RoundEnded
@@ -639,7 +651,8 @@ CombatEvent = Annotated[
     | SpellCast
     | ReactionTriggered
     | CombatEnded
-    | RechargeRolled,
+    | RechargeRolled
+    | LegendaryActionUsed,
     Field(discriminator="type"),
 ]
 
@@ -682,6 +695,7 @@ ALL_COMBAT_EVENT_TYPES: tuple[type[BaseModel], ...] = (
     ReactionTriggered,
     CombatEnded,
     RechargeRolled,
+    LegendaryActionUsed,
 )
 
 
@@ -716,6 +730,7 @@ __all__ = [
     "HealingApplied",
     "IntentSubmitted",
     "IntentType",
+    "LegendaryActionUsed",
     "MoveFailed",
     "ReactionTriggered",
     "RechargeRolled",
