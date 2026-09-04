@@ -62,12 +62,13 @@ from dnd5e_srd_data.schema.common import (
     ActivationBlock,
     AttackActivity,
     AttackDamageBlock,
+    CastActivity,
     DamagePartBlock,
     HealActivity,
     SaveActivity,
 )
 from dnd5e_srd_data.schema.item import Weapon, WeaponProperty
-from dnd5e_srd_data.schema.monster import Monster, MonsterTraitMechanic
+from dnd5e_srd_data.schema.monster import Monster, MonsterAction, MonsterTraitMechanic
 from dnd5e_srd_data.schema.spell import (
     CastingTimeUnit,
     Spell,
@@ -96,7 +97,7 @@ from dnd5e_engine.activities.dice import roll_damage_part
 from dnd5e_engine.activities.forced_movement import FORCED_MOVEMENT_RIDERS
 from dnd5e_engine.activities.monster_actions import (
     expand_action_to_activities,
-    select_typed_monster_action,
+    rank_monster_actions,
 )
 from dnd5e_engine.activities.passive_stats import CombatantSenses, interpret_passive_stats
 from dnd5e_engine.activities.resolver import resolve_activity
@@ -2003,6 +2004,66 @@ def _synthesize_attack_from_legacy_fields(current: Combatant) -> AttackActivity 
     )
 
 
+def _monster_cast_candidate(live: _LiveCombat, current: Combatant, action: MonsterAction) -> None:
+    """Which spell/target a cast-only monster action resolves to, or
+    ``None`` when it can't (nothing selectable this task).
+
+    Stub: Task 5 (C18) fills this in with real spell selection, slot/uses
+    bookkeeping, and target choice. Returning ``None`` unconditionally keeps
+    every cast-only action unavailable via ``_monster_action_available``, so
+    the 48 bundled stat-block spellcasters keep today's byte-identical
+    turn-selection behaviour until that task lands.
+    """
+    return None
+
+
+def _monster_action_available(live: _LiveCombat, current: Combatant, action: MonsterAction) -> bool:
+    """Whether ``action`` can be chosen for ``current``'s turn right now.
+
+    ``False`` when: its tracked ``MonsterActionUses.recharge_spent`` is
+    True (SRD 5.2 "Recharge X-Y" — spent and not yet rolled back in); its
+    activities are ALL ``CastActivity`` and ``_monster_cast_candidate``
+    can't resolve one (the stub above — always the case today); or its
+    limited-use activities are all exhausted (``uses_remaining`` tracked and
+    all zero) with no unlimited activity on the same action to fall back to.
+    ``True`` otherwise, including for an action with no tracked
+    ``MonsterActionUses`` entry at all (nothing to gate).
+    """
+    entry = live.monster_action_uses_by_entity.get(current.entity_id, {}).get(action.slug)
+    if entry is not None and entry.recharge_spent:
+        return False
+    activities = action.activities
+    if activities and all(isinstance(a, CastActivity) for a in activities):
+        # Task 5 (C18) fills in real spell selection; the stub above always
+        # returns None, so every cast-only action is unavailable until then.
+        _monster_cast_candidate(live, current, action)
+        return False
+    if entry is not None and entry.uses_remaining:
+        has_unlimited_activity = any(
+            not activity.uses.max.strip().isdigit() for activity in activities
+        )
+        if not has_unlimited_activity and all(v <= 0 for v in entry.uses_remaining.values()):
+            return False
+    return True
+
+
+def _mark_monster_action_used(live: _LiveCombat, current: Combatant, action: MonsterAction) -> None:
+    """Record that ``action`` was chosen this turn — spends its tracked
+    ``MonsterActionUses`` state.
+
+    Only the recharge half is handled here: a chosen recharge action is
+    marked spent (``_roll_recharges`` then rolls for it at the monster's
+    NEXT turn start). Per-day ``uses_remaining`` decrements are C18 Task 5's
+    (cast-action selection isn't reachable yet — see
+    ``_monster_cast_candidate``).
+    """
+    if not action.recharge:
+        return
+    entry = live.monster_action_uses_by_entity.get(current.entity_id, {}).get(action.slug)
+    if entry is not None:
+        entry.recharge_spent = True
+
+
 def _resolve_monster_activities(
     live: _LiveCombat,
     current: Combatant,
@@ -2031,8 +2092,13 @@ def _resolve_monster_activities(
             # silent; the turn still advances through the pass shape below.
             _LOGGER.warning("monster_unresolved slug=%s", monster_slug)
         else:
-            monster_action = select_typed_monster_action(monster)
+            ranked = rank_monster_actions(
+                monster.actions,
+                is_available=lambda a: _monster_action_available(live, current, a),
+            )
+            monster_action = ranked[0] if ranked else None
             if monster_action is not None:
+                _mark_monster_action_used(live, current, monster_action)
                 # hand the labelless-multiattack fallback the live
                 # distance + profile so it can prefer a sibling whose own range
                 # already covers the target (scout → longbow at 100 ft) instead

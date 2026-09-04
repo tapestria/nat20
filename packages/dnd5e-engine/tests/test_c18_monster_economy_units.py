@@ -20,7 +20,7 @@ from dnd5e_engine import (
     start_combat,
     submit_player_intent,
 )
-from dnd5e_engine.events import HealingApplied, RechargeRolled
+from dnd5e_engine.events import DamageApplied, HealingApplied, IntentSubmitted, RechargeRolled
 from dnd5e_engine.lib_loader import set_lib_loader_for_tests
 from dnd5e_engine.orchestrator import _get_live
 from dnd5e_engine.spatial import cell_id as cell
@@ -123,7 +123,17 @@ def test_regeneration_is_capped_at_hp_max_and_silent_at_zero():
 
 def test_recharge_roll_only_after_the_action_was_spent():
     """SRD 5.2 Recharge X–Y: rolled at the start of each of the monster's
-    turns; Foundry parity — an unspent part is not rolled for."""
+    turns; Foundry parity — an unspent part is not rolled for.
+
+    C18 Task 3 note: turn 1 no longer needs a manual ``recharge_spent = True``
+    flip — ``rank_monster_actions`` now ranks the available Fire Breath ahead
+    of Claw, so the mephit spends it for real on turn 1 (see
+    ``test_mephit_breathes_first_then_claw_or_breath_again_after_recharge``
+    below for the full selection assertions). The tracked entry ends turn 2
+    spent either way: on a successful roll, Fire Breath is available again
+    and gets re-selected + re-spent the SAME turn; on a failed roll it just
+    stays spent — either path is observed here, only the roll fields differ.
+    """
 
     async def go():
         handle, live = await _start(
@@ -131,12 +141,10 @@ def test_recharge_roll_only_after_the_action_was_spent():
         )
         uses = live.monster_action_uses_by_entity["mon:foe"]["fire-breath"]
         assert uses.recharge_spent is False
-        await advance_monster_turn(
-            handle
-        )  # turn 1 — Task 3 makes this the breath; here we force the state
-        uses.recharge_spent = True
+        await advance_monster_turn(handle)  # turn 1 — the mephit breathes, spending it
+        assert uses.recharge_spent is True
         await _pass(handle)
-        await advance_monster_turn(handle)  # turn 2 — the roll happens here
+        await advance_monster_turn(handle)  # turn 2 — the roll happens at turn start
         return handle, live
 
     handle, live = _run(go())
@@ -146,12 +154,64 @@ def test_recharge_roll_only_after_the_action_was_spent():
     assert (ev.monster_id, ev.action_slug, ev.threshold) == ("mon:foe", "fire-breath", "6")
     assert 1 <= ev.roll <= 6
     assert ev.succeeded == (ev.roll >= 6)
-    assert live.monster_action_uses_by_entity["mon:foe"]["fire-breath"].recharge_spent is (
-        not ev.succeeded
+    assert live.monster_action_uses_by_entity["mon:foe"]["fire-breath"].recharge_spent is True
+    assert (
+        get_live(handle).monster_action_uses_by_entity["mon:foe"]["fire-breath"].recharge_spent
+        is True
     )
-    assert get_live(handle).monster_action_uses_by_entity["mon:foe"][
-        "fire-breath"
-    ].recharge_spent is (not ev.succeeded)
+
+
+def test_ranked_selection_opens_with_recharge_action_then_recharges_or_repeats():
+    """C18 Task 3 (S01): ``rank_monster_actions`` now ranks an available
+    recharge action ahead of the first-listed offensive action, so the
+    mephit opens combat with Fire Breath instead of Claw. Turn 2 rolls to
+    recharge at turn start (SRD 5.2 "at the start of each of the monster's
+    turns, roll 1d6 ... if within the ... range, the monster regains the
+    use"); observed once for seed 7: ``roll=6`` (>= the "6" threshold, i.e.
+    success), so Fire Breath is available again and re-selected the SAME
+    turn. Had it failed, turn 2's action would fall back to Claw — no fire
+    damage in that slice of the log — which the final assertion checks
+    either way rather than hard-coding the branch not taken.
+    """
+
+    async def go():
+        handle, live = await _start(
+            [_hero(initiative=1)], [_foe("magma-mephit", initiative=20, hp=18, ac=11)], seed=7
+        )
+        await advance_monster_turn(handle)  # turn 1
+        turn1_log = list(live.event_log)
+        await _pass(handle)
+        pre_turn2 = len(live.event_log)
+        await advance_monster_turn(handle)  # turn 2
+        turn2_log = live.event_log[pre_turn2:]
+        return turn1_log, turn2_log
+
+    turn1_log, turn2_log = _run(go())
+
+    def _fire_damage_at_hero(log):
+        return [
+            e
+            for e in log
+            if isinstance(e, DamageApplied)
+            and e.target_id == "char:hero"
+            and e.damage_type == "fire"
+        ]
+
+    assert _fire_damage_at_hero(turn1_log), "turn 1 should open with Fire Breath, not Claw"
+    turn1_intents = [
+        e for e in turn1_log if isinstance(e, IntentSubmitted) and e.actor_id == "mon:foe"
+    ]
+    assert [i.intent_type for i in turn1_intents] == ["attack"]
+
+    turn2_rolls = [e for e in turn2_log if isinstance(e, RechargeRolled)]
+    assert len(turn2_rolls) == 1
+    ev = turn2_rolls[0]
+    # Pinned from a live run at seed 7 (observed, not guessed).
+    assert (ev.roll, ev.succeeded) == (6, True)
+    if ev.succeeded:
+        assert _fire_damage_at_hero(turn2_log), "recharge succeeded — Fire Breath fires again"
+    else:
+        assert not _fire_damage_at_hero(turn2_log), "recharge failed — turn 2 falls back to Claw"
 
 
 def test_legendary_pools_hydrate_from_the_template_and_reset_at_own_turn():

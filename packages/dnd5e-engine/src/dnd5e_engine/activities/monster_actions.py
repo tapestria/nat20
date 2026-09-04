@@ -45,9 +45,10 @@ from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING
 
-from dnd5e_srd_data.schema.common import AttackActivity, SaveActivity
+from dnd5e_srd_data.schema.common import AttackActivity, CastActivity, SaveActivity
 
 if TYPE_CHECKING:
     from dnd5e_srd_data.schema.common import Activity
@@ -92,8 +93,91 @@ def _activity_is_offensive(activity: Activity) -> bool:
     return isinstance(activity, (AttackActivity, SaveActivity))
 
 
+def _activity_is_offensive_or_cast(activity: Activity) -> bool:
+    """``_activity_is_offensive`` plus ``CastActivity`` — a spellcasting
+    action is offensive-in-spirit even though its own activity carries no
+    attack/save block (the referenced spell does)."""
+    return _activity_is_offensive(activity) or isinstance(activity, CastActivity)
+
+
 def _action_has_offense(action: MonsterAction) -> bool:
     return any(_activity_is_offensive(a) for a in action.activities)
+
+
+def _limited_use_cast_activities(action: MonsterAction) -> list[CastActivity]:
+    """``action``'s cast activities with an integer ``uses.max`` and a
+    ``day`` recovery period (SRD 5.2 Innate Spellcasting's "N/Day" shape).
+
+    An at-will cast (empty ``uses.max``) or one recovering on a rest period
+    other than ``day`` doesn't qualify — this is deliberately narrow to the
+    one shape ``rank_monster_actions`` ranks above multiattack.
+    """
+    return [
+        activity
+        for activity in action.activities
+        if isinstance(activity, CastActivity)
+        and activity.uses.max.strip().isdigit()
+        and any(entry.period == "day" for entry in activity.uses.recovery)
+    ]
+
+
+def rank_monster_actions(
+    actions: Sequence[MonsterAction],
+    *,
+    is_available: Callable[[MonsterAction], bool],
+) -> list[MonsterAction]:
+    """Order ``actions`` by SRD 5.2 selection priority for a monster's turn.
+
+    Tiers, ties broken by ``actions`` list order within each tier:
+
+    1. offensive actions with ``recharge`` set that pass ``is_available``
+       (a live breath weapon/AoE is the monster's biggest hitter and was
+       structurally unreachable under the old first-in-list selection);
+    2. actions carrying a limited-use offensive cast activity (integer
+       ``uses.max`` with a ``day`` recovery period) that pass
+       ``is_available`` — Innate Spellcasting's N/Day slots;
+    3. the ``multiattack`` action, if present;
+    4. every other offensive action (offensive now includes any
+       ``CastActivity``, e.g. an at-will spell) that passes ``is_available``,
+       in list order.
+
+    An action that fails ``is_available`` drops out entirely rather than
+    sinking to a lower tier. Pure — ``is_available`` is the caller's seam
+    into live per-entity state (recharge/uses tracking); this function reads
+    no orchestrator state itself.
+    """
+    placed: set[str] = set()
+    ranked: list[MonsterAction] = []
+
+    for action in actions:
+        if action.recharge and _action_has_offense(action) and is_available(action):
+            ranked.append(action)
+            placed.add(action.slug)
+
+    for action in actions:
+        if action.slug in placed:
+            continue
+        if _limited_use_cast_activities(action) and is_available(action):
+            ranked.append(action)
+            placed.add(action.slug)
+
+    for action in actions:
+        if action.slug in placed:
+            continue
+        if action.slug == _MULTIATTACK_SLUG:
+            ranked.append(action)
+            placed.add(action.slug)
+
+    for action in actions:
+        if action.slug in placed:
+            continue
+        if any(_activity_is_offensive_or_cast(a) for a in action.activities) and is_available(
+            action
+        ):
+            ranked.append(action)
+            placed.add(action.slug)
+
+    return ranked
 
 
 def _attack_siblings(monster: Monster, exclude: MonsterAction) -> list[MonsterAction]:

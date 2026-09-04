@@ -9,7 +9,13 @@ never zones. Real bundled corpus slugs throughout (verified live against
 from __future__ import annotations
 
 from dnd5e_engine import PlayerIntent
-from dnd5e_engine.events import AttackRolled, DamageApplied, HealingApplied, SaveRolled
+from dnd5e_engine.events import (
+    AttackRolled,
+    DamageApplied,
+    HealingApplied,
+    RechargeRolled,
+    SaveRolled,
+)
 from dnd5e_engine.orchestrator import (
     _get_live,
     advance_monster_turn,
@@ -21,16 +27,15 @@ from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
 from tests.e2e.harness import cell, events_of, grid_scene, run_async, xfail_cluster
 
 
-@xfail_cluster(18, "monster action economy")
 def test_c18_s01_recharge_gates_a_breath_weapon_ai_cannot_select_it():
     """C18-S01: SRD 5.2 "Recharge X-Y. ... At the start of each of the
     monster's turns, roll 1d6. If the roll is within the number range
     given in the notation ..., the monster regains the use of that part."
     (packs/_source/content24/monsters/monsters.yml:8551-8555, "Limited
-    Usage"). ``select_typed_monster_action`` always returns ``Claw`` (the
-    first offensive action in list order) on every turn — Fire Breath
-    (Recharge 6) is structurally unreachable regardless of any recharge
-    state, and no ``RechargeRolled`` event type exists in ``events.py``.
+    Usage"). ``rank_monster_actions`` ranks an available recharge action
+    (Fire Breath, Recharge 6) ahead of Claw, so the mephit opens with it
+    while it's available (turn 1); the recharge roll fires at the start of
+    its next turn (turn 2), emitting ``RechargeRolled``.
     """
 
     async def _run():
@@ -77,13 +82,7 @@ def test_c18_s01_recharge_gates_a_breath_weapon_ai_cannot_select_it():
 
     live = run_async(_run())
 
-    # API delta (C18): RechargeRolled does not exist today — look it up
-    # dynamically so its absence drives the xfail rather than a collection
-    # error, mirroring the C16-S07 CombatantMoved idiom.
-    from dnd5e_engine import events as events_module
-
-    recharge_rolled_cls = events_module.RechargeRolled
-    recharge_events = [e for e in live.event_log if isinstance(e, recharge_rolled_cls)]
+    recharge_events = events_of(live, RechargeRolled)
     assert recharge_events, "expected a RechargeRolled roll at the start of turn 2"
 
     fire_breath_dmg = [
