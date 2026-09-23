@@ -67,6 +67,7 @@ from dataclasses import replace
 from typing import TYPE_CHECKING
 
 from dnd5e_srd_data.schema.item import WeaponProperty
+from dnd5e_srd_data.schema.monster import MonsterTraitMechanic
 
 from dnd5e_engine.activities.apply import apply_damage
 from dnd5e_engine.activities.d20 import AdvantageSources, roll_d20_test
@@ -497,6 +498,30 @@ def _attack_roll_sources(
     # Disadvantage on its next attack roll". Per-ATTACKER (the acting
     # caster may itself be sapped); reuses the SAME "trait" token.
     if ctx.attacker_sapped:
+        dis_sources.append("trait")
+    # C18 §Monster action economy — SRD 5.2 stat-block trait "Pack
+    # Tactics": "Advantage on an attack roll against a creature if at
+    # least one of the [monster]'s allies is within 5 feet of the
+    # creature and the ally doesn't have the Incapacitated condition."
+    # The geometry/Incapacitated predicate is PRE-RESOLVED per-target by
+    # the orchestrator (``_pack_tactics_map``); this pure resolver only
+    # gates it on the attacker actually carrying the trait. Reuses the
+    # SAME "trait" token as Heavy/Sap/Vex (no dedicated
+    # ``AdvantageSource`` for mastery/trait riders).
+    if (
+        MonsterTraitMechanic.PACK_TACTICS in ctx.caster.trait_mechanics
+        and ctx.pack_tactics_ally_adjacent.get(target.entity_id)
+    ):
+        adv_sources.append("trait")
+    # C18 §Monster action economy — SRD 5.2 stat-block trait "Sunlight
+    # Sensitivity": "the [monster] has Disadvantage on attack rolls ...
+    # while [it] is in direct sunlight." Scene-wide flag PRE-RESOLVED by
+    # the orchestrator (``live.scene_sunlight``); gated on the attacker
+    # actually carrying the trait.
+    if (
+        MonsterTraitMechanic.SUNLIGHT_SENSITIVITY in ctx.caster.trait_mechanics
+        and ctx.attacker_in_sunlight
+    ):
         dis_sources.append("trait")
     # F3 — Heavy and Sap (and, on the advantage side, Vex) all reuse the
     # SAME "trait" token (no dedicated ``AdvantageSource`` exists for any

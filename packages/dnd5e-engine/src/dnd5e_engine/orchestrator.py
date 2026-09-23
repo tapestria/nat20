@@ -924,6 +924,13 @@ def _apply_regeneration(live: _LiveCombat, current: Combatant, monster: Monster)
         return
     if current.hp_current >= current.hp_max:
         return
+    # C18 §Monster action economy — SRD 5.2 stat-block trait "Swarm": "The
+    # swarm can't regain Hit Points or gain Temporary Hit Points." A
+    # Regeneration bearer that is ALSO a Swarm (no bundled monster combines
+    # the two today) never heals from either trait.
+    if MonsterTraitMechanic.SWARM in current.trait_mechanics:
+        _LOGGER.info("swarm_no_hp_gain target_id=%s", current.entity_id)
+        return
     for trait in monster.special_abilities:
         if trait.mechanic != MonsterTraitMechanic.REGENERATION:
             continue
@@ -1462,6 +1469,60 @@ def _sneak_ally_adjacent_map(
         for ally in allies:
             ally_zone = live.actor_zone.get(ally.entity_id)
             if ally_zone is not None and live.topology.within_range(ally_zone, target_zone, 5):
+                out[target.entity_id] = True
+                break
+    return out
+
+
+def _pack_tactics_map(
+    live: _LiveCombat, attacker: Combatant, targets: Sequence[Combatant]
+) -> dict[str, bool]:
+    """SRD 5.2 stat-block trait "Pack Tactics" (R8) — per target, is at
+    least one of the ATTACKER's allies (any OTHER living combatant on its
+    own side — the encounter for a monster attacker) within 5 ft of that
+    target and not Incapacitated?
+
+    Mirrors ``_sneak_ally_adjacent_map``'s geometry (same spatial-seam
+    consumer shape) with two differences per R8: the ally gate is
+    ``is_alive and hp_current > 0`` (not just ``is_alive``) plus
+    ``conditions_block_actions`` (the Incapacitated helper shared with the
+    rest of the engine, rather than the raw ``is_condition_active`` call),
+    and the reach test is ``distance_ft(...) <= 5`` against the TARGET
+    (zero on a zone graph when ally and target share a zone) rather than
+    ``within_range``. Threaded into
+    ``ActivityResolutionContext.pack_tactics_ally_adjacent`` so the pure
+    resolver never touches the spatial seam. Absent zone data for the
+    attacker's side, a target, or every ally contributes no entry (⇒ no
+    qualifying ally).
+    """
+    if attacker.entity_id in live.party_ids:
+        side = live.party_ids
+    elif attacker.entity_id in live.encounter_ids:
+        side = live.encounter_ids
+    else:
+        return {}
+    allies = [
+        c
+        for c in live.initiative
+        if c.entity_id in side
+        and c.entity_id != attacker.entity_id
+        and c.is_alive
+        and c.hp_current > 0
+        and not conditions_block_actions(active_condition_names(c.conditions))
+    ]
+    if not allies:
+        return {}
+    out: dict[str, bool] = {}
+    for target in targets:
+        target_zone = live.actor_zone.get(target.entity_id)
+        if target_zone is None:
+            continue
+        for ally in allies:
+            ally_zone = live.actor_zone.get(ally.entity_id)
+            if ally_zone is None:
+                continue
+            distance = live.topology.distance_ft(ally_zone, target_zone)
+            if distance is not None and distance <= 5:
                 out[target.entity_id] = True
                 break
     return out
@@ -2386,6 +2447,12 @@ def _monster_context_kwargs(
         "legendary_resistances_remaining_by_entity": payload[
             "legendary_resistances_remaining_by_entity"
         ],
+        # C18 §Monster action economy — Pack Tactics / Sunlight Sensitivity
+        # (Task 8): a monster attack/cast is the only path either trait's
+        # bearer resolves through today, so both sidecars are projected
+        # here rather than at the PC-only sneak-attack call site.
+        "pack_tactics_ally_adjacent": _pack_tactics_map(live, current, target_list),
+        "attacker_in_sunlight": live.scene_sunlight,
     }
 
 
@@ -2726,6 +2793,12 @@ class _LiveCombat:
     rng: random.Random
     event_queue: asyncio.Queue[CombatEvent | None]
     scene_location_id: str
+    # C18 §Monster action economy — SRD 5.2 stat-block trait "Sunlight
+    # Sensitivity": whole-scene sunlight flag, projected from
+    # ``GridScene.sunlight`` at ``start_combat`` (``False`` for a zone-graph
+    # scene, which carries no ``GridScene``). Read by ``_monster_context_
+    # kwargs`` into ``ActivityResolutionContext.attacker_in_sunlight``.
+    scene_sunlight: bool = False
     current_turn_index: int = 0
     round_number: int = 1
     ended: bool = False
@@ -6978,6 +7051,7 @@ async def start_combat(
         rng=rng,
         event_queue=asyncio.Queue(),
         scene_location_id=scene_location_id,
+        scene_sunlight=grid_scene.sunlight if grid_scene is not None else False,
         actor_zone=actor_zone,
         monster_slug_by_entity=monster_slug_by_entity,
         xp_value_by_entity=xp_value_by_entity,

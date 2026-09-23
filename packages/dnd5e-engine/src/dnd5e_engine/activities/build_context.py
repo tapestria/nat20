@@ -191,6 +191,8 @@ def build_activity_context(
     cleave_candidate: Combatant | None = None,
     legendary_resistance_armed: dict[str, int] | None = None,
     legendary_resistances_remaining_by_entity: dict[str, int] | None = None,
+    pack_tactics_ally_adjacent: dict[str, bool] | None = None,
+    attacker_in_sunlight: bool = False,
 ) -> ActivityResolutionContext:
     """Adapt the caster + the pre-computed hydration sidecars into the typed
     ``ActivityResolutionContext`` the new resolver consumes.
@@ -483,4 +485,11 @@ def build_activity_context(
         # exactly as before this feature).
         legendary_resistance_armed=legendary_resistance_armed or {},
         legendary_resistances_remaining_by_entity=legendary_resistances_remaining_by_entity or {},
+        # C18 §Monster action economy — Pack Tactics / Sunlight Sensitivity
+        # (Task 8): PRE-RESOLVED per-target ally-adjacency map / scene-wide
+        # sunlight flag, projected by the orchestrator (``_pack_tactics_map``
+        # / ``live.scene_sunlight``). Defaults ({} / False) leave the golden
+        # corpus identical (no adjacency data, no sunlit scene).
+        pack_tactics_ally_adjacent=pack_tactics_ally_adjacent or {},
+        attacker_in_sunlight=attacker_in_sunlight,
     )

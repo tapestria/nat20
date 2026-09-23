@@ -115,13 +115,13 @@ def _foe(slug, entity_id="mon:foe", *, initiative=5, hp, hp_max=None, ac=10, col
     )
 
 
-async def _start(party, encounter, *, seed=1, width=10, session="c18-units"):
+async def _start(party, encounter, *, seed=1, width=10, session="c18-units", sunlight=False):
     start = await start_combat(
         session_id=session,
         party=party,
         encounter=encounter,
         scene_zones=None,
-        grid_scene=GridScene(width=width, height=10, cell_size_ft=5),
+        grid_scene=GridScene(width=width, height=10, cell_size_ft=5, sunlight=sunlight),
         rng_seed=seed,
     )
     return start.handle, _get_live(start.handle)
@@ -875,3 +875,54 @@ def test_dead_dragon_cannot_take_legendary_actions():
 
     err = _run(go())
     assert err.reason == "no_legendary_action"
+
+
+def test_pack_tactics_ignores_an_incapacitated_ally():
+    """R8 — SRD 5.2 stat-block trait "Pack Tactics": "if at least one of the
+    [monster]'s allies is within 5 feet of the creature and the ally
+    doesn't have the Incapacitated condition." Mirrors the S06 e2e fixture
+    (mon:wolf1 adjacent to char:hero at (5,5); mon:wolf2 also adjacent at
+    (6,6)) but PARALYZES wolf2 (implies Incapacitated) — the only nearby
+    ally no longer qualifies, so wolf1's attack stays at normal."""
+
+    async def go():
+        hero = PartyMemberSpec(
+            entity_id="char:hero",
+            name="Hero",
+            initiative=20,
+            hp_current=30,
+            hp_max=30,
+            ac=14,
+            zone_id=cell(5, 5),
+        )
+        wolf1 = EncounterMemberSpec(
+            entity_id="mon:wolf1",
+            entity_type="Monster",
+            name="Wolf",
+            initiative=15,
+            hp_current=11,
+            hp_max=11,
+            ac=13,
+            zone_id=cell(6, 5),
+            monster_template_slug="wolf",
+        )
+        wolf2 = EncounterMemberSpec(
+            entity_id="mon:wolf2",
+            entity_type="Monster",
+            name="Wolf",
+            initiative=14,
+            hp_current=11,
+            hp_max=11,
+            ac=13,
+            zone_id=cell(6, 6),
+            monster_template_slug="wolf",
+        )
+        handle, live = await _start([hero], [wolf1, wolf2], seed=3)
+        _set_condition(live, "mon:wolf2", "paralyzed")
+        await _pass(handle)
+        await advance_monster_turn(handle)  # mon:wolf1 attacks char:hero
+        return live
+
+    live = _run(go())
+    rolled = next(e for e in _events(live, AttackRolled) if e.attacker_id == "mon:wolf1")
+    assert rolled.advantage == "normal"

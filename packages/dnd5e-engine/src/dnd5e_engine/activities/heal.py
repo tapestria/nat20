@@ -16,7 +16,10 @@ emits the rolled magnitude for damage.
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING, Final
+
+from dnd5e_srd_data.schema.monster import MonsterTraitMechanic
 
 from dnd5e_engine.activities.dice import roll_damage_part
 from dnd5e_engine.activities.effects import apply_activity_effects
@@ -27,6 +30,8 @@ if TYPE_CHECKING:
     from dnd5e_srd_data.schema.common import HealActivity
 
     from .context import ActivityResolutionContext
+
+_LOGGER = logging.getLogger(__name__)
 
 # Foundry healing type token for a temporary HP grant (vs "healing" for HP
 # restoration). Confirmed as the only temp-hp marker in canonical SRD 5.2 data.
@@ -56,6 +61,15 @@ def resolve_heal(activity: HealActivity, ctx: ActivityResolutionContext) -> None
     is_temp_hp = _TEMP_HP_TYPE in healing.types
     cast_level = ctx.slot_level or ctx.base_spell_level or 0
     for target in ctx.targets:
+        # C18 §Monster action economy — SRD 5.2 stat-block trait "Swarm":
+        # "The swarm can't regain Hit Points or gain Temporary Hit Points"
+        # (e.g. swarm-of-rats.json). A swarm target never gains HP or temp
+        # HP from a heal activity. Skipped BEFORE rolling — a swarm target
+        # draws no dice (determinism: only a target actually carrying the
+        # trait changes the seeded stream).
+        if MonsterTraitMechanic.SWARM in target.trait_mechanics:
+            _LOGGER.info("swarm_no_hp_gain target_id=%s", target.entity_id)
+            continue
         amount = roll_damage_part(
             healing,
             ctx.rng,

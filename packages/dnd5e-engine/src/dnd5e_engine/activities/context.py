@@ -397,6 +397,23 @@ class ActivityResolutionContext:
     # ``Combatant`` field afterward via ``_sync_legendary_resistance``. Empty
     # default keeps every non-bearer byte-identical.
     legendary_resistances_remaining_by_entity: dict[str, int] = field(default_factory=dict)
+    # C18 §Monster action economy — SRD 5.2 stat-block trait "Pack Tactics":
+    # "Advantage on an attack roll against a creature if at least one of the
+    # [monster]'s allies is within 5 feet of the creature and the ally
+    # doesn't have the Incapacitated condition." Per-TARGET flag, PRE-
+    # RESOLVED by the orchestrator (``_pack_tactics_map``, a spatial-seam
+    # consumer mirroring ``sneak_attack_ally_adjacent``'s geometry) so this
+    # pure resolver never touches ``spatial.py`` itself. Absent target ⇒ no
+    # qualifying ally. Empty default keeps every non-bearer byte-identical.
+    pack_tactics_ally_adjacent: dict[str, bool] = field(default_factory=dict)
+    # C18 §Monster action economy — SRD 5.2 stat-block trait "Sunlight
+    # Sensitivity": "the [monster] has Disadvantage on attack rolls ...
+    # while [it] is in direct sunlight." A scene-wide flag (whole-scene
+    # sunlight; per-cell sunlight is a later additive field on
+    # ``GridScene``) projected by the orchestrator from ``live.scene_
+    # sunlight``. ``False`` default keeps every combat without a sunlit
+    # scene byte-identical.
+    attacker_in_sunlight: bool = False
     # Test-determinism seams (our own code): variables["force_d20"],
     # variables["force_save_d20"], variables["in_crit"].
     variables: dict[str, int] = field(default_factory=dict)

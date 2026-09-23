@@ -439,7 +439,6 @@ def test_c18_s05_magic_resistance_grants_advantage_on_saves_vs_spells():
     assert "trait" in save_b.sources
 
 
-@xfail_cluster(18, "monster action economy")
 def test_c18_s06_pack_tactics_grants_attack_advantage_with_adjacent_ally():
     """C18-S06: SRD 5.2 "The [monster] has Advantage on an attack roll
     against a creature if at least one of the [monster]'s allies is
