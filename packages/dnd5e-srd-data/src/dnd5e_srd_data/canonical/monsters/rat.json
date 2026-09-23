@@ -163,7 +163,9 @@
   "hp_dice": "1d4 - 1",
   "lair_actions": [],
   "languages": [],
+  "legendary_action_uses": null,
   "legendary_actions": [],
+  "legendary_resistance_uses": null,
   "movement": {
     "burrow": null,
     "climb": 20,
@@ -236,5 +238,6 @@
       "slug": "agile",
       "uses_per_day": null
     }
-  ]
+  ],
+  "spellcasting_ability": null
 }

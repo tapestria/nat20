@@ -1407,7 +1407,9 @@
     "Common",
     "Common plus three other languages"
   ],
+  "legendary_action_uses": null,
   "legendary_actions": [],
+  "legendary_resistance_uses": null,
   "movement": {
     "burrow": null,
     "climb": null,
@@ -1468,5 +1470,6 @@
     "survival": null
   },
   "slug": "mage",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": "int"
 }

@@ -1065,6 +1065,7 @@
   "hp_dice": "34d20 + 340",
   "lair_actions": [],
   "languages": [],
+  "legendary_action_uses": 3,
   "legendary_actions": [
     {
       "activities": [
@@ -1265,6 +1266,7 @@
       "uses_per_day": null
     }
   ],
+  "legendary_resistance_uses": 6,
   "movement": {
     "burrow": 40,
     "climb": 60,
@@ -1546,5 +1548,6 @@
       "slug": "siege-monster",
       "uses_per_day": null
     }
-  ]
+  ],
+  "spellcasting_ability": null
 }

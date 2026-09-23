@@ -29,6 +29,14 @@ class TurnCombatView:
 
 
 @dataclass(frozen=True)
+class MonsterActionUsesView:
+    """Read-only projection of one ``MonsterActionUses`` (C18)."""
+
+    recharge_spent: bool
+    uses_remaining: dict[str, int]
+
+
+@dataclass(frozen=True)
 class LiveCombatView:
     """Snapshot projection of live combat state for host consumers."""
 
@@ -56,6 +64,15 @@ class LiveCombatView:
     # ``TurnCombatView(attacks_remaining=0)`` when combat has ended or the
     # initiative order is empty (no current actor to project).
     turn: TurnCombatView
+    # C18 — per-monster limited-use state (recharge actions, N/Day trait
+    # uses), keyed entity_id -> action slug -> its use state. Absent entries
+    # mean "no limited-use actions tracked for this entity".
+    monster_action_uses_by_entity: dict[str, dict[str, MonsterActionUsesView]]
+    # C18 — Legendary Actions / Legendary Resistance REMAINING pools, keyed
+    # entity_id. Only monsters with a non-empty pool (``…_max > 0``) appear;
+    # PCs and template-less foes are absent.
+    legendary_actions_by_entity: dict[str, int]
+    legendary_resistances_by_entity: dict[str, int]
 
     @classmethod
     def from_live(cls, live: _LiveCombat) -> LiveCombatView:
@@ -86,7 +103,27 @@ class LiveCombatView:
             final_outcome=live.final_outcome,
             concentration_chain={k: list(v) for k, v in live.concentration_chain.items()},
             turn=turn,
+            monster_action_uses_by_entity={
+                entity_id: {
+                    slug: MonsterActionUsesView(
+                        recharge_spent=uses.recharge_spent,
+                        uses_remaining=dict(uses.uses_remaining),
+                    )
+                    for slug, uses in by_slug.items()
+                }
+                for entity_id, by_slug in live.monster_action_uses_by_entity.items()
+            },
+            legendary_actions_by_entity={
+                c.entity_id: c.legendary_actions_remaining
+                for c in live.initiative
+                if c.legendary_actions_max
+            },
+            legendary_resistances_by_entity={
+                c.entity_id: c.legendary_resistances_remaining
+                for c in live.initiative
+                if c.legendary_resistances_max
+            },
         )
 
 
-__all__ = ["LiveCombatView", "TurnCombatView"]
+__all__ = ["LiveCombatView", "MonsterActionUsesView", "TurnCombatView"]

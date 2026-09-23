@@ -9,6 +9,8 @@ engine's per-creature runtime combat state; hosts read it through
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from dataclasses import field as dc_field
 from enum import StrEnum
 from typing import Any
 
@@ -25,6 +27,21 @@ class BehaviorProfile(StrEnum):
     AGGRESSIVE = "AGGRESSIVE"
     RANGED = "RANGED"
     DEFENSIVE = "DEFENSIVE"
+
+
+@dataclass
+class MonsterActionUses:
+    """Per-action limited-use state for one monster (combat-scoped).
+
+    ``recharge_spent`` tracks a SRD 5.2 "Recharge X–Y" action that has been
+    used and not yet rolled back in (``_roll_recharges`` in orchestrator.py).
+    ``uses_remaining`` tracks a "N/Day"-style limited-use activity, keyed
+    ``f"{action.slug}:{activity.id}"`` so two activities sharing one action
+    entry (rare, but the schema allows it) track independently.
+    """
+
+    recharge_spent: bool = False
+    uses_remaining: dict[str, int] = dc_field(default_factory=dict)
 
 
 class Combatant(BaseModel):
@@ -257,9 +274,37 @@ class Combatant(BaseModel):
     # nonmagical attacks": a magical weapon's or a spell's Bludgeoning /
     # Piercing / Slashing damage bypasses the resistance. False = the
     # resistance is unconditional (SRD 5.2 stat blocks; Foundry
-    # ``dr.bypasses == []``). C18's corpus hydration sets it from
-    # ``dr.bypasses``.
+    # ``dr.bypasses == []``). C18's corpus hydration sets it to False for a
+    # template-hydrated resistance list — met by construction, not read from
+    # data: the dataset schema carries no bypass field, so a future one must
+    # be wired in both the translator and that hydration.
     physical_resistances_nonmagical_only: bool = True
+    # SRD 5.2 §Legendary Actions — Legendary Action Uses pool ("it regains
+    # all expended uses at the start of each of its turns"): reset to
+    # ``legendary_actions_max`` at the start of the monster's OWN turn
+    # (``_run_monster_turn_start``, orchestrator.py) — a per-turn pool, not a
+    # per-day one. Hydrated at ``start_combat`` from the typed
+    # ``Monster.legendary_action_uses`` (3 when a template with legendary
+    # actions leaves it untyped); 0/0 for PCs and template-less foes.
+    legendary_actions_max: int = 0
+    legendary_actions_remaining: int = 0
+    # SRD 5.2 §Legendary Resistance — "N/Day" pool. Per DAY: it is NOT
+    # reset at turn start (nor anywhere within a combat). Hydrated via
+    # ``_legendary_resistance_max`` from the typed
+    # ``Monster.legendary_resistance_uses`` (3, 4 or 6 in the bundled
+    # corpus), else the trait's ``uses_per_day`` / ``"N/Day"`` name suffix,
+    # else 3.
+    legendary_resistances_max: int = 0
+    legendary_resistances_remaining: int = 0
+    # C18 Task 9 consumes this: True once a fleeing/retreating monster has
+    # left the fight (the flee-retreat path does not yet remove combatants
+    # from initiative). Defaults False for every combatant.
+    has_fled: bool = False
+    # SRD §Spellcasting — the ability a monster's innate/prepared spells key
+    # off (``Monster.spellcasting_ability``). ``None`` for PCs (who project
+    # their own caster ability elsewhere) and monsters without spellcasting;
+    # hydrated by C18 Task 5.
+    spellcasting_ability: str | None = None
     # SRD 5.2 Loading — "You can fire only one piece of ammunition from a
     # Loading weapon when you use an action, a Bonus Action, or a Reaction
     # to fire it, regardless of the number of attacks you can normally
@@ -304,4 +349,5 @@ class Combatant(BaseModel):
 __all__ = [
     "BehaviorProfile",
     "Combatant",
+    "MonsterActionUses",
 ]

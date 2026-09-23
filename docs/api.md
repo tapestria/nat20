@@ -18,6 +18,7 @@ For what the engine actually resolves behind these signatures, see the
         - start_combat
         - submit_player_intent
         - advance_monster_turn
+        - resolve_legendary_resistance
         - end_combat
         - narration_events
         - get_actor_active_effects

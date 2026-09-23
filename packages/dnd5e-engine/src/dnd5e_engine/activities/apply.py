@@ -30,7 +30,11 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Final, cast, get_args
 
-from dnd5e_engine.events import DamageApplied, DamageType
+from dnd5e_srd_data.schema.monster import MonsterTraitMechanic
+
+from dnd5e_engine.activities.actor_stats import save_modifier
+from dnd5e_engine.activities.d20 import AdvantageSources, roll_d20_test
+from dnd5e_engine.events import DamageApplied, DamageType, SaveRolled
 
 if TYPE_CHECKING:
     from dnd5e_engine.activities.context import ActivityResolutionContext
@@ -131,12 +135,58 @@ def apply_damage(
         srd_type = cast(DamageType, damage_type_str)
         final_amount = _apply_modifiers(amount, srd_type, resistances, immunities, vulnerabilities)
         total_dealt += final_amount
+        is_overkill = final_amount > target.hp_current
+        # C18 §Monster action economy — SRD 5.2 stat-block trait "Undead
+        # Fortitude": "If damage reduces the [monster] to 0 Hit Points, it
+        # makes a Constitution saving throw (DC 5 plus the damage taken)
+        # unless the damage is Radiant or from a Critical Hit. On a
+        # successful save, the [monster] drops to 1 Hit Point instead."
+        # One draw, gated so a non-triggering hit never touches ``ctx.rng``
+        # (determinism — C18 global constraint). The ``DamageApplied``
+        # emitted below still reports the FULL folded ``final_amount`` (the
+        # narration is "took 12 damage but held on"); only ``is_overkill``
+        # and ``target.hp_current`` reflect the trait's save.
+        if (
+            final_amount >= target.hp_current
+            and MonsterTraitMechanic.UNDEAD_FORTITUDE in target.trait_mechanics
+            and srd_type != "radiant"
+            and not is_crit
+        ):
+            dc = 5 + final_amount
+            roll = roll_d20_test(ctx.rng, save_modifier(target, "con").total, AdvantageSources())
+            succeeded = roll.total >= dc
+            ctx.event_emitter(
+                SaveRolled(
+                    target_id=target.entity_id,
+                    ability="con",
+                    dc=dc,
+                    roll_total=roll.total,
+                    succeeded=succeeded,
+                    advantage=roll.mode,
+                    natural=roll.kept,
+                    modifier=roll.modifier,
+                    sources=list(roll.sources),
+                )
+            )
+            if succeeded:
+                target.hp_current = 1
+                is_overkill = False
+                # Fix round 1 — live-combat write-back: the ORCHESTRATOR's
+                # own HP fold (``_emit_apply_damage``) computes the
+                # authoritative post-damage HP from ``live.tracked_hp`` and
+                # this event's UNMODIFIED ``amount``, independent of this
+                # snapshot ``target`` object; without this signal it would
+                # still floor at 0 and fire Death. Setting the flag BEFORE
+                # emitting ``DamageApplied`` below matters: the event
+                # emitter call synchronously re-enters the orchestrator's
+                # fold for THIS exact event.
+                ctx.undead_fortitude_holds[target.entity_id] = True
         ctx.event_emitter(
             DamageApplied(
                 target_id=target.entity_id,
                 amount=final_amount,
                 damage_type=srd_type,
-                is_overkill=final_amount > target.hp_current,
+                is_overkill=is_overkill,
                 source_id=source_id,
                 is_crit=is_crit,
             )

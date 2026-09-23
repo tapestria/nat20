@@ -663,7 +663,9 @@
     "Infernal",
     "telepathy 120 ft."
   ],
+  "legendary_action_uses": null,
   "legendary_actions": [],
+  "legendary_resistance_uses": null,
   "movement": {
     "burrow": null,
     "climb": null,
@@ -736,5 +738,6 @@
       "slug": "magic-resistance",
       "uses_per_day": null
     }
-  ]
+  ],
+  "spellcasting_ability": null
 }

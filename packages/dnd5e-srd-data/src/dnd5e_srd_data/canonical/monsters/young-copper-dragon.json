@@ -489,7 +489,9 @@
     "Common",
     "Draconic"
   ],
+  "legendary_action_uses": null,
   "legendary_actions": [],
+  "legendary_resistance_uses": null,
   "movement": {
     "burrow": null,
     "climb": 40,
@@ -550,5 +552,6 @@
     "survival": null
   },
   "slug": "young-copper-dragon",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": null
 }

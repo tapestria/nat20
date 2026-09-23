@@ -81,6 +81,15 @@ class SaveRoll:
     modifier: int
     mode: AdvantageMode
     sources: tuple[AdvantageSource, ...]
+    # C18 §Monster action economy — SRD 5.2 Legendary Resistance. Set to the
+    # saving entity's REMAINING pool (post-decrement) iff this save FAILED but
+    # was converted to a success by a pre-armed Legendary Resistance use;
+    # ``None`` otherwise (not armed, or the save succeeded on its own — SRD:
+    # "If the monster fails a saving throw" only). The caller emits
+    # ``SaveRolled`` (already carrying the converted ``succeeded=True``) and
+    # THEN, when this is not ``None``, ``LegendaryResistanceUsed`` — so a host
+    # always sees the roll before the narration of the resistance spend.
+    legendary_resistance_remaining: int | None = None
 
 
 def roll_save(
@@ -121,13 +130,16 @@ def roll_save(
       skipped (data field ``SaveBlock.ignore_cover``, C22).
 
     The natural d20 honors ``ctx.variables["force_save_d20"]`` for the first
-    target (``target_index == 0``) only. Success is ``total >= dc``. The caller
-    emits ``SaveRolled`` (the event field set differs per call site). Empty
+    target (``target_index == 0``) only. Success is ``total >= dc``, subject to
+    the C18 Legendary Resistance conversion below. The caller emits
+    ``SaveRolled`` (the event field set differs per call site). Empty
     sidecars reproduce the prior single-d20 + per-ability-mod behavior exactly.
     """
     if _is_auto_fail(ctx, target, ability):
-        return SaveRoll(
-            total=0, succeeded=False, natural=None, modifier=0, mode="normal", sources=()
+        return _convert_if_legendary_resistance_armed(
+            ctx,
+            target,
+            SaveRoll(total=0, succeeded=False, natural=None, modifier=0, mode="normal", sources=()),
         )
     modifier = _target_save_modifier(ctx, target, ability)
     # SRD 5.2 Exhaustion — flat ``-2 x level`` on every D20 Test.
@@ -139,13 +151,55 @@ def roll_save(
     # mean rolling them BEFORE the d20 and would shift the seeded stream).
     roll = _roll_save_d20(ctx, target, ability, modifier, target_index=target_index)
     total = roll.total + _passive_save_bonus(ctx, target)
+    return _convert_if_legendary_resistance_armed(
+        ctx,
+        target,
+        SaveRoll(
+            total=total,
+            succeeded=total >= dc,
+            natural=roll.kept,
+            modifier=roll.modifier,
+            mode=roll.mode,
+            sources=roll.sources,
+        ),
+    )
+
+
+def _convert_if_legendary_resistance_armed(
+    ctx: ActivityResolutionContext, target: Combatant, roll: SaveRoll
+) -> SaveRoll:
+    """SRD 5.2 Legendary Resistance — "If the monster fails a saving throw,
+    it can choose to succeed instead."
+
+    A no-op unless ``roll.succeeded`` is ``False`` AND the target has an
+    armed use pending (``ctx.legendary_resistance_armed``) AND at least one
+    use remains (``ctx.legendary_resistances_remaining_by_entity``) — a
+    successful save never spends a use (the SRD sentence only triggers on a
+    FAILURE), and an armed-but-exhausted pool (a resolution that already
+    burned every remaining use earlier in the same hydration payload's
+    lifetime) converts nothing further. Both sidecar dicts are decremented in
+    lockstep here; the orchestrator reconciles the authoritative ``Combatant``
+    pool afterward via ``_sync_legendary_resistance`` (the "read the events"
+    pattern the reaction drains already use). Draws no dice.
+    """
+    if roll.succeeded:
+        return roll
+    entity_id = target.entity_id
+    armed = ctx.legendary_resistance_armed.get(entity_id, 0)
+    remaining = ctx.legendary_resistances_remaining_by_entity.get(entity_id, 0)
+    if armed <= 0 or remaining <= 0:
+        return roll
+    ctx.legendary_resistance_armed[entity_id] = armed - 1
+    new_remaining = remaining - 1
+    ctx.legendary_resistances_remaining_by_entity[entity_id] = new_remaining
     return SaveRoll(
-        total=total,
-        succeeded=total >= dc,
-        natural=roll.kept,
+        total=roll.total,
+        succeeded=True,
+        natural=roll.natural,
         modifier=roll.modifier,
         mode=roll.mode,
         sources=roll.sources,
+        legendary_resistance_remaining=new_remaining,
     )
 
 

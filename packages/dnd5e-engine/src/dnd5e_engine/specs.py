@@ -342,6 +342,14 @@ class GridScene(BaseModel):
     # "heavy" hides whatever stands in the cell from every sense but
     # blindsight/truesight. Consumed by ``GridTopology.can_see``.
     obscurement_cells: dict[str, Obscurement] = Field(default_factory=dict)
+    # C18 §Monster action economy — SRD 5.2 stat-block trait "Sunlight
+    # Sensitivity" (bundled ``canonical/traits/sunlight-sensitivity.json``):
+    # "While in sunlight, the monster has Disadvantage on ability checks and
+    # attack rolls." Only the attack-roll half is consumed (ability checks
+    # are a BACKLOG residual). Whole-SCENE flag for now — every cell shares
+    # one sunlight state; a per-cell field is a later additive extension.
+    # ``False`` default reproduces pre-C18 behavior (no scene is ever sunlit).
+    sunlight: bool = False
 
 
 __all__ = [

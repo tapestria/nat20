@@ -14,11 +14,12 @@ from __future__ import annotations
 
 import random
 from collections.abc import Callable, Sequence
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
+from dnd5e_engine.activities.actor_stats import ability_modifier_of, proficiency_bonus_of
 from dnd5e_engine.activities.context import ActivityResolutionContext
 from dnd5e_engine.activities.dice import roll_expr
-from dnd5e_engine.events import CombatEvent
+from dnd5e_engine.events import Ability, CombatEvent
 from dnd5e_engine.rules.conditions import active_condition_names
 from dnd5e_engine.rules.dice import proficiency_bonus
 from dnd5e_engine.types.combat import Combatant
@@ -63,19 +64,59 @@ def _save_dc(
     A Character caster with a resolved ``spellcasting_ability`` (the real
     class -> ability mapping, e.g. cleric -> wis) uses the honest formula
     against its real ability scores + proficiency bonus (both already
-    computed for real above). Monster path AND a Character with no resolvable
-    spellcasting ability (unknown class / a non-caster class / a non-cast_spell
-    intent such as ``use_item``, which never sets ``spellcasting_ability``)
-    fall back to the OLD flat approximation byte-for-byte: Monster
-    ``8 + attack_bonus`` (``_monster_save_dc``); PC ``8 + 2 + mod`` (the
-    the legacy evaluator-era ``_spell_save_dc``, ``pb`` hardcoded to ``2``).
+    computed for real above). A Monster caster with a resolved
+    ``spellcasting_ability`` (C18 Task 5 — hydrated from
+    ``Monster.spellcasting_ability`` onto ``Combatant.spellcasting_ability``)
+    uses the same honest formula against ITS OWN real ability score +
+    proficiency bonus (``ability_modifier_of``/``proficiency_bonus_of``,
+    not the uniform ``caster_abilities`` fake this builder projects for a
+    mundane monster attack) — verified against the mage ("Intelligence as
+    the spellcasting ability", int 17 -> mod +3, PB +3 -> DC 14) and the
+    adult red dragon ("Charisma as the spellcasting ability", cha 23 ->
+    mod +6, PB +6 -> DC 20) canonical stat blocks.
+
+    Every other caster falls back to the OLD flat approximation byte-for-
+    byte: Monster with no resolvable spellcasting ability (a template-less
+    foe, or one with no cast-bearing actions) ``8 + attack_bonus``
+    (``_monster_save_dc``); PC with no resolvable spellcasting ability
+    (unknown class / a non-caster class / a non-cast_spell intent such as
+    ``use_item``, which never sets ``spellcasting_ability``) ``8 + 2 + mod``
+    (the legacy evaluator-era ``_spell_save_dc``, ``pb`` hardcoded to ``2``).
     """
     if caster.entity_type == "Monster":
+        if spellcasting_ability:
+            return (
+                8
+                + proficiency_bonus_of(caster)
+                + ability_modifier_of(caster, cast("Ability", spellcasting_ability))
+            )
         return 8 + (caster.attack_bonus or 0)
     if spellcasting_ability:
         ability_mod = (caster_abilities.get(spellcasting_ability, 10) - 10) // 2
         return 8 + caster_proficiency_bonus + ability_mod
     return 8 + 2 + mod
+
+
+def _attack_bonus_override(caster: Combatant, spellcasting_ability: str | None) -> int | None:
+    """The fixed to-hit a caster's attack rolls use, or ``None`` for "no
+    override" (``attack.py::_attack_bonus`` then computes ability mod +
+    proficiency itself).
+
+    A Monster casting with a resolved ``spellcasting_ability`` (the stat-
+    block spellcast path — every other monster path passes ``None``) rolls
+    its spell attacks at ``proficiency bonus + spellcasting ability
+    modifier``, mirroring ``_save_dc``'s honest branch: the adult red
+    dragon's own Spellcasting entry reads "using Charisma as the
+    spellcasting ability (spell save DC …, +12 to hit with spell attacks)"
+    — PB +6, CHA 23 (+6) — while its Rend is +14. Every other caster keeps
+    ``caster.attack_bonus`` byte-for-byte (a monster's weapon to-hit; C15's
+    ``None`` for a PC whose host never set one).
+    """
+    if caster.entity_type == "Monster" and spellcasting_ability:
+        return proficiency_bonus_of(caster) + ability_modifier_of(
+            caster, cast("Ability", spellcasting_ability)
+        )
+    return caster.attack_bonus
 
 
 def _spell_dc_bonus(
@@ -170,6 +211,11 @@ def build_activity_context(
     attacker_sapped: bool = False,
     cleave_available: bool = False,
     cleave_candidate: Combatant | None = None,
+    legendary_resistance_armed: dict[str, int] | None = None,
+    legendary_resistances_remaining_by_entity: dict[str, int] | None = None,
+    pack_tactics_ally_adjacent: dict[str, bool] | None = None,
+    attacker_in_sunlight: bool = False,
+    undead_fortitude_holds: dict[str, bool] | None = None,
 ) -> ActivityResolutionContext:
     """Adapt the caster + the pre-computed hydration sidecars into the typed
     ``ActivityResolutionContext`` the new resolver consumes.
@@ -369,8 +415,9 @@ def build_activity_context(
         # correctly falls through in ``attack.py::_attack_bonus`` to the real
         # governing-ability-mod + proficiency-bonus computation instead of a
         # pinned 0 override — no change needed at that call site, it already
-        # treated ``None`` as "no override".
-        attack_bonus_override=caster.attack_bonus,
+        # treated ``None`` as "no override". A Monster's stat-block spell
+        # attack uses PB + its spellcasting modifier instead.
+        attack_bonus_override=_attack_bonus_override(caster, spellcasting_ability),
         passive_damage_modifiers=passive_damage_modifiers,
         passive_save_modifiers=passive_save_modifiers,
         passive_save_bonus=passive_save_bonus,
@@ -453,4 +500,35 @@ def build_activity_context(
         # golden corpus identical.
         cleave_available=cleave_available,
         cleave_candidate=cleave_candidate,
+        # C18 §Monster action economy — Legendary Resistance (Task 7):
+        # PRE-RESOLVED per-entity armed-declaration + remaining-pool sidecars,
+        # projected by the orchestrator (``_build_hydration_payload``) as
+        # disposable COPIES ``activities/save_primitive.roll_save`` mutates in
+        # place on a conversion. Absent (``None``) -> empty, leaving the
+        # golden corpus identical (no armed declaration ⇒ every save resolves
+        # exactly as before this feature).
+        legendary_resistance_armed=legendary_resistance_armed or {},
+        legendary_resistances_remaining_by_entity=legendary_resistances_remaining_by_entity or {},
+        # C18 §Monster action economy — Pack Tactics / Sunlight Sensitivity
+        # (Task 8): PRE-RESOLVED per-target ally-adjacency map / scene-wide
+        # sunlight flag, projected by the orchestrator (``_pack_tactics_map``
+        # / ``live.scene_sunlight``). Defaults ({} / False) leave the golden
+        # corpus identical (no adjacency data, no sunlit scene).
+        pack_tactics_ally_adjacent=pack_tactics_ally_adjacent or {},
+        attacker_in_sunlight=attacker_in_sunlight,
+        # C18 §Monster action economy, fix round 1 — Undead Fortitude's
+        # live write-back handshake (see ``ActivityResolutionContext.
+        # undead_fortitude_holds`` docstring). Unlike every sidecar above,
+        # this one is a genuine SHARED reference, not a disposable copy:
+        # the orchestrator passes its own ``_LiveCombat.undead_fortitude_
+        # holds`` dict object so a mutation the pure resolver makes is
+        # visible back on ``live`` without any event round-trip. ``or {}``
+        # would silently break that sharing the moment the dict is empty
+        # (the common case, since nothing has triggered yet when the
+        # context is built) — an EMPTY dict is falsy, so ``or`` would swap
+        # in a brand-new, disconnected ``{}``. The explicit ``is not None``
+        # check preserves identity instead.
+        undead_fortitude_holds=(
+            undead_fortitude_holds if undead_fortitude_holds is not None else {}
+        ),
     )

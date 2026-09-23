@@ -394,6 +394,7 @@
     "Common",
     "Draconic"
   ],
+  "legendary_action_uses": 3,
   "legendary_actions": [
     {
       "activities": [
@@ -730,6 +731,7 @@
       "uses_per_day": null
     }
   ],
+  "legendary_resistance_uses": 3,
   "movement": {
     "burrow": 30,
     "climb": null,
@@ -906,5 +908,6 @@
       "slug": "legendary-resistance",
       "uses_per_day": null
     }
-  ]
+  ],
+  "spellcasting_ability": "cha"
 }

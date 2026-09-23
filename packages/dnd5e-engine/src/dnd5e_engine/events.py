@@ -323,6 +323,19 @@ class TempHpApplied(BaseModel):
     amount: int
 
 
+class RechargeRolled(BaseModel):
+    """SRD 5.2 "Recharge X–Y": the 1d6 rolled at the start of the monster's
+    turn for a spent part. ``threshold`` is the stat block's notation
+    (``"5-6"``, ``"6"``); ``succeeded`` means the part is usable again."""
+
+    type: Literal["recharge_rolled"] = "recharge_rolled"
+    monster_id: str
+    action_slug: str
+    roll: int
+    threshold: str
+    succeeded: bool
+
+
 # ── effects + conditions ────────────────────────────────────────────────────
 
 
@@ -592,6 +605,33 @@ class CombatEnded(BaseModel):
     reason: Literal["victory", "defeat_tpk", "flee", "forced"]
 
 
+class LegendaryActionUsed(BaseModel):
+    """A monster spent one of its legendary-action uses (SRD 5.2: "it
+    regains all expended uses at the start of each of its turns"). Emitted
+    before the chosen action's own events (attack/save/cast) so a host can
+    narrate "the dragon takes a legendary action" ahead of its resolution.
+    """
+
+    type: Literal["legendary_action_used"] = "legendary_action_used"
+    actor_id: str
+    action_slug: str
+    uses_remaining: int
+
+
+class LegendaryResistanceUsed(BaseModel):
+    """A monster spent one of its per-day Legendary Resistance uses to
+    convert a saving throw it had just failed into a success. Emitted AFTER
+    the ``SaveRolled`` it converts (which already carries ``succeeded=True``)
+    — and, on a concentration check, after the paired ``ConcentrationCheck``
+    too — so a host sees the roll before the narration of the resistance
+    spend. The per-day pool is NOT reset at turn start.
+    """
+
+    type: Literal["legendary_resistance_used"] = "legendary_resistance_used"
+    actor_id: str
+    uses_remaining: int
+
+
 CombatEvent = Annotated[
     RoundStarted
     | RoundEnded
@@ -625,7 +665,10 @@ CombatEvent = Annotated[
     | CastFailed
     | SpellCast
     | ReactionTriggered
-    | CombatEnded,
+    | CombatEnded
+    | RechargeRolled
+    | LegendaryActionUsed
+    | LegendaryResistanceUsed,
     Field(discriminator="type"),
 ]
 
@@ -667,6 +710,9 @@ ALL_COMBAT_EVENT_TYPES: tuple[type[BaseModel], ...] = (
     SpellCast,
     ReactionTriggered,
     CombatEnded,
+    RechargeRolled,
+    LegendaryActionUsed,
+    LegendaryResistanceUsed,
 )
 
 
@@ -701,8 +747,11 @@ __all__ = [
     "HealingApplied",
     "IntentSubmitted",
     "IntentType",
+    "LegendaryActionUsed",
+    "LegendaryResistanceUsed",
     "MoveFailed",
     "ReactionTriggered",
+    "RechargeRolled",
     "RoundEnded",
     "RoundStarted",
     "SaveRolled",

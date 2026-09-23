@@ -1,12 +1,16 @@
 """Turn-boundary hook registry — the one place work happens at a turn edge.
 
 SRD 5.2 scatters "at the start of your turn" / "at the end of your turn"
-clauses across effects (ongoing damage, regeneration), monster features
-(recharge, legendary-action reset) and timed durations. Before this module the
-engine had no seam for them: the duration tick and the reaction-effect expiry
-were open-coded inside the orchestrator's three separate turn-advance
-implementations, so every new boundary rule meant another hand-placed call in
-three places.
+clauses across effects (ongoing damage, timed durations) and monster
+features. Before this module the engine had no seam for them: the duration
+tick and the reaction-effect expiry were open-coded inside the orchestrator's
+three separate turn-advance implementations, so every new boundary rule meant
+another hand-placed call in three places. Monster "start of turn" mechanics
+(recharge rolls, regeneration, legendary-action reset) are NOT registered
+here — see ``orchestrator._run_monster_turn_start``, called at the top of
+``advance_monster_turn`` before the engine's own ``TurnStarted`` fires, so a
+host's legendary-action window (driven after ``TurnStarted``) still sees the
+freshly-reset pool.
 
 ``TurnLifecycle`` is that seam. One instance lives on each ``_LiveCombat``
 (``live.lifecycle``, created in ``start_combat``). Callers register a

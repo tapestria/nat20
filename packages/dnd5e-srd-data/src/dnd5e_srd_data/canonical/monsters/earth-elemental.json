@@ -389,7 +389,9 @@
   "languages": [
     "Terran"
   ],
+  "legendary_action_uses": null,
   "legendary_actions": [],
+  "legendary_resistance_uses": null,
   "movement": {
     "burrow": 30,
     "climb": null,
@@ -473,5 +475,6 @@
       "slug": "siege-monster",
       "uses_per_day": null
     }
-  ]
+  ],
+  "spellcasting_ability": null
 }

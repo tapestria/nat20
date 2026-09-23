@@ -377,6 +377,62 @@ class ActivityResolutionContext:
     # touches the spatial seam. Absent target ⇒ no adjacent ally. Empty default
     # keeps the golden corpus identical.
     sneak_attack_ally_adjacent: dict[str, bool] = field(default_factory=dict)
+    # C18 §Monster action economy — SRD 5.2 Legendary Resistance: "If the
+    # monster fails a saving throw, it can choose to succeed instead." The
+    # engine has no mid-resolution round-trip to a host, so the choice is a
+    # PRE-ARMED declaration (``resolve_legendary_resistance``, orchestrator
+    # public seam) consulted by ``activities/save_primitive.roll_save`` the
+    # next time THAT entity's save fails. Keyed by the SAVING entity's
+    # ``entity_id`` -> the number of armed-but-not-yet-consumed uses (mirrors
+    # ``_LiveCombat.legendary_resistance_armed``, projected fresh by
+    # ``_build_hydration_payload`` for every resolution). Empty default keeps
+    # every combat without an armed declaration byte-identical.
+    legendary_resistance_armed: dict[str, int] = field(default_factory=dict)
+    # The same entity's REMAINING per-day pool (mirrors
+    # ``Combatant.legendary_resistances_remaining``), consulted alongside
+    # ``legendary_resistance_armed`` so a conversion never drops a pool
+    # already exhausted by another resolution earlier in the SAME hydration
+    # payload's lifetime. Decremented in lockstep with ``legendary_resistance_
+    # armed`` by the conversion; the orchestrator reconciles the authoritative
+    # ``Combatant`` field afterward via ``_sync_legendary_resistance``. Empty
+    # default keeps every non-bearer byte-identical.
+    legendary_resistances_remaining_by_entity: dict[str, int] = field(default_factory=dict)
+    # C18 §Monster action economy — SRD 5.2 stat-block trait "Pack Tactics":
+    # "Advantage on an attack roll against a creature if at least one of the
+    # [monster]'s allies is within 5 feet of the creature and the ally
+    # doesn't have the Incapacitated condition." Per-TARGET flag, PRE-
+    # RESOLVED by the orchestrator (``_pack_tactics_map``, a spatial-seam
+    # consumer mirroring ``sneak_attack_ally_adjacent``'s geometry) so this
+    # pure resolver never touches ``spatial.py`` itself. Absent target ⇒ no
+    # qualifying ally. Empty default keeps every non-bearer byte-identical.
+    pack_tactics_ally_adjacent: dict[str, bool] = field(default_factory=dict)
+    # C18 §Monster action economy — SRD 5.2 stat-block trait "Sunlight
+    # Sensitivity" (bundled corpus text): "While in sunlight, the monster
+    # has Disadvantage on ability checks and attack rolls." Read for the
+    # attack-roll half only. A scene-wide flag (whole-scene
+    # sunlight; per-cell sunlight is a later additive field on
+    # ``GridScene``) projected by the orchestrator from ``live.scene_
+    # sunlight``. ``False`` default keeps every combat without a sunlit
+    # scene byte-identical.
+    attacker_in_sunlight: bool = False
+    # C18 §Monster action economy, fix round 1 — SRD 5.2 stat-block trait
+    # "Undead Fortitude": the live-combat WRITE-BACK half of the trait.
+    # ``activities/apply.py`` sets ``undead_fortitude_holds[target_id] =
+    # True`` the instant a bearer's CON save succeeds against damage that
+    # would drop it to 0 (and ``target.hp_current`` is set to 1 on this same
+    # snapshot Combatant, for a caller that inspects it directly — the pure/
+    # golden-corpus harness). The orchestrator threads THE SAME dict object
+    # it stores on ``_LiveCombat.undead_fortitude_holds`` into every context
+    # build (not a disposable copy — a genuine shared reference), so
+    # ``_emit_apply_damage`` can pop this flag at the exact synchronous
+    # moment it is about to fold the very ``DamageApplied`` this save just
+    # produced into the authoritative ``tracked_hp``/Death decision, and
+    # floor the live HP at 1 instead of firing Death. A private
+    # resolver<->orchestrator handshake — never surfaced on any public event
+    # or view. Empty default keeps a context with no live-combat wiring
+    # behind it (pure/golden-corpus tests) inert — the flag is simply never
+    # read back by anyone.
+    undead_fortitude_holds: dict[str, bool] = field(default_factory=dict)
     # Test-determinism seams (our own code): variables["force_d20"],
     # variables["force_save_d20"], variables["in_crit"].
     variables: dict[str, int] = field(default_factory=dict)

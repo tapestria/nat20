@@ -367,7 +367,9 @@
   "languages": [
     "Common plus one other language"
   ],
+  "legendary_action_uses": null,
   "legendary_actions": [],
+  "legendary_resistance_uses": null,
   "movement": {
     "burrow": null,
     "climb": 30,
@@ -440,5 +442,6 @@
       "slug": "vampiric-connection",
       "uses_per_day": null
     }
-  ]
+  ],
+  "spellcasting_ability": null
 }

@@ -9,7 +9,13 @@ never zones. Real bundled corpus slugs throughout (verified live against
 from __future__ import annotations
 
 from dnd5e_engine import PlayerIntent
-from dnd5e_engine.events import AttackRolled, DamageApplied, HealingApplied, SaveRolled
+from dnd5e_engine.events import (
+    AttackRolled,
+    DamageApplied,
+    HealingApplied,
+    RechargeRolled,
+    SaveRolled,
+)
 from dnd5e_engine.orchestrator import (
     _get_live,
     advance_monster_turn,
@@ -18,19 +24,18 @@ from dnd5e_engine.orchestrator import (
     submit_player_intent,
 )
 from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
-from tests.e2e.harness import cell, events_of, grid_scene, run_async, xfail_cluster
+from tests.e2e.harness import cell, events_of, grid_scene, run_async
 
 
-@xfail_cluster(18, "monster action economy")
 def test_c18_s01_recharge_gates_a_breath_weapon_ai_cannot_select_it():
     """C18-S01: SRD 5.2 "Recharge X-Y. ... At the start of each of the
     monster's turns, roll 1d6. If the roll is within the number range
     given in the notation ..., the monster regains the use of that part."
     (packs/_source/content24/monsters/monsters.yml:8551-8555, "Limited
-    Usage"). ``select_typed_monster_action`` always returns ``Claw`` (the
-    first offensive action in list order) on every turn — Fire Breath
-    (Recharge 6) is structurally unreachable regardless of any recharge
-    state, and no ``RechargeRolled`` event type exists in ``events.py``.
+    Usage"). ``rank_monster_actions`` ranks an available recharge action
+    (Fire Breath, Recharge 6) ahead of Claw, so the mephit opens with it
+    while it's available (turn 1); the recharge roll fires at the start of
+    its next turn (turn 2), emitting ``RechargeRolled``.
     """
 
     async def _run():
@@ -67,18 +72,17 @@ def test_c18_s01_recharge_gates_a_breath_weapon_ai_cannot_select_it():
         )
         live = _get_live(start.handle)
         await advance_monster_turn(start.handle)  # mephit's turn 1
+        # Contract repair (R1): the hero's turn must be driven before the
+        # mephit's second turn — advance_monster_turn rejects a PC turn.
+        await submit_player_intent(
+            start.handle, actor_id="char:hero", intent=PlayerIntent(intent_type="pass")
+        )
         await advance_monster_turn(start.handle)  # mephit's turn 2 (round 2)
         return live
 
     live = run_async(_run())
 
-    # API delta (C18): RechargeRolled does not exist today — look it up
-    # dynamically so its absence drives the xfail rather than a collection
-    # error, mirroring the C16-S07 CombatantMoved idiom.
-    from dnd5e_engine import events as events_module
-
-    recharge_rolled_cls = events_module.RechargeRolled
-    recharge_events = [e for e in live.event_log if isinstance(e, recharge_rolled_cls)]
+    recharge_events = events_of(live, RechargeRolled)
     assert recharge_events, "expected a RechargeRolled roll at the start of turn 2"
 
     fire_breath_dmg = [
@@ -89,15 +93,22 @@ def test_c18_s01_recharge_gates_a_breath_weapon_ai_cannot_select_it():
     assert fire_breath_dmg, "Fire Breath should be selectable while available (turn 1)"
 
 
-@xfail_cluster(18, "monster action economy")
 def test_c18_s02_legendary_actions_spent_after_pc_turn_pool_resets_on_own_turn():
     """C18-S02: SRD 5.2 "A Legendary Action is an action that a monster
     can take immediately after another creature's turn. ... The monster
     expends one use whenever it takes a Legendary Action, and it regains
     all expended uses at the start of each of its turns."
     (packs/_source/content24/monsters/monsters.yml, "Legendary Actions").
-    ``advance_monster_turn(handle, legendary=True)`` raises ``TypeError``
-    today — no legendary-action pool is tracked anywhere.
+
+    Catalog fidelity note: the catalog's "Script" step 2 lists a
+    ``weapon_id="longsword"`` attack — a melee swing from ``cell(0, 0)``
+    against ``cell(3, 0)`` (15 ft) is out of a longsword's 5 ft reach, so
+    that intent is rejected pre-resolution (``AttackFailed(out_of_range)``)
+    WITHOUT spending the hero's Action, and the hero's turn never ends —
+    the scenario's own premise. Swapping to ``weapon_id="longbow"`` (a
+    ranged weapon whose normal range covers 15 ft) keeps the catalog's
+    approved ``Setup`` positions/HP/AC exactly as documented and still ends
+    the hero's turn on a single Action, which is all this scenario needs.
     """
 
     async def _run():
@@ -137,12 +148,8 @@ def test_c18_s02_legendary_actions_spent_after_pc_turn_pool_resets_on_own_turn()
         await submit_player_intent(
             start.handle,
             actor_id="char:hero",
-            intent=PlayerIntent(
-                intent_type="attack", weapon_id="longsword", target_id="mon:dragon"
-            ),
+            intent=PlayerIntent(intent_type="attack", weapon_id="longbow", target_id="mon:dragon"),
         )
-        # API delta (C18): the legendary=True kwarg does not exist today —
-        # this raises TypeError, driving the xfail.
         await advance_monster_turn(start.handle, legendary=True)
         await advance_monster_turn(start.handle)
         return live
@@ -157,7 +164,6 @@ def test_c18_s02_legendary_actions_spent_after_pc_turn_pool_resets_on_own_turn()
     assert used_events[0].actor_id == "mon:dragon"
 
 
-@xfail_cluster(18, "monster action economy")
 def test_c18_s03_legendary_resistance_converts_failed_save_and_saves_ignore_proficiency():
     """C18-S03: SRD 5.2 "If the monster fails a saving throw, it can
     choose to succeed instead."
@@ -190,7 +196,7 @@ def test_c18_s03_legendary_resistance_converts_failed_save_and_saves_ignore_prof
     hook, which does not exist anywhere in ``orchestrator.py`` today.
     """
 
-    def _run(slug: str, hp: int, ac: int, seed: int):
+    def _run(slug: str, hp: int, ac: int, seed: int, *, arm_legendary_resistance: bool = False):
         async def _inner():
             start = await start_combat(
                 session_id=f"e2e-c18-s03-{slug}-{seed}",
@@ -227,6 +233,13 @@ def test_c18_s03_legendary_resistance_converts_failed_save_and_saves_ignore_prof
                 rng_seed=seed,
             )
             live = _get_live(start.handle)
+            if arm_legendary_resistance:
+                # Contract repair (R1/R7): the choice is declared BEFORE the
+                # save it converts — the engine has no mid-resolution
+                # round-trip.
+                from dnd5e_engine import orchestrator as orchestrator_module
+
+                orchestrator_module.resolve_legendary_resistance(start.handle, "mon:dragon")
             await submit_player_intent(
                 start.handle,
                 actor_id="char:wiz",
@@ -271,10 +284,7 @@ def test_c18_s03_legendary_resistance_converts_failed_save_and_saves_ignore_prof
     # Legendary Resistance use, converting the failure to success. API delta
     # (C18): resolve_legendary_resistance does not exist anywhere in
     # orchestrator.py today.
-    from dnd5e_engine import orchestrator as orchestrator_module
-
-    handle_b, live_b = _run("adult-red-dragon", 256, 19, 2)
-    orchestrator_module.resolve_legendary_resistance(handle_b, "mon:dragon")
+    _, live_b = _run("adult-red-dragon", 256, 19, 2, arm_legendary_resistance=True)
 
     from dnd5e_engine import events as events_module
 
@@ -292,7 +302,6 @@ def test_c18_s03_legendary_resistance_converts_failed_save_and_saves_ignore_prof
     assert not paralyzed_b, "a Legendary-Resistance-converted save must not apply the condition"
 
 
-@xfail_cluster(18, "monster action economy")
 def test_c18_s04_troll_regeneration_heals_at_start_of_turn_above_zero_hp():
     """C18-S04: SRD 5.2 "The [monster] regains [N] Hit Points at the
     start of each of its turns if it has at least 1 Hit Point."
@@ -334,6 +343,11 @@ def test_c18_s04_troll_regeneration_heals_at_start_of_turn_above_zero_hp():
             rng_seed=2,
         )
         live = _get_live(start.handle)
+        # Contract repair (R1): drive the hero's turn before the troll's —
+        # advance_monster_turn rejects a PC turn.
+        await submit_player_intent(
+            start.handle, actor_id="char:hero", intent=PlayerIntent(intent_type="pass")
+        )
         await advance_monster_turn(start.handle)  # troll's own turn begins
         return live
 
@@ -343,14 +357,18 @@ def test_c18_s04_troll_regeneration_heals_at_start_of_turn_above_zero_hp():
     assert heals[0].amount == 10
 
 
-@xfail_cluster(18, "monster action economy")
 def test_c18_s05_magic_resistance_grants_advantage_on_saves_vs_spells():
     """C18-S05: SRD 5.2 "The [monster] has Advantage on saving throws
     against spells and other magical effects."
     (packs/_source/monsterfeatures24/traits/magic-resistance.yml).
-    ``activities/save.py``'s save-roll primitive draws exactly one
-    natural d20 regardless of target — same-seed A/B: an Ogre (no Magic
-    Resistance) and a Hezrou (has it) resolve byte-identically today.
+    Magic Resistance landed in C22 (``activities/save_primitive.py``),
+    which grants advantage and records ``"trait"`` in the ``SaveRolled``
+    event's ``sources``. This scenario pins that behavior directly on the
+    two ``SaveRolled`` events rather than through an RNG-divergence proxy:
+    the old ``roll_a != roll_b`` proxy was seed-fragile — at seed 6 both
+    monsters' natural d20 draws are 16, so the two rolls coincidentally
+    matched even once Magic Resistance was wired up, and the assertion
+    could not distinguish "advantage landed" from "no extra draw at all".
 
     Dexterity is pinned to a non-default 11 (not the EncounterMemberSpec
     ``10`` sentinel) so F1b's monster-template ability-score hydration
@@ -411,18 +429,16 @@ def test_c18_s05_magic_resistance_grants_advantage_on_saves_vs_spells():
         return live
 
     live_a = run_async(_run("ogre", 59, 11))
-    roll_a = next(e for e in events_of(live_a, SaveRolled) if e.target_id == "mon:foe").roll_total
+    save_a = next(e for e in events_of(live_a, SaveRolled) if e.target_id == "mon:foe")
 
     live_b = run_async(_run("hezrou", 175, 17))
-    roll_b = next(e for e in events_of(live_b, SaveRolled) if e.target_id == "mon:foe").roll_total
+    save_b = next(e for e in events_of(live_b, SaveRolled) if e.target_id == "mon:foe")
 
-    assert roll_a != roll_b, (
-        "Magic Resistance should consume an extra d20 draw (advantage), "
-        "diverging the RNG stream from the non-resistant baseline"
-    )
+    assert save_a.advantage == "normal" and save_a.sources == []  # noqa: PT018
+    assert save_b.advantage == "advantage", "Magic Resistance must roll the save with advantage"
+    assert "trait" in save_b.sources
 
 
-@xfail_cluster(18, "monster action economy")
 def test_c18_s06_pack_tactics_grants_attack_advantage_with_adjacent_ally():
     """C18-S06: SRD 5.2 "The [monster] has Advantage on an attack roll
     against a creature if at least one of the [monster]'s allies is
@@ -468,6 +484,11 @@ def test_c18_s06_pack_tactics_grants_attack_advantage_with_adjacent_ally():
             rng_seed=3,
         )
         live = _get_live(start.handle)
+        # Contract repair (R1): drive the hero's turn before the wolf's —
+        # advance_monster_turn rejects a PC turn.
+        await submit_player_intent(
+            start.handle, actor_id="char:hero", intent=PlayerIntent(intent_type="pass")
+        )
         await advance_monster_turn(start.handle)  # mon:wolf1 attacks char:hero
         return live
 
@@ -492,16 +513,16 @@ def test_c18_s06_pack_tactics_grants_attack_advantage_with_adjacent_ally():
     assert rolled_b.advantage == "advantage"
 
 
-@xfail_cluster(18, "monster action economy")
-def test_c18_s07_stat_block_spellcaster_monster_actually_casting_is_unreachable():
+def test_c18_s07_stat_block_spellcaster_monster_actually_casts():
     """C18-S07: SRD 5.2 "If a monster can cast any spells, its stat block
     lists the spells and provides the monster's spellcasting ability,
     spell save DC ..., and spell attack bonus ..."
     (packs/_source/content24/monsters/monsters.yml:262-286,
-    "Spellcasting"). ``Monster`` has no ``spellcasting`` field at all;
-    ``select_typed_monster_action`` excludes ``CastActivity`` from
-    "offensive" entirely, and the monster-turn path builds
-    ``spell_book={}`` unconditionally.
+    "Spellcasting"). ``Monster.spellcasting_ability`` (C18) hydrates onto
+    the live ``Combatant``; ``_monster_cast_candidate`` picks the mage's
+    first offensive limited-use spell (Fireball, listed ahead of the two
+    other N/Day tiers) and ``_resolve_monster_cast`` resolves it against
+    the stat block's own ability/PB — int 17 (+3) + PB +3 -> DC 14.
     """
 
     async def _run():
@@ -549,17 +570,16 @@ def test_c18_s07_stat_block_spellcaster_monster_actually_casting_is_unreachable(
     saves = [e for e in events_of(live, SaveRolled) if e.target_id == "char:hero"]
     assert saves
     assert saves[0].ability == "dex"
+    assert saves[0].dc == 14
 
 
-@xfail_cluster(18, "monster action economy")
 def test_c18_s08_combat_ends_flee_when_every_foe_has_fled():
     """C18-S08: engine/Foundry-parity plumbing (no dedicated SRD flee
     mechanic) per spec §5 C18's acceptance-contract line item
-    ``ended_reason="flee"``. ``_derive_ended_reason`` computes only
-    ``all_foes_dead``/``all_pcs_dead`` — its return-type annotation
-    already carries the ``"flee"`` literal, but no code path ever
-    returns it; a live, un-dead, fled goblin still yields
-    ``ended_reason == "forced"``.
+    ``ended_reason="flee"``. ``_derive_ended_reason`` now returns
+    ``"flee"`` once every living foe carries a persisted
+    ``Combatant.has_fled`` flag, set by ``advance_monster_turn``'s
+    flee-stance branch.
     """
 
     async def _run():
@@ -596,6 +616,11 @@ def test_c18_s08_combat_ends_flee_when_every_foe_has_fled():
             rng_seed=1,
         )
         handle = start.handle
+        # Contract repair (R1): drive the hero's turn before the goblin's —
+        # advance_monster_turn rejects a PC turn.
+        await submit_player_intent(
+            handle, actor_id="char:hero", intent=PlayerIntent(intent_type="pass")
+        )
         await advance_monster_turn(handle)  # below flee threshold: retreats/passes
         result = await end_combat(handle)
         return result

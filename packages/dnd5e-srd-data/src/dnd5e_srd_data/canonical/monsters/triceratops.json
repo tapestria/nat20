@@ -382,7 +382,9 @@
   "hp_dice": "12d12 + 36",
   "lair_actions": [],
   "languages": [],
+  "legendary_action_uses": null,
   "legendary_actions": [],
+  "legendary_resistance_uses": null,
   "movement": {
     "burrow": null,
     "climb": null,
@@ -443,5 +445,6 @@
     "survival": null
   },
   "slug": "triceratops",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": null
 }

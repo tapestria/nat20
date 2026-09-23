@@ -62,10 +62,14 @@ from dnd5e_srd_data.schema.common import (
     ActivationBlock,
     AttackActivity,
     AttackDamageBlock,
+    CastActivity,
+    DamageActivity,
     DamagePartBlock,
+    HealActivity,
     SaveActivity,
 )
 from dnd5e_srd_data.schema.item import Weapon, WeaponProperty
+from dnd5e_srd_data.schema.monster import Monster, MonsterAction, MonsterTraitMechanic
 from dnd5e_srd_data.schema.spell import (
     CastingTimeUnit,
     Spell,
@@ -90,10 +94,11 @@ from dnd5e_engine.activities.attack import (
 from dnd5e_engine.activities.build_context import build_activity_context
 from dnd5e_engine.activities.context import ActivityResolutionContext
 from dnd5e_engine.activities.d20 import AdvantageSources, roll_d20_test
+from dnd5e_engine.activities.dice import roll_damage_part
 from dnd5e_engine.activities.forced_movement import FORCED_MOVEMENT_RIDERS
 from dnd5e_engine.activities.monster_actions import (
     expand_action_to_activities,
-    select_typed_monster_action,
+    rank_monster_actions,
 )
 from dnd5e_engine.activities.passive_stats import CombatantSenses, interpret_passive_stats
 from dnd5e_engine.activities.resolver import resolve_activity
@@ -125,8 +130,11 @@ from dnd5e_engine.events import (
     HealingApplied,
     IntentSubmitted,
     IntentType,
+    LegendaryActionUsed,
+    LegendaryResistanceUsed,
     MoveFailed,
     ReactionTriggered,
+    RechargeRolled,
     RoundStarted,
     SaveRolled,
     SpellCast,
@@ -177,7 +185,7 @@ from dnd5e_engine.turn_lifecycle import (
     run_turn_end,
     run_turn_start,
 )
-from dnd5e_engine.types.combat import BehaviorProfile, Combatant
+from dnd5e_engine.types.combat import BehaviorProfile, Combatant, MonsterActionUses
 from dnd5e_engine.types.conditions import ActiveCondition
 from dnd5e_engine.types.effects import ActiveEffect, ActiveEffectChange, ActiveEffectDuration
 from dnd5e_engine.views import LiveCombatView
@@ -338,6 +346,14 @@ class IntentRejectedError(CombatSeamError):
         # same SRD rule, different seam.
         "speed_zero",
         "insufficient_movement",
+        # C18 §Monster action economy — ``advance_monster_turn(legendary=True)``
+        # when no encounter member currently qualifies (see
+        # ``_eligible_legendary_actor``).
+        "no_legendary_action",
+        # C18 §Monster action economy — ``resolve_legendary_resistance``
+        # when ``entity_id`` is not an encounter member with the Legendary
+        # Resistance trait, or has no unarmed use left in its per-day pool.
+        "no_legendary_resistance",
     ]
 
     def __init__(self, reason: RejectionReason, detail: str) -> None:
@@ -697,6 +713,241 @@ def _monster_attack_range_ft(activities: Sequence[Any], melee_reach_ft: int) -> 
     return None
 
 
+def _recharge_threshold(notation: str) -> int:
+    """``"5-6"`` -> 5, ``"6"`` -> 6 (the low end of the SRD 5.2 X–Y range)."""
+    return int(notation.split("-", 1)[0])
+
+
+def _hydrate_monster_action_uses(monster: Monster) -> dict[str, MonsterActionUses]:
+    """Build the initial ``MonsterActionUses`` map for one monster template.
+
+    One entry per action slug (in ``monster.actions`` / ``legendary_actions``)
+    that carries either a ``recharge`` notation or a typed N/Day activity
+    ``uses.max``. Actions with neither are omitted — nothing to track.
+    """
+    uses: dict[str, MonsterActionUses] = {}
+    for action in (*monster.actions, *monster.legendary_actions):
+        entry = MonsterActionUses()
+        for activity in action.activities:
+            max_raw = activity.uses.max
+            if max_raw.strip().isdigit():
+                entry.uses_remaining[f"{action.slug}:{activity.id}"] = int(max_raw)
+        if action.recharge or entry.uses_remaining:
+            uses[action.slug] = entry
+    return uses
+
+
+def _legendary_resistance_max(monster: Monster) -> int:
+    """SRD 5.2 Legendary Resistance's "N/Day" pool size.
+
+    Prefers the typed ``Monster.legendary_resistance_uses`` (the dataset's
+    translation of Foundry ``system.resources.legres.max`` — 3 for most
+    bundled bearers, 4 for the non-gold ancient dragons, Kraken, Lich, Pit
+    Fiend and Solar, 6 for the Tarrasque); then a typed ``uses_per_day`` on
+    the trait; then a ``"N/Day"`` match in the trait's name; and only when
+    none is present (a host-supplied template without the typed count)
+    defaults to 3. ``0`` when the monster has no Legendary Resistance trait.
+    """
+    for trait in monster.special_abilities:
+        if trait.mechanic == MonsterTraitMechanic.LEGENDARY_RESISTANCE:
+            if monster.legendary_resistance_uses:
+                return monster.legendary_resistance_uses
+            if trait.uses_per_day:
+                return int(trait.uses_per_day)
+            match = re.search(r"(\d+)/Day", trait.name)
+            return int(match.group(1)) if match else 3
+    return 0
+
+
+def _sync_legendary_resistance(live: _LiveCombat, pre_event_count: int) -> None:
+    """C18 §Monster action economy — reconcile Legendary Resistance state
+    after a resolution that may have rolled a save.
+
+    Scans ``live.event_log[pre_event_count:]`` for ``LegendaryResistanceUsed``
+    (the "read the events" pattern the reaction drains use) and, for each
+    one not yet processed, decrements the AUTHORITATIVE
+    ``Combatant.legendary_resistances_remaining`` and
+    ``live.legendary_resistance_armed`` — the per-resolution hydration
+    payload the primary conversion (``save_primitive.roll_save``) actually
+    mutated was a disposable COPY (``_build_hydration_payload``), so this is
+    the one place those two canonical stores are written down for THAT path.
+
+    Idempotent: every processed event's log index is recorded in
+    ``live.legendary_resistance_applied_event_indices`` and never processed
+    again. The orchestrator-level save paths
+    (``_emit_legendary_resistance_used``) record their index at emit time —
+    they already decremented both stores directly — so a scan window that
+    wraps one of them (the concentration check fires from INSIDE
+    ``resolve_activity``) skips it, and two overlapping windows can never
+    double-decrement either. The set is bounded by the combat's total
+    Legendary Resistance uses.
+
+    A no-op when the resolution converted nothing (the common case — every
+    currently-legal combat is byte-identical).
+    """
+    for index, ev in enumerate(live.event_log[pre_event_count:], start=pre_event_count):
+        if not isinstance(ev, LegendaryResistanceUsed):
+            continue
+        if index in live.legendary_resistance_applied_event_indices:
+            continue
+        live.legendary_resistance_applied_event_indices.add(index)
+        armed = live.legendary_resistance_armed.get(ev.actor_id, 0)
+        if armed > 0:
+            live.legendary_resistance_armed[ev.actor_id] = armed - 1
+        bearer = _find_combatant(live, ev.actor_id)
+        if bearer is not None:
+            bearer.legendary_resistances_remaining = ev.uses_remaining
+
+
+def _consume_armed_legendary_resistance(live: _LiveCombat, target: Combatant) -> int | None:
+    """SRD 5.2 Legendary Resistance ("If the monster fails a saving throw, it
+    can choose to succeed instead") for the orchestrator-level save rolls
+    that bypass the typed activity resolver entirely (the end-of-turn repeat
+    save, the concentration check, and the Grapple/Shove unarmed-option save)
+    — ``activities/save_primitive.roll_save`` never runs for any of these, so
+    its conversion never sees them. Death saves are OUT OF SCOPE by design —
+    a death save has no DC/pass-fail shape this gate applies to.
+
+    Mirrors the primary conversion's gate exactly: a no-op (``None``) unless
+    ``target`` has an armed use (``live.legendary_resistance_armed``) AND at
+    least one use remains (``Combatant.legendary_resistances_remaining``). On
+    a hit, decrements both AUTHORITATIVE stores directly (no disposable
+    hydration copy is in play on these paths) and returns the NEW remaining
+    count. It emits nothing: the caller flips its own ``succeeded`` flag,
+    emits its ``SaveRolled`` (and ``ConcentrationCheck``) with the converted
+    outcome, THEN calls ``_emit_legendary_resistance_used`` — the event's
+    documented "after the ``SaveRolled`` it converts" order. Draws no dice.
+    """
+    armed = live.legendary_resistance_armed.get(target.entity_id, 0)
+    if armed <= 0 or target.legendary_resistances_remaining <= 0:
+        return None
+    live.legendary_resistance_armed[target.entity_id] = armed - 1
+    target.legendary_resistances_remaining -= 1
+    return target.legendary_resistances_remaining
+
+
+def _emit_legendary_resistance_used(live: _LiveCombat, target_id: str, uses_remaining: int) -> None:
+    """Emit the ``LegendaryResistanceUsed`` for a conversion
+    ``_consume_armed_legendary_resistance`` already applied, and record its
+    log index in ``live.legendary_resistance_applied_event_indices`` so an
+    enclosing ``_sync_legendary_resistance`` window (the concentration check
+    fires from INSIDE ``resolve_activity``) never decrements it a second
+    time. Callers invoke this AFTER their own ``SaveRolled`` /
+    ``ConcentrationCheck``.
+    """
+    _emit(live, LegendaryResistanceUsed(actor_id=target_id, uses_remaining=uses_remaining))
+    live.legendary_resistance_applied_event_indices.add(len(live.event_log) - 1)
+
+
+def _legendary_action_uses_max(monster: Monster) -> int:
+    """SRD 5.2 Legendary Action Uses pool size.
+
+    Prefers the typed ``Monster.legendary_action_uses`` (Foundry
+    ``system.resources.legact.max`` — 3 for every bundled legendary-action
+    monster); a stat block with a non-empty ``legendary_actions`` list but
+    no typed count (a host-supplied template) falls back to 3. ``0`` when
+    the monster has no legendary actions.
+    """
+    if not monster.legendary_actions:
+        return 0
+    return monster.legendary_action_uses or 3
+
+
+def _run_monster_turn_start(live: _LiveCombat, current: Combatant) -> None:
+    """SRD 5.2 "at the start of each of its turns" monster mechanics.
+
+    Runs once per driven monster turn (idempotent on
+    ``(round_number, current_turn_index)``): legendary-action pool reset,
+    recharge rolls, then regeneration — in that fixed order. Lives here
+    rather than as a ``turn_lifecycle`` ``turn_start`` hook because the
+    engine emits ``TurnStarted`` at the PREVIOUS turn's end, before the
+    legendary-action window a host drives afterwards (C18 Task 6); running
+    from a ``turn_start`` hook would fire these too early relative to that
+    window. Incapacitated and fleeing monsters still run all three — the SRD
+    ties them to "the start of its turn", not to whether it acts. A DEAD
+    monster (in ``live.dead_ids``, not alive, or at 0 HP) has no turn start
+    at all: nothing runs, no recharge die is drawn and no ``RechargeRolled``
+    is emitted for a corpse.
+    """
+    key = (live.round_number, live.current_turn_index)
+    if live.monster_turn_start_done == key:
+        return
+    live.monster_turn_start_done = key
+    if current.entity_id in live.dead_ids or not current.is_alive or current.hp_current <= 0:
+        return
+    if current.legendary_actions_max:
+        current.legendary_actions_remaining = current.legendary_actions_max
+    slug = live.monster_slug_by_entity.get(current.entity_id)
+    monster = get_lib_loader().get_monster(slug) if slug else None
+    if monster is None:
+        return
+    _roll_recharges(live, current, monster)
+    _apply_regeneration(live, current, monster)
+
+
+def _roll_recharges(live: _LiveCombat, current: Combatant, monster: Monster) -> None:
+    """SRD 5.2 "Recharge X–Y": roll 1d6 for each SPENT recharge action.
+
+    Only actions whose tracked ``MonsterActionUses.recharge_spent`` is True
+    draw a die — an unspent part is never rolled for (Foundry parity).
+    """
+    uses = live.monster_action_uses_by_entity.get(current.entity_id, {})
+    for action in monster.actions:
+        entry = uses.get(action.slug)
+        if not action.recharge or entry is None or not entry.recharge_spent:
+            continue
+        roll = live.rng.randint(1, 6)
+        succeeded = roll >= _recharge_threshold(action.recharge)
+        if succeeded:
+            entry.recharge_spent = False
+        _emit(
+            live,
+            RechargeRolled(
+                monster_id=current.entity_id,
+                action_slug=action.slug,
+                roll=roll,
+                threshold=action.recharge,
+                succeeded=succeeded,
+            ),
+        )
+
+
+def _apply_regeneration(live: _LiveCombat, current: Combatant, monster: Monster) -> None:
+    """SRD 5.2 Regeneration: "regains N Hit Points at the start of each of
+    its turns if it has at least 1 Hit Point," capped at ``hp_max``.
+
+    Reuses the ``HealingApplied`` emission path (``_emit`` ->
+    ``_emit_apply_healing``) for the tracked-HP write instead of a second HP
+    updater; emits nothing when the trait isn't present, the monster is at
+    or below 0 HP, or it is already at full HP (no heal actually occurs).
+    """
+    if MonsterTraitMechanic.REGENERATION not in current.trait_mechanics:
+        return
+    if not current.is_alive or current.hp_current < 1:
+        return
+    if current.hp_current >= current.hp_max:
+        return
+    # C18 §Monster action economy — SRD 5.2 stat-block trait "Swarm": "The
+    # swarm can't regain Hit Points or gain Temporary Hit Points." A
+    # Regeneration bearer that is ALSO a Swarm (no bundled monster combines
+    # the two today) never heals from either trait.
+    if MonsterTraitMechanic.SWARM in current.trait_mechanics:
+        _LOGGER.info("swarm_no_hp_gain target_id=%s", current.entity_id)
+        return
+    for trait in monster.special_abilities:
+        if trait.mechanic != MonsterTraitMechanic.REGENERATION:
+            continue
+        for activity in trait.activities:
+            if not isinstance(activity, HealActivity):
+                continue
+            amount = roll_damage_part(activity.healing, live.rng)
+            healed = min(amount, current.hp_max - current.hp_current)
+            if healed <= 0:
+                return
+            _emit(live, HealingApplied(target_id=current.entity_id, amount=healed))
+            return
+
+
 def _monster_is_fleeing(monster: Combatant) -> bool:
     """Replicate the legacy behavior-based flee / low-HP gate.
 
@@ -1003,6 +1254,33 @@ def _pop_sap_mark(live: _LiveCombat, attacker_id: str, pre_event_count: int) -> 
         del live.sap_marks[attacker_id]
 
 
+def _consume_attack_roll_grants(
+    live: _LiveCombat,
+    current: Combatant,
+    target_list: list[Combatant],
+    pre_event_count: int,
+) -> None:
+    """SRD 5.2 §Actions in Combat — Help; §Weapon Mastery — Vex / Sap: pop
+    the one-use grants an ATTACK ROLL this resolution may have consumed.
+
+    Shared by the mundane monster-attack site and a monster stat-block cast
+    whose resolved spell includes an ``AttackActivity`` (C18 Task 5 fix
+    round 1) so the two branches cannot drift apart. A save-only resolution
+    must never call this: the three pop helpers only remove a grant when an
+    ``AttackRolled`` by ``current`` actually fired in this resolution's
+    event slice, so calling them here is a correctness-relevant gate, not
+    a redundant no-op.
+
+    Mastery-proc FOLDING (``_fold_mastery_procs``) is deliberately NOT
+    included here — it needs the resolved ``ActivityResolutionContext`` and
+    only ever matters for an actual ``Weapon`` swing, which neither a
+    monster attack nor a monster cast ever has; callers fold it separately.
+    """
+    _pop_help_grant(live, current.entity_id, target_list, pre_event_count)
+    _pop_vex_grants(live, current.entity_id, target_list, pre_event_count)
+    _pop_sap_mark(live, current.entity_id, pre_event_count)
+
+
 def _fold_mastery_procs(
     live: _LiveCombat, attacker_id: str, ctx: ActivityResolutionContext
 ) -> None:
@@ -1194,6 +1472,60 @@ def _sneak_ally_adjacent_map(
         for ally in allies:
             ally_zone = live.actor_zone.get(ally.entity_id)
             if ally_zone is not None and live.topology.within_range(ally_zone, target_zone, 5):
+                out[target.entity_id] = True
+                break
+    return out
+
+
+def _pack_tactics_map(
+    live: _LiveCombat, attacker: Combatant, targets: Sequence[Combatant]
+) -> dict[str, bool]:
+    """SRD 5.2 stat-block trait "Pack Tactics" (R8) — per target, is at
+    least one of the ATTACKER's allies (any OTHER living combatant on its
+    own side — the encounter for a monster attacker) within 5 ft of that
+    target and not Incapacitated?
+
+    Mirrors ``_sneak_ally_adjacent_map``'s geometry (same spatial-seam
+    consumer shape) with two differences per R8: the ally gate is
+    ``is_alive and hp_current > 0`` (not just ``is_alive``) plus
+    ``conditions_block_actions`` (the Incapacitated helper shared with the
+    rest of the engine, rather than the raw ``is_condition_active`` call),
+    and the reach test is ``distance_ft(...) <= 5`` against the TARGET
+    (zero on a zone graph when ally and target share a zone) rather than
+    ``within_range``. Threaded into
+    ``ActivityResolutionContext.pack_tactics_ally_adjacent`` so the pure
+    resolver never touches the spatial seam. Absent zone data for the
+    attacker's side, a target, or every ally contributes no entry (⇒ no
+    qualifying ally).
+    """
+    if attacker.entity_id in live.party_ids:
+        side = live.party_ids
+    elif attacker.entity_id in live.encounter_ids:
+        side = live.encounter_ids
+    else:
+        return {}
+    allies = [
+        c
+        for c in live.initiative
+        if c.entity_id in side
+        and c.entity_id != attacker.entity_id
+        and c.is_alive
+        and c.hp_current > 0
+        and not conditions_block_actions(active_condition_names(c.conditions))
+    ]
+    if not allies:
+        return {}
+    out: dict[str, bool] = {}
+    for target in targets:
+        target_zone = live.actor_zone.get(target.entity_id)
+        if target_zone is None:
+            continue
+        for ally in allies:
+            ally_zone = live.actor_zone.get(ally.entity_id)
+            if ally_zone is None:
+                continue
+            distance = live.topology.distance_ft(ally_zone, target_zone)
+            if distance is not None and distance <= 5:
                 out[target.entity_id] = True
                 break
     return out
@@ -1676,6 +2008,39 @@ def _execute_flee_retreat(
     _walk_zone_path(live, monster.entity_id, live.topology.shortest_path(start_zone, destination))
 
 
+def _apply_monster_flee_stance(
+    live: _LiveCombat, current: Combatant, alive_pcs: Sequence[Combatant]
+) -> Combatant:
+    """Persist ``Combatant.has_fled`` across turns (C18 Task 9, R9).
+
+    A live, conscious monster over the flee threshold (``_monster_is_fleeing``)
+    spends its movement retreating (``_execute_flee_retreat``) and is marked
+    ``has_fled=True`` regardless of whether that retreat actually moved it
+    (already cornered, no movement budget left, or a backend with no
+    reachable destination) — the flag records the monster's STANCE this
+    turn, not whether it displaced. A live, conscious monster that is NOT
+    fleeing this turn — including one healed back above the threshold after
+    an earlier flee — is marked ``has_fled=False``, so ``_derive_ended_reason``'s
+    "every living foe has fled" check reflects current stance rather than a
+    stale flag. Dead/unconscious monsters take no turn and are left
+    untouched either way.
+
+    Returns the (possibly replaced, per ``model_copy``) ``Combatant`` so the
+    caller's ``current`` stays in sync with ``live.initiative``.
+    """
+    if not (current.is_alive and current.hp_current > 0):
+        return current
+    fleeing = _monster_is_fleeing(current)
+    if fleeing:
+        _execute_flee_retreat(live, current, alive_pcs)
+        current = next(c for c in live.initiative if c.entity_id == current.entity_id)
+    for idx, c in enumerate(live.initiative):
+        if c.entity_id == current.entity_id:
+            live.initiative[idx] = c.model_copy(update={"has_fled": fleeing})
+            return live.initiative[idx]
+    return current
+
+
 def _monster_target_distance_ft(
     live: _LiveCombat, monster_id: str, target: Combatant | None
 ) -> int | None:
@@ -1863,22 +2228,179 @@ def _synthesize_attack_from_legacy_fields(current: Combatant) -> AttackActivity 
     )
 
 
+def _monster_cast_candidate(
+    live: _LiveCombat, current: Combatant, action: MonsterAction
+) -> tuple[CastActivity, Spell] | None:
+    """Which spell a cast-only monster action (SRD 5.2 §Spellcasting /
+    Innate Spellcasting) resolves to, or ``None`` when nothing on it
+    qualifies.
+
+    Walks ``action``'s ``CastActivity`` entries in two passes — first every
+    LIMITED-USE activity (a tracked ``uses_remaining`` entry) that still has
+    a use left, then every at-will activity (no tracked entry) — each pass
+    in the stat block's own listed order, and returns the FIRST one that:
+
+      * is not an exhausted limited-use activity (tracked, zero left);
+      * resolves to a real ``Spell`` via ``activity.spell.uuid`` (an
+        unresolvable uuid logs ``cast_spell_unresolved`` and is skipped,
+        mirroring ``activities/cast.py``'s loud-miss idiom);
+      * casts on the monster's own turn (``casting_time.unit`` one of
+        ``action``/``bonus``/``reaction`` — a ritual-only or 1-minute+ prep
+        spell in the repertoire, e.g. the mage's Detect Magic at 10 minutes'
+        notice, is never a combat-turn action);
+      * carries at least one offensive activity of its own (an
+        ``AttackActivity``/``SaveActivity``/``DamageActivity`` — a buff/
+        utility spell like Mage Armor or Invisibility is never worth the
+        monster's action over an attack).
+
+    The limited-use-first order is the SRD 5.2 Multiattack DM guidance
+    ("have it use Multiattack on any of its turns in which it's not using
+    one of its more powerful abilities") applied inside one Spellcasting
+    action: the adult red dragon's Spellcasting lists Command and Scorching
+    Ray at will before its 1/Day Fireball, and the turn that promotes the
+    action above Multiattack for that Fireball must cast the Fireball.
+
+    A monster's spells are stat-block resources tracked entirely through
+    ``monster_action_uses_by_entity`` — this never touches
+    ``spell_slots_by_entity`` (PC-only).
+    """
+    entry = live.monster_action_uses_by_entity.get(current.entity_id, {}).get(action.slug)
+    limited: list[CastActivity] = []
+    at_will: list[CastActivity] = []
+    for activity in action.activities:
+        if not isinstance(activity, CastActivity):
+            continue
+        remaining = (
+            entry.uses_remaining.get(f"{action.slug}:{activity.id}") if entry is not None else None
+        )
+        if remaining is None:
+            at_will.append(activity)
+        elif remaining > 0:
+            limited.append(activity)
+    for activity in (*limited, *at_will):
+        uuid = activity.spell.uuid
+        spell = _build_cast_spell_book([activity]).get(uuid)
+        if spell is None:
+            _LOGGER.warning("cast_spell_unresolved uuid=%s", uuid)
+            continue
+        if spell.casting_time.unit not in ("action", "bonus", "reaction"):
+            continue
+        if not any(
+            isinstance(a, (AttackActivity, SaveActivity, DamageActivity)) for a in spell.activities
+        ):
+            continue
+        return activity, spell
+    return None
+
+
+def _monster_limited_cast_remaining(
+    live: _LiveCombat, current: Combatant, action: MonsterAction
+) -> bool:
+    """Whether the cast ``_monster_cast_candidate`` would resolve for
+    ``action`` right now is a LIMITED-USE (tracked N/Day) one — the live
+    probe ``rank_monster_actions`` uses to keep a Spellcasting action in its
+    limited-use tier only while such a cast has a use remaining. An action
+    whose only resolvable offensive casts are at will answers ``False`` and
+    ranks behind Multiattack.
+    """
+    candidate = _monster_cast_candidate(live, current, action)
+    if candidate is None:
+        return False
+    entry = live.monster_action_uses_by_entity.get(current.entity_id, {}).get(action.slug)
+    return entry is not None and f"{action.slug}:{candidate[0].id}" in entry.uses_remaining
+
+
+def _monster_action_available(live: _LiveCombat, current: Combatant, action: MonsterAction) -> bool:
+    """Whether ``action`` can be chosen for ``current``'s turn right now.
+
+    ``False`` when: its tracked ``MonsterActionUses.recharge_spent`` is
+    True (SRD 5.2 "Recharge X-Y" — spent and not yet rolled back in); its
+    activities are ALL ``CastActivity`` and ``_monster_cast_candidate``
+    can't resolve one (every candidate exhausted/unresolvable/non-offensive);
+    or its limited-use activities are all exhausted (``uses_remaining``
+    tracked and all zero) with no unlimited activity on the same action to
+    fall back to. ``True`` otherwise, including for an action with no
+    tracked ``MonsterActionUses`` entry at all (nothing to gate).
+    """
+    entry = live.monster_action_uses_by_entity.get(current.entity_id, {}).get(action.slug)
+    if entry is not None and entry.recharge_spent:
+        return False
+    activities = action.activities
+    if activities and all(isinstance(a, CastActivity) for a in activities):
+        return _monster_cast_candidate(live, current, action) is not None
+    if entry is not None and entry.uses_remaining:
+        has_unlimited_activity = any(
+            not activity.uses.max.strip().isdigit() for activity in activities
+        )
+        if not has_unlimited_activity and all(v <= 0 for v in entry.uses_remaining.values()):
+            return False
+    return True
+
+
+def _mark_monster_action_used(live: _LiveCombat, current: Combatant, action: MonsterAction) -> None:
+    """Record that ``action`` was chosen this turn — spends its tracked
+    ``MonsterActionUses`` state.
+
+    Only the recharge half is handled here: a chosen recharge action is
+    marked spent (``_roll_recharges`` then rolls for it at the monster's
+    NEXT turn start). The per-day cast-activity ``uses_remaining`` decrement
+    happens in ``_resolve_monster_cast`` instead — this function only ever
+    sees the ``MonsterAction``, never the specific ``CastActivity``
+    ``_monster_cast_candidate`` chose off it.
+    """
+    if not action.recharge:
+        return
+    entry = live.monster_action_uses_by_entity.get(current.entity_id, {}).get(action.slug)
+    if entry is not None:
+        entry.recharge_spent = True
+
+
+def _select_monster_targets(live: _LiveCombat, current: Combatant) -> list[Combatant]:
+    """Alive-PC target pool for ``current``'s attack/legendary action: every
+    living party member, minus a charmer (SRD 5.2 Charmed — "You can't
+    attack the charmer"). Extracted from the main-turn targeting block so
+    a legendary action (Task 6) can share it byte-for-byte.
+    """
+    alive_pcs = [
+        c
+        for c in live.initiative
+        if c.entity_id in live.party_ids and c.is_alive and c.hp_current > 0
+    ]
+    charmer_id = _condition_source_entity(live, current, "charmed")
+    if charmer_id is not None:
+        alive_pcs = [c for c in alive_pcs if c.entity_id != charmer_id]
+    return alive_pcs
+
+
+def _lowest_hp_target(pcs: list[Combatant]) -> Combatant | None:
+    """SRD 5.2 monster gambit targeting — lowest current HP among ``pcs``,
+    or ``None`` when the list is empty."""
+    return min(pcs, key=lambda c: c.hp_current) if pcs else None
+
+
 def _resolve_monster_activities(
     live: _LiveCombat,
     current: Combatant,
     monster_slug: str | None,
     skip_to_record_pass: bool,
     chosen_target: Combatant | None,
-) -> list[Any]:
+) -> tuple[list[Any], tuple[MonsterAction, CastActivity, Spell] | None]:
     """Resolve monster activities: legacy-fallback when no template, or typed
     activity selection from a ``Monster`` template.
 
-    Returns a list of ``Activity`` objects (typically empty or one element,
-    expanded to multiple on multiattack). Empty list when the monster has
-    no template and ``damage_dice`` doesn't parse, or when a slug is
-    unresolvable from the lib.
+    Returns ``(activities, cast_selection)``. ``activities`` is a list of
+    ``Activity`` objects (typically empty or one element, expanded to
+    multiple on multiattack) — empty when the monster has no template and
+    ``damage_dice`` doesn't parse, when a slug is unresolvable from the
+    lib, or when the chosen action is a stat-block spellcast (its own
+    activities are ``CastActivity`` wrappers, never resolver-ready
+    directly). ``cast_selection`` is the ``(action, activity, spell)``
+    tuple ``_monster_cast_candidate`` resolved when the ranked pick is a
+    cast-only action, else ``None`` — mutually exclusive with a non-empty
+    ``activities`` list.
     """
     monster_activities: list[Any] = []
+    cast_selection: tuple[MonsterAction, CastActivity, Spell] | None = None
     if not skip_to_record_pass and monster_slug is None:
         # Legacy-fixture fallback — see _synthesize_attack_from_legacy_fields.
         synthesized = _synthesize_attack_from_legacy_fields(current)
@@ -1891,23 +2413,437 @@ def _resolve_monster_activities(
             # silent; the turn still advances through the pass shape below.
             _LOGGER.warning("monster_unresolved slug=%s", monster_slug)
         else:
-            monster_action = select_typed_monster_action(monster)
+            ranked = rank_monster_actions(
+                monster.actions,
+                is_available=lambda a: _monster_action_available(live, current, a),
+                has_limited_use_remaining=lambda a: _monster_limited_cast_remaining(
+                    live, current, a
+                ),
+            )
+            monster_action = ranked[0] if ranked else None
             if monster_action is not None:
-                # hand the labelless-multiattack fallback the live
-                # distance + profile so it can prefer a sibling whose own range
-                # already covers the target (scout → longbow at 100 ft) instead
-                # of the first-listed melee weapon. Distance is the same zone-path
-                # cost the movement gate below reads, so the two agree.
-                monster_activities = expand_action_to_activities(
-                    monster,
-                    monster_action,
-                    target_distance_ft=_monster_target_distance_ft(
-                        live, current.entity_id, chosen_target
-                    ),
-                    behavior_profile=current.behavior_profile,
-                    melee_reach_ft=current.melee_reach_ft,
-                )
-    return monster_activities
+                _mark_monster_action_used(live, current, monster_action)
+                action_activities = monster_action.activities
+                if action_activities and all(
+                    isinstance(a, CastActivity) for a in action_activities
+                ):
+                    candidate = _monster_cast_candidate(live, current, monster_action)
+                    if candidate is not None:
+                        cast_activity, spell = candidate
+                        cast_selection = (monster_action, cast_activity, spell)
+                else:
+                    # hand the labelless-multiattack fallback the live
+                    # distance + profile so it can prefer a sibling whose own range
+                    # already covers the target (scout → longbow at 100 ft) instead
+                    # of the first-listed melee weapon. Distance is the same zone-path
+                    # cost the movement gate below reads, so the two agree.
+                    monster_activities = expand_action_to_activities(
+                        monster,
+                        monster_action,
+                        target_distance_ft=_monster_target_distance_ft(
+                            live, current.entity_id, chosen_target
+                        ),
+                        behavior_profile=current.behavior_profile,
+                        melee_reach_ft=current.melee_reach_ft,
+                    )
+    return monster_activities, cast_selection
+
+
+def _monster_context_kwargs(
+    live: _LiveCombat,
+    current: Combatant,
+    target_list: list[Combatant],
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    """The ``build_activity_context`` keyword block shared by every monster
+    resolution path (the mundane attack site; the C18 Task 5 stat-block
+    spellcast path) — every argument that depends only on the caster + its
+    target list + the per-entity hydration ``payload`` the caller already
+    computed, never on the specific activity/spell being resolved (those
+    stay per-call: ``slot_level``, ``base_spell_level``,
+    ``spellcasting_ability``, ``concentration``, ``source_passive_effects``,
+    ``spell_book``). Extracted from the historical single monster attack
+    site so a second monster resolution branch can share it byte-for-byte
+    rather than re-deriving it (and to hold ``advance_monster_turn`` under
+    the McCabe ceiling).
+    """
+    target_unseen, attacker_unseen_by = _target_visibility_maps(live, current, target_list)
+    attacker_invisibility_pierced_by, target_invisibility_pierced = _invisibility_pierced_maps(
+        live, current, target_list
+    )
+    return {
+        "passive_damage_modifiers": payload["passive_damage_modifiers"],
+        "save_modifiers": payload["save_modifiers"],
+        "check_modifiers": payload["check_modifiers"],
+        "d20_test_penalty": payload["d20_test_penalty"],
+        "target_cover": _target_cover_map(live, current.entity_id, target_list),
+        "target_distance_ft": _target_distance_map(live, current.entity_id, target_list),
+        # SRD 5.2 §Actions in Combat — Dodge: a dodging target imposes
+        # disadvantage only while it can also see THIS attacker (C16b's
+        # "can see the attacker" conjunct).
+        "target_dodging": {
+            t.entity_id: _dodge_benefit_active(live, t) and _combatant_can_see(live, t, current)
+            for t in target_list
+        },
+        # SRD 5.2 §Actions in Combat — Help (C14 Task 4): a monster attacker
+        # can be granted Help by one of ITS OWN allies (another monster).
+        "target_help_advantage": _target_help_advantage_map(live, current.entity_id, target_list),
+        "attacker_grappler_id": _condition_source_entity(live, current, "grappled"),
+        "target_unseen": target_unseen,
+        "attacker_unseen_by": attacker_unseen_by,
+        "attacker_invisibility_pierced_by": attacker_invisibility_pierced_by,
+        "target_invisibility_pierced": target_invisibility_pierced,
+        # SRD 5.2 Frightened line-of-sight gate (C16b): PRE-RESOLVED
+        # attacker-own-perception flag.
+        "attacker_fear_source_in_sight": _fear_source_in_sight(live, current),
+        # SRD 5.2 "Ranged Attacks in Close Combat" (C15 Task 3): per-attacker
+        # flag; a monster attack/cast carries no ``Weapon``, so this only
+        # ever matters via the shared attack.py penalty gate.
+        "attacker_ranged_in_melee": _hostile_adjacent_to_attacker(live, current),
+        # SRD 5.2 §Weapon Mastery — Vex / Sap (C15 Task 6): a monster attack
+        # never PRODUCES a proc itself (no ``Weapon``), but it can be a
+        # vex-grant target or sap-mark holder from a prior PC weapon hit.
+        "attacker_vex_advantage": _attacker_vex_advantage_map(live, current.entity_id, target_list),
+        "attacker_sapped": current.entity_id in live.sap_marks,
+        # C18 §Monster action economy — Legendary Resistance sidecars
+        # (Task 7): a monster's own attack/cast/legendary-action resolution
+        # can roll a save against IT (e.g. a Counterspell-style effect, or
+        # this same monster as the target of another monster's save-kind
+        # activity) just as readily as the PC path can.
+        "legendary_resistance_armed": payload["legendary_resistance_armed"],
+        "legendary_resistances_remaining_by_entity": payload[
+            "legendary_resistances_remaining_by_entity"
+        ],
+        # C18 §Monster action economy — Pack Tactics / Sunlight Sensitivity
+        # (Task 8): a monster attack/cast is the only path either trait's
+        # bearer resolves through today, so both sidecars are projected
+        # here rather than at the PC-only sneak-attack call site.
+        "pack_tactics_ally_adjacent": _pack_tactics_map(live, current, target_list),
+        "attacker_in_sunlight": live.scene_sunlight,
+        # C18 §Monster action economy, fix round 1 — Undead Fortitude is a
+        # TARGET-side trait (a monster attacker can just as easily be
+        # SWINGING AT a zombie ally as fielding one), so this handshake
+        # dict is threaded at every ``build_activity_context`` call site,
+        # not just the monster-attacker ones. See ``_LiveCombat.
+        # undead_fortitude_holds`` / the ``ActivityResolutionContext``
+        # field docstring for the full contract — this MUST be the live
+        # object itself, never a copy.
+        "undead_fortitude_holds": live.undead_fortitude_holds,
+    }
+
+
+def _resolve_monster_cast(
+    live: _LiveCombat,
+    current: Combatant,
+    chosen_target: Combatant,
+    action: MonsterAction,
+    activity: CastActivity,
+    spell: Spell,
+) -> None:
+    """Resolve a stat-block spellcast (C18 Task 5, SRD 5.2 §Spellcasting)
+    chosen by ``_resolve_monster_activities``/``_monster_cast_candidate``.
+
+    Mirrors the PC on-turn ``cast_spell`` path structurally — the same
+    ``build_activity_context`` + ``resolve_activity`` loop over
+    ``spell.activities``, the same ``_emit_spell_cast`` metadata event — but
+    against the monster's OWN stat block instead of a slot pool:
+    ``spell_slots_by_entity`` (PC-only) is never touched here. ``slot_level``
+    is the stat block's own PRINTED cast level (``activity.spell.level``,
+    e.g. the mage's Fireball at level 4) when set, else the spell's own
+    base ``level`` — the same "wrapper override, else the referenced
+    spell's own level" split ``resolve_cast`` (``activities/cast.py``) uses
+    for an item wrapper. Spellcasting ability precedence (controller
+    ruling): ``activity.spell.ability`` when the stat-block entry forces one
+    (Foundry's "" sentinel means "use the caster's own"), else the
+    monster's own ``Combatant.spellcasting_ability`` (hydrated from
+    ``Monster.spellcasting_ability`` in ``_build_foe_combatants``).
+
+    No AoE template expansion (single ``chosen_target`` only — out of
+    scope for this task) and no movement-closing gambit (the caller never
+    reads ``monster_activities`` for range on this path, so a cast always
+    resolves from the monster's current position).
+    """
+    target_list = [chosen_target]
+    slot_level = activity.spell.level if activity.spell.level is not None else spell.level
+    spellcasting_ability = activity.spell.ability or current.spellcasting_ability
+
+    payload = _build_hydration_payload(live, caster=current)
+    pre_event_count = len(live.event_log)
+    actx = build_activity_context(
+        current,
+        target_list,
+        rng=live.rng,
+        event_emitter=lambda ev: _emit(live, ev),
+        slot_level=slot_level,
+        base_spell_level=spell.level,
+        spellcasting_ability=spellcasting_ability,
+        concentration=spell.concentration,
+        source_passive_effects=list(spell.passive_effects),
+        spell_book=_build_cast_spell_book(spell.activities),
+        **_monster_context_kwargs(live, current, target_list, payload),
+    )
+    _emit_spell_cast(live, current.entity_id, spell, slot_level)
+    for child_activity in spell.activities:
+        resolve_activity(child_activity, actx)
+
+    # SRD 5.2 §Actions in Combat — Help; §Weapon Mastery — Vex / Sap: a
+    # monster cast whose resolved spell includes an ``AttackActivity``
+    # (e.g. Scorching Ray, reached via Task 6's Fiery Rays legendary
+    # action) is an attack roll like any other — a Help/Vex grant folded
+    # into it above must be consumed here too, or it leaks into a later,
+    # unrelated roll. A save-only spell (Fireball, Cone of Cold, ...) never
+    # calls this: the shared helper's pop functions only remove a grant
+    # when an ``AttackRolled`` actually fired, but gating on the activity
+    # SHAPE here (rather than relying on that) keeps a save-only cast from
+    # even attempting the lookup. No mastery-proc fold either way — a
+    # monster cast has no ``Weapon``.
+    if any(isinstance(a, AttackActivity) for a in spell.activities):
+        _consume_attack_roll_grants(live, current, target_list, pre_event_count)
+
+    # SRD §Innate/Prepared Spellcasting "N/Day" — spend the chosen
+    # activity's per-day use. A ``None`` lookup (no tracked entry — an
+    # at-will spell) is a no-op; guarded rather than asserted since
+    # ``_monster_cast_candidate`` already filtered to a use-bearing or
+    # unlimited activity, but this stays defensive against a future caller.
+    entry = live.monster_action_uses_by_entity.get(current.entity_id, {}).get(action.slug)
+    key = f"{action.slug}:{activity.id}"
+    if entry is not None and key in entry.uses_remaining:
+        entry.uses_remaining[key] = max(0, entry.uses_remaining[key] - 1)
+
+    # Symmetric concentration writeback for spellcaster monsters (mirrors
+    # the PC path; ``concentration_max_rounds`` stays on the default here —
+    # same recorded follow-up as the mundane monster-attack site).
+    _writeback_concentration(live, current, pre_event_count)
+    _record_effect_lifecycle_links(live, current, pre_event_count)
+    _sync_legendary_resistance(live, pre_event_count)
+
+
+def _eligible_legendary_actor(live: _LiveCombat, actor_id: str | None) -> Combatant:
+    """SRD 5.2 §Legendary Actions — which encounter member (if any) may
+    spend a legendary action right now.
+
+    A candidate qualifies when: it is an encounter member with a
+    legendary-action pool (``legendary_actions_max > 0``); it is alive and
+    above 0 HP; it is not Incapacitated (``conditions_block_actions``); it
+    has at least one use left; a turn has ended ("immediately after
+    another creature's turn") and that turn was NOT the candidate's own;
+    and that turn-end window hasn't already spent a legendary action
+    ("only one of these actions can be taken at a time").
+
+    ``actor_id=None`` picks the first eligible member in initiative order;
+    an explicit ``actor_id`` picks that member or nothing. Either way,
+    raises ``IntentRejectedError("no_legendary_action", ...)`` when the
+    result is empty.
+    """
+    if live.last_ended_turn is None:
+        raise IntentRejectedError("no_legendary_action", "no turn has ended yet")
+    ended_round, ended_actor_id = live.last_ended_turn
+
+    def qualifies(monster: Combatant) -> bool:
+        if monster.entity_id not in live.encounter_ids:
+            return False
+        if monster.legendary_actions_max <= 0:
+            return False
+        if not monster.is_alive or monster.hp_current <= 0:
+            return False
+        if conditions_block_actions(_condition_names(monster)):
+            return False
+        if monster.legendary_actions_remaining < 1:
+            return False
+        if ended_actor_id == monster.entity_id:
+            return False
+        return (ended_round, ended_actor_id, monster.entity_id) not in live.legendary_windows_used
+
+    if actor_id is not None:
+        candidate = next((c for c in live.initiative if c.entity_id == actor_id), None)
+        if candidate is None or not qualifies(candidate):
+            raise IntentRejectedError(
+                "no_legendary_action",
+                f"actor_id={actor_id!r} is not eligible for a legendary action right now",
+            )
+        return candidate
+
+    for combatant in live.initiative:
+        if qualifies(combatant):
+            return combatant
+    raise IntentRejectedError(
+        "no_legendary_action", "no encounter member is eligible for a legendary action right now"
+    )
+
+
+def _spend_legendary_use(live: _LiveCombat, monster: Combatant, action_slug: str) -> None:
+    """SRD 5.2 §Legendary Actions — "expends one use whenever it takes a
+    Legendary Action": decrement the pool, close the turn-end window
+    (``live.legendary_windows_used``), then emit ``LegendaryActionUsed``
+    BEFORE the chosen action's own events (per ``_take_legendary_action``).
+    """
+    assert live.last_ended_turn is not None  # narrowed by the eligibility gate
+    monster.legendary_actions_remaining -= 1
+    live.legendary_windows_used.add((*live.last_ended_turn, monster.entity_id))
+    _emit(
+        live,
+        LegendaryActionUsed(
+            actor_id=monster.entity_id,
+            action_slug=action_slug,
+            uses_remaining=monster.legendary_actions_remaining,
+        ),
+    )
+
+
+def _resolve_monster_attack_activities(
+    live: _LiveCombat,
+    actor: Combatant,
+    target_list: list[Combatant],
+    activities: Sequence[Any],
+) -> None:
+    """Resolve a monster's own attack/save ``Activity`` list against
+    ``target_list``: Shield drain, ``build_activity_context`` (via
+    ``_monster_context_kwargs``), the ``resolve_activity`` loop,
+    Help/Vex/Sap grant consumption, mastery-proc fold, the Hide break
+    clause, and concentration/effect-lifecycle writeback — the ONE
+    resolution sequence shared by the mundane monster-attack branch of
+    ``advance_monster_turn`` (which first expands multiattack via
+    ``expand_action_to_activities`` and may close distance with a move
+    before calling this) and a legendary action's own attack/save entry
+    (``_take_legendary_action``, which never moves and always resolves
+    from the monster's current position — same as a stat-block spellcast,
+    ``_resolve_monster_cast``). Extracted (C18 Task 6 fix round 1) so a
+    future hook added to one caller can't silently miss the other.
+    """
+    # SRD §Reactions — drain the attacked PC's pending ``hit_by_attack``
+    # reaction (Shield) BEFORE the sidecar projection below, so the
+    # just-applied +5 AC effect folds into THIS attack's hydration
+    # payload — the monster-attacker / PC-defender direction. Shield's own
+    # resolution draws no dice, so the attack's d20 keeps its seed-stream
+    # position.
+    _drain_targeted_reactions(
+        live,
+        trigger="hit_by_attack",
+        triggering_actor_id=actor.entity_id,
+        targets=target_list,
+    )
+    # The orchestrator owns the per-entity passive sidecars; project them
+    # once and hand the two dicts ``build_activity_context`` needs in (it
+    # stays pure — no orchestrator import, no double-compute). Mirrors the
+    # PC site.
+    payload = _build_hydration_payload(live, caster=actor)
+    pre_event_count = len(live.event_log)
+    # Monster magnitudes (save DC = 8 + attack_bonus, mod = attack_bonus)
+    # are reproduced by ``build_activity_context``'s ``entity_type ==
+    # "Monster"`` branch — no per-call slot/spell parameters apply to a
+    # mundane monster attack. SRD 5.2 §Weapon Proficiency — "A monster is
+    # proficient with any weapon in its stat block": left on the default
+    # (True) — a monster's ``Combatant.weapon_proficiencies`` is never
+    # explicitly set (the R1 sentinel), so it would resolve to True via
+    # ``_is_proficient_with_weapon`` anyway; the SRD rule makes the gate
+    # a no-op for every monster.
+    actx = build_activity_context(
+        actor,
+        target_list,
+        rng=live.rng,
+        event_emitter=lambda ev: _emit(live, ev),
+        slot_level=None,
+        base_spell_level=None,
+        spellcasting_ability=None,
+        concentration=False,
+        source_passive_effects=[],
+        # Monster/reaction paths don't delegate casts yet — PC-path
+        # delegation lives in _build_cast_spell_book; extending it here
+        # is a recorded follow-up.
+        spell_book={},
+        **_monster_context_kwargs(live, actor, target_list, payload),
+    )
+    for activity in activities:
+        # Monster attacks carry their damage on the AttackActivity itself,
+        # not a separate Weapon (unlike the PC weapon path).
+        resolve_activity(activity, actx, weapon=None)
+    # SRD 5.2 §Actions in Combat — Help; §Weapon Mastery — Vex / Sap
+    # (C15 Task 6): one-use pops, shared with the C18 monster-cast
+    # attack-roll branch via ``_consume_attack_roll_grants``. A monster
+    # attack never produces a Vex/Sap proc itself (no ``Weapon``), so
+    # the fold below is a no-op here in practice — wired for symmetry /
+    # future monster weapons.
+    _consume_attack_roll_grants(live, actor, target_list, pre_event_count)
+    _fold_mastery_procs(live, actor.entity_id, actx)
+    # SRD 5.2 §Actions in Combat — Hide, break clause: mirrors the PC
+    # site. A monster hidden via a prior Hide loses Invisible the
+    # moment IT makes an attack roll (no monster gambit currently
+    # issues a Hide intent, so this is defensive symmetry, not a
+    # reachable path today).
+    if actor.entity_id in live.hidden_entities:
+        _emit(live, ConditionRemoved(target_id=actor.entity_id, condition="invisible"))
+        live.hidden_entities.discard(actor.entity_id)
+    # Symmetric concentration writeback for spellcaster monsters
+    # (mirrors the PC path; no-op for non-caster monsters).
+    _writeback_concentration(live, actor, pre_event_count)
+    # ``concentration_max_rounds`` stays on the default (None) here: the
+    # monster path has no typed ``Spell`` in scope (monster stat-block
+    # casts resolve straight off the monster's own activities, not a
+    # fetched Spell) until C18 threads one through. Monster
+    # concentration effects therefore remain cascade-governed only —
+    # no timed expiry — same as before this task.
+    _record_effect_lifecycle_links(live, actor, pre_event_count)
+    _sync_legendary_resistance(live, pre_event_count)
+
+
+def _take_legendary_action(live: _LiveCombat, monster: Combatant) -> None:
+    """SRD 5.2 §Legendary Actions — spend one of ``monster``'s legendary-
+    action uses on the first offensive entry in its ``legendary_actions``
+    list (stat-block order) that is currently available.
+
+    "Offensive" mirrors ``_monster_cast_candidate``'s bar: a cast-only
+    action (all ``CastActivity``) resolves through
+    ``_monster_cast_candidate``/``_resolve_monster_cast`` — the same
+    at-will/N-per-day gating and Spell lookup a stat-block spellcast on the
+    monster's own turn uses; a non-cast action qualifies when it carries an
+    ``AttackActivity``/``SaveActivity``/``DamageActivity`` and resolves
+    through ``_resolve_monster_attack_activities``. A ``utility``-only entry (e.g.
+    Pounce) is never offensive and is skipped. Only entries whose
+    ``legendary_cost`` is unset or ``1`` are considered — the bundled
+    corpus carries no multi-point legendary action today (see BACKLOG for
+    the point-pool follow-up).
+
+    Raises ``IntentRejectedError("no_legendary_action", ...)`` when the
+    monster's template is unresolvable, no PC target is legal, or nothing
+    on the list qualifies.
+    """
+    slug = live.monster_slug_by_entity.get(monster.entity_id)
+    template = get_lib_loader().get_monster(slug) if slug else None
+    if template is None:
+        raise IntentRejectedError(
+            "no_legendary_action",
+            f"actor_id={monster.entity_id!r} has no resolvable monster template",
+        )
+    target = _lowest_hp_target(_select_monster_targets(live, monster))
+    if target is None:
+        raise IntentRejectedError(
+            "no_legendary_action", f"actor_id={monster.entity_id!r} has no legal target"
+        )
+
+    for action in template.legendary_actions:
+        if action.legendary_cost not in (None, 1):
+            continue
+        activities = action.activities
+        if activities and all(isinstance(a, CastActivity) for a in activities):
+            candidate = _monster_cast_candidate(live, monster, action)
+            if candidate is None:
+                continue
+            cast_activity, spell = candidate
+            _spend_legendary_use(live, monster, action.slug)
+            _resolve_monster_cast(live, monster, target, action, cast_activity, spell)
+            return
+        is_offensive = any(
+            isinstance(a, (AttackActivity, SaveActivity, DamageActivity)) for a in activities
+        )
+        if not is_offensive:
+            continue
+        _spend_legendary_use(live, monster, action.slug)
+        _resolve_monster_attack_activities(live, monster, [target], activities)
+        return
+
+    raise IntentRejectedError(
+        "no_legendary_action", f"actor_id={monster.entity_id!r} has no usable legendary action"
+    )
 
 
 # ── Internal live-combat state ──────────────────────────────────────────────
@@ -1933,6 +2869,12 @@ class _LiveCombat:
     rng: random.Random
     event_queue: asyncio.Queue[CombatEvent | None]
     scene_location_id: str
+    # C18 §Monster action economy — SRD 5.2 stat-block trait "Sunlight
+    # Sensitivity": whole-scene sunlight flag, projected from
+    # ``GridScene.sunlight`` at ``start_combat`` (``False`` for a zone-graph
+    # scene, which carries no ``GridScene``). Read by ``_monster_context_
+    # kwargs`` into ``ActivityResolutionContext.attacker_in_sunlight``.
+    scene_sunlight: bool = False
     current_turn_index: int = 0
     round_number: int = 1
     ended: bool = False
@@ -1954,6 +2896,16 @@ class _LiveCombat:
     event_log: list[CombatEvent] = field(default_factory=list)
     tracked_hp: dict[str, int] = field(default_factory=dict)
     tracked_temp_hp: dict[str, int] = field(default_factory=dict)
+    # C18 §Monster action economy, fix round 1 — SRD 5.2 stat-block trait
+    # "Undead Fortitude" live write-back handshake (see
+    # ``ActivityResolutionContext.undead_fortitude_holds`` for the full
+    # contract). THE SAME dict object is threaded into every
+    # ``build_activity_context`` call (never a disposable per-resolution
+    # copy) so ``activities/apply.py`` mutating it from inside a resolution
+    # is visible here; ``_emit_apply_damage`` pops the entry for the exact
+    # ``DamageApplied`` the save fired for. Private — never surfaced on a
+    # public event or view.
+    undead_fortitude_holds: dict[str, bool] = field(default_factory=dict)
     # active condition set per target_id; final outcome lifts permanent ones.
     active_conditions: dict[str, set[str]] = field(default_factory=dict)
     # active effect: target_id → list of full ActiveEffect documents.
@@ -2114,6 +3066,58 @@ class _LiveCombat:
     # set empties is dropped. Populated by folding
     # ``ActivityResolutionContext.mastery_procs`` post-resolution (R4).
     slow_marks: dict[str, set[str]] = field(default_factory=dict)
+    # C18 §Monster action economy — per-entity, per-action-slug limited-use
+    # state (recharge actions, N/Day trait uses). Hydrated at ``start_combat``
+    # from the monster template (``_hydrate_monster_action_uses``); mutated by
+    # ``_roll_recharges`` at the owner's own turn start. Absent for PCs and
+    # template-less foes.
+    monster_action_uses_by_entity: dict[str, dict[str, MonsterActionUses]] = field(
+        default_factory=dict
+    )
+    # C18 — idempotency guard for ``_run_monster_turn_start``: the
+    # ``(round_number, current_turn_index)`` pair the turn-start mechanics
+    # (legendary reset, recharge rolls, regeneration) last ran for. ``None``
+    # before the first driven monster turn.
+    monster_turn_start_done: tuple[int, int] | None = None
+    # C18 §Monster action economy — legendary actions (Task 6). The
+    # ``(round_number, actor_id)`` of the LAST turn to end (recorded in
+    # ``_end_turn_and_advance`` before the round/turn-index bump), read by
+    # ``_eligible_legendary_actor``'s "immediately after ANOTHER creature's
+    # turn" gate. ``None`` before any turn has ended.
+    last_ended_turn: tuple[int, str] | None = None
+    # C18 §Monster action economy — one-shot guard for "only one of these
+    # actions can be taken at a time": every ``(round, ended_actor_id,
+    # monster_id)`` window that has already spent a legendary action.
+    # Never cleared — a window is identified by the (round, ended actor)
+    # pair, which never repeats, so old entries are simply inert going
+    # forward rather than needing eviction.
+    legendary_windows_used: set[tuple[int, str, str]] = field(default_factory=set)
+    # C18 §Monster action economy — Legendary Resistance (Task 7). SRD 5.2:
+    # "If the monster fails a saving throw, it can choose to succeed
+    # instead." The engine has no mid-resolution round-trip to a host, so the
+    # choice is a PRE-ARMED declaration: ``resolve_legendary_resistance``
+    # increments the bearer's count here BEFORE the save it will convert is
+    # even rolled. Keyed entity_id -> armed-but-not-yet-consumed use count.
+    # ``activities/save_primitive.roll_save`` consults + decrements a
+    # per-resolution COPY of this dict (projected by
+    # ``_build_hydration_payload``); ``_sync_legendary_resistance`` reconciles
+    # this authoritative dict (and ``Combatant.legendary_resistances_remaining``)
+    # from the ``LegendaryResistanceUsed`` events a resolution actually
+    # emitted (the "read the events" pattern the reaction drains use).
+    legendary_resistance_armed: dict[str, int] = field(default_factory=dict)
+    # C18 §Monster action economy — Legendary Resistance. Idempotency guard
+    # for the single authoritative writer: the ``live.event_log`` index of
+    # every ``LegendaryResistanceUsed`` whose decrement has already been
+    # applied to ``legendary_resistance_armed`` /
+    # ``Combatant.legendary_resistances_remaining``. The orchestrator-level
+    # save paths (repeat save, concentration check, Grapple/Shove) decrement
+    # synchronously (``_consume_armed_legendary_resistance``) and record their
+    # index at emit (``_emit_legendary_resistance_used``);
+    # ``_sync_legendary_resistance`` records every index it processes. Any
+    # index found here is skipped, so overlapping scan windows (the
+    # concentration check fires INSIDE ``resolve_activity``) never
+    # double-decrement. Bounded by the combat's total uses.
+    legendary_resistance_applied_event_indices: set[int] = field(default_factory=set)
     # Turn-boundary hook registry (``dnd5e_engine.turn_lifecycle``). Populated
     # by ``_register_default_turn_hooks`` in ``start_combat``; run by
     # ``_end_turn_and_advance`` / ``_begin_turn``. Every rule that fires "at the
@@ -2153,6 +3157,54 @@ def _get_live(handle: CombatHandle) -> _LiveCombat:
 # owns. Engine-internal callers use _get_live (the private _LiveCombat).
 def get_live(handle: CombatHandle) -> LiveCombatView:
     return LiveCombatView.from_live(_get_live(handle))
+
+
+def resolve_legendary_resistance(handle: CombatHandle, entity_id: str) -> int:
+    """SRD 5.2 Legendary Resistance — *"If the monster fails a saving throw,
+    it can choose to succeed instead."*
+
+    A PRE-ARMED declaration: the engine has no mid-resolution round-trip to a
+    host, so a monster's Legendary Resistance choice must be committed
+    BEFORE the save it will convert is even rolled — call this any time
+    before submitting the intent that will force ``entity_id``'s save.
+    Synchronous (no roll, no I/O): it only arms a declaration that
+    ``activities/save_primitive.roll_save`` consults the next time this
+    entity's save fails.
+
+    Validates: the combat is live (``IntentRejectedError("combat_ended", …)``,
+    mirroring every other seam entry point); ``entity_id`` is an encounter
+    member carrying the Legendary Resistance trait
+    (``MonsterTraitMechanic.LEGENDARY_RESISTANCE in combatant.trait_mechanics``);
+    and its REMAINING per-day pool exceeds the count already armed (arming a
+    4th use against a 3/day pool is rejected, not silently capped). On
+    success, increments ``live.legendary_resistance_armed[entity_id]`` and
+    returns the new armed count; otherwise raises
+    ``IntentRejectedError("no_legendary_resistance", …)``.
+    """
+    live = _get_live(handle)
+    if live.ended:
+        raise IntentRejectedError("combat_ended", f"handle={handle.handle_id}")
+    bearer = _find_combatant(live, entity_id)
+    if (
+        bearer is None
+        or entity_id not in live.encounter_ids
+        or MonsterTraitMechanic.LEGENDARY_RESISTANCE not in bearer.trait_mechanics
+    ):
+        raise IntentRejectedError(
+            "no_legendary_resistance",
+            f"entity_id={entity_id!r} has no Legendary Resistance trait",
+        )
+    already_armed = live.legendary_resistance_armed.get(entity_id, 0)
+    if bearer.legendary_resistances_remaining <= already_armed:
+        raise IntentRejectedError(
+            "no_legendary_resistance",
+            f"entity_id={entity_id!r} has no unarmed Legendary Resistance use "
+            f"left (remaining={bearer.legendary_resistances_remaining}, "
+            f"already_armed={already_armed})",
+        )
+    new_armed = already_armed + 1
+    live.legendary_resistance_armed[entity_id] = new_armed
+    return new_armed
 
 
 def get_actor_active_effects(handle: CombatHandle, entity_id: str) -> tuple[ActiveEffect, ...]:
@@ -2630,7 +3682,17 @@ def _roll_unarmed_option_save(
 
     Emits the ``SaveRolled`` event and returns it so callers can branch on
     ``.succeeded`` (and read back the resolved ``.dc``) without recomputing
-    either."""
+    either.
+
+    Fix round 1: this save bypasses ``activities/save_primitive.roll_save``
+    just like the repeat save and concentration check, so it never saw the
+    C18 Legendary Resistance conversion — an armed target would be
+    grappled/shoved on a failed save with its armed use silently leaking
+    into a LATER save. Wired via the shared
+    ``_consume_armed_legendary_resistance`` helper, BEFORE the caller
+    (``_handle_grapple``/``_handle_shove``) branches on the outcome, so
+    ``SaveRolled`` carries the final (possibly converted) result;
+    ``LegendaryResistanceUsed`` follows it."""
     target_id = target.entity_id
     dc = _unarmed_option_dc(attacker)
     ability = _resolve_grapple_save_ability(target)
@@ -2651,6 +3713,9 @@ def _roll_unarmed_option_save(
         roll_total, succeeded = roll.total, roll.total >= dc
         mode, natural, roll_modifier = roll.mode, roll.kept, roll.modifier
         roll_sources = list(roll.sources)
+    lr_remaining = None if succeeded else _consume_armed_legendary_resistance(live, target)
+    if lr_remaining is not None:
+        succeeded = True
     event = SaveRolled(
         target_id=target_id,
         ability=ability,
@@ -2663,6 +3728,8 @@ def _roll_unarmed_option_save(
         sources=roll_sources,
     )
     _emit(live, event)
+    if lr_remaining is not None:
+        _emit_legendary_resistance_used(live, target_id, lr_remaining)
     return event
 
 
@@ -3519,6 +4586,19 @@ def _emit_apply_damage(live: _LiveCombat, event: DamageApplied) -> None:
         live.tracked_temp_hp[event.target_id] = temp - absorbed
         remaining -= absorbed
     new_hp = max(0, tracked - remaining)
+    # C18 §Monster action economy, fix round 1 — SRD 5.2 stat-block trait
+    # "Undead Fortitude": "On a successful save, the [monster] drops to 1
+    # Hit Point instead." ``activities/apply.py`` already rolled the save
+    # and reported the FULL, unmodified ``event.amount`` (R8 — the
+    # narration keeps saying "took 12 damage"); THIS is the one place that
+    # full amount would otherwise drop ``tracked_hp`` to ≤0 and (below)
+    # synthesize a ``Death``. Popped UNCONDITIONALLY (single-use, whether or
+    # not it actually changes the outcome here) so a stale flag from an
+    # unrelated damage instance against the same entity never leaks into a
+    # later, uncorrelated ``DamageApplied`` for it.
+    undead_fortitude_saved = live.undead_fortitude_holds.pop(event.target_id, False)
+    if new_hp <= 0 and undead_fortitude_saved:
+        new_hp = 1
     live.tracked_hp[event.target_id] = new_hp
     # Sync hp_current / temp_hp on the initiative slot so downstream
     # readers (monster gambit targeting, OA HP checks, hydration
@@ -3574,6 +4654,20 @@ def _emit_apply_damage(live: _LiveCombat, event: DamageApplied) -> None:
         roll = roll_d20_test(live.rng, modifier, AdvantageSources())
         roll_total = roll.total
         succeeded = roll_total >= dc
+        # C18 §Monster action economy — Legendary Resistance: the
+        # concentration check bypasses ``activities/save_primitive.roll_save``
+        # (it rolls its own d20 above) and emits TWO events sharing this one
+        # ``succeeded`` flag (``SaveRolled`` + ``ConcentrationCheck``, below),
+        # so the conversion is decided before either and
+        # ``LegendaryResistanceUsed`` is emitted after both — via the same
+        # shared helpers the repeat save uses.
+        lr_remaining = (
+            _consume_armed_legendary_resistance(live, concentrator)
+            if not succeeded and concentrator is not None
+            else None
+        )
+        if lr_remaining is not None:
+            succeeded = True
         # TRANSITIONAL (F2c): the concentration check emits BOTH the
         # generic ``SaveRolled(ability="con")`` it has always emitted and
         # the specific ``ConcentrationCheck``. Hosts should migrate to the
@@ -3605,6 +4699,8 @@ def _emit_apply_damage(live: _LiveCombat, event: DamageApplied) -> None:
                 sources=list(roll.sources),
             ),
         )
+        if lr_remaining is not None:
+            _emit_legendary_resistance_used(live, event.target_id, lr_remaining)
         if not succeeded:
             _drop_concentration(live, event.target_id)
     if new_hp <= 0 and event.target_id not in live.dead_ids:
@@ -4512,6 +5608,18 @@ def _build_hydration_payload(live: _LiveCombat, caster: Combatant | None = None)
     # IEffect parent/child graph: empty initially; the per-evaluation
     # ``triggering_ieffect`` flows through ``ctx.variables`` for now.
     ieffect_graph: dict[str, Any] = {}
+
+    # C18 §Monster action economy — Legendary Resistance (Task 7). Fresh
+    # COPIES per resolution: ``activities/save_primitive.roll_save`` mutates
+    # both dicts in place on a conversion, and ``_sync_legendary_resistance``
+    # reads the resulting ``LegendaryResistanceUsed`` events afterward rather
+    # than these dicts directly, so mutating a throwaway copy here is safe.
+    legendary_resistance_armed = dict(live.legendary_resistance_armed)
+    legendary_resistances_remaining_by_entity = {
+        c.entity_id: c.legendary_resistances_remaining
+        for c in live.initiative
+        if MonsterTraitMechanic.LEGENDARY_RESISTANCE in c.trait_mechanics
+    }
     return {
         "passive_damage_modifiers": passive_damage_modifiers,
         "save_modifiers": save_modifiers,
@@ -4523,6 +5631,8 @@ def _build_hydration_payload(live: _LiveCombat, caster: Combatant | None = None)
         "available_slots": available_slots,
         "existing_concentration": existing_concentration,
         "ieffect_graph": ieffect_graph,
+        "legendary_resistance_armed": legendary_resistance_armed,
+        "legendary_resistances_remaining_by_entity": legendary_resistances_remaining_by_entity,
     }
 
 
@@ -5096,7 +6206,12 @@ def _register_default_turn_hooks(live: _LiveCombat) -> None:
     ``TurnPhase(turn_end)`` marker, which also let a bonus action trigger a
     second repeat save in the same turn; as a hook it runs exactly once per turn
     end, inside the phase it belongs to.
-    Later clusters (ongoing damage, regeneration, recharge, legendary reset)
+    Monster-side "start of turn" mechanics (recharge rolls, regeneration,
+    legendary-action reset) do NOT append here — they run once per driven
+    turn from ``_run_monster_turn_start``, called at the top of
+    ``advance_monster_turn`` BEFORE the ``TurnStarted`` a host's legendary-
+    action window is driven from. Later ongoing-damage-style clusters that
+    genuinely fire on the engine's own ``TurnStarted``/``TurnEnded`` boundary
     append here rather than editing the advance path.
     """
     live.lifecycle.register("turn_end", _hook_run_end_of_turn_saves, key="engine:repeat-save")
@@ -5442,6 +6557,20 @@ def _run_end_of_turn_saves(live: _LiveCombat, actor_id: str) -> None:
                 roll_total, succeeded = roll.total, roll.total >= dc
                 mode, natural, roll_modifier = roll.mode, roll.kept, roll.modifier
                 roll_sources = list(roll.sources)
+            # C18 §Monster action economy — Legendary Resistance: this save
+            # bypasses ``activities/save_primitive.roll_save`` entirely (it
+            # rolls its own d20 above), so the conversion is decided here,
+            # BEFORE ``SaveRolled`` is emitted, via the shared orchestrator-
+            # level helper (``_consume_armed_legendary_resistance`` — also
+            # used by the concentration check); ``LegendaryResistanceUsed``
+            # follows the ``SaveRolled``.
+            lr_remaining = (
+                _consume_armed_legendary_resistance(live, target)
+                if not succeeded and target is not None
+                else None
+            )
+            if lr_remaining is not None:
+                succeeded = True
             _emit(
                 live,
                 SaveRolled(
@@ -5456,6 +6585,8 @@ def _run_end_of_turn_saves(live: _LiveCombat, actor_id: str) -> None:
                     sources=roll_sources,
                 ),
             )
+            if lr_remaining is not None:
+                _emit_legendary_resistance_used(live, actor_id, lr_remaining)
             if not succeeded:
                 surviving.append(spec)
                 continue
@@ -5667,6 +6798,16 @@ def _build_foe_combatants(
         # this cannot change any existing combat's behavior; resistances/
         # immunities stay host-populated by the existing convention.
         vulnerabilities = list(foe.damage_vulnerabilities)
+        # C18 — hydrate damage resistances/immunities from the SRD 5.2
+        # template when the spec leaves BOTH empty (host never authored
+        # them). SRD 5.2 stat blocks are unconditional (no "from nonmagical
+        # attacks" carve-out), so a template-hydrated resistance list always
+        # pairs with ``physical_resistances_nonmagical_only=False`` — unlike
+        # ``foe.physical_resistances_nonmagical_only`` (host-authored,
+        # defaults True for the SRD 5.1 convention).
+        resistances = list(foe.damage_resistances)
+        immunities = list(foe.damage_immunities)
+        nonmagical_only = foe.physical_resistances_nonmagical_only
         # F1b (2026-08-26) — hydrate the five non-DEX ability scores,
         # proficiency bonus, and save/skill proficiencies from the SRD
         # monster template when one is set. Dexterity is spec-authoritative
@@ -5681,6 +6822,10 @@ def _build_foe_combatants(
             if monster is not None:
                 if not vulnerabilities:
                     vulnerabilities = list(monster.damage_vulnerabilities)
+                if not resistances and not immunities:
+                    resistances = list(monster.damage_resistances)
+                    immunities = list(monster.damage_immunities)
+                    nonmagical_only = False
                 sc = monster.ability_scores
                 template_kw = {
                     "strength": sc.str,
@@ -5700,7 +6845,20 @@ def _build_foe_combatants(
                     "trait_mechanics": [
                         a.mechanic for a in monster.special_abilities if a.mechanic is not None
                     ],
+                    # SRD §Spellcasting — the ability a monster's innate/
+                    # prepared spells key off (C18 Task 5). ``None`` for a
+                    # template with no cast-bearing actions (unchanged
+                    # ``Combatant`` default).
+                    "spellcasting_ability": monster.spellcasting_ability,
                 }
+                legendary_actions_max = _legendary_action_uses_max(monster)
+                if legendary_actions_max:
+                    template_kw["legendary_actions_max"] = legendary_actions_max
+                    template_kw["legendary_actions_remaining"] = legendary_actions_max
+                legendary_resistances_max = _legendary_resistance_max(monster)
+                if legendary_resistances_max:
+                    template_kw["legendary_resistances_max"] = legendary_resistances_max
+                    template_kw["legendary_resistances_remaining"] = legendary_resistances_max
                 if foe.dexterity == 10:
                     template_kw["dexterity"] = sc.dex
         combatants.append(
@@ -5718,11 +6876,11 @@ def _build_foe_combatants(
                 behavior_profile=foe.behavior_profile,
                 dexterity=template_kw.pop("dexterity", foe.dexterity),
                 creature_type=foe.creature_type,
-                damage_resistances=list(foe.damage_resistances),
-                damage_immunities=list(foe.damage_immunities),
+                damage_resistances=resistances,
+                damage_immunities=immunities,
                 damage_vulnerabilities=vulnerabilities,
                 condition_immunities=list(foe.condition_immunities),
-                physical_resistances_nonmagical_only=foe.physical_resistances_nonmagical_only,
+                physical_resistances_nonmagical_only=nonmagical_only,
                 base_speed=foe.base_speed,
                 movement_remaining=foe.base_speed,
                 **template_kw,
@@ -6003,6 +7161,7 @@ async def start_combat(
         rng=rng,
         event_queue=asyncio.Queue(),
         scene_location_id=scene_location_id,
+        scene_sunlight=grid_scene.sunlight if grid_scene is not None else False,
         actor_zone=actor_zone,
         monster_slug_by_entity=monster_slug_by_entity,
         xp_value_by_entity=xp_value_by_entity,
@@ -6013,6 +7172,13 @@ async def start_combat(
         spells_known_by_entity=spells_known_by_entity,
         custom_counters_by_entity=custom_counters_by_entity,
     )
+    # C18 — per-foe limited-use state (recharge actions, N/Day trait uses),
+    # hydrated from the same monster template each foe's other stats came
+    # from. Absent for foes with no resolvable ``monster_template_slug``.
+    for entity_id, slug in monster_slug_by_entity.items():
+        monster = get_lib_loader().get_monster(slug)
+        if monster is not None:
+            live.monster_action_uses_by_entity[entity_id] = _hydrate_monster_action_uses(monster)
     _REGISTRY[handle_id] = live
     _register_default_turn_hooks(live)
 
@@ -6666,6 +7832,10 @@ def _end_turn_and_advance(live: _LiveCombat, actor_id: str) -> None:
     )
     run_turn_end(live, actor_id)
     _emit(live, TurnEnded(actor_id=actor_id))
+    # C18 §Monster action economy — record the window a legendary action may
+    # be taken in, BEFORE the round/turn-index bump below moves
+    # ``live.round_number`` past the round this turn just ended in.
+    live.last_ended_turn = (live.round_number, actor_id)
     live.current_turn_index += 1
     new_round = live.current_turn_index >= len(live.initiative)
     if new_round:
@@ -7915,10 +9085,16 @@ def _resolve_readied_spell_cast(
         # fetched Weapon, so the proficiency gate never applies here.
         target_distance_ft=_target_distance_map(live, reactor.entity_id, [reactor]),
         attacker_grappler_id=_condition_source_entity(live, reactor, "grappled"),
+        legendary_resistance_armed=payload["legendary_resistance_armed"],
+        legendary_resistances_remaining_by_entity=payload[
+            "legendary_resistances_remaining_by_entity"
+        ],
+        undead_fortitude_holds=live.undead_fortitude_holds,
     )
     pre_event_count = len(live.event_log)
     for activity in spell.activities:
         resolve_activity(activity, actx, weapon=None)
+    _sync_legendary_resistance(live, pre_event_count)
 
     for ev in live.event_log[pre_event_count:]:
         if (
@@ -8080,9 +9256,15 @@ def _drain_counterspell_reaction(
         # resolves a SaveActivity, never an AttackActivity with a fetched
         # Weapon, so the proficiency gate never applies here.
         attacker_grappler_id=_condition_source_entity(live, reactor, "grappled"),
+        legendary_resistance_armed=payload["legendary_resistance_armed"],
+        legendary_resistances_remaining_by_entity=payload[
+            "legendary_resistances_remaining_by_entity"
+        ],
+        undead_fortitude_holds=live.undead_fortitude_holds,
     )
     pre_event_count = len(live.event_log)
     resolve_activity(save_activity, actx, weapon=None)
+    _sync_legendary_resistance(live, pre_event_count)
     save_events = [
         ev
         for ev in live.event_log[pre_event_count:]
@@ -8644,6 +9826,19 @@ async def submit_player_intent(
             # carries no ``Weapon``, so it can never cleave today.
             cleave_available=cleave_available,
             cleave_candidate=cleave_candidate,
+            # C18 §Monster action economy — Legendary Resistance sidecars
+            # (Task 7): a PC attack/cast/item/feature can force a save on a
+            # monster target holding a pre-armed conversion.
+            legendary_resistance_armed=payload["legendary_resistance_armed"],
+            legendary_resistances_remaining_by_entity=payload[
+                "legendary_resistances_remaining_by_entity"
+            ],
+            # C18 §Monster action economy, fix round 1 — Undead Fortitude
+            # write-back handshake (see ``_LiveCombat.undead_fortitude_
+            # holds``): a PC's own weapon/spell attack is the MOST common
+            # real path a bearer (a zombie fought by the party) resolves
+            # through, so this is wired here too, not just monster-side.
+            undead_fortitude_holds=live.undead_fortitude_holds,
         )
         for activity in activities:
             resolve_activity(activity, actx, weapon=fetched_weapon)
@@ -8723,6 +9918,7 @@ async def submit_player_intent(
     # EffectApplied→ConditionApplied emit order, so this seam and
     # ``_record_effect_lifecycle_links`` below keep working unchanged.
     _writeback_concentration(live, current, pre_event_count)
+    _sync_legendary_resistance(live, pre_event_count)
 
     # Persistent IEffect-graph linkage — record concentration ownership,
     # effect→condition bijection, and any end-of-turn repeat-save specs
@@ -9169,7 +10365,9 @@ def _roll_damage_expression(live: _LiveCombat, expr: str, *, crit: bool) -> int:
     return max(0, total)
 
 
-async def advance_monster_turn(handle: CombatHandle) -> None:
+async def advance_monster_turn(
+    handle: CombatHandle, *, legendary: bool = False, actor_id: str | None = None
+) -> None:
     """Drive one monster turn through typed selection + the Activity resolver.
 
     Validation mirrors ``submit_player_intent``:
@@ -9193,10 +10391,25 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
     threshold, no attack, no PC targets), the orchestrator records
     ``IntentSubmitted(pass)`` and advances the turn without resolving any
     activity — the safe no-op the legacy dispatch also produced.
+
+    ``legendary=True`` (C18 §Monster action economy) takes a SEPARATE path:
+    a host calls this ANY time another creature's turn has just ended
+    (including a PC's) to let one eligible encounter member spend a
+    legendary action. It never touches ``current_turn_index``, never emits
+    ``TurnStarted``/``TurnEnded``/``TurnPhase``, spends no action economy,
+    and runs no turn-lifecycle hooks — see ``_eligible_legendary_actor`` and
+    ``_take_legendary_action``. ``actor_id`` picks a specific encounter
+    member (else the first eligible one in initiative order); both raise
+    ``IntentRejectedError("no_legendary_action", ...)`` when nothing
+    qualifies right now.
     """
     live = _get_live(handle)
     if live.ended:
         raise IntentRejectedError("combat_ended", f"handle={handle.handle_id}")
+
+    if legendary:
+        _take_legendary_action(live, _eligible_legendary_actor(live, actor_id))
+        return
 
     current = _current_actor(live)
     if current.entity_type == "Character":
@@ -9204,6 +10417,12 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
             "not_actor_turn",
             f"current_turn={current.entity_id!r} is a Character, not a monster",
         )
+
+    # C18 §Monster action economy — legendary-action reset, recharge rolls,
+    # regeneration. Runs once per driven turn regardless of the flee/
+    # incapacitated gate below (SRD ties these to turn start, not to
+    # whether the monster acts); a dead monster has no turn start at all.
+    _run_monster_turn_start(live, current)
 
     # Dead / unconscious monsters skip with a no-op record. The legacy
     # behavior-based flee gate (monster_ai.select_monster_action) is reapplied
@@ -9220,33 +10439,20 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
     )
 
     # Build alive-PC target list (lowest_hp priority — the legacy
-    # gambit's target rule). Empty targets degrades to pass.
-    alive_pcs: list[Combatant] = [
-        c
-        for c in live.initiative
-        if c.entity_id in live.party_ids and c.is_alive and c.hp_current > 0
-    ]
-    # SRD 5.2 Charmed — "You can't attack the charmer or target the charmer
-    # with damaging abilities or magical effects." The player path enforces
-    # this as a pre-resolution reject gate (``_charmed_target_failure``); the
-    # monster path has no intent to reject, so the charmer is removed from the
-    # selectable targets instead. A charmed monster still attacks anyone else;
-    # with no other target left it passes the turn. Unknown charmer (no
-    # resolvable source) imposes no restriction, exactly as on the player path.
-    charmer_id = _condition_source_entity(live, current, "charmed")
-    if charmer_id is not None:
-        alive_pcs = [c for c in alive_pcs if c.entity_id != charmer_id]
-        # Knock-on, accepted deliberately: ``alive_pcs`` is also the threat list
-        # ``_execute_flee_retreat`` measures distance against, so a charmed
-        # FLEEING monster no longer counts its charmer as someone to run from.
-        # Flavour-defensible (you do not flee the creature that has charmed you)
-        # and SRD-silent, but it is a second consequence of this one filter.
+    # gambit's target rule). Empty targets degrades to pass. SRD 5.2
+    # Charmed — "You can't attack the charmer or target the charmer with
+    # damaging abilities or magical effects" — is folded into
+    # ``_select_monster_targets``. Knock-on, accepted deliberately:
+    # ``alive_pcs`` is also the threat list ``_execute_flee_retreat``
+    # measures distance against, so a charmed FLEEING monster no longer
+    # counts its charmer as someone to run from. Flavour-defensible (you do
+    # not flee the creature that has charmed you) and SRD-silent, but it is
+    # a second consequence of this one filter.
+    alive_pcs = _select_monster_targets(live, current)
     if not alive_pcs:
         skip_to_record_pass = True
 
-    chosen_target: Combatant | None = (
-        min(alive_pcs, key=lambda c: c.hp_current) if alive_pcs else None
-    )
+    chosen_target: Combatant | None = _lowest_hp_target(alive_pcs)
 
     # ── Fleeing retreat ──────────────────────────────────────────
     # A live monster over the flee threshold spends its movement putting
@@ -9256,9 +10462,7 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
     # ``IntentSubmitted(intent_type="pass")`` — but now with real
     # ``ActorMoved`` events preceding it (reusing ``"pass"`` per the catalog;
     # no new IntentType is minted). Dead/unconscious monsters never retreat.
-    if current.is_alive and current.hp_current > 0 and _monster_is_fleeing(current):
-        _execute_flee_retreat(live, current, alive_pcs)
-        current = next(c for c in live.initiative if c.entity_id == current.entity_id)
+    current = _apply_monster_flee_stance(live, current, alive_pcs)
 
     # ── Typed-Activity monster resolution (Foundry cutover, ─────────
     #
@@ -9266,10 +10470,10 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
     # out multiattack. This is the sole monster-turn path; the old the legacy evaluator IR
     # path was retired in .
     monster_slug = live.monster_slug_by_entity.get(current.entity_id)
-    monster_activities = _resolve_monster_activities(
+    monster_activities, cast_selection = _resolve_monster_activities(
         live, current, monster_slug, skip_to_record_pass, chosen_target
     )
-    has_action = bool(monster_activities)
+    has_action = bool(monster_activities) or cast_selection is not None
 
     # Phase-5: monster gambit zone awareness. When the chosen attack is
     # out of range, the monster MOVEs toward the target along the
@@ -9393,14 +10597,31 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
     # still advances through the IntentSubmitted(pass) / TurnEnded shape so
     # initiative progresses to the next actor.
     mover_dead_post_aoo = current.entity_id in live.dead_ids
+    # C18 Task 5 — a resolved cast candidate takes its own branch below
+    # (``_resolve_monster_cast``), never the mundane-attack one: it has no
+    # ``monster_activities`` to walk and never engages the movement-closing
+    # gambit above (``attack_skipped_due_to_range``/``dashed_this_turn`` stay
+    # at their defaults for a cast turn — a stat-block spell resolves from
+    # the monster's current position).
+    will_cast = (
+        cast_selection is not None
+        and chosen_target is not None
+        and not mover_dead_post_aoo
+        and not dashed_this_turn
+    )
     will_attack = (
         has_action
+        and cast_selection is None
         and chosen_target is not None
         and not attack_skipped_due_to_range
         and not mover_dead_post_aoo
         and not dashed_this_turn
     )
-    intent_type: IntentType = "dash" if dashed_this_turn else ("attack" if will_attack else "pass")
+    intent_type: IntentType = (
+        "dash"
+        if dashed_this_turn
+        else ("cast_spell" if will_cast else ("attack" if will_attack else "pass"))
+    )
     _emit(
         live,
         IntentSubmitted(
@@ -9410,137 +10631,20 @@ async def advance_monster_turn(handle: CombatHandle) -> None:
         ),
     )
 
-    if will_attack:
+    if will_cast:
+        assert cast_selection is not None  # mypy: narrowed by will_cast
+        assert chosen_target is not None  # mypy: narrowed by will_cast
+        current = next(c for c in live.initiative if c.entity_id == current.entity_id)
+        monster_action, cast_activity, spell = cast_selection
+        _resolve_monster_cast(live, current, chosen_target, monster_action, cast_activity, spell)
+    elif will_attack:
         # Re-read the actor snapshot — the move loop above may have
         # rebuilt the initiative slot with decremented movement_remaining;
         # the resolver runs against the post-move Combatant.
         current = next(c for c in live.initiative if c.entity_id == current.entity_id)
         assert chosen_target is not None  # mypy: narrowed by will_attack
         target_list = [chosen_target]
-
-        # SRD §Reactions — drain the attacked PC's pending ``hit_by_attack``
-        # reaction (Shield) BEFORE the sidecar projection below, so the
-        # just-applied +5 AC effect folds into THIS attack's hydration
-        # payload — the monster-attacker / PC-defender direction. Shield's own
-        # resolution draws no dice, so the attack's d20 keeps its seed-stream
-        # position.
-        _drain_targeted_reactions(
-            live,
-            trigger="hit_by_attack",
-            triggering_actor_id=current.entity_id,
-            targets=target_list,
-        )
-
-        # The orchestrator owns the per-entity passive sidecars; project them
-        # once and hand the two dicts ``build_activity_context`` needs in (it
-        # stays pure — no orchestrator import, no double-compute). Mirrors the
-        # PC site.
-        payload = _build_hydration_payload(live, caster=current)
-        pre_event_count = len(live.event_log)
-        # Monster magnitudes (save DC = 8 + attack_bonus, mod = attack_bonus)
-        # are reproduced by ``build_activity_context``'s ``entity_type ==
-        # "Monster"`` branch — no per-call slot/spell parameters apply to a
-        # mundane monster attack.
-        target_unseen, attacker_unseen_by = _target_visibility_maps(live, current, target_list)
-        attacker_invisibility_pierced_by, target_invisibility_pierced = _invisibility_pierced_maps(
-            live, current, target_list
-        )
-        actx = build_activity_context(
-            current,
-            target_list,
-            rng=live.rng,
-            event_emitter=lambda ev: _emit(live, ev),
-            slot_level=None,
-            base_spell_level=None,
-            spellcasting_ability=None,
-            concentration=False,
-            source_passive_effects=[],
-            # Monster/reaction paths don't delegate casts yet — PC-path
-            # delegation lives in _build_cast_spell_book; extending it here
-            # is a recorded follow-up.
-            spell_book={},
-            passive_damage_modifiers=payload["passive_damage_modifiers"],
-            save_modifiers=payload["save_modifiers"],
-            check_modifiers=payload["check_modifiers"],
-            d20_test_penalty=payload["d20_test_penalty"],
-            target_cover=_target_cover_map(live, current.entity_id, target_list),
-            target_distance_ft=_target_distance_map(live, current.entity_id, target_list),
-            # SRD 5.2 §Actions in Combat — Dodge: mirrors the PC site. A
-            # dodging PC target imposes disadvantage on the monster's
-            # attack roll (attack.py) only while it can also see THIS
-            # attacker (``current``) — C16b's "can see the attacker"
-            # conjunct.
-            target_dodging={
-                t.entity_id: _dodge_benefit_active(live, t) and _combatant_can_see(live, t, current)
-                for t in target_list
-            },
-            # SRD 5.2 §Actions in Combat — Help (C14 Task 4): mirrors the PC
-            # site — a monster attacker can be granted Help by one of ITS
-            # own allies (another monster) exactly like a PC can.
-            target_help_advantage=_target_help_advantage_map(live, current.entity_id, target_list),
-            attacker_grappler_id=_condition_source_entity(live, current, "grappled"),
-            target_unseen=target_unseen,
-            attacker_unseen_by=attacker_unseen_by,
-            attacker_invisibility_pierced_by=attacker_invisibility_pierced_by,
-            target_invisibility_pierced=target_invisibility_pierced,
-            # SRD 5.2 Frightened line-of-sight gate (C16b): mirrors the PC
-            # site — PRE-RESOLVED attacker-own-perception flag.
-            attacker_fear_source_in_sight=_fear_source_in_sight(live, current),
-            # SRD 5.2 §Weapon Proficiency — "A monster is proficient with any
-            # weapon in its stat block." Left on the default (True): a
-            # monster's Combatant.weapon_proficiencies is never explicitly
-            # set (the R1 sentinel), so it would resolve to True via
-            # ``_is_proficient_with_weapon`` anyway — this IS a real attack
-            # site (monster_activities below), but the SRD rule makes the
-            # gate a no-op for every monster.
-            # SRD 5.2 "Ranged Attacks in Close Combat" (C15 Task 3): mirrors
-            # the PC site — a monster archer adjacent to a PC gets the same
-            # SRD penalty. A monster attack carries no ``Weapon`` (its
-            # damage rides on the ``AttackActivity`` itself), so
-            # ``attack.py``'s weapon-based "effectively ranged" gate never
-            # fires for a monster attack today — a recorded follow-up.
-            attacker_ranged_in_melee=_hostile_adjacent_to_attacker(live, current),
-            # SRD 5.2 §Weapon Mastery — Vex / Sap (C15 Task 6): mirrors the
-            # PC site. A monster attack carries no ``Weapon`` (see below), so
-            # a monster attacker can never itself PRODUCE a vex/sap proc —
-            # but it CAN be a vex-grant target or a sap-mark holder from a
-            # prior PC weapon hit, so both flags are wired for symmetry.
-            attacker_vex_advantage=_attacker_vex_advantage_map(
-                live, current.entity_id, target_list
-            ),
-            attacker_sapped=current.entity_id in live.sap_marks,
-        )
-        for activity in monster_activities:
-            # Monster attacks carry their damage on the AttackActivity itself,
-            # not a separate Weapon (unlike the PC weapon path).
-            resolve_activity(activity, actx, weapon=None)
-        # SRD 5.2 §Actions in Combat — Help: one-use pop, mirrors the PC site.
-        _pop_help_grant(live, current.entity_id, target_list, pre_event_count)
-        # SRD 5.2 §Weapon Mastery — Vex / Sap (C15 Task 6): mirrors the PC
-        # site's pop-then-fold ordering. A monster attack never produces a
-        # proc itself (no ``Weapon``, see above), so the fold is a no-op
-        # here in practice — wired for symmetry / future monster weapons.
-        _pop_vex_grants(live, current.entity_id, target_list, pre_event_count)
-        _pop_sap_mark(live, current.entity_id, pre_event_count)
-        _fold_mastery_procs(live, current.entity_id, actx)
-        # SRD 5.2 §Actions in Combat — Hide, break clause: mirrors the PC
-        # site. A monster hidden via a prior Hide loses Invisible the
-        # moment IT makes an attack roll (no monster gambit currently
-        # issues a Hide intent, so this is defensive symmetry, not a
-        # reachable path today).
-        if current.entity_id in live.hidden_entities:
-            _emit(live, ConditionRemoved(target_id=current.entity_id, condition="invisible"))
-            live.hidden_entities.discard(current.entity_id)
-        # Symmetric concentration writeback for spellcaster monsters
-        # (mirrors the PC path; no-op for non-caster monsters).
-        _writeback_concentration(live, current, pre_event_count)
-        # ``concentration_max_rounds`` stays on the default (None) here: the
-        # monster path has no typed ``Spell`` in scope (monster stat-block
-        # casts resolve straight off the monster's own activities, not a
-        # fetched Spell) until C18 threads one through. Monster
-        # concentration effects therefore remain cascade-governed only —
-        # no timed expiry — same as before this task.
-        _record_effect_lifecycle_links(live, current, pre_event_count)
+        _resolve_monster_attack_activities(live, current, target_list, monster_activities)
 
     # Advance the turn — the single shared path (F3a); this site used to carry
     # its own copy of the wrap-and-emit block.
@@ -9597,6 +10701,7 @@ def _derive_ended_reason(live: _LiveCombat) -> Literal["victory", "defeat_tpk", 
 
     - all encounter members dead → victory
     - all party members dead → defeat_tpk
+    - every living foe has fled (``Combatant.has_fled``, C18 Task 9 / R9) → flee
     - otherwise → forced (caller closed mid-combat)
     """
     all_foes_dead = all(eid in live.dead_ids for eid in live.encounter_ids)
@@ -9605,6 +10710,13 @@ def _derive_ended_reason(live: _LiveCombat) -> Literal["victory", "defeat_tpk", 
         return "victory"
     if all_pcs_dead and live.party_ids:
         return "defeat_tpk"
+    living_foes = [
+        c
+        for c in live.initiative
+        if c.entity_id in live.encounter_ids and c.entity_id not in live.dead_ids
+    ]
+    if living_foes and all(c.has_fled for c in living_foes):
+        return "flee"
     return "forced"
 
 

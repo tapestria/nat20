@@ -288,7 +288,9 @@
   "hp_dice": "5d10 + 15",
   "lair_actions": [],
   "languages": [],
+  "legendary_action_uses": null,
   "legendary_actions": [],
+  "legendary_resistance_uses": null,
   "movement": {
     "burrow": null,
     "climb": null,
@@ -361,5 +363,6 @@
       "slug": "bloodied-fury",
       "uses_per_day": null
     }
-  ]
+  ],
+  "spellcasting_ability": null
 }

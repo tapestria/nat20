@@ -163,7 +163,9 @@
   "hp_dice": "1d4 - 1",
   "lair_actions": [],
   "languages": [],
+  "legendary_action_uses": null,
   "legendary_actions": [],
+  "legendary_resistance_uses": null,
   "movement": {
     "burrow": null,
     "climb": 30,
@@ -224,5 +226,6 @@
     "survival": null
   },
   "slug": "weasel",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": null
 }

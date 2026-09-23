@@ -171,6 +171,53 @@ def test_ability_scores_rejects_zero():
         AbilityScores(str=0, dex=10, con=10, int=10, wis=10, cha=10)
 
 
+def test_monster_spellcasting_ability_defaults_to_none():
+    m = Monster(
+        slug="goblin",
+        name="Goblin",
+        description="A small humanoid.",
+        creature_type=CreatureType.HUMANOID,
+        creature_size=CreatureSize.SMALL,
+        ac=15,
+        hp=7,
+        hp_dice="2d6",
+        ability_scores=AbilityScores(str=8, dex=14, con=10, int=10, wis=8, cha=8),
+        movement=Movement(walk=30),
+        senses=Senses(darkvision=60, passive_perception=9),
+        cr=0.25,
+        proficiency_bonus=2,
+        saving_throws=SavingThrowProficiencies(),
+        skills=SkillProficiencies(stealth=6),
+        provenance=_prov(),
+        review=ReviewState(),
+    )
+    assert m.spellcasting_ability is None
+
+
+def test_monster_spellcasting_ability_accepts_ability_code():
+    m = Monster(
+        slug="mage",
+        name="Mage",
+        description="A humanoid spellcaster.",
+        creature_type=CreatureType.HUMANOID,
+        creature_size=CreatureSize.MEDIUM,
+        ac=12,
+        hp=40,
+        hp_dice="9d8",
+        ability_scores=AbilityScores(str=9, dex=14, con=11, int=17, wis=12, cha=11),
+        movement=Movement(walk=30),
+        senses=Senses(passive_perception=11),
+        cr=6,
+        proficiency_bonus=3,
+        saving_throws=SavingThrowProficiencies(),
+        skills=SkillProficiencies(),
+        provenance=_prov(),
+        review=ReviewState(),
+        spellcasting_ability="int",
+    )
+    assert m.spellcasting_ability == "int"
+
+
 def test_monster_action_mechanic_is_optional_and_typed():
     from dnd5e_srd_data.schema.monster import MonsterTraitMechanic
 
