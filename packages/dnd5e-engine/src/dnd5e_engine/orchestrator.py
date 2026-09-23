@@ -2453,6 +2453,15 @@ def _monster_context_kwargs(
         # here rather than at the PC-only sneak-attack call site.
         "pack_tactics_ally_adjacent": _pack_tactics_map(live, current, target_list),
         "attacker_in_sunlight": live.scene_sunlight,
+        # C18 §Monster action economy, fix round 1 — Undead Fortitude is a
+        # TARGET-side trait (a monster attacker can just as easily be
+        # SWINGING AT a zombie ally as fielding one), so this handshake
+        # dict is threaded at every ``build_activity_context`` call site,
+        # not just the monster-attacker ones. See ``_LiveCombat.
+        # undead_fortitude_holds`` / the ``ActivityResolutionContext``
+        # field docstring for the full contract — this MUST be the live
+        # object itself, never a copy.
+        "undead_fortitude_holds": live.undead_fortitude_holds,
     }
 
 
@@ -2820,6 +2829,16 @@ class _LiveCombat:
     event_log: list[CombatEvent] = field(default_factory=list)
     tracked_hp: dict[str, int] = field(default_factory=dict)
     tracked_temp_hp: dict[str, int] = field(default_factory=dict)
+    # C18 §Monster action economy, fix round 1 — SRD 5.2 stat-block trait
+    # "Undead Fortitude" live write-back handshake (see
+    # ``ActivityResolutionContext.undead_fortitude_holds`` for the full
+    # contract). THE SAME dict object is threaded into every
+    # ``build_activity_context`` call (never a disposable per-resolution
+    # copy) so ``activities/apply.py`` mutating it from inside a resolution
+    # is visible here; ``_emit_apply_damage`` pops the entry for the exact
+    # ``DamageApplied`` the save fired for. Private — never surfaced on a
+    # public event or view.
+    undead_fortitude_holds: dict[str, bool] = field(default_factory=dict)
     # active condition set per target_id; final outcome lifts permanent ones.
     active_conditions: dict[str, set[str]] = field(default_factory=dict)
     # active effect: target_id → list of full ActiveEffect documents.
@@ -4501,6 +4520,19 @@ def _emit_apply_damage(live: _LiveCombat, event: DamageApplied) -> None:
         live.tracked_temp_hp[event.target_id] = temp - absorbed
         remaining -= absorbed
     new_hp = max(0, tracked - remaining)
+    # C18 §Monster action economy, fix round 1 — SRD 5.2 stat-block trait
+    # "Undead Fortitude": "On a successful save, the [monster] drops to 1
+    # Hit Point instead." ``activities/apply.py`` already rolled the save
+    # and reported the FULL, unmodified ``event.amount`` (R8 — the
+    # narration keeps saying "took 12 damage"); THIS is the one place that
+    # full amount would otherwise drop ``tracked_hp`` to ≤0 and (below)
+    # synthesize a ``Death``. Popped UNCONDITIONALLY (single-use, whether or
+    # not it actually changes the outcome here) so a stale flag from an
+    # unrelated damage instance against the same entity never leaks into a
+    # later, uncorrelated ``DamageApplied`` for it.
+    undead_fortitude_saved = live.undead_fortitude_holds.pop(event.target_id, False)
+    if new_hp <= 0 and undead_fortitude_saved:
+        new_hp = 1
     live.tracked_hp[event.target_id] = new_hp
     # Sync hp_current / temp_hp on the initiative slot so downstream
     # readers (monster gambit targeting, OA HP checks, hydration
@@ -8979,6 +9011,7 @@ def _resolve_readied_spell_cast(
         legendary_resistances_remaining_by_entity=payload[
             "legendary_resistances_remaining_by_entity"
         ],
+        undead_fortitude_holds=live.undead_fortitude_holds,
     )
     pre_event_count = len(live.event_log)
     for activity in spell.activities:
@@ -9149,6 +9182,7 @@ def _drain_counterspell_reaction(
         legendary_resistances_remaining_by_entity=payload[
             "legendary_resistances_remaining_by_entity"
         ],
+        undead_fortitude_holds=live.undead_fortitude_holds,
     )
     pre_event_count = len(live.event_log)
     resolve_activity(save_activity, actx, weapon=None)
@@ -9721,6 +9755,12 @@ async def submit_player_intent(
             legendary_resistances_remaining_by_entity=payload[
                 "legendary_resistances_remaining_by_entity"
             ],
+            # C18 §Monster action economy, fix round 1 — Undead Fortitude
+            # write-back handshake (see ``_LiveCombat.undead_fortitude_
+            # holds``): a PC's own weapon/spell attack is the MOST common
+            # real path a bearer (a zombie fought by the party) resolves
+            # through, so this is wired here too, not just monster-side.
+            undead_fortitude_holds=live.undead_fortitude_holds,
         )
         for activity in activities:
             resolve_activity(activity, actx, weapon=fetched_weapon)

@@ -19,7 +19,13 @@ from dnd5e_engine.activities.apply import apply_damage
 from dnd5e_engine.activities.context import ActivityResolutionContext
 from dnd5e_engine.activities.heal import resolve_heal
 from dnd5e_engine.activities.resolver import resolve_activity
-from dnd5e_engine.events import AttackRolled, DamageApplied, HealingApplied, SaveRolled
+from dnd5e_engine.events import (
+    AttackRolled,
+    DamageApplied,
+    HealingApplied,
+    SaveRolled,
+    TempHpApplied,
+)
 from dnd5e_engine.types.combat import Combatant
 
 _ABILITIES = {"str": 10, "dex": 10, "con": 10, "int": 10, "wis": 10, "cha": 10}
@@ -282,13 +288,8 @@ def test_undead_fortitude_does_not_trigger_on_radiant_or_crit():
     assert crit_damage.is_overkill is True
 
 
-def test_swarm_never_regains_hp():
-    """SRD 5.2 stat-block trait "Swarm": "The swarm can't regain Hit Points
-    or gain Temporary Hit Points" (e.g. swarm-of-rats.json). ``resolve_heal``
-    skips a Swarm target entirely — no ``HealingApplied``."""
-    from dnd5e_srd_data.schema.common import DamagePartBlock, HealActivity
-
-    swarm = Combatant(
+def _swarm() -> Combatant:
+    return Combatant(
         entity_id="mon:swarm",
         entity_type="Monster",
         name="Swarm of Rats",
@@ -297,6 +298,15 @@ def test_swarm_never_regains_hp():
         hp_max=24,
         trait_mechanics=[MonsterTraitMechanic.SWARM],
     )
+
+
+def test_swarm_never_regains_hp():
+    """SRD 5.2 stat-block trait "Swarm": "The swarm can't regain Hit Points
+    or gain Temporary Hit Points" (e.g. swarm-of-rats.json). ``resolve_heal``
+    skips a Swarm target entirely — no ``HealingApplied``."""
+    from dnd5e_srd_data.schema.common import DamagePartBlock, HealActivity
+
+    swarm = _swarm()
     activity = HealActivity(
         healing=DamagePartBlock(number=2, denomination=4, types=["healing"]),
     )
@@ -310,3 +320,25 @@ def test_swarm_never_regains_hp():
     )
     resolve_heal(activity, ctx)
     assert not [e for e in events if isinstance(e, (HealingApplied,))]
+
+
+def test_swarm_never_gains_temp_hp():
+    """The "or gain Temporary Hit Points" half of the same SRD sentence —
+    a ``temphp``-typed heal (e.g. False Life) is dropped for a Swarm target
+    the same way a plain heal is: no ``TempHpApplied`` at all."""
+    from dnd5e_srd_data.schema.common import DamagePartBlock, HealActivity
+
+    swarm = _swarm()
+    activity = HealActivity(
+        healing=DamagePartBlock(number=1, denomination=4, bonus="5", types=["temphp"]),
+    )
+    events: list = []
+    ctx = ActivityResolutionContext(
+        rng=random.Random(1),
+        caster=swarm,
+        targets=[swarm],
+        event_emitter=events.append,
+        caster_abilities=_ABILITIES,
+    )
+    resolve_heal(activity, ctx)
+    assert not [e for e in events if isinstance(e, TempHpApplied)]

@@ -193,6 +193,7 @@ def build_activity_context(
     legendary_resistances_remaining_by_entity: dict[str, int] | None = None,
     pack_tactics_ally_adjacent: dict[str, bool] | None = None,
     attacker_in_sunlight: bool = False,
+    undead_fortitude_holds: dict[str, bool] | None = None,
 ) -> ActivityResolutionContext:
     """Adapt the caster + the pre-computed hydration sidecars into the typed
     ``ActivityResolutionContext`` the new resolver consumes.
@@ -492,4 +493,19 @@ def build_activity_context(
         # corpus identical (no adjacency data, no sunlit scene).
         pack_tactics_ally_adjacent=pack_tactics_ally_adjacent or {},
         attacker_in_sunlight=attacker_in_sunlight,
+        # C18 §Monster action economy, fix round 1 — Undead Fortitude's
+        # live write-back handshake (see ``ActivityResolutionContext.
+        # undead_fortitude_holds`` docstring). Unlike every sidecar above,
+        # this one is a genuine SHARED reference, not a disposable copy:
+        # the orchestrator passes its own ``_LiveCombat.undead_fortitude_
+        # holds`` dict object so a mutation the pure resolver makes is
+        # visible back on ``live`` without any event round-trip. ``or {}``
+        # would silently break that sharing the moment the dict is empty
+        # (the common case, since nothing has triggered yet when the
+        # context is built) — an EMPTY dict is falsy, so ``or`` would swap
+        # in a brand-new, disconnected ``{}``. The explicit ``is not None``
+        # check preserves identity instead.
+        undead_fortitude_holds=(
+            undead_fortitude_holds if undead_fortitude_holds is not None else {}
+        ),
     )

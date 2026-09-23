@@ -414,6 +414,24 @@ class ActivityResolutionContext:
     # sunlight``. ``False`` default keeps every combat without a sunlit
     # scene byte-identical.
     attacker_in_sunlight: bool = False
+    # C18 §Monster action economy, fix round 1 — SRD 5.2 stat-block trait
+    # "Undead Fortitude": the live-combat WRITE-BACK half of the trait.
+    # ``activities/apply.py`` sets ``undead_fortitude_holds[target_id] =
+    # True`` the instant a bearer's CON save succeeds against damage that
+    # would drop it to 0 (and ``target.hp_current`` is set to 1 on this same
+    # snapshot Combatant, for a caller that inspects it directly — the pure/
+    # golden-corpus harness). The orchestrator threads THE SAME dict object
+    # it stores on ``_LiveCombat.undead_fortitude_holds`` into every context
+    # build (not a disposable copy — a genuine shared reference), so
+    # ``_emit_apply_damage`` can pop this flag at the exact synchronous
+    # moment it is about to fold the very ``DamageApplied`` this save just
+    # produced into the authoritative ``tracked_hp``/Death decision, and
+    # floor the live HP at 1 instead of firing Death. A private
+    # resolver<->orchestrator handshake — never surfaced on any public event
+    # or view. Empty default keeps a context with no live-combat wiring
+    # behind it (pure/golden-corpus tests) inert — the flag is simply never
+    # read back by anyone.
+    undead_fortitude_holds: dict[str, bool] = field(default_factory=dict)
     # Test-determinism seams (our own code): variables["force_d20"],
     # variables["force_save_d20"], variables["in_crit"].
     variables: dict[str, int] = field(default_factory=dict)

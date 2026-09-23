@@ -171,6 +171,16 @@ def apply_damage(
             if succeeded:
                 target.hp_current = 1
                 is_overkill = False
+                # Fix round 1 — live-combat write-back: the ORCHESTRATOR's
+                # own HP fold (``_emit_apply_damage``) computes the
+                # authoritative post-damage HP from ``live.tracked_hp`` and
+                # this event's UNMODIFIED ``amount``, independent of this
+                # snapshot ``target`` object; without this signal it would
+                # still floor at 0 and fire Death. Setting the flag BEFORE
+                # emitting ``DamageApplied`` below matters: the event
+                # emitter call synchronously re-enters the orchestrator's
+                # fold for THIS exact event.
+                ctx.undead_fortitude_holds[target.entity_id] = True
         ctx.event_emitter(
             DamageApplied(
                 target_id=target.entity_id,

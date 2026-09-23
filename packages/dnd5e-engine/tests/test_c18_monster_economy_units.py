@@ -41,6 +41,7 @@ from dnd5e_engine.events import (
     AttackRolled,
     ConditionApplied,
     DamageApplied,
+    Death,
     HealingApplied,
     IntentSubmitted,
     LegendaryActionUsed,
@@ -926,3 +927,89 @@ def test_pack_tactics_ignores_an_incapacitated_ally():
     live = _run(go())
     rolled = next(e for e in _events(live, AttackRolled) if e.attacker_id == "mon:wolf1")
     assert rolled.advantage == "normal"
+
+
+def _zombie_encounter():
+    return [
+        EncounterMemberSpec(
+            entity_id="mon:zombie",
+            entity_type="Monster",
+            name="Zombie",
+            initiative=1,
+            hp_current=1,
+            hp_max=22,
+            ac=1,
+            zone_id=cell(1, 0),
+            monster_template_slug="zombie",
+        )
+    ]
+
+
+async def _undead_fortitude_fight(*, constitution: int):
+    """A real ``zombie`` (SRD 5.2 Undead Fortitude) at 1 HP, AC 1 (guaranteed
+    hit), struck by a longsword-armed hero. Seed 1's longsword swing hits,
+    is not a Critical Hit, deals 2 slashing (neither Radiant nor a crit, so
+    the trait always triggers), and rolls a CON save total of 24 — high
+    enough to clear DC 7 (5 + 2) with room to spare at ``constitution=40``
+    (+15 mod), and low enough to fail the SAME DC at ``constitution=1``
+    (-5 mod, roll total 4). Mirrors ``dragon.constitution = 1`` elsewhere in
+    this file — mutating the hydrated ``Combatant`` directly is this file's
+    established seam for forcing a save outcome (no ``force_save_d20`` exists
+    for this trait's roll — R8 deliberately keeps it a single plain draw)."""
+    handle, live = await _start([_hero()], _zombie_encounter(), seed=1)
+    zombie = next(c for c in live.initiative if c.entity_id == "mon:zombie")
+    zombie.constitution = constitution
+    zombie.save_proficiencies = []
+    await submit_player_intent(
+        handle,
+        actor_id="char:hero",
+        intent=PlayerIntent(intent_type="attack", weapon_id="longsword", target_id="mon:zombie"),
+    )
+    return handle, live
+
+
+def test_undead_fortitude_saves_the_zombie_at_one_hp_on_the_live_path():
+    """Fix round 1 — SRD 5.2 stat-block trait "Undead Fortitude" through the
+    REAL ``start_combat``/``submit_player_intent`` loop (not just the pure
+    ``apply_damage`` harness): a successful save must leave the bearer ALIVE
+    at 1 HP, with no ``Death`` event and not in ``dead_ids`` — the exact bug
+    the reviewer's finding pinned (``_emit_apply_damage`` independently
+    recomputing HP from ``tracked_hp`` and the event's full, unmodified
+    ``amount``, then unconditionally firing ``Death`` at ≤0)."""
+    live = _run(_undead_fortitude_fight(constitution=40))[1]
+
+    save = next(e for e in _events(live, SaveRolled) if e.target_id == "mon:zombie")
+    assert save.succeeded is True
+    assert save.dc == 7  # 5 + the 2 damage dealt
+
+    damage = next(e for e in _events(live, DamageApplied) if e.target_id == "mon:zombie")
+    assert damage.amount == 2  # R8: the event still reports the FULL amount
+    assert damage.is_overkill is False
+
+    assert not _events(live, Death)
+    assert "mon:zombie" not in live.dead_ids
+    assert live.tracked_hp["mon:zombie"] == 1
+    zombie = next(c for c in live.initiative if c.entity_id == "mon:zombie")
+    assert zombie.hp_current == 1
+    assert zombie.is_alive is True
+
+
+def test_undead_fortitude_failed_save_kills_the_zombie_on_the_live_path():
+    """The failing-save counterpart (so the round-1 fix cannot pass by simply
+    never killing anything): with the save guaranteed to fail, behavior is
+    UNCHANGED from before this fix — the zombie drops to 0 HP and dies."""
+    live = _run(_undead_fortitude_fight(constitution=1))[1]
+
+    save = next(e for e in _events(live, SaveRolled) if e.target_id == "mon:zombie")
+    assert save.succeeded is False
+    assert save.dc == 7
+
+    damage = next(e for e in _events(live, DamageApplied) if e.target_id == "mon:zombie")
+    assert damage.amount == 2
+    assert damage.is_overkill is True
+
+    deaths = _events(live, Death)
+    assert len(deaths) == 1
+    assert deaths[0].target_id == "mon:zombie"
+    assert "mon:zombie" in live.dead_ids
+    assert live.tracked_hp["mon:zombie"] == 0
