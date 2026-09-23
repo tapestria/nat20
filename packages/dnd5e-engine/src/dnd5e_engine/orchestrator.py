@@ -857,12 +857,17 @@ def _run_monster_turn_start(live: _LiveCombat, current: Combatant) -> None:
     legendary-action window a host drives afterwards (C18 Task 6); running
     from a ``turn_start`` hook would fire these too early relative to that
     window. Incapacitated and fleeing monsters still run all three — the SRD
-    ties them to "the start of its turn", not to whether it acts.
+    ties them to "the start of its turn", not to whether it acts. A DEAD
+    monster (in ``live.dead_ids``, not alive, or at 0 HP) has no turn start
+    at all: nothing runs, no recharge die is drawn and no ``RechargeRolled``
+    is emitted for a corpse.
     """
     key = (live.round_number, live.current_turn_index)
     if live.monster_turn_start_done == key:
         return
     live.monster_turn_start_done = key
+    if current.entity_id in live.dead_ids or not current.is_alive or current.hp_current <= 0:
+        return
     if current.legendary_actions_max:
         current.legendary_actions_remaining = current.legendary_actions_max
     slug = live.monster_slug_by_entity.get(current.entity_id)
@@ -10378,7 +10383,7 @@ async def advance_monster_turn(
     # C18 §Monster action economy — legendary-action reset, recharge rolls,
     # regeneration. Runs once per driven turn regardless of the flee/
     # incapacitated gate below (SRD ties these to turn start, not to
-    # whether the monster acts).
+    # whether the monster acts); a dead monster has no turn start at all.
     _run_monster_turn_start(live, current)
 
     # Dead / unconscious monsters skip with a no-op record. The legacy

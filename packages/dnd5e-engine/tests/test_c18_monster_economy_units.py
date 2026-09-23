@@ -1261,3 +1261,33 @@ def test_sync_legendary_resistance_is_idempotent_over_overlapping_windows():
     assert live.legendary_resistance_armed.get("mon:foe") == 1
     dragon = next(c for c in live.initiative if c.entity_id == "mon:foe")
     assert dragon.legendary_resistances_remaining == 2
+
+
+# Finding 3: a dead monster has no turn start — no recharge roll, no draw.
+
+
+def test_dead_mephit_does_not_roll_recharge_when_its_turn_comes_round():
+    async def go():
+        handle, live = await _start(
+            [_hero(initiative=1)], [_foe("magma-mephit", initiative=20, hp=18, ac=11)], seed=7
+        )
+        await advance_monster_turn(handle)  # turn 1 — Fire Breath, now spent
+        assert live.monster_action_uses_by_entity["mon:foe"]["fire-breath"].recharge_spent
+        await _pass(handle)
+        # The mephit dies before its turn 2 comes round.
+        live.tracked_hp["mon:foe"] = 0
+        for c in live.initiative:
+            if c.entity_id == "mon:foe":
+                c.hp_current = 0
+                c.is_alive = False
+        live.dead_ids.add("mon:foe")
+        rng_state = live.rng.getstate()
+        pre = len(live.event_log)
+        await advance_monster_turn(handle)
+        return live, pre, rng_state
+
+    live, pre, rng_state = _run(go())
+    tail = live.event_log[pre:]
+    assert not [e for e in tail if isinstance(e, RechargeRolled)]
+    assert live.rng.getstate() == rng_state
+    assert [e.intent_type for e in tail if isinstance(e, IntentSubmitted)] == ["pass"]
