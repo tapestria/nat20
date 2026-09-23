@@ -125,6 +125,7 @@ def rank_monster_actions(
     actions: Sequence[MonsterAction],
     *,
     is_available: Callable[[MonsterAction], bool],
+    has_limited_use_remaining: Callable[[MonsterAction], bool] | None = None,
 ) -> list[MonsterAction]:
     """Order ``actions`` by SRD 5.2 selection priority for a monster's turn.
 
@@ -135,16 +136,23 @@ def rank_monster_actions(
        structurally unreachable under the old first-in-list selection);
     2. actions carrying a limited-use offensive cast activity (integer
        ``uses.max`` with a ``day`` recovery period) that pass
-       ``is_available`` — Innate Spellcasting's N/Day slots;
+       ``is_available`` AND, when the caller supplies
+       ``has_limited_use_remaining``, for which it reports that the cast the
+       turn would actually resolve is such a limited-use one with a use
+       left — Innate Spellcasting's N/Day slots. Once every N/Day cast is
+       spent, an action that can still cast an at-will spell falls to
+       tier 4, behind multiattack;
     3. the ``multiattack`` action, if present;
     4. every other offensive action (offensive now includes any
        ``CastActivity``, e.g. an at-will spell) that passes ``is_available``,
        in list order.
 
     An action that fails ``is_available`` drops out entirely rather than
-    sinking to a lower tier. Pure — ``is_available`` is the caller's seam
-    into live per-entity state (recharge/uses tracking); this function reads
-    no orchestrator state itself.
+    sinking to a lower tier. Pure — ``is_available`` and
+    ``has_limited_use_remaining`` are the caller's seams into live
+    per-entity state (recharge/uses tracking); this function reads no
+    orchestrator state itself. Omitting ``has_limited_use_remaining`` keeps
+    the static tier-2 predicate (the shape alone).
     """
     placed: set[str] = set()
     ranked: list[MonsterAction] = []
@@ -157,7 +165,11 @@ def rank_monster_actions(
     for action in actions:
         if action.slug in placed:
             continue
-        if _limited_use_cast_activities(action) and is_available(action):
+        if (
+            _limited_use_cast_activities(action)
+            and is_available(action)
+            and (has_limited_use_remaining is None or has_limited_use_remaining(action))
+        ):
             ranked.append(action)
             placed.add(action.slug)
 

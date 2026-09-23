@@ -191,3 +191,26 @@ def test_select_typed_monster_action_is_unchanged():
     action = select_typed_monster_action(monster_with_claw_then_breath)
     assert action is not None
     assert action.slug == "claw"
+
+
+def test_exhausted_limited_use_cast_ranks_behind_multiattack():
+    """C18 final review, finding 4: tier 2 is for a limited-use cast that
+    still has a use remaining. Once the caller's probe reports none left, the
+    Spellcasting action (still available via its at-will casts) drops to the
+    ordinary offensive tier, behind Multiattack."""
+    multiattack = _multiattack()
+    spellcasting = _spellcasting(limited_use=True, uses_max="1")
+    claw = _claw()
+    ranked = rank_monster_actions(
+        [multiattack, spellcasting, claw],
+        is_available=lambda a: True,
+        has_limited_use_remaining=lambda a: False,
+    )
+    assert [a.slug for a in ranked] == ["multiattack", "spellcasting", "claw"]
+
+    ranked_with_use = rank_monster_actions(
+        [multiattack, spellcasting, claw],
+        is_available=lambda a: True,
+        has_limited_use_remaining=lambda a: True,
+    )
+    assert [a.slug for a in ranked_with_use] == ["spellcasting", "multiattack", "claw"]

@@ -2228,13 +2228,12 @@ def _monster_cast_candidate(
     Innate Spellcasting) resolves to, or ``None`` when nothing on it
     qualifies.
 
-    Walks ``action``'s ``CastActivity`` entries in LIST ORDER (the stat
-    block's own listed order — At Will first, then N/Day tiers) and returns
-    the FIRST one that:
+    Walks ``action``'s ``CastActivity`` entries in two passes — first every
+    LIMITED-USE activity (a tracked ``uses_remaining`` entry) that still has
+    a use left, then every at-will activity (no tracked entry) — each pass
+    in the stat block's own listed order, and returns the FIRST one that:
 
-      * still has a use remaining (a tracked ``uses_remaining`` entry that
-        isn't zero) — an unlimited (at-will) activity has no tracked entry
-        at all and always qualifies here;
+      * is not an exhausted limited-use activity (tracked, zero left);
       * resolves to a real ``Spell`` via ``activity.spell.uuid`` (an
         unresolvable uuid logs ``cast_spell_unresolved`` and is skipped,
         mirroring ``activities/cast.py``'s loud-miss idiom);
@@ -2247,19 +2246,31 @@ def _monster_cast_candidate(
         utility spell like Mage Armor or Invisibility is never worth the
         monster's action over an attack).
 
+    The limited-use-first order is the SRD 5.2 Multiattack DM guidance
+    ("have it use Multiattack on any of its turns in which it's not using
+    one of its more powerful abilities") applied inside one Spellcasting
+    action: the adult red dragon's Spellcasting lists Command and Scorching
+    Ray at will before its 1/Day Fireball, and the turn that promotes the
+    action above Multiattack for that Fireball must cast the Fireball.
+
     A monster's spells are stat-block resources tracked entirely through
     ``monster_action_uses_by_entity`` — this never touches
     ``spell_slots_by_entity`` (PC-only).
     """
     entry = live.monster_action_uses_by_entity.get(current.entity_id, {}).get(action.slug)
+    limited: list[CastActivity] = []
+    at_will: list[CastActivity] = []
     for activity in action.activities:
         if not isinstance(activity, CastActivity):
             continue
-        key = f"{action.slug}:{activity.id}"
-        if entry is not None:
-            remaining = entry.uses_remaining.get(key)
-            if remaining is not None and remaining <= 0:
-                continue
+        remaining = (
+            entry.uses_remaining.get(f"{action.slug}:{activity.id}") if entry is not None else None
+        )
+        if remaining is None:
+            at_will.append(activity)
+        elif remaining > 0:
+            limited.append(activity)
+    for activity in (*limited, *at_will):
         uuid = activity.spell.uuid
         spell = _build_cast_spell_book([activity]).get(uuid)
         if spell is None:
@@ -2273,6 +2284,23 @@ def _monster_cast_candidate(
             continue
         return activity, spell
     return None
+
+
+def _monster_limited_cast_remaining(
+    live: _LiveCombat, current: Combatant, action: MonsterAction
+) -> bool:
+    """Whether the cast ``_monster_cast_candidate`` would resolve for
+    ``action`` right now is a LIMITED-USE (tracked N/Day) one — the live
+    probe ``rank_monster_actions`` uses to keep a Spellcasting action in its
+    limited-use tier only while such a cast has a use remaining. An action
+    whose only resolvable offensive casts are at will answers ``False`` and
+    ranks behind Multiattack.
+    """
+    candidate = _monster_cast_candidate(live, current, action)
+    if candidate is None:
+        return False
+    entry = live.monster_action_uses_by_entity.get(current.entity_id, {}).get(action.slug)
+    return entry is not None and f"{action.slug}:{candidate[0].id}" in entry.uses_remaining
 
 
 def _monster_action_available(live: _LiveCombat, current: Combatant, action: MonsterAction) -> bool:
@@ -2381,6 +2409,9 @@ def _resolve_monster_activities(
             ranked = rank_monster_actions(
                 monster.actions,
                 is_available=lambda a: _monster_action_available(live, current, a),
+                has_limited_use_remaining=lambda a: _monster_limited_cast_remaining(
+                    live, current, a
+                ),
             )
             monster_action = ranked[0] if ranked else None
             if monster_action is not None:

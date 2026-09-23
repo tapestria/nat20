@@ -1291,3 +1291,60 @@ def test_dead_mephit_does_not_roll_recharge_when_its_turn_comes_round():
     assert not [e for e in tail if isinstance(e, RechargeRolled)]
     assert live.rng.getstate() == rng_state
     assert [e.intent_type for e in tail if isinstance(e, IntentSubmitted)] == ["pass"]
+
+
+# Finding 4: the Spellcasting action ranks in the limited-use tier only while
+# a limited-use cast has a use remaining, and the cast candidate prefers that
+# limited-use cast over an at-will one. SRD 5.2 Multiattack DM guidance: "have
+# it use Multiattack on any of its turns in which it's not using one of its
+# more powerful abilities."
+
+
+def test_adult_red_dragon_breathes_casts_fireball_once_then_multiattacks():
+    """The adult red dragon's Spellcasting lists Command and Scorching Ray at
+    will and Fireball 1/Day. Each main turn it takes the most powerful option
+    it has: Fire Breath when charged; else its 1/Day Fireball while unused;
+    else Multiattack (Rend) — never an at-will Command over Rend."""
+
+    async def go(seed):
+        handle, live = await _start(
+            [_hero(initiative=25, hp=900, ac=18)],
+            [_foe("adult-red-dragon", initiative=10, hp=256, ac=19, col=1)],
+            seed=seed,
+        )
+        turns = []
+        for _ in range(5):
+            await _pass(handle)
+            pre = len(live.event_log)
+            await advance_monster_turn(handle)
+            turns.append(live.event_log[pre:])
+        return turns
+
+    turns = _run(go(4))
+    breath_charged = True
+    fireball_used = False
+    kinds = []
+    for tail in turns:
+        for e in tail:
+            if isinstance(e, RechargeRolled) and e.succeeded:
+                breath_charged = True
+        spells = [e.spell_id for e in tail if isinstance(e, SpellCast)]
+        attacks = [e for e in tail if isinstance(e, AttackRolled) and e.attacker_id == "mon:foe"]
+        assert "command" not in spells
+        if breath_charged:
+            assert spells == [], "a charged breath is used first"
+            assert attacks == []
+            kinds.append("breath")
+            breath_charged = False
+        elif not fireball_used:
+            assert spells == ["fireball"]
+            kinds.append("fireball")
+            fireball_used = True
+        else:
+            assert spells == []
+            assert attacks, "breath spent + Fireball used -> Multiattack"
+            kinds.append("multiattack")
+    # Pinned from a live run at seed 4 (observed, not guessed).
+    assert kinds.count("fireball") == 1
+    assert "multiattack" in kinds
+    assert kinds[:2] == ["breath", "fireball"]
