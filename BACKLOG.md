@@ -38,16 +38,6 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
 
 ## Monster action economy (2026-08-22)
 
-- **Legendary actions are not modelled.** `Monster.legendary_actions` is
-  populated for **30 monsters** in the corpus and never read; only
-  `Monster.actions` drives a turn. Needs a legendary-point pool per creature,
-  spent between other creatures' turns, and reset at the start of the
-  creature's turn. Same for `lair_actions` (schema field exists; the corpus
-  ships none today) and `special_abilities` (never consumed).
-  (`packages/dnd5e-engine/src/dnd5e_engine/activities/monster_actions.py`)
-- **Monster `recharge` (5–6) abilities are not gated.** A breath weapon can be
-  used every turn. Needs a per-creature recharge roll at turn start.
-- **Regeneration is not modelled.**
 - **Monster-side ranged-in-melee/Vex/Sap threading is wired but inert
   (2026-09-02, C15 Task 6/3).** `orchestrator.py`'s monster attack site
   passes `attacker_ranged_in_melee`, `attacker_vex_advantage`, and
@@ -58,19 +48,103 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   `attack.py`'s weapon-gated "effectively ranged" check and mastery-proc
   fold never fire for a monster attacker. A monster can still be the
   RECEIVING end of a vex grant or sap mark from a prior PC weapon hit
-  (that half is live). Needs a monster weapon-mastery/property model —
-  C18's.
+  (that half is live). Needs a monster weapon-mastery/property model;
+  confirmed still open after C18 (2026-09-03) — out of that cluster's scope
+  per its R10 ruling.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
 - **Multiattack conditional clauses are not modelled.** Since C22 every
   multiattack token is labelled, so the five opaque-key monsters join
   precisely; doppelganger and chain-devil now ALSO count their conditional
   feat use ("uses Unsettling Visage if…") as one fixed use per turn. The
-  "if …" clause needs a carve-out in `_parse_item_counts`. More important: the
-  precise join emits limited-use special abilities unconditionally —
-  doppelganger's Recharge-6 Unsettling Visage now fires every round because
-  `expand_action_to_activities` never reads `MonsterAction.recharge`/
-  `uses_per_day`. Recharge/limited-use gating is C18's
-  (`packages/dnd5e-engine/src/dnd5e_engine/activities/monster_actions.py`).
+  "if …" clause needs a carve-out in `_parse_item_counts`. (Recharge/limited-
+  use gating for the joined action itself — e.g. doppelganger's Recharge-6
+  Unsettling Visage — closed 2026-09-03, C18: `_hydrate_monster_action_uses`
+  tracks any `monster.actions`/`legendary_actions` entry carrying a
+  `recharge` notation or a typed N/Day `uses.max`, gated via
+  `rank_monster_actions`/the turn-start recharge roll.)
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/monster_actions.py`)
+- **A monster's own AoE (cone/sphere/etc.) still resolves against a single
+  chosen target, not the template** (2026-09-03, C18). Grid AoE template
+  expansion (C16) is wired for the PC cast path; a monster save/damage
+  action with an area shape resolves the same way every monster action
+  always has — one picked target — rather than enumerating
+  `cells_in_template` the way a PC's cast does.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
+- **Monster AI is friendly-fire unaware** (2026-09-03, C18). Nothing checks
+  whether an ally stands in a chosen action's blast/save area (or a
+  Multiattack's own reach) before the monster acts, unlike the PC-facing
+  `PlayerIntent.direction` aiming a host controls by hand.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
+- **Utility-only and cost > 1 legendary actions are never selected by the
+  built-in AI** (2026-09-03, C18). `_take_legendary_action` only considers
+  entries whose `legendary_cost` is unset or `1` and that carry an
+  attack/save/damage activity (or a castable spell) — a `utility`-only entry
+  (e.g. Pounce) and a multi-point legendary action are skipped even when
+  legal. The bundled corpus carries no multi-point legendary action today.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_take_legendary_action`)
+- **Legendary Action and Legendary Resistance pool sizes default to 3 when
+  the corpus does not type them — which is every bundled monster today**
+  (2026-09-03, C18). Neither `_legendary_action_uses_max` nor
+  `_legendary_resistance_max` finds a typed count (a `uses_per_day` field or
+  an `"N/Day"` name suffix) on any monster in the shipped corpus, so the
+  SRD 5.2 baseline of 3 is the operative value everywhere; a monster whose
+  true count differs (rare in the SRD 5.2 corpus, but not impossible for a
+  future addition) would be silently wrong until the translator or the
+  stat block types the real count.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
+- **Legendary Resistance is host-armed only — no AI policy decides when to
+  spend it** (2026-09-03, C18). `resolve_legendary_resistance` is a pure
+  seam a host calls before submitting the intent that will force a save;
+  the built-in monster AI never calls it itself, so a monster never
+  protects its own concentration or avoids a status condition unless a host
+  makes that call on its behalf.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::resolve_legendary_resistance`)
+- **Magic Resistance still does not reach the orchestrator-level save
+  paths** (2026-09-03, C18 — unchanged from the prior "Typed traits" entry).
+  The end-of-turn repeat save, the damage-triggered concentration check, and
+  the Grapple/Shove Unarmed Strike save all bypass the typed activity
+  resolver (`activities/save_primitive.py`) where Magic Resistance's
+  advantage is granted; C18 wired Legendary Resistance's *conversion* onto
+  all three via `_convert_failed_save_if_armed`, but Magic Resistance's
+  advantage grant was not threaded onto the same three paths.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
+- **Recharge state does not persist across combats** (2026-09-03, C18).
+  `MonsterActionUses` (recharge_spent, uses_remaining) lives on
+  `_LiveCombat`, discarded at `end_combat` like every other combat-scoped
+  engine state (by design, per this engine's effects-are-combat-scoped
+  convention) — a monster that used its recharge ability in one encounter
+  always starts its next encounter fully recharged, with no cross-combat
+  "still on cooldown" model.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
+- **Neither PC nor monster cast path drains a readied Shield reaction on a
+  spell ATTACK** (2026-09-03). Both `hit_by_attack`-trigger drain sites gate
+  on an ATTACK activity, not any attack roll: the PC's
+  `_drain_pre_resolution_reactions` fires the drain only for
+  `intent.intent_type == "attack"`, and the monster's shared
+  `_resolve_monster_attack_activities` fires it only from the mundane
+  attack/legendary-action attack path. A spell attack roll
+  (`intent_type == "cast_spell"` on the PC side, `_resolve_monster_cast` on
+  the monster side) never pops a target's readied Shield, even though a
+  spell attack roll is exactly the kind of "attack roll" Shield's SRD 5.2
+  text protects against.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
+- **Flee stance ignores Incapacitated** (2026-09-03; pre-existing, sharpened
+  by C18 Task 9's new `has_fled` persistence). `_apply_monster_flee_stance`
+  gates only on `current.is_alive and current.hp_current > 0` — an
+  Incapacitated monster under its behavior profile's flee threshold still
+  "retreats" and is marked `has_fled=True`, even though SRD 5.2's
+  Incapacitated condition ("can't take any Action or Bonus Action") should
+  block it from taking the Disengage-equivalent retreat action at all.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_apply_monster_flee_stance`)
+- **Undead Fortitude's trigger ignores temporary HP on the live combat
+  path** (2026-09-23). `activities/apply.py::apply_damage` gates the trait's
+  CON save on `final_amount >= target.hp_current` — the pure resolver's
+  snapshot of REAL HP only. Temp HP is a separate bucket the orchestrator
+  absorbs damage from AFTER this event is emitted
+  (`_emit_apply_damage`/`_emit_apply_temp_hp`), so a hit that the bearer's
+  temp HP would have fully absorbed (no real-HP loss at all) can still force
+  a needless CON save and, on a failure, an incorrect Death.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/apply.py`)
 
 ## Core combat rules not modelled (2026-08-22)
 
@@ -214,12 +288,16 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   treated as a 1-cell ray and a wider `template.width` is ignored.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_walk_zone_path`,
   `packages/dnd5e-engine/src/dnd5e_engine/spatial.py::cells_in_template`)
-- **Vision is scene-lit only** (2026-08-27, amended 2026-09-02). No light
-  sources (torches, *Light*, *Darkness*), no viewer-side obscurement, no
-  Blinded emission from darkness; `can_see` reads `GridScene.lighting` /
-  `obscurement_cells` plus the viewer's projected senses. Sunlight
-  Sensitivity is C18. No *See Invisibility*-style effect flag pierces the
-  Invisible condition either (C16b plan ruling R3) — only blindsight/
+- **Vision is scene-lit only** (2026-08-27, amended 2026-09-02, 2026-09-03).
+  No light sources (torches, *Light*, *Darkness*), no viewer-side
+  obscurement, no Blinded emission from darkness; `can_see` reads
+  `GridScene.lighting` / `obscurement_cells` plus the viewer's projected
+  senses. Sunlight Sensitivity's attack-roll half closed C18 (the new
+  whole-scene `GridScene.sunlight` flag); its ability-check half is still
+  open (see "Typed traits are hydrated..." under "Audit 2026-08-26 —
+  monsters" below). No *See Invisibility*-style effect flag
+  pierces the Invisible condition either (C16b plan ruling R3) — only
+  blindsight/
   truesight in range with line of sight do, via
   `orchestrator.py::_pierces_invisibility`; an effect-vocabulary carve-out is
   a future cluster's seam.
@@ -415,13 +493,15 @@ zone + apply logic:
   `advance_monster_turn` has no branch that chooses any of the five C14
   actions; a monster only ever attacks, casts, moves, or flees.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::advance_monster_turn`)
-- **No ongoing-damage / regeneration / recharge producers.** (2026-08-26) F3a
-  gave them a place to land — `turn_lifecycle.py` runs `round_start` /
+- **No ongoing-damage producer.** (2026-08-26, narrowed 2026-09-03 C18) F3a
+  gave it a place to land — `turn_lifecycle.py` runs `round_start` /
   `turn_start` / `turn_end` hooks off the single `_end_turn_and_advance` path —
   but the only registered hooks are the pre-existing duration tick and
   reaction-effect expiry, plus F3b's timed-effect expiry. Start-of-turn damage
-  (Acid Arrow, Spirit Guardians), regeneration and recharge rolls still have no
-  producer.
+  (Acid Arrow, Spirit Guardians) still has no producer. (Regeneration and
+  recharge rolls closed C18 — they run at the head of a driven monster turn,
+  `_run_monster_turn_start`, rather than as a registered `turn_start` hook;
+  see `docs/migration/v0.5-to-v0.6.md`.)
   (`packages/dnd5e-engine/src/dnd5e_engine/turn_lifecycle.py`,
   `packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_register_default_turn_hooks`)
 - **Initiative has no "Delay" option.** C14 Task 8 (2026-09-01) added the
@@ -429,8 +509,6 @@ zone + apply logic:
   and Incapacitated Disadvantage; the SRD "Delay" combat option (holding
   your Initiative count to act later) is still absent.
   (`packages/dnd5e-engine/src/dnd5e_engine/specs.py`)
-- **`ended_reason="flee"` is never returned.** `_derive_ended_reason`
-  (`orchestrator.py:5382`) yields victory / defeat_tpk / forced only.
 - **Movement rules beyond the budget are absent:** crawling, climb/swim
   cost, jumping; `Combatant.movement_modes` is hydrated and never read.
   Standing from Prone (half Speed, rounded down) closed C14 Task 7
@@ -492,10 +570,6 @@ zone + apply logic:
   neither the cooldown nor interruption tracking exists — a host wanting
   either must gate its OWN call to these resolvers.
   (`packages/dnd5e-engine/src/dnd5e_engine/rest.py`)
-- **Monster spellcasting never happens.** `_activity_is_offensive`
-  (`monster_actions.py:83`) accepts attack/save only, so a `cast`-only
-  Spellcasting action (49 monsters) is never selected, and the monster context
-  is built with `spell_book={}` (`orchestrator.py:5303`).
 - **Absorb Elements has no reaction path**; Hellish Rebuke is only a
   `last_damaged_by` target validator, not a trigger. (See "Reactions are not
   data-driven" above.)
@@ -551,36 +625,30 @@ stand-in, not an engine capability. Specifically:
 
 ## Audit 2026-08-26 — monsters
 
-- **Typed traits are hydrated but only Magic Resistance is consumed.**
+- **Typed traits are hydrated; only Flyby, Nimble Escape, Keen Senses and
+  Aggressive are still unconsumed (amended 2026-09-03, C18).**
   `Combatant.trait_mechanics` carries the 14 `MonsterTraitMechanic` values
-  (C22); Magic Resistance grants save advantage against spell-sourced saves
+  (C22). Magic Resistance grants save advantage against spell-sourced saves
   only ("other magical effects" — magic-item and spell-like monster saves —
-  are not yet recognised, and the two orchestrator-level save paths (repeat
-  save, concentration) do not read it). Pack Tactics, Legendary Resistance,
-  Sunlight Sensitivity, Undead Fortitude, Regeneration, Flyby, … are C18.
+  are not yet recognised, and the orchestrator-level save paths — repeat
+  save, concentration, Grapple/Shove — still do not read it). C18 landed
+  Pack Tactics (attack advantage), Sunlight Sensitivity (attack
+  disadvantage — its ability-check half is not modelled), Undead Fortitude
+  (CON save to hold at 1 HP), Swarm (no HP/temp-HP gain) and Legendary
+  Resistance. Flyby (no flying-movement tracking) and Nimble Escape
+  (untyped bonus action; the monster AI takes no bonus actions) are not
+  modelled; Keen Senses and Aggressive are absent from the SRD 5.2 corpus
+  entirely.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/save_primitive.py`)
-- **79 monster actions carry `recharge`; zero `.recharge` reads** (sharpens
-  the "recharge not gated" entry above).
-- **Monster damage resistances/immunities are never hydrated** onto `Combatant`
-  (`_build_foe_combatants`); only vulnerabilities auto-hydrate from the template,
-  so resistances/immunities must be host-supplied on `EncounterMemberSpec`.
-  (Ability scores, save/skill proficiencies and the proficiency bonus DO
-  hydrate as of F1b.)
 - **Target selection is hard-coded lowest-HP living PC** (`orchestrator.py:5069`)
   with no reach/LoS/threat consideration — the monster AI never consults
   `_combatant_can_see` or a Frightened monster's own line-of-sight/
-  no-approach rule when choosing a target or walking (2026-09-02; C16b's
-  composite predicate exists but only PC-facing SRD rows consume it, C18);
-  flee planning returns `None` on a grid (`_plan_flee_destination:695`) so a
-  fleeing monster holds still.
-- **Corpus damage resistances must carry their magical-bypass qualifier when
-  hydrated** (2026-08-27). `Combatant.physical_resistances_nonmagical_only`
-  defaults True (host-authored "…from nonmagical attacks" convention, C22-S04).
-  When C18 hydrates `Monster.damage_resistances`, it must set the flag from
-  Foundry `dr.bypasses` (`"mgc" in bypasses`), which is empty for every 2024
-  SRD actor — otherwise SRD 5.2 unconditional B/P/S resistances would be
-  bypassed by magic weapons. Immunities have no bypass axis at all.
-  (`packages/dnd5e-engine/src/dnd5e_engine/activities/apply.py`)
+  no-approach rule when choosing a target or walking; confirmed still open
+  after C18 (2026-09-03) — a rule card scoped it out as not an SRD rule, so
+  this stands as a deliberate scope cut, not an oversight. Same status for
+  flee planning, which returns `None` on a grid (`_plan_flee_destination:695`,
+  C18 S08 needs only the `has_fled` flag, not movement) so a fleeing
+  monster holds still.
 - **`PartyMemberSpec` has no `physical_resistances_nonmagical_only`
   counterpart** (2026-08-30). PCs are pinned to the nonmagical-only reading of
   host-authored B/P/S resistances; a PC whose resistance should be
@@ -752,6 +820,15 @@ re-discovered.
 
 ## Blocked
 
+- **Lair actions are blocked on translator support** (2026-09-03, C18 R10).
+  All 341 bundled monsters ship `lair_actions == []` (schema field exists,
+  the translator never populates it from a Foundry source), so there is
+  nothing for the engine to spend. The initiative-20 pseudo-turn a lair
+  action needs (a scene-owned action outside any creature's own turn) is
+  designed but unimplemented; blocked on dataset/translator work to source
+  lair-action content before an engine seam is worth building.
+  (`packages/dnd5e-srd-data/src/dnd5e_srd_data/schema/monster.py`,
+  `packages/dnd5e-engine/src/dnd5e_engine/activities/monster_actions.py`)
 - **`custom` `ActiveEffectChange` mode — needs a product decision** (2026-07-02).
   No Foundry-core semantics to port: Foundry itself delegates `custom` to
   host-registered `applyChangeCustom` callbacks, so there is no SRD or

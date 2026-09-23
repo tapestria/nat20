@@ -112,17 +112,24 @@ def test_published_legendary_action_count_matches_the_corpus(
     assert int(match.group(1)) == with_legendary
 
 
-def test_legendary_and_lair_actions_are_still_unconsumed() -> None:
-    """If someone implements these, this test fails and the page must be updated."""
-    import dnd5e_engine.activities.monster_actions as module
+def test_legendary_actions_and_traits_are_consumed() -> None:
+    """If these regress to unconsumed again, this test fails and the page must
+    be updated (mirrors the intent of the probe this replaces: pin the gap by
+    design so an implementation forces a docs update, just in the other
+    direction now that C18 has consumed them)."""
+    import dnd5e_engine.activities.monster_actions as monster_actions_module
+    import dnd5e_engine.orchestrator as orchestrator_module
 
-    source = Path(module.__file__).read_text()
-    body = source.split('"""', 2)[-1]  # skip the module docstring
-    for field in ("legendary_actions", "lair_actions", "special_abilities"):
-        assert field not in body, (
-            f"{field} is now read by the engine — update docs/capabilities.md "
-            "and BACKLOG.md, then relax this test"
-        )
+    orchestrator_source = Path(orchestrator_module.__file__).read_text()
+    assert "legendary_actions_remaining" in orchestrator_source, (
+        "legendary actions are no longer tracked by the engine — "
+        "update docs/capabilities.md and BACKLOG.md, then update this test"
+    )
+    monster_actions_source = Path(monster_actions_module.__file__).read_text()
+    assert "rank_monster_actions" in monster_actions_source, (
+        "recharge/limited-use ranking is no longer in monster_actions.py — "
+        "update docs/capabilities.md and BACKLOG.md, then update this test"
+    )
 
 
 # ── status-row probes ────────────────────────────────────────────────────────

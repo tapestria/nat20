@@ -8,8 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 Core-mechanics C22 — the dataset now carries the mechanics the engine used to
-keep only in Python. Every change is additive; old canonical JSON without the
-new keys still validates.
+keep only in Python — and C18 — `Monster.spellcasting_ability`, the field
+that lets stat-block monster spellcasting derive an honest save DC from the
+monster's own ability score instead of a flat approximation. Every change is
+additive; old canonical JSON without the new keys still validates.
 
 ### Added
 

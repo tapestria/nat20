@@ -15,15 +15,18 @@ initiative with Surprise, and opportunity attacks through the shared d20
 primitive), **C15 — attack rules** (weapon proficiency, range tiers,
 thrown weapons, Ranged Attacks in Close Combat, Heavy, versatile grip,
 damage attribution, crit-at-0-HP, Loading, and all eight 2024 weapon
-masteries) and **C17 — spell slots, rests and upcasting** (per-class/
+masteries), **C17 — spell slots, rests and upcasting** (per-class/
 multiclass/Pact Magic slot derivation, rest-based slot recovery and
 Exhaustion reduction, upcast target-count scaling, Counterspell/readied-cast
-slot+range gating, and out-of-combat Ritual resolution). Nothing is removed
-and no signature changes shape — every new field is optional and defaults
-to the pre-0.6 behaviour. C12/C14/C15/C17 do change *results* for hosts that
-carry conditions, exhaustion, turn-keeping attacks, weapon proficiency/
-mastery data, or casters on a combatant. Behavioural deltas (and the
-fixtures they move) are enumerated in
+slot+range gating, and out-of-combat Ritual resolution) and **C18 — monster
+action economy** (Recharge, Regeneration, Legendary Actions, Legendary
+Resistance, stat-block spellcasting, and the remaining `MonsterTraitMechanic`
+consumers). Nothing is removed and no signature changes shape — every new
+field is optional and defaults to the pre-0.6 behaviour. C12/C14/C15/C17/C18
+do change *results* for hosts that carry conditions, exhaustion, turn-keeping
+attacks, weapon proficiency/mastery data, casters, or monsters with a
+recharge/limited-use/legendary action or a newly-consumed trait on a
+combatant. Behavioural deltas (and the fixtures they move) are enumerated in
 [`docs/migration/v0.5-to-v0.6.md`](../../docs/migration/v0.5-to-v0.6.md).
 
 - **Action economy (C14).** Extra Attack reads a caster's granted
@@ -115,6 +118,42 @@ fixtures they move) are enumerated in
   the migration guide for the full behavioural-delta list, including the
   Magic Missile event-count change and the `build_party_member`
   empty-pool fallback.
+
+- **Monster action economy (C18).** A driven monster turn now runs
+  legendary-pool reset, Recharge rolls (`RechargeRolled`, gates a spent
+  recharge action until it succeeds) and Regeneration (unconditional per
+  SRD 5.2 — no 2014 acid/fire suppression) before action selection;
+  `activities/monster_actions.py::rank_monster_actions` ranks a live
+  recharge/limited-use offensive action first, an N/Day innate-spell action
+  second, `multiattack` third, then everything else. Stat-block monster
+  spellcasting now selects and casts: the spell book comes from the
+  compendium uuids already in the data, the save DC uses the monster's own
+  `Combatant.spellcasting_ability` (new dataset field
+  `Monster.spellcasting_ability`) against its own ability score +
+  proficiency bonus, and `SpellCast` is now emitted on the monster path
+  too. Legendary Actions: `advance_monster_turn(handle, *, legendary=True,
+  actor_id=...)` spends one legendary action from a per-day pool reset at
+  the start of the creature's own turn (`LegendaryActionUsed`; pool size
+  defaults to 3 — no bundled monster types the count). Legendary
+  Resistance: a new top-level `resolve_legendary_resistance(handle,
+  entity_id) -> int` pre-arms a conversion of the entity's next failed
+  save — every save path in the engine honors it, including the Grapple/
+  Shove Unarmed Strike save and the damage-triggered concentration check —
+  and emits `LegendaryResistanceUsed`. Five more `MonsterTraitMechanic`
+  values are now consumed: Pack Tactics (attack advantage from an adjacent,
+  non-Incapacitated ally), Sunlight Sensitivity (attack disadvantage via
+  the new `GridScene.sunlight: bool = False` scene flag), Undead Fortitude
+  (a CON save to hold at 1 HP instead of dropping to 0, live-path
+  included), Swarm (no HP or temp HP gain) and Legendary Resistance itself.
+  Corpus damage resistances/immunities now hydrate from the monster
+  template when a host leaves both fields empty, unconditionally (no
+  "nonmagical attacks" qualifier, matching SRD 5.2 stat blocks). `Combatant.
+  has_fled: bool = False` persists a fleeing monster's stance across turns,
+  and `ended_reason`/`CombatEnded.reason` can now actually be `"flee"` when
+  every living foe has fled. See the migration guide for the full
+  determinism-affecting delta list — a seeded replay reaching a monster
+  turn with a recharge/limited-use/legendary action or a newly-consumed
+  trait diverges from that point on.
 
 ### Added
 
@@ -273,6 +312,22 @@ fixtures they move) are enumerated in
   `components`, `material`, `material_consumed`, `material_cost_gp`.
   Emitted after the slot gate on every PC cast path (on-turn, readied
   reaction, Counterspell). `CastFailedReason` gains `"ritual_in_combat"`.
+- **Monster action economy surface (C18).** New events: `RechargeRolled
+  (monster_id, action_slug, roll, threshold, succeeded)`,
+  `LegendaryActionUsed(actor_id, action_slug, uses_remaining)`,
+  `LegendaryResistanceUsed(actor_id, uses_remaining)`. New top-level
+  function: `resolve_legendary_resistance(handle, entity_id) -> int`.
+  `advance_monster_turn` gains keyword-only `legendary: bool = False`,
+  `actor_id: str | None = None`. New `types.combat.MonsterActionUses`
+  dataclass (`recharge_spent`, `uses_remaining`). `Combatant` gains
+  `legendary_actions_max` / `legendary_actions_remaining` /
+  `legendary_resistances_max` / `legendary_resistances_remaining` /
+  `has_fled: bool = False` / `spellcasting_ability: str | None = None`.
+  `LiveCombatView` gains `monster_action_uses_by_entity`,
+  `legendary_actions_by_entity`, `legendary_resistances_by_entity` (a new
+  `views.MonsterActionUsesView` projects the first). `GridScene.sunlight:
+  bool = False` — a whole-scene Sunlight Sensitivity flag. All additive
+  with defaults reproducing pre-0.6 behaviour.
 
 ### Changed
 
