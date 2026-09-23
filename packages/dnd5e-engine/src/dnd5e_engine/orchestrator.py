@@ -740,14 +740,18 @@ def _hydrate_monster_action_uses(monster: Monster) -> dict[str, MonsterActionUse
 def _legendary_resistance_max(monster: Monster) -> int:
     """SRD 5.2 Legendary Resistance's "N/Day" pool size.
 
-    Prefers a typed ``uses_per_day`` on the trait; falls back to a
-    ``"N/Day"`` match in the trait's name; defaults to 3 — every SRD 5.2
-    Legendary Resistance bearer in the bundled corpus carries the pool count
-    only in prose (neither ``uses_per_day`` nor the name), so the default is
-    the operative value everywhere today (see BACKLOG).
+    Prefers the typed ``Monster.legendary_resistance_uses`` (the dataset's
+    translation of Foundry ``system.resources.legres.max`` — 3 for most
+    bundled bearers, 4 for the non-gold ancient dragons, Kraken, Lich, Pit
+    Fiend and Solar, 6 for the Tarrasque); then a typed ``uses_per_day`` on
+    the trait; then a ``"N/Day"`` match in the trait's name; and only when
+    none is present (a host-supplied template without the typed count)
+    defaults to 3. ``0`` when the monster has no Legendary Resistance trait.
     """
     for trait in monster.special_abilities:
         if trait.mechanic == MonsterTraitMechanic.LEGENDARY_RESISTANCE:
+            if monster.legendary_resistance_uses:
+                return monster.legendary_resistance_uses
             if trait.uses_per_day:
                 return int(trait.uses_per_day)
             match = re.search(r"(\d+)/Day", trait.name)
@@ -836,14 +840,17 @@ def _emit_legendary_resistance_used(live: _LiveCombat, target_id: str, uses_rema
 
 
 def _legendary_action_uses_max(monster: Monster) -> int:
-    """SRD 5.2 Legendary Actions pool size ("can take 3 legendary actions").
+    """SRD 5.2 Legendary Action Uses pool size.
 
-    No bundled monster types this count anywhere (typed field or prose) —
-    every stat block with a non-empty ``legendary_actions`` list defaults to
-    3, the SRD 5.2 baseline for every legendary-action monster in the corpus
-    (see BACKLOG for the translator follow-up).
+    Prefers the typed ``Monster.legendary_action_uses`` (Foundry
+    ``system.resources.legact.max`` — 3 for every bundled legendary-action
+    monster); a stat block with a non-empty ``legendary_actions`` list but
+    no typed count (a host-supplied template) falls back to 3. ``0`` when
+    the monster has no legendary actions.
     """
-    return 3 if monster.legendary_actions else 0
+    if not monster.legendary_actions:
+        return 0
+    return monster.legendary_action_uses or 3
 
 
 def _run_monster_turn_start(live: _LiveCombat, current: Combatant) -> None:

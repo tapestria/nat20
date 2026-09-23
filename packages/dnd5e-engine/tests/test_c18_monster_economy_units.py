@@ -1379,3 +1379,50 @@ def test_monster_spell_attack_uses_pb_plus_spellcasting_modifier():
     assert rolled
     assert rolled[0].modifier == 5
     assert rolled[0].roll_total == rolled[0].natural + 5
+
+
+# Finding 5: the Legendary Resistance / legendary action pool sizes come from
+# the typed ``Monster.legendary_resistance_uses`` / ``legendary_action_uses``
+# (Foundry ``system.resources.legres.max`` / ``legact.max``); 3 is only the
+# untyped fallback.
+
+
+def test_legendary_pools_hydrate_from_the_typed_dataset_counts():
+    async def go():
+        handle, _live = await _start(
+            [_hero()],
+            [
+                _foe("ancient-red-dragon", entity_id="mon:ancient", hp=507, ac=22, col=3),
+                _foe("tarrasque", entity_id="mon:tarrasque", hp=697, ac=25, col=6),
+                _foe("adult-red-dragon", entity_id="mon:adult", hp=256, ac=19, col=9),
+            ],
+            seed=1,
+        )
+        return handle
+
+    handle = _run(go())
+    view = get_live(handle)
+    assert view.legendary_resistances_by_entity["mon:ancient"] == 4
+    assert view.legendary_resistances_by_entity["mon:tarrasque"] == 6
+    assert view.legendary_resistances_by_entity["mon:adult"] == 3
+    assert view.legendary_actions_by_entity["mon:ancient"] == 3
+    assert view.legendary_actions_by_entity["mon:tarrasque"] == 3
+    for _ in range(4):
+        resolve_legendary_resistance(handle, "mon:ancient")
+    with pytest.raises(IntentRejectedError):
+        resolve_legendary_resistance(handle, "mon:ancient")
+
+
+def test_untyped_legendary_pools_fall_back_to_three():
+    """A host-supplied template without the typed counts keeps the untyped
+    fallback: 3 legendary actions, 3 Legendary Resistance uses."""
+    from dnd5e_engine import orchestrator as orch
+
+    dragon = BundledAssetLoader().get_monster("ancient-red-dragon")
+    assert dragon is not None
+    untyped = dragon.model_copy(
+        update={"legendary_resistance_uses": None, "legendary_action_uses": None}
+    )
+    assert orch._legendary_resistance_max(untyped) == 3
+    assert orch._legendary_action_uses_max(untyped) == 3
+    assert orch._legendary_resistance_max(dragon) == 4
