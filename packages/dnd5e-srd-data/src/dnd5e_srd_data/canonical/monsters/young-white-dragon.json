@@ -394,7 +394,9 @@
     "Common",
     "Draconic"
   ],
+  "legendary_action_uses": null,
   "legendary_actions": [],
+  "legendary_resistance_uses": null,
   "movement": {
     "burrow": 20,
     "climb": null,
@@ -467,5 +469,6 @@
       "slug": "ice-walk",
       "uses_per_day": null
     }
-  ]
+  ],
+  "spellcasting_ability": null
 }

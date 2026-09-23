@@ -130,6 +130,18 @@ The model is entirely opt-in — a scene with no lighting data resolves exactly 
 a scene did before the fields existed. No light sources, and darkness does not
 apply the Blinded condition.
 
+A composite predicate (`orchestrator.py::_combatant_can_see`) layers Blinded
+(viewer) and Invisible (target) on top of `can_see`, piercing either only when
+blindsight/truesight reaches with line of sight — never darkvision. Every SRD
+5.2 rule phrased as "if you can see" other than the raw attack-roll `unseen`
+row reads this composite: the Dodge action's attack-disadvantage half, Ranged
+Attacks in Close Combat, the Opportunity Attack trigger in both directions,
+Hide's "out of any enemy's line of sight" gate, and Frightened's line-of-sight
+gate (attack-roll disadvantage and the "can't willingly move closer to the
+source of fear" movement rule). See
+[`docs/dev/spatial-geometry.md`](../dev/spatial-geometry.md#composite-predicate)
+for the exact step order.
+
 ## Zones vs grid
 
 !!! warning "The zone graph is deprecated"

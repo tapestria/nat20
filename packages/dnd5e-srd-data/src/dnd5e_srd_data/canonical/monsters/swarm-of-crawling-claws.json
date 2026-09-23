@@ -302,7 +302,9 @@
   "languages": [
     "Common"
   ],
+  "legendary_action_uses": null,
   "legendary_actions": [],
+  "legendary_resistance_uses": null,
   "movement": {
     "burrow": null,
     "climb": 30,
@@ -375,5 +377,6 @@
       "slug": "swarm",
       "uses_per_day": null
     }
-  ]
+  ],
+  "spellcasting_ability": null
 }

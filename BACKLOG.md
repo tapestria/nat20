@@ -38,40 +38,169 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
 
 ## Monster action economy (2026-08-22)
 
-- **Legendary actions are not modelled.** `Monster.legendary_actions` is
-  populated for **30 monsters** in the corpus and never read; only
-  `Monster.actions` drives a turn. Needs a legendary-point pool per creature,
-  spent between other creatures' turns, and reset at the start of the
-  creature's turn. Same for `lair_actions` (schema field exists; the corpus
-  ships none today) and `special_abilities` (never consumed).
-  (`packages/dnd5e-engine/src/dnd5e_engine/activities/monster_actions.py`)
-- **Monster `recharge` (5–6) abilities are not gated.** A breath weapon can be
-  used every turn. Needs a per-creature recharge roll at turn start.
-- **Regeneration is not modelled.**
+- **Monster-side ranged-in-melee/Vex/Sap threading is wired but inert
+  (2026-09-02, C15 Task 6/3).** `orchestrator.py`'s monster attack site
+  passes `attacker_ranged_in_melee`, `attacker_vex_advantage`, and
+  `attacker_sapped` into the activity context and pops vex grants/sap marks
+  after resolution, mirroring the PC site exactly — but a monster attack
+  carries its damage on the `AttackActivity` itself, not a separate typed
+  `Weapon` (`resolve_activity(activity, actx, weapon=None)`), so
+  `attack.py`'s weapon-gated "effectively ranged" check and mastery-proc
+  fold never fire for a monster attacker. A monster can still be the
+  RECEIVING end of a vex grant or sap mark from a prior PC weapon hit
+  (that half is live). Needs a monster weapon-mastery/property model;
+  confirmed still open after C18 (2026-09-03) — out of that cluster's scope
+  per its R10 ruling.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
 - **Multiattack conditional clauses are not modelled.** Since C22 every
   multiattack token is labelled, so the five opaque-key monsters join
   precisely; doppelganger and chain-devil now ALSO count their conditional
   feat use ("uses Unsettling Visage if…") as one fixed use per turn. The
-  "if …" clause needs a carve-out in `_parse_item_counts`. More important: the
-  precise join emits limited-use special abilities unconditionally —
-  doppelganger's Recharge-6 Unsettling Visage now fires every round because
-  `expand_action_to_activities` never reads `MonsterAction.recharge`/
-  `uses_per_day`. Recharge/limited-use gating is C18's
-  (`packages/dnd5e-engine/src/dnd5e_engine/activities/monster_actions.py`).
+  "if …" clause needs a carve-out in `_parse_item_counts`. (Recharge gating
+  for the joined action itself — e.g. doppelganger's Recharge-6 Unsettling
+  Visage — closed 2026-09-03, C18, via `rank_monster_actions` and the
+  turn-start recharge roll. Limited-use gating is only partial: see "Typed
+  `MonsterAction.uses_per_day` is never consulted" below.)
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/monster_actions.py`)
+- **Typed `MonsterAction.uses_per_day` is never consulted, and a non-cast
+  N/Day `uses.max` is never decremented** (2026-09-23).
+  `_hydrate_monster_action_uses` reads only activity-level `uses.max`, so the
+  24 bundled actions typed with `uses_per_day` (Aboleth Dominate Mind 2/Day,
+  Quasit Scare 1/Day, Vrock Stunning Screech 1/Day, Dretch Fetid Cloud,
+  Troll Loathsome Limbs 4/Day, …) are at will to the engine; and a
+  non-cast activity with an integer `uses.max` (Sphinx of Valor's Roar) is
+  hydrated into `uses_remaining` but only the cast path
+  (`_resolve_monster_cast`) ever decrements it. Not a regression —
+  Multiattack still outranks every such action — but none of them is
+  limited. Fix shape: seed `uses_remaining` from `uses_per_day` when no
+  activity carries a digit, and decrement non-cast uses on selection.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_hydrate_monster_action_uses`)
+- **`_mark_monster_action_used` spends only the ranked action itself**
+  (2026-09-23). When the chosen action is a Multiattack whose join
+  substitutes a recharge sibling (a "uses X" clause resolving to a Recharge
+  action), only `ranked[0]` — the Multiattack — is marked; the substituted
+  recharge sibling is never marked spent, so it would fire every turn. No
+  bundled Multiattack joins a recharge sibling today, so the corpus is
+  unaffected; a corpus change that adds one would silently un-gate it.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_mark_monster_action_used`)
+- **A monster's own AoE (cone/sphere/etc.) still resolves against a single
+  chosen target, not the template** (2026-09-03, C18). Grid AoE template
+  expansion (C16) is wired for the PC cast path; a monster save/damage
+  action with an area shape resolves the same way every monster action
+  always has — one picked target — rather than enumerating
+  `cells_in_template` the way a PC's cast does.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
+- **Monster AI is friendly-fire unaware** (2026-09-03, C18). Nothing checks
+  whether an ally stands in a chosen action's blast/save area (or a
+  Multiattack's own reach) before the monster acts, unlike the PC-facing
+  `PlayerIntent.direction` aiming a host controls by hand.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
+- **Utility-only and cost > 1 legendary actions are never selected by the
+  built-in AI** (2026-09-03, C18). `_take_legendary_action` only considers
+  entries whose `legendary_cost` is unset or `1` and that carry an
+  attack/save/damage activity (or a castable spell) — a `utility`-only entry
+  (e.g. Pounce) and a multi-point legendary action are skipped even when
+  legal. The bundled corpus carries no multi-point legendary action today.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_take_legendary_action`)
+- **Legendary Resistance is host-armed only — no AI policy decides when to
+  spend it** (2026-09-03, C18). `resolve_legendary_resistance` is a pure
+  seam a host calls before submitting the intent that will force a save;
+  the built-in monster AI never calls it itself, so a monster never
+  protects its own concentration or avoids a status condition unless a host
+  makes that call on its behalf.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::resolve_legendary_resistance`)
+- **Magic Resistance still does not reach the orchestrator-level save
+  paths** (2026-09-03, C18 — unchanged from the prior "Typed traits" entry).
+  The end-of-turn repeat save, the damage-triggered concentration check, and
+  the Grapple/Shove Unarmed Strike save all bypass the typed activity
+  resolver (`activities/save_primitive.py`) where Magic Resistance's
+  advantage is granted; C18 wired Legendary Resistance's *conversion* onto
+  all three via `_consume_armed_legendary_resistance`, but Magic Resistance's
+  advantage grant was not threaded onto the same three paths.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
+- **Recharge state does not persist across combats** (2026-09-03, C18).
+  `MonsterActionUses` (recharge_spent, uses_remaining) lives on
+  `_LiveCombat`, discarded at `end_combat` like every other combat-scoped
+  engine state (by design, per this engine's effects-are-combat-scoped
+  convention) — a monster that used its recharge ability in one encounter
+  always starts its next encounter fully recharged, with no cross-combat
+  "still on cooldown" model.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
+- **Neither PC nor monster cast path drains a readied Shield reaction on a
+  spell ATTACK** (2026-09-03). Both `hit_by_attack`-trigger drain sites gate
+  on an ATTACK activity, not any attack roll: the PC's
+  `_drain_pre_resolution_reactions` fires the drain only for
+  `intent.intent_type == "attack"`, and the monster's shared
+  `_resolve_monster_attack_activities` fires it only from the mundane
+  attack/legendary-action attack path. A spell attack roll
+  (`intent_type == "cast_spell"` on the PC side, `_resolve_monster_cast` on
+  the monster side) never pops a target's readied Shield, even though a
+  spell attack roll is exactly the kind of "attack roll" Shield's SRD 5.2
+  text protects against.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
+- **Flee stance ignores Incapacitated** (2026-09-03; pre-existing, sharpened
+  by C18 Task 9's new `has_fled` persistence). `_apply_monster_flee_stance`
+  gates only on `current.is_alive and current.hp_current > 0` — an
+  Incapacitated monster under its behavior profile's flee threshold still
+  "retreats" and is marked `has_fled=True`, even though SRD 5.2's
+  Incapacitated condition ("can't take any Action or Bonus Action") should
+  block it from taking the Disengage-equivalent retreat action at all.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_apply_monster_flee_stance`)
+- **Undead Fortitude's trigger ignores temporary HP on the live combat
+  path** (2026-09-23). `activities/apply.py::apply_damage` gates the trait's
+  CON save on `final_amount >= target.hp_current` — the pure resolver's
+  snapshot of REAL HP only. Temp HP is a separate bucket the orchestrator
+  absorbs damage from AFTER this event is emitted
+  (`_emit_apply_damage`/`_emit_apply_temp_hp`), so a hit that the bearer's
+  temp HP would have fully absorbed (no real-HP loss at all) can still force
+  a needless CON save and, on a failure, an incorrect Death. Relatedly, the
+  gate compares EACH damage part's amount against the same un-decremented
+  `hp_current` snapshot, so a multi-type hit whose parts each fall short of
+  the bearer's HP but together exceed it never triggers the save at all and
+  the bearer drops without rolling.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/apply.py`)
 
 ## Core combat rules not modelled (2026-08-22)
 
-- **Surprise is not modelled.** SRD 5.2 gives a surprised creature disadvantage
-  on its initiative roll; `start_combat` has no surprise input.
-- **Grapple and Shove are not modelled.** The `grappled` condition exists and
-  can be applied by an effect, but no contested check resolves either action,
-  and neither has an `IntentType`.
-- **Two-weapon fighting is not modelled.** The `light` weapon property is
-  parsed but grants no bonus-action attack.
-- **Ritual casting is not modelled.** 28 spells carry `ritual: true`; the flag
-  is never read.
-- **Spell components are not enforced.** `components` / `materials` ship on
-  every spell and are never checked.
+- **Grapple's/Shove's size gate, free-hand gate, and distance-exceeded
+  auto-release are not modelled** (2026-09-01). SRD 5.2 Grapple/Shove
+  require "a hand free" (Grapple only) and cap the actor at one size larger
+  than the target; "Ending a Grapple" also ends the condition when a forced
+  move separates the pair beyond reach. None of the three block or
+  auto-release `grapple`/`shove`/`escape_grapple` today — deferred to C14
+  Task 10. The Push weapon mastery's "if it is Large or smaller" gate
+  (2026-09-02, C15 Task 7) shares the same missing creature-size attribute
+  and pushes every target.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_handle_grapple`,
+  `::_handle_shove`, `::_fold_mastery_procs`)
+- **Ritual casting is out-of-combat only (2026-09-03, C17).** `spellcasting.
+  resolve_ritual_cast(spell, *, prepared, ritual_adept=False)` is the host
+  seam: it validates the Ritual tag + prepared/Ritual-Adept gate and returns
+  the `RitualCast` (10-minute tax, no slot expended). An in-combat
+  `PlayerIntent.as_ritual=True` is rejected (`CastFailed(reason=
+  "ritual_in_combat")`) before any slot logic — the turn economy has no model
+  for a 10-minute action, so ritual casting only resolves between combats,
+  through the host calling `resolve_ritual_cast` directly.
+  (`packages/dnd5e-engine/src/dnd5e_engine/spellcasting.py`)
+- **Spell components are metadata-only, not enforced (2026-09-03, C17).**
+  `SpellCast` now carries `components` / `material` / `material_consumed` /
+  `material_cost_gp` (via `spellcasting.spell_component_metadata`) on every
+  PC cast path, but nothing gates a cast on a gagged/Silenced caster, a free
+  hand, a component pouch/focus, or a costed material's gold cost — a host
+  decision per spec §5 C17.
+  (`packages/dnd5e-engine/src/dnd5e_engine/spellcasting.py`,
+  `packages/dnd5e-engine/src/dnd5e_engine/events.py::SpellCast`)
+- **The Cleave chain's damage routes through `_apply_on_hit_damage`, which
+  folds Sneak Attack BEFORE the orchestrator writes the once-per-turn cap
+  — the chained hit is structurally unguarded against a second Sneak
+  Attack fold on the same turn** (2026-09-02, C15 final-review F7). Not
+  reachable today: no shipped Cleave weapon (greataxe, halberd) carries
+  Finesse or a ranged category, so `sneak_attack_triggers`'s qualifying-
+  weapon gate always excludes them — but nothing in `_resolve_cleave_chain`
+  itself re-checks `ctx.sneak_attack_spent` between the main hit and the
+  chained one, so a future data change (a Finesse/ranged weapon gaining
+  the `cleave` mastery) would silently double-fold the rider.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py::_resolve_cleave_chain`)
 
 ## Movement (2026-08-22)
 
@@ -82,22 +211,42 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
 
 ## Event stream observability (2026-08-22)
 
-- **Damage is not attributed.** `DamageApplied` carries no `source_id`, so
-  damage cannot be credited to an attacker or effect — a killing blow cannot be
-  attributed. Additive on the event model; owned by C15. (The roll-breakdown
-  half of this entry closed in F2c: `AttackRolled` / `SaveRolled` /
+- **Spell/save/heal damage is not attributed (2026-09-02, narrowed by C15).**
+  C15 added `DamageApplied.source_id` (weapon slug / synthesized activity id
+  / `"mastery:<slug>"` for a mastery proc) and `is_crit`, and threads both
+  through the weapon-attack path. Spell, saving-throw, and healing-adjacent
+  damage paths still emit `source_id=None` — a C17+ seam. (The roll-breakdown
+  half of the original entry closed in F2c: `AttackRolled` / `SaveRolled` /
   `CheckRolled` now carry `natural`, `modifier` and `sources`; the target's
   effective AC is still not reported.)
   (`packages/dnd5e-engine/src/dnd5e_engine/events.py`)
 
 ## Character building (2026-08-22)
 
-- **No multiclassing.** `CharacterBuildSpec` carries a single `class_slug` +
-  `level`. Multiclass spell-slot progression and per-class feature grants are
-  unmodelled.
+- **Multiclassing: carrier + slot derivation landed, feature grants remain
+  (amended 2026-09-03, C17).** `CharacterBuildSpec.classes: dict[str, int]`
+  (a `{class_slug: level}` map, reconciled with the single-class
+  `class_slug`/`level` aliases) is the multiclass carrier; `derive_multiclass_
+  slots` / `derive_multiclass_pact_slots` (`build_spec.py`) project it
+  through `spellcasting.multiclass_caster_level` (per-class half/third
+  rounding, summed, ONE table lookup — SRD §Multiclassing) into the
+  Spellcasting and Pact Magic pools, and `build_party_member` fills an empty
+  `CombatInstance.spell_slots`/`pact_slots` from them. Per-class feature
+  grants, proficiencies, and HP accumulation across classes are still
+  unmodelled — C19.
   (`packages/dnd5e-engine/src/dnd5e_engine/build_spec.py`)
 - **Feats are almost entirely inert.** 1 of the 17 corpus feats carries a
   mechanical activity; the rest resolve to nothing.
+- **`build_party.py` never passes `weapon_proficiencies`, so an engine-built
+  party always hits the C15 R1 assume-proficient sentinel — weapon
+  proficiency enforcement is unreachable through the engine's own party
+  builder** (2026-09-02, C15 final-review F7). `Combatant.weapon_proficiencies`
+  is keyed off *whether the field was ever assigned* on `PartyMemberSpec`
+  (see `docs/migration/v0.5-to-v0.6.md`'s "R1 sentinel" section); every
+  character this helper builds projects to `None`, so proficiency is
+  always assumed, matching pre-C15 behaviour — a host that wants
+  enforcement through this path has to populate the field itself.
+  (`packages/dnd5e-engine/src/dnd5e_engine/build_party.py`)
 
 ## Architecture (2026-08-22)
 
@@ -120,7 +269,8 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
 - **Engine does not yet read `canonical/conditions/`.** The dataset category
   exists (C22, `AssetLoader.get_condition`), mirroring `rules/conditions.py`;
   per campaign design D3 the engine should prefer the data when present and
-  fall back to the Python registry. Owner: C12/C18 follow-up.
+  fall back to the Python registry. Still open after C12 and C18 (neither
+  reads the category); unowned.
   (`packages/dnd5e-engine/src/dnd5e_engine/rules/conditions.py`)
 - **`orchestrator.py` is ~5.5k lines**, about a third of the engine, holding the
   reaction queue, item/feature charge accounting, the monster turn, the effect
@@ -153,66 +303,38 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   treated as a 1-cell ray and a wider `template.width` is ignored.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_walk_zone_path`,
   `packages/dnd5e-engine/src/dnd5e_engine/spatial.py::cells_in_template`)
-- **Vision is scene-lit only** (2026-08-27). No light sources (torches, *Light*,
-  *Darkness*), no viewer-side obscurement, no Blinded emission from darkness;
-  `can_see` reads `GridScene.lighting` / `obscurement_cells` plus the viewer's
-  projected senses. Sunlight Sensitivity is C18.
+- **Vision is scene-lit only** (2026-08-27, amended 2026-09-02, 2026-09-03).
+  No light sources (torches, *Light*, *Darkness*), no viewer-side
+  obscurement, no Blinded emission from darkness; `can_see` reads
+  `GridScene.lighting` / `obscurement_cells` plus the viewer's projected
+  senses. Sunlight Sensitivity's attack-roll half closed C18 (the new
+  whole-scene `GridScene.sunlight` flag); its ability-check half (the
+  trait disadvantages ALL ability checks in sunlight) is still open (see "Typed traits are hydrated..." under "Audit 2026-08-26 —
+  monsters" below). No *See Invisibility*-style effect flag
+  pierces the Invisible condition either (C16b plan ruling R3) — only
+  blindsight/
+  truesight in range with line of sight do, via
+  `orchestrator.py::_pierces_invisibility`; an effect-vocabulary carve-out is
+  a future cluster's seam.
   (`packages/dnd5e-engine/src/dnd5e_engine/spatial.py::GridTopology.can_see`)
 - **Monster-cast AoE applies no forced-movement rider** (2026-08-27). Only the
   player-intent cast path calls `activities/forced_movement.py`, so a monster
   casting Thunderwave deals damage but pushes nobody.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::advance_monster_turn`)
-- **Mutual unseen is reported twice** (2026-08-27). When neither combatant can
-  see the other, `AttackRolled.sources` is `["unseen", "unseen"]` — one entry
-  for the disadvantage and one for the advantage — because an `AdvantageSource`
-  records presence only, not direction. A host rendering the source list shows
-  the same word twice.
-  (`packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py`)
-- **Opportunity attacks bypass the activity context** (2026-08-27). The AoO path
-  hardcodes `advantage="normal"` and never calls `build_activity_context`, so an
-  opportunity attack sees no cover, no conditions and no visibility — despite
-  SRD 5.2's "a hostile creature that *you can see*" trigger. C14 seam.
+- **Opportunity attacks bypass the activity context — cover only**
+  (2026-08-27, condition gap closed 2026-09-01 C14 Task 9, visibility gap
+  closed 2026-09-02 C16b). The AoO path never calls `build_activity_context`,
+  so an opportunity attack still sees no cover — despite SRD 5.2's cover
+  rules applying to any attack roll. Condition-derived advantage/
+  disadvantage, Exhaustion's D20 Test penalty, Dodge, the "a creature that
+  you can see" trigger (`_combatant_can_see` — no Reaction spent on
+  failure), the `unseen` advantage source, and the Invisible/Frightened
+  carve-outs all now reach the roll. Remaining gap is cover on the AoO roll
+  itself.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
-
-## Reactions (2026-07-03)
-
-- **No-slot readied reactions fire for free.** `_resolve_readied_spell_cast`
-  and `_drain_counterspell_reaction` decrement the reactor's spell slot only
-  when one is available, but fire the reaction (spending the Reaction and
-  applying the full effect) regardless — a reactor armed with an empty slot
-  pool gets a free Shield/Counterspell. Host-gated today (the host chooses to
-  arm), unpinned by any catalog scenario; the fix is a slot-availability gate
-  at drain time (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`).
-- **Counterspell range ungated at drain time.** SRD 5.2 Counterspell has a
-  60-foot range, but `_drain_counterspell_reaction` fires for any armed
-  reactor regardless of reactor↔caster distance. Unpinned — every catalog
-  scenario co-locates them; needs a topology distance check at drain
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`).
-
-## Weapon mastery (2026-07-03)
-
-- **Weapon-mastery Topple bypasses `condition_immunities`.** C08's
-  condition-immunity gate lives in `activities/effects.py::apply_activity_effects`,
-  but `activities/mastery.py` (~line 199) is a second `ConditionApplied` emit
-  site with no gate — a Topple-mastery hit still knocks a prone-immune target
-  prone. Fix: factor the immunity check into a shared helper both emit sites
-  call (grep-verified: exactly two emit sites today)
-  (`packages/dnd5e-engine/src/dnd5e_engine/activities/mastery.py`,
-  `packages/dnd5e-engine/src/dnd5e_engine/activities/effects.py`).
 
 ## Effect-change sidecars (2026-07-02)
 
-- **Weapon-tagged to-hit bonus sidecar never consumed.** The orchestrator's
-  `_fold_active_effect_changes` folds a weapon-tagged (`applicable_action_types
-  == ["attack"]`) `attack.roll.bonus` change into the
-  `passive_weapon_to_hit_bonus` sidecar key, but nothing downstream reads it —
-  `build_activity_context` only lifts the untagged `passive_to_hit_bonus` into
-  `ActivityResolutionContext.passive_attack_bonus`. A +N weapon's to-hit bonus
-  therefore never reaches the attack roll via this sidecar (the sibling
-  damage-side gap, `passive_weapon_damage_bonus`, has been closed —
-  see `docs/migration/v0.1-to-v0.2.md`)
-  (`packages/dnd5e-engine/src/dnd5e_engine/activities/build_context.py`,
-  `packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py`).
 - **Two effect-key namespaces for check/save bonuses (2026-08-26).** The public
   standalone check resolver folds `check.bonus` / `check.skill_check.bonus` /
   `check.ability_check.bonus` / `save.bonus` / `save.saving_throw.bonus` /
@@ -305,11 +427,6 @@ zone + apply logic:
 
 ## Audit 2026-08-26 — rolls & modifiers
 
-- **Opportunity attacks bypass the d20 pipeline.**
-  `_resolve_pc_opportunity_attack` / monster OA path (`orchestrator.py` ~5007,
-  ~5107) emit `AttackRolled(advantage="normal")` without consulting
-  `roll_d20_test` sources; route them through `resolve_attack`'s primitive in
-  C14. (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
 - **Standalone out-of-combat `resolve_check` has no exhaustion seam**
   (2026-08-27) — the in-combat activity path folds `ctx.d20_test_penalty`, but
   the host-facing `CheckSpec` carries no conditions/exhaustion field, so a
@@ -317,58 +434,102 @@ zone + apply logic:
   `-2 x level` D20 Test penalty. Additive fix: an `exhaustion_level: int = 0`
   (or projected `modifier`) on `CheckSpec`.
   (`packages/dnd5e-engine/src/dnd5e_engine/check.py:36`)
-- **Attack proficiency is assumed.** `build_context.py:278` hard-codes
-  `is_proficient_attack=True`; a wizard swinging a greatsword adds PB.
-  (`packages/dnd5e-engine/src/dnd5e_engine/activities/build_context.py`)
-- **Weapon properties beyond `finesse`/`reach` are ignored.** `loading`,
-  `thrown`, `light`, `two_handed`, `versatile` (`versatile_damage` is shipped
-  and never chosen), `ammunition`, `heavy` are parsed by the data schema and
-  never read. (`packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py`)
-- **Weapon mastery: 2 of 8 resolve.** Only `graze` and `topple` are
-  implemented; `sap`/`vex`/`slow`/`push`/`nick`/`cleave` log `mastery_deferred`
-  and apply nothing. (`packages/dnd5e-engine/src/dnd5e_engine/activities/mastery.py`)
-- **Upcasting scales dice only, never target count** (Magic Missile darts,
-  Hold Person extra targets). (`packages/dnd5e-engine/src/dnd5e_engine/activities/dice.py`)
+- **`ammunition` is parsed and never read (2026-09-02, narrowed by C15).**
+  C15 wired `finesse`, `reach`, `loading` (one-shot-per-turn cap),
+  `thrown` (thrown-at-range attacks), `light` (Nick's off-hand-swing
+  exemption), `two_handed`/`versatile` (grip selection via
+  `PlayerIntent.two_handed`; `versatile_damage` is now chosen when
+  two-handed), and `heavy` (the raw-Strength-13 disadvantage gate) into the
+  attack-resolution path. `ammunition` — tracking how many pieces of
+  ammunition a combatant carries, and blocking an attack when the supply
+  runs out — is deliberately out of scope: it is host inventory-tracking
+  state, not a rules computation, and the engine models no inventory.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py`)
+- **Two-Handed weapon equip legality is out of engine scope (2026-09-02).**
+  SRD 5.2 requires both hands free to wield a Two-Handed weapon (and bars
+  it alongside a shield); the engine has no equipped-item/hand-occupancy
+  model, so `PlayerIntent.two_handed` is accepted at face value with no
+  legality check. Equip-slot bookkeeping is a host concern.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py`)
 
 ## Audit 2026-08-26 — action economy & turn structure
 
-- **`dodge`, `hide` and `help` intents are no-ops.** They are valid
-  `IntentType` values with no handler — `orchestrator.py` dispatches only
-  `move_mark`/`move`/`dash`/`disengage`; the three fall through to the generic
-  tail, consume the Action, end the turn and change nothing. Worse than a
-  rejection because hosts see them "work". `search`/`study`/`influence`/
-  `utilize` do not exist at all. (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
-- **Extra Attack for PCs is not modelled.** No attacks-per-action counter
-  exists (only monster Multiattack via prose parsing). `extra-attack.json`
-  ships `activities: []`. Action Surge, Flurry of Blows and two-weapon fighting
-  are all blocked on the same missing "extra attack/action this turn" economy;
-  Sneak Attack's once-per-turn flag is consequently never re-read
-  (`orchestrator.py:604`). The generic-action tail calls `_advance_turn`, so a
-  turn cannot hold two actions today.
+- **`search`/`study`/`influence`/`utilize` do not exist as `IntentType`
+  values at all** (`dodge` closed C14 Task 3, `help` assist-an-attack-roll
+  flavor closed C14 Task 4, `hide` closed C14 Task 5 — all 2026-09-01;
+  Help's ability-check flavor is still open, no check-advantage producer
+  exists). Deliberately deferred from C14 in full: the campaign design
+  (spec §5, row C14) lists all four intents, but none has an approved
+  catalog acceptance scenario or a harmonised API-DELTAS row — a maintainer
+  flag, not an oversight.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
-- **No ongoing-damage / regeneration / recharge producers.** (2026-08-26) F3a
-  gave them a place to land — `turn_lifecycle.py` runs `round_start` /
+- **Hide costs no Action** (2026-09-01). SRD 5.2 costs an Action to Hide;
+  `_handle_hide` deliberately charges no Action/Bonus-Action budget (the
+  same turn-keeping shape as Dash/`drop_concentration`) because the
+  approved S02 catalog script requires a hide-then-attack sequence inside
+  one turn, and the first attack swing hard-requires the Action — an
+  Action-consuming Hide would make that script unsatisfiable. Tighten once
+  strict Attack-action accounting lands.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_handle_hide`)
+- **Help's ability-check flavor is unimplemented.** No check-advantage
+  producer exists on the check-resolution path, so a helper cannot grant
+  Advantage on an ally's upcoming ability check (only the attack-roll
+  flavor is wired).
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/check.py`)
+- **Help has no "target is an enemy of the helper" gate.** SRD 5.2 Help's
+  ability-check flavor requires the helped creature to be "an enemy of the
+  one you're helping"; the attack-roll flavor's `help_grants` bookkeeping
+  accepts any `target_id`, including the helper's own ally or self, with no
+  validation.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_dispatch_simple_turn_ending_intent`)
+- **A redundant second Grapple attempt appends an orphaned, inert
+  `ActiveEffect`.** `_handle_grapple` never checks whether the target is
+  already Grappled by the same attacker before rolling a fresh save and
+  appending another `"Grappled"` effect; the pre-existing condition's
+  `source_effect_id` still wins, so the second effect sits in
+  `live.active_effects` doing nothing until combat ends. Compounding this:
+  `escape_grapple`/`_handle_escape_grapple` clears the Grappled condition
+  outright on a successful escape check rather than decrementing a
+  grappler-count, so a victim held by TWO grapplers (the original plus this
+  redundant-attempt orphan) is freed from BOTH by a single successful escape
+  — a one-check-escapes-two leniency — while the second, never-consulted
+  `ActiveEffect` remains orphaned in `live.active_effects` regardless.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_handle_grapple`,
+  `::_handle_escape_grapple`)
+- **A grappler killed without a `ConditionApplied` (Incapacitated) path
+  does not auto-release its victim.** `_release_grapple_victims_of` fires
+  only from the Incapacitated fold inside `_fold_condition_onto_combatant`;
+  a grappler removed from combat by a path that never applies Incapacitated
+  leaves its victim's Grappled condition stuck. SRD 5.2 "Ending a Grapple"
+  names only the Incapacitated case, so this is RAW-arguable rather than a
+  clear defect — recorded for a future ruling.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_release_grapple_victims_of`)
+- **Monster AI never selects Dodge, Hide, Help, Grapple, or Shove.**
+  `advance_monster_turn` has no branch that chooses any of the five C14
+  actions; a monster only ever attacks, casts, moves, or flees.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::advance_monster_turn`)
+- **No ongoing-damage producer.** (2026-08-26, narrowed 2026-09-03 C18) F3a
+  gave it a place to land — `turn_lifecycle.py` runs `round_start` /
   `turn_start` / `turn_end` hooks off the single `_end_turn_and_advance` path —
   but the only registered hooks are the pre-existing duration tick and
   reaction-effect expiry, plus F3b's timed-effect expiry. Start-of-turn damage
-  (Acid Arrow, Spirit Guardians), regeneration and recharge rolls still have no
-  producer.
+  (Acid Arrow, Spirit Guardians) still has no producer. (Regeneration and
+  recharge rolls closed C18 — they run at the head of a driven monster turn,
+  `_run_monster_turn_start`, rather than as a registered `turn_start` hook;
+  see `docs/migration/v0.5-to-v0.6.md`.)
   (`packages/dnd5e-engine/src/dnd5e_engine/turn_lifecycle.py`,
   `packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_register_default_turn_hooks`)
-- **Opportunity attacks ignore the exhaustion penalty and the condition attack
-  rows** (2026-08-27) — the two OA paths still roll
-  `live.rng.randint(1, 20) + attack_bonus` outside `resolve_attack`, so
-  `d20_test_penalty`, Prone and Grappled do not reach them. C14 routes them
-  through the shared primitive and inherits all three.
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
-- **Initiative is host-supplied, not rolled.** `start_combat` orders the
-  `initiative` values from the specs; no DEX-mod roll, no surprise, no delay.
+- **Initiative has no "Delay" option.** C14 Task 8 (2026-09-01) added the
+  engine-rolled `d20 + DEX modifier` path (`initiative=None`) with Surprise
+  and Incapacitated Disadvantage; the SRD "Delay" combat option (holding
+  your Initiative count to act later) is still absent.
   (`packages/dnd5e-engine/src/dnd5e_engine/specs.py`)
-- **`ended_reason="flee"` is never returned.** `_derive_ended_reason`
-  (`orchestrator.py:5382`) yields victory / defeat_tpk / forced only.
-- **Movement rules beyond the budget are absent:** standing from prone (half
-  speed), crawling, climb/swim cost, jumping; `Combatant.movement_modes` is
-  hydrated and never read. Occupancy (C16) treats every enemy space as
+- **Movement rules beyond the budget are absent:** crawling, climb/swim
+  cost, jumping; `Combatant.movement_modes` is hydrated and never read.
+  Standing from Prone (half Speed, rounded down) closed C14 Task 7
+  (2026-09-01) via the `stand_up` `IntentType`
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_handle_stand_up`).
+  Occupancy (C16) treats every enemy space as
   impassable — the SRD's Tiny / two-sizes-larger pass-through and the "another
   creature's space is Difficult Terrain" cost both need creature size, which is
   not modelled; the forced-Prone consequence of ending a turn in a shared space
@@ -377,14 +538,53 @@ zone + apply logic:
 
 ## Audit 2026-08-26 — spellcasting & concentration
 
-- **Rests never restore spell slots.** `rest.py` has no slot handling; hosts
-  must reset `spell_slots` themselves. Pact Magic and per-class slot tables do
-  not exist — `spell_slots` is a host-supplied `dict[int, int]`.
+- **Empty `scaling.mode` is treated as whole-mode dice scaling on upcast
+  (2026-09-03, C17).** `activities/dice.py::_scaling_steps` scales dice for
+  any leveled spell whose damage part carries the corpus-default
+  `scaling {number: 1, mode: ""}`; Foundry treats `mode: ""` as no scaling.
+  C17 added a narrow guard in `activities/damage.py` (count-bearing
+  activities — those whose `target.affects.count` contains `@item.level`,
+  per `spellcasting.count_scales_with_cast_level` — roll at base level so
+  Magic Missile darts stay 1d4+1), but every OTHER leveled spell with an
+  empty mode still gains dice per slot above base. Needs a corpus scan and
+  a decision on whether `""` should mean "none" (would shift results for
+  hosts upcasting such spells).
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/dice.py`)
+- **Magic Missile darts share ONE damage roll applied N times, not N
+  independent rolls (2026-09-03, C17, ruling R5).** SRD RAW rolls each
+  dart's `1d4+1` separately; `resolve_damage` rolls the part once per
+  activity and applies that single result to every target in the
+  count-scaled fan-out, so all darts in one cast always deal identical
+  damage. This is a documented deviation kept deliberately for draw-count
+  determinism (a seeded replay's RNG draw count does not grow with slot
+  level) rather than a gap to close.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/damage.py::resolve_damage`)
+- **Pool choice for a multiclass Warlock cast is Spellcasting-first
+  (2026-09-03, C17 R3); no per-class spell-list gate or `use_pact_slot`
+  flag.** `_slot_available`/`_take_spell_slot` always try the regular
+  Spellcasting pool before Pact Magic; SRD §Multiclassing lets either pool
+  cast either prepared spell, so this is correct for slot AVAILABILITY, but
+  a caller cannot force a specific pool to be spent (e.g. to bank
+  Spellcasting slots and burn Pact Magic first, or vice versa).
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_take_spell_slot`)
+- **Attack-kind repeat instances (Scorching Ray's rays) are not
+  count-scaled (2026-09-03, C17).** R5's target-count scaling
+  (`resolve_target_count` / `target.affects.count`) only expands a
+  `damage`-kind activity's target list; the corpus encodes an
+  `attack`-kind spell's multiple-instances count (Scorching Ray: "three
+  rays", one attack roll each) only in description prose, not in a typed
+  field the resolver reads, so a single Scorching Ray cast still resolves
+  one attack roll regardless of slot level.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py`)
+- **Long Rest 16-hour cooldown / rest interruption are host time-model
+  concerns (2026-09-03, C17).** SRD 5.2 §Long Rest: "After you finish a
+  Long Rest, you must wait at least 16 hours before starting another one."
+  It also lists interrupting activity (walking, fighting, casting a spell)
+  as voiding progress; `resolve_long_rest`/
+  `resolve_short_rest` are pure functions with no calendar/clock input, so
+  neither the cooldown nor interruption tracking exists — a host wanting
+  either must gate its OWN call to these resolvers.
   (`packages/dnd5e-engine/src/dnd5e_engine/rest.py`)
-- **Monster spellcasting never happens.** `_activity_is_offensive`
-  (`monster_actions.py:83`) accepts attack/save only, so a `cast`-only
-  Spellcasting action (49 monsters) is never selected, and the monster context
-  is built with `spell_book={}` (`orchestrator.py:5303`).
 - **Absorb Elements has no reaction path**; Hellish Rebuke is only a
   `last_damaged_by` target validator, not a trigger. (See "Reactions are not
   data-driven" above.)
@@ -418,12 +618,19 @@ stand-in, not an engine capability. Specifically:
   `skill_check(jack_of_all_trades=...)` is unreachable from the public API;
   Reliable Talent, group checks and tool proficiencies are absent.
   (`packages/dnd5e-engine/src/dnd5e_engine/check.py`)
-- **Class features that are prose-only in the corpus:** Extra Attack, Fighting
-  Style, Divine Smite, Metamagic / sorcery points, Eldritch Invocations. Martial
-  Arts ships passive changes (`system.damage.base.custom.formula`) that are not
-  in the `passive_stats` allowlist. Bardic Inspiration grants a die nothing
-  consumes. Rage never ends for "didn't attack / take damage". Cunning Action's
-  bonus-action Dash is gated on `class_slug == "rogue"` rather than the feature.
+- **Class features that are prose-only in the corpus:** Fighting Style, Divine
+  Smite, Metamagic / sorcery points, Eldritch Invocations. (Extra Attack
+  closed C14 Task 1 — `_attacks_per_action` reads the granted
+  `extra-attack`/`two-extra-attacks`/`three-extra-attacks` feature slugs.)
+  **Action Surge and Flurry of Blows are still not modelled** (2026-09-01):
+  both grant an extra Action/action-equivalent mid-turn, which needs its own
+  seam distinct from the per-Action `attacks_remaining` counter C14 added —
+  neither feature's `activities` array carries a typed effect the resolver
+  reads. Martial Arts ships passive changes
+  (`system.damage.base.custom.formula`) that are not in the `passive_stats`
+  allowlist. Bardic Inspiration grants a die nothing consumes. Rage never
+  ends for "didn't attack / take damage". Cunning Action's bonus-action Dash
+  is gated on `class_slug == "rogue"` rather than the feature.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/passive_stats.py`)
 - **Equipment:** attunement limit (`requires_attunement` shipped, unread),
   ammunition decrement, versatile damage choice, shield don/doff, encumbrance —
@@ -433,32 +640,33 @@ stand-in, not an engine capability. Specifically:
 
 ## Audit 2026-08-26 — monsters
 
-- **Typed traits are hydrated but only Magic Resistance is consumed.**
+- **Typed traits are hydrated; only Flyby, Nimble Escape, Keen Senses and
+  Aggressive are still unconsumed (amended 2026-09-03, C18).**
   `Combatant.trait_mechanics` carries the 14 `MonsterTraitMechanic` values
-  (C22); Magic Resistance grants save advantage against spell-sourced saves
+  (C22). Magic Resistance grants save advantage against spell-sourced saves
   only ("other magical effects" — magic-item and spell-like monster saves —
-  are not yet recognised, and the two orchestrator-level save paths (repeat
-  save, concentration) do not read it). Pack Tactics, Legendary Resistance,
-  Sunlight Sensitivity, Undead Fortitude, Regeneration, Flyby, … are C18.
+  are not yet recognised, and the orchestrator-level save paths — repeat
+  save, concentration, Grapple/Shove — still do not read it). C18 landed
+  Pack Tactics (attack advantage), Sunlight Sensitivity (attack
+  disadvantage — its ability-check half is not modelled: the bundled trait
+  text is "While in sunlight, the monster has Disadvantage on ability checks
+  and attack rolls.", so every ability check the bearer makes in sunlight
+  should roll at Disadvantage), Undead Fortitude
+  (CON save to hold at 1 HP), Swarm (no HP/temp-HP gain) and Legendary
+  Resistance. Flyby (no flying-movement tracking) and Nimble Escape
+  (untyped bonus action; the monster AI takes no bonus actions) are not
+  modelled; Keen Senses and Aggressive are absent from the SRD 5.2 corpus
+  entirely.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/save_primitive.py`)
-- **79 monster actions carry `recharge`; zero `.recharge` reads** (sharpens
-  the "recharge not gated" entry above).
-- **Monster damage resistances/immunities are never hydrated** onto `Combatant`
-  (`_build_foe_combatants`); only vulnerabilities auto-hydrate from the template,
-  so resistances/immunities must be host-supplied on `EncounterMemberSpec`.
-  (Ability scores, save/skill proficiencies and the proficiency bonus DO
-  hydrate as of F1b.)
 - **Target selection is hard-coded lowest-HP living PC** (`orchestrator.py:5069`)
-  with no reach/LoS/threat consideration; flee planning returns `None` on a
-  grid (`_plan_flee_destination:695`) so a fleeing monster holds still.
-- **Corpus damage resistances must carry their magical-bypass qualifier when
-  hydrated** (2026-08-27). `Combatant.physical_resistances_nonmagical_only`
-  defaults True (host-authored "…from nonmagical attacks" convention, C22-S04).
-  When C18 hydrates `Monster.damage_resistances`, it must set the flag from
-  Foundry `dr.bypasses` (`"mgc" in bypasses`), which is empty for every 2024
-  SRD actor — otherwise SRD 5.2 unconditional B/P/S resistances would be
-  bypassed by magic weapons. Immunities have no bypass axis at all.
-  (`packages/dnd5e-engine/src/dnd5e_engine/activities/apply.py`)
+  with no reach/LoS/threat consideration — the monster AI never consults
+  `_combatant_can_see` or a Frightened monster's own line-of-sight/
+  no-approach rule when choosing a target or walking; confirmed still open
+  after C18 (2026-09-03) — a rule card scoped it out as not an SRD rule, so
+  this stands as a deliberate scope cut, not an oversight. Same status for
+  flee planning, which returns `None` on a grid (`_plan_flee_destination:695`,
+  C18 S08 needs only the `has_fled` flag, not movement) so a fleeing
+  monster holds still.
 - **`PartyMemberSpec` has no `physical_resistances_nonmagical_only`
   counterpart** (2026-08-30). PCs are pinned to the nonmagical-only reading of
   host-authored B/P/S resistances; a PC whose resistance should be
@@ -486,33 +694,6 @@ footprints. Exploration-tier; revisit only if a host asks.
   grep-level code probe in both directions (five added by C16, 2026-08-27). The probe set is a sample, not
   exhaustive — **add a probe entry whenever a status row is flipped.**
 
-## Catalog v2 scenarios without a prior entry (2026-08-26)
-
-Seven e2e catalog-v2 scenarios (`specs/catalog-v2/c12.md`, `c13.md`, `c17.md`)
-name a gap with no standalone bullet filed anywhere above — recorded here so
-the close-gap protocol (delete-on-close) has an entry to delete.
-
-- **C17-S01 — No engine-side per-class spell-slot table derivation.** The
-  engine only accepts a host-precomputed flat `spell_slots` dict; nothing
-  reads a class's `spellcasting.progression` to project a level → slot-table
-  row. (`packages/dnd5e-engine/src/dnd5e_engine/build_spec.py`)
-- **C17-S02 — Pact Magic has no separate slot pool.** Warlock spell slots
-  are folded into the same flat `spell_slots` dict as every other caster;
-  Pact Magic's Short-Rest recovery (the SRD's only Short-Rest-recovering
-  pool) has no seam — `resolve_short_rest` carries no `pact_slots` param.
-  (`packages/dnd5e-engine/src/dnd5e_engine/rest.py`)
-- **C17-S04 — Long Rest doesn't restore spell slots or reduce Exhaustion.**
-  `resolve_long_rest`'s signature is `(pool, hp_current, hp_max) ->
-  RestOutcome` — no `spell_slots`/`exhaustion_level` parameter exists, and
-  `RestOutcome` has no field to report either.
-  (`packages/dnd5e-engine/src/dnd5e_engine/rest.py`)
-- **C17-S05 — Upcast target-count scaling never fires (Magic Missile).**
-  `activities/dice.py`'s scaling machinery reads only `DamagePart.scaling`,
-  never a target's `target.affects.count` field; `PlayerIntent.target_id`
-  is a single `str | None` with no multi-target/dart-count shape to route
-  through, so a 3rd-level Magic Missile still fires only 1 dart, not 5.
-  (`packages/dnd5e-engine/src/dnd5e_engine/activities/dice.py`)
-
 ## Foundations follow-ups (2026-08-26)
 
 Reviewed and deliberately deferred during the F1–F3 foundations pass (actor
@@ -528,7 +709,8 @@ a cluster; they are consolidated here so they are not re-discovered.
 - **`EncounterMemberSpec.dexterity: int = 10` is a lossy sentinel.** The monster
   template hydration cannot distinguish "host left the default" from "host
   explicitly set 10", so an explicit 10 always defers to the template's DEX.
-  Retype to `int | None = None` (additive; needs a migration note) in C18/C23.
+  Retype to `int | None = None` (additive; needs a migration note) in C23
+  (C18 did not retype it).
   (`packages/dnd5e-engine/src/dnd5e_engine/specs.py`)
 - **Roll events cannot report bonus DICE.** `roll_total == natural + modifier`
   only when no Bless/Bane-style bonus die applied; `modifier` deliberately
@@ -545,7 +727,9 @@ a cluster; they are consolidated here so they are not re-discovered.
 - **The turn-start log index is recomputed per candidate effect.**
   `_effect_applied_during_current_turn` rescans the event log for each
   until-end-of-next-turn effect at a turn boundary. Bounded and immaterial at
-  today's scale; when C12/C18 add a *second* log-reading turn hook, hoist a
+  today's scale (C18 added no such hook — its monster turn-start mechanics
+  run from `_run_monster_turn_start`); if a *second* log-reading turn hook is
+  ever added, hoist a
   single `current_turn_start_index` computed once in `_begin_turn` and have
   both hooks read it.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_begin_turn`)
@@ -601,21 +785,27 @@ C12 gave all 15 conditions teeth on the live combat path (see
 `docs/capabilities.md`). These rows are what is left; each needs a seam another
 cluster owns.
 
-- **Frightened's line-of-sight gate and "can't approach the source of fear".**
-  The disadvantage applies unconditionally (no `can_see` check) and movement
-  toward the fear source is not blocked. Needs C16b's `can_see`.
-  (`packages/dnd5e-engine/src/dnd5e_engine/rules/conditions.py`)
+- **Frightened's ability-check half of the line-of-sight gate** (2026-09-02).
+  SRD 5.2 Frightened: "Disadvantage on ability checks and attack rolls while
+  the source of fear is within line of sight." C16b gated the attack-roll
+  half (`conditions_grant_advantage_on_attack`'s `fear_source_in_sight`
+  kwarg) and the "can't willingly move closer to the source of fear"
+  movement rule (`MoveFailed(reason="frightened")`); the ability-check half
+  still applies the disadvantage unconditionally.
+  (`packages/dnd5e-engine/src/dnd5e_engine/rules/conditions.py::conditions_grant_disadvantage_on_ability_checks`)
+- **Frightened's no-approach rule is additionally gated on line of sight to
+  the source (plan ruling R5); SRD 5.2 imposes it unconditionally**
+  (2026-09-03). SRD 5.2 Frightened's "You can't willingly move closer to the
+  source of fear." sentence carries no line-of-sight conjunct — only the
+  disadvantage sentence does — but the engine's `_frightened_approach_blocked`
+  reuses `_combatant_can_see` for both, a deliberate (kept) deviation: a
+  Frightened creature that cannot currently see its fear source may move
+  toward it unimpeded, where SRD 5.2 would still block the approach.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_frightened_approach_blocked`)
 - **Blinded / Deafened "automatically fail ability checks that require
   sight/hearing".** There is no per-check sense vocabulary on `CheckSpec` /
   `CheckActivity`, so a check cannot declare it requires sight or hearing.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/check.py`)
-- **Incapacitated imposes Initiative disadvantage.** Initiative is
-  host-supplied until C14 rolls it. (Incapacitated breaking Concentration
-  landed via C13.)
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
-- **Invisible's "unless a creature can somehow see you" carve-out.** Both
-  attack directions apply unconditionally; the per-observer sense check is
-  C16b. (`packages/dnd5e-engine/src/dnd5e_engine/rules/conditions.py`)
 - **Charmed grants the charmer advantage on social ability checks.** The
   engine has no social-interaction check surface to attach it to (no
   `influence` intent, no interaction DC), so the row is unrepresentable rather
@@ -651,6 +841,15 @@ re-discovered.
 
 ## Blocked
 
+- **Lair actions are blocked on translator support** (2026-09-03, C18 R10).
+  All 341 bundled monsters ship `lair_actions == []` (schema field exists,
+  the translator never populates it from a Foundry source), so there is
+  nothing for the engine to spend. The initiative-20 pseudo-turn a lair
+  action needs (a scene-owned action outside any creature's own turn) is
+  designed but unimplemented; blocked on dataset/translator work to source
+  lair-action content before an engine seam is worth building.
+  (`packages/dnd5e-srd-data/src/dnd5e_srd_data/schema/monster.py`,
+  `packages/dnd5e-engine/src/dnd5e_engine/activities/monster_actions.py`)
 - **`custom` `ActiveEffectChange` mode — needs a product decision** (2026-07-02).
   No Foundry-core semantics to port: Foundry itself delegates `custom` to
   host-registered `applyChangeCustom` callbacks, so there is no SRD or
@@ -670,6 +869,17 @@ re-discovered.
 The SillyTavern sidecar (`packages/nat20-bridge`) is a thin FastAPI routing
 layer over the engine — see `docs/bridge.md`. Gaps found while shipping it:
 
+- **Bridge `slots.py` duplicates the engine table with the 2014 level-1
+  half-caster row (2026-09-03, C17).** The bridge's own transcribed
+  `_HALF_CASTER_SLOTS` table gives a level-1 half-caster `{}` (no slots);
+  the engine's `spellcasting.py` (C17, per the SRD 5.2/Foundry parity
+  ruling R2 — per-class rounding, `half` = `ceil(level / 2)`) gives a
+  level-1 half-caster `{1: 2}`. The bridge does not yet call the engine's
+  `derive_spell_slots`/`derive_multiclass_slots`, so its own party-derivation
+  path still disagrees with the engine on this one row. Migrate the bridge
+  onto the engine's public spellcasting functions and delete the duplicate
+  table.
+  (`packages/nat20-bridge/src/nat20_bridge/slots.py`)
 - **Global-`random` seeding is not safe under concurrent requests**
   (2026-08-21). `_start_route` (and `app.py`'s `_do_roll`/`_do_check`) seed the
   stdlib global `random` module to make the engine's legacy dice seam
@@ -752,6 +962,26 @@ layer over the engine — see `docs/bridge.md`. Gaps found while shipping it:
 
 - **`lair_actions` is empty for all 341 monsters** even though SRD 5.2 defines
   them for several creatures, and the schema field exists.
+
+## Monster spellcasting ability gaps (2026-09-04)
+
+- **`mummy-lord.spellcasting_ability` is `None` despite the monster casting
+  spells.** Its Foundry source (`actors24/undead/mummy-lord.yml`) carries no
+  usable signal: the top-level `attributes.spellcasting` is the `"str"`
+  non-caster placeholder and every one of its cast activities' own
+  `spell.ability` is empty — the ability is stated only in trait prose. It is
+  the sole cast-bearing monster (of 65) the translator cannot resolve.
+  (`packages/dnd5e-srd-data/tools/translators/foundry.py::_spellcasting_ability`)
+- **Coven-shared casting can outvote a monster's own spellcasting ability.**
+  `sea-hag.spellcasting_ability` resolves to `"int"` because its shared
+  "Coven Magic" trait contributes 6 cast activities at `int` versus 1 at its
+  true personal ability (`con`, per `attributes.spellcasting: con` and its
+  own "Illusory Appearance" cast activity) — majority-vote-by-activity-count
+  picks the coven ability over the personal one. `green-hag` has the
+  equivalent issue (resolves `"int"` via Coven Magic instead of its personal
+  `"wis"`). A future pass could special-case or exclude coven/shared-trait
+  cast activities from the vote.
+  (`packages/dnd5e-srd-data/tools/translators/foundry.py::_spellcasting_ability`)
 
 ---
 

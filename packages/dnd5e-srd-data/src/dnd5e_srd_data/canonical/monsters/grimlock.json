@@ -165,7 +165,9 @@
   "hp_dice": "2d8 + 2",
   "lair_actions": [],
   "languages": [],
+  "legendary_action_uses": null,
   "legendary_actions": [],
+  "legendary_resistance_uses": null,
   "movement": {
     "burrow": null,
     "climb": 30,
@@ -226,5 +228,6 @@
     "survival": null
   },
   "slug": "grimlock",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": null
 }

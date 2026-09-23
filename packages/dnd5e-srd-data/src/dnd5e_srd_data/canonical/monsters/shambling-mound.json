@@ -567,7 +567,9 @@
   "hp_dice": "13d10 + 39",
   "lair_actions": [],
   "languages": [],
+  "legendary_action_uses": null,
   "legendary_actions": [],
+  "legendary_resistance_uses": null,
   "movement": {
     "burrow": null,
     "climb": null,
@@ -640,5 +642,6 @@
       "slug": "lightning-absorption",
       "uses_per_day": null
     }
-  ]
+  ],
+  "spellcasting_ability": null
 }

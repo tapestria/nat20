@@ -510,7 +510,9 @@
     "Common",
     "Thieves' Cant"
   ],
+  "legendary_action_uses": null,
   "legendary_actions": [],
+  "legendary_resistance_uses": null,
   "movement": {
     "burrow": null,
     "climb": null,
@@ -583,5 +585,6 @@
       "slug": "evasion",
       "uses_per_day": null
     }
-  ]
+  ],
+  "spellcasting_ability": null
 }

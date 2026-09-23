@@ -424,7 +424,9 @@
   "hp_dice": "6d8 + 12",
   "lair_actions": [],
   "languages": [],
+  "legendary_action_uses": null,
   "legendary_actions": [],
+  "legendary_resistance_uses": null,
   "movement": {
     "burrow": null,
     "climb": null,
@@ -485,5 +487,6 @@
     "survival": null
   },
   "slug": "death-dog",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": null
 }

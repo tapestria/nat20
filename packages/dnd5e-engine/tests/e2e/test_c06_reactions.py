@@ -547,7 +547,9 @@ def test_c06_s04_shield_vs_magic_missile_zero_force_damage():
         for e in events_of(live_a, DamageApplied)
         if e.target_id == "char:target" and e.damage_type == "force"
     )
-    assert 2 <= unshielded_total <= 5
+    assert (
+        6 <= unshielded_total <= 15
+    )  # C17-S05: three darts at slot 1 (SRD "three glowing darts"), shared 1d4+1 roll
 
     # Run B: Shield readied against the Magic Missile trigger.
     live_b = run_async(

@@ -75,3 +75,16 @@ def test_mutually_unseen_cancels_to_normal() -> None:
     resolve_attack(_activity(), ctx)
     assert out[0].advantage == "normal"
     assert "unseen" in out[0].sources
+
+
+def test_mutually_unseen_splits_into_one_token_per_direction() -> None:
+    """C16b Task 6 — the union ``sources`` reports "unseen" twice (once per
+    direction), but the split lists each carry exactly one: the attacker's
+    disadvantage (can't see target) and the attacker's advantage (target
+    can't see attacker) are distinct D20 Test contributions that happen to
+    share a token."""
+    ctx, out = _ctx(target_unseen={"t": True}, attacker_unseen_by={"t": True})
+    resolve_attack(_activity(), ctx)
+    assert out[0].sources.count("unseen") == 2
+    assert out[0].advantage_sources == ["unseen"]
+    assert out[0].disadvantage_sources == ["unseen"]

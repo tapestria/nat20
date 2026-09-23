@@ -43,6 +43,35 @@ def test_bundled_get_spell_by_uuid():
     assert loader.get_spell_by_uuid("Compendium.dnd5e.spells24.Item.missing") is None
 
 
+def test_bundled_mage_and_dragon_carry_their_spellcasting_ability():
+    loader = BundledAssetLoader()
+    assert loader.get_monster("mage").spellcasting_ability == "int"
+    # Verified against raw_sources/foundry/packs/_source/actors24/dragon/
+    # adult-red-dragon.yml: the 2024 SRD adult red dragon carries an innate
+    # Charisma-based spellcasting ability.
+    assert loader.get_monster("adult-red-dragon").spellcasting_ability == "cha"
+    # The wolf has no cast activity at all, so it is never tagged.
+    assert loader.get_monster("wolf").spellcasting_ability is None
+    # Stone Golem's Slow trait casts with Constitution — the rare valid
+    # non-mental spellcasting ability (also true of Sea Hag).
+    assert loader.get_monster("stone-golem").spellcasting_ability == "con"
+    # Ghost's Horrifying Visage carries its real ability (cha) on the cast
+    # activity even though the top-level attributes.spellcasting field is
+    # left at Foundry's "str" non-caster placeholder.
+    assert loader.get_monster("ghost").spellcasting_ability == "cha"
+    # Cloaker's top-level field is empty; its cast activity's own ability
+    # (wis) is still recovered.
+    assert loader.get_monster("cloaker").spellcasting_ability == "wis"
+    # A non-caster (no cast activity at all) is never tagged, even though it
+    # has ability scores like any other monster.
+    assert loader.get_monster("tiny-animated-object").spellcasting_ability is None
+    # Known residual: Mummy Lord's spellcasting ability is stated only in
+    # trait prose (top-level "str" placeholder; every cast activity's own
+    # ability is empty) — no structured field carries it. Tracked as
+    # upstream data debt rather than guessed at.
+    assert loader.get_monster("mummy-lord").spellcasting_ability is None
+
+
 # Known legacy-pack cast reference: rod-of-alertness delegates to the 2014
 # "spells" compendium, which the SRD 5.2 corpus does not carry. Tracked as
 # upstream data debt — every other cast uuid must resolve.

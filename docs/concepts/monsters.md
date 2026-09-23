@@ -60,13 +60,24 @@ logs rather than silent. For homogeneous multiattacks ("three Rend attacks")
 the fallback is correct; 5 monsters are heterogeneous and get the wrong mix.
 See the [capability matrix](../capabilities.md) for the specifics.
 
+## Monster action economy
+
+A monster's turn picks the most powerful option it has: a charged Recharge
+action first, then a Spellcasting action whose N/Day offensive spell still has
+a use left, then Multiattack, then its other attacks and at-will spells in
+stat-block order. At the start of a living monster's own turn the engine rolls
+Recharge for each spent recharge action, applies Regeneration and refills its
+legendary-action pool. Legendary actions are host-driven:
+`advance_monster_turn(handle, legendary=True)` after another creature's turn
+ends. Legendary Resistance is armed ahead of a save with
+`resolve_legendary_resistance`. The capability matrix lists the traits the
+engine consumes.
+
 ## What is not modelled
 
-- **Legendary actions.** 30 monsters carry them in the data; the engine reads
-  only `Monster.actions`, so a legendary creature acts once per round like any
-  other.
-- **Lair actions**, **recharge (5–6) abilities**, **regeneration**, and
-  `special_abilities`.
+- **Lair actions** — the corpus ships none.
+- Some `special_abilities` (Flyby, Nimble Escape) and the ability-check half of
+  Sunlight Sensitivity.
 
 All are tracked in `BACKLOG.md`. If you need them, resolve them host-side and
 apply the results through the engine's normal paths.

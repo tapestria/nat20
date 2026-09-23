@@ -22,6 +22,21 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True)
+class TurnCombatView:
+    """Per-current-actor turn-state projection (spec §6 row D2)."""
+
+    attacks_remaining: int
+
+
+@dataclass(frozen=True)
+class MonsterActionUsesView:
+    """Read-only projection of one ``MonsterActionUses`` (C18)."""
+
+    recharge_spent: bool
+    uses_remaining: dict[str, int]
+
+
+@dataclass(frozen=True)
 class LiveCombatView:
     """Snapshot projection of live combat state for host consumers."""
 
@@ -34,6 +49,7 @@ class LiveCombatView:
     active_conditions: dict[str, set[str]]
     actor_zone: dict[str, str]
     spell_slots_by_entity: dict[str, dict[int, int]]
+    pact_slots_by_entity: dict[str, dict[int, int]]
     spells_known_by_entity: dict[str, list[str]]
     custom_counters_by_entity: dict[str, dict[str, dict[str, int]]]
     current_turn_index: int
@@ -44,9 +60,27 @@ class LiveCombatView:
     # the host-readable projection of the engine's concentration ownership
     # (C13, API-DELTAS). Empty dict when nobody concentrates.
     concentration_chain: dict[str, list[tuple[str, str, str]]]
+    # C14 — the current actor's per-Action attack budget (spec §6 row D2).
+    # ``TurnCombatView(attacks_remaining=0)`` when combat has ended or the
+    # initiative order is empty (no current actor to project).
+    turn: TurnCombatView
+    # C18 — per-monster limited-use state (recharge actions, N/Day trait
+    # uses), keyed entity_id -> action slug -> its use state. Absent entries
+    # mean "no limited-use actions tracked for this entity".
+    monster_action_uses_by_entity: dict[str, dict[str, MonsterActionUsesView]]
+    # C18 — Legendary Actions / Legendary Resistance REMAINING pools, keyed
+    # entity_id. Only monsters with a non-empty pool (``…_max > 0``) appear;
+    # PCs and template-less foes are absent.
+    legendary_actions_by_entity: dict[str, int]
+    legendary_resistances_by_entity: dict[str, int]
 
     @classmethod
     def from_live(cls, live: _LiveCombat) -> LiveCombatView:
+        turn = TurnCombatView(attacks_remaining=0)
+        if not live.ended and 0 <= live.current_turn_index < len(live.initiative):
+            turn = TurnCombatView(
+                attacks_remaining=live.initiative[live.current_turn_index].attacks_remaining
+            )
         return cls(
             initiative=list(live.initiative),
             party_ids=set(live.party_ids),
@@ -57,6 +91,7 @@ class LiveCombatView:
             active_conditions={k: set(v) for k, v in live.active_conditions.items()},
             actor_zone=dict(live.actor_zone),
             spell_slots_by_entity={k: dict(v) for k, v in live.spell_slots_by_entity.items()},
+            pact_slots_by_entity={k: dict(v) for k, v in live.pact_slots_by_entity.items()},
             spells_known_by_entity={k: list(v) for k, v in live.spells_known_by_entity.items()},
             custom_counters_by_entity={
                 entity_id: {key: dict(counter) for key, counter in counters.items()}
@@ -67,7 +102,28 @@ class LiveCombatView:
             ended=live.ended,
             final_outcome=live.final_outcome,
             concentration_chain={k: list(v) for k, v in live.concentration_chain.items()},
+            turn=turn,
+            monster_action_uses_by_entity={
+                entity_id: {
+                    slug: MonsterActionUsesView(
+                        recharge_spent=uses.recharge_spent,
+                        uses_remaining=dict(uses.uses_remaining),
+                    )
+                    for slug, uses in by_slug.items()
+                }
+                for entity_id, by_slug in live.monster_action_uses_by_entity.items()
+            },
+            legendary_actions_by_entity={
+                c.entity_id: c.legendary_actions_remaining
+                for c in live.initiative
+                if c.legendary_actions_max
+            },
+            legendary_resistances_by_entity={
+                c.entity_id: c.legendary_resistances_remaining
+                for c in live.initiative
+                if c.legendary_resistances_max
+            },
         )
 
 
-__all__ = ["LiveCombatView"]
+__all__ = ["LiveCombatView", "MonsterActionUsesView", "TurnCombatView"]

@@ -9,6 +9,8 @@ engine's per-creature runtime combat state; hosts read it through
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from dataclasses import field as dc_field
 from enum import StrEnum
 from typing import Any
 
@@ -27,6 +29,21 @@ class BehaviorProfile(StrEnum):
     DEFENSIVE = "DEFENSIVE"
 
 
+@dataclass
+class MonsterActionUses:
+    """Per-action limited-use state for one monster (combat-scoped).
+
+    ``recharge_spent`` tracks a SRD 5.2 "Recharge X–Y" action that has been
+    used and not yet rolled back in (``_roll_recharges`` in orchestrator.py).
+    ``uses_remaining`` tracks a "N/Day"-style limited-use activity, keyed
+    ``f"{action.slug}:{activity.id}"`` so two activities sharing one action
+    entry (rare, but the schema allows it) track independently.
+    """
+
+    recharge_spent: bool = False
+    uses_remaining: dict[str, int] = dc_field(default_factory=dict)
+
+
 class Combatant(BaseModel):
     entity_id: str
     entity_type: str  # "Character" | "Monster" | "NPC"
@@ -40,7 +57,19 @@ class Combatant(BaseModel):
     # Extended combat stats (populated at combat start)
     hp_max: int = 0
     ac: int = 10
-    attack_bonus: int = 0
+    # C15 (2026-09-02) — widened to ``int | None`` (was ``int = 0``). ``None``
+    # means the host never explicitly set ``PartyMemberSpec.attack_bonus``;
+    # ``activities/build_context.py``'s ``attack_bonus_override`` threads this
+    # verbatim into ``ActivityResolutionContext``, and ``activities/attack.py``
+    # already treats ``None`` as "no override" — so an unset PC now correctly
+    # falls through to the real governing-ability-mod + proficiency-bonus
+    # computation (SRD §Weapon Proficiency gate) instead of being silently
+    # pinned to a 0 to-hit bonus. A host-supplied value (including a
+    # real monster's, always threaded as a concrete int) is unaffected —
+    # byte-identical to every pre-C15 fixture. Every direct arithmetic reader
+    # (``build_context._caster_mod`` / ``_save_dc``, the two opportunity-
+    # attack fire sites in ``orchestrator.py``) guards with ``or 0``.
+    attack_bonus: int | None = None
     damage_dice: str = "1d4"  # "XdY+Z" format
     damage_type: str = "bludgeoning"
     behavior_profile: str = "AGGRESSIVE"  # BehaviorProfile value
@@ -56,7 +85,18 @@ class Combatant(BaseModel):
     save_proficiencies: list[str] = Field(default_factory=list)  # Ability codes
     skill_proficiencies: list[str] = Field(default_factory=list)  # skill slugs
     skill_expertise: list[str] = Field(default_factory=list)
-    weapon_proficiencies: list[str] = Field(default_factory=list)  # categories + slugs
+    # C15 (2026-09-02) R1 sentinel — SRD 5.2 §Weapon Proficiency: "Anyone can
+    # wield a weapon, but you must have proficiency with it to add your
+    # Proficiency Bonus to an attack roll you make with it" (Proficiency
+    # Bonus is OMITTED, never subtracted, when unproficient). ``None`` means
+    # the host never set ``PartyMemberSpec.weapon_proficiencies`` — "assume
+    # proficient", reproducing every pre-C15 fixture byte-identically. An
+    # explicit list (possibly empty — "proficient in nothing") switches on
+    # real enforcement: proficient iff the weapon's ``weapon_category`` or
+    # ``slug`` appears in the list. Monsters never carry this field
+    # explicitly, so it stays ``None`` -> always proficient, matching the SRD
+    # "a monster is proficient with any weapon in its stat block" rule.
+    weapon_proficiencies: list[str] | None = None  # categories + slugs; None = legacy sentinel
     death_saves: dict[str, Any] = Field(default_factory=dict)  # serialized DeathSaveState
     # SRD §Creatures — creature_type (e.g. "humanoid", "undead", "construct",
     # "elf"). Drives type-gated spell semantics (Hold Person targets only
@@ -180,6 +220,49 @@ class Combatant(BaseModel):
     # / reaction_available / disengaging_this_turn. Defaults False (rider may
     # fire) for every combatant.
     sneak_attack_spent_this_turn: bool = False
+    # SRD §Extra Attack — "you can attack twice, instead of once, whenever
+    # you take the Attack action on your turn" (and thrice/four-times at
+    # higher tiers). The remaining main-hand swings this Action; refreshed
+    # to ``_attacks_per_action(current)`` at the actor's own TurnStarted,
+    # decremented once per resolved main-hand attack. 1 for every combatant
+    # without a qualifying Extra Attack feature (the SRD default).
+    attacks_remaining: int = 1
+    # SRD §Action Economy — True once this turn's Attack action has
+    # consumed its Action (the FIRST main-hand swing of a multi-attack
+    # sequence). Gates whether a subsequent same-turn attack intent still
+    # owes the Action budget (soft-consume: only the first swing pays).
+    # Reset to False at the actor's own TurnStarted.
+    attack_action_engaged: bool = False
+    # SRD §Two-Weapon Fighting (Task 2) — the main-hand weapon's slug when
+    # the just-resolved main-hand attack used a Light melee weapon,
+    # opening the "attack again with a different Light weapon" off-hand
+    # window. ``None`` closes the window (no Light main-hand swing yet
+    # this turn). Reset to ``None`` at the actor's own TurnStarted.
+    light_weapon_swing_slug: str | None = None
+    # SRD §Two-Weapon Fighting (Task 2) — True once the Bonus Action
+    # off-hand attack has been made this turn, closing the TWF window for
+    # any further off-hand swing. Reset to False at the actor's own
+    # TurnStarted.
+    offhand_attack_spent: bool = False
+    # SRD §Actions in Combat — Dodge (C14 Task 3). True for the remainder of
+    # this turn and "until the start of your next turn": while active, any
+    # attack roll made against this combatant has Disadvantage if the
+    # attacker can see it (C16b: gated via ``orchestrator.py::
+    # _combatant_can_see``, see ``activities/attack.py``) and it makes
+    # Dexterity saving throws with Advantage. Lost early if Incapacitated or
+    # Speed 0 (SRD loss clause;
+    # see ``_dodge_benefit_active`` in orchestrator.py). Reset to False at
+    # the actor's own TurnStarted — the exact SRD expiry point.
+    dodging: bool = False
+    # SRD 5.2 §Actions in Combat — Hide (final-review fix F3). Although Hide
+    # touches no Action-economy budget (``_handle_hide``'s docstring), the
+    # SRD frames it as taking "the Hide action" — a single attempt, not a
+    # retry loop against an unresolved DC 15 Dexterity (Stealth) check.
+    # True once a gated-through Hide attempt (success OR failure) has been
+    # made this turn; a second attempt is rejected
+    # (``IntentRejectedError("no_action_economy")``) with zero d20 draws.
+    # Reset to False at the actor's own TurnStarted, alongside dodging.
+    hide_attempted_this_turn: bool = False
     # C22: typed SRD 5.2 monster traits hydrated from the template's
     # ``special_abilities[].mechanic`` (Magic Resistance → advantage on saves
     # against spells in ``activities/save_primitive.py``; C18 consumes Pack
@@ -191,9 +274,55 @@ class Combatant(BaseModel):
     # nonmagical attacks": a magical weapon's or a spell's Bludgeoning /
     # Piercing / Slashing damage bypasses the resistance. False = the
     # resistance is unconditional (SRD 5.2 stat blocks; Foundry
-    # ``dr.bypasses == []``). C18's corpus hydration sets it from
-    # ``dr.bypasses``.
+    # ``dr.bypasses == []``). C18's corpus hydration sets it to False for a
+    # template-hydrated resistance list — met by construction, not read from
+    # data: the dataset schema carries no bypass field, so a future one must
+    # be wired in both the translator and that hydration.
     physical_resistances_nonmagical_only: bool = True
+    # SRD 5.2 §Legendary Actions — Legendary Action Uses pool ("it regains
+    # all expended uses at the start of each of its turns"): reset to
+    # ``legendary_actions_max`` at the start of the monster's OWN turn
+    # (``_run_monster_turn_start``, orchestrator.py) — a per-turn pool, not a
+    # per-day one. Hydrated at ``start_combat`` from the typed
+    # ``Monster.legendary_action_uses`` (3 when a template with legendary
+    # actions leaves it untyped); 0/0 for PCs and template-less foes.
+    legendary_actions_max: int = 0
+    legendary_actions_remaining: int = 0
+    # SRD 5.2 §Legendary Resistance — "N/Day" pool. Per DAY: it is NOT
+    # reset at turn start (nor anywhere within a combat). Hydrated via
+    # ``_legendary_resistance_max`` from the typed
+    # ``Monster.legendary_resistance_uses`` (3, 4 or 6 in the bundled
+    # corpus), else the trait's ``uses_per_day`` / ``"N/Day"`` name suffix,
+    # else 3.
+    legendary_resistances_max: int = 0
+    legendary_resistances_remaining: int = 0
+    # C18 Task 9 consumes this: True once a fleeing/retreating monster has
+    # left the fight (the flee-retreat path does not yet remove combatants
+    # from initiative). Defaults False for every combatant.
+    has_fled: bool = False
+    # SRD §Spellcasting — the ability a monster's innate/prepared spells key
+    # off (``Monster.spellcasting_ability``). ``None`` for PCs (who project
+    # their own caster ability elsewhere) and monsters without spellcasting;
+    # hydrated by C18 Task 5.
+    spellcasting_ability: str | None = None
+    # SRD 5.2 Loading — "You can fire only one piece of ammunition from a
+    # Loading weapon when you use an action, a Bonus Action, or a Reaction
+    # to fire it, regardless of the number of attacks you can normally
+    # make." Engine reading: one fire per TURN, not per action-type — no
+    # PC reaction-attack path exists, so action/bonus/reaction collapse to
+    # the turn boundary; the cap is per-actor (not per-weapon), matching
+    # the SRD's "you" framing. Set True after any resolved main-hand OR
+    # off-hand swing with a ``WeaponProperty.LOADING`` weapon (C15 Task
+    # 5). Reset to False at the actor's own TurnStarted, alongside the
+    # other per-turn attack-economy fields above.
+    loading_weapon_fired_this_turn: bool = False
+    # SRD 5.2 §Weapon Mastery — Cleave: "You can make this extra attack only
+    # once per turn." Set True by the orchestrator once a cleave chain has
+    # FIRED this turn (the extra attack roll was made, hit or miss); gates
+    # ``ActivityResolutionContext.cleave_available`` for every later swing
+    # this turn. Reset to False at the actor's own TurnStarted, alongside
+    # the other per-turn attack-economy fields above (C15 Task 7).
+    cleave_spent_this_turn: bool = False
 
     @model_validator(mode="before")
     @classmethod
@@ -220,4 +349,5 @@ class Combatant(BaseModel):
 __all__ = [
     "BehaviorProfile",
     "Combatant",
+    "MonsterActionUses",
 ]

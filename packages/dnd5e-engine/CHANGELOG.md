@@ -8,12 +8,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 Core-mechanics **foundations** (F1 actor stat projection, F2 unified d20 test,
-F3 turn lifecycle) and cluster **C12 — conditions enforced**. Nothing is removed
-and no signature changes shape — every new field is optional and defaults to the
-pre-0.6 behaviour. C12 does change *results* for hosts that carry conditions or
-exhaustion on a combatant. Behavioural deltas
-(and the fixtures they move) are enumerated in
+F3 turn lifecycle) and clusters **C12 — conditions enforced**, **C13 —
+concentration lifecycle**, **C14 — action economy** (Dodge, Help, Hide,
+Extra Attack, two-weapon fighting, Grapple/Shove/`stand_up`, engine-rolled
+initiative with Surprise, and opportunity attacks through the shared d20
+primitive), **C15 — attack rules** (weapon proficiency, range tiers,
+thrown weapons, Ranged Attacks in Close Combat, Heavy, versatile grip,
+damage attribution, crit-at-0-HP, Loading, and all eight 2024 weapon
+masteries), **C17 — spell slots, rests and upcasting** (per-class/
+multiclass/Pact Magic slot derivation, rest-based slot recovery and
+Exhaustion reduction, upcast target-count scaling, Counterspell/readied-cast
+slot+range gating, and out-of-combat Ritual resolution) and **C18 — monster
+action economy** (Recharge, Regeneration, Legendary Actions, Legendary
+Resistance, stat-block spellcasting, and the remaining `MonsterTraitMechanic`
+consumers). Nothing is removed and no signature changes shape — every new
+field is optional and defaults to the pre-0.6 behaviour. C12/C14/C15/C17/C18
+do change *results* for hosts that carry conditions, exhaustion, turn-keeping
+attacks, weapon proficiency/mastery data, casters, or monsters with a
+recharge/limited-use/legendary action or a newly-consumed trait on a
+combatant. Behavioural deltas (and the fixtures they move) are enumerated in
 [`docs/migration/v0.5-to-v0.6.md`](../../docs/migration/v0.5-to-v0.6.md).
+
+- **Action economy (C14).** Extra Attack reads a caster's granted
+  `extra-attack` / `two-extra-attacks` / `three-extra-attacks` feature slugs
+  (highest tier wins, never summed) into a per-Action `attacks_remaining`
+  counter; a turn now keeps going after a main-hand attack until that
+  counter — and any open two-weapon-fighting Bonus Action window — is spent
+  (`LiveCombatView.turn: TurnCombatView`). A Light main-hand weapon opens a
+  same-turn off-hand Bonus Action swing (SRD 5.2 §Two-Weapon Fighting). Dodge,
+  Help (assist-an-attack-roll flavor) and Hide (DC 15 Stealth, cover/
+  obscurement gate, Invisible-while-hidden) now have live dispatch handlers.
+  New `IntentType` members `"grapple"`, `"shove"`, `"stand_up"`,
+  `"escape_grapple"` resolve the Unarmed Strike Grapple/Shove options, the
+  SRD 5.2 "Ending a Grapple" escape check and standing from Prone at half
+  Speed. `PlayerIntent.shove_push: bool = False` picks the shover's Prone-or-
+  push outcome. `PartyMemberSpec.initiative` / `EncounterMemberSpec.initiative`
+  widen to `int | None`: `None` rolls an engine `d20 + DEX modifier` (spec
+  order, before all other combat draws), with Disadvantage from the new
+  `is_surprised: bool = False` field or a seeded incapacitated-implying
+  status. Opportunity attacks now roll through `roll_d20_test` like every
+  other attack, picking up condition/Dodge/Exhaustion sources.
 
 - **Concentration lifecycle (C13).** The damage-triggered save DC is capped at
   the SRD 5.2 maximum of 30. A new concentration cast cascades the drop of the
@@ -25,6 +59,106 @@ exhaustion on a combatant. Behavioural deltas
   caster's turn end via the new `engine:concentration-expiry` turn hook, with
   `EffectExpired(reason="duration")`. `LiveCombatView.concentration_chain`
   projects the caster-keyed ownership map for hosts.
+
+- **Attack rules (C15).** Weapon proficiency is a real gate: a host that never
+  sets `PartyMemberSpec.weapon_proficiencies` is assumed proficient (the R1
+  sentinel — legacy behaviour, byte-identical); an explicit (possibly empty)
+  list enforces proficiency by the weapon's category or slug, omitting
+  Proficiency Bonus (never subtracting it) when unproficient. Attack range now
+  has three tiers — normal, a middle disadvantage tier beyond normal range
+  (`"range:long"`), and beyond max range is rejected — and a melee weapon with
+  the Thrown property can now attack at range using its throw bands (both were
+  previously flatly rejected). Ranged Attacks in Close Combat (SRD 5.2):
+  disadvantage when a living, sighted, non-Incapacitated hostile is within 5
+  ft of the attacker (`"ranged_in_melee"`). Heavy weapons impose disadvantage
+  on a wielder with a raw Strength score below 13 — this and the Vex/Sap
+  mastery riders below all ride the same `"trait"` advantage-source token.
+  `PlayerIntent.two_handed: bool = False` selects a Versatile weapon's
+  two-handed damage die on a melee swing. `DamageApplied` gains `source_id`
+  (weapon slug / synthesized activity id / `"mastery:<slug>"`; spell/save/heal
+  damage paths still report `None`, a C17+ seam) and `is_crit`; a critical hit
+  against a target already making death saves now counts as two failures (SRD
+  §Damage at 0 Hit Points). Loading weapons cap at one fired shot per actor
+  per turn (`AttackFailed(reason="weapon_already_fired")`, gated ahead of the
+  Charmed-target gate). All eight 2024 weapon masteries are live: Graze
+  (miss-damage), Topple (Con save vs. `prone`, honoring condition immunity),
+  Vex (a 2-round Advantage grant against the same target), Sap (a
+  Disadvantage mark on the target until the source's next turn), Slow (a
+  flat, non-stacking −10 ft Speed penalty, cleared at the source's next turn
+  start), Push (a full 10 ft forced move via `push_combatant`; the "Large or
+  smaller" size gate is unmodelled), Cleave (a deterministic, once-per-turn
+  chained attack against the nearest eligible living hostile within 5 ft of
+  the first target and within reach) and Nick (the off-hand extra attack
+  spends no Bonus Action — SRD 5.2 lets it ride the Attack action instead).
+
+- **Spell slots, rests and upcasting (C17).** `spellcasting.py` derives
+  per-class Spellcasting slots (`derive_spell_slots`), multiclass slots
+  (`derive_multiclass_slots`, per-class half/third rounding summed, SRD
+  §Multiclassing) and Pact Magic (`derive_pact_slots`,
+  `derive_multiclass_pact_slots`); `CharacterBuildSpec.classes: dict[str,
+  int]` is the multiclass carrier, reconciled with the existing
+  `class_slug`/`level` single-class fields. `resolve_long_rest` restores
+  Spellcasting/Pact Magic slots and reduces Exhaustion by 1 (floored at 0);
+  `resolve_short_rest` restores only Pact Magic (SRD's only
+  Short-Rest-recovering slot pool). A Magic Missile-shaped cast now scales
+  its DART COUNT, not just its damage dice, via `target.affects.count` /
+  `spellcasting.resolve_target_count` and `PlayerIntent.target_ids`. An
+  armed Counterspell/readied-cast reaction is now gated on slot
+  availability at its readied level and, for Counterspell, its own 60 ft
+  range with line of sight — an ineligible reactor's reaction is skipped,
+  not consumed. A new `SpellCast` event carries component/material
+  metadata (never enforced) on every PC cast path. `PlayerIntent.
+  as_ritual` + `spellcasting.resolve_ritual_cast` resolve Ritual-tagged
+  spells out-of-combat only; an in-combat ritual cast is rejected
+  (`CastFailedReason` gains `"ritual_in_combat"`). An **upcast** Magic
+  Missile previously over-rolled its single dart (`Nd4+1`, reading the
+  corpus's empty `scaling.mode` as whole-mode scaling); it now rolls
+  `1d4+1` once per cast and applies it to N darts, changing the RNG draw
+  count for that one path (base-level Magic Missile is unaffected). See
+  the migration guide for the full behavioural-delta list, including the
+  Magic Missile event-count change and the `build_party_member`
+  empty-pool fallback.
+
+- **Monster action economy (C18).** A living monster's driven turn now
+  runs legendary-pool reset, Recharge rolls (`RechargeRolled`, gates a spent
+  recharge action until it succeeds) and Regeneration (unconditional — the
+  bundled corpus trait text carries no suppression clause) before action
+  selection; a dead monster runs none of them.
+  `activities/monster_actions.py::rank_monster_actions` ranks a live
+  recharge action first, a Spellcasting action whose N/Day offensive spell
+  still has a use left second (it casts that spell, not an at-will one),
+  `multiattack` third, then everything else (at-will spells included).
+  Stat-block monster spellcasting now selects and casts: the spell book
+  comes from the compendium uuids already in the data, the save DC and the
+  spell attack bonus use the monster's own `Combatant.spellcasting_ability`
+  (new dataset field `Monster.spellcasting_ability`) against its own
+  ability score + proficiency bonus, and `SpellCast` is now emitted on the
+  monster path too. Legendary Actions: `advance_monster_turn(handle, *,
+  legendary=True, actor_id=...)` spends one legendary action from a pool
+  that refills at the start of the creature's own turn
+  (`LegendaryActionUsed`; pool size from the new dataset field
+  `Monster.legendary_action_uses`, 3 for every bundled legendary monster).
+  Legendary Resistance: a per-day pool (never reset at turn start) sized
+  from the new dataset field `Monster.legendary_resistance_uses` (3, 4 or
+  6); a new top-level `resolve_legendary_resistance(handle, entity_id) ->
+  int` pre-arms a conversion of the entity's next failed save — every save
+  path in the engine honors it, including the Grapple/Shove Unarmed Strike
+  save and the damage-triggered concentration check — and emits
+  `LegendaryResistanceUsed` after the converted `SaveRolled`. Five more `MonsterTraitMechanic`
+  values are now consumed: Pack Tactics (attack advantage from an adjacent,
+  non-Incapacitated ally), Sunlight Sensitivity (attack disadvantage via
+  the new `GridScene.sunlight: bool = False` scene flag), Undead Fortitude
+  (a CON save to hold at 1 HP instead of dropping to 0, live-path
+  included), Swarm (no HP or temp HP gain) and Legendary Resistance itself.
+  Corpus damage resistances/immunities now hydrate from the monster
+  template when a host leaves both fields empty, unconditionally (no
+  "nonmagical attacks" qualifier, matching SRD 5.2 stat blocks). `Combatant.
+  has_fled: bool = False` persists a fleeing monster's stance across turns,
+  and `ended_reason`/`CombatEnded.reason` can now actually be `"flee"` when
+  every living foe has fled. See the migration guide for the full
+  determinism-affecting delta list — a seeded replay reaching a monster
+  turn with a recharge action, an unspent N/Day spell, a legendary action or
+  a newly-consumed trait diverges from that point on.
 
 ### Added
 
@@ -105,6 +239,34 @@ exhaustion on a combatant. Behavioural deltas
   `obscurement_cells` (`LightLevel` / `Obscurement` Literals) and
   `GridTopology.can_see(a, b, senses)`; `ActivityResolutionContext.target_unseen`
   / `attacker_unseen_by` feed the `unseen` `AdvantageSource` both directions.
+- **Vision & light consumers (C16b).** A new composite predicate,
+  `orchestrator.py::_combatant_can_see(live, viewer, target)`, folds Blinded
+  (viewer) and Invisible (target) — piercing only via blindsight/truesight
+  reach with line of sight, never darkvision — on top of `GridTopology.can_see`.
+  It now backs every SRD 5.2 "can see" conjunct outside the raw `unseen`
+  attack-roll row: Dodge's "if you can see the attacker" attack-disadvantage
+  half (both the regular-attack context sites and opportunity attacks),
+  Ranged Attacks in Close Combat's "enemy who can see you", the Opportunity
+  Attack "creature that you can see" trigger (both PC↔monster directions — a
+  sight-blocked reactor spends no Reaction), Hide's "out of any enemy's line
+  of sight" gate (skipped only when the hider's own cell already carries
+  Three-Quarters/Total cover), and Frightened's line-of-sight gate. The
+  Invisible "can somehow see you" carve-out is threaded through
+  `rules/conditions.py::conditions_grant_advantage_on_attack`'s new
+  keyword-only `attacker_invisibility_pierced` / `target_invisibility_pierced`
+  parameters (default `False`, preserving pre-C16b behaviour); Frightened's
+  attack-roll disadvantage gets a matching `fear_source_in_sight` keyword.
+  New `SpatialTopology.light_on_cell(cell) -> LightLevel` reports per-cell
+  light, so a dark cell now also satisfies Hide's "Heavily Obscured" gate
+  (SRD 5.2 glossary: "An area of darkness is Heavily Obscured"). New
+  `MoveFailed.reason` member `"frightened"`: a `"move"` intent that would
+  bring the mover strictly closer to a visible, known, living fear source is
+  now rejected (SRD 5.2 "You can't willingly move closer to the source of
+  fear"). `AttackRolled` gains additive `advantage_sources` /
+  `disadvantage_sources: list[AdvantageSource]` fields — the directional
+  split of `sources` — so a mutual-unseen swing now reports `["unseen"]` on
+  each list instead of the old `sources = ["unseen", "unseen"]` merge
+  (`sources` itself is unchanged).
 - `SaveBlock.ignore_cover` is honoured when present (`roll_save(...,
   ignore_cover=)`); the dataset field itself ships with C22.
 - **C22 dataset consumers.** `Combatant.trait_mechanics` (hydrated from the
@@ -121,6 +283,56 @@ exhaustion on a combatant. Behavioural deltas
   the tag on that cell (`cover_between` itself is unchanged — its target-cell
   walk shipped with C16). Multiattacks for the five opaque-key monsters
   resolve to their exact attack mix.
+- **`dnd5e_engine.spellcasting` (C17)** — pure SRD 5.2 spell-slot tables and
+  derivations, zero I/O. `derive_spell_slots(class_slug, progression,
+  level)`, `derive_pact_slots(level)`, `multiclass_caster_level(classes)`,
+  `slots_for_caster_level(caster_level)`, `effective_caster_level(
+  progression, level)`, `resolve_target_count(count_formula, *,
+  cast_level=)` (a restricted `ast`-walker roll-data evaluator — never
+  `eval`), `count_scales_with_cast_level(count_formula)`,
+  `spell_component_metadata(spell)`, `resolve_ritual_cast(spell, *,
+  prepared, ritual_adept=False) -> RitualCast`, and the `SPELL_SLOT_TABLE`
+  / `PACT_SLOT_TABLE` constants. `derive_spell_slots`, `derive_multiclass_
+  slots`, `derive_pact_slots`, `resolve_ritual_cast` and `RitualCast` are
+  new top-level `dnd5e_engine` exports.
+- **`build_spec.derive_multiclass_slots` / `derive_multiclass_pact_slots`**
+  — project `CharacterBuildSpec.classes` through a `loader` (explicit or the
+  lazy default `get_lib_loader()`) into a Spellcasting/Pact Magic pool;
+  `build_party_member` calls both to fill an empty `CombatInstance.
+  spell_slots`/`pact_slots`.
+- **`PartyMemberSpec.pact_slots` / `CombatInstance.pact_slots` /
+  `LiveCombatView.pact_slots_by_entity`** — the Pact Magic pool, all
+  defaulting to `{}` and mirroring the existing `spell_slots` shape.
+- **`PlayerIntent.target_ids: tuple[str, ...] | None`** — explicit
+  multi-target aiming for a count-scaled cast (Magic Missile darts);
+  `PlayerIntent.as_ritual: bool = False` — request a Ritual cast (rejected
+  in-combat).
+- **`resolve_short_rest(..., *, pact_slots=None, pact_slot_max=None)`** and
+  **`resolve_long_rest(..., *, spell_slots=None, spell_slot_max=None,
+  pact_slots=None, pact_slot_max=None, exhaustion_level=None)`** — all
+  keyword-only, all default `None`. `RestOutcome` gains `spell_slots`,
+  `pact_slots`, `exhaustion_level`, each populated only when its matching
+  input pair was supplied.
+- **`SpellCast` event** — `actor_id`, `spell_id`, `slot_level`, `ritual`,
+  `components`, `material`, `material_consumed`, `material_cost_gp`.
+  Emitted after the slot gate on every PC cast path (on-turn, readied
+  reaction, Counterspell). `CastFailedReason` gains `"ritual_in_combat"`.
+- **Monster action economy surface (C18).** New events: `RechargeRolled
+  (monster_id, action_slug, roll, threshold, succeeded)`,
+  `LegendaryActionUsed(actor_id, action_slug, uses_remaining)`,
+  `LegendaryResistanceUsed(actor_id, uses_remaining)`. New top-level
+  function: `resolve_legendary_resistance(handle, entity_id) -> int`.
+  `advance_monster_turn` gains keyword-only `legendary: bool = False`,
+  `actor_id: str | None = None`. New `types.combat.MonsterActionUses`
+  dataclass (`recharge_spent`, `uses_remaining`). `Combatant` gains
+  `legendary_actions_max` / `legendary_actions_remaining` /
+  `legendary_resistances_max` / `legendary_resistances_remaining` /
+  `has_fled: bool = False` / `spellcasting_ability: str | None = None`.
+  `LiveCombatView` gains `monster_action_uses_by_entity`,
+  `legendary_actions_by_entity`, `legendary_resistances_by_entity` (a new
+  `views.MonsterActionUsesView` projects the first). `GridScene.sunlight:
+  bool = False` — a whole-scene Sunlight Sensitivity flag. All additive
+  with defaults reproducing pre-0.6 behaviour.
 
 ### Changed
 
@@ -187,6 +399,17 @@ exhaustion on a combatant. Behavioural deltas
 - **`start_combat(grid_scene=...)` raises `ValueError`** when a combatant's
   `zone_id` is out of bounds or blocked, instead of silently seating them on an
   unusable cell.
+- **A main-hand attack keeps the turn (R1, C14)** when `attacks_remaining > 0`
+  after the swing, or when a two-weapon-fighting off-hand window is still
+  open; the turn ends only once neither condition holds. A subsequent swing
+  in the same Attack action no longer re-pays the Action (R2): only the
+  first swing hard-gates on `action_available`, and an exhausted
+  `attacks_remaining` on a later swing is a turn-KEEPING `AttackFailed`
+  rather than the "no Action" rejection every other Action-costed intent
+  raises. `AttackFailed` / `CheckRolled` (Hide, `escape_grapple`) /
+  `SaveRolled` (Grapple, Shove) / `CombatantMoved` (Shove's push option) are
+  new observable events on these paths; see the migration guide for the
+  exact keep-turn predicate and draw discipline.
 - **A monster with no `monster_template_slug` now attacks.** The legacy
   evaluator that used to swing template-less monsters was retired without a
   replacement, so they silently passed every turn; `_synthesize_attack_from_legacy_fields`
@@ -195,6 +418,99 @@ exhaustion on a combatant. Behavioural deltas
   still no-op). Hosts with template-less monster party members will see them
   start attacking; seeded streams containing a template-less monster's turn
   move.
+- **Weapon proficiency gates the Proficiency Bonus on an attack roll (C15).**
+  `Combatant.weapon_proficiencies: list[str] | None` — `None` (the field
+  never explicitly set on `PartyMemberSpec`) assumes proficient with every
+  weapon; an explicit list, even empty, is enforced by weapon category or
+  slug. Monsters are always proficient (never carry the field explicitly).
+- **Attack range widens to three tiers (C15).** `_weapon_attack_range_ft`
+  returns `(normal, max)`; a shot between `normal` and `max` now resolves at
+  disadvantage (`"range:long"`) instead of the pre-C15 binary in-range/
+  rejected split, and a melee weapon carrying the Thrown property can attack
+  beyond its melee reach using its thrown bands instead of being rejected.
+- **Ranged Attacks in Close Combat (C15).** A ranged (or effectively-ranged
+  thrown) attack rolls with disadvantage (`"ranged_in_melee"`) when a living,
+  sighted (`SpatialTopology.can_see`), non-Incapacitated hostile is within 5
+  ft of the attacker.
+- **Heavy-property disadvantage (C15).** A wielder with a raw Strength score
+  below 13 rolls a Heavy weapon's attack with disadvantage.
+- **Versatile grip (C15).** `PlayerIntent.two_handed: bool = False` — when
+  `True` and the weapon carries `versatile_damage`, a melee swing uses the
+  two-handed damage die instead of the one-handed die.
+- **Damage attribution and crit tracking (C15).** `DamageApplied.source_id:
+  str | None` (weapon slug / synthesized activity id / `"mastery:<slug>"`)
+  and `DamageApplied.is_crit: bool = False`. A critical hit against a target
+  already making death saves counts as two failures instead of one (SRD
+  §Damage at 0 Hit Points).
+- **Loading property (C15).** `Combatant.loading_weapon_fired_this_turn:
+  bool = False`, reset at the actor's own turn start. A second Loading-weapon
+  shot in the same turn is rejected pre-resolution with
+  `AttackFailed(reason="weapon_already_fired")`, gated ahead of the Charmed
+  target gate.
+- **All eight 2024 weapon masteries (C15).** `activities/mastery.py`
+  resolves Graze (flat governing-ability-mod damage on a miss) and Topple
+  (Constitution save vs. `8 + proficiency + governing-ability mod`, prone on
+  a failure, gated by the shared `is_condition_immune` helper) directly.
+  Vex, Sap, Slow, Push, Cleave and Nick report through
+  `ActivityResolutionContext.mastery_procs`, which the orchestrator folds
+  into live combat state: Vex grants Advantage against the same target for
+  the attacker's next 2 attack-roll turns (one-use); Sap marks the target
+  with Disadvantage until the attacker's next turn start (one-use); Slow
+  applies a flat, non-stacking −10 ft Speed penalty cleared at the source's
+  next turn start; Push forces a full 10 ft move via `push_combatant`
+  (controller ruling: always the full distance; the "Large or smaller" size
+  gate is unmodelled); Cleave chains one extra attack+damage roll against the
+  nearest eligible living hostile within 5 ft of the first target and within
+  reach (deterministic tie-break by `entity_id`, once per turn, no re-proc);
+  Nick's off-hand extra attack spends no Bonus Action and does not require
+  one — `_offhand_window_open` now keeps the turn open after any Light
+  main-hand swing even when the Bonus Action is already spent, so a host
+  must submit `"pass"` to end such a turn (see the migration guide).
+- **`test_capability_matrix.py`** gains six probes pinning the C15 rows in
+  `docs/capabilities.md` (attack rolls, conditions, forced movement, weapon
+  mastery).
+- **A count-scaled cast now emits N `DamageApplied`, not one (C17).** A
+  `damage`-kind activity whose `target.affects.count` formula references
+  `@item.level` (Magic Missile) resolves N separate `DamageApplied` events
+  sharing one rolled damage instance — 3 darts at slot level 1, +1 per slot
+  level above 1. Total damage now scales ×N for every such cast; the draw
+  count is unchanged (shared roll, applied N times). Targeting more
+  entities than the resolved count, or an unknown `target_ids` entry, is
+  rejected pre-slot with `CastFailed(reason="target_invalid")`.
+- **An armed Counterspell/readied-cast reaction with no slot at its readied
+  level is now skipped, not fired (C17).** `_pop_pending_reaction` gained
+  an `eligible=` predicate; an ineligible reactor's reaction stays queued
+  and its Reaction/slot are untouched. Counterspell is additionally gated
+  on its own 60 ft range with line of sight (`_in_range_with_los`) — an
+  out-of-range or LoS-blocked reactor's Counterspell is likewise skipped.
+- **`build_party_member` fills an empty `spell_slots`/`pact_slots` from
+  `CharacterBuildSpec.classes` (C17).** Previously an empty
+  `CombatInstance.spell_slots` was copied verbatim (a caster with no
+  slots); now an empty (falsy) pool falls back to `derive_multiclass_slots`
+  / `derive_multiclass_pact_slots`. A host that relied on an empty
+  `spell_slots` dict to make every cast fail with `CastFailed(reason=
+  "no_slot")` will now see real, derived slots instead. A non-empty pool
+  is untouched.
+- **`CharacterBuildSpec.classes: dict[str, int]`** is the multiclass
+  carrier (C17), reconciled with the single-class `class_slug`/`level`
+  fields by a `model_validator(mode="before")`; `model_copy(update=...)`
+  bypasses that validator (Pydantic does not re-run `mode="before"` on
+  `model_copy`), so changing only one of `level`/`classes` via `model_copy`
+  can desync them — construct a fresh instance instead.
+
+### Fixed
+
+- **A `PartyMemberSpec` that never set `attack_bonus` was pinned to a 0
+  to-hit bonus (2026-09-02, C15 Task 1).** `Combatant.attack_bonus` widens
+  from `int = 0` to `int | None = None`; `None` (the host never explicitly
+  set `PartyMemberSpec.attack_bonus`) now correctly falls through to the
+  real governing-ability-modifier + proficiency-bonus computation instead of
+  being silently treated as a genuine `0` override. A host-supplied value
+  (including every monster's, always threaded as a concrete int) is
+  unaffected — byte-identical to every pre-C15 fixture. The engine's own
+  `build_party.py` host-party-building path always sets `attack_bonus`
+  explicitly (from the pre-computed character sheet), so this fix does not
+  change its output — pre-existing behaviour there, unchanged.
 
 ### Deprecated
 

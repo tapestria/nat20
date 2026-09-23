@@ -494,7 +494,9 @@
   "languages": [
     "Draconic"
   ],
+  "legendary_action_uses": null,
   "legendary_actions": [],
+  "legendary_resistance_uses": null,
   "movement": {
     "burrow": 15,
     "climb": null,
@@ -555,5 +557,6 @@
     "survival": null
   },
   "slug": "brass-dragon-wyrmling",
-  "special_abilities": []
+  "special_abilities": [],
+  "spellcasting_ability": null
 }

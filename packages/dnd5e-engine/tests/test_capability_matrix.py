@@ -112,17 +112,24 @@ def test_published_legendary_action_count_matches_the_corpus(
     assert int(match.group(1)) == with_legendary
 
 
-def test_legendary_and_lair_actions_are_still_unconsumed() -> None:
-    """If someone implements these, this test fails and the page must be updated."""
-    import dnd5e_engine.activities.monster_actions as module
+def test_legendary_actions_and_traits_are_consumed() -> None:
+    """If these regress to unconsumed again, this test fails and the page must
+    be updated (mirrors the intent of the probe this replaces: pin the gap by
+    design so an implementation forces a docs update, just in the other
+    direction now that C18 has consumed them)."""
+    import dnd5e_engine.activities.monster_actions as monster_actions_module
+    import dnd5e_engine.orchestrator as orchestrator_module
 
-    source = Path(module.__file__).read_text()
-    body = source.split('"""', 2)[-1]  # skip the module docstring
-    for field in ("legendary_actions", "lair_actions", "special_abilities"):
-        assert field not in body, (
-            f"{field} is now read by the engine — update docs/capabilities.md "
-            "and BACKLOG.md, then relax this test"
-        )
+    orchestrator_source = Path(orchestrator_module.__file__).read_text()
+    assert "legendary_actions_remaining" in orchestrator_source, (
+        "legendary actions are no longer tracked by the engine — "
+        "update docs/capabilities.md and BACKLOG.md, then update this test"
+    )
+    monster_actions_source = Path(monster_actions_module.__file__).read_text()
+    assert "rank_monster_actions" in monster_actions_source, (
+        "recharge/limited-use ranking is no longer in monster_actions.py — "
+        "update docs/capabilities.md and BACKLOG.md, then update this test"
+    )
 
 
 # ── status-row probes ────────────────────────────────────────────────────────
@@ -164,10 +171,56 @@ _PROBES: dict[str, tuple[Any, str]] = {
         lambda: 'mode: AdvantageMode = "normal"' not in _src("activities/attack.py"),
         "Advantage/disadvantage is rolled on",
     ),
-    # Still open (C14): the three intents have no handler at all.
-    "Dodge, Hide, Help": (
-        lambda: '"dodge"' in _src("orchestrator.py"),
+    # C16b: opportunity attacks now honour the ``unseen`` advantage source
+    # and the Invisible carve-out via the shared per-side advantage-source
+    # helper both AoO directions call.
+    "Invisible-carve-out sources (C16b composite": (
+        lambda: (
+            "_opportunity_attack_advantage_sources(" in _src("orchestrator.py")
+            and "_pierces_invisibility(live, mover, reactor)" in _src("orchestrator.py")
+        ),
+        "Invisible-carve-out sources (C16b composite",
+    ),
+    # C14 Task 3: Dodge sets a live ``dodging`` flag consumed by the attack
+    # and save resolvers; the intent branch owns this exact literal.
+    "Dodge": (
+        lambda: 'if intent.intent_type == "dodge":' in _src("orchestrator.py"),
         "✅",
+    ),
+    # C16b: Dodge's "if you can see the attacker" conjunct is applied both at
+    # the regular-attack context build sites (``_combatant_can_see(live, t,
+    # current)``) and on the AoO path (``_combatant_can_see(live, mover,
+    # reactor)``).
+    'if you can see the attacker" is now enforced (C16b': (
+        lambda: (
+            "_combatant_can_see(live, t, current)" in _src("orchestrator.py")
+            and "_combatant_can_see(live, mover, reactor)" in _src("orchestrator.py")
+        ),
+        'if you can see the attacker" is now enforced (C16b',
+    ),
+    # C14 Task 4: Help (assist-an-attack-roll flavor) has a live handler —
+    # the intent branch owns this exact literal.
+    "| Help |": (
+        lambda: 'if intent.intent_type == "help":' in _src("orchestrator.py"),
+        "✅",
+    ),
+    # Closed (C14 Task 5): Hide has a dispatch handler.
+    "| Hide |": (
+        lambda: 'if intent.intent_type == "hide"' in _src("orchestrator.py"),
+        "✅",
+    ),
+    # C16b (plan ruling R1): Hide's "out of any enemy's line of sight"
+    # conjunct scans hostiles via the composite predicate, skipped only when
+    # the hider's own cell already carries Three-Quarters/Total cover.
+    "out of every living, non-Incapacitated hostile's line of sight (C16b": (
+        lambda: "_combatant_can_see(live, hostile, current)" in _src("orchestrator.py"),
+        "out of every living, non-Incapacitated hostile's line of sight (C16b",
+    ),
+    # C16b (Hide Task 4): a dark cell satisfies "Heavily Obscured" via the
+    # new ``SpatialTopology.light_on_cell`` seam.
+    "`GridTopology.light_on_cell`": (
+        lambda: "def light_on_cell(" in _src("spatial.py"),
+        "`GridTopology.light_on_cell`",
     ),
     # F2c/C13: the damage-triggered concentration save emits the dedicated
     # event; row text no longer quotes the event name, so this probe now
@@ -189,6 +242,16 @@ _PROBES: dict[str, tuple[Any, str]] = {
             and "line-of-sight gate is not modelled" in _src("rules/conditions.py")
         ),
         "⚠️ Partial",
+    ),
+    # C16b: Frightened's attack-roll line-of-sight gate and the "can't
+    # willingly move closer" movement rule are now enforced (the residual
+    # unenforced half is the ability-check gate the probe above still pins).
+    "now gated on line of sight to a known, living, tracked fear source (C16b": (
+        lambda: (
+            "_fear_source_in_sight(" in _src("orchestrator.py")
+            and '"frightened",' in _event_class_body("MoveFailed")
+        ),
+        "now gated on line of sight to a known, living, tracked fear source (C16b",
     ),
     # C12: the SRD 5.2 exhaustion penalty is a real projection, not prose.
     "| Exhaustion |": (
@@ -230,6 +293,12 @@ _PROBES: dict[str, tuple[Any, str]] = {
         ),
         "⚠️ Partial",
     ),
+    # C16b (plan ruling R4): the composite predicate folding Blinded/
+    # Invisible/blindsight/truesight on top of the scene vision model.
+    "composite `_combatant_can_see` predicate": (
+        lambda: "def _combatant_can_see(" in _src("orchestrator.py"),
+        "composite `_combatant_can_see` predicate",
+    ),
     # D8: the zone graph is deprecated (warning raised in _resolve_topology).
     "Zone-graph topology": (
         lambda: "DeprecationWarning" in _src("orchestrator.py"),
@@ -262,6 +331,158 @@ _PROBES: dict[str, tuple[Any, str]] = {
             and "_drop_concentration(live, event.target_id)" in _src("orchestrator.py")
         ),
         "✅",
+    ),
+    # C14 Task 1/2: Extra Attack's per-Action counter and the Light-property
+    # off-hand Bonus Action window are both live.
+    "Action economy": (
+        lambda: (
+            "_attacks_per_action(" in _src("orchestrator.py")
+            and "_twf_window_open(" in _src("orchestrator.py")
+        ),
+        "modelled (C14)",
+    ),
+    # C14 Task 6/7: Grapple/Shove resolve via the shared Unarmed Strike save.
+    "Grapple / Shove": (
+        lambda: "_roll_unarmed_option_save(" in _src("orchestrator.py"),
+        "⚠️ Partial",
+    ),
+    # C14 Task 2: the Light-property off-hand Bonus Action window.
+    "Two-weapon fighting": (
+        lambda: "_twf_window_open(" in _src("orchestrator.py"),
+        "✅",
+    ),
+    # C14 Task 8: Surprise imposes Disadvantage on the engine-rolled Initiative.
+    "| Surprise |": (
+        lambda: "spec.is_surprised" in _src("orchestrator.py"),
+        "✅",
+    ),
+    # C14 Task 8: initiative=None draws an engine d20 + DEX modifier roll.
+    "Initiative order, rounds, turns": (
+        lambda: "def _resolve_initiative(" in _src("orchestrator.py"),
+        "✅",
+    ),
+    # C14 Task 8: a seeded incapacitated-implying status also imposes
+    # Disadvantage on the engine-rolled Initiative roll.
+    "Incapacitated's initiative disadvantage": (
+        lambda: "seeded_incapacitated" in _src("orchestrator.py"),
+        "closed via C14 Task 8",
+    ),
+    # C14 Task 9 / C16b: opportunity attacks roll through the same d20-test
+    # primitive as every other attack, picking up condition/Exhaustion
+    # sources and now the visibility gate too — only cover is still missing.
+    "| Opportunity attacks |": (
+        lambda: "roll_d20_test" in _src("orchestrator.py"),
+        "✅",
+    ),
+    # C16b: the AoO's remaining gap is cover only — visibility now reaches
+    # the roll via ``_combatant_can_see``.
+    "cover on the AoO roll itself remains unmodelled": (
+        lambda: "_combatant_can_see(live, reactor, mover)" in _src("orchestrator.py"),
+        "cover on the AoO roll itself remains unmodelled",
+    ),
+    # C15 Tasks 2/3: the long-range disadvantage tier and the Ranged
+    # Attacks in Close Combat gate both append their own AdvantageSource
+    # (previously the row called both "still inert").
+    "long-range disadvantage": (
+        lambda: (
+            '"range:long"' in _src("activities/attack.py")
+            and '"ranged_in_melee"' in _src("activities/attack.py")
+        ),
+        "long-range disadvantage",
+    ),
+    # C15 Task 3: the Heavy-property Strength gate.
+    "Heavy weapon (raw Strength": (
+        lambda: "def _weapon_heavy_disadvantage(" in _src("activities/attack.py"),
+        "Heavy weapon (raw Strength",
+    ),
+    # C15 Task 4: DamageApplied gains source_id / is_crit for weapon damage.
+    "DamageApplied` now carries `source_id`": (
+        lambda: (
+            "source_id: str | None = None" in _event_class_body("DamageApplied")
+            and "is_crit: bool = False" in _event_class_body("DamageApplied")
+        ),
+        "DamageApplied` now carries `source_id`",
+    ),
+    # C15 Task 7: Push weapon mastery wired into the same forced-movement
+    # primitive as Thunderwave / Shove.
+    "Push weapon mastery (C15": (
+        lambda: 'elif mastery_slug == "push":' in _src("orchestrator.py"),
+        "Push weapon mastery (C15",
+    ),
+    # C15 Task 6: Topple's prone rider is gated by the shared
+    # is_condition_immune helper (previously an ungated emit site).
+    "Weapon-mastery Topple honors condition immunity": (
+        lambda: 'is_condition_immune(target, "prone")' in _src("activities/mastery.py"),
+        "Weapon-mastery Topple honors condition immunity",
+    ),
+    # C17: Long Rest reduces Exhaustion by 1, floored at 0, via an additive
+    # kwarg on ``resolve_long_rest``.
+    "Long Rest reduces the level by 1": (
+        lambda: "exhaustion_level" in _src("rest.py"),
+        "Long Rest reduces the level by 1",
+    ),
+    # C17 Task 4 (R4): Counterspell's reaction-drain eligibility check is
+    # threaded through ``_pop_pending_reaction``'s ``eligible=`` predicate —
+    # an ineligible reactor's armed reaction is skipped, not popped.
+    "slot-gated at the readied level and 60 ft range/LoS-gated at drain time": (
+        lambda: "eligible=" in _src("orchestrator.py"),
+        "slot-gated at the readied level and 60 ft range/LoS-gated at drain time",
+    ),
+    # C17 Task 4 (R4): a readied leveled spell (Shield) is gated on slot
+    # availability at drain time via its own ``_readied_cast_eligible``
+    # predicate (distinct from Counterspell's inline ``_eligible`` above).
+    "an unexpended slot at its readied level": (
+        lambda: "def _readied_cast_eligible(" in _src("orchestrator.py"),
+        "an unexpended slot at its readied level",
+    ),
+    # C17 Task 1: per-class/multiclass/Pact slot tables are derived
+    # engine-side rather than accepted as a host-precomputed flat dict.
+    "derive_spell_slots`, `derive_multiclass_slots`, `derive_pact_slots": (
+        lambda: "def derive_multiclass_slots(" in _src("build_spec.py"),
+        "derive_spell_slots`, `derive_multiclass_slots`, `derive_pact_slots",
+    ),
+    # C17 Task 1: the multiclass carrier itself (``classes: dict[str, int]``)
+    # is the field this row names — distinct from the derivation function
+    # probed above.
+    "`CharacterBuildSpec.classes` carrier": (
+        lambda: "classes: dict[str, int]" in _src("build_spec.py"),
+        "`CharacterBuildSpec.classes` carrier",
+    ),
+    # C17 Task 6 (R8): a Ritual-tagged spell resolves out-of-combat only,
+    # through the pure ``resolve_ritual_cast`` host seam; an in-combat
+    # ``as_ritual`` cast is rejected before any slot logic.
+    "Out-of-combat via `resolve_ritual_cast`": (
+        lambda: "def resolve_ritual_cast(" in _src("spellcasting.py"),
+        "Out-of-combat via `resolve_ritual_cast`",
+    ),
+    # C17 Task 6: component/material metadata now rides on every PC-path
+    # cast via the ``SpellCast`` event, but nothing gates on it.
+    "Metadata on `SpellCast`, not enforced": (
+        lambda: "class SpellCast(" in _src("events.py"),
+        "Metadata on `SpellCast`, not enforced",
+    ),
+    # C15: all eight 2024 weapon masteries are live. F6 — this used to be a
+    # bare substring grep for each mastery slug over mastery.py, which
+    # passed on COMMENT text alone: cleave and nick are documented there
+    # ("resolved elsewhere entirely") but never dispatched from that file,
+    # so the probe couldn't fail even if either mastery regressed. Probe
+    # each mastery's actual dispatch/resolution site instead: graze/topple
+    # resolve in mastery.py itself; vex/sap/slow/push report through the
+    # ``ctx.mastery_procs`` writeback (their proc-append call sites);
+    # cleave's chained attack lives in attack.py; Nick is pure action
+    # economy, gated in orchestrator.py's off-hand consume helper.
+    "All eight (C15)": (
+        lambda: (
+            "_resolve_graze(" in _src("activities/mastery.py")
+            and "_resolve_topple(" in _src("activities/mastery.py")
+            and "ctx.mastery_procs.append((_VEX" in _src("activities/mastery.py")
+            and "ctx.mastery_procs.append((_SAP" in _src("activities/mastery.py")
+            and "ctx.mastery_procs.append((_SLOW" in _src("activities/mastery.py")
+            and "ctx.mastery_procs.append((_PUSH" in _src("activities/mastery.py")
+            and "_resolve_cleave_chain(" in _src("activities/attack.py")
+            and 'weapon.mastery == "nick"' in _src("orchestrator.py")
+        ),
+        "All eight (C15)",
     ),
 }
 

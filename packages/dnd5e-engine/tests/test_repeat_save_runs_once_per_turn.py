@@ -51,7 +51,12 @@ def _party() -> list[PartyMemberSpec]:
             strength=18,
             constitution=16,
             wisdom=10,
-            character_level=5,
+            # Level 4, not 5 — level 5 grants the Barbarian Extra Attack
+            # (SRD 5.2), which would give this fixture 2 attacks/Action and
+            # break the "one Action, one turn end" assumption these tests
+            # pin (C14). Rage (used below) is granted at level 1, so this
+            # level change doesn't affect the bonus-action scenario.
+            character_level=4,
             class_slug="barbarian",
             zone_id="zone:start",
         )

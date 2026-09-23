@@ -113,6 +113,10 @@ CastFailedReason = Literal[
     # SRD 5.2 Charmed — "You can't attack the charmer or target the
     # charmer with damaging abilities or magical effects." (C12)
     "target_is_charmer",
+    # C17 R8 — a ritual cast takes 10 extra minutes; the turn economy cannot
+    # host it, hosts resolve rituals between combats via
+    # ``spellcasting.resolve_ritual_cast``.
+    "ritual_in_combat",
 ]
 
 IntentType = Literal[
@@ -131,6 +135,13 @@ IntentType = Literal[
     "use_feature",
     "pass",
     "drop_concentration",
+    # C14 Task 6/7 — Unarmed Strike options (SRD 5.2 §Actions in Combat) and
+    # the SRD 5.2 "Ending a Grapple" escape action. All four land together so
+    # a later task adding shove/stand_up handlers needs no events.py edit.
+    "grapple",
+    "shove",
+    "stand_up",
+    "escape_grapple",
 ]
 
 
@@ -237,6 +248,16 @@ class AttackRolled(BaseModel):
     # A separate ``bonus_dice_total`` field is deferred.
     modifier: int | None = None
     sources: list[AdvantageSource] = Field(default_factory=list)
+    # C16 BACKLOG — "Mutual unseen is reported twice" (2026-08-27): ``sources``
+    # is the UNION of advantage + disadvantage contributions, so a mutual-
+    # unseen swing (attacker can't see target AND target can't see attacker)
+    # reports ``"unseen"`` twice with no way to tell which direction is which.
+    # These two ADDITIVE fields carry the same tokens pre-split by direction
+    # (``AdvantageSources.advantage`` / ``.disadvantage`` from
+    # ``activities/d20.py``); ``sources`` keeps its existing union semantics
+    # unchanged for backward compatibility.
+    advantage_sources: list[AdvantageSource] = Field(default_factory=list)
+    disadvantage_sources: list[AdvantageSource] = Field(default_factory=list)
 
 
 class SaveRolled(BaseModel):
@@ -281,6 +302,13 @@ class DamageApplied(BaseModel):
     amount: int
     damage_type: DamageType
     is_overkill: bool
+    # C15 — damage-source attribution: weapon slug / synthesized activity id /
+    # ``"mastery:<slug>"`` for procs. ``None`` for paths not yet threaded
+    # (spell/save/heal damage — a C17+ seam).
+    source_id: str | None = None
+    # C15 — whether this damage event was a critical hit; feeds the
+    # crit-at-0-HP two-death-save-failures clause (SRD §Damage at 0 HP).
+    is_crit: bool = False
 
 
 class HealingApplied(BaseModel):
@@ -293,6 +321,19 @@ class TempHpApplied(BaseModel):
     type: Literal["temphp_applied"] = "temphp_applied"
     target_id: str
     amount: int
+
+
+class RechargeRolled(BaseModel):
+    """SRD 5.2 "Recharge X–Y": the 1d6 rolled at the start of the monster's
+    turn for a spent part. ``threshold`` is the stat block's notation
+    (``"5-6"``, ``"6"``); ``succeeded`` means the part is usable again."""
+
+    type: Literal["recharge_rolled"] = "recharge_rolled"
+    monster_id: str
+    action_slug: str
+    roll: int
+    threshold: str
+    succeeded: bool
 
 
 # ── effects + conditions ────────────────────────────────────────────────────
@@ -480,6 +521,9 @@ class MoveFailed(BaseModel):
         # SRD 5.2 "Speed 0" conditions (Grappled / Restrained / Paralyzed /
         # Petrified / Unconscious) or Exhaustion reducing Speed to 0 (C12).
         "speed_zero",
+        # SRD 5.2 Frightened: "You can't willingly move closer to the
+        # source of fear." (C16b)
+        "frightened",
     ]
 
 
@@ -505,6 +549,13 @@ class AttackFailed(BaseModel):
         # SRD 5.2 Charmed — "You can't attack the charmer or target the
         # charmer with damaging abilities or magical effects." (C12)
         "target_is_charmer",
+        # SRD 5.2 Loading — "You can fire only one piece of ammunition from
+        # a Loading weapon when you use an action, a Bonus Action, or a
+        # Reaction to fire it, regardless of the number of attacks you can
+        # normally make." Engine reading: one fire per turn (no PC
+        # reaction-attack path exists, so action/bonus/reaction collapse
+        # to the turn boundary). (C15)
+        "weapon_already_fired",
     ]
 
 
@@ -516,6 +567,27 @@ class CastFailed(BaseModel):
     actor_id: str
     spell_id: str
     reason: CastFailedReason
+
+
+class SpellCast(BaseModel):
+    """SRD 5.2 §Components: "A spell's components are physical requirements
+    the spellcaster must meet to cast the spell." Metadata only — never
+    enforced (host decision, spec §5 C17). Emitted at every cast site (on-turn,
+    readied-reaction resolve, Counterspell drain) so a host can render
+    component/material bookkeeping without re-deriving it from the spell doc.
+    """
+
+    type: Literal["spell_cast"] = "spell_cast"
+    actor_id: str
+    spell_id: str
+    slot_level: int | None  # None for a cantrip
+    # ritual: the spell CARRIES the Ritual tag (never True for an in-combat
+    # ritual cast — that path is rejected before this event is ever emitted).
+    ritual: bool
+    components: list[Literal["V", "S", "M"]]  # sorted V, S, M
+    material: str | None  # Spell.materials.value or None when empty
+    material_consumed: bool
+    material_cost_gp: int
 
 
 class ReactionTriggered(BaseModel):
@@ -531,6 +603,33 @@ class ReactionTriggered(BaseModel):
 class CombatEnded(BaseModel):
     type: Literal["combat_ended"] = "combat_ended"
     reason: Literal["victory", "defeat_tpk", "flee", "forced"]
+
+
+class LegendaryActionUsed(BaseModel):
+    """A monster spent one of its legendary-action uses (SRD 5.2: "it
+    regains all expended uses at the start of each of its turns"). Emitted
+    before the chosen action's own events (attack/save/cast) so a host can
+    narrate "the dragon takes a legendary action" ahead of its resolution.
+    """
+
+    type: Literal["legendary_action_used"] = "legendary_action_used"
+    actor_id: str
+    action_slug: str
+    uses_remaining: int
+
+
+class LegendaryResistanceUsed(BaseModel):
+    """A monster spent one of its per-day Legendary Resistance uses to
+    convert a saving throw it had just failed into a success. Emitted AFTER
+    the ``SaveRolled`` it converts (which already carries ``succeeded=True``)
+    — and, on a concentration check, after the paired ``ConcentrationCheck``
+    too — so a host sees the roll before the narration of the resistance
+    spend. The per-day pool is NOT reset at turn start.
+    """
+
+    type: Literal["legendary_resistance_used"] = "legendary_resistance_used"
+    actor_id: str
+    uses_remaining: int
 
 
 CombatEvent = Annotated[
@@ -564,8 +663,12 @@ CombatEvent = Annotated[
     | MoveFailed
     | AttackFailed
     | CastFailed
+    | SpellCast
     | ReactionTriggered
-    | CombatEnded,
+    | CombatEnded
+    | RechargeRolled
+    | LegendaryActionUsed
+    | LegendaryResistanceUsed,
     Field(discriminator="type"),
 ]
 
@@ -604,8 +707,12 @@ ALL_COMBAT_EVENT_TYPES: tuple[type[BaseModel], ...] = (
     MoveFailed,
     AttackFailed,
     CastFailed,
+    SpellCast,
     ReactionTriggered,
     CombatEnded,
+    RechargeRolled,
+    LegendaryActionUsed,
+    LegendaryResistanceUsed,
 )
 
 
@@ -640,11 +747,15 @@ __all__ = [
     "HealingApplied",
     "IntentSubmitted",
     "IntentType",
+    "LegendaryActionUsed",
+    "LegendaryResistanceUsed",
     "MoveFailed",
     "ReactionTriggered",
+    "RechargeRolled",
     "RoundEnded",
     "RoundStarted",
     "SaveRolled",
+    "SpellCast",
     "Stabilized",
     "TempHpApplied",
     "TurnEnded",

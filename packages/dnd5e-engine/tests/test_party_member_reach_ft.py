@@ -40,6 +40,7 @@ def test_reach_ft_threads_into_combatant_melee_reach_ft():
         actor_zone={},
         tracked_hp={},
         spell_slots_by_entity={},
+        pact_slots_by_entity={},
         spells_known_by_entity={},
         custom_counters_by_entity={},
     )
@@ -54,6 +55,7 @@ def test_reach_ft_default_still_yields_five_on_combatant():
         actor_zone={},
         tracked_hp={},
         spell_slots_by_entity={},
+        pact_slots_by_entity={},
         spells_known_by_entity={},
         custom_counters_by_entity={},
     )

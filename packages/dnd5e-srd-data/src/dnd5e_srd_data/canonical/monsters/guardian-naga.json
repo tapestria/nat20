@@ -1025,7 +1025,9 @@
     "Common",
     "Celestial"
   ],
+  "legendary_action_uses": null,
   "legendary_actions": [],
+  "legendary_resistance_uses": null,
   "movement": {
     "burrow": null,
     "climb": 40,
@@ -1098,5 +1100,6 @@
       "slug": "celestial-restoration",
       "uses_per_day": null
     }
-  ]
+  ],
+  "spellcasting_ability": "wis"
 }

@@ -270,7 +270,9 @@ def conditions_grant_disadvantage_on_ability_checks(conditions: list[str]) -> bo
     SRD 5.2 glossary: Poisoned — "You have Disadvantage on attack rolls and
     ability checks."; Frightened — "You have Disadvantage on ability checks and
     attack rolls while the source of fear is within line of sight" (the
-    line-of-sight gate is not modelled; C16b owns it).
+    line-of-sight gate is not modelled here; C16b gated the attack-roll half
+    and the no-approach movement rule, but this ability-check half is a
+    residual — see BACKLOG.md "Conditions — SRD 5.2 rows not enforced").
 
     Exhaustion is deliberately NOT here: SRD 5.2 replaced the 2014 ladder with a
     numeric ``-2 x level`` penalty on every D20 Test — see ``d20_test_penalty``.
@@ -287,6 +289,9 @@ def conditions_grant_advantage_on_attack(
     distance_ft: int | None = None,
     grappler_id: str | None = None,
     target_id: str | None = None,
+    attacker_invisibility_pierced: bool = False,
+    target_invisibility_pierced: bool = False,
+    fear_source_in_sight: bool = True,
 ) -> tuple[bool, bool]:
     """
     Returns (attacker_has_advantage, attacker_has_disadvantage) based on conditions.
@@ -300,17 +305,37 @@ def conditions_grant_advantage_on_attack(
     * ``grappler_id`` / ``target_id`` — identity of the creature grappling the
       ATTACKER and of the target, for the Grappled attacker row (SRD 5.2
       Grappled: disadvantage against any target other than the grappler).
+    * ``attacker_invisibility_pierced`` — True iff the TARGET can somehow see
+      the Invisible ATTACKER (a special sense — Blindsight/Truesight — reaches
+      AND line of sight holds). SRD 5.2 Invisible: "If a creature can somehow
+      see you, you don't gain this benefit against that creature." Default
+      ``False`` preserves pre-C16b behaviour (no vision model wired).
+    * ``target_invisibility_pierced`` — the same, but for the ATTACKER seeing
+      the Invisible TARGET.
+    * ``fear_source_in_sight`` — SRD 5.2 Frightened: "Disadvantage on ...
+      attack rolls while the source of fear is within line of sight." True
+      (the SRD-conservative default) means either the attacker isn't
+      Frightened, or the gate doesn't apply / can't be evaluated (unknown
+      source), or the source is actually visible — so the disadvantage row
+      below still fires. Only an explicit ``False`` — a known, tracked
+      source the Frightened attacker cannot currently see — drops it.
     """
     advantage = False
     disadvantage = False
 
-    if is_condition_active(Condition.INVISIBLE, attacker_conditions):
+    if (
+        is_condition_active(Condition.INVISIBLE, attacker_conditions)
+        and not attacker_invisibility_pierced
+    ):
         advantage = True
     if is_condition_active(Condition.BLINDED, attacker_conditions):
         disadvantage = True
     if is_condition_active(Condition.POISONED, attacker_conditions):
         disadvantage = True
-    if is_condition_active(Condition.FRIGHTENED, attacker_conditions):
+    # SRD 5.2 glossary, Frightened: "Disadvantage on ... attack rolls while
+    # the source of fear is within line of sight." (C16b: ``fear_source_in_sight``
+    # defaults True — SRD-conservative — so pre-C16b callers are unaffected.)
+    if is_condition_active(Condition.FRIGHTENED, attacker_conditions) and fear_source_in_sight:
         disadvantage = True
     if is_condition_active(Condition.RESTRAINED, attacker_conditions):
         disadvantage = True
@@ -333,10 +358,14 @@ def conditions_grant_advantage_on_attack(
         advantage = True
     # SRD 5.2 glossary, Invisible: "Attack rolls against you have Disadvantage,
     # and your attack rolls have Advantage. If a creature can somehow see you,
-    # you don't gain this benefit against that creature." (The "can somehow see
-    # you" exception needs per-attacker senses, which the engine does not model
-    # yet.)
-    if is_condition_active(Condition.INVISIBLE, target_conditions):
+    # you don't gain this benefit against that creature." (C16b: the "can
+    # somehow see you" exception is ``target_invisibility_pierced`` — the
+    # ATTACKER's Blindsight/Truesight reaching the Invisible target plus line
+    # of sight.)
+    if (
+        is_condition_active(Condition.INVISIBLE, target_conditions)
+        and not target_invisibility_pierced
+    ):
         disadvantage = True
 
     # SRD 5.2 glossary, Prone: "You have Disadvantage on attack rolls."

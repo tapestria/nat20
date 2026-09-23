@@ -183,6 +183,46 @@ directions per target and hands the two boolean maps to the activity context, so
 `activities/attack.py` can add the `unseen` `AdvantageSource` without importing
 the spatial seam.
 
+### Composite predicate
+
+`GridTopology.can_see` answers the raw scene question ("is `b` lit and
+unobstructed from `a`"), but several SRD 5.2 rules ask a narrower "can see"
+question that also depends on the *viewer's* and *target's* conditions —
+Blinded blocks a viewer's sight outright, and Invisible defeats a target's
+visibility, unless a special sense pierces either. `orchestrator.py`'s
+`_combatant_can_see(live, viewer, target)` (C16b, plan ruling R4) composes
+the two:
+
+1. Untracked position on either side ⇒ **seen** — a scene with no positional
+   data never imposes a penalty (the same convention `_target_visibility_maps`
+   uses for the raw `unseen` maps).
+2. Blinded viewer (SRD 5.2 Blinded: "You can't see") ⇒ **unseen**, unless
+   `_special_sense_reaches` — blindsight or truesight in range — says
+   otherwise.
+3. Invisible target (SRD 5.2 Invisible: "If a creature can somehow see you,
+   you don't gain this benefit against that creature") ⇒ **unseen**, unless
+   the same special-sense reach test pierces it. A creature hidden via the
+   Hide action carries the Invisible condition, so this step covers Hide too.
+4. Otherwise, fall through to `GridTopology.can_see` with the viewer's own
+   projected senses — the scene vision model above.
+
+Darkvision is never a special sense for step 2 or 3: it only re-grades
+light (step 3/4 of the base predicate), so a Darkvision-only viewer still
+can't pierce Blinded or Invisible.
+
+This predicate is *not* what feeds the `unseen` `AdvantageSource` — that stays
+the raw `_target_visibility_maps` / `can_see` pair, since Blinded and Invisible
+already emit their own `condition:*` advantage sources and double-counting
+would be wrong. `_combatant_can_see` instead backs every OTHER SRD "can see"
+conjunct: the Dodge action's "if you can see the attacker" attack-disadvantage
+half (both at the regular-attack context build sites and on opportunity
+attacks), the Ranged Attacks in Close Combat "enemy who can see you" gate, the
+Opportunity Attack "creature that you can see" trigger (both PC↔monster
+directions — a sight-blocked reactor spends no Reaction and fires no attack),
+Hide's "out of any enemy's line of sight" conjunct, and Frightened's
+line-of-sight gate (both the attack-roll disadvantage and the "can't
+willingly move closer to the source of fear" movement rule).
+
 ## Terrain cost model
 
 `GridScene.difficult_terrain_cells: list[str] = []` — a first-class floor-cell
