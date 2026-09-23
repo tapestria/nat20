@@ -56,13 +56,33 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   multiattack token is labelled, so the five opaque-key monsters join
   precisely; doppelganger and chain-devil now ALSO count their conditional
   feat use ("uses Unsettling Visage if…") as one fixed use per turn. The
-  "if …" clause needs a carve-out in `_parse_item_counts`. (Recharge/limited-
-  use gating for the joined action itself — e.g. doppelganger's Recharge-6
-  Unsettling Visage — closed 2026-09-03, C18: `_hydrate_monster_action_uses`
-  tracks any `monster.actions`/`legendary_actions` entry carrying a
-  `recharge` notation or a typed N/Day `uses.max`, gated via
-  `rank_monster_actions`/the turn-start recharge roll.)
+  "if …" clause needs a carve-out in `_parse_item_counts`. (Recharge gating
+  for the joined action itself — e.g. doppelganger's Recharge-6 Unsettling
+  Visage — closed 2026-09-03, C18, via `rank_monster_actions` and the
+  turn-start recharge roll. Limited-use gating is only partial: see "Typed
+  `MonsterAction.uses_per_day` is never consulted" below.)
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/monster_actions.py`)
+- **Typed `MonsterAction.uses_per_day` is never consulted, and a non-cast
+  N/Day `uses.max` is never decremented** (2026-09-23).
+  `_hydrate_monster_action_uses` reads only activity-level `uses.max`, so the
+  24 bundled actions typed with `uses_per_day` (Aboleth Dominate Mind 2/Day,
+  Quasit Scare 1/Day, Vrock Stunning Screech 1/Day, Dretch Fetid Cloud,
+  Troll Loathsome Limbs 4/Day, …) are at will to the engine; and a
+  non-cast activity with an integer `uses.max` (Sphinx of Valor's Roar) is
+  hydrated into `uses_remaining` but only the cast path
+  (`_resolve_monster_cast`) ever decrements it. Not a regression —
+  Multiattack still outranks every such action — but none of them is
+  limited. Fix shape: seed `uses_remaining` from `uses_per_day` when no
+  activity carries a digit, and decrement non-cast uses on selection.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_hydrate_monster_action_uses`)
+- **`_mark_monster_action_used` spends only the ranked action itself**
+  (2026-09-23). When the chosen action is a Multiattack whose join
+  substitutes a recharge sibling (a "uses X" clause resolving to a Recharge
+  action), only `ranked[0]` — the Multiattack — is marked; the substituted
+  recharge sibling is never marked spent, so it would fire every turn. No
+  bundled Multiattack joins a recharge sibling today, so the corpus is
+  unaffected; a corpus change that adds one would silently un-gate it.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_mark_monster_action_used`)
 - **A monster's own AoE (cone/sphere/etc.) still resolves against a single
   chosen target, not the template** (2026-09-03, C18). Grid AoE template
   expansion (C16) is wired for the PC cast path; a monster save/damage
@@ -82,16 +102,6 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   (e.g. Pounce) and a multi-point legendary action are skipped even when
   legal. The bundled corpus carries no multi-point legendary action today.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_take_legendary_action`)
-- **Legendary Action and Legendary Resistance pool sizes default to 3 when
-  the corpus does not type them — which is every bundled monster today**
-  (2026-09-03, C18). Neither `_legendary_action_uses_max` nor
-  `_legendary_resistance_max` finds a typed count (a `uses_per_day` field or
-  an `"N/Day"` name suffix) on any monster in the shipped corpus, so the
-  SRD 5.2 baseline of 3 is the operative value everywhere; a monster whose
-  true count differs (rare in the SRD 5.2 corpus, but not impossible for a
-  future addition) would be silently wrong until the translator or the
-  stat block types the real count.
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
 - **Legendary Resistance is host-armed only — no AI policy decides when to
   spend it** (2026-09-03, C18). `resolve_legendary_resistance` is a pure
   seam a host calls before submitting the intent that will force a save;
@@ -143,7 +153,11 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   absorbs damage from AFTER this event is emitted
   (`_emit_apply_damage`/`_emit_apply_temp_hp`), so a hit that the bearer's
   temp HP would have fully absorbed (no real-HP loss at all) can still force
-  a needless CON save and, on a failure, an incorrect Death.
+  a needless CON save and, on a failure, an incorrect Death. Relatedly, the
+  gate compares EACH damage part's amount against the same un-decremented
+  `hp_current` snapshot, so a multi-type hit whose parts each fall short of
+  the bearer's HP but together exceed it never triggers the save at all and
+  the bearer drops without rolling.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/apply.py`)
 
 ## Core combat rules not modelled (2026-08-22)
@@ -255,7 +269,8 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
 - **Engine does not yet read `canonical/conditions/`.** The dataset category
   exists (C22, `AssetLoader.get_condition`), mirroring `rules/conditions.py`;
   per campaign design D3 the engine should prefer the data when present and
-  fall back to the Python registry. Owner: C12/C18 follow-up.
+  fall back to the Python registry. Still open after C12 and C18 (neither
+  reads the category); unowned.
   (`packages/dnd5e-engine/src/dnd5e_engine/rules/conditions.py`)
 - **`orchestrator.py` is ~5.5k lines**, about a third of the engine, holding the
   reaction queue, item/feature charge accounting, the monster turn, the effect
@@ -694,7 +709,8 @@ a cluster; they are consolidated here so they are not re-discovered.
 - **`EncounterMemberSpec.dexterity: int = 10` is a lossy sentinel.** The monster
   template hydration cannot distinguish "host left the default" from "host
   explicitly set 10", so an explicit 10 always defers to the template's DEX.
-  Retype to `int | None = None` (additive; needs a migration note) in C18/C23.
+  Retype to `int | None = None` (additive; needs a migration note) in C23
+  (C18 did not retype it).
   (`packages/dnd5e-engine/src/dnd5e_engine/specs.py`)
 - **Roll events cannot report bonus DICE.** `roll_total == natural + modifier`
   only when no Bless/Bane-style bonus die applied; `modifier` deliberately
@@ -711,7 +727,9 @@ a cluster; they are consolidated here so they are not re-discovered.
 - **The turn-start log index is recomputed per candidate effect.**
   `_effect_applied_during_current_turn` rescans the event log for each
   until-end-of-next-turn effect at a turn boundary. Bounded and immaterial at
-  today's scale; when C12/C18 add a *second* log-reading turn hook, hoist a
+  today's scale (C18 added no such hook — its monster turn-start mechanics
+  run from `_run_monster_turn_start`); if a *second* log-reading turn hook is
+  ever added, hoist a
   single `current_turn_start_index` computed once in `_begin_turn` and have
   both hooks read it.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_begin_turn`)

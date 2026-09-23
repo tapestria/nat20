@@ -119,27 +119,32 @@ combatant. Behavioural deltas (and the fixtures they move) are enumerated in
   Magic Missile event-count change and the `build_party_member`
   empty-pool fallback.
 
-- **Monster action economy (C18).** A driven monster turn now runs
-  legendary-pool reset, Recharge rolls (`RechargeRolled`, gates a spent
-  recharge action until it succeeds) and Regeneration (unconditional per
-  SRD 5.2 — no 2014 acid/fire suppression) before action selection;
+- **Monster action economy (C18).** A living monster's driven turn now
+  runs legendary-pool reset, Recharge rolls (`RechargeRolled`, gates a spent
+  recharge action until it succeeds) and Regeneration (unconditional — the
+  bundled corpus trait text carries no suppression clause) before action
+  selection; a dead monster runs none of them.
   `activities/monster_actions.py::rank_monster_actions` ranks a live
-  recharge/limited-use offensive action first, an N/Day innate-spell action
-  second, `multiattack` third, then everything else. Stat-block monster
-  spellcasting now selects and casts: the spell book comes from the
-  compendium uuids already in the data, the save DC uses the monster's own
-  `Combatant.spellcasting_ability` (new dataset field
-  `Monster.spellcasting_ability`) against its own ability score +
-  proficiency bonus, and `SpellCast` is now emitted on the monster path
-  too. Legendary Actions: `advance_monster_turn(handle, *, legendary=True,
-  actor_id=...)` spends one legendary action from a per-day pool reset at
-  the start of the creature's own turn (`LegendaryActionUsed`; pool size
-  defaults to 3 — no bundled monster types the count). Legendary
-  Resistance: a new top-level `resolve_legendary_resistance(handle,
-  entity_id) -> int` pre-arms a conversion of the entity's next failed
-  save — every save path in the engine honors it, including the Grapple/
-  Shove Unarmed Strike save and the damage-triggered concentration check —
-  and emits `LegendaryResistanceUsed`. Five more `MonsterTraitMechanic`
+  recharge action first, a Spellcasting action whose N/Day offensive spell
+  still has a use left second (it casts that spell, not an at-will one),
+  `multiattack` third, then everything else (at-will spells included).
+  Stat-block monster spellcasting now selects and casts: the spell book
+  comes from the compendium uuids already in the data, the save DC and the
+  spell attack bonus use the monster's own `Combatant.spellcasting_ability`
+  (new dataset field `Monster.spellcasting_ability`) against its own
+  ability score + proficiency bonus, and `SpellCast` is now emitted on the
+  monster path too. Legendary Actions: `advance_monster_turn(handle, *,
+  legendary=True, actor_id=...)` spends one legendary action from a pool
+  that refills at the start of the creature's own turn
+  (`LegendaryActionUsed`; pool size from the new dataset field
+  `Monster.legendary_action_uses`, 3 for every bundled legendary monster).
+  Legendary Resistance: a per-day pool (never reset at turn start) sized
+  from the new dataset field `Monster.legendary_resistance_uses` (3, 4 or
+  6); a new top-level `resolve_legendary_resistance(handle, entity_id) ->
+  int` pre-arms a conversion of the entity's next failed save — every save
+  path in the engine honors it, including the Grapple/Shove Unarmed Strike
+  save and the damage-triggered concentration check — and emits
+  `LegendaryResistanceUsed` after the converted `SaveRolled`. Five more `MonsterTraitMechanic`
   values are now consumed: Pack Tactics (attack advantage from an adjacent,
   non-Incapacitated ally), Sunlight Sensitivity (attack disadvantage via
   the new `GridScene.sunlight: bool = False` scene flag), Undead Fortitude
@@ -152,8 +157,8 @@ combatant. Behavioural deltas (and the fixtures they move) are enumerated in
   and `ended_reason`/`CombatEnded.reason` can now actually be `"flee"` when
   every living foe has fled. See the migration guide for the full
   determinism-affecting delta list — a seeded replay reaching a monster
-  turn with a recharge/limited-use/legendary action or a newly-consumed
-  trait diverges from that point on.
+  turn with a recharge action, an unspent N/Day spell, a legendary action or
+  a newly-consumed trait diverges from that point on.
 
 ### Added
 

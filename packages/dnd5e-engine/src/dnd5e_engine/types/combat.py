@@ -274,20 +274,26 @@ class Combatant(BaseModel):
     # nonmagical attacks": a magical weapon's or a spell's Bludgeoning /
     # Piercing / Slashing damage bypasses the resistance. False = the
     # resistance is unconditional (SRD 5.2 stat blocks; Foundry
-    # ``dr.bypasses == []``). C18's corpus hydration sets it from
-    # ``dr.bypasses``.
+    # ``dr.bypasses == []``). C18's corpus hydration sets it to False for a
+    # template-hydrated resistance list — met by construction, not read from
+    # data: the dataset schema carries no bypass field, so a future one must
+    # be wired in both the translator and that hydration.
     physical_resistances_nonmagical_only: bool = True
-    # SRD 5.2 §Legendary Actions — "can take 3 legendary actions" pool,
-    # reset to ``legendary_actions_max`` at the start of the monster's OWN
-    # turn (``_run_monster_turn_start``, orchestrator.py). Hydrated from the
-    # template at ``start_combat`` for any monster with a non-empty
-    # ``Monster.legendary_actions`` list; 0/0 for PCs and template-less foes.
+    # SRD 5.2 §Legendary Actions — Legendary Action Uses pool ("it regains
+    # all expended uses at the start of each of its turns"): reset to
+    # ``legendary_actions_max`` at the start of the monster's OWN turn
+    # (``_run_monster_turn_start``, orchestrator.py) — a per-turn pool, not a
+    # per-day one. Hydrated at ``start_combat`` from the typed
+    # ``Monster.legendary_action_uses`` (3 when a template with legendary
+    # actions leaves it untyped); 0/0 for PCs and template-less foes.
     legendary_actions_max: int = 0
     legendary_actions_remaining: int = 0
-    # SRD 5.2 §Legendary Resistance — "N/Day" pool, reset to
-    # ``legendary_resistances_max`` at the same turn-start boundary. Hydrated
-    # via ``_legendary_resistance_max`` from the trait's ``uses_per_day`` or
-    # its ``"N/Day"`` name suffix, defaulting to 3.
+    # SRD 5.2 §Legendary Resistance — "N/Day" pool. Per DAY: it is NOT
+    # reset at turn start (nor anywhere within a combat). Hydrated via
+    # ``_legendary_resistance_max`` from the typed
+    # ``Monster.legendary_resistance_uses`` (3, 4 or 6 in the bundled
+    # corpus), else the trait's ``uses_per_day`` / ``"N/Day"`` name suffix,
+    # else 3.
     legendary_resistances_max: int = 0
     legendary_resistances_remaining: int = 0
     # C18 Task 9 consumes this: True once a fleeing/retreating monster has
