@@ -407,8 +407,9 @@ class ActivityResolutionContext:
     # qualifying ally. Empty default keeps every non-bearer byte-identical.
     pack_tactics_ally_adjacent: dict[str, bool] = field(default_factory=dict)
     # C18 §Monster action economy — SRD 5.2 stat-block trait "Sunlight
-    # Sensitivity": "the [monster] has Disadvantage on attack rolls ...
-    # while [it] is in direct sunlight." A scene-wide flag (whole-scene
+    # Sensitivity" (bundled corpus text): "While in sunlight, the monster
+    # has Disadvantage on ability checks and attack rolls." Read for the
+    # attack-roll half only. A scene-wide flag (whole-scene
     # sunlight; per-cell sunlight is a later additive field on
     # ``GridScene``) projected by the orchestrator from ``live.scene_
     # sunlight``. ``False`` default keeps every combat without a sunlit

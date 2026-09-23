@@ -143,9 +143,10 @@ def test_pack_tactics_is_inert_without_the_trait():
 
 
 def test_sunlight_sensitivity_adds_trait_disadvantage_only_in_sunlight():
-    """SRD 5.2 stat-block trait "Sunlight Sensitivity": "the [monster] has
-    Disadvantage on attack rolls ... while [it] ... is in direct sunlight."
-    The scene-wide flag (``ctx.attacker_in_sunlight``) gates the trait."""
+    """SRD 5.2 stat-block trait "Sunlight Sensitivity" (bundled corpus
+    text): "While in sunlight, the monster has Disadvantage on ability checks
+    and attack rolls." The attack-roll half; the scene-wide flag
+    (``ctx.attacker_in_sunlight``) gates the trait."""
     sensitive = Combatant(
         entity_id="mon:kobold",
         entity_type="Monster",

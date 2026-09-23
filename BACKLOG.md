@@ -293,8 +293,8 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   obscurement, no Blinded emission from darkness; `can_see` reads
   `GridScene.lighting` / `obscurement_cells` plus the viewer's projected
   senses. Sunlight Sensitivity's attack-roll half closed C18 (the new
-  whole-scene `GridScene.sunlight` flag); its ability-check half is still
-  open (see "Typed traits are hydrated..." under "Audit 2026-08-26 —
+  whole-scene `GridScene.sunlight` flag); its ability-check half (the
+  trait disadvantages ALL ability checks in sunlight) is still open (see "Typed traits are hydrated..." under "Audit 2026-08-26 —
   monsters" below). No *See Invisibility*-style effect flag
   pierces the Invisible condition either (C16b plan ruling R3) — only
   blindsight/
@@ -633,7 +633,10 @@ stand-in, not an engine capability. Specifically:
   are not yet recognised, and the orchestrator-level save paths — repeat
   save, concentration, Grapple/Shove — still do not read it). C18 landed
   Pack Tactics (attack advantage), Sunlight Sensitivity (attack
-  disadvantage — its ability-check half is not modelled), Undead Fortitude
+  disadvantage — its ability-check half is not modelled: the bundled trait
+  text is "While in sunlight, the monster has Disadvantage on ability checks
+  and attack rolls.", so every ability check the bearer makes in sunlight
+  should roll at Disadvantage), Undead Fortitude
   (CON save to hold at 1 HP), Swarm (no HP/temp-HP gain) and Legendary
   Resistance. Flyby (no flying-movement tracking) and Nimble Escape
   (untyped bonus action; the monster AI takes no bonus actions) are not

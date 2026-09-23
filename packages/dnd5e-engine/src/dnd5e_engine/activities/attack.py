@@ -514,10 +514,11 @@ def _attack_roll_sources(
     ):
         adv_sources.append("trait")
     # C18 §Monster action economy — SRD 5.2 stat-block trait "Sunlight
-    # Sensitivity": "the [monster] has Disadvantage on attack rolls ...
-    # while [it] is in direct sunlight." Scene-wide flag PRE-RESOLVED by
-    # the orchestrator (``live.scene_sunlight``); gated on the attacker
-    # actually carrying the trait.
+    # Sensitivity" (bundled corpus text): "While in sunlight, the monster
+    # has Disadvantage on ability checks and attack rolls." This is the
+    # attack-roll half (ability checks are not modelled — BACKLOG). Scene-
+    # wide flag PRE-RESOLVED by the orchestrator (``live.scene_sunlight``);
+    # gated on the attacker actually carrying the trait.
     if (
         MonsterTraitMechanic.SUNLIGHT_SENSITIVITY in ctx.caster.trait_mechanics
         and ctx.attacker_in_sunlight
