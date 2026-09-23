@@ -32,6 +32,7 @@ from dnd5e_engine import (
     PartyMemberSpec,
     PlayerIntent,
     advance_monster_turn,
+    end_combat,
     get_live,
     resolve_legendary_resistance,
     start_combat,
@@ -1013,3 +1014,134 @@ def test_undead_fortitude_failed_save_kills_the_zombie_on_the_live_path():
     assert deaths[0].target_id == "mon:zombie"
     assert "mon:zombie" in live.dead_ids
     assert live.tracked_hp["mon:zombie"] == 0
+
+
+def test_fleeing_goblin_sets_has_fled_and_combat_ends_with_flee():
+    """R9: the flee-stance branch of ``advance_monster_turn`` persists
+    ``Combatant.has_fled = True`` (AGGRESSIVE goblin below the 10% HP
+    threshold), and ``_derive_ended_reason`` reports ``"flee"`` once every
+    living foe carries that flag."""
+
+    async def go():
+        handle, live = await _start(
+            [_hero()], [_foe("goblin-warrior", hp=1, hp_max=20, ac=13)], seed=1
+        )
+        await _pass(handle)
+        await advance_monster_turn(handle)
+        current = next(c for c in live.initiative if c.entity_id == "mon:foe")
+        assert current.has_fled is True
+        return await end_combat(handle)
+
+    result = _run(go())
+    assert result.outcome.ended_reason == "flee"
+
+
+def test_flee_requires_every_living_foe_to_have_fled():
+    """R9: ``"flee"`` requires EVERY living foe to have fled — a second,
+    full-HP goblin that never fled means the encounter is still contested,
+    so ``_derive_ended_reason`` falls through to ``"forced"``."""
+
+    async def go():
+        handle, _live = await _start(
+            [_hero()],
+            [
+                _foe(
+                    "goblin-warrior",
+                    entity_id="mon:foe1",
+                    hp=1,
+                    hp_max=20,
+                    ac=13,
+                    col=3,
+                    initiative=10,
+                ),
+                _foe(
+                    "goblin-warrior",
+                    entity_id="mon:foe2",
+                    hp=20,
+                    hp_max=20,
+                    ac=13,
+                    col=4,
+                    initiative=5,
+                ),
+            ],
+            seed=1,
+        )
+        await _pass(handle)
+        await advance_monster_turn(handle)  # foe1: below threshold, flees
+        await advance_monster_turn(handle)  # foe2: full HP, still fighting
+        return await end_combat(handle)
+
+    result = _run(go())
+    assert result.outcome.ended_reason == "forced"
+
+
+def test_dead_foes_do_not_block_flee():
+    """R9: ``living_foes`` excludes ``live.dead_ids`` — a dead ally never
+    blocks a ``"flee"`` verdict for the survivor that fled, and when EVERY
+    foe is dead the pre-existing ``"victory"`` branch still wins (empty
+    ``living_foes`` never satisfies the new all-fled check)."""
+
+    async def go(*, kill_first_too):
+        handle, live = await _start(
+            [_hero()],
+            [
+                _foe(
+                    "goblin-warrior",
+                    entity_id="mon:foe1",
+                    hp=1,
+                    hp_max=20,
+                    ac=13,
+                    col=3,
+                    initiative=10,
+                ),
+                _foe(
+                    "goblin-warrior",
+                    entity_id="mon:foe2",
+                    hp=1,
+                    hp_max=20,
+                    ac=13,
+                    col=4,
+                    initiative=5,
+                ),
+            ],
+            seed=1,
+        )
+        await _pass(handle)
+        await advance_monster_turn(handle)  # foe1: below threshold, flees
+        live.dead_ids.add("mon:foe2")
+        if kill_first_too:
+            live.dead_ids.add("mon:foe1")
+        return await end_combat(handle)
+
+    one_dead_one_fled = _run(go(kill_first_too=False))
+    assert one_dead_one_fled.outcome.ended_reason == "flee"
+
+    all_dead = _run(go(kill_first_too=True))
+    assert all_dead.outcome.ended_reason == "victory"
+
+
+def test_flag_clears_when_the_monster_fights_again():
+    """R9: healing a fled monster back above the flee threshold and driving
+    its turn again resets ``has_fled`` to False — the flag reflects current
+    stance, not the fact it once fled."""
+
+    async def go():
+        handle, live = await _start(
+            [_hero()], [_foe("goblin-warrior", hp=1, hp_max=20, ac=13)], seed=1
+        )
+        await _pass(handle)
+        await advance_monster_turn(handle)
+        fled = next(c for c in live.initiative if c.entity_id == "mon:foe")
+        assert fled.has_fled is True
+
+        await _pass(handle)
+        live.tracked_hp["mon:foe"] = 15
+        for idx, c in enumerate(live.initiative):
+            if c.entity_id == "mon:foe":
+                live.initiative[idx] = c.model_copy(update={"hp_current": 15})
+                break
+        await advance_monster_turn(handle)
+        return next(c for c in live.initiative if c.entity_id == "mon:foe")
+
+    current = _run(go())
+    assert current.has_fled is False

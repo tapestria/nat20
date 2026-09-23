@@ -24,7 +24,7 @@ from dnd5e_engine.orchestrator import (
     submit_player_intent,
 )
 from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
-from tests.e2e.harness import cell, events_of, grid_scene, run_async, xfail_cluster
+from tests.e2e.harness import cell, events_of, grid_scene, run_async
 
 
 def test_c18_s01_recharge_gates_a_breath_weapon_ai_cannot_select_it():
@@ -573,15 +573,13 @@ def test_c18_s07_stat_block_spellcaster_monster_actually_casts():
     assert saves[0].dc == 14
 
 
-@xfail_cluster(18, "monster action economy")
 def test_c18_s08_combat_ends_flee_when_every_foe_has_fled():
     """C18-S08: engine/Foundry-parity plumbing (no dedicated SRD flee
     mechanic) per spec §5 C18's acceptance-contract line item
-    ``ended_reason="flee"``. ``_derive_ended_reason`` computes only
-    ``all_foes_dead``/``all_pcs_dead`` — its return-type annotation
-    already carries the ``"flee"`` literal, but no code path ever
-    returns it; a live, un-dead, fled goblin still yields
-    ``ended_reason == "forced"``.
+    ``ended_reason="flee"``. ``_derive_ended_reason`` now returns
+    ``"flee"`` once every living foe carries a persisted
+    ``Combatant.has_fled`` flag, set by ``advance_monster_turn``'s
+    flee-stance branch.
     """
 
     async def _run():

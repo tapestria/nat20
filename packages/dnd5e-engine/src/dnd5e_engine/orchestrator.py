@@ -2005,6 +2005,39 @@ def _execute_flee_retreat(
     _walk_zone_path(live, monster.entity_id, live.topology.shortest_path(start_zone, destination))
 
 
+def _apply_monster_flee_stance(
+    live: _LiveCombat, current: Combatant, alive_pcs: Sequence[Combatant]
+) -> Combatant:
+    """Persist ``Combatant.has_fled`` across turns (C18 Task 9, R9).
+
+    A live, conscious monster over the flee threshold (``_monster_is_fleeing``)
+    spends its movement retreating (``_execute_flee_retreat``) and is marked
+    ``has_fled=True`` regardless of whether that retreat actually moved it
+    (already cornered, no movement budget left, or a backend with no
+    reachable destination) — the flag records the monster's STANCE this
+    turn, not whether it displaced. A live, conscious monster that is NOT
+    fleeing this turn — including one healed back above the threshold after
+    an earlier flee — is marked ``has_fled=False``, so ``_derive_ended_reason``'s
+    "every living foe has fled" check reflects current stance rather than a
+    stale flag. Dead/unconscious monsters take no turn and are left
+    untouched either way.
+
+    Returns the (possibly replaced, per ``model_copy``) ``Combatant`` so the
+    caller's ``current`` stays in sync with ``live.initiative``.
+    """
+    if not (current.is_alive and current.hp_current > 0):
+        return current
+    fleeing = _monster_is_fleeing(current)
+    if fleeing:
+        _execute_flee_retreat(live, current, alive_pcs)
+        current = next(c for c in live.initiative if c.entity_id == current.entity_id)
+    for idx, c in enumerate(live.initiative):
+        if c.entity_id == current.entity_id:
+            live.initiative[idx] = c.model_copy(update={"has_fled": fleeing})
+            return live.initiative[idx]
+    return current
+
+
 def _monster_target_distance_ft(
     live: _LiveCombat, monster_id: str, target: Combatant | None
 ) -> int | None:
@@ -10384,9 +10417,7 @@ async def advance_monster_turn(
     # ``IntentSubmitted(intent_type="pass")`` — but now with real
     # ``ActorMoved`` events preceding it (reusing ``"pass"`` per the catalog;
     # no new IntentType is minted). Dead/unconscious monsters never retreat.
-    if current.is_alive and current.hp_current > 0 and _monster_is_fleeing(current):
-        _execute_flee_retreat(live, current, alive_pcs)
-        current = next(c for c in live.initiative if c.entity_id == current.entity_id)
+    current = _apply_monster_flee_stance(live, current, alive_pcs)
 
     # ── Typed-Activity monster resolution (Foundry cutover, ─────────
     #
@@ -10625,6 +10656,7 @@ def _derive_ended_reason(live: _LiveCombat) -> Literal["victory", "defeat_tpk", 
 
     - all encounter members dead → victory
     - all party members dead → defeat_tpk
+    - every living foe has fled (``Combatant.has_fled``, C18 Task 9 / R9) → flee
     - otherwise → forced (caller closed mid-combat)
     """
     all_foes_dead = all(eid in live.dead_ids for eid in live.encounter_ids)
@@ -10633,6 +10665,13 @@ def _derive_ended_reason(live: _LiveCombat) -> Literal["victory", "defeat_tpk", 
         return "victory"
     if all_pcs_dead and live.party_ids:
         return "defeat_tpk"
+    living_foes = [
+        c
+        for c in live.initiative
+        if c.entity_id in live.encounter_ids and c.entity_id not in live.dead_ids
+    ]
+    if living_foes and all(c.has_fled for c in living_foes):
+        return "flee"
     return "forced"
 
 
