@@ -1348,3 +1348,34 @@ def test_adult_red_dragon_breathes_casts_fireball_once_then_multiattacks():
     assert kinds.count("fireball") == 1
     assert "multiattack" in kinds
     assert kinds[:2] == ["breath", "fireball"]
+
+
+# Finding 8: a monster's spell attack rolls with PB + its spellcasting
+# ability modifier (the stat block's own "+N to hit with spell attacks"),
+# not its weapon ``attack_bonus``.
+
+
+def test_monster_spell_attack_uses_pb_plus_spellcasting_modifier():
+    """Cast-striker: INT 16 (+3), PB +2 -> +5 to hit with Fire Bolt, even
+    though the host set its weapon ``attack_bonus`` to +9 (the adult red
+    dragon's stat block pairs +14 Rend with "+12 to hit with spell
+    attacks" — the same split)."""
+    fire_bolt = BundledAssetLoader().get_spell("fire-bolt")
+    assert fire_bolt is not None
+    set_lib_loader_for_tests(
+        MemoryAssetLoader(monsters=[_cast_striker_monster()], spells=[fire_bolt])
+    )
+
+    async def go():
+        spec = _foe("cast-striker", initiative=20, hp=20, ac=10).model_copy(
+            update={"attack_bonus": 9}
+        )
+        handle, live = await _start([_hero(initiative=1)], [spec])
+        await advance_monster_turn(handle)
+        return live
+
+    live = _run(go())
+    rolled = [e for e in _events(live, AttackRolled) if e.attacker_id == "mon:foe"]
+    assert rolled
+    assert rolled[0].modifier == 5
+    assert rolled[0].roll_total == rolled[0].natural + 5

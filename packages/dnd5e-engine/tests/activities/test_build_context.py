@@ -246,3 +246,14 @@ def test_roll_save_empty_sidecar_matches_plain_d20_plus_mod():
     total, succeeded = _roll.total, _roll.succeeded
     assert total == 11 + 3
     assert succeeded is True
+
+
+def test_monster_spell_attack_bonus_uses_the_stat_block_spellcasting_ability():
+    """C18 final review, finding 8: the bundled adult red dragon's
+    Spellcasting reads "+12 to hit with spell attacks" (cha 23 -> +6, PB +6)
+    while its Rend is +14 — a monster cast with a resolved
+    ``spellcasting_ability`` overrides to-hit with PB + that modifier; the
+    mundane path (``spellcasting_ability=None``) keeps ``attack_bonus``."""
+    dragon = _monster(attack_bonus=14, charisma=23, proficiency_bonus_override=6)
+    assert _build(dragon, [dragon], spellcasting_ability="cha").attack_bonus_override == 12
+    assert _build(dragon, [dragon], spellcasting_ability=None).attack_bonus_override == 14

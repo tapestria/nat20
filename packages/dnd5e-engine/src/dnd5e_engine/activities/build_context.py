@@ -97,6 +97,28 @@ def _save_dc(
     return 8 + 2 + mod
 
 
+def _attack_bonus_override(caster: Combatant, spellcasting_ability: str | None) -> int | None:
+    """The fixed to-hit a caster's attack rolls use, or ``None`` for "no
+    override" (``attack.py::_attack_bonus`` then computes ability mod +
+    proficiency itself).
+
+    A Monster casting with a resolved ``spellcasting_ability`` (the stat-
+    block spellcast path — every other monster path passes ``None``) rolls
+    its spell attacks at ``proficiency bonus + spellcasting ability
+    modifier``, mirroring ``_save_dc``'s honest branch: the adult red
+    dragon's own Spellcasting entry reads "using Charisma as the
+    spellcasting ability (spell save DC …, +12 to hit with spell attacks)"
+    — PB +6, CHA 23 (+6) — while its Rend is +14. Every other caster keeps
+    ``caster.attack_bonus`` byte-for-byte (a monster's weapon to-hit; C15's
+    ``None`` for a PC whose host never set one).
+    """
+    if caster.entity_type == "Monster" and spellcasting_ability:
+        return proficiency_bonus_of(caster) + ability_modifier_of(
+            caster, cast("Ability", spellcasting_ability)
+        )
+    return caster.attack_bonus
+
+
 def _spell_dc_bonus(
     caster: Combatant,
     passive_damage_modifiers: dict[str, dict[str, Any]],
@@ -393,8 +415,9 @@ def build_activity_context(
         # correctly falls through in ``attack.py::_attack_bonus`` to the real
         # governing-ability-mod + proficiency-bonus computation instead of a
         # pinned 0 override — no change needed at that call site, it already
-        # treated ``None`` as "no override".
-        attack_bonus_override=caster.attack_bonus,
+        # treated ``None`` as "no override". A Monster's stat-block spell
+        # attack uses PB + its spellcasting modifier instead.
+        attack_bonus_override=_attack_bonus_override(caster, spellcasting_ability),
         passive_damage_modifiers=passive_damage_modifiers,
         passive_save_modifiers=passive_save_modifiers,
         passive_save_bonus=passive_save_bonus,
