@@ -792,7 +792,9 @@
   "hp_dice": "15d20 + 90",
   "lair_actions": [],
   "languages": [],
+  "legendary_action_uses": null,
   "legendary_actions": [],
+  "legendary_resistance_uses": null,
   "movement": {
     "burrow": 50,
     "climb": null,

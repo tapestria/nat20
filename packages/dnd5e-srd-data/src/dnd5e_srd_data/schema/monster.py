@@ -176,6 +176,12 @@ class Monster(BaseModel):
     """The monster's innate spellcasting ability code (SRD save DC =
     8 + proficiency bonus + this ability's modifier), from Foundry's
     ``system.attributes.spellcasting``. ``None`` for non-spellcasters."""
+    legendary_resistance_uses: PositiveInt | None = None
+    """SRD 5.2 "Legendary Resistance (N/Day)" pool size, from Foundry's
+    ``system.resources.legres.max``. ``None`` when the monster has none."""
+    legendary_action_uses: PositiveInt | None = None
+    """SRD 5.2 "Legendary Action Uses: N" pool size, from Foundry's
+    ``system.resources.legact.max``. ``None`` when the monster has none."""
 
     saving_throws: SavingThrowProficiencies
     skills: SkillProficiencies

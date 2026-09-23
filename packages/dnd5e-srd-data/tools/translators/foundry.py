@@ -1100,6 +1100,20 @@ def _spellcasting_ability(
     return top_level if top_level in _VALID_SPELLCASTING_ABILITIES else None
 
 
+def _resource_max(system: dict[str, Any], key: str) -> int | None:
+    """``system.resources.<key>.max`` as a positive int, else ``None``.
+
+    Foundry types the SRD 5.2 legendary pools here — ``legres`` (Legendary
+    Resistance N/Day) and ``legact`` (Legendary Action Uses) — and ships 0 on
+    every NPC without one; 0 maps to ``None`` ("no pool")."""
+    entry = (system.get("resources") or {}).get(key) or {}
+    try:
+        value = int(entry.get("max") or 0)
+    except (TypeError, ValueError):
+        return None
+    return value if value > 0 else None
+
+
 def _sense_value(raw: Any) -> int | None:
     """Foundry ships 0 for senses the creature lacks. Schema uses None as
     'unavailable'; 0 would falsely say 'has the sense with range 0 ft'."""
@@ -1676,6 +1690,8 @@ def translate_monster_yaml(
         spellcasting_ability=_spellcasting_ability(
             attrs, actions, legendary_actions, special_abilities
         ),
+        legendary_resistance_uses=_resource_max(system, "legres"),
+        legendary_action_uses=_resource_max(system, "legact"),
         saving_throws=saving_throws,
         skills=skills,
         damage_resistances=_trait_list(traits, "dr"),

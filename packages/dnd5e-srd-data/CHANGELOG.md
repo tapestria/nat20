@@ -10,7 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Core-mechanics C22 — the dataset now carries the mechanics the engine used to
 keep only in Python — and C18 — `Monster.spellcasting_ability`, the field
 that lets stat-block monster spellcasting derive an honest save DC from the
-monster's own ability score instead of a flat approximation. Every change is
+monster's own ability score instead of a flat approximation, plus the typed
+legendary pool sizes (`legendary_resistance_uses`, `legendary_action_uses`). Every change is
 additive; old canonical JSON without the new keys still validates.
 
 ### Added
@@ -53,6 +54,15 @@ additive; old canonical JSON without the new keys still validates.
   non-spellcasting monster is `None`. One residual: Mummy Lord's
   spellcasting ability is stated only in trait prose, not in any structured
   field, so it resolves to `None` (tracked in `BACKLOG.md`).
+- **`Monster.legendary_resistance_uses` / `Monster.legendary_action_uses:
+  PositiveInt | None`** — the SRD 5.2 Legendary Resistance (N/Day) and
+  Legendary Action Uses pool sizes, from Foundry's
+  `system.resources.legres.max` / `legact.max` (0 → `None`). Legendary
+  Resistance: 3 for 18 bearers (the adult dragons, Ancient Gold Dragon,
+  Aboleth, Balor, Mummy Lord, both sphinxes, Unicorn, Vampire), 4 for 13
+  (the other eight ancient dragons, Kraken, Lich, Pit Fiend, Solar), 6 for
+  the Tarrasque; legendary actions: 3 for all 30 legendary-action monsters.
+  Regen adds exactly these two keys to each of the 341 monster files.
 
 ### Changed
 

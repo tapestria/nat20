@@ -802,7 +802,9 @@
     "Common",
     "can\u2019t speak in bear form"
   ],
+  "legendary_action_uses": null,
   "legendary_actions": [],
+  "legendary_resistance_uses": null,
   "movement": {
     "burrow": null,
     "climb": null,
