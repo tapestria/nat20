@@ -105,3 +105,34 @@ def test_combat_ids_never_reused_after_a_combat_ends(client: TestClient) -> None
 
     view_c = client.get(f"/v1/combat/{c['combat_id']}")
     assert view_c.status_code == 200
+
+
+def test_view_exposes_the_grid_scene(client: TestClient) -> None:
+    """The view carries the battlefield scene, not just per-combatant zones.
+
+    A host that renders a map needs the grid's extent and terrain; without
+    this block it can only guess the dimensions the bridge chose.
+    """
+    cid = _start(client)["combat_id"]
+
+    grid = client.get(f"/v1/combat/{cid}").json()["grid"]
+
+    assert (grid["width"], grid["height"]) == (12, 12)
+    assert grid["cell_size_ft"] == 5
+    assert grid["blocked_cells"] == []
+    assert grid["difficult_terrain_cells"] == []
+    assert grid["cover_cells"] == {}
+    assert grid["wall_segments"] == []
+
+
+def test_every_combatant_zone_is_inside_the_reported_grid(client: TestClient) -> None:
+    """The zones and the grid block must describe the same battlefield."""
+    cid = _start(client)["combat_id"]
+
+    view = client.get(f"/v1/combat/{cid}").json()
+    grid = view["grid"]
+
+    for row in view["order"]:
+        col, rownum = (int(part) for part in row["zone"].split(","))
+        assert 0 <= col < grid["width"], row
+        assert 0 <= rownum < grid["height"], row

@@ -253,14 +253,16 @@ async def _start_route(state: BridgeState, req: _CombatStartRequest) -> dict[str
     # (see BridgeState.next_combat_id's docstring).
     cid = f"c{state.next_combat_id}"
     state.next_combat_id += 1
+    grid_scene = GridScene(width=12, height=12)
     result = await start_combat(
         session_id=cid,
         party=party_specs,
         encounter=encounter_specs,
-        grid_scene=GridScene(width=12, height=12),
+        grid_scene=grid_scene,
         rng_seed=seed,
     )
 
+    state.grids[cid] = grid_scene
     state.combats[cid] = result.handle
     state.events_log[cid] = []
     state.names[cid] = names
@@ -346,11 +348,13 @@ async def _view_route(state: BridgeState, cid: str) -> dict[str, Any]:
         current = live_view.initiative[live_view.current_turn_index]
         current_actor = f"{current.entity_id} ({names.get(current.entity_id, current.name)})"
 
+    grid = state.grids.get(cid)
     return {
         "round_number": live_view.round_number,
         "current_actor": current_actor,
         "order": order,
         "ended": live_view.ended,
+        "grid": grid.model_dump() if grid is not None else None,
     }
 
 
@@ -375,6 +379,9 @@ async def _end_route(state: BridgeState, cid: str) -> dict[str, Any]:
     await _pump_until_stable(state, cid)
     await _stop_collector(state, cid)
     state.combats.pop(cid, None)
+    # Unlike names/events_log/seeds (kept for post-mortem reads), nothing can
+    # reach a grid once the combat is popped — the view route 404s first.
+    state.grids.pop(cid, None)
 
     return {
         "outcome": result.outcome.model_dump(),
