@@ -105,7 +105,7 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   the Grapple/Shove Unarmed Strike save all bypass the typed activity
   resolver (`activities/save_primitive.py`) where Magic Resistance's
   advantage is granted; C18 wired Legendary Resistance's *conversion* onto
-  all three via `_convert_failed_save_if_armed`, but Magic Resistance's
+  all three via `_consume_armed_legendary_resistance`, but Magic Resistance's
   advantage grant was not threaded onto the same three paths.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
 - **Recharge state does not persist across combats** (2026-09-03, C18).

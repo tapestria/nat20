@@ -606,7 +606,8 @@ class CombatEnded(BaseModel):
 
 
 class LegendaryActionUsed(BaseModel):
-    """A monster spent one of its per-round legendary-action uses. Emitted
+    """A monster spent one of its legendary-action uses (SRD 5.2: "it
+    regains all expended uses at the start of each of its turns"). Emitted
     before the chosen action's own events (attack/save/cast) so a host can
     narrate "the dragon takes a legendary action" ahead of its resolution.
     """
@@ -621,7 +622,9 @@ class LegendaryResistanceUsed(BaseModel):
     """A monster spent one of its per-day Legendary Resistance uses to
     convert a saving throw it had just failed into a success. Emitted AFTER
     the ``SaveRolled`` it converts (which already carries ``succeeded=True``)
-    so a host sees the roll before the narration of the resistance spend.
+    — and, on a concentration check, after the paired ``ConcentrationCheck``
+    too — so a host sees the roll before the narration of the resistance
+    spend. The per-day pool is NOT reset at turn start.
     """
 
     type: Literal["legendary_resistance_used"] = "legendary_resistance_used"

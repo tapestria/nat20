@@ -741,7 +741,7 @@ def test_armed_use_is_kept_for_a_successful_save():
 def test_repeat_save_path_honours_an_armed_use():
     """SRD §Hold Monster's end-of-turn repeat save bypasses the typed
     activity resolver entirely (``_run_end_of_turn_saves`` rolls its own
-    d20) — the orchestrator-level ``_convert_failed_save_if_armed`` helper
+    d20) — the orchestrator-level ``_consume_armed_legendary_resistance`` helper
     must honour an armed declaration there too."""
 
     async def go():
@@ -804,7 +804,7 @@ def test_grapple_of_an_armed_dragon_converts_the_failed_save():
 
 
 def test_concentration_check_double_decrement_is_prevented_with_two_armed_uses():
-    """Fix round 1, Finding 2 — ``_convert_failed_save_if_armed`` fires from
+    """Fix round 1, Finding 2 — ``_consume_armed_legendary_resistance`` fires from
     INSIDE ``resolve_activity`` (via ``_emit_apply_damage``) on the
     concentration-check path, so its ``LegendaryResistanceUsed`` lands inside
     the very ``[pre_event_count, ...)`` window an enclosing
@@ -1145,3 +1145,119 @@ def test_flag_clears_when_the_monster_fights_again():
 
     current = _run(go())
     assert current.has_fled is False
+
+
+# -- C18 final review fix wave -----------------------------------------------
+# Finding 1: ``LegendaryResistanceUsed`` fires AFTER the ``SaveRolled`` (and,
+# on the concentration path, the ``ConcentrationCheck``) it converts, on every
+# orchestrator-level save path — the event's own documented contract.
+
+
+def test_grapple_conversion_emits_legendary_resistance_used_after_save_rolled():
+    async def go():
+        handle, live = await _start(
+            [_hero(col=0)],
+            [_foe("adult-red-dragon", hp=256, ac=19, col=1)],
+            seed=1,
+        )
+        for idx, c in enumerate(live.initiative):
+            if c.entity_id == "mon:foe":
+                live.initiative[idx] = c.model_copy(update={"strength": 1, "dexterity": 1})
+                break
+        assert resolve_legendary_resistance(handle, "mon:foe") == 1
+        await submit_player_intent(
+            handle,
+            actor_id="char:hero",
+            intent=PlayerIntent(intent_type="grapple", target_id="mon:foe"),
+        )
+        return live
+
+    live = _run(go())
+    save = next(e for e in _events(live, SaveRolled) if e.target_id == "mon:foe")
+    used = _events(live, LegendaryResistanceUsed)
+    assert len(used) == 1
+    assert save.succeeded is True
+    assert live.event_log.index(save) < live.event_log.index(used[0])
+    dragon = next(c for c in live.initiative if c.entity_id == "mon:foe")
+    assert dragon.legendary_resistances_remaining == 2
+
+
+def test_concentration_conversion_emits_legendary_resistance_used_after_both_checks():
+    async def go():
+        handle, live = await _wizard_vs_dragon(seed=1)
+        assert resolve_legendary_resistance(handle, "mon:foe") == 1
+        dragon = next(c for c in live.initiative if c.entity_id == "mon:foe")
+        dragon.constitution = 1
+        dragon.save_proficiencies = []
+        return live
+
+    live = _run(go())
+    from dnd5e_engine import orchestrator as orch
+    from dnd5e_engine.events import ConcentrationCheck
+
+    live.concentration_chain["mon:foe"] = [("mon:foe", "eff:test", "spell:test")]
+    pre = len(live.event_log)
+    orch._emit_apply_damage(
+        live,
+        orch.DamageApplied(
+            target_id="mon:foe",
+            amount=1000,
+            damage_type="fire",
+            source_id="char:wiz",
+            is_overkill=False,
+        ),
+    )
+    orch._sync_legendary_resistance(live, pre)
+    tail = live.event_log[pre:]
+    kinds = [
+        type(e).__name__
+        for e in tail
+        if isinstance(e, (SaveRolled, ConcentrationCheck, LegendaryResistanceUsed))
+    ]
+    assert kinds == ["SaveRolled", "ConcentrationCheck", "LegendaryResistanceUsed"]
+    check = next(e for e in tail if isinstance(e, ConcentrationCheck))
+    assert check.succeeded is True
+    dragon = next(c for c in live.initiative if c.entity_id == "mon:foe")
+    assert dragon.legendary_resistances_remaining == 2
+
+
+def test_repeat_save_conversion_emits_legendary_resistance_used_after_save_rolled():
+    async def go():
+        handle, live = await _wizard_vs_dragon(seed=2)
+        await _cast_hold_monster(handle)  # unarmed: seed 2 fails -> Paralyzed
+        assert resolve_legendary_resistance(handle, "mon:foe") == 1
+        pre_event_count = len(live.event_log)
+        await advance_monster_turn(handle)
+        return live, pre_event_count
+
+    live, pre_event_count = _run(go())
+    tail = live.event_log[pre_event_count:]
+    save = next(e for e in tail if isinstance(e, SaveRolled) and e.target_id == "mon:foe")
+    used = [e for e in tail if isinstance(e, LegendaryResistanceUsed)]
+    assert len(used) == 1
+    assert save.succeeded is True
+    assert tail.index(save) < tail.index(used[0])
+
+
+def test_sync_legendary_resistance_is_idempotent_over_overlapping_windows():
+    """Finding 10: re-scanning a window that already holds a processed
+    ``LegendaryResistanceUsed`` (a nested resolution's window overlapping an
+    outer one) must not decrement the armed count a second time."""
+
+    async def go():
+        handle, live = await _wizard_vs_dragon(seed=2)
+        assert resolve_legendary_resistance(handle, "mon:foe") == 1
+        assert resolve_legendary_resistance(handle, "mon:foe") == 2
+        await _cast_hold_monster(handle)
+        return live
+
+    live = _run(go())
+    from dnd5e_engine import orchestrator as orch
+
+    assert len(_events(live, LegendaryResistanceUsed)) == 1
+    assert live.legendary_resistance_armed.get("mon:foe") == 1
+    orch._sync_legendary_resistance(live, 0)
+    orch._sync_legendary_resistance(live, 0)
+    assert live.legendary_resistance_armed.get("mon:foe") == 1
+    dragon = next(c for c in live.initiative if c.entity_id == "mon:foe")
+    assert dragon.legendary_resistances_remaining == 2
