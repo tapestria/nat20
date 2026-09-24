@@ -326,3 +326,100 @@ def test_ability_score_method_checks_the_scores_before_any_increase() -> None:
             ability_scores={"strength": 17},
             ability_score_method="point_buy",
         )
+
+
+# ── Task 6 ──
+
+
+def test_save_proficiencies_come_from_the_initial_class_only() -> None:
+    assert _sheet(classes={"fighter": 1}).save_proficiencies == frozenset({"str", "con"})
+    assert _sheet(classes={"fighter": 1, "rogue": 1}).save_proficiencies == frozenset(
+        {"str", "con"}
+    )
+    assert _sheet(classes={"rogue": 1, "fighter": 1}).save_proficiencies == frozenset(
+        {"dex", "int"}
+    )
+    assert _sheet(classes={"rogue": 15}).save_proficiencies == frozenset(
+        {"dex", "int", "wis", "cha"}
+    )
+
+
+def test_weapon_proficiencies_resolve_to_categories_and_slugs() -> None:
+    martial = {"martial_melee", "martial_ranged"}
+    simple = {"simple_melee", "simple_ranged"}
+    assert _sheet(classes={"fighter": 1}).weapon_proficiencies == frozenset(simple | martial)
+    assert _sheet(classes={"rogue": 1}).weapon_proficiencies == frozenset(
+        simple | {"hand-crossbow", "rapier", "scimitar", "shortsword", "whip"}
+    )
+    assert _sheet(classes={"wizard": 1}).weapon_proficiencies == frozenset(simple)
+    assert martial <= _sheet(classes={"wizard": 1, "fighter": 1}).weapon_proficiencies
+    assert (
+        martial
+        <= _sheet(
+            classes={"cleric": 1}, selected_choices=("divine-order-protector",)
+        ).weapon_proficiencies
+    )
+
+
+def test_armor_training_follows_primary_and_multiclass_grants() -> None:
+    assert _sheet(classes={"fighter": 1}).armor_training == frozenset(
+        {"light", "medium", "heavy", "shield"}
+    )
+    assert _sheet(classes={"wizard": 1}).armor_training == frozenset()
+    assert _sheet(classes={"wizard": 1, "fighter": 1}).armor_training == frozenset(
+        {"light", "medium", "shield"}
+    )
+    assert (
+        "heavy"
+        in _sheet(
+            classes={"cleric": 1}, selected_choices=("divine-order-protector",)
+        ).armor_training
+    )
+
+
+def test_skill_proficiencies_join_background_and_picks() -> None:
+    sheet = _sheet(
+        classes={"fighter": 1},
+        background_slug="soldier",
+        selected_choices=("skill:perception", "skill:acrobatics"),
+    )
+    assert sheet.skill_proficiencies == frozenset(
+        {"athletics", "intimidation", "perception", "acrobatics"}
+    )
+
+
+def test_expertise_needs_the_proficiency() -> None:
+    rogue = _sheet(
+        classes={"rogue": 1},
+        background_slug="criminal",
+        selected_choices=("expertise:stealth", "expertise:sleight_of_hand"),
+    )
+    assert rogue.skill_expertise == frozenset({"stealth", "sleight_of_hand"})
+    with pytest.raises(ValueError, match="Expertise in arcana needs proficiency"):
+        _sheet(classes={"rogue": 1}, selected_choices=("expertise:arcana",))
+
+
+def test_passive_perception_folds_proficiency_expertise_and_jack_of_all_trades() -> None:
+    assert (
+        _sheet(
+            classes={"fighter": 1},
+            ability_scores={"wisdom": 15},
+            selected_choices=("skill:perception",),
+        ).passive_perception
+        == 14
+    )
+    assert _sheet(classes={"fighter": 1}, ability_scores={"wisdom": 15}).passive_perception == 12
+    rogue = _sheet(
+        classes={"rogue": 1},
+        ability_scores={"wisdom": 12},
+        selected_choices=("skill:perception", "expertise:perception"),
+    )
+    assert rogue.passive_perception == 10 + 1 + 4
+    bard = _sheet(classes={"bard": 2}, ability_scores={"wisdom": 12})
+    assert (bard.jack_of_all_trades, bard.passive_perception) == (True, 10 + 1 + 1)
+    assert _sheet(classes={"bard": 1}).jack_of_all_trades is False
+
+
+def test_reliable_talent_flag_arrives_at_rogue_7() -> None:
+    assert _sheet(classes={"rogue": 7}).reliable_talent is True
+    assert _sheet(classes={"rogue": 6}).reliable_talent is False

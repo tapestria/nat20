@@ -12,7 +12,8 @@ from __future__ import annotations
 
 import re
 from collections.abc import Collection, Iterable, Mapping, Sequence
-from typing import TYPE_CHECKING, Final, Literal
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Final, Literal, cast
 
 from dnd5e_srd_data.schema.advancement import AdvancementType
 
@@ -24,6 +25,9 @@ if TYPE_CHECKING:
     from dnd5e_srd_data.schema.class_ import Class, Subclass
     from dnd5e_srd_data.schema.common import PassiveEffectChange
     from dnd5e_srd_data.schema.species import Species
+
+# At runtime, import to avoid a cycle; SKILL_CODE_TO_SLUG is only used in rules functions
+from dnd5e_engine.rules.skills import SKILL_CODE_TO_SLUG, Skill
 
 AbilityName = Literal["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"]
 
@@ -290,26 +294,150 @@ def hit_dice_pool(classes: Mapping[str, int], die_sizes: Mapping[str, int]) -> d
     return pool
 
 
+# Foundry Trait ``classRestriction``: SRD 5.2 Multiclassing — "When you gain your
+# first level in a class other than your initial class, you gain only some of
+# the new class's starting proficiencies". "primary" entries apply only to the
+# class taken at level 1, "secondary" only to a class multiclassed into.
+ClassRole = Literal["primary", "secondary"]
+
+ArmorTraining = Literal["light", "medium", "heavy", "shield"]
+
+_ARMOR_TOKENS: Final[dict[str, ArmorTraining]] = {
+    "lgt": "light",
+    "med": "medium",
+    "hvy": "heavy",
+    "shl": "shield",
+}
+_WEAPON_CATEGORY_TOKENS: Final[dict[str, tuple[str, str]]] = {
+    "sim": ("simple_melee", "simple_ranged"),
+    "mar": ("martial_melee", "martial_ranged"),
+}
+
+# Foundry ``weaponIds`` keys whose corpus slug is hyphenated; every other key
+# already equals its weapon's slug.
+FOUNDRY_WEAPON_ID_TO_SLUG: Final[dict[str, str]] = {
+    "handcrossbow": "hand-crossbow",
+    "heavycrossbow": "heavy-crossbow",
+    "lightcrossbow": "light-crossbow",
+    "lighthammer": "light-hammer",
+    "warpick": "war-pick",
+}
+
+_MODE_OVERRIDE: Final = 5
+_WEAPON_PROF_KEY: Final = "system.traits.weaponProf.value"
+_ARMOR_PROF_KEY: Final = "system.traits.armorProf.value"
+
+
+@dataclass(frozen=True)
+class ProficiencyGrants:
+    saves: frozenset[Ability]
+    skills: frozenset[Skill]
+    weapons: frozenset[str]
+    armor: frozenset[ArmorTraining]
+
+
+def _weapon_tokens(token: str) -> tuple[str, ...]:
+    parts = token.split(":")
+    if len(parts) == 2:
+        return _WEAPON_CATEGORY_TOKENS.get(parts[1], ())
+    if len(parts) == 3 and parts[2] != "*":
+        return (FOUNDRY_WEAPON_ID_TO_SLUG.get(parts[2], parts[2]),)
+    return ()
+
+
+def proficiency_grants(
+    sources: Sequence[tuple[Class | Subclass | Species | None, int, ClassRole | None]],
+) -> ProficiencyGrants:
+    """Fixed save, skill, weapon and armor proficiencies from the sources'
+    ``Trait`` advancements at or below each source's level. Only ``mode ==
+    "default"`` entries grant proficiency; choice pools are the host's picks."""
+    saves: set[Ability] = set()
+    skills: set[Skill] = set()
+    weapons: set[str] = set()
+    armor: set[ArmorTraining] = set()
+    for source, level, role in sources:
+        if source is None:
+            continue
+        for entry in source.advancement:
+            if entry.type != AdvancementType.TRAIT or entry.level > level:
+                continue
+            if entry.class_restriction and entry.class_restriction != role:
+                continue
+            if entry.configuration.get("mode", "default") != "default":
+                continue
+            for token in entry.configuration.get("grants") or ():
+                kind, _, rest = str(token).partition(":")
+                if kind == "saves" and rest in ABILITY_NAME_BY_CODE:
+                    saves.add(rest)
+                elif kind == "skills" and rest in SKILL_CODE_TO_SLUG:
+                    skills.add(SKILL_CODE_TO_SLUG[rest])
+                elif kind == "weapon":
+                    weapons.update(_weapon_tokens(str(token)))
+                elif kind == "armor" and rest in _ARMOR_TOKENS:
+                    armor.add(_ARMOR_TOKENS[rest])
+    return ProficiencyGrants(
+        frozenset(saves), frozenset(skills), frozenset(weapons), frozenset(armor)
+    )
+
+
+def _values(changes: Iterable[PassiveEffectChange], key: str) -> list[str]:
+    return [c.value.strip().strip('"').strip() for c in changes if c.key == key and c.mode == 2]
+
+
+def weapon_proficiencies_from_changes(changes: Iterable[PassiveEffectChange]) -> frozenset[str]:
+    """Weapon categories always-on features add (Divine Order: Protector,
+    Primal Order Warden → ``"mar"``)."""
+    return frozenset(
+        w
+        for value in _values(changes, _WEAPON_PROF_KEY)
+        for w in _WEAPON_CATEGORY_TOKENS.get(value, ())
+    )
+
+
+def armor_training_from_changes(changes: Iterable[PassiveEffectChange]) -> frozenset[ArmorTraining]:
+    """Armor training always-on features add (Protector → heavy, Warden → medium)."""
+    return frozenset(
+        _ARMOR_TOKENS[v] for v in _values(changes, _ARMOR_PROF_KEY) if v in _ARMOR_TOKENS
+    )
+
+
+def has_flag(changes: Iterable[PassiveEffectChange], key: str) -> bool:
+    """True when an always-on override sets the Foundry character flag ``key``
+    (``flags.dnd5e.jackOfAllTrades``, ``flags.dnd5e.reliableTalent``)."""
+    return any(
+        c.key == key and c.mode == _MODE_OVERRIDE and c.value.strip().strip('"').lower() == "true"
+        for c in changes
+    )
+
+
 __all__ = [
     "ABILITY_NAME_BY_CODE",
     "EXTRA_ATTACK_TIERS",
     "FOUNDRY_AC_CALC",
+    "FOUNDRY_WEAPON_ID_TO_SLUG",
     "MAX_SCORE_FROM_INCREASES",
     "AbilityName",
     "AbilityScoreMethod",
     "AcCalcMode",
+    "ArmorTraining",
+    "ClassRole",
     "HpMode",
+    "ProficiencyGrants",
     "ability_score_improvement",
     "apply_ability_increases",
+    "armor_training_from_changes",
     "extra_attack_count",
     "fixed_hit_points",
     "granted_feature_slugs",
+    "has_flag",
     "hit_dice_pool",
     "hit_die_size",
     "hit_point_bonus",
     "hit_points_max",
     "leveled_feature_slugs",
+    "proficiency_grants",
     "subclass_gate_level",
     "validate_ability_score_method",
     "validate_increase_budget",
+    "weapon_proficiencies_from_changes",
 ]

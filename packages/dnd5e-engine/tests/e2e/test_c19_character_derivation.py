@@ -164,7 +164,6 @@ def test_c19_s05_unarmored_defense_barbarian_replaces_base_with_dex_plus_con():
     assert sheet.ac == 15
 
 
-@xfail_cluster(19, "character derivation")
 def test_c19_s06_save_and_skill_proficiencies_derive_from_class_and_background():
     """C19-S06: SRD 5.2 §Character Creation, "Note Proficiencies" —
     "Your background gives proficiency in two skills... Your class

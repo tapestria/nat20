@@ -7,6 +7,7 @@ from dnd5e_srd_data.loader import BundledAssetLoader
 from dnd5e_srd_data.schema.common import PassiveEffectChange
 
 from dnd5e_engine.rules import character as rc
+from dnd5e_engine.rules.skills import passive_perception, skill_proficiency_bonus
 
 LOADER = BundledAssetLoader()
 
@@ -162,3 +163,34 @@ def test_ability_score_improvement_lookup() -> None:
     assert rc.ability_score_improvement(fighter, 6) is not None
     assert rc.ability_score_improvement(fighter, 5) is None
     assert rc.ability_score_improvement(monk, 20) is None  # Body and Mind is fixed, not a choice
+
+
+# ── Task 6 ──
+
+
+def test_skill_proficiency_bonus_shares() -> None:
+    assert skill_proficiency_bonus(3, proficient=True) == 3
+    assert skill_proficiency_bonus(3, proficient=True, expertise=True) == 6
+    assert skill_proficiency_bonus(3, proficient=False, jack_of_all_trades=True) == 1
+    assert skill_proficiency_bonus(3, proficient=True, jack_of_all_trades=True) == 3
+    assert skill_proficiency_bonus(3, proficient=False, expertise=True) == 0
+
+
+def test_passive_perception_keeps_its_positional_contract() -> None:
+    assert passive_perception(15, True, 2) == 14  # SRD 5.2's own example
+    assert passive_perception(12, True, 2, expertise=True) == 15
+    assert passive_perception(12, False, 3, jack_of_all_trades=True) == 12
+
+
+def test_foundry_weapon_ids_resolve_in_the_corpus() -> None:
+    for foundry_id, slug in rc.FOUNDRY_WEAPON_ID_TO_SLUG.items():
+        assert LOADER.get_weapon(slug) is not None, foundry_id
+    for class_slug in LOADER.list_slugs("classes"):
+        grants = rc.proficiency_grants([(LOADER.get_class(class_slug), 20, "primary")])
+        for weapon in grants.weapons - {
+            "simple_melee",
+            "simple_ranged",
+            "martial_melee",
+            "martial_ranged",
+        }:
+            assert LOADER.get_weapon(weapon) is not None, (class_slug, weapon)

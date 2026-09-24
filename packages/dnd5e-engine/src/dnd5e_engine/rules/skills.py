@@ -138,14 +138,12 @@ def skill_check(
 
     is_proficient = normalized in [s.lower().replace(" ", "_") for s in proficient_skills]
 
-    if expertise and is_proficient:
-        prof_contribution = proficiency_bonus * 2
-    elif is_proficient:
-        prof_contribution = proficiency_bonus
-    elif jack_of_all_trades:
-        prof_contribution = proficiency_bonus // 2
-    else:
-        prof_contribution = 0
+    prof_contribution = skill_proficiency_bonus(
+        proficiency_bonus,
+        proficient=is_proficient,
+        expertise=expertise,
+        jack_of_all_trades=jack_of_all_trades,
+    )
 
     modifier = ability_modifier(score) + prof_contribution
 
@@ -174,10 +172,40 @@ def skill_check(
     )
 
 
-def passive_perception(wisdom_score: int, proficient: bool, proficiency_bonus: int) -> int:
-    """10 + WIS modifier + proficiency if applicable."""
-    modifier = ability_modifier(wisdom_score) + (proficiency_bonus if proficient else 0)
-    return 10 + modifier
+def skill_proficiency_bonus(
+    proficiency_bonus: int,
+    *,
+    proficient: bool,
+    expertise: bool = False,
+    jack_of_all_trades: bool = False,
+) -> int:
+    """The Proficiency Bonus share a skill check adds: doubled by Expertise
+    (proficient skills only), whole when proficient, half rounded down under
+    Jack of All Trades when not proficient, else nothing."""
+    if proficient:
+        return proficiency_bonus * 2 if expertise else proficiency_bonus
+    return proficiency_bonus // 2 if jack_of_all_trades else 0
+
+
+def passive_perception(
+    wisdom_score: int,
+    proficient: bool,
+    proficiency_bonus: int,
+    *,
+    expertise: bool = False,
+    jack_of_all_trades: bool = False,
+) -> int:
+    """SRD 5.2 Passive Perception = 10 + Wisdom (Perception) check modifier."""
+    return (
+        10
+        + ability_modifier(wisdom_score)
+        + skill_proficiency_bonus(
+            proficiency_bonus,
+            proficient=proficient,
+            expertise=expertise,
+            jack_of_all_trades=jack_of_all_trades,
+        )
+    )
 
 
 def ability_check(
@@ -291,4 +319,5 @@ __all__ = [
     "passive_perception",
     "saving_throw",
     "skill_check",
+    "skill_proficiency_bonus",
 ]

@@ -30,20 +30,26 @@ from dnd5e_engine.rules.character import (
     AbilityScoreMethod,
     AcCalcMode,
     HpMode,
+    ProficiencyGrants,
     ability_score_improvement,
     apply_ability_increases,
+    armor_training_from_changes,
     extra_attack_count,
+    has_flag,
     hit_dice_pool,
     hit_die_size,
     hit_point_bonus,
     hit_points_max,
     leveled_feature_slugs,
+    proficiency_grants,
     subclass_gate_level,
     validate_ability_score_method,
     validate_increase_budget,
+    weapon_proficiencies_from_changes,
 )
 from dnd5e_engine.rules.choices import ParsedChoices, parse_selected_choices
 from dnd5e_engine.rules.dice import ability_modifier, proficiency_bonus
+from dnd5e_engine.rules.skills import SKILL_CODE_TO_SLUG, Skill, passive_perception
 from dnd5e_engine.spellcasting import (
     SpellcastingProgression,
     derive_pact_slots,
@@ -283,6 +289,14 @@ class DerivedSheet(BaseModel):
     damage_resistances: tuple[str, ...]
     damage_immunities: tuple[str, ...]
     condition_immunities: tuple[str, ...]
+    save_proficiencies: frozenset[str]
+    skill_proficiencies: frozenset[str]
+    skill_expertise: frozenset[str]
+    weapon_proficiencies: frozenset[str]
+    armor_training: frozenset[str]
+    passive_perception: int
+    jack_of_all_trades: bool
+    reliable_talent: bool
     extra_attack_count: int
     features: tuple[str, ...]
     feats: tuple[str, ...]
@@ -375,6 +389,20 @@ def _background(slug: str | None, loader: AssetLoader) -> Background | None:
     if background is None:
         raise ValueError(f"unknown background: {slug!r}")
     return background
+
+
+def _skills(
+    grants: ProficiencyGrants, background: Background | None, choices: ParsedChoices
+) -> tuple[frozenset[Skill], frozenset[Skill]]:
+    skills = set(grants.skills) | set(choices.skills)
+    if background is not None:
+        skills |= {
+            SKILL_CODE_TO_SLUG[c] for c in background.skill_proficiencies if c in SKILL_CODE_TO_SLUG
+        }
+    for skill in choices.expertise:
+        if skill not in skills:
+            raise ValueError(f"Expertise in {skill} needs proficiency in {skill}")
+    return frozenset(skills), frozenset(choices.expertise)
 
 
 def _choice_options(level_sources: Sequence[_LeveledSource]) -> dict[str, str]:
@@ -533,6 +561,19 @@ def derive_sheet(spec: CharacterBuildSpec, *, loader: AssetLoader) -> DerivedShe
         ),
     ]
     modifiers = {name: ability_modifier(score) for name, score in scores.items()}
+    pb = proficiency_bonus(spec.level)
+    grants = proficiency_grants(
+        [
+            *(
+                (class_docs[slug], level, "primary" if index == 0 else "secondary")
+                for index, (slug, level) in enumerate(spec.classes.items())
+            ),
+            (subclass, subclass_level, None),
+            (species, spec.level, None),
+        ]
+    )
+    skills, expertise = _skills(grants, background, choices)
+    jack = has_flag(changes, "flags.dnd5e.jackOfAllTrades")
     die_sizes = {slug: hit_die_size(str(cls.hit_die)) for slug, cls in class_docs.items()}
     walk = species.movement.walk or 30
     passive = interpret_passive_stats(
@@ -549,13 +590,27 @@ def derive_sheet(spec: CharacterBuildSpec, *, loader: AssetLoader) -> DerivedShe
     return DerivedSheet(
         ability_scores=AbilityScores(**scores),
         ability_modifiers=modifiers,
-        proficiency_bonus=proficiency_bonus(spec.level),
+        proficiency_bonus=pb,
         base_speed=walk + passive.walk_speed_bonus,
         movement_modes=passive.movement_modes,
         senses=passive.senses,
         damage_resistances=passive.resistances,
         damage_immunities=passive.immunities,
         condition_immunities=passive.condition_immunities,
+        save_proficiencies=grants.saves,
+        skill_proficiencies=skills,
+        skill_expertise=expertise,
+        weapon_proficiencies=grants.weapons | weapon_proficiencies_from_changes(changes),
+        armor_training=grants.armor | armor_training_from_changes(changes),
+        passive_perception=passive_perception(
+            scores["wisdom"],
+            "perception" in skills,
+            pb,
+            expertise="perception" in expertise,
+            jack_of_all_trades=jack,
+        ),
+        jack_of_all_trades=jack,
+        reliable_talent=has_flag(changes, "flags.dnd5e.reliableTalent"),
         extra_attack_count=extra_attack_count(features),
         features=tuple(features),
         feats=tuple(feats),
