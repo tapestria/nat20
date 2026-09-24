@@ -196,7 +196,11 @@ def test_c19_s06_save_and_skill_proficiencies_derive_from_class_and_background()
     sheet = derive_sheet(build_spec, loader=loader)
 
     assert sheet.save_proficiencies == frozenset({"str", "con"})
-    assert frozenset({"ath", "itm"}) <= sheet.skill_proficiencies
+    # Contract repair (plan R1): the sheet speaks the engine's canonical
+    # long-form skill slugs — the vocabulary PartyMemberSpec.skill_proficiencies,
+    # CheckSpec.proficient_skills and rules.skills.SKILL_ABILITIES use; the
+    # corpus's 3-letter codes are translated at the dataset boundary.
+    assert frozenset({"athletics", "intimidation"}) <= sheet.skill_proficiencies
 
 
 @xfail_cluster(19, "character derivation")
@@ -219,7 +223,11 @@ def test_c19_s07_asi_at_level4_from_selected_choices_raises_ability_score():
         classes={"fighter": 4},  # API delta (C19)
         ability_scores={"strength": 16},
         level=4,
-        selected_choices=("asi:4:strength+2",),
+        selected_choices=(
+            # Contract repair (plan R1): class-qualified so a multiclass build can
+            # name which class's level-4 improvement the choice fills.
+            "asi:fighter:4:strength+2",
+        ),
     )
     sheet = derive_sheet(build_spec, loader=loader)
 
@@ -260,8 +268,9 @@ def test_c19_s09_multiclass_fighter3_rogue2_hp_and_proficiency_bonus():
     level is 1"; "if you are a level 3 Fighter / level 2 Rogue, you
     have the Proficiency Bonus of a level 5 character, which is +3"
     (packs/_source/content24/chapter-2/character-creation.yml,
-    _id: vcs4jfEKRxPCsgXm). ``CharacterBuildSpec.class_slug`` is
-    single-class only today — this setup cannot even be constructed.
+    _id: vcs4jfEKRxPCsgXm). A level-3 Fighter has no Extra Attack yet (the Fighter gains it at
+    level 5), so the count of extra attacks is 0; the multiclass non-stacking
+    rule is pinned by the Fighter 5 / Barbarian 5 leg.
     """
     from dnd5e_engine.build_spec import CharacterBuildSpec, derive_sheet
 
@@ -280,7 +289,16 @@ def test_c19_s09_multiclass_fighter3_rogue2_hp_and_proficiency_bonus():
 
     assert sheet.hp_max == 12 + 2 * 8 + 2 * 7 == 42
     assert sheet.proficiency_bonus == 3
-    assert sheet.extra_attack_count == 1
+    # Contract repair (plan R1): no Extra Attack before Fighter level 5.
+    assert sheet.extra_attack_count == 0
+
+    # SRD 5.2 Multiclassing, "Extra Attack": "If you gain the Extra Attack
+    # feature from more than one class, the features don't stack."
+    doubled = derive_sheet(
+        CharacterBuildSpec(species_slug="human", classes={"fighter": 5, "barbarian": 5}, level=10),
+        loader=loader,
+    )
+    assert doubled.extra_attack_count == 1
 
 
 @xfail_cluster(19, "character derivation")
