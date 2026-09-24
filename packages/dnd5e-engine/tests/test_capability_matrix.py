@@ -484,6 +484,23 @@ _PROBES: dict[str, tuple[Any, str]] = {
         ),
         "All eight (C15)",
     ),
+    # C19: engine-side character derivation.
+    "HP, AC, hit dice, skill/save proficiencies": (
+        lambda: "def derive_sheet(" in _src("build_spec.py"),
+        "✅ Resolved",
+    ),
+    "| Background |": (
+        lambda: "background_slug: str | None" in _src("build_spec.py"),
+        "⚠️ Partial",
+    ),
+    "Class, subclass, level 1–20, species": (
+        lambda: "def subclass_gate_level(" in _src("rules/character.py"),
+        "✅ Resolved",
+    ),
+    "`CheckSpec.jack_of_all_trades` / `reliable_talent`": (
+        lambda: "reliable_talent: bool = False" in _src("check.py"),
+        "(C19)",
+    ),
 }
 
 

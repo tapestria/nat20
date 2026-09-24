@@ -18,15 +18,20 @@ damage attribution, crit-at-0-HP, Loading, and all eight 2024 weapon
 masteries), **C17 — spell slots, rests and upcasting** (per-class/
 multiclass/Pact Magic slot derivation, rest-based slot recovery and
 Exhaustion reduction, upcast target-count scaling, Counterspell/readied-cast
-slot+range gating, and out-of-combat Ritual resolution) and **C18 — monster
+slot+range gating, and out-of-combat Ritual resolution), **C18 — monster
 action economy** (Recharge, Regeneration, Legendary Actions, Legendary
 Resistance, stat-block spellcasting, and the remaining `MonsterTraitMechanic`
-consumers). Nothing is removed and no signature changes shape — every new
-field is optional and defaults to the pre-0.6 behaviour. C12/C14/C15/C17/C18
-do change *results* for hosts that carry conditions, exhaustion, turn-keeping
-attacks, weapon proficiency/mastery data, casters, or monsters with a
-recharge/limited-use/legendary action or a newly-consumed trait on a
-combatant. Behavioural deltas (and the fixtures they move) are enumerated in
+consumers) and **C19 — character derivation** (`derive_sheet`/`DerivedSheet`,
+`build_party_member` explicit-wins merge, `CheckSpec` Jack of All Trades /
+Reliable Talent). Nothing is removed and no signature changes shape — every
+new field is optional and defaults to the pre-0.6 behaviour.
+C12/C14/C15/C17/C18 do change *results* for hosts that carry conditions,
+exhaustion, turn-keeping attacks, weapon proficiency/mastery data, casters,
+or monsters with a recharge/limited-use/legendary action or a
+newly-consumed trait on a combatant; C19 changes results for hosts that
+omit `ac`/`attack_bonus` on `CombatInstance` or that rely on the
+save/skill/weapon proficiencies `build_party_member` now derives.
+Behavioural deltas (and the fixtures they move) are enumerated in
 [`docs/migration/v0.5-to-v0.6.md`](../../docs/migration/v0.5-to-v0.6.md).
 
 - **Action economy (C14).** Extra Attack reads a caster's granted

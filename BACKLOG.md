@@ -109,6 +109,12 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   protects its own concentration or avoids a status condition unless a host
   makes that call on its behalf.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::resolve_legendary_resistance`)
+- **Lair-variant Legendary Resistance counts are not modelled** (2026-09-23,
+  noted at C18 final review). The corpus carries no "or N/Day in Lair"
+  text for any monster's Legendary Resistance — e.g. the Ancient Gold
+  Dragon keeps Foundry's flat 3 — so a monster fought in its own lair gets
+  no extra uses.
+  (`packages/dnd5e-srd-data/src/dnd5e_srd_data/canonical/monsters/`)
 - **Magic Resistance still does not reach the orchestrator-level save
   paths** (2026-09-03, C18 — unchanged from the prior "Typed traits" entry).
   The end-of-turn repeat save, the damage-triggered concentration check, and
@@ -223,30 +229,62 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
 
 ## Character building (2026-08-22)
 
-- **Multiclassing: carrier + slot derivation landed, feature grants remain
-  (amended 2026-09-03, C17).** `CharacterBuildSpec.classes: dict[str, int]`
-  (a `{class_slug: level}` map, reconciled with the single-class
-  `class_slug`/`level` aliases) is the multiclass carrier; `derive_multiclass_
-  slots` / `derive_multiclass_pact_slots` (`build_spec.py`) project it
-  through `spellcasting.multiclass_caster_level` (per-class half/third
-  rounding, summed, ONE table lookup — SRD §Multiclassing) into the
-  Spellcasting and Pact Magic pools, and `build_party_member` fills an empty
-  `CombatInstance.spell_slots`/`pact_slots` from them. Per-class feature
-  grants, proficiencies, and HP accumulation across classes are still
-  unmodelled — C19.
+- **Multiclassing: carrier, slot derivation, and per-class feature/HP/
+  proficiency accumulation landed at build time; live combat still projects
+  the primary class only (amended 2026-09-23, C19).**
+  `CharacterBuildSpec.classes: dict[str, int]` (a `{class_slug: level}` map,
+  reconciled with the single-class `class_slug`/`level` aliases) is the
+  multiclass carrier; `derive_multiclass_slots` /
+  `derive_multiclass_pact_slots` (`build_spec.py`) project it through
+  `spellcasting.multiclass_caster_level` (per-class half/third rounding,
+  summed, ONE table lookup — SRD §Multiclassing) into the Spellcasting and
+  Pact Magic pools, and
+  `derive_sheet` grants each class's own features, HP and hit dice, and
+  proficiencies at that class's own level, including the non-stacking Extra
+  Attack rule. The live-combat projection gap this leaves is its own entry
+  below ("Live multiclass still projects the primary class only").
   (`packages/dnd5e-engine/src/dnd5e_engine/build_spec.py`)
 - **Feats are almost entirely inert.** 1 of the 17 corpus feats carries a
   mechanical activity; the rest resolve to nothing.
-- **`build_party.py` never passes `weapon_proficiencies`, so an engine-built
-  party always hits the C15 R1 assume-proficient sentinel — weapon
-  proficiency enforcement is unreachable through the engine's own party
-  builder** (2026-09-02, C15 final-review F7). `Combatant.weapon_proficiencies`
-  is keyed off *whether the field was ever assigned* on `PartyMemberSpec`
-  (see `docs/migration/v0.5-to-v0.6.md`'s "R1 sentinel" section); every
-  character this helper builds projects to `None`, so proficiency is
-  always assumed, matching pre-C15 behaviour — a host that wants
-  enforcement through this path has to populate the field itself.
-  (`packages/dnd5e-engine/src/dnd5e_engine/build_party.py`)
+- **Live multiclass still projects the primary class only (2026-09-23, C19
+  scope cut, owner C20).** `Combatant` carries one class and its total
+  level; `orchestrator.py::_granted_feature_slugs`, `_attacks_per_action`
+  and `activities/scale.py::build_scale_values` all still resolve features
+  from the PRIMARY class at TOTAL character level, so a live Fighter 1 /
+  Wizard 4 is still granted the Fighter's level-5 Extra Attack mid-combat
+  even though its build-time `DerivedSheet.extra_attack_count` correctly
+  reports 0. Carrying per-class levels onto `Combatant` and through
+  `build_scale_values` is C20's territory.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_granted_feature_slugs`,
+  `packages/dnd5e-engine/src/dnd5e_engine/activities/scale.py::build_scale_values`)
+- **`derive_sheet` does not apply several SRD inputs (2026-09-23, C19 scope
+  cuts).** Recorded but not applied: languages, tool proficiencies, the
+  background's Origin feat (`starting_feat_slug` is an unresolved Foundry
+  id), ability increases from feats other than the Ability Score
+  Improvement feat, and level-20 capstone increases (the Monk's Body and
+  Mind is a fixed `points: 0` ASI entry up to 25, the Barbarian's Primal
+  Champion a feature). Not validated at all: multiclass ability
+  prerequisites (the sheet has no score history, and enforcing them would
+  reject the corpus's own default-STR/DEX builds in C19-S09), choice-pool
+  capacity (how many skills/invocations/styles a build may pick — Skilled's
+  grants are not in the corpus), `attunement_constraint`, untrained-armor
+  penalties (`armor_training` is reported so a host can apply them), and
+  magic items' own passive effects (hosts pass them as `active_effects`).
+  Feat repeatability is also prose-only, so `DerivedSheet.feats` is not
+  de-duplicated: a feat reachable both as a bare feature-choice-pool pick
+  and as a `feat:<class>:<level>:<feat>` token lands twice.
+  (`packages/dnd5e-engine/src/dnd5e_engine/build_spec.py::derive_sheet`)
+- **In-combat consumers of several C19-derived sheet fields don't exist yet
+  (2026-09-23, C19 scope cut).** `DerivedSheet.stealth_disadvantage`,
+  `jack_of_all_trades` and `reliable_talent` are computed but never read
+  in combat — `orchestrator.py`'s Hide handler applies no Stealth
+  disadvantage for a hidden PC in noisy armor, and no in-combat skill/
+  ability check applies Jack of All Trades or Reliable Talent (the
+  standalone `check.py::resolve_check` is the only consumer today). A Mage
+  Armor cast does not flip a target's derived `ac_calc_mode`. Feature-
+  driven skill bonuses (Divine Order Thaumaturge, Primal Order Magician,
+  Primal Knowledge) are similarly unread anywhere.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
 
 ## Architecture (2026-08-22)
 
@@ -364,13 +402,32 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
 The interpreter now projects always-on `dr` (damage resistance), `di`
 (immunity), `dv` (vulnerability), `ci` (condition immunity), `senses`, and
 `movement` (walk-speed bonus + typed non-walk modes) at combat start, plus the
-activation-gated Rage `dr` fold on the active-effect path . One entry
+activation-gated Rage `dr` fold on the active-effect path. One entry
 of the the passive-projection spec allowlist remains recognized-but-deferred for lack of a landing
 zone + apply logic:
 
-- **Ability scores, proficiency grants, `ac.calc`, languages** — each needs its
-  own landing zone + apply logic (ability-modifier path, proficiency sets +
-  roll-path consumer, AC recomputation, languages field). No pinned scenario covers these; they stay deferred (routed to `skipped_keys`).
+- **Ability scores (direct passive overrides) and languages** (amended
+  2026-09-23, C19) — each still needs its own landing zone + apply logic.
+  `ac.calc`, `weaponProf`, `armorProf` and HP bonuses are now read by
+  `derive_sheet` — outside this interpreter's own allowlist,
+  `rules/character.py` reads the same always-on `changes` list directly
+  (`ac_modes_from_changes`, `armor_training_from_changes`,
+  `weapon_proficiencies_from_changes`, `hit_point_bonus`). A feature that
+  overrides an ability score directly (rather than through a
+  `background:`/`asi:` choice token) and species/feature language grants
+  are still routed to `skipped_keys`.
+- **Fast Movement's heavy-armor condition and Unarmored Movement's symbolic
+  `@scale` value are not modelled** (2026-09-23, C19 scope cut). Fast
+  Movement's own passive change is an unconditional flat `+10` walk-speed
+  add — its "doesn't function while wearing heavy armor" text lives only in
+  corpus prose, not in a structured field, so the interpreter (which never
+  sees worn equipment) has no way to suppress it for a character in heavy
+  armor. Unarmored Movement's bonus is the symbolic value
+  `@scale.monk.unarmored-movement`, which `_resolve_movement_modes` already
+  defends against reaching a numeric field — it lands in `skipped_keys`
+  rather than resolving the level-scaled bonus a real ScaleValue lookup would
+  give.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/passive_stats.py`)
 
 ## Rest & recovery
 
@@ -591,33 +648,15 @@ zone + apply logic:
 
 ## Audit 2026-08-26 — character derivation
 
-`CharacterBuildSpec` → `build_party_member` derives only passive
-resistances/senses/movement. HP, AC, proficiency bonus, skill/save
-proficiencies and hit dice arrive pre-computed on the host-supplied
-`CombatInstance`. The bridge's `sheet.py::derive_sheet` is a partial host-side
-stand-in, not an engine capability. Specifically:
+`derive_sheet` (C19) closed most of this audit's findings: HP, AC, hit dice
+and skill/save proficiencies are now computed engine-side from
+`CharacterBuildSpec`, and `build_party_member` folds them into
+`PartyMemberSpec` for any value a host leaves unset. The bridge's `sheet.py`
+now calls the engine rather than standing in for it. Residual gaps:
 
-- **`CharacterBuildSpec.selected_choices` is a dead field** — accepted, never
-  read. Fighting Styles, Expertise, Eldritch Invocations and every
-  `Class.feature_choices` pool are unreachable.
-  (`packages/dnd5e-engine/src/dnd5e_engine/build_party.py`)
-- **No `background_slug`.** `canonical/backgrounds/` (skills, tools, starting
-  feat, ability options) is never consumed.
+- **Group checks and tool proficiencies are absent.** Neither is derived from
+  class/background/equipment, nor accepted as an explicit build input.
   (`packages/dnd5e-engine/src/dnd5e_engine/build_spec.py`)
-- **Advancement types other than `ScaleValue` are ignored** (`activities/scale.py:73`):
-  `AbilityScoreImprovement`, `HitPoints`, `Subclass`, `Trait`, `ItemGrant`.
-  No ASI/feat at 4/8/12/16/19; no level-≥3 gate on subclass (`build_party.py:59`).
-- **No AC computation in the engine** — armor + DEX cap, shields, Unarmored
-  Defense, natural armor, Mage Armor, heavy-armor STR requirement (no schema
-  field either), `Armor.stealth_disadvantage` (shipped, zero consumers).
-  `passive_stats.py` explicitly defers `ac.calc`.
-- **Skill/save proficiencies are caller-supplied strings**; nothing derives
-  them from class/background. `validate_point_buy` / `STANDARD_ARRAY`
-  (`rules/dice.py`) and `passive_perception` (`rules/skills.py:132`) have no
-  callers; `CheckSpec` has no field for Jack of All Trades so
-  `skill_check(jack_of_all_trades=...)` is unreachable from the public API;
-  Reliable Talent, group checks and tool proficiencies are absent.
-  (`packages/dnd5e-engine/src/dnd5e_engine/check.py`)
 - **Class features that are prose-only in the corpus:** Fighting Style, Divine
   Smite, Metamagic / sorcery points, Eldritch Invocations. (Extra Attack
   closed C14 Task 1 — `_attacks_per_action` reads the granted
@@ -869,17 +908,14 @@ re-discovered.
 The SillyTavern sidecar (`packages/nat20-bridge`) is a thin FastAPI routing
 layer over the engine — see `docs/bridge.md`. Gaps found while shipping it:
 
-- **Bridge `slots.py` duplicates the engine table with the 2014 level-1
-  half-caster row (2026-09-03, C17).** The bridge's own transcribed
-  `_HALF_CASTER_SLOTS` table gives a level-1 half-caster `{}` (no slots);
-  the engine's `spellcasting.py` (C17, per the SRD 5.2/Foundry parity
-  ruling R2 — per-class rounding, `half` = `ceil(level / 2)`) gives a
-  level-1 half-caster `{1: 2}`. The bridge does not yet call the engine's
-  `derive_spell_slots`/`derive_multiclass_slots`, so its own party-derivation
-  path still disagrees with the engine on this one row. Migrate the bridge
-  onto the engine's public spellcasting functions and delete the duplicate
-  table.
-  (`packages/nat20-bridge/src/nat20_bridge/slots.py`)
+- **`BuildRequest` lacks the C19 build-spec fields (2026-09-23).** The
+  bridge's HTTP model still exposes only `species_slug`, `class_slug`,
+  `subclass_slug`, `level`, `ability_scores` and `equipment` — a caller
+  cannot reach `classes` (multiclass), `background_slug`,
+  `selected_choices`, `hp_mode`/`hp_rolls`, `ac_calc_mode`, `attuned_items`
+  or `ability_score_method` over `/v1/party/validate` or `/v1/combat`, even
+  though `sheet.py` now derives from all of them.
+  (`packages/nat20-bridge/src/nat20_bridge/models.py::BuildRequest`)
 - **Global-`random` seeding is not safe under concurrent requests**
   (2026-08-21). `_start_route` (and `app.py`'s `_do_roll`/`_do_check`) seed the
   stdlib global `random` module to make the engine's legacy dice seam
@@ -982,6 +1018,24 @@ layer over the engine — see `docs/bridge.md`. Gaps found while shipping it:
   `"wis"`). A future pass could special-case or exclude coven/shared-trait
   cast activities from the vote.
   (`packages/dnd5e-srd-data/tools/translators/foundry.py::_spellcasting_ability`)
+
+## Magic-armor category and template defects (2026-09-23, C19)
+
+`derive_sheet`'s AC formula reads each worn armor's `armor_category` and
+`dex_bonus_max`. Several corpus items disagree with real armor math:
+`dwarven-plate` ships `armor_category: "light"` with `dex_bonus_max: null`
+(uncapped) on a base AC of 18, so a derived sheet adds the wearer's FULL
+Dexterity modifier on top of 18 instead of a capped or ignored one;
+`elven-chain`, `demon-armor` and `plate-armor-of-etherealness` carry the
+same class of category/cap defect. The `armor-1-2-or-3`, `shield-1-2-or-3`,
+`adamantine-armor` and `mithral-armor` crafting templates all ship
+`base_ac: 10` regardless of the real armor they are meant to modify —
+placeholders for a translator rule that never resolves the underlying base
+item. None of this is a `derive_sheet` bug; the fix belongs in the
+translator/dataset.
+(`packages/dnd5e-srd-data/src/dnd5e_srd_data/canonical/items/dwarven-plate.json`,
+`elven-chain.json`, `demon-armor.json`, `plate-armor-of-etherealness.json`,
+`armor-1-2-or-3.json`, `adamantine-armor.json`, `mithral-armor.json`)
 
 ---
 

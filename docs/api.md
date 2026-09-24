@@ -88,6 +88,8 @@ drive the engine from a different corpus.
         - CharacterBuildSpec
         - AbilityScores
         - CombatInstance
+        - DerivedSheet
+        - derive_sheet
         - derive_multiclass_slots
         - derive_multiclass_pact_slots
 

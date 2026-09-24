@@ -39,6 +39,8 @@ nav:
       - Grid: concepts/grid.md
   - Capability matrix: capabilities.md
   - API reference: api.md
+  - Hosting:
+      - Character-sheet contract: hosting/character-sheet-contract.md
   - nat20-bridge (SillyTavern): bridge.md
   - Comparison: comparison.md
   - Design notes:
