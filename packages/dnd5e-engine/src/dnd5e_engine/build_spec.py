@@ -161,18 +161,23 @@ class CharacterBuildSpec(BaseModel):
 
 
 class CombatInstance(BaseModel):
-    """Combat-instance values that are NOT character-derived.
+    """Combat-instance values a host may pin, overriding derivation.
 
-    Entity identity (entity_id/name) + rolled/looked-up combat stats.
+    Entity identity (entity_id/name) always comes from here. Character values
+    such as HP, AC and speed may be pinned here; leaving one unset lets
+    ``build_party_member`` derive it from the build spec instead: ``None``
+    for ``hp_current``/``hp_max``/``base_speed``, "never assigned" (checked via
+    ``model_fields_set``) for ``ac``/``attack_bonus``.
     """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
     entity_id: str
     name: str
-    hp_current: int
-    hp_max: int
+    hp_current: int | None = None
+    hp_max: int | None = None
     ac: int = 10
     attack_bonus: int = 0
+    base_speed: int | None = None
     initiative: int = 0
     zone_id: str = ""
     concentration_effect_id: str | None = None
