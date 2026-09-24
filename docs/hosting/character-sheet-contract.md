@@ -18,7 +18,7 @@ any time, and the rules the derivation applies.
 | `ability_score_method` | optional: `standard_array` or `point_buy` | the base scores are checked against it |
 | `selected_choices` | one token per choice (below) | skills, Expertise, adjustments, ASIs, feats, feature picks |
 | `equipment` | carried items; armor and Shields listed here are **worn** | one suit of armor and one Shield at most |
-| `attuned_items` | up to three items from `equipment` that require attunement | a magic bonus needs attunement when the item requires it |
+| `attuned_items` | up to the attunement limit (three, or four with the Thief's Use Magic Device) — items from `equipment` that require attunement | a magic bonus needs attunement when the item requires it |
 | `hp_mode`, `hp_rolls` | `fixed` (default), or `rolled` with the recorded Hit Die results per class | the first class records `level - 1` results, every other class `level` |
 | `ac_calc_mode` | leave unset for the best eligible mode; set it to force one | Unarmored Defense, Draconic Resilience, Mage Armor |
 
@@ -37,10 +37,13 @@ Abilities are long names or three-letter codes. Increases stop at 20.
 
 ## Explicit values win
 
-Pass a value on `CombatInstance` to pin it: `hp_max`, `hp_current` and
-`base_speed` when not `None`, and `ac` / `attack_bonus` whenever you assign them
-(even the default). An omitted `attack_bonus` lets the engine compute each
-weapon's to-hit bonus from the governing ability and weapon proficiency.
+`CombatInstance.hp_max`, `hp_current`, `ac`, `attack_bonus` and `base_speed`
+all default to `None`, which means "derive it" — pass any other value to pin
+it, and that pin survives a `CombatInstance(**inst.model_dump())` round-trip.
+An omitted `attack_bonus` lets the engine compute each weapon's to-hit bonus
+from the governing ability and weapon proficiency. An empty or omitted
+`spell_slots` / `pact_slots` on `CombatInstance` likewise means "derive the
+multiclass slot table"; pass a non-empty map to pin one.
 
 ## What `derive_sheet` does not apply
 
@@ -49,7 +52,15 @@ tool proficiencies, the background's Origin feat, ability increases from feats
 other than the Ability Score Improvement feat, level-20 capstone increases,
 multiclass ability prerequisites, how many picks a choice allows, and penalties
 for armor worn without training (`armor_training` is reported so a host can
-apply them). See `BACKLOG.md` for each.
+apply them). Feature-choice and Fighting Style picks (Defense, Eldritch
+Invocations, Metamagic, …) are recorded on `DerivedSheet.features` / `feats`,
+but their effects are not applied. Fast Movement still adds its speed bonus
+while wearing Heavy armor (SRD 5.2 requires none). A variant crafting
+template such as `shield-1-2-or-3` derives AC from the dataset's placeholder
+base value, not the real item. A class granted specific weapon slugs rather
+than a category (Rogue, Monk) gets no Proficiency Bonus with a magic variant
+of one of them, such as a Scimitar of Speed — magic weapons are not yet
+matched to their base weapon. See `BACKLOG.md` for each.
 
 ## Errors
 
@@ -58,5 +69,6 @@ unknown slugs, a subclass below its level, malformed or repeated tokens,
 adjustments outside their options or budget, unreached or reused ASI levels,
 unmet feat prerequisites, picks outside every reached pool, Expertise without
 proficiency, rolls that don't fit `hp_mode`, two suits of armor or two Shields, an
-`ac_calc_mode` the worn equipment rules out, and attunement over three items or
-to items that don't need it.
+`ac_calc_mode` the worn equipment rules out, and attunement over the limit
+(three, or four with the Thief's Use Magic Device) or to items that don't
+need it.

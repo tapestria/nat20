@@ -23,14 +23,18 @@ action economy** (Recharge, Regeneration, Legendary Actions, Legendary
 Resistance, stat-block spellcasting, and the remaining `MonsterTraitMechanic`
 consumers) and **C19 — character derivation** (`derive_sheet`/`DerivedSheet`,
 `build_party_member` explicit-wins merge, `CheckSpec` Jack of All Trades /
-Reliable Talent). Nothing is removed and no signature changes shape — every
-new field is optional and defaults to the pre-0.6 behaviour.
+Reliable Talent). Nothing public is removed or renamed, but C19 reshapes two
+existing `CombatInstance` fields — `ac` and `attack_bonus` widen from
+defaulted `int`s to `int | None = None`, matching `hp_max`/`hp_current`/
+`base_speed` — and every other new field across this release is optional
+and defaults to the pre-0.6 behaviour.
 C12/C14/C15/C17/C18 do change *results* for hosts that carry conditions,
 exhaustion, turn-keeping attacks, weapon proficiency/mastery data, casters,
 or monsters with a recharge/limited-use/legendary action or a
 newly-consumed trait on a combatant; C19 changes results for hosts that
-omit `ac`/`attack_bonus` on `CombatInstance` or that rely on the
-save/skill/weapon proficiencies `build_party_member` now derives.
+build through `build_party_member` and leave `ac`/`attack_bonus`/`hp_max`/
+`hp_current`/`base_speed` unset (now derived instead of defaulted), or that
+rely on the save/skill/weapon proficiencies it now derives.
 Behavioural deltas (and the fixtures they move) are enumerated in
 [`docs/migration/v0.5-to-v0.6.md`](../../docs/migration/v0.5-to-v0.6.md).
 

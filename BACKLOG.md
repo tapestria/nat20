@@ -245,18 +245,41 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   below ("Live multiclass still projects the primary class only").
   (`packages/dnd5e-engine/src/dnd5e_engine/build_spec.py`)
 - **Feats are almost entirely inert.** 1 of the 17 corpus feats carries a
-  mechanical activity; the rest resolve to nothing.
+  mechanical activity; the rest resolve to nothing. Prerequisites are only
+  partly checked (2026-09-24): a feat's free-text `requirement` (Grappler's
+  "Strength or Dexterity 13+") is never validated, and the two epic boons
+  whose corpus `prerequisites` carry no `level` entry at all — `boon-of-fate`
+  and `boon-of-irresistible-offense` — are accepted below the SRD's Epic Boon
+  floor of character level 19, unlike `boon-of-combat-prowess`, whose entry
+  does carry `level: 19`.
+  (`packages/dnd5e-engine/src/dnd5e_engine/build_spec.py::_asi_level_feats`,
+  `packages/dnd5e-srd-data/src/dnd5e_srd_data/schema/feat.py`)
 - **Live multiclass still projects the primary class only (2026-09-23, C19
   scope cut, owner C20).** `Combatant` carries one class and its total
-  level; `orchestrator.py::_granted_feature_slugs`, `_attacks_per_action`
-  and `activities/scale.py::build_scale_values` all still resolve features
-  from the PRIMARY class at TOTAL character level, so a live Fighter 1 /
-  Wizard 4 is still granted the Fighter's level-5 Extra Attack mid-combat
-  even though its build-time `DerivedSheet.extra_attack_count` correctly
-  reports 0. Carrying per-class levels onto `Combatant` and through
-  `build_scale_values` is C20's territory.
+  level; `orchestrator.py::_granted_feature_slugs`, `_attacks_per_action` and
+  `_pc_condition_immunities`, plus `activities/scale.py::build_scale_values`,
+  all still resolve features from the PRIMARY class at TOTAL character
+  level, so a live Fighter 1 / Wizard 4 is still granted the Fighter's
+  level-5 Extra Attack mid-combat even though its build-time
+  `DerivedSheet.extra_attack_count` correctly reports 0. Carrying per-class
+  levels onto `Combatant` and through `build_scale_values` is C20's
+  territory.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_granted_feature_slugs`,
   `packages/dnd5e-engine/src/dnd5e_engine/activities/scale.py::build_scale_values`)
+- **Magic weapons named by slug aren't matched to their base weapon for
+  proficiency (2026-09-24).** A class granted specific weapon slugs rather
+  than a whole category — Rogue and Monk get `rapier`/`scimitar`/
+  `shortsword`/… individually — gets no Proficiency Bonus against a magic
+  variant of one of them, such as a Scimitar of Speed: Foundry's own
+  `system.type.baseItem` links a magic weapon back to its mundane base
+  weapon (the translator already reads `baseItem` for another purpose), but
+  the canonical `Item` schema has no equivalent field yet, so
+  `_is_proficient_with_weapon` can only match a `weapon_category` or the
+  item's own slug. Root fix: a dataset `base_weapon` field built from
+  `baseItem`, read by `_is_proficient_with_weapon`. A host can pin
+  `attack_bonus` on `CombatInstance` meanwhile.
+  (`packages/dnd5e-srd-data/src/dnd5e_srd_data/schema/item.py`,
+  `packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_is_proficient_with_weapon`)
 - **`derive_sheet` does not apply several SRD inputs (2026-09-23, C19 scope
   cuts).** Recorded but not applied: languages, tool proficiencies, the
   background's Origin feat (`starting_feat_slug` is an unresolved Foundry
