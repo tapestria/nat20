@@ -127,6 +127,7 @@ def skill_check(
     jack_of_all_trades: bool = False,  # half proficiency even if not proficient
     *,
     rng: random.Random | None = None,
+    reliable_talent: bool = False,
 ) -> SkillCheckResult:
     """
     Resolve a skill check.
@@ -157,6 +158,9 @@ def skill_check(
         result = roll_with_disadvantage(modifier=modifier, rng=rng)
     else:
         result = roll_d20(modifier=modifier, rng=rng)
+
+    if reliable_talent and is_proficient and result.total - modifier < 10:
+        result = RollResult(dice=result.dice, modifier=modifier, total=10 + modifier)
 
     success = (result.total >= dc) if dc is not None else None
 

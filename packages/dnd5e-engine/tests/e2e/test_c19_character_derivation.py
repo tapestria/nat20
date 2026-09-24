@@ -14,8 +14,6 @@ from __future__ import annotations
 
 from dnd5e_srd_data.loader import BundledAssetLoader
 
-from tests.e2e.harness import xfail_cluster
-
 
 def test_c19_s01_level1_hp_is_hit_die_max_plus_con_modifier_single_class_fighter():
     """C19-S01: SRD 5.2 §Character Creation, "Step 5: Choose Equipment...
@@ -292,7 +290,6 @@ def test_c19_s09_multiclass_fighter3_rogue2_hp_and_proficiency_bonus():
     assert doubled.extra_attack_count == 1
 
 
-@xfail_cluster(19, "character derivation")
 def test_c19_s10_jack_of_all_trades_adds_floor_pb_over_2_to_non_proficient_check():
     """C19-S10: SRD 5.2, Bard class feature Jack of All Trades — "You
     can add half your Proficiency Bonus (round down) to any ability

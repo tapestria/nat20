@@ -66,6 +66,14 @@ class CheckSpec:
     # skills only; skill_check enforces the is_proficient gate). Empty default
     # keeps every existing caller behaviour-neutral until populated downstream.
     expertise_skills: tuple[str, ...] = ()
+    # SRD 5.2 Jack of All Trades: "You can add half your Proficiency Bonus
+    # (round down) to any ability check you make that uses a skill proficiency
+    # you lack" — skill checks only.
+    jack_of_all_trades: bool = False
+    # SRD 5.2 Reliable Talent: "Whenever you make an ability check that uses one
+    # of your skill or tool proficiencies, you can treat a d20 roll of 9 or lower
+    # as a 10" — this spec models skills, not tools.
+    reliable_talent: bool = False
     active_effects: tuple[ActiveEffect, ...] = field(default_factory=tuple)
     # Seeded generator for a reproducible roll. ``None`` draws from the
     # process-global ``random`` module (reproducible only if the caller seeds
@@ -200,7 +208,9 @@ def resolve_check(spec: CheckSpec) -> CheckResult:
             advantage=effective_advantage,
             disadvantage=effective_disadvantage,
             expertise=spec.skill.lower().replace(" ", "_") in spec.expertise_skills,
+            jack_of_all_trades=spec.jack_of_all_trades,
             rng=spec.rng,
+            reliable_talent=spec.reliable_talent,
         )
         normalized_skill = spec.skill.lower().replace(" ", "_")
         ability_used = SKILL_ABILITIES.get(normalized_skill, "intelligence")
@@ -247,7 +257,8 @@ def resolve_check(spec: CheckSpec) -> CheckResult:
         )
         breakdown.extend(bucket_breakdown)
     success = (modified_total >= spec.dc) if spec.dc is not None else None
-    natural_roll = base.roll.dice[0] if base.roll.dice else 0
+    # The kept die — under advantage/disadvantage ``dice[0]`` need not be it.
+    natural_roll = base.roll.total - base.roll.modifier
 
     return CheckResult(
         kind=spec.kind,
