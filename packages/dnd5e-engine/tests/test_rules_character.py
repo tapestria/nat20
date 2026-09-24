@@ -115,3 +115,50 @@ def test_hit_dice_pool_groups_by_die_size() -> None:
         8: 5,
         10: 5,
     }
+
+
+# ── Task 5 ──
+
+_NAMES = ("strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma")
+
+
+def test_apply_ability_increases_stops_at_20() -> None:
+    assert rc.apply_ability_increases({"strength": 18}, {"strength": 2}, source="x") == {
+        "strength": 20
+    }
+    with pytest.raises(ValueError, match="stop at 20"):
+        rc.apply_ability_increases({"strength": 19}, {"strength": 2}, source="x")
+
+
+def test_validate_increase_budget() -> None:
+    allowed = {"strength", "dexterity", "constitution"}
+    rc.validate_increase_budget(
+        {"strength": 2, "constitution": 1}, allowed=allowed, points=3, cap=2, source="bg"
+    )
+    for bad, message in (
+        ({"intelligence": 2, "strength": 1}, "not among"),
+        ({"strength": 3}, "each increase"),
+        ({"strength": 1, "dexterity": 1}, "exactly 3"),
+    ):
+        with pytest.raises(ValueError, match=message):
+            rc.validate_increase_budget(bad, allowed=allowed, points=3, cap=2, source="bg")
+
+
+def test_validate_ability_score_method() -> None:
+    array = dict(zip(_NAMES, (15, 14, 13, 12, 10, 8), strict=True))
+    rc.validate_ability_score_method(array, "standard_array")
+    with pytest.raises(ValueError, match="standard_array"):
+        rc.validate_ability_score_method({**array, "charisma": 9}, "standard_array")
+    bought = dict(zip(_NAMES, (15, 15, 15, 8, 8, 8), strict=True))  # 9 + 9 + 9 = 27 points
+    rc.validate_ability_score_method(bought, "point_buy")
+    with pytest.raises(ValueError, match="point_buy"):
+        rc.validate_ability_score_method({**bought, "intelligence": 9}, "point_buy")
+    with pytest.raises(ValueError, match="point_buy"):
+        rc.validate_ability_score_method({**bought, "strength": 16}, "point_buy")
+
+
+def test_ability_score_improvement_lookup() -> None:
+    fighter, monk = LOADER.get_class("fighter"), LOADER.get_class("monk")
+    assert rc.ability_score_improvement(fighter, 6) is not None
+    assert rc.ability_score_improvement(fighter, 5) is None
+    assert rc.ability_score_improvement(monk, 20) is None  # Body and Mind is fixed, not a choice

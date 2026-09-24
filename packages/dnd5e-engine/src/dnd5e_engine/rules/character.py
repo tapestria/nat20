@@ -11,14 +11,16 @@ reference.
 from __future__ import annotations
 
 import re
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Collection, Iterable, Mapping, Sequence
 from typing import TYPE_CHECKING, Final, Literal
 
 from dnd5e_srd_data.schema.advancement import AdvancementType
 
 from dnd5e_engine.events import Ability
+from dnd5e_engine.rules.dice import STANDARD_ARRAY, validate_point_buy
 
 if TYPE_CHECKING:
+    from dnd5e_srd_data.schema.advancement import AdvancementEntry
     from dnd5e_srd_data.schema.class_ import Class, Subclass
     from dnd5e_srd_data.schema.common import PassiveEffectChange
     from dnd5e_srd_data.schema.species import Species
@@ -120,6 +122,82 @@ def extra_attack_count(feature_slugs: Iterable[str]) -> int:
     return 0
 
 
+# SRD 5.2: "None of these increases can raise a score above 20."
+MAX_SCORE_FROM_INCREASES: Final = 20
+
+
+def ability_score_improvement(cls: Class, level: int) -> AdvancementEntry | None:
+    """The class's player-choice ``AbilityScoreImprovement`` at exactly ``level``
+    (``configuration.points > 0``). Fixed grants such as the Monk's level-20
+    Body and Mind (``points == 0``) are not a choice."""
+    for entry in cls.advancement:
+        if (
+            entry.type == AdvancementType.ABILITY_SCORE_IMPROVEMENT
+            and entry.level == level
+            and int(entry.configuration.get("points") or 0) > 0
+        ):
+            return entry
+    return None
+
+
+def validate_ability_score_method(
+    scores: Mapping[AbilityName, int], method: AbilityScoreMethod
+) -> None:
+    """Prove the pre-adjustment scores came from ``method``: the Standard Array
+    (15, 14, 13, 12, 10, 8 in any order) or Point Buy (scores 8-15, at most 27
+    points by the Ability Score Point Costs table)."""
+    values = [scores[name] for name in ABILITY_NAME_BY_CODE.values()]
+    if method == "standard_array":
+        if sorted(values) != sorted(STANDARD_ARRAY):
+            raise ValueError(
+                f"standard_array needs 15, 14, 13, 12, 10, 8 in any order; got {values}"
+            )
+        return
+    ok, message = validate_point_buy(dict(scores.items()))
+    if not ok:
+        raise ValueError(f"point_buy: {message}")
+
+
+def validate_increase_budget(
+    increases: Mapping[AbilityName, int],
+    *,
+    allowed: Collection[AbilityName],
+    points: int,
+    cap: int,
+    source: str,
+) -> None:
+    """An ability-increase choice spends exactly ``points``, at most ``cap`` per
+    ability, on ``allowed`` abilities only (Foundry ``AbilityScoreImprovement``
+    ``points``/``cap``/``locked``; ``Background.ability_options``)."""
+    outside = sorted(set(increases) - set(allowed))
+    if outside:
+        raise ValueError(
+            f"{source}: {outside} not among the abilities it can raise {sorted(allowed)}"
+        )
+    over = sorted(name for name, amount in increases.items() if not 1 <= amount <= cap)
+    if over:
+        raise ValueError(f"{source}: each increase must be 1-{cap}; {over} are not")
+    spent = sum(increases.values())
+    if spent != points:
+        raise ValueError(f"{source}: must spend exactly {points} point(s); got {spent}")
+
+
+def apply_ability_increases(
+    scores: Mapping[AbilityName, int], increases: Mapping[AbilityName, int], *, source: str
+) -> dict[AbilityName, int]:
+    """Add ``increases`` to ``scores``; SRD 5.2 stops these increases at 20."""
+    raised = dict(scores)
+    for name, amount in increases.items():
+        value = raised[name] + amount
+        if value > MAX_SCORE_FROM_INCREASES:
+            raise ValueError(
+                f"{source} would raise {name} to {value}; these increases stop at "
+                f"{MAX_SCORE_FROM_INCREASES}"
+            )
+        raised[name] = value
+    return raised
+
+
 _MODE_ADD: Final = 2
 _HP_PER_LEVEL_KEY: Final = "system.attributes.hp.bonuses.level"
 _HP_OVERALL_KEY: Final = "system.attributes.hp.bonuses.overall"
@@ -216,10 +294,13 @@ __all__ = [
     "ABILITY_NAME_BY_CODE",
     "EXTRA_ATTACK_TIERS",
     "FOUNDRY_AC_CALC",
+    "MAX_SCORE_FROM_INCREASES",
     "AbilityName",
     "AbilityScoreMethod",
     "AcCalcMode",
     "HpMode",
+    "ability_score_improvement",
+    "apply_ability_increases",
     "extra_attack_count",
     "fixed_hit_points",
     "granted_feature_slugs",
@@ -229,4 +310,6 @@ __all__ = [
     "hit_points_max",
     "leveled_feature_slugs",
     "subclass_gate_level",
+    "validate_ability_score_method",
+    "validate_increase_budget",
 ]

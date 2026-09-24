@@ -26,7 +26,7 @@ MIRRORS, does not import from, ``effects/check.py``:
   (``ctx.check_modifiers``), mirroring ``effects/check.py:_read_check_modifiers``
   / ``_modifier_for_key`` — the skill mod when a skill is named (the 3-letter
   ``associated`` code mapped to the canonical SRD slug the sidecar is keyed by,
-  via ``_SKILL_CODE_TO_SLUG``), else the ability mod
+  via ``SKILL_CODE_TO_SLUG``), else the ability mod
   (``ability_mods[ability]``), else +0. ``Combatant`` carries no per-skill table,
   so the value comes from the sidecar.
 * The DC resolution mirrors Foundry ``check-data.mjs`` prepareFinalData
@@ -56,6 +56,7 @@ from dnd5e_engine.activities.dice import roll_expr
 from dnd5e_engine.activities.effects import apply_activity_effects
 from dnd5e_engine.activities.formula import resolve_roll_data
 from dnd5e_engine.events import Ability, AdvantageSource, CheckRolled
+from dnd5e_engine.rules.skills import SKILL_CODE_TO_SLUG
 
 if TYPE_CHECKING:
     from dnd5e_srd_data.schema.common import CheckActivity
@@ -95,36 +96,12 @@ _SKILL_TO_ABILITY: Final[dict[str, Ability]] = {
     "sur": "wis",
 }
 
-# Foundry 3-letter skill code → canonical SRD skill SLUG. Source: the same
-# ``CONFIG.DND5E.skills`` block in ``foundry/module/config.mjs`` as the ability
-# table above (each entry's key is the code, its ``label`` the skill).
-#
-# The engine's canonical skill namespace is the long-form SRD slug: it is what
-# ``Combatant.skill_proficiencies``, ``rules/skills.SKILL_ABILITIES`` and the
-# corpus (``Monster.skills``) all carry, and therefore how the orchestrator keys
-# ``ctx.check_modifiers[actor]["skills"]`` (F1d). The 3-letter code is an IR
-# detail of ``check.associated``, so the translation happens HERE — the single
-# site that reads the sidecar by skill — and nowhere else.
-_SKILL_CODE_TO_SLUG: Final[dict[str, str]] = {
-    "acr": "acrobatics",
-    "ani": "animal_handling",
-    "arc": "arcana",
-    "ath": "athletics",
-    "dec": "deception",
-    "his": "history",
-    "ins": "insight",
-    "itm": "intimidation",
-    "inv": "investigation",
-    "med": "medicine",
-    "nat": "nature",
-    "prc": "perception",
-    "prf": "performance",
-    "per": "persuasion",
-    "rel": "religion",
-    "slt": "sleight_of_hand",
-    "ste": "stealth",
-    "sur": "survival",
-}
+# Foundry 3-letter skill code → canonical SRD skill slug. The translation now
+# lives in ``rules/skills.py`` (``SKILL_CODE_TO_SLUG``), shared with the sheet
+# derivation (``build_spec.py``) — this used to be the single site that read
+# the sidecar by skill; it no longer is, but the sidecar shape it feeds
+# (``ctx.check_modifiers[actor]["skills"]``, keyed by the long-form slug) is
+# unchanged.
 
 # Test-determinism seam for the natural check d20 (our own code; effects/check.py
 # has none and relies on a seeded ctx.rng).
@@ -287,7 +264,7 @@ def _check_modifier(
     (``ability_mods[ability]``); else +0. The sidecar shape is
     ``{entity_id: {"skills": {slug: mod}, "ability_mods": {ability: mod}}}``,
     keyed by the canonical SRD skill SLUG, so the activity's Foundry 3-letter
-    ``check.associated`` code is translated through ``_SKILL_CODE_TO_SLUG``
+    ``check.associated`` code is translated through ``SKILL_CODE_TO_SLUG``
     first. The raw code is then tried as a fallback — LEGACY: it keeps a
     host-built sidecar that was keyed by code (the pre-F1d golden-fixture shape)
     working unchanged.
@@ -300,7 +277,7 @@ def _check_modifier(
     actor_mods = ctx.check_modifiers.get(actor.entity_id, {})
     if skill is not None:
         skills = actor_mods.get("skills", {})
-        for key in (_SKILL_CODE_TO_SLUG.get(skill), skill):
+        for key in (SKILL_CODE_TO_SLUG.get(skill), skill):
             if key is not None and key in skills:
                 return int(skills[key]) + penalty
     ability_mods = actor_mods.get("ability_mods", {})

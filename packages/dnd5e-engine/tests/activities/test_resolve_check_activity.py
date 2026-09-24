@@ -30,7 +30,6 @@ from dnd5e_srd_data.schema.common import CheckActivity
 from dnd5e_engine.activities.actor_stats import _SCORE_ATTR
 from dnd5e_engine.activities.build_context import build_activity_context
 from dnd5e_engine.activities.check import (
-    _SKILL_CODE_TO_SLUG,
     _SKILL_TO_ABILITY,
     FORCE_CHECK_D20,
     resolve_check,
@@ -39,7 +38,7 @@ from dnd5e_engine.activities.context import ActivityResolutionContext
 from dnd5e_engine.activities.resolver import resolve_activity
 from dnd5e_engine.events import CheckRolled
 from dnd5e_engine.orchestrator import _build_hydration_payload, _get_live, start_combat
-from dnd5e_engine.rules.skills import SKILL_ABILITIES
+from dnd5e_engine.rules.skills import SKILL_ABILITIES, SKILL_CODE_TO_SLUG
 from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
 from dnd5e_engine.types.combat import Combatant
 from dnd5e_engine.types.conditions import ActiveCondition
@@ -619,8 +618,8 @@ def test_a_sidecar_keyed_by_the_legacy_3_letter_code_still_resolves() -> None:
 
 def test_every_foundry_skill_code_maps_to_a_known_srd_slug() -> None:
     """The two skill tables must not drift apart."""
-    assert set(_SKILL_CODE_TO_SLUG) == set(_SKILL_TO_ABILITY)
-    for code, slug in _SKILL_CODE_TO_SLUG.items():
+    assert set(SKILL_CODE_TO_SLUG) == set(_SKILL_TO_ABILITY)
+    for code, slug in SKILL_CODE_TO_SLUG.items():
         assert SKILL_ABILITIES[slug] == _SCORE_ATTR[_SKILL_TO_ABILITY[code]]
 
 

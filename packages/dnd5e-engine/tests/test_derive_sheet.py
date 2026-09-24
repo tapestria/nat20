@@ -159,3 +159,170 @@ def test_rolled_mode_without_rolls_is_rejected() -> None:
 
 def test_hit_dice_pool_on_the_sheet() -> None:
     assert _sheet(classes={"fighter": 3, "rogue": 2}).hit_dice == {10: 3, 8: 2}
+
+
+# ── Task 5 ──
+
+
+def test_asi_raises_the_score_and_its_modifier() -> None:
+    sheet = _sheet(
+        classes={"fighter": 4},
+        ability_scores={"strength": 16},
+        selected_choices=("asi:fighter:4:strength+2",),
+    )
+    assert (sheet.ability_scores.strength, sheet.ability_modifiers["strength"]) == (18, 4)
+
+
+def test_scores_without_choice_tokens_are_used_verbatim() -> None:
+    sheet = _sheet(
+        classes={"fighter": 8},
+        background_slug="soldier",
+        ability_scores={"strength": 20, "constitution": 16},
+    )
+    assert (sheet.ability_scores.strength, sheet.ability_scores.constitution) == (20, 16)
+
+
+def test_background_adjustment_stays_within_its_options() -> None:
+    sheet = _sheet(
+        classes={"fighter": 1},
+        background_slug="soldier",
+        ability_scores={"strength": 15, "constitution": 14},
+        selected_choices=("background:strength+2,constitution+1",),
+    )
+    assert (sheet.ability_scores.strength, sheet.ability_scores.constitution) == (17, 15)
+    with pytest.raises(ValueError, match="not among"):
+        _sheet(
+            classes={"fighter": 1},
+            background_slug="soldier",
+            selected_choices=("background:intelligence+2,strength+1",),
+        )
+    with pytest.raises(ValueError, match="background_slug"):
+        _sheet(classes={"fighter": 1}, selected_choices=("background:strength+2,constitution+1",))
+    with pytest.raises(ValueError, match="unknown background"):
+        _sheet(classes={"fighter": 1}, background_slug="nope")
+
+
+@pytest.mark.parametrize(
+    ("classes", "token", "message"),
+    [
+        (
+            {"fighter": 5},
+            "asi:fighter:5:strength+2",
+            "no Ability Score Improvement at fighter level 5",
+        ),
+        ({"fighter": 3}, "asi:fighter:4:strength+2", "needs fighter level 4"),
+        ({"fighter": 4}, "asi:rogue:4:strength+2", "not one of"),
+        ({"monk": 20}, "asi:monk:20:dexterity+2", "no Ability Score Improvement at monk level 20"),
+        ({"fighter": 4}, "asi:fighter:4:strength+1", "exactly 2"),
+    ],
+)
+def test_asi_slots_are_validated(classes: dict[str, int], token: str, message: str) -> None:
+    with pytest.raises(ValueError, match=message):
+        _sheet(classes=classes, selected_choices=(token,))
+
+
+def test_an_asi_slot_is_used_once() -> None:
+    with pytest.raises(ValueError, match="already used"):
+        _sheet(
+            classes={"fighter": 4},
+            selected_choices=("asi:fighter:4:strength+2", "feat:fighter:4:grappler"),
+        )
+
+
+def test_multiclass_asi_on_the_second_class() -> None:
+    sheet = _sheet(
+        classes={"fighter": 1, "rogue": 4},
+        ability_scores={"dexterity": 16},
+        selected_choices=("asi:rogue:4:dex+2",),
+    )
+    assert sheet.ability_scores.dexterity == 18
+
+
+def test_increases_apply_in_order_and_stop_at_20() -> None:
+    with pytest.raises(ValueError, match="stop at 20"):
+        _sheet(
+            classes={"fighter": 6},
+            ability_scores={"strength": 18},
+            selected_choices=("asi:fighter:4:strength+2", "asi:fighter:6:strength+2"),
+        )
+
+
+def test_a_con_increase_raises_hit_points_for_every_level() -> None:
+    base = _sheet(classes={"fighter": 8}, ability_scores={"constitution": 17}).hp_max
+    raised = _sheet(
+        classes={"fighter": 8},
+        ability_scores={"constitution": 17},
+        selected_choices=("asi:fighter:4:constitution+1,strength+1",),
+    ).hp_max
+    assert raised - base == 8  # SRD "Adjust Ability Modifiers": +1 per level attained
+
+
+def test_feats_at_asi_levels_check_prerequisites() -> None:
+    assert _sheet(classes={"fighter": 4}, selected_choices=("feat:fighter:4:grappler",)).feats == (
+        "grappler",
+    )
+    with pytest.raises(ValueError, match="character level 19"):
+        _sheet(classes={"fighter": 4}, selected_choices=("feat:fighter:4:boon-of-combat-prowess",))
+    assert (
+        "boon-of-combat-prowess"
+        in _sheet(
+            classes={"fighter": 19}, selected_choices=("feat:fighter:19:boon-of-combat-prowess",)
+        ).feats
+    )
+    with pytest.raises(ValueError, match="unknown feat"):
+        _sheet(classes={"fighter": 4}, selected_choices=("feat:fighter:4:nope",))
+    assert (
+        "archery"
+        in _sheet(classes={"fighter": 4}, selected_choices=("feat:fighter:4:archery",)).feats
+    )
+    with pytest.raises(ValueError, match="fighting-style"):
+        _sheet(classes={"rogue": 4}, selected_choices=("feat:rogue:4:archery",))
+
+
+def test_feature_choice_picks_join_features_or_feats() -> None:
+    assert _sheet(classes={"fighter": 1}, selected_choices=("defense",)).feats == ("defense",)
+    assert (
+        "divine-order-protector"
+        in _sheet(classes={"cleric": 1}, selected_choices=("divine-order-protector",)).features
+    )
+    warlock = _sheet(
+        classes={"warlock": 2}, selected_choices=("agonizing-blast", "armor-of-shadows")
+    )
+    assert {"agonizing-blast", "armor-of-shadows"} <= set(warlock.features)
+    assert (
+        "skilled" in _sheet(classes={"wizard": 1}, selected_choices=("skilled",)).feats
+    )  # Human Versatile
+
+
+def test_a_pick_outside_every_reached_pool_is_rejected() -> None:
+    with pytest.raises(ValueError, match="not an option"):
+        _sheet(classes={"wizard": 1}, selected_choices=("defense",))
+    with pytest.raises(ValueError, match="not an option"):
+        _sheet(
+            classes={"paladin": 1}, selected_choices=("defense",)
+        )  # the Paladin's style opens at 2
+    assert _sheet(classes={"paladin": 2}, selected_choices=("defense",)).feats == ("defense",)
+
+
+def test_ability_score_method_checks_the_scores_before_any_increase() -> None:
+    array = {
+        "strength": 15,
+        "dexterity": 14,
+        "constitution": 13,
+        "intelligence": 12,
+        "wisdom": 10,
+        "charisma": 8,
+    }
+    sheet = _sheet(
+        classes={"fighter": 4},
+        ability_scores=array,
+        ability_score_method="standard_array",
+        selected_choices=("asi:fighter:4:strength+2",),
+    )
+    assert sheet.ability_scores.strength == 17
+    with pytest.raises(ValueError, match="point_buy"):
+        _sheet(
+            classes={"fighter": 1},
+            ability_scores={"strength": 17},
+            ability_score_method="point_buy",
+        )

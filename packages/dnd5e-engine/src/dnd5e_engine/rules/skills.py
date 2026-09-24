@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass
+from typing import Final, Literal
 
 from dnd5e_engine.rules.dice import (
     RollResult,
@@ -12,6 +13,50 @@ from dnd5e_engine.rules.dice import (
     roll_with_advantage,
     roll_with_disadvantage,
 )
+
+Skill = Literal[
+    "acrobatics",
+    "animal_handling",
+    "arcana",
+    "athletics",
+    "deception",
+    "history",
+    "insight",
+    "intimidation",
+    "investigation",
+    "medicine",
+    "nature",
+    "perception",
+    "performance",
+    "persuasion",
+    "religion",
+    "sleight_of_hand",
+    "stealth",
+    "survival",
+]
+
+# Foundry's 3-letter skill codes (corpus ``Background.skill_proficiencies``,
+# Trait grants, ``check.associated``) → the engine's canonical long-form slug.
+SKILL_CODE_TO_SLUG: Final[dict[str, Skill]] = {
+    "acr": "acrobatics",
+    "ani": "animal_handling",
+    "arc": "arcana",
+    "ath": "athletics",
+    "dec": "deception",
+    "his": "history",
+    "ins": "insight",
+    "itm": "intimidation",
+    "inv": "investigation",
+    "med": "medicine",
+    "nat": "nature",
+    "prc": "perception",
+    "prf": "performance",
+    "per": "persuasion",
+    "rel": "religion",
+    "slt": "sleight_of_hand",
+    "ste": "stealth",
+    "sur": "survival",
+}
 
 # D&D 5e skill → ability mapping
 SKILL_ABILITIES: dict[str, str] = {
@@ -237,7 +282,9 @@ def contested_check(
 
 __all__ = [
     "SKILL_ABILITIES",
+    "SKILL_CODE_TO_SLUG",
     "SKILL_DISPLAY_NAMES",
+    "Skill",
     "SkillCheckResult",
     "ability_check",
     "contested_check",

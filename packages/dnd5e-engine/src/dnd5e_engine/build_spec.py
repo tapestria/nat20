@@ -12,6 +12,8 @@ from collections.abc import Mapping, Sequence
 from typing import Any, cast
 
 from dnd5e_srd_data.loader import AssetLoader
+from dnd5e_srd_data.schema.advancement import AdvancementEntry
+from dnd5e_srd_data.schema.background import Background
 from dnd5e_srd_data.schema.class_ import Class, Subclass
 from dnd5e_srd_data.schema.common import PassiveEffectChange
 from dnd5e_srd_data.schema.species import Species
@@ -28,6 +30,8 @@ from dnd5e_engine.rules.character import (
     AbilityScoreMethod,
     AcCalcMode,
     HpMode,
+    ability_score_improvement,
+    apply_ability_increases,
     extra_attack_count,
     hit_dice_pool,
     hit_die_size,
@@ -35,7 +39,10 @@ from dnd5e_engine.rules.character import (
     hit_points_max,
     leveled_feature_slugs,
     subclass_gate_level,
+    validate_ability_score_method,
+    validate_increase_budget,
 )
+from dnd5e_engine.rules.choices import ParsedChoices, parse_selected_choices
 from dnd5e_engine.rules.dice import ability_modifier, proficiency_bonus
 from dnd5e_engine.spellcasting import (
     SpellcastingProgression,
@@ -278,6 +285,7 @@ class DerivedSheet(BaseModel):
     condition_immunities: tuple[str, ...]
     extra_attack_count: int
     features: tuple[str, ...]
+    feats: tuple[str, ...]
     spell_slots: dict[int, int]
     pact_slots: dict[int, int]
     hp_max: int
@@ -360,6 +368,142 @@ def _hit_points(
     )
 
 
+def _background(slug: str | None, loader: AssetLoader) -> Background | None:
+    if slug is None:
+        return None
+    background = loader.get_background(slug)
+    if background is None:
+        raise ValueError(f"unknown background: {slug!r}")
+    return background
+
+
+def _choice_options(level_sources: Sequence[_LeveledSource]) -> dict[str, str]:
+    """Every option of every feature-choice pool the build has reached (a pool
+    opens at its first schedule level with a non-zero count) → its ref type."""
+    options: dict[str, str] = {}
+    for source, level in level_sources:
+        if source is None:
+            continue
+        for choice in source.feature_choices:
+            if any(step.count > 0 and step.level <= level for step in choice.schedule):
+                for option in choice.pool:
+                    options.setdefault(option.slug, option.ref_type)
+    return options
+
+
+def _split_picks(picks: Sequence[str], options: Mapping[str, str]) -> tuple[list[str], list[str]]:
+    features: list[str] = []
+    feats: list[str] = []
+    for slug in picks:
+        ref_type = options.get(slug)
+        if ref_type is None:
+            raise ValueError(
+                f"selected_choices pick {slug!r} is not an option of any feature choice "
+                "this build has reached"
+            )
+        (feats if ref_type == "feat" else features).append(slug)
+    return features, feats
+
+
+def _asi_slot(
+    kind: str,
+    class_slug: str,
+    level: int,
+    spec: CharacterBuildSpec,
+    class_docs: Mapping[str, Class],
+    used: set[tuple[str, int]],
+) -> AdvancementEntry:
+    token = f"{kind}:{class_slug}:{level}"
+    if class_slug not in spec.classes:
+        raise ValueError(
+            f"{token}: {class_slug!r} is not one of the build's classes {sorted(spec.classes)}"
+        )
+    if level > spec.classes[class_slug]:
+        raise ValueError(
+            f"{token} needs {class_slug} level {level}; the build has {spec.classes[class_slug]}"
+        )
+    entry = ability_score_improvement(class_docs[class_slug], level)
+    if entry is None:
+        raise ValueError(
+            f"{token}: there is no Ability Score Improvement at {class_slug} level {level}"
+        )
+    if (class_slug, level) in used:
+        raise ValueError(
+            f"the Ability Score Improvement at {class_slug} level {level} is already used"
+        )
+    used.add((class_slug, level))
+    return entry
+
+
+def _ability_scores(
+    spec: CharacterBuildSpec,
+    choices: ParsedChoices,
+    class_docs: Mapping[str, Class],
+    background: Background | None,
+    used: set[tuple[str, int]],
+) -> dict[AbilityName, int]:
+    """Base scores, the background adjustment, then each ASI in token order."""
+    scores = cast(dict[AbilityName, int], spec.ability_scores.model_dump())
+    if spec.ability_score_method is not None:
+        validate_ability_score_method(scores, spec.ability_score_method)
+    if choices.background is not None:
+        if background is None:
+            raise ValueError("a background: choice needs background_slug")
+        options = background.ability_options
+        source = f"background {background.slug!r}"
+        validate_increase_budget(
+            choices.background,
+            allowed={ABILITY_NAME_BY_CODE[code] for code in options.options},
+            points=options.points,
+            cap=options.cap,
+            source=source,
+        )
+        scores = apply_ability_increases(scores, choices.background, source=source)
+    all_names = set(ABILITY_NAME_BY_CODE.values())
+    for pick in choices.asis:
+        config = _asi_slot("asi", pick.class_slug, pick.level, spec, class_docs, used).configuration
+        locked = {
+            ABILITY_NAME_BY_CODE[c] for c in config.get("locked") or () if c in ABILITY_NAME_BY_CODE
+        }
+        source = f"asi:{pick.class_slug}:{pick.level}"
+        validate_increase_budget(
+            pick.increases,
+            allowed=all_names - locked,
+            points=int(config.get("points") or 0),
+            cap=int(config.get("cap") or 2),
+            source=source,
+        )
+        scores = apply_ability_increases(scores, pick.increases, source=source)
+    return scores
+
+
+def _asi_level_feats(
+    spec: CharacterBuildSpec,
+    choices: ParsedChoices,
+    class_docs: Mapping[str, Class],
+    used: set[tuple[str, int]],
+    owned: set[str],
+    loader: AssetLoader,
+) -> list[str]:
+    feats: list[str] = []
+    for pick in choices.feats:
+        _asi_slot("feat", pick.class_slug, pick.level, spec, class_docs, used)
+        feat = loader.get_feat(pick.feat_slug)
+        if feat is None:
+            raise ValueError(f"unknown feat: {pick.feat_slug!r}")
+        for prerequisite in feat.prerequisites:
+            if prerequisite.level is not None and spec.level < prerequisite.level:
+                raise ValueError(
+                    f"feat {feat.slug!r} needs character level {prerequisite.level}; "
+                    f"the build has {spec.level}"
+                )
+            missing = sorted(set(prerequisite.feats) - owned)
+            if missing:
+                raise ValueError(f"feat {feat.slug!r} needs {missing}")
+        feats.append(feat.slug)
+    return feats
+
+
 def derive_sheet(spec: CharacterBuildSpec, *, loader: AssetLoader) -> DerivedSheet:
     """Derive the character sheet a ``CharacterBuildSpec`` describes (SRD 5.2
     Character Creation, Level Advancement and Multiclassing).
@@ -367,17 +511,27 @@ def derive_sheet(spec: CharacterBuildSpec, *, loader: AssetLoader) -> DerivedShe
     Pure apart from ``loader`` reads; draws no dice. Raises ``ValueError`` for an
     unknown slug or a build the SRD forbids.
     """
+    choices = parse_selected_choices(spec.selected_choices)
     class_docs = _class_docs(spec.classes, loader)
     species = _species(spec.species_slug, loader)
     subclass, subclass_level = _subclass(spec, class_docs, loader)
+    background = _background(spec.background_slug, loader)
     level_sources: list[_LeveledSource] = [
         *((class_docs[slug], level) for slug, level in spec.classes.items()),
         (subclass, subclass_level),
         (species, spec.level),
     ]
-    features = leveled_feature_slugs(level_sources)
+    picked_features, picked_feats = _split_picks(choices.picks, _choice_options(level_sources))
+    features = list(dict.fromkeys([*leveled_feature_slugs(level_sources), *picked_features]))
     changes = _always_on_changes(features, loader)
-    scores = cast(dict[AbilityName, int], spec.ability_scores.model_dump())
+    used_asi_slots: set[tuple[str, int]] = set()
+    scores = _ability_scores(spec, choices, class_docs, background, used_asi_slots)
+    feats = [
+        *picked_feats,
+        *_asi_level_feats(
+            spec, choices, class_docs, used_asi_slots, {*features, *picked_feats}, loader
+        ),
+    ]
     modifiers = {name: ability_modifier(score) for name, score in scores.items()}
     die_sizes = {slug: hit_die_size(str(cls.hit_die)) for slug, cls in class_docs.items()}
     walk = species.movement.walk or 30
@@ -404,6 +558,7 @@ def derive_sheet(spec: CharacterBuildSpec, *, loader: AssetLoader) -> DerivedShe
         condition_immunities=passive.condition_immunities,
         extra_attack_count=extra_attack_count(features),
         features=tuple(features),
+        feats=tuple(feats),
         spell_slots=derive_multiclass_slots(spec.classes, loader=loader),
         pact_slots=derive_multiclass_pact_slots(spec.classes, loader=loader),
         hp_max=_hit_points(spec, die_sizes, modifiers["constitution"], changes),

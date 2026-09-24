@@ -201,7 +201,6 @@ def test_c19_s06_save_and_skill_proficiencies_derive_from_class_and_background()
     assert frozenset({"athletics", "intimidation"}) <= sheet.skill_proficiencies
 
 
-@xfail_cluster(19, "character derivation")
 def test_c19_s07_asi_at_level4_from_selected_choices_raises_ability_score():
     """C19-S07: SRD 5.2 §Character Creation, "Gaining a Level" step 5,
     "Adjust Ability Modifiers... your ability modifier also changes if
