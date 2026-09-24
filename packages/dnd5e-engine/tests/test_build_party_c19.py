@@ -65,6 +65,20 @@ def test_unset_attack_bonus_stays_unset_so_the_engine_computes_it() -> None:
     assert "attack_bonus" not in _member().model_fields_set
 
 
+def test_combat_instance_still_derives_after_a_model_dump_round_trip() -> None:
+    # ac/attack_bonus are int | None = None, decided by `is None` rather than
+    # a model_fields_set sentinel, so this round-trip must not freeze them at
+    # the CombatInstance class defaults.
+    spec = make_build_spec(
+        species_slug="human", class_slug="fighter", level=1, ability_scores={"dexterity": 16}
+    )
+    inst = CombatInstance(entity_id="char:hero", name="Hero", zone_id=cell_id(0, 0))
+    rebuilt = CombatInstance(**inst.model_dump())
+    member = build_party_member(spec, rebuilt, loader=LOADER)
+    assert member.ac == 13  # derived: unarmored default, DEX +3 -- not the class default of 10
+    assert "attack_bonus" not in member.model_fields_set
+
+
 def test_hp_current_defaults_to_the_resolved_maximum() -> None:
     assert _member(hp_max=20).hp_current == 20
 
@@ -82,6 +96,11 @@ def test_proficiencies_reach_the_party_spec() -> None:
     assert member.skill_expertise == ("perception",)
     assert {"rapier", "simple_melee"} <= set(member.weapon_proficiencies)
     assert "weapon_proficiencies" in member.model_fields_set
+
+
+def test_disciplined_survivor_reaches_the_party_spec_at_monk_14() -> None:
+    member = _member({"class_slug": "monk", "level": 14})
+    assert set(member.save_proficiencies) == {"str", "dex", "con", "int", "wis", "cha"}
 
 
 def test_choice_tokens_change_the_scores_the_spec_carries() -> None:

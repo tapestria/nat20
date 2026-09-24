@@ -29,7 +29,6 @@ from dnd5e_engine.activities.passive_stats import (
 from dnd5e_engine.events import Ability
 from dnd5e_engine.rules.character import (
     ABILITY_NAME_BY_CODE,
-    MAX_ATTUNED_ITEMS,
     AbilityName,
     AbilityScoreMethod,
     AcCalcMode,
@@ -43,6 +42,7 @@ from dnd5e_engine.rules.character import (
     armor_class,
     armor_speed_penalty,
     armor_training_from_changes,
+    attunement_limit,
     extra_attack_count,
     has_flag,
     hit_dice_pool,
@@ -164,10 +164,13 @@ class CombatInstance(BaseModel):
     """Combat-instance values a host may pin, overriding derivation.
 
     Entity identity (entity_id/name) always comes from here. Character values
-    such as HP, AC and speed may be pinned here; leaving one unset lets
-    ``build_party_member`` derive it from the build spec instead: ``None``
-    for ``hp_current``/``hp_max``/``base_speed``, "never assigned" (checked via
-    ``model_fields_set``) for ``ac``/``attack_bonus``.
+    such as HP, AC, attack bonus and speed may be pinned here; leaving any of
+    ``hp_current``/``hp_max``/``ac``/``attack_bonus``/``base_speed`` as its
+    ``None`` default lets ``build_party_member`` derive it from the build
+    spec instead. Deciding by ``is None`` (rather than a
+    ``model_fields_set`` sentinel) means a ``CombatInstance`` rebuilt from
+    ``CombatInstance(**inst.model_dump())``, or round-tripped through JSON,
+    still derives whatever it left unset.
     """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
@@ -175,8 +178,8 @@ class CombatInstance(BaseModel):
     name: str
     hp_current: int | None = None
     hp_max: int | None = None
-    ac: int = 10
-    attack_bonus: int = 0
+    ac: int | None = None
+    attack_bonus: int | None = None
     base_speed: int | None = None
     initiative: int = 0
     zone_id: str = ""
@@ -533,6 +536,12 @@ def _asi_level_feats(
     feats: list[str] = []
     for pick in choices.feats:
         _asi_slot("feat", pick.class_slug, pick.level, spec, class_docs, used)
+        if pick.feat_slug == "ability-score-improvement":
+            raise ValueError(
+                f"feat:{pick.class_slug}:{pick.level}:ability-score-improvement: use an "
+                "asi:<class>:<level>:<ability>+<n> token to take Ability Score Improvement, "
+                "not a feat: token"
+            )
         feat = loader.get_feat(pick.feat_slug)
         if feat is None:
             raise ValueError(f"unknown feat: {pick.feat_slug!r}")
@@ -557,13 +566,16 @@ class _Worn:
     shield_bonus: int
 
 
-def _attuned(spec: CharacterBuildSpec, loader: AssetLoader) -> frozenset[str]:
+def _attuned(
+    spec: CharacterBuildSpec, loader: AssetLoader, changes: Sequence[PassiveEffectChange]
+) -> frozenset[str]:
     attuned = spec.attuned_items
     if len(set(attuned)) != len(attuned):
         raise ValueError(f"attuned_items repeats an item: {sorted(attuned)}")
-    if len(attuned) > MAX_ATTUNED_ITEMS:
+    limit = attunement_limit(changes)
+    if len(attuned) > limit:
         raise ValueError(
-            f"attuned_items has {len(attuned)} items; SRD 5.2 allows no more than three"
+            f"attuned_items has {len(attuned)} items; SRD 5.2 allows no more than {limit}"
         )
     for slug in attuned:
         if slug not in spec.equipment:
@@ -577,13 +589,16 @@ def _attuned(spec: CharacterBuildSpec, loader: AssetLoader) -> frozenset[str]:
 
 
 def _worn(
-    spec: CharacterBuildSpec, loader: AssetLoader, training: frozenset[ArmorTraining]
+    spec: CharacterBuildSpec,
+    loader: AssetLoader,
+    training: frozenset[ArmorTraining],
+    changes: Sequence[PassiveEffectChange],
 ) -> _Worn:
     """Worn body armor and wielded Shield. SRD 5.2: "A creature can wear only one
     suit of armor at a time and wield only one Shield at a time"; "You gain the
     Armor Class benefit of a Shield only if you have training with it". A magic
     bonus counts once the item is attuned, when it requires attunement."""
-    attuned = _attuned(spec, loader)
+    attuned = _attuned(spec, loader, changes)
     body: list[Armor] = []
     shields: list[Armor] = []
     for slug in spec.equipment:
@@ -677,10 +692,17 @@ def derive_sheet(spec: CharacterBuildSpec, *, loader: AssetLoader) -> DerivedShe
         ]
     )
     training = grants.armor | armor_training_from_changes(changes)
-    worn = _worn(spec, loader, training)
+    worn = _worn(spec, loader, training, changes)
     mode = _ac_mode(spec.ac_calc_mode, changes, modifiers, worn)
     skills, expertise = _skills(grants, background, choices)
     jack = has_flag(changes, "flags.dnd5e.jackOfAllTrades")
+    # Disciplined Survivor (Monk 14): "Your physical and mental discipline
+    # grant you proficiency in all saving throws."
+    save_proficiencies = (
+        frozenset(ABILITY_NAME_BY_CODE)
+        if has_flag(changes, "flags.dnd5e.diamondSoul")
+        else grants.saves
+    )
     die_sizes = {slug: hit_die_size(str(cls.hit_die)) for slug, cls in class_docs.items()}
     walk = species.movement.walk or 30
     passive = interpret_passive_stats(
@@ -706,7 +728,7 @@ def derive_sheet(spec: CharacterBuildSpec, *, loader: AssetLoader) -> DerivedShe
         damage_resistances=passive.resistances,
         damage_immunities=passive.immunities,
         condition_immunities=passive.condition_immunities,
-        save_proficiencies=grants.saves,
+        save_proficiencies=save_proficiencies,
         skill_proficiencies=skills,
         skill_expertise=expertise,
         weapon_proficiencies=grants.weapons | weapon_proficiencies_from_changes(changes),

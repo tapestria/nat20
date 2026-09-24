@@ -258,9 +258,13 @@ def test_a_con_increase_raises_hit_points_for_every_level() -> None:
 
 
 def test_feats_at_asi_levels_check_prerequisites() -> None:
-    assert _sheet(classes={"fighter": 4}, selected_choices=("feat:fighter:4:grappler",)).feats == (
-        "grappler",
-    )
+    # Grappler's prose requirement ("Strength or Dexterity 13+") is not parsed
+    # (out of scope), but this build must still be one that legally qualifies.
+    assert _sheet(
+        classes={"fighter": 4},
+        ability_scores={"strength": 13},
+        selected_choices=("feat:fighter:4:grappler",),
+    ).feats == ("grappler",)
     with pytest.raises(ValueError, match="character level 19"):
         _sheet(classes={"fighter": 4}, selected_choices=("feat:fighter:4:boon-of-combat-prowess",))
     assert (
@@ -277,6 +281,14 @@ def test_feats_at_asi_levels_check_prerequisites() -> None:
     )
     with pytest.raises(ValueError, match="fighting-style"):
         _sheet(classes={"rogue": 4}, selected_choices=("feat:rogue:4:archery",))
+
+
+def test_feat_token_rejects_ability_score_improvement() -> None:
+    with pytest.raises(ValueError, match="asi:"):
+        _sheet(
+            classes={"fighter": 4},
+            selected_choices=("feat:fighter:4:ability-score-improvement",),
+        )
 
 
 def test_feature_choice_picks_join_features_or_feats() -> None:
@@ -342,6 +354,15 @@ def test_save_proficiencies_come_from_the_initial_class_only() -> None:
     assert _sheet(classes={"rogue": 15}).save_proficiencies == frozenset(
         {"dex", "int", "wis", "cha"}
     )
+
+
+def test_disciplined_survivor_grants_all_six_saves_at_monk_14() -> None:
+    # SRD 5.2 Disciplined Survivor: "Your physical and mental discipline
+    # grant you proficiency in all saving throws."
+    assert _sheet(classes={"monk": 14}).save_proficiencies == frozenset(
+        {"str", "dex", "con", "int", "wis", "cha"}
+    )
+    assert _sheet(classes={"monk": 13}).save_proficiencies == frozenset({"str", "dex"})
 
 
 def test_weapon_proficiencies_resolve_to_categories_and_slugs() -> None:
@@ -555,6 +576,29 @@ def test_attunement_rules(
 def test_three_attuned_items_are_fine_and_their_effects_stay_out_of_ac() -> None:
     items = ("ring-of-protection", "cloak-of-protection", "amulet-of-health")
     assert _sheet(classes={"wizard": 5}, equipment=items, attuned_items=items).ac == 10
+
+
+def test_thief_use_magic_device_raises_the_attunement_limit_to_four() -> None:
+    # SRD 5.2 Use Magic Device (Thief, rogue level 13): "You can attune to
+    # up to four magic items at once."
+    items = ("ring-of-protection", "cloak-of-protection", "amulet-of-health", "boots-of-speed")
+    thief = _sheet(
+        classes={"rogue": 13}, subclass_slug="thief", equipment=items, attuned_items=items
+    )
+    assert len(thief.weapon_proficiencies) > 0  # sanity: a full sheet derives
+    with pytest.raises(ValueError, match="no more than 4"):
+        _sheet(
+            classes={"rogue": 13},
+            subclass_slug="thief",
+            equipment=(*items, "bracers-of-defense"),
+            attuned_items=(*items, "bracers-of-defense"),
+        )
+
+
+def test_the_attunement_limit_is_three_without_use_magic_device() -> None:
+    items = ("ring-of-protection", "cloak-of-protection", "amulet-of-health", "boots-of-speed")
+    with pytest.raises(ValueError, match="no more than 3"):
+        _sheet(classes={"wizard": 5}, equipment=items, attuned_items=items)
 
 
 def test_unknown_non_armor_equipment_is_carried_not_rejected() -> None:

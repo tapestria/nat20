@@ -68,7 +68,8 @@ class CheckSpec:
     expertise_skills: tuple[str, ...] = ()
     # SRD 5.2 Jack of All Trades: "You can add half your Proficiency Bonus
     # (round down) to any ability check you make that uses a skill proficiency
-    # you lack" — skill checks only.
+    # you lack and that doesn't otherwise use your Proficiency Bonus" — skill
+    # checks only.
     jack_of_all_trades: bool = False
     # SRD 5.2 Reliable Talent: "Whenever you make an ability check that uses one
     # of your skill or tool proficiencies, you can treat a d20 roll of 9 or lower

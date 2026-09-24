@@ -414,6 +414,20 @@ def has_flag(changes: Iterable[PassiveEffectChange], key: str) -> bool:
 # SRD 5.2: "A creature can have Attunement with no more than three magic items at a time."
 MAX_ATTUNED_ITEMS: Final = 3
 
+_ATTUNEMENT_MAX_KEY: Final = "system.attributes.attunement.max"
+
+
+def attunement_limit(changes: Iterable[PassiveEffectChange]) -> int:
+    """The build's attunement limit: the SRD 5.2 base of three, plus every
+    literal-int ADD change on ``system.attributes.attunement.max``. The
+    Thief's Use Magic Device (rogue level 13) grants one such change
+    (``mode`` ``_MODE_ADD``, value ``"1"``): its own corpus description
+    says "You can attune to up to four magic items at once." A build
+    without such a feature keeps the base of three."""
+    values = _values(changes, _ATTUNEMENT_MAX_KEY)
+    return MAX_ATTUNED_ITEMS + sum(int(v) for v in values if v.lstrip("+-").isdigit())
+
+
 _AC_CALC_KEY: Final = "system.attributes.ac.calc"
 
 
@@ -508,6 +522,7 @@ __all__ = [
     "armor_class",
     "armor_speed_penalty",
     "armor_training_from_changes",
+    "attunement_limit",
     "extra_attack_count",
     "fixed_hit_points",
     "granted_feature_slugs",

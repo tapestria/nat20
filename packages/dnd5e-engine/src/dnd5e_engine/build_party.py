@@ -18,15 +18,16 @@ def build_party_member(
 ) -> PartyMemberSpec:
     """Resolve a build spec plus a combat instance into a ``PartyMemberSpec``.
 
-    Every character value comes from ``derive_sheet`` unless the host pinned it
-    on ``instance``: ``hp_max`` / ``hp_current`` / ``base_speed`` when not
-    ``None``; ``ac`` / ``attack_bonus`` when explicitly assigned (a value equal to
-    the field default still counts). An unpinned ``attack_bonus`` stays unset, so
-    the engine computes each weapon's to-hit bonus. Raises ``ValueError`` for an
-    invalid build (see ``derive_sheet``).
+    Every character value comes from ``derive_sheet`` unless the host pinned
+    it on ``instance``: ``hp_max`` / ``hp_current`` / ``ac`` / ``attack_bonus``
+    / ``base_speed`` whenever they are not ``None`` (decided by an ordinary
+    ``is None`` check, so a ``CombatInstance`` rebuilt from
+    ``CombatInstance(**inst.model_dump())`` still derives whatever it left
+    unset). An unpinned ``attack_bonus`` stays unset on the built spec, so
+    the engine computes each weapon's to-hit bonus. Raises ``ValueError`` for
+    an invalid build (see ``derive_sheet``).
     """
     sheet = derive_sheet(build_spec, loader=loader)
-    pinned = instance.model_fields_set
     hp_max = sheet.hp_max if instance.hp_max is None else instance.hp_max
     scores = sheet.ability_scores
     member = PartyMemberSpec(
@@ -35,7 +36,7 @@ def build_party_member(
         initiative=instance.initiative,
         hp_current=hp_max if instance.hp_current is None else instance.hp_current,
         hp_max=hp_max,
-        ac=instance.ac if "ac" in pinned else sheet.ac,
+        ac=sheet.ac if instance.ac is None else instance.ac,
         strength=scores.strength,
         dexterity=scores.dexterity,
         constitution=scores.constitution,
@@ -63,7 +64,7 @@ def build_party_member(
         skill_expertise=tuple(sorted(sheet.skill_expertise)),
         weapon_proficiencies=tuple(sorted(sheet.weapon_proficiencies)),
     )
-    if "attack_bonus" in pinned:
+    if instance.attack_bonus is not None:
         # model_copy marks the field as set (pydantic 2.13), which keeps the C15
         # sentinel reading it as the host's verbatim to-hit bonus.
         member = member.model_copy(update={"attack_bonus": instance.attack_bonus})

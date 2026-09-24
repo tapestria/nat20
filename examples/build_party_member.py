@@ -26,7 +26,8 @@ build_spec = make_build_spec(
                     "int": 10, "wis": 12, "cha": 8},
 )
 
-# Combat-instance values that are not character-derived (rolled HP, AC, start cell).
+# Combat-instance values pinned here (rolled HP, AC, start cell) override
+# derivation; omit any of them to let the engine derive it instead.
 instance = CombatInstance(
     entity_id="char:valeros",
     name="Valeros",
