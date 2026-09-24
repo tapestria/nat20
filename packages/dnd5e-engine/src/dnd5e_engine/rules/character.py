@@ -13,21 +13,19 @@ from __future__ import annotations
 import re
 from collections.abc import Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Final, Literal, cast
+from typing import TYPE_CHECKING, Final, Literal
 
 from dnd5e_srd_data.schema.advancement import AdvancementType
 
 from dnd5e_engine.events import Ability
 from dnd5e_engine.rules.dice import STANDARD_ARRAY, validate_point_buy
+from dnd5e_engine.rules.skills import SKILL_CODE_TO_SLUG, Skill
 
 if TYPE_CHECKING:
     from dnd5e_srd_data.schema.advancement import AdvancementEntry
     from dnd5e_srd_data.schema.class_ import Class, Subclass
     from dnd5e_srd_data.schema.common import PassiveEffectChange
     from dnd5e_srd_data.schema.species import Species
-
-# At runtime, import to avoid a cycle; SKILL_CODE_TO_SLUG is only used in rules functions
-from dnd5e_engine.rules.skills import SKILL_CODE_TO_SLUG, Skill
 
 AbilityName = Literal["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"]
 
@@ -381,7 +379,9 @@ def proficiency_grants(
 
 
 def _values(changes: Iterable[PassiveEffectChange], key: str) -> list[str]:
-    return [c.value.strip().strip('"').strip() for c in changes if c.key == key and c.mode == 2]
+    return [
+        c.value.strip().strip('"').strip() for c in changes if c.key == key and c.mode == _MODE_ADD
+    ]
 
 
 def weapon_proficiencies_from_changes(changes: Iterable[PassiveEffectChange]) -> frozenset[str]:

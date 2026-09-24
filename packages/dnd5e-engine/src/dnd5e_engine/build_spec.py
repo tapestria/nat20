@@ -24,11 +24,13 @@ from dnd5e_engine.activities.passive_stats import (
     CombatantSenses,
     interpret_passive_stats,
 )
+from dnd5e_engine.events import Ability
 from dnd5e_engine.rules.character import (
     ABILITY_NAME_BY_CODE,
     AbilityName,
     AbilityScoreMethod,
     AcCalcMode,
+    ArmorTraining,
     HpMode,
     ProficiencyGrants,
     ability_score_improvement,
@@ -289,11 +291,11 @@ class DerivedSheet(BaseModel):
     damage_resistances: tuple[str, ...]
     damage_immunities: tuple[str, ...]
     condition_immunities: tuple[str, ...]
-    save_proficiencies: frozenset[str]
-    skill_proficiencies: frozenset[str]
-    skill_expertise: frozenset[str]
+    save_proficiencies: frozenset[Ability]
+    skill_proficiencies: frozenset[Skill]
+    skill_expertise: frozenset[Skill]
     weapon_proficiencies: frozenset[str]
-    armor_training: frozenset[str]
+    armor_training: frozenset[ArmorTraining]
     passive_perception: int
     jack_of_all_trades: bool
     reliable_talent: bool
