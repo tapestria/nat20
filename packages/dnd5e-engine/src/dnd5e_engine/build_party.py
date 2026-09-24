@@ -1,144 +1,74 @@
 """Pure resolution of a CharacterBuildSpec into a complete PartyMemberSpec.
 
-Character-derived fields (abilities, class/subclass/level, base_speed) come from the
-build-spec + the library; combat-instance fields (hp/ac/initiative/zone/...) come from
-CombatInstance. Feature activities (piece 4) and senses/resistances (piece 5) layer on
-later via the same seam.
+Character values (abilities, HP, AC, speed, proficiencies, senses, resistances, …)
+come from ``derive_sheet``; combat-instance values (identity, and anything the host
+pinned on ``CombatInstance``) override it. See ``build_party_member``.
 """
 
 from __future__ import annotations
 
-import logging
-
 from dnd5e_srd_data.loader import AssetLoader
-from dnd5e_srd_data.schema.class_ import Class, Subclass
-from dnd5e_srd_data.schema.refs import GrantRef
-from dnd5e_srd_data.schema.species import Species
 
-from dnd5e_engine.activities.passive_stats import interpret_passive_stats
-from dnd5e_engine.build_spec import (
-    CharacterBuildSpec,
-    CombatInstance,
-    derive_multiclass_pact_slots,
-    derive_multiclass_slots,
-)
+from dnd5e_engine.build_spec import CharacterBuildSpec, CombatInstance, derive_sheet
 from dnd5e_engine.specs import PartyMemberSpec
-
-_log = logging.getLogger(__name__)
-
-
-def granted_feature_slugs(
-    sources: list[Class | Subclass | Species | None], *, level: int
-) -> list[str]:
-    """Pure: feature slugs the given sources grant at/below ``level``.
-
-    Shared by the build-spec passive projection and the orchestrator's
-    USE_FEATURE repertoire gate (which derives the same set from a live
-    Combatant's class/subclass/species). Filters ``granted_features`` to
-    ``ref_type == "feature"`` and ``grant.level <= level``; preserves source
-    order and dedupes. ``None`` sources (absent class/subclass/species) are
-    skipped. Loader access stays with the caller — this is I/O-free.
-    """
-    slugs: list[str] = []
-    seen: set[str] = set()
-    for source in sources:
-        if source is None:
-            continue
-        grants: list[GrantRef] = source.granted_features
-        for grant in grants:
-            if grant.ref_type == "feature" and grant.level <= level and grant.slug not in seen:
-                seen.add(grant.slug)
-                slugs.append(grant.slug)
-    return slugs
 
 
 def build_party_member(
     build_spec: CharacterBuildSpec, instance: CombatInstance, *, loader: AssetLoader
 ) -> PartyMemberSpec:
-    cls = loader.get_class(build_spec.class_slug)
-    if cls is None:
-        raise ValueError(f"unknown class: {build_spec.class_slug!r}")
-    species = loader.get_species(build_spec.species_slug)
-    if species is None:
-        raise ValueError(f"unknown species: {build_spec.species_slug!r}")
-    sub: Subclass | None = None
-    if build_spec.subclass_slug is not None:
-        sub = loader.get_subclass(build_spec.subclass_slug)
-        if sub is None:
-            raise ValueError(f"unknown subclass: {build_spec.subclass_slug!r}")
-        if sub.class_identifier != build_spec.class_slug:
-            raise ValueError(
-                f"subclass {build_spec.subclass_slug!r} is not a subclass of "
-                f"{build_spec.class_slug!r}"
-            )
-    base_speed = species.movement.walk if species.movement.walk else 30
-    ab = build_spec.ability_scores
+    """Resolve a build spec plus a combat instance into a ``PartyMemberSpec``.
 
-    # Project always-on passive derived stats (species trait_grants/senses +
-    # always-on granted-feature passive_effects) onto the spec. The interpreter
-    # is pure; this seam owns the loader access and logs the dropped keys.
-    feature_slugs = granted_feature_slugs([cls, sub, species], level=build_spec.level)
-    feature_changes = []
-    for slug in feature_slugs:
-        feature = loader.get_feature(slug)
-        if feature is None:
-            _log.warning(
-                "build_party_member: granted feature slug did not resolve to a "
-                "canonical feature; skipping",
-                extra={"entity_id": instance.entity_id, "granted_feature_slug": slug},
-            )
-            continue
-        for passive in feature.passive_effects:
-            # Always-on only: transfer=true innate + not activation-gated.
-            if passive.transfer and not passive.disabled:
-                feature_changes.extend(passive.changes)
-    derived = interpret_passive_stats(
-        changes=feature_changes,
-        trait_grants=species.trait_grants,
-        species_senses=species.senses,
-        species_base_speed=base_speed,
-    )
-    # a flat walk-speed change (Roving's +10) composes additively with
-    # the species base walk speed; the non-walk modes ride the typed carrier.
-    base_speed = base_speed + derived.walk_speed_bonus
-    if derived.skipped_keys:
-        _log.debug(
-            "build_party_member: skipped non-allowlisted passive keys",
-            extra={"entity_id": instance.entity_id, "skipped_keys": derived.skipped_keys},
-        )
-    return PartyMemberSpec(
+    Every character value comes from ``derive_sheet`` unless the host pinned
+    it on ``instance``: ``hp_max`` / ``hp_current`` / ``ac`` / ``attack_bonus``
+    / ``base_speed`` whenever they are not ``None`` (decided by an ordinary
+    ``is None`` check, so a ``CombatInstance`` rebuilt from
+    ``CombatInstance(**inst.model_dump())`` still derives whatever it left
+    unset). An unpinned ``attack_bonus`` stays unset on the built spec, so
+    the engine computes each weapon's to-hit bonus. Raises ``ValueError`` for
+    an invalid build (see ``derive_sheet``).
+    """
+    sheet = derive_sheet(build_spec, loader=loader)
+    hp_max = sheet.hp_max if instance.hp_max is None else instance.hp_max
+    scores = sheet.ability_scores
+    member = PartyMemberSpec(
         entity_id=instance.entity_id,
         name=instance.name,
         initiative=instance.initiative,
-        hp_current=instance.hp_current,
-        hp_max=instance.hp_max,
-        ac=instance.ac,
-        attack_bonus=instance.attack_bonus,
-        strength=ab.strength,
-        dexterity=ab.dexterity,
-        constitution=ab.constitution,
-        intelligence=ab.intelligence,
-        wisdom=ab.wisdom,
-        charisma=ab.charisma,
+        hp_current=hp_max if instance.hp_current is None else instance.hp_current,
+        hp_max=hp_max,
+        ac=sheet.ac if instance.ac is None else instance.ac,
+        strength=scores.strength,
+        dexterity=scores.dexterity,
+        constitution=scores.constitution,
+        intelligence=scores.intelligence,
+        wisdom=scores.wisdom,
+        charisma=scores.charisma,
         zone_id=instance.zone_id,
-        spell_slots=dict(instance.spell_slots)
-        or derive_multiclass_slots(build_spec.classes, loader=loader),
-        pact_slots=dict(instance.pact_slots)
-        or derive_multiclass_pact_slots(build_spec.classes, loader=loader),
+        spell_slots=dict(instance.spell_slots) or dict(sheet.spell_slots),
+        pact_slots=dict(instance.pact_slots) or dict(sheet.pact_slots),
         spells_known=list(instance.spells_known),
         concentration_effect_id=instance.concentration_effect_id,
         character_level=build_spec.level,
         class_slug=build_spec.class_slug,
         subclass_slug=build_spec.subclass_slug,
         species_slug=build_spec.species_slug,
-        base_speed=base_speed,
+        base_speed=sheet.base_speed if instance.base_speed is None else instance.base_speed,
         equipment=build_spec.equipment,
-        damage_resistances=list(derived.resistances),
-        damage_immunities=list(derived.immunities),
-        condition_immunities=list(derived.condition_immunities),
-        senses=derived.senses,
-        movement_modes=derived.movement_modes,
+        damage_resistances=list(sheet.damage_resistances),
+        damage_immunities=list(sheet.damage_immunities),
+        condition_immunities=list(sheet.condition_immunities),
+        senses=sheet.senses,
+        movement_modes=sheet.movement_modes,
+        save_proficiencies=tuple(sorted(sheet.save_proficiencies)),
+        skill_proficiencies=tuple(sorted(sheet.skill_proficiencies)),
+        skill_expertise=tuple(sorted(sheet.skill_expertise)),
+        weapon_proficiencies=tuple(sorted(sheet.weapon_proficiencies)),
     )
+    if instance.attack_bonus is not None:
+        # model_copy marks the field as set (pydantic 2.13), which keeps the C15
+        # sentinel reading it as the host's verbatim to-hit bonus.
+        member = member.model_copy(update={"attack_bonus": instance.attack_bonus})
+    return member
 
 
 __all__ = [

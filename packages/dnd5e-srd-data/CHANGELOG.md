@@ -72,6 +72,15 @@ additive; old canonical JSON without the new keys still validates.
   scout, ettin) — which could not be joined to a typed sibling before — are
   the motivating fix, and now carry the sibling name as a `{Label}` on the
   `[[/item .<id>]]` token.
+- **C19 — `unarmored-defense` is the Barbarian's feature (`unarmoredBarb`);
+  the Monk's ships as `unarmored-defense-monk`.** Foundry gives both
+  classes' Unarmored Defense the same identifier, and the translator used
+  to collapse them onto one canonical file, which the Monk's copy won
+  alphabetically — so the Barbarian's granted `unarmored-defense` resolved
+  to the Monk's DEX+WIS formula instead of its own DEX+CON one. A one-entry
+  class-scoping table in `tools/translators/foundry.py` now gives the
+  Monk's copy its own slug.
+  (`packages/dnd5e-srd-data/src/dnd5e_srd_data/canonical/features/unarmored-defense-monk.json`)
 
 ## [0.5.0]
 

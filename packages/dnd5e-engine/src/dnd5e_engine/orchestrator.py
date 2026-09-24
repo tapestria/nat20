@@ -56,7 +56,7 @@ import re
 import warnings
 from collections.abc import AsyncIterator, Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Final, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from dnd5e_srd_data.schema.common import (
     ActivationBlock,
@@ -103,7 +103,6 @@ from dnd5e_engine.activities.monster_actions import (
 from dnd5e_engine.activities.passive_stats import CombatantSenses, interpret_passive_stats
 from dnd5e_engine.activities.resolver import resolve_activity
 from dnd5e_engine.activities.scale import build_scale_values
-from dnd5e_engine.build_party import granted_feature_slugs
 from dnd5e_engine.death_saves import DeathSaveState, roll_death_save
 from dnd5e_engine.events import (
     Ability,
@@ -151,6 +150,7 @@ from dnd5e_engine.outcome import (
     LootDrop,
 )
 from dnd5e_engine.rest import FEATURE_USE_COUNTER_PREFIX, ITEM_USE_COUNTER_PREFIX
+from dnd5e_engine.rules.character import extra_attack_count, granted_feature_slugs
 from dnd5e_engine.rules.conditions import (
     Condition,
     active_condition_names,
@@ -7245,23 +7245,12 @@ async def start_combat(
     )
 
 
-_EXTRA_ATTACK_TIERS: Final[tuple[tuple[str, int], ...]] = (
-    ("three-extra-attacks", 4),
-    ("two-extra-attacks", 3),
-    ("extra-attack", 2),
-)
-
-
 def _attacks_per_action(current: Combatant) -> int:
-    """SRD 5.2 Extra Attack + the multiclass non-stacking rule: the single
-    highest-count qualifying feature sets the cap; counts are never summed."""
+    """SRD 5.2 Extra Attack: one attack plus the highest qualifying tier's extra
+    attacks (``rules.character.extra_attack_count``; tiers never add)."""
     if current.class_slug is None:
         return 1
-    slugs = _granted_feature_slugs(current)
-    for slug, count in _EXTRA_ATTACK_TIERS:
-        if slug in slugs:
-            return count
-    return 1
+    return 1 + extra_attack_count(_granted_feature_slugs(current))
 
 
 def _offhand_window_open(current: Combatant) -> bool:

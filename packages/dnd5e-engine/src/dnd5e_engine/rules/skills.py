@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass
+from typing import Final, Literal
 
 from dnd5e_engine.rules.dice import (
     RollResult,
@@ -12,6 +13,50 @@ from dnd5e_engine.rules.dice import (
     roll_with_advantage,
     roll_with_disadvantage,
 )
+
+Skill = Literal[
+    "acrobatics",
+    "animal_handling",
+    "arcana",
+    "athletics",
+    "deception",
+    "history",
+    "insight",
+    "intimidation",
+    "investigation",
+    "medicine",
+    "nature",
+    "perception",
+    "performance",
+    "persuasion",
+    "religion",
+    "sleight_of_hand",
+    "stealth",
+    "survival",
+]
+
+# Foundry's 3-letter skill codes (corpus ``Background.skill_proficiencies``,
+# Trait grants, ``check.associated``) → the engine's canonical long-form slug.
+SKILL_CODE_TO_SLUG: Final[dict[str, Skill]] = {
+    "acr": "acrobatics",
+    "ani": "animal_handling",
+    "arc": "arcana",
+    "ath": "athletics",
+    "dec": "deception",
+    "his": "history",
+    "ins": "insight",
+    "itm": "intimidation",
+    "inv": "investigation",
+    "med": "medicine",
+    "nat": "nature",
+    "prc": "perception",
+    "prf": "performance",
+    "per": "persuasion",
+    "rel": "religion",
+    "slt": "sleight_of_hand",
+    "ste": "stealth",
+    "sur": "survival",
+}
 
 # D&D 5e skill → ability mapping
 SKILL_ABILITIES: dict[str, str] = {
@@ -82,6 +127,7 @@ def skill_check(
     jack_of_all_trades: bool = False,  # half proficiency even if not proficient
     *,
     rng: random.Random | None = None,
+    reliable_talent: bool = False,
 ) -> SkillCheckResult:
     """
     Resolve a skill check.
@@ -93,14 +139,12 @@ def skill_check(
 
     is_proficient = normalized in [s.lower().replace(" ", "_") for s in proficient_skills]
 
-    if expertise and is_proficient:
-        prof_contribution = proficiency_bonus * 2
-    elif is_proficient:
-        prof_contribution = proficiency_bonus
-    elif jack_of_all_trades:
-        prof_contribution = proficiency_bonus // 2
-    else:
-        prof_contribution = 0
+    prof_contribution = skill_proficiency_bonus(
+        proficiency_bonus,
+        proficient=is_proficient,
+        expertise=expertise,
+        jack_of_all_trades=jack_of_all_trades,
+    )
 
     modifier = ability_modifier(score) + prof_contribution
 
@@ -114,6 +158,9 @@ def skill_check(
         result = roll_with_disadvantage(modifier=modifier, rng=rng)
     else:
         result = roll_d20(modifier=modifier, rng=rng)
+
+    if reliable_talent and is_proficient and result.total - modifier < 10:
+        result = RollResult(dice=result.dice, modifier=modifier, total=10 + modifier)
 
     success = (result.total >= dc) if dc is not None else None
 
@@ -129,10 +176,40 @@ def skill_check(
     )
 
 
-def passive_perception(wisdom_score: int, proficient: bool, proficiency_bonus: int) -> int:
-    """10 + WIS modifier + proficiency if applicable."""
-    modifier = ability_modifier(wisdom_score) + (proficiency_bonus if proficient else 0)
-    return 10 + modifier
+def skill_proficiency_bonus(
+    proficiency_bonus: int,
+    *,
+    proficient: bool,
+    expertise: bool = False,
+    jack_of_all_trades: bool = False,
+) -> int:
+    """The Proficiency Bonus share a skill check adds: doubled by Expertise
+    (proficient skills only), whole when proficient, half rounded down under
+    Jack of All Trades when not proficient, else nothing."""
+    if proficient:
+        return proficiency_bonus * 2 if expertise else proficiency_bonus
+    return proficiency_bonus // 2 if jack_of_all_trades else 0
+
+
+def passive_perception(
+    wisdom_score: int,
+    proficient: bool,
+    proficiency_bonus: int,
+    *,
+    expertise: bool = False,
+    jack_of_all_trades: bool = False,
+) -> int:
+    """SRD 5.2 Passive Perception = 10 + Wisdom (Perception) check modifier."""
+    return (
+        10
+        + ability_modifier(wisdom_score)
+        + skill_proficiency_bonus(
+            proficiency_bonus,
+            proficient=proficient,
+            expertise=expertise,
+            jack_of_all_trades=jack_of_all_trades,
+        )
+    )
 
 
 def ability_check(
@@ -237,11 +314,14 @@ def contested_check(
 
 __all__ = [
     "SKILL_ABILITIES",
+    "SKILL_CODE_TO_SLUG",
     "SKILL_DISPLAY_NAMES",
+    "Skill",
     "SkillCheckResult",
     "ability_check",
     "contested_check",
     "passive_perception",
     "saving_throw",
     "skill_check",
+    "skill_proficiency_bonus",
 ]

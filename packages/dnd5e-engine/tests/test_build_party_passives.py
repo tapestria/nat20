@@ -10,8 +10,9 @@ import logging
 
 from dnd5e_srd_data.loader import BundledAssetLoader
 
-from dnd5e_engine.build_party import build_party_member, granted_feature_slugs
+from dnd5e_engine.build_party import build_party_member
 from dnd5e_engine.build_spec import CombatInstance, make_build_spec
+from dnd5e_engine.rules.character import granted_feature_slugs
 
 _LOADER = BundledAssetLoader()
 _INST = CombatInstance(
