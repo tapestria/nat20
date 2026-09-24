@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from typing import Any, cast
 
 from dnd5e_srd_data.loader import AssetLoader
@@ -16,6 +17,7 @@ from dnd5e_srd_data.schema.advancement import AdvancementEntry
 from dnd5e_srd_data.schema.background import Background
 from dnd5e_srd_data.schema.class_ import Class, Subclass
 from dnd5e_srd_data.schema.common import PassiveEffectChange
+from dnd5e_srd_data.schema.item import Armor
 from dnd5e_srd_data.schema.species import Species
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -27,6 +29,7 @@ from dnd5e_engine.activities.passive_stats import (
 from dnd5e_engine.events import Ability
 from dnd5e_engine.rules.character import (
     ABILITY_NAME_BY_CODE,
+    MAX_ATTUNED_ITEMS,
     AbilityName,
     AbilityScoreMethod,
     AcCalcMode,
@@ -34,7 +37,11 @@ from dnd5e_engine.rules.character import (
     HpMode,
     ProficiencyGrants,
     ability_score_improvement,
+    ac_mode_eligible,
+    ac_modes_from_changes,
     apply_ability_increases,
+    armor_class,
+    armor_speed_penalty,
     armor_training_from_changes,
     extra_attack_count,
     has_flag,
@@ -299,6 +306,7 @@ class DerivedSheet(BaseModel):
     passive_perception: int
     jack_of_all_trades: bool
     reliable_talent: bool
+    stealth_disadvantage: bool
     extra_attack_count: int
     features: tuple[str, ...]
     feats: tuple[str, ...]
@@ -306,6 +314,8 @@ class DerivedSheet(BaseModel):
     pact_slots: dict[int, int]
     hp_max: int
     hit_dice: dict[int, int]
+    ac: int
+    ac_calc_mode: AcCalcMode
 
 
 def _class_docs(classes: Mapping[str, int], loader: AssetLoader) -> dict[str, Class]:
@@ -534,6 +544,93 @@ def _asi_level_feats(
     return feats
 
 
+@dataclass(frozen=True)
+class _Worn:
+    body: Armor | None
+    body_bonus: int
+    shield: Armor | None
+    shield_bonus: int
+
+
+def _attuned(spec: CharacterBuildSpec, loader: AssetLoader) -> frozenset[str]:
+    attuned = spec.attuned_items
+    if len(set(attuned)) != len(attuned):
+        raise ValueError(f"attuned_items repeats an item: {sorted(attuned)}")
+    if len(attuned) > MAX_ATTUNED_ITEMS:
+        raise ValueError(
+            f"attuned_items has {len(attuned)} items; SRD 5.2 allows no more than three"
+        )
+    for slug in attuned:
+        if slug not in spec.equipment:
+            raise ValueError(f"attuned item {slug!r} is not in equipment")
+        item = loader.get_item(slug)
+        if item is None:
+            raise ValueError(f"unknown item: {slug!r}")
+        if not item.requires_attunement:
+            raise ValueError(f"{slug!r} does not require attunement")
+    return frozenset(attuned)
+
+
+def _worn(
+    spec: CharacterBuildSpec, loader: AssetLoader, training: frozenset[ArmorTraining]
+) -> _Worn:
+    """Worn body armor and wielded Shield. SRD 5.2: "A creature can wear only one
+    suit of armor at a time and wield only one Shield at a time"; "You gain the
+    Armor Class benefit of a Shield only if you have training with it". A magic
+    bonus counts once the item is attuned, when it requires attunement."""
+    attuned = _attuned(spec, loader)
+    body: list[Armor] = []
+    shields: list[Armor] = []
+    for slug in spec.equipment:
+        armor = loader.get_armor(slug)
+        if armor is not None:
+            (shields if armor.armor_category == "shield" else body).append(armor)
+    if len(body) > 1:
+        raise ValueError(f"equipment wears more than one suit of armor: {[a.slug for a in body]}")
+    if len(shields) > 1:
+        raise ValueError(f"equipment wields more than one Shield: {[a.slug for a in shields]}")
+
+    def bonus(armor: Armor) -> int:
+        active = not armor.requires_attunement or armor.slug in attuned
+        return armor.magical_bonus if active else 0
+
+    worn_body = body[0] if body else None
+    shield = shields[0] if shields else None
+    shield_bonus = shield.base_ac + bonus(shield) if shield and "shield" in training else 0
+    return _Worn(worn_body, bonus(worn_body) if worn_body else 0, shield, shield_bonus)
+
+
+def _ac_mode(
+    explicit: AcCalcMode | None,
+    changes: Sequence[PassiveEffectChange],
+    modifiers: Mapping[AbilityName, int],
+    worn: _Worn,
+) -> AcCalcMode:
+    wearing, shielded = worn.body is not None, worn.shield is not None
+    if explicit is not None:
+        if not ac_mode_eligible(explicit, wearing_armor=wearing, wielding_shield=shielded):
+            raise ValueError(
+                f"ac_calc_mode {explicit!r} does not apply with the worn equipment "
+                f"({[a.slug for a in (worn.body, worn.shield) if a]})"
+            )
+        return explicit
+    eligible = sorted(
+        mode
+        for mode in ac_modes_from_changes(changes)
+        if ac_mode_eligible(mode, wearing_armor=wearing, wielding_shield=shielded)
+    )
+    return max(
+        eligible,
+        key=lambda mode: armor_class(
+            mode,
+            modifiers,
+            body_armor=worn.body,
+            body_armor_bonus=worn.body_bonus,
+            shield_bonus=worn.shield_bonus,
+        ),
+    )
+
+
 def derive_sheet(spec: CharacterBuildSpec, *, loader: AssetLoader) -> DerivedSheet:
     """Derive the character sheet a ``CharacterBuildSpec`` describes (SRD 5.2
     Character Creation, Level Advancement and Multiclassing).
@@ -574,6 +671,9 @@ def derive_sheet(spec: CharacterBuildSpec, *, loader: AssetLoader) -> DerivedShe
             (species, spec.level, None),
         ]
     )
+    training = grants.armor | armor_training_from_changes(changes)
+    worn = _worn(spec, loader, training)
+    mode = _ac_mode(spec.ac_calc_mode, changes, modifiers, worn)
     skills, expertise = _skills(grants, background, choices)
     jack = has_flag(changes, "flags.dnd5e.jackOfAllTrades")
     die_sizes = {slug: hit_die_size(str(cls.hit_die)) for slug, cls in class_docs.items()}
@@ -593,7 +693,9 @@ def derive_sheet(spec: CharacterBuildSpec, *, loader: AssetLoader) -> DerivedShe
         ability_scores=AbilityScores(**scores),
         ability_modifiers=modifiers,
         proficiency_bonus=pb,
-        base_speed=walk + passive.walk_speed_bonus,
+        base_speed=(
+            walk + passive.walk_speed_bonus - armor_speed_penalty(worn.body, scores["strength"])
+        ),
         movement_modes=passive.movement_modes,
         senses=passive.senses,
         damage_resistances=passive.resistances,
@@ -603,7 +705,7 @@ def derive_sheet(spec: CharacterBuildSpec, *, loader: AssetLoader) -> DerivedShe
         skill_proficiencies=skills,
         skill_expertise=expertise,
         weapon_proficiencies=grants.weapons | weapon_proficiencies_from_changes(changes),
-        armor_training=grants.armor | armor_training_from_changes(changes),
+        armor_training=training,
         passive_perception=passive_perception(
             scores["wisdom"],
             "perception" in skills,
@@ -613,6 +715,7 @@ def derive_sheet(spec: CharacterBuildSpec, *, loader: AssetLoader) -> DerivedShe
         ),
         jack_of_all_trades=jack,
         reliable_talent=has_flag(changes, "flags.dnd5e.reliableTalent"),
+        stealth_disadvantage=bool(worn.body and worn.body.stealth_disadvantage),
         extra_attack_count=extra_attack_count(features),
         features=tuple(features),
         feats=tuple(feats),
@@ -620,6 +723,14 @@ def derive_sheet(spec: CharacterBuildSpec, *, loader: AssetLoader) -> DerivedShe
         pact_slots=derive_multiclass_pact_slots(spec.classes, loader=loader),
         hp_max=_hit_points(spec, die_sizes, modifiers["constitution"], changes),
         hit_dice=hit_dice_pool(spec.classes, die_sizes),
+        ac=armor_class(
+            mode,
+            modifiers,
+            body_armor=worn.body,
+            body_armor_bonus=worn.body_bonus,
+            shield_bonus=worn.shield_bonus,
+        ),
+        ac_calc_mode=mode,
     )
 
 

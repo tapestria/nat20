@@ -194,3 +194,65 @@ def test_foundry_weapon_ids_resolve_in_the_corpus() -> None:
             "martial_ranged",
         }:
             assert LOADER.get_weapon(weapon) is not None, (class_slug, weapon)
+
+
+# ── Task 7 ──
+
+_MODS = {
+    "strength": 0,
+    "dexterity": 4,
+    "constitution": 3,
+    "intelligence": 0,
+    "wisdom": 2,
+    "charisma": 1,
+}
+
+
+def _armor(slug: str):
+    armor = LOADER.get_armor(slug)
+    assert armor is not None
+    return armor
+
+
+def test_armor_class_formulas() -> None:
+    kw = {"body_armor_bonus": 0, "shield_bonus": 0}
+    assert rc.armor_class("default", _MODS, body_armor=None, **kw) == 14
+    assert (
+        rc.armor_class(
+            "default", _MODS, body_armor=_armor("chain-mail"), body_armor_bonus=0, shield_bonus=2
+        )
+        == 18
+    )
+    assert rc.armor_class("default", _MODS, body_armor=_armor("scale-mail"), **kw) == 16
+    assert (
+        rc.armor_class(
+            "default", _MODS, body_armor=_armor("leather-armor"), body_armor_bonus=1, shield_bonus=0
+        )
+        == 16
+    )
+    assert rc.armor_class("mage_armor", _MODS, body_armor=None, **kw) == 17
+    assert rc.armor_class("unarmored_barbarian", _MODS, body_armor=None, **kw) == 17
+    assert rc.armor_class("unarmored_monk", _MODS, body_armor=None, **kw) == 16
+    assert rc.armor_class("unarmored_bard", _MODS, body_armor=None, **kw) == 15
+    clumsy = {**_MODS, "dexterity": -1}
+    assert (
+        rc.armor_class("default", clumsy, body_armor=_armor("chain-mail"), **kw) == 16
+    )  # heavy: DEX ignored
+    assert (
+        rc.armor_class("default", clumsy, body_armor=_armor("scale-mail"), **kw) == 13
+    )  # medium: penalty applies
+
+
+def test_ac_mode_eligibility() -> None:
+    assert rc.ac_mode_eligible("default", wearing_armor=True, wielding_shield=True)
+    assert rc.ac_mode_eligible("unarmored_barbarian", wearing_armor=False, wielding_shield=True)
+    assert not rc.ac_mode_eligible("unarmored_barbarian", wearing_armor=True, wielding_shield=False)
+    assert not rc.ac_mode_eligible("unarmored_monk", wearing_armor=False, wielding_shield=True)
+    assert rc.ac_mode_eligible("mage_armor", wearing_armor=False, wielding_shield=True)
+
+
+def test_armor_speed_penalty() -> None:
+    assert rc.armor_speed_penalty(_armor("plate-armor"), 15) == 0
+    assert rc.armor_speed_penalty(_armor("plate-armor"), 14) == 10
+    assert rc.armor_speed_penalty(_armor("scale-mail"), 3) == 0
+    assert rc.armor_speed_penalty(None, 3) == 0

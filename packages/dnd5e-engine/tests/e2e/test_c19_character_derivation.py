@@ -71,7 +71,6 @@ def test_c19_s02_level5_hp_accumulates_fixed_per_level_gains():
     assert sheet.hp_max == 44
 
 
-@xfail_cluster(19, "character derivation")
 def test_c19_s03_chain_mail_ac_ignores_dex_shield_stacks_plus2():
     """C19-S03: SRD 5.2 §Equipment, Armor Table — "your AC is 16 in
     Chain Mail" (heavy armor, no DEX bonus); shields "+2" flat, stacking
@@ -110,7 +109,6 @@ def test_c19_s03_chain_mail_ac_ignores_dex_shield_stacks_plus2():
     assert sheet_b.ac == 18
 
 
-@xfail_cluster(19, "character derivation")
 def test_c19_s04_scale_mail_caps_dex_bonus_at_plus2():
     """C19-S04: SRD 5.2 §Equipment, Armor Table — medium armor caps the
     DEX bonus; Scale Mail's base AC is "14 + Dex modifier (max 2)"
@@ -137,7 +135,6 @@ def test_c19_s04_scale_mail_caps_dex_bonus_at_plus2():
     assert sheet.ac == 16
 
 
-@xfail_cluster(19, "character derivation")
 def test_c19_s05_unarmored_defense_barbarian_replaces_base_with_dex_plus_con():
     """C19-S05: SRD 5.2, Barbarian class feature Unarmored Defense —
     "your base Armor Class equals 10 plus your Dexterity and
@@ -337,7 +334,6 @@ def test_c19_s10_jack_of_all_trades_adds_floor_pb_over_2_to_non_proficient_check
     assert joat.roll_total - base.roll_total == 1
 
 
-@xfail_cluster(19, "character derivation")
 def test_c19_s11_fourth_attuned_item_rejected_at_3_item_cap():
     """C19-S11: SRD 5.2 §Appendix, "Attunement" — "A creature can have
     Attunement with no more than three magic items at a time."
@@ -367,7 +363,6 @@ def test_c19_s11_fourth_attuned_item_rejected_at_3_item_cap():
         derive_sheet(build_spec, loader=loader)
 
 
-@xfail_cluster(19, "character derivation")
 def test_c19_s12_heavy_armor_without_str_requirement_imposes_flat_speed_penalty():
     """C19-S12: SRD 5.2 §Equipment, armor rules preamble — "that armor
     reduces the wearer's speed by 10 feet unless the wearer has a

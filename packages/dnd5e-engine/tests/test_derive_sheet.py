@@ -423,3 +423,139 @@ def test_passive_perception_folds_proficiency_expertise_and_jack_of_all_trades()
 def test_reliable_talent_flag_arrives_at_rogue_7() -> None:
     assert _sheet(classes={"rogue": 7}).reliable_talent is True
     assert _sheet(classes={"rogue": 6}).reliable_talent is False
+
+
+# ── Task 7 ──
+
+
+def test_unarmored_defense_is_derived_when_the_mode_is_unset() -> None:
+    barbarian = _sheet(
+        classes={"barbarian": 1}, ability_scores={"dexterity": 14, "constitution": 16}
+    )
+    assert (barbarian.ac, barbarian.ac_calc_mode) == (15, "unarmored_barbarian")
+    monk = _sheet(classes={"monk": 1}, ability_scores={"dexterity": 16, "wisdom": 16})
+    assert (monk.ac, monk.ac_calc_mode) == (16, "unarmored_monk")
+
+
+def test_armor_or_a_monk_shield_switches_the_derived_mode_back_to_default() -> None:
+    abilities = {"dexterity": 14, "constitution": 16}
+    armored = _sheet(classes={"barbarian": 1}, ability_scores=abilities, equipment=("chain-mail",))
+    assert (armored.ac, armored.ac_calc_mode) == (16, "default")
+    shielded = _sheet(classes={"barbarian": 1}, ability_scores=abilities, equipment=("shield",))
+    assert (shielded.ac, shielded.ac_calc_mode) == (17, "unarmored_barbarian")
+    monk = _sheet(
+        classes={"monk": 1}, ability_scores={"dexterity": 16, "wisdom": 16}, equipment=("shield",)
+    )
+    assert (monk.ac, monk.ac_calc_mode) == (
+        10 + 3,
+        "default",
+    )  # untrained Shield adds nothing either
+
+
+def test_a_shield_without_training_adds_nothing() -> None:
+    assert (
+        _sheet(classes={"wizard": 1}, ability_scores={"dexterity": 14}, equipment=("shield",)).ac
+        == 12
+    )
+    assert (
+        _sheet(classes={"fighter": 1}, ability_scores={"dexterity": 14}, equipment=("shield",)).ac
+        == 14
+    )
+
+
+def test_draconic_resilience_offers_dex_plus_cha() -> None:
+    sheet = _sheet(
+        classes={"sorcerer": 3},
+        subclass_slug="draconic",
+        ability_scores={"dexterity": 14, "charisma": 16},
+    )
+    assert (sheet.ac, sheet.ac_calc_mode) == (15, "unarmored_bard")
+
+
+def test_an_explicit_mode_wins_but_must_be_wearable() -> None:
+    wizard = _sheet(
+        classes={"wizard": 1}, ability_scores={"dexterity": 16}, ac_calc_mode="mage_armor"
+    )
+    assert (wizard.ac, wizard.ac_calc_mode) == (16, "mage_armor")
+    barbarian = _sheet(
+        classes={"barbarian": 1},
+        ability_scores={"dexterity": 14, "constitution": 16},
+        ac_calc_mode="default",
+    )
+    assert (barbarian.ac, barbarian.ac_calc_mode) == (12, "default")
+    with pytest.raises(ValueError, match="unarmored_barbarian"):
+        _sheet(
+            classes={"barbarian": 1}, equipment=("chain-mail",), ac_calc_mode="unarmored_barbarian"
+        )
+
+
+def test_one_suit_of_armor_and_one_shield() -> None:
+    with pytest.raises(ValueError, match="more than one suit of armor"):
+        _sheet(classes={"fighter": 1}, equipment=("chain-mail", "leather-armor"))
+    with pytest.raises(ValueError, match="more than one Shield"):
+        _sheet(classes={"fighter": 1}, equipment=("shield", "sentinel-shield"))
+
+
+def test_magic_armor_bonus_needs_attunement_when_the_item_requires_it() -> None:
+    loose = _sheet(
+        classes={"fighter": 1}, ability_scores={"dexterity": 14}, equipment=("dragon-scale-mail",)
+    )
+    bonded = _sheet(
+        classes={"fighter": 1},
+        ability_scores={"dexterity": 14},
+        equipment=("dragon-scale-mail",),
+        attuned_items=("dragon-scale-mail",),
+    )
+    assert (loose.ac, bonded.ac) == (16, 17)
+    glamoured = _sheet(
+        classes={"fighter": 1},
+        ability_scores={"dexterity": 14},
+        equipment=("glamoured-studded-leather",),
+    )
+    assert glamoured.ac == 15
+
+
+def test_stealth_disadvantage_follows_the_worn_armor() -> None:
+    assert _sheet(classes={"fighter": 1}, equipment=("chain-mail",)).stealth_disadvantage is True
+    assert (
+        _sheet(classes={"fighter": 1}, equipment=("leather-armor",)).stealth_disadvantage is False
+    )
+    assert _sheet(classes={"fighter": 1}).stealth_disadvantage is False
+
+
+def test_the_strength_requirement_reads_the_final_strength() -> None:
+    plate = {
+        "classes": {"fighter": 4},
+        "ability_scores": {"strength": 14},
+        "equipment": ("plate-armor",),
+    }
+    assert _sheet(**plate).base_speed == 20
+    assert (
+        _sheet(**plate, selected_choices=("asi:fighter:4:strength+1,constitution+1",)).base_speed
+        == 30
+    )
+
+
+@pytest.mark.parametrize(
+    ("equipment", "attuned", "message"),
+    [
+        (("ring-of-protection",) * 1, ("ring-of-protection", "ring-of-protection"), "repeats"),
+        ((), ("ring-of-protection",), "not in equipment"),
+        (("longsword",), ("longsword",), "does not require attunement"),
+        (("nope",), ("nope",), "unknown item"),
+    ],
+)
+def test_attunement_rules(
+    equipment: tuple[str, ...], attuned: tuple[str, ...], message: str
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        _sheet(classes={"wizard": 1}, equipment=equipment, attuned_items=attuned)
+
+
+def test_three_attuned_items_are_fine_and_their_effects_stay_out_of_ac() -> None:
+    items = ("ring-of-protection", "cloak-of-protection", "amulet-of-health")
+    assert _sheet(classes={"wizard": 5}, equipment=items, attuned_items=items).ac == 10
+
+
+def test_unknown_non_armor_equipment_is_carried_not_rejected() -> None:
+    assert _sheet(classes={"fighter": 1}, equipment=("homebrew-trinket",)).ac == 10

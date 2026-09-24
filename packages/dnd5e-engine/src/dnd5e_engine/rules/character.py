@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from dnd5e_srd_data.schema.advancement import AdvancementEntry
     from dnd5e_srd_data.schema.class_ import Class, Subclass
     from dnd5e_srd_data.schema.common import PassiveEffectChange
+    from dnd5e_srd_data.schema.item import Armor
     from dnd5e_srd_data.schema.species import Species
 
 AbilityName = Literal["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"]
@@ -410,11 +411,88 @@ def has_flag(changes: Iterable[PassiveEffectChange], key: str) -> bool:
     )
 
 
+# SRD 5.2: "A creature can have Attunement with no more than three magic items at a time."
+MAX_ATTUNED_ITEMS: Final = 3
+
+_AC_CALC_KEY: Final = "system.attributes.ac.calc"
+
+
+def ac_modes_from_changes(changes: Iterable[PassiveEffectChange]) -> frozenset[AcCalcMode]:
+    """``"default"`` plus every mode an always-on feature offers (Unarmored
+    Defense, Draconic Resilience) through a ``system.attributes.ac.calc`` override."""
+    modes: set[AcCalcMode] = {"default"}
+    for change in changes:
+        if change.key == _AC_CALC_KEY and change.mode == _MODE_OVERRIDE:
+            mode = FOUNDRY_AC_CALC.get(change.value.strip().strip('"'))
+            if mode is not None:
+                modes.add(mode)
+    return frozenset(modes)
+
+
+def ac_mode_eligible(mode: AcCalcMode, *, wearing_armor: bool, wielding_shield: bool) -> bool:
+    """SRD 5.2 gates every alternative mode on what is worn — Unarmored Defense
+    (Barbarian) "While you aren't wearing any armor ... You can use a Shield and
+    still gain this benefit", Unarmored Defense (Monk) "While you aren't wearing
+    armor or wielding a Shield", Draconic Resilience "While you aren't wearing
+    armor", Mage Armor "a willing creature who isn't wearing armor ... The spell
+    ends early if the target dons armor". Foundry leaves these gates to the
+    player; the engine applies them."""
+    if mode == "default":
+        return True
+    if wearing_armor:
+        return False
+    return not (mode == "unarmored_monk" and wielding_shield)
+
+
+def armor_class(
+    mode: AcCalcMode,
+    modifiers: Mapping[AbilityName, int],
+    *,
+    body_armor: Armor | None,
+    body_armor_bonus: int,
+    shield_bonus: int,
+) -> int:
+    """AC under one mode (Foundry ``armorClasses``), plus the Shield in every
+    mode as Foundry's ``ac.shield`` is. ``default`` is 10 + DEX unarmored, else
+    the armor's AC with DEX capped at its maximum and ignored in heavy armor
+    ("your AC is 16 in Chain Mail")."""
+    dex = modifiers["dexterity"]
+    if mode == "mage_armor":
+        base = 13 + dex
+    elif mode == "unarmored_barbarian":
+        base = 10 + dex + modifiers["constitution"]
+    elif mode == "unarmored_monk":
+        base = 10 + dex + modifiers["wisdom"]
+    elif mode == "unarmored_bard":
+        base = 10 + dex + modifiers["charisma"]
+    elif body_armor is None:
+        base = 10 + dex
+    else:
+        if body_armor.armor_category == "heavy":
+            dex_contribution = 0
+        elif body_armor.dex_bonus_max is None:
+            dex_contribution = dex
+        else:
+            dex_contribution = min(dex, body_armor.dex_bonus_max)
+        base = body_armor.base_ac + dex_contribution + body_armor_bonus
+    return base + shield_bonus
+
+
+def armor_speed_penalty(body_armor: Armor | None, strength: int) -> int:
+    """SRD 5.2 armor Strength column: the armor "reduces the wearer's speed by
+    10 feet unless the wearer has a Strength score equal to or higher than the
+    listed score"."""
+    if body_armor is None or body_armor.strength_min is None:
+        return 0
+    return 10 if strength < body_armor.strength_min else 0
+
+
 __all__ = [
     "ABILITY_NAME_BY_CODE",
     "EXTRA_ATTACK_TIERS",
     "FOUNDRY_AC_CALC",
     "FOUNDRY_WEAPON_ID_TO_SLUG",
+    "MAX_ATTUNED_ITEMS",
     "MAX_SCORE_FROM_INCREASES",
     "AbilityName",
     "AbilityScoreMethod",
@@ -424,7 +502,11 @@ __all__ = [
     "HpMode",
     "ProficiencyGrants",
     "ability_score_improvement",
+    "ac_mode_eligible",
+    "ac_modes_from_changes",
     "apply_ability_increases",
+    "armor_class",
+    "armor_speed_penalty",
     "armor_training_from_changes",
     "extra_attack_count",
     "fixed_hit_points",
