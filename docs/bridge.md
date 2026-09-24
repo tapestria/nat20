@@ -63,7 +63,7 @@ All routes are under `/v1`. Requests and responses are JSON.
 | `POST /v1/check` | Resolve a skill/ability/saving-throw check against a DC. |
 | `POST /v1/rest/short` | Resolve a short rest (hit-dice spend + healing). |
 | `POST /v1/rest/long` | Resolve a long rest (full heal + hit-dice recovery). |
-| `POST /v1/party/validate` | Build and validate a `CharacterBuildSpec` into a derived sheet (AC, HP, slots, attack bonus, …) without starting combat. |
+| `POST /v1/party/validate` | Build and validate a `CharacterBuildSpec` into a derived sheet (HP, AC, speed, proficiencies, spell slots — computed by the engine's `derive_sheet`) without starting combat. Attack bonuses are computed per weapon when combat resolves. |
 | `POST /v1/combat` | Start a combat: party + monster slugs (by name) → a `combat_id` and the opening event narration. |
 | `POST /v1/combat/{cid}/intent` | Submit one player intent (attack, cast, move, …) for the given combat. |
 | `POST /v1/combat/{cid}/advance-monster` | Let a monster take its turn. |

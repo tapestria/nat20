@@ -2,6 +2,7 @@ import json
 
 import pytest
 from dnd5e_engine import make_build_spec
+from dnd5e_engine.build_spec import derive_sheet as engine_derive_sheet
 from dnd5e_srd_data.loader import BundledAssetLoader
 from fastapi.testclient import TestClient
 
@@ -113,3 +114,44 @@ def test_party_validate_route_bad_class(client: TestClient) -> None:
     )
     assert resp.status_code == 422
     assert "wizzard" in resp.json()["detail"]
+
+
+def test_the_bridge_sheet_is_the_engine_derivation() -> None:
+    spec = make_build_spec(
+        species_slug="dwarf", class_slug="fighter", level=5, ability_scores={"con": 14}
+    )
+    member = derive_sheet(spec, name="Thrain", entity_id="char:thrain", loader=LOADER)
+    sheet = engine_derive_sheet(spec, loader=LOADER)
+    assert (member.hp_max, member.ac, member.base_speed) == (
+        sheet.hp_max,
+        sheet.ac,
+        sheet.base_speed,
+    )
+    assert member.hp_max == 44 + 5  # Dwarven Toughness now counts
+
+
+def test_half_caster_level1_slots_follow_the_engine_table() -> None:
+    spec = make_build_spec(species_slug="human", class_slug="paladin", level=1)
+    assert derive_sheet(spec, name="P", entity_id="char:p", loader=LOADER).spell_slots == {1: 2}
+
+
+def test_attack_bonus_is_left_to_the_engine() -> None:
+    member = derive_sheet(_wizard(), name="E", entity_id="char:e", loader=LOADER)
+    assert "attack_bonus" not in member.model_fields_set
+
+
+def test_party_validate_route_rejects_an_early_subclass(client: TestClient) -> None:
+    resp = client.post(
+        "/v1/party/validate",
+        json={
+            "name": "X",
+            "build": {
+                "species_slug": "human",
+                "class_slug": "fighter",
+                "level": 2,
+                "subclass_slug": "champion",
+            },
+        },
+    )
+    assert resp.status_code == 422
+    assert "fighter level 3" in resp.json()["detail"]
