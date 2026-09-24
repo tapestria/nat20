@@ -494,7 +494,10 @@ def build_feature_index(packs_root: Path) -> dict[str, GrantRef]:
             if not doc_id:
                 continue
             uuid = f"Compendium.dnd5e.{pack}.Item.{doc_id}"
-            index[uuid] = GrantRef(ref_type=ref_type, slug=_slug(doc, yaml_path))
+            slug = (
+                _feature_slug(doc, yaml_path) if pack in _FEATURE_PACKS else _slug(doc, yaml_path)
+            )
+            index[uuid] = GrantRef(ref_type=ref_type, slug=slug)
     return index
 
 
@@ -548,6 +551,24 @@ def _slug(doc: dict[str, Any], fallback: Path) -> str:
     # identifiers are already kebab and pass through unchanged.
     kebab = _CAMEL_BOUNDARY.sub("-", raw)
     return kebab.lower().replace("_", "-").replace(" ", "-")
+
+
+# Foundry reuses a class-feature ``identifier`` across classes. Where the two
+# documents carry DIFFERENT mechanics, the later class's copy would overwrite
+# the earlier one in canonical/features/. Each entry scopes one class's copy;
+# the other class keeps the bare identifier, the slug consumers already use.
+_CLASS_SCOPED_FEATURE_SLUGS: dict[tuple[str, str], str] = {
+    ("unarmored-defense", "monk"): "unarmored-defense-monk",
+}
+
+
+def _feature_slug(doc: dict[str, Any], yaml_path: Path) -> str:
+    slug = _slug(doc, yaml_path)
+    parts = yaml_path.parts
+    if "classes24" not in parts:
+        return slug
+    owner = parts[parts.index("classes24") + 1]
+    return _CLASS_SCOPED_FEATURE_SLUGS.get((slug, owner), slug)
 
 
 def _is_foundry_random_id(value: str) -> bool:
@@ -2747,7 +2768,7 @@ def translate_feature_yaml(
     system = doc.get("system") or {}
     feature_type, source_slug = _feature_type_and_source(yaml_path)
     return Feature(
-        slug=_slug(doc, yaml_path),
+        slug=_feature_slug(doc, yaml_path),
         name=_name(doc),
         description=_description(doc),
         feature_type=feature_type,
