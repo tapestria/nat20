@@ -29,6 +29,10 @@ from dnd5e_engine.rules.character import (
     AcCalcMode,
     HpMode,
     extra_attack_count,
+    hit_dice_pool,
+    hit_die_size,
+    hit_point_bonus,
+    hit_points_max,
     leveled_feature_slugs,
     subclass_gate_level,
 )
@@ -276,6 +280,8 @@ class DerivedSheet(BaseModel):
     features: tuple[str, ...]
     spell_slots: dict[int, int]
     pact_slots: dict[int, int]
+    hp_max: int
+    hit_dice: dict[int, int]
 
 
 def _class_docs(classes: Mapping[str, int], loader: AssetLoader) -> dict[str, Class]:
@@ -340,6 +346,20 @@ def _always_on_changes(features: Sequence[str], loader: AssetLoader) -> list[Pas
     return changes
 
 
+def _hit_points(
+    spec: CharacterBuildSpec,
+    die_sizes: Mapping[str, int],
+    con_modifier: int,
+    changes: Sequence[PassiveEffectChange],
+) -> int:
+    if spec.hp_mode == "fixed" and spec.hp_rolls:
+        raise ValueError("hp_rolls given with hp_mode='fixed'; set hp_mode='rolled' to use them")
+    rolls = spec.hp_rolls if spec.hp_mode == "rolled" else None
+    return hit_points_max(spec.classes, die_sizes, con_modifier, rolls=rolls) + hit_point_bonus(
+        changes, total_level=spec.level, classes=spec.classes
+    )
+
+
 def derive_sheet(spec: CharacterBuildSpec, *, loader: AssetLoader) -> DerivedSheet:
     """Derive the character sheet a ``CharacterBuildSpec`` describes (SRD 5.2
     Character Creation, Level Advancement and Multiclassing).
@@ -358,6 +378,8 @@ def derive_sheet(spec: CharacterBuildSpec, *, loader: AssetLoader) -> DerivedShe
     features = leveled_feature_slugs(level_sources)
     changes = _always_on_changes(features, loader)
     scores = cast(dict[AbilityName, int], spec.ability_scores.model_dump())
+    modifiers = {name: ability_modifier(score) for name, score in scores.items()}
+    die_sizes = {slug: hit_die_size(str(cls.hit_die)) for slug, cls in class_docs.items()}
     walk = species.movement.walk or 30
     passive = interpret_passive_stats(
         changes=changes,
@@ -372,7 +394,7 @@ def derive_sheet(spec: CharacterBuildSpec, *, loader: AssetLoader) -> DerivedShe
         )
     return DerivedSheet(
         ability_scores=AbilityScores(**scores),
-        ability_modifiers={name: ability_modifier(score) for name, score in scores.items()},
+        ability_modifiers=modifiers,
         proficiency_bonus=proficiency_bonus(spec.level),
         base_speed=walk + passive.walk_speed_bonus,
         movement_modes=passive.movement_modes,
@@ -384,6 +406,8 @@ def derive_sheet(spec: CharacterBuildSpec, *, loader: AssetLoader) -> DerivedShe
         features=tuple(features),
         spell_slots=derive_multiclass_slots(spec.classes, loader=loader),
         pact_slots=derive_multiclass_pact_slots(spec.classes, loader=loader),
+        hp_max=_hit_points(spec, die_sizes, modifiers["constitution"], changes),
+        hit_dice=hit_dice_pool(spec.classes, die_sizes),
     )
 
 

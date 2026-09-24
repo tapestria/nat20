@@ -10,7 +10,8 @@ reference.
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
+import re
+from collections.abc import Iterable, Mapping, Sequence
 from typing import TYPE_CHECKING, Final, Literal
 
 from dnd5e_srd_data.schema.advancement import AdvancementType
@@ -19,6 +20,7 @@ from dnd5e_engine.events import Ability
 
 if TYPE_CHECKING:
     from dnd5e_srd_data.schema.class_ import Class, Subclass
+    from dnd5e_srd_data.schema.common import PassiveEffectChange
     from dnd5e_srd_data.schema.species import Species
 
 AbilityName = Literal["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"]
@@ -118,6 +120,98 @@ def extra_attack_count(feature_slugs: Iterable[str]) -> int:
     return 0
 
 
+_MODE_ADD: Final = 2
+_HP_PER_LEVEL_KEY: Final = "system.attributes.hp.bonuses.level"
+_HP_OVERALL_KEY: Final = "system.attributes.hp.bonuses.overall"
+_CLASS_LEVELS_REF: Final = re.compile(r"^@classes\.([a-z0-9-]+)\.levels$")
+
+
+def hit_die_size(hit_die: str) -> int:
+    """``"d10"`` → 10 (``Class.hit_die`` is a ``HitDie`` StrEnum)."""
+    return int(str(hit_die).removeprefix("d"))
+
+
+def fixed_hit_points(die_size: int) -> int:
+    """SRD 5.2 Fixed Hit Points by Class — Barbarian 7, Fighter/Paladin/Ranger 6,
+    Bard/Cleric/Druid/Monk/Rogue/Warlock 5, Sorcerer/Wizard 4: half the die + 1."""
+    return die_size // 2 + 1
+
+
+def hit_points_max(
+    classes: Mapping[str, int],
+    die_sizes: Mapping[str, int],
+    con_modifier: int,
+    *,
+    rolls: Mapping[str, Sequence[int]] | None = None,
+) -> int:
+    """SRD 5.2 Hit Point maximum for a single- or multiclass character.
+
+    "Your class and Constitution modifier determine your Hit Point maximum at
+    level 1"; later levels "Roll that die, add your Constitution modifier to the
+    roll, and add the total (minimum of 1) ... Instead of rolling, you can use
+    the fixed value shown in the Fixed Hit Points by Class table"; and "You gain
+    the level 1 Hit Points for a class only when your total character level is 1".
+    The FIRST key of ``classes`` is the class taken at level 1. With ``rolls``,
+    every later level uses that class's recorded result in order: the first class
+    records ``level - 1`` rolls, every other class ``level``. The current CON
+    modifier applies to every level.
+    """
+    if rolls is not None:
+        unknown = sorted(set(rolls) - set(classes))
+        if unknown:
+            raise ValueError(f"hp_rolls names classes not in classes: {unknown}")
+    total = 0
+    for index, (slug, level) in enumerate(classes.items()):
+        die = die_sizes[slug]
+        later = level - 1 if index == 0 else level
+        if rolls is None:
+            gains = [fixed_hit_points(die)] * later
+        else:
+            gains = list(rolls.get(slug, ()))
+            if len(gains) != later:
+                raise ValueError(f"hp_rolls[{slug!r}] needs {later} roll(s), got {len(gains)}")
+            if any(not 1 <= gain <= die for gain in gains):
+                raise ValueError(f"hp_rolls[{slug!r}] has results outside 1-{die}: {gains}")
+        if index == 0:
+            gains = [die, *gains]
+        total += sum(max(1, gain + con_modifier) for gain in gains)
+    return total
+
+
+def hit_point_bonus(
+    changes: Iterable[PassiveEffectChange], *, total_level: int, classes: Mapping[str, int]
+) -> int:
+    """Always-on HP bonuses: Foundry ``hp.bonuses.level`` adds its value once per
+    character level (Dwarven Toughness), ``hp.bonuses.overall`` once (Draconic
+    Resilience's ``@classes.sorcerer.levels``). Literal integers and that one
+    reference are understood; other values are ignored, like every non-allowlisted
+    passive value."""
+    bonus = 0
+    for change in changes:
+        if change.mode != _MODE_ADD or change.key not in (_HP_PER_LEVEL_KEY, _HP_OVERALL_KEY):
+            continue
+        raw = change.value.strip().strip('"').strip()
+        match = _CLASS_LEVELS_REF.match(raw)
+        if match is not None:
+            value = classes.get(match.group(1), 0)
+        elif raw.lstrip("+-").isdigit():  # Foundry writes signed literals ("+1") too
+            value = int(raw)
+        else:
+            continue
+        bonus += value * total_level if change.key == _HP_PER_LEVEL_KEY else value
+    return bonus
+
+
+def hit_dice_pool(classes: Mapping[str, int], die_sizes: Mapping[str, int]) -> dict[int, int]:
+    """SRD 5.2 Multiclassing: "Add together the Hit Dice granted by all your
+    classes to form your pool of Hit Dice" — same-size dice pool, different
+    sizes are tracked separately."""
+    pool: dict[int, int] = {}
+    for slug, level in classes.items():
+        pool[die_sizes[slug]] = pool.get(die_sizes[slug], 0) + level
+    return pool
+
+
 __all__ = [
     "ABILITY_NAME_BY_CODE",
     "EXTRA_ATTACK_TIERS",
@@ -127,7 +221,12 @@ __all__ = [
     "AcCalcMode",
     "HpMode",
     "extra_attack_count",
+    "fixed_hit_points",
     "granted_feature_slugs",
+    "hit_dice_pool",
+    "hit_die_size",
+    "hit_point_bonus",
+    "hit_points_max",
     "leveled_feature_slugs",
     "subclass_gate_level",
 ]

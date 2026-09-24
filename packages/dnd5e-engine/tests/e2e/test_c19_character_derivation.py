@@ -17,7 +17,6 @@ from dnd5e_srd_data.loader import BundledAssetLoader
 from tests.e2e.harness import xfail_cluster
 
 
-@xfail_cluster(19, "character derivation")
 def test_c19_s01_level1_hp_is_hit_die_max_plus_con_modifier_single_class_fighter():
     """C19-S01: SRD 5.2 §Character Creation, "Step 5: Choose Equipment...
     Hit Points" — "Your class and Constitution modifier determine your
@@ -45,7 +44,6 @@ def test_c19_s01_level1_hp_is_hit_die_max_plus_con_modifier_single_class_fighter
     assert sheet.hp_max == 12
 
 
-@xfail_cluster(19, "character derivation")
 def test_c19_s02_level5_hp_accumulates_fixed_per_level_gains():
     """C19-S02: SRD 5.2 §Character Creation, "Gaining a Level" — "Each
     time you gain a level, you gain an additional Hit Die... Fixed Hit
@@ -260,7 +258,6 @@ def test_c19_s08_subclass_below_level3_is_rejected():
         derive_sheet(build_spec, loader=loader)
 
 
-@xfail_cluster(19, "character derivation")
 def test_c19_s09_multiclass_fighter3_rogue2_hp_and_proficiency_bonus():
     """C19-S09: SRD 5.2 §Character Creation, "Multiclassing" — "You gain
     the level 1 Hit Points for a class only when your total character

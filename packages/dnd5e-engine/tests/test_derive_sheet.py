@@ -115,3 +115,47 @@ def test_make_build_spec_takes_the_new_fields() -> None:
         {"barbarian": (7,)},
     )
     assert (spec.ac_calc_mode, spec.ability_score_method) == ("unarmored_barbarian", "point_buy")
+
+
+# ── Task 4 ──
+
+
+def test_class_order_decides_the_level1_maximum() -> None:
+    fighter_first = _sheet(classes={"fighter": 1, "rogue": 1}, ability_scores={"constitution": 14})
+    rogue_first = _sheet(classes={"rogue": 1, "fighter": 1}, ability_scores={"constitution": 14})
+    assert (fighter_first.hp_max, rogue_first.hp_max) == (12 + 7, 10 + 8)
+
+
+def test_dwarven_toughness_adds_one_hit_point_per_level() -> None:
+    dwarf = _sheet(
+        species_slug="dwarf", classes={"fighter": 5}, ability_scores={"constitution": 14}
+    )
+    assert dwarf.hp_max == 44 + 5
+
+
+def test_draconic_resilience_adds_the_sorcerer_level() -> None:
+    assert _sheet(classes={"sorcerer": 3}, subclass_slug="draconic").hp_max == 6 + 4 + 4 + 3
+
+
+def test_rolled_mode_uses_the_recorded_rolls() -> None:
+    sheet = _sheet(
+        classes={"fighter": 3},
+        ability_scores={"constitution": 12},
+        hp_mode="rolled",
+        hp_rolls={"fighter": (1, 10)},
+    )
+    assert sheet.hp_max == 11 + 2 + 11
+
+
+def test_rolls_without_rolled_mode_are_a_contradiction() -> None:
+    with pytest.raises(ValueError, match="hp_mode"):
+        _sheet(classes={"fighter": 2}, hp_rolls={"fighter": (4,)})
+
+
+def test_rolled_mode_without_rolls_is_rejected() -> None:
+    with pytest.raises(ValueError, match="needs 1 roll"):
+        _sheet(classes={"fighter": 2}, hp_mode="rolled")
+
+
+def test_hit_dice_pool_on_the_sheet() -> None:
+    assert _sheet(classes={"fighter": 3, "rogue": 2}).hit_dice == {10: 3, 8: 2}
