@@ -11,9 +11,7 @@ from __future__ import annotations
 import logging
 
 from dnd5e_srd_data.loader import AssetLoader
-from dnd5e_srd_data.schema.class_ import Class, Subclass
-from dnd5e_srd_data.schema.refs import GrantRef
-from dnd5e_srd_data.schema.species import Species
+from dnd5e_srd_data.schema.class_ import Subclass
 
 from dnd5e_engine.activities.passive_stats import interpret_passive_stats
 from dnd5e_engine.build_spec import (
@@ -22,34 +20,10 @@ from dnd5e_engine.build_spec import (
     derive_multiclass_pact_slots,
     derive_multiclass_slots,
 )
+from dnd5e_engine.rules.character import granted_feature_slugs
 from dnd5e_engine.specs import PartyMemberSpec
 
 _log = logging.getLogger(__name__)
-
-
-def granted_feature_slugs(
-    sources: list[Class | Subclass | Species | None], *, level: int
-) -> list[str]:
-    """Pure: feature slugs the given sources grant at/below ``level``.
-
-    Shared by the build-spec passive projection and the orchestrator's
-    USE_FEATURE repertoire gate (which derives the same set from a live
-    Combatant's class/subclass/species). Filters ``granted_features`` to
-    ``ref_type == "feature"`` and ``grant.level <= level``; preserves source
-    order and dedupes. ``None`` sources (absent class/subclass/species) are
-    skipped. Loader access stays with the caller — this is I/O-free.
-    """
-    slugs: list[str] = []
-    seen: set[str] = set()
-    for source in sources:
-        if source is None:
-            continue
-        grants: list[GrantRef] = source.granted_features
-        for grant in grants:
-            if grant.ref_type == "feature" and grant.level <= level and grant.slug not in seen:
-                seen.add(grant.slug)
-                slugs.append(grant.slug)
-    return slugs
 
 
 def build_party_member(

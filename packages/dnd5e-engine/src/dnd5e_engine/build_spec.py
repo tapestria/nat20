@@ -7,12 +7,32 @@ spec-only today) becomes a second producer of the identical contract later. Reso
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+import logging
+from collections.abc import Mapping, Sequence
 from typing import Any, cast
 
 from dnd5e_srd_data.loader import AssetLoader
+from dnd5e_srd_data.schema.class_ import Class, Subclass
+from dnd5e_srd_data.schema.common import PassiveEffectChange
+from dnd5e_srd_data.schema.species import Species
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from dnd5e_engine.activities.passive_stats import (
+    CombatantMovementModes,
+    CombatantSenses,
+    interpret_passive_stats,
+)
+from dnd5e_engine.rules.character import (
+    ABILITY_NAME_BY_CODE,
+    AbilityName,
+    AbilityScoreMethod,
+    AcCalcMode,
+    HpMode,
+    extra_attack_count,
+    leveled_feature_slugs,
+    subclass_gate_level,
+)
+from dnd5e_engine.rules.dice import ability_modifier, proficiency_bonus
 from dnd5e_engine.spellcasting import (
     SpellcastingProgression,
     derive_pact_slots,
@@ -22,14 +42,10 @@ from dnd5e_engine.spellcasting import (
 )
 
 # Long-form -> the canonical field; short-form aliases the backend cache / lib may pass.
-_ABILITY_ALIASES = {
-    "str": "strength",
-    "dex": "dexterity",
-    "con": "constitution",
-    "int": "intelligence",
-    "wis": "wisdom",
-    "cha": "charisma",
-}
+# A plain ``dict(ABILITY_NAME_BY_CODE)`` keeps the source's Literal key/value types,
+# which mypy then rejects at ``_normalize_abilities``'s ``str`` lookups (dict is
+# invariant); the comprehension widens both to ``str`` at the assignment.
+_ABILITY_ALIASES: dict[str, str] = {code: name for code, name in ABILITY_NAME_BY_CODE.items()}
 _LONG = set(_ABILITY_ALIASES.values())
 
 
@@ -58,6 +74,8 @@ class CharacterBuildSpec(BaseModel):
     ``classes`` can desync the two fields. Construct a fresh
     ``CharacterBuildSpec(...)`` instead of ``model_copy`` when changing
     either field.
+
+    C19 derivation inputs — see ``derive_sheet``.
     """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
@@ -69,6 +87,19 @@ class CharacterBuildSpec(BaseModel):
     ability_scores: AbilityScores = Field(default_factory=AbilityScores)
     equipment: tuple[str, ...] = ()
     selected_choices: tuple[str, ...] = ()
+    background_slug: str | None = None
+    hp_mode: HpMode = "fixed"
+    # Host-recorded Hit Die results per class for ``hp_mode="rolled"``: the
+    # first class records ``level - 1`` rolls (its level 1 is the maximum),
+    # every other class ``level``. Recorded, never re-rolled, so a sheet
+    # re-derives identically.
+    hp_rolls: dict[str, tuple[int, ...]] = Field(default_factory=dict)
+    # ``None`` lets derive_sheet pick the best mode the character's features and
+    # worn equipment allow; a value forces that mode (SRD 5.2: "you can benefit
+    # from only one at a time").
+    ac_calc_mode: AcCalcMode | None = None
+    attuned_items: tuple[str, ...] = ()
+    ability_score_method: AbilityScoreMethod | None = None
 
     @model_validator(mode="before")
     @classmethod
@@ -146,6 +177,12 @@ def make_build_spec(
     ability_scores: dict[str, int] | None = None,
     equipment: tuple[str, ...] = (),
     selected_choices: tuple[str, ...] = (),
+    background_slug: str | None = None,
+    hp_mode: HpMode = "fixed",
+    hp_rolls: Mapping[str, Sequence[int]] | None = None,
+    ac_calc_mode: AcCalcMode | None = None,
+    attuned_items: tuple[str, ...] = (),
+    ability_score_method: AbilityScoreMethod | None = None,
 ) -> CharacterBuildSpec:
     payload: dict[str, Any] = {
         "species_slug": species_slug,
@@ -153,6 +190,12 @@ def make_build_spec(
         "ability_scores": _normalize_abilities(ability_scores or {}),
         "equipment": equipment,
         "selected_choices": selected_choices,
+        "background_slug": background_slug,
+        "hp_mode": hp_mode,
+        "hp_rolls": {k: tuple(v) for k, v in (hp_rolls or {}).items()},
+        "ac_calc_mode": ac_calc_mode,
+        "attuned_items": attuned_items,
+        "ability_score_method": ability_score_method,
     }
     if classes:
         payload["classes"] = dict(classes)
@@ -204,12 +247,154 @@ def derive_multiclass_pact_slots(
     return derive_pact_slots(sum(pact_levels)) if pact_levels else {}
 
 
+_log = logging.getLogger(__name__)
+
+_LeveledSource = tuple[Class | Subclass | Species | None, int]
+
+
+class DerivedSheet(BaseModel):
+    """Everything ``derive_sheet`` derives from a ``CharacterBuildSpec``.
+
+    Vocabularies match the engine inputs a host feeds next: ability modifiers
+    keyed by the long ability name (the ``AbilityScores`` fields), save
+    proficiencies by 3-letter ``Ability`` code and skills by long-form slug —
+    as ``PartyMemberSpec`` and ``CheckSpec`` take them.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    ability_scores: AbilityScores
+    ability_modifiers: dict[AbilityName, int]
+    proficiency_bonus: int
+    base_speed: int
+    movement_modes: CombatantMovementModes
+    senses: CombatantSenses
+    damage_resistances: tuple[str, ...]
+    damage_immunities: tuple[str, ...]
+    condition_immunities: tuple[str, ...]
+    extra_attack_count: int
+    features: tuple[str, ...]
+    spell_slots: dict[int, int]
+    pact_slots: dict[int, int]
+
+
+def _class_docs(classes: Mapping[str, int], loader: AssetLoader) -> dict[str, Class]:
+    docs: dict[str, Class] = {}
+    for slug in classes:
+        cls = loader.get_class(slug)
+        if cls is None:
+            raise ValueError(f"unknown class: {slug!r}")
+        docs[slug] = cls
+    return docs
+
+
+def _species(slug: str, loader: AssetLoader) -> Species:
+    species = loader.get_species(slug)
+    if species is None:
+        raise ValueError(f"unknown species: {slug!r}")
+    return species
+
+
+def _subclass(
+    spec: CharacterBuildSpec, class_docs: Mapping[str, Class], loader: AssetLoader
+) -> tuple[Subclass | None, int]:
+    """The subclass and its owning class's level. SRD 5.2 grants a subclass at
+    the class's ``Subclass`` advancement level, so naming one earlier is not a
+    legal build; a multiclass subclass may belong to any class taken."""
+    if spec.subclass_slug is None:
+        return None, 0
+    sub = loader.get_subclass(spec.subclass_slug)
+    if sub is None:
+        raise ValueError(f"unknown subclass: {spec.subclass_slug!r}")
+    owner = sub.class_identifier
+    if owner not in spec.classes:
+        raise ValueError(
+            f"subclass {spec.subclass_slug!r} is not a subclass of any of {sorted(spec.classes)}"
+        )
+    gate = subclass_gate_level(class_docs[owner])
+    level = spec.classes[owner]
+    if gate is not None and level < gate:
+        raise ValueError(
+            f"subclass {spec.subclass_slug!r} needs {owner} level {gate}; the build has {level}"
+        )
+    return sub, level
+
+
+def _always_on_changes(features: Sequence[str], loader: AssetLoader) -> list[PassiveEffectChange]:
+    """Changes of every always-on passive effect (``transfer`` and not
+    ``disabled``) on the character's features. An unresolved slug is logged and
+    skipped: a dataset gap must not block a sheet."""
+    changes: list[PassiveEffectChange] = []
+    for slug in features:
+        feature = loader.get_feature(slug)
+        if feature is None:
+            _log.warning(
+                "derive_sheet: granted feature slug did not resolve to a canonical "
+                "feature; skipping",
+                extra={"granted_feature_slug": slug},
+            )
+            continue
+        for passive in feature.passive_effects:
+            if passive.transfer and not passive.disabled:
+                changes.extend(passive.changes)
+    return changes
+
+
+def derive_sheet(spec: CharacterBuildSpec, *, loader: AssetLoader) -> DerivedSheet:
+    """Derive the character sheet a ``CharacterBuildSpec`` describes (SRD 5.2
+    Character Creation, Level Advancement and Multiclassing).
+
+    Pure apart from ``loader`` reads; draws no dice. Raises ``ValueError`` for an
+    unknown slug or a build the SRD forbids.
+    """
+    class_docs = _class_docs(spec.classes, loader)
+    species = _species(spec.species_slug, loader)
+    subclass, subclass_level = _subclass(spec, class_docs, loader)
+    level_sources: list[_LeveledSource] = [
+        *((class_docs[slug], level) for slug, level in spec.classes.items()),
+        (subclass, subclass_level),
+        (species, spec.level),
+    ]
+    features = leveled_feature_slugs(level_sources)
+    changes = _always_on_changes(features, loader)
+    scores = cast(dict[AbilityName, int], spec.ability_scores.model_dump())
+    walk = species.movement.walk or 30
+    passive = interpret_passive_stats(
+        changes=changes,
+        trait_grants=species.trait_grants,
+        species_senses=species.senses,
+        species_base_speed=walk,
+    )
+    if passive.skipped_keys:
+        _log.debug(
+            "derive_sheet: skipped non-allowlisted passive keys",
+            extra={"skipped_keys": passive.skipped_keys},
+        )
+    return DerivedSheet(
+        ability_scores=AbilityScores(**scores),
+        ability_modifiers={name: ability_modifier(score) for name, score in scores.items()},
+        proficiency_bonus=proficiency_bonus(spec.level),
+        base_speed=walk + passive.walk_speed_bonus,
+        movement_modes=passive.movement_modes,
+        senses=passive.senses,
+        damage_resistances=passive.resistances,
+        damage_immunities=passive.immunities,
+        condition_immunities=passive.condition_immunities,
+        extra_attack_count=extra_attack_count(features),
+        features=tuple(features),
+        spell_slots=derive_multiclass_slots(spec.classes, loader=loader),
+        pact_slots=derive_multiclass_pact_slots(spec.classes, loader=loader),
+    )
+
+
 __all__ = [
     "AbilityScores",
     "CharacterBuildSpec",
     "CombatInstance",
+    "DerivedSheet",
     "derive_multiclass_pact_slots",
     "derive_multiclass_slots",
+    "derive_sheet",
     "derive_spell_slots",
     "make_build_spec",
 ]

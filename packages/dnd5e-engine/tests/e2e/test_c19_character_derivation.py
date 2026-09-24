@@ -235,7 +235,6 @@ def test_c19_s07_asi_at_level4_from_selected_choices_raises_ability_score():
     assert sheet.ability_modifiers["strength"] == 4
 
 
-@xfail_cluster(19, "character derivation")
 def test_c19_s08_subclass_below_level3_is_rejected():
     """C19-S08: SRD 5.2 §Character Creation, "Step 4: Choose a Class" /
     "Gaining a Level" — the subclass is a ``Subclass``-type advancement

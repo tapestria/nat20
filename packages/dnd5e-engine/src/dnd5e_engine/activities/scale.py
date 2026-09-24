@@ -43,7 +43,7 @@ from typing import TYPE_CHECKING, Any
 
 from dnd5e_srd_data.schema.advancement import AdvancementType
 
-from dnd5e_engine.build_party import granted_feature_slugs
+from dnd5e_engine.rules.character import granted_feature_slugs
 
 if TYPE_CHECKING:
     from dnd5e_srd_data.loader import AssetLoader
