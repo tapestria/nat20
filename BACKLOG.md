@@ -502,6 +502,19 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   refused with `AttackFailed(reason="weapon_already_fired")`, although that
   action starts a new Attack action.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_loading_weapon_already_fired_failure`)
+- **Brutal Strike isn't tied to a Reckless Attack hit (2026-09-25; predates
+  C20).** SRD 5.2 Brutal Strike (Barbarian 9): "If you use Reckless Attack,
+  you can forgo any Advantage on one Strength-based attack roll of your choice
+  on your turn. The chosen attack roll mustn't have Disadvantage. If the
+  chosen attack roll hits, the target takes an extra 1d10 damage of the same
+  type dealt by the weapon or Unarmed Strike, and you can cause one Brutal
+  Strike effect of your choice." The corpus carries it as a
+  `special`-activation damage activity, and Reckless Attack has no activity,
+  so nothing binds it to an attack roll: `use_feature brutal-strike` costs the
+  Action like any feature use and deals its damage with no attack roll, no
+  Reckless Attack and no hit.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_resolve_feature_invocation`,
+  `packages/dnd5e-srd-data/src/dnd5e_srd_data/canonical/features/brutal-strike.json`)
 - **Bardic Inspiration applies to weapon attack rolls only (2026-09-24, C20
   scope cut).** SRD 5.2: "Once within the next hour when the creature fails a
   D20 Test, the creature can roll the Bardic Inspiration die and add the number
