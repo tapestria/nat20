@@ -12,13 +12,21 @@ from __future__ import annotations
 from dataclasses import dataclass
 from dataclasses import field as dc_field
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal
 
 from dnd5e_srd_data.schema.monster import MonsterTraitMechanic
 from pydantic import BaseModel, Field, model_validator
 
 from dnd5e_engine.activities.passive_stats import CombatantMovementModes, CombatantSenses
 from dnd5e_engine.types.conditions import ActiveCondition
+
+# SRD 5.2 Fighting Style feats (``feats24/fighting-style-feats``): the four the
+# SRD ships. Dueling and the other 2024 styles are not SRD 5.2 content.
+FightingStyle = Literal["archery", "defense", "great-weapon-fighting", "two-weapon-fighting"]
+
+# The body armor a creature wears (SRD 5.2 armor categories); a Shield is
+# tracked on its own.
+WornArmor = Literal["light", "medium", "heavy"]
 
 
 class BehaviorProfile(StrEnum):
@@ -180,10 +188,22 @@ class Combatant(BaseModel):
     # opportunity-attack detection in advance_monster_turn reads.
     melee_reach_ft: int = 5
     # SRD §Classes — character class slug for PCs (e.g. "rogue", "barbarian").
-    # Drives class-feature gating in the orchestrator — currently the Cunning
-    # Action Dash path (Rogue-only) consults this. ``None`` for monsters / NPCs
-    # / fixtures that do not project class info.
+    # With no ``classes`` map it is the one class, at ``character_level``; it
+    # also names the class whose spellcasting ability a caster uses. Class
+    # features are gated by what each class grants at its own level, never by
+    # this slug alone. ``None`` for monsters / NPCs / fixtures that do not
+    # project class info.
     class_slug: str | None = None
+    # Per-class levels (``PartyMemberSpec.classes``); empty for a single class,
+    # a monster or a fixture.
+    classes: dict[str, int] = Field(default_factory=dict)
+    # SRD 5.2 Fighting Style feats in play (``PartyMemberSpec.feats`` plus
+    # ``fighting_style``), read by the attack resolver. Empty for monsters.
+    fighting_styles: tuple[FightingStyle, ...] = ()
+    # SRD 5.2 armor worn and Shield wielded, from ``PartyMemberSpec.equipment``
+    # (armor and Shields listed there are worn). Martial Arts needs neither.
+    worn_armor: WornArmor | None = None
+    shield_equipped: bool = False
     # SRD §Subclasses — subclass slug for PCs (e.g. "berserker"). Copied from
     # ``PartyMemberSpec.subclass_slug`` at start_combat so subclass-feature
     # activities (piece 4) can gate on it. ``None`` for monsters / NPCs /
@@ -323,6 +343,18 @@ class Combatant(BaseModel):
     # this turn. Reset to False at the actor's own TurnStarted, alongside
     # the other per-turn attack-economy fields above (C15 Task 7).
     cleave_spent_this_turn: bool = False
+    # SRD 5.2 Flurry of Blows: "You can expend 1 Focus Point to make two
+    # Unarmed Strikes as a Bonus Action" (three with Heightened Focus). The
+    # strikes a committed Flurry still owes this turn; the actor's next Unarmed
+    # Strike attacks spend them instead of any action. Reset to 0 at the
+    # actor's own TurnStarted (unused strikes lapse).
+    flurry_strikes_remaining: int = 0
+    # SRD 5.2 Action Surge: "On your turn, you can take one additional action,
+    # except the Magic action." The additional actions a committed surge left
+    # unspent this turn, and whether one was used this turn ("only once on a
+    # turn"). Both reset at the actor's own TurnStarted: an unspent one lapses.
+    extra_actions_remaining: int = 0
+    action_surge_used_this_turn: bool = False
 
     @model_validator(mode="before")
     @classmethod
@@ -349,5 +381,7 @@ class Combatant(BaseModel):
 __all__ = [
     "BehaviorProfile",
     "Combatant",
+    "FightingStyle",
     "MonsterActionUses",
+    "WornArmor",
 ]

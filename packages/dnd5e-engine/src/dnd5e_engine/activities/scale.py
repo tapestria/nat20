@@ -39,14 +39,17 @@ loader.
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
 from dnd5e_srd_data.schema.advancement import AdvancementType
 
-from dnd5e_engine.rules.character import granted_feature_slugs
+from dnd5e_engine.rules.character import leveled_feature_levels
 
 if TYPE_CHECKING:
     from dnd5e_srd_data.loader import AssetLoader
+    from dnd5e_srd_data.schema.class_ import Class, Subclass
+    from dnd5e_srd_data.schema.species import Species
 
 
 def _slugify(text: str) -> str:
@@ -153,6 +156,35 @@ def _walk_owner_scales(slug: str, doc: Any, level: int, out: dict[str, int | str
             out[f"{base}.die"] = _project(config, scaled, "die")
 
 
+def feature_owners(
+    *,
+    classes: Mapping[str, int],
+    subclass_slug: str | None,
+    species_slug: str | None,
+    level: int,
+    loader: AssetLoader,
+) -> list[tuple[str, Class | Subclass | Species, int]]:
+    """Every document that grants a character features, with the level it is
+    read at. SRD 5.2 Multiclassing: "When you gain a new level in a class, you
+    get its features for that level." Each class reads at its own level, the
+    subclass at its class's level (``level`` when that class isn't listed), the
+    species at character ``level``. Unknown slugs are skipped."""
+    owners: list[tuple[str, Class | Subclass | Species, int]] = []
+    for slug, class_level in classes.items():
+        cls = loader.get_class(slug)
+        if cls is not None:
+            owners.append((slug, cls, class_level))
+    if subclass_slug:
+        subclass = loader.get_subclass(subclass_slug)
+        if subclass is not None:
+            owners.append((subclass_slug, subclass, classes.get(subclass.class_identifier, level)))
+    if species_slug:
+        species = loader.get_species(species_slug)
+        if species is not None:
+            owners.append((species_slug, species, level))
+    return owners
+
+
 def build_scale_values(
     *,
     class_slug: str | None,
@@ -160,6 +192,7 @@ def build_scale_values(
     species_slug: str | None,
     level: int,
     loader: AssetLoader,
+    classes: Mapping[str, int] | None = None,
 ) -> dict[str, int | str]:
     """Pre-resolve every ScaleValue on the caster's owner docs at ``level``.
 
@@ -173,33 +206,32 @@ def build_scale_values(
 
     a FEATURE-OWNED scale (e.g. Channel Divinity's Divine Spark die
     count) lives on the granting feature's OWN doc, not its granting class/
-    subclass/species. After walking the three owner docs directly, also walk
-    every feature slug they GRANT at/below ``level`` (the same
-    ``granted_feature_slugs`` helper the orchestrator's USE_FEATURE repertoire
-    gate uses) and fold each granted feature's ScaleValue table too.
+    subclass/species. After walking the owner docs directly, also walk every
+    feature slug they GRANT at/below their own level (``leveled_feature_levels``,
+    the same helper the orchestrator's USE_FEATURE repertoire gate uses) and
+    fold each granted feature's ScaleValue table too.
+
+    ``classes`` — per-class levels of a multiclass character; each owner, and
+    each feature it grants, reads at its own level. ``None`` reads
+    ``class_slug`` at ``level``, as before.
 
     This is the pure half of the orchestrator/build-party seam: the loader call
     lives here, the result is plain data passed into the frozen context.
     """
+    class_levels = dict(classes) if classes else ({class_slug: level} if class_slug else {})
+    owners = feature_owners(
+        classes=class_levels,
+        subclass_slug=subclass_slug,
+        species_slug=species_slug,
+        level=level,
+        loader=loader,
+    )
     out: dict[str, int | str] = {}
-
-    class_doc = loader.get_class(class_slug) if class_slug else None
-    subclass_doc = loader.get_subclass(subclass_slug) if subclass_slug else None
-    species_doc = loader.get_species(species_slug) if species_slug else None
-
-    for slug, doc in (
-        (class_slug, class_doc),
-        (subclass_slug, subclass_doc),
-        (species_slug, species_doc),
-    ):
-        if slug is None or doc is None:
-            continue
-        _walk_owner_scales(slug, doc, level, out)
-
-    for feature_slug in granted_feature_slugs([class_doc, subclass_doc, species_doc], level=level):
+    for slug, doc, owner_level in owners:
+        _walk_owner_scales(slug, doc, owner_level, out)
+    granted = leveled_feature_levels([(doc, owner_level) for _, doc, owner_level in owners])
+    for feature_slug, feature_level in granted.items():
         feature_doc = loader.get_feature(feature_slug)
-        if feature_doc is None:
-            continue
-        _walk_owner_scales(feature_slug, feature_doc, level, out)
-
+        if feature_doc is not None:
+            _walk_owner_scales(feature_slug, feature_doc, feature_level, out)
     return out

@@ -62,9 +62,10 @@ baked in, so the mod is added here, not double-counted.
 from __future__ import annotations
 
 import logging
+import re
 from collections import defaultdict
 from dataclasses import replace
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
 from dnd5e_srd_data.schema.item import WeaponProperty
 from dnd5e_srd_data.schema.monster import MonsterTraitMechanic
@@ -84,7 +85,7 @@ from dnd5e_engine.rules.conditions import (
 from dnd5e_engine.spatial import cover_bonus
 
 if TYPE_CHECKING:
-    from dnd5e_srd_data.schema.common import AttackActivity, DamagePartBlock
+    from dnd5e_srd_data.schema.common import AttackActivity, DamagePart, DamagePartBlock
     from dnd5e_srd_data.schema.item import Weapon
 
     from dnd5e_engine.types.combat import Combatant
@@ -96,6 +97,18 @@ _LOGGER = logging.getLogger(__name__)
 # In-crit signal key consumed by the shared dice helper's crit path — the same
 # convention ``activities/damage.py`` reads. Scoped to a single target+call here.
 _IN_CRIT = "in_crit"
+
+# SRD 5.2 Archery: "You gain a +2 bonus to attack rolls you make with Ranged weapons."
+_ARCHERY_BONUS: Final = 2
+
+
+def _fighting_style_attack_bonus(ctx: ActivityResolutionContext, weapon: Weapon | None) -> int:
+    """Archery's +2 on a Ranged weapon's attack roll. It stacks on a host-pinned
+    to-hit bonus, like the engine's other situational bonuses (Bless, a magic
+    weapon's sidecar): the pin is the character's base bonus, not a total."""
+    if "archery" in ctx.caster.fighting_styles and _is_ranged_weapon(weapon):
+        return _ARCHERY_BONUS
+    return 0
 
 
 def resolve_attack(
@@ -116,9 +129,11 @@ def resolve_attack(
     governing_ability = _governing_ability(activity, ctx, weapon)
     # SRD 5.2 Exhaustion — an attack roll is a D20 Test, so the flat
     # ``-2 x level`` penalty rides on the attack bonus (no extra draw).
-    attack_bonus = _attack_bonus(
-        activity, ctx, weapon, governing_ability
-    ) + ctx.d20_test_penalty.get(ctx.caster.entity_id, 0)
+    attack_bonus = (
+        _attack_bonus(activity, ctx, weapon, governing_ability)
+        + ctx.d20_test_penalty.get(ctx.caster.entity_id, 0)
+        + _fighting_style_attack_bonus(ctx, weapon)
+    )
     cast_level = ctx.slot_level or ctx.base_spell_level or 0
     # SRD §Bless / §Bane apply a signed d4 to the affected creature's OWN attack
     # rolls (keyed on the attacker). Rolled once per attack so each swing draws a
@@ -194,6 +209,21 @@ def resolve_attack(
         is_crit, is_hit = _resolve_hit_outcome(
             natural, total, effective_ac, activity, auto_crit_on_hit=auto_crit
         )
+
+        # SRD 5.2 Bardic Inspiration: "Once within the next hour when the
+        # creature fails a D20 Test, the creature can roll the Bardic
+        # Inspiration die and add the number rolled to the d20, potentially
+        # turning the failure into a success." Drawn after the d20 and the
+        # Bless-style dice, only on a miss the die could turn — a natural 1
+        # "misses regardless of any modifiers or the target's AC" — and once
+        # ("A Bardic Inspiration die is expended when it's rolled").
+        if ctx.granted_die and not is_hit and natural != 1 and not ctx.granted_die_rolls:
+            inspiration = roll_expr(ctx.granted_die, ctx.rng)
+            ctx.granted_die_rolls.append(inspiration)
+            total += inspiration
+            is_crit, is_hit = _resolve_hit_outcome(
+                natural, total, effective_ac, activity, auto_crit_on_hit=auto_crit
+            )
 
         ctx.event_emitter(
             AttackRolled(
@@ -634,6 +664,21 @@ def sneak_attack_triggers(
 # ── attack-bonus resolution ──────────────────────────────────────────────────
 
 
+def _is_monk_weapon(weapon: Weapon | None) -> bool:
+    """SRD 5.2 Martial Arts — "Monk weapons, which are the following: Simple
+    Melee weapons; Martial Melee weapons that have the Light property". The
+    corpus files the Unarmed Strike as a Simple Melee weapon."""
+    if weapon is None:
+        return False
+    if weapon.weapon_category == "simple_melee":
+        return True
+    return weapon.weapon_category == "martial_melee" and WeaponProperty.LIGHT in weapon.properties
+
+
+def _martial_arts_applies(ctx: ActivityResolutionContext, weapon: Weapon | None) -> bool:
+    return ctx.martial_arts and _is_monk_weapon(weapon)
+
+
 def _governing_ability(
     activity: AttackActivity, ctx: ActivityResolutionContext, weapon: Weapon | None
 ) -> str | None:
@@ -641,6 +686,8 @@ def _governing_ability(
 
     Resolution order (Foundry stores ``""`` and resolves the default at runtime):
 
+    0. Martial Arts (Dexterous Attacks) active for an Unarmed Strike or a Monk
+       weapon → the better of STR/DEX, ties keeping STR (as for Finesse).
     1. ``attack.ability`` when set (non-empty) → use it verbatim.
     2. else if a ``weapon`` is supplied → the weapon's SRD default ability
        (``_weapon_default_ability``): a melee non-finesse weapon uses STR, a
@@ -651,6 +698,10 @@ def _governing_ability(
     ``None`` only when neither a weapon nor a spellcasting ability is available
     (a flat attack needs no ability and simply contributes a +0 mod).
     """
+    if _martial_arts_applies(ctx, weapon):
+        # Dexterous Attacks: DEX instead of STR — the Unarmed Strike's own
+        # ``attack.ability`` is "str"; ties keep STR, as for Finesse.
+        return "dex" if ctx.ability_mod("dex") > ctx.ability_mod("str") else "str"
     if activity.attack.ability:
         return activity.attack.ability
     if weapon is not None:
@@ -849,6 +900,32 @@ def _resolve_hit_outcome(
 
 # ── on-hit damage ────────────────────────────────────────────────────────────
 
+# SRD 5.2 Great Weapon Fighting: "you can treat any 1 or 2 on a damage die as a 3".
+_GREAT_WEAPON_FIGHTING_FLOOR: Final = 3
+
+
+def _great_weapon_fighting_floor(
+    ctx: ActivityResolutionContext, weapon: Weapon | None
+) -> int | None:
+    """The damage-die floor for this swing, or ``None``. SRD 5.2 Great Weapon
+    Fighting: "When you roll damage for an attack you make with a Melee weapon
+    that you are holding with two hands ... The weapon must have the Two-Handed
+    or Versatile property to gain this benefit." A Versatile weapon counts only
+    under the declared two-handed melee grip (``ctx.use_versatile_damage``). A
+    Shield occupies a hand, so no weapon is held with two while one is
+    equipped."""
+    if (
+        weapon is None
+        or "great-weapon-fighting" not in ctx.caster.fighting_styles
+        or not _is_melee_weapon(weapon)
+        or ctx.caster.shield_equipped
+    ):
+        return None
+    two_hands = WeaponProperty.TWO_HANDED in weapon.properties or (
+        WeaponProperty.VERSATILE in weapon.properties and ctx.use_versatile_damage
+    )
+    return _GREAT_WEAPON_FIGHTING_FLOOR if two_hands else None
+
 
 def _apply_on_hit_damage(
     activity: AttackActivity,
@@ -882,12 +959,13 @@ def _apply_on_hit_damage(
         ctx.variables[_IN_CRIT] = 1
     total_dealt = 0
     try:
+        die_floor = _great_weapon_fighting_floor(ctx, weapon)
         by_type: dict[str, int] = defaultdict(int)
         first_type: str | None = None
 
         if activity.damage.include_base and weapon is not None:
             first_type = _roll_base_weapon_damage(
-                weapon, ctx, by_type, governing_ability, is_crit=is_crit
+                weapon, ctx, by_type, governing_ability, is_crit=is_crit, die_floor=die_floor
             )
 
         for part in activity.damage.parts:
@@ -901,6 +979,7 @@ def _apply_on_hit_damage(
                 resolved,
                 ctx.rng,
                 crit=is_crit,
+                die_floor=die_floor,
                 character_level=ctx.caster_level,
                 slot_level=ctx.slot_level,
                 base_level=ctx.base_spell_level,
@@ -1028,6 +1107,32 @@ def _damage_source_id(
     return None
 
 
+_SINGLE_DIE_RE = re.compile(r"^(\d*)d(\d+)$")
+
+
+def _average_damage(dice: str) -> float | None:
+    """Mean of a flat number or one ``NdM`` term; ``None`` for anything else."""
+    if dice.isdigit():
+        return float(dice)
+    match = _SINGLE_DIE_RE.match(dice)
+    if match is None:
+        return None
+    return int(match.group(1) or 1) * (int(match.group(2)) + 1) / 2
+
+
+def _martial_arts_parts(parts: list[DamagePart], die: int | str | None) -> list[DamagePart]:
+    """SRD 5.2 Martial Arts Die: "You can roll 1d6 in place of the normal damage
+    of your Unarmed Strike or Monk weapons" — taken only when it beats the
+    weapon's own damage on average (the Unarmed Strike's flat 1 always loses)."""
+    if not parts or not isinstance(die, str):
+        return parts
+    martial_die = f"1{die}" if die.startswith("d") else die
+    martial, own = _average_damage(martial_die), _average_damage(parts[0].dice)
+    if martial is None or own is None or martial <= own:
+        return parts
+    return [parts[0].model_copy(update={"dice": martial_die}), *parts[1:]]
+
+
 def _roll_base_weapon_damage(
     weapon: Weapon,
     ctx: ActivityResolutionContext,
@@ -1035,6 +1140,7 @@ def _roll_base_weapon_damage(
     governing_ability: str | None,
     *,
     is_crit: bool,
+    die_floor: int | None = None,
 ) -> str | None:
     """Roll the weapon's base ``damage_parts`` into ``by_type``; return first type.
 
@@ -1050,6 +1156,15 @@ def _roll_base_weapon_damage(
     melee swing) AND the weapon carries ``versatile_damage``, that single part
     is rolled INSTEAD OF ``damage_parts`` — crit doubling and the ability-mod
     fold apply identically to either die.
+
+    ``die_floor`` (from ``_great_weapon_fighting_floor``) raises every rolled
+    face on these dice to at least that value; ``None`` for every swing without
+    the feat, keeping today's rolls byte-identical.
+
+    SRD 5.2 Martial Arts — when it applies to this swing (``_martial_arts_
+    applies``), the FIRST part's dice are swapped for the caster's Martial
+    Arts die via ``_martial_arts_parts`` (only when that die rolls higher on
+    average; the Unarmed Strike's flat 1 always loses to it).
     """
     first_type: str | None = None
     flat_addition = weapon.magical_bonus
@@ -1065,8 +1180,11 @@ def _roll_base_weapon_damage(
     if ctx.use_versatile_damage and weapon.versatile_damage is not None:
         parts = [weapon.versatile_damage]
 
+    if _martial_arts_applies(ctx, weapon):
+        parts = _martial_arts_parts(parts, ctx.scale_values.get("monk.die"))
+
     for index, part in enumerate(parts):
-        rolled = roll_damage_part(part, ctx.rng, crit=is_crit)
+        rolled = roll_damage_part(part, ctx.rng, crit=is_crit, die_floor=die_floor)
         if index == 0:
             rolled += flat_addition
             first_type = part.damage_type

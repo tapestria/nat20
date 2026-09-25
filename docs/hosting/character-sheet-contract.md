@@ -45,6 +45,14 @@ from the governing ability and weapon proficiency. An empty or omitted
 `spell_slots` / `pact_slots` on `CombatInstance` likewise means "derive the
 multiclass slot table"; pass a non-empty map to pin one.
 
+## What reaches combat
+
+`build_party_member` also forwards the build's `feats` and `classes` to
+`PartyMemberSpec`. The four SRD 5.2 Fighting Style feats therefore apply in
+combat (Defense is already in the derived `ac`, and only while Light, Medium
+or Heavy armor is worn), and each class's features and scale values are read
+at that class's own level.
+
 ## What `derive_sheet` does not apply
 
 Magic items' own passive effects (pass them as `active_effects`), languages,
@@ -52,10 +60,11 @@ tool proficiencies, the background's Origin feat, ability increases from feats
 other than the Ability Score Improvement feat, level-20 capstone increases,
 multiclass ability prerequisites, how many picks a choice allows, and penalties
 for armor worn without training (`armor_training` is reported so a host can
-apply them). Feature-choice and Fighting Style picks (Defense, Eldritch
-Invocations, Metamagic, …) are recorded on `DerivedSheet.features` / `feats`,
-but their effects are not applied. Fast Movement still adds its speed bonus
-while wearing Heavy armor (SRD 5.2 requires none). A variant crafting
+apply them). Feature-choice picks other than the Fighting Styles (Eldritch
+Invocations, Metamagic, Blessed Warrior, …) are recorded on
+`DerivedSheet.features` / `feats`, but their effects are not applied and they
+never reach the in-combat feature gate. Fast Movement still adds its speed
+bonus while wearing Heavy armor (SRD 5.2 requires none). A variant crafting
 template such as `shield-1-2-or-3` derives AC from the dataset's placeholder
 base value, not the real item. A class granted specific weapon slugs rather
 than a category (Rogue, Monk) gets no Proficiency Bonus with a magic variant

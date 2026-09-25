@@ -684,6 +684,24 @@ def _damage_parts(damage: dict[str, Any]) -> list[DamagePart]:
     return []
 
 
+#: SRD 5.2 weapons whose base damage Foundry ships only as a roll-data
+#: ``custom.formula`` (which ``_damage_parts`` cannot carry), with the SRD
+#: sentence that sets it. Unarmed Strike, Rules Glossary: "On a hit, the target
+#: takes Bludgeoning damage equal to 1 plus your Strength modifier." The engine
+#: adds the governing ability modifier to a weapon's first damage part, so the
+#: part is the flat 1; Foundry's ``@mod + @prof`` is not the SRD rule. A
+#: correction only fills an EMPTY part list: once a Foundry pin ships structured
+#: base damage, upstream wins and the entry goes inert.
+_WEAPON_BASE_DAMAGE_CORRECTIONS: dict[str, DamagePart] = {
+    "unarmed-strike": DamagePart(dice="1", damage_type="bludgeoning"),
+}
+
+
+def _weapon_base_damage_correction(slug: str) -> list[DamagePart]:
+    correction = _WEAPON_BASE_DAMAGE_CORRECTIONS.get(slug)
+    return [correction] if correction is not None else []
+
+
 def _versatile_damage_srd(slug: str, parts: list[DamagePart]) -> DamagePart | None:
     """SRD fallback: when Foundry's ``versatile`` block is empty but the
     weapon has the ``versatile`` property, look up the upgraded die from the
@@ -863,9 +881,9 @@ def translate_weapon_yaml(
     doc = _load_yaml(yaml_path)
     system = doc["system"]
     damage = system.get("damage", {}) or {}
-    parts = _damage_parts(damage)
-    versatile_damage = _versatile_damage(damage, parts)
     slug_str = _slug(doc, yaml_path)
+    parts = _damage_parts(damage) or _weapon_base_damage_correction(slug_str)
+    versatile_damage = _versatile_damage(damage, parts)
     weapon_type = _WEAPON_TYPE_MAP.get(_weapon_type_code(system), "simple_melee")
     raw_props = system.get("properties") or []
     if isinstance(raw_props, dict):

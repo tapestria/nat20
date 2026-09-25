@@ -229,23 +229,23 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
 
 ## Character building (2026-08-22)
 
-- **Multiclassing: carrier, slot derivation, and per-class feature/HP/
-  proficiency accumulation landed at build time; live combat still projects
-  the primary class only (amended 2026-09-23, C19).**
-  `CharacterBuildSpec.classes: dict[str, int]` (a `{class_slug: level}` map,
-  reconciled with the single-class `class_slug`/`level` aliases) is the
-  multiclass carrier; `derive_multiclass_slots` /
-  `derive_multiclass_pact_slots` (`build_spec.py`) project it through
-  `spellcasting.multiclass_caster_level` (per-class half/third rounding,
-  summed, ONE table lookup — SRD §Multiclassing) into the Spellcasting and
-  Pact Magic pools, and
-  `derive_sheet` grants each class's own features, HP and hit dice, and
-  proficiencies at that class's own level, including the non-stacking Extra
-  Attack rule. The live-combat projection gap this leaves is its own entry
-  below ("Live multiclass still projects the primary class only").
-  (`packages/dnd5e-engine/src/dnd5e_engine/build_spec.py`)
-- **Feats are almost entirely inert.** 1 of the 17 corpus feats carries a
-  mechanical activity; the rest resolve to nothing. Prerequisites are only
+- **A multiclass caster's spellcasting ability comes from its primary class
+  (amended 2026-09-24, C20).** `CharacterBuildSpec.classes` carries the build
+  (C17 slot tables; C19 per-class features, HP, hit dice, proficiencies and
+  non-stacking Extra Attack), and `PartyMemberSpec.classes` carries it into
+  combat (C20: features, scale values and `@classes.<class>.levels` per
+  class). `_resolve_caster_spellcasting_ability` still reads only
+  `class_slug`, so every spell a multiclass caster casts uses that class's
+  ability: a Cleric/Wizard whose `class_slug` is the Cleric casts its Wizard
+  spells with Wisdom, and a non-caster `class_slug` falls back to the flat
+  approximation.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_resolve_caster_spellcasting_ability`)
+- **Feats other than the four Fighting Styles are almost entirely inert
+  (amended 2026-09-24, C20).** The engine applies the four SRD 5.2 Fighting
+  Style feats itself, by slug; of the other 13 corpus feats only Boon of the
+  Night Spirit carries a mechanical activity. The dataset `Feat` schema has no
+  `passive_effects`, so the effects Foundry ships on feats (Archery's and
+  Defense's among them) are dropped at translation. Prerequisites are only
   partly checked (2026-09-24): a feat's free-text `requirement` (Grappler's
   "Strength or Dexterity 13+") is never validated, and the two epic boons
   whose corpus `prerequisites` carry no `level` entry at all — `boon-of-fate`
@@ -253,19 +253,8 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   floor of character level 19, unlike `boon-of-combat-prowess`, whose entry
   does carry `level: 19`.
   (`packages/dnd5e-engine/src/dnd5e_engine/build_spec.py::_asi_level_feats`,
-  `packages/dnd5e-srd-data/src/dnd5e_srd_data/schema/feat.py`)
-- **Live multiclass still projects the primary class only (2026-09-23, C19
-  scope cut, owner C20).** `Combatant` carries one class and its total
-  level; `orchestrator.py::_granted_feature_slugs`, `_attacks_per_action` and
-  `_pc_condition_immunities`, plus `activities/scale.py::build_scale_values`,
-  all still resolve features from the PRIMARY class at TOTAL character
-  level, so a live Fighter 1 / Wizard 4 is still granted the Fighter's
-  level-5 Extra Attack mid-combat even though its build-time
-  `DerivedSheet.extra_attack_count` correctly reports 0. Carrying per-class
-  levels onto `Combatant` and through `build_scale_values` is C20's
-  territory.
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_granted_feature_slugs`,
-  `packages/dnd5e-engine/src/dnd5e_engine/activities/scale.py::build_scale_values`)
+  `packages/dnd5e-srd-data/src/dnd5e_srd_data/schema/feat.py`,
+  `packages/dnd5e-srd-data/tools/translators/foundry.py`)
 - **Magic weapons named by slug aren't matched to their base weapon for
   proficiency (2026-09-24).** A class granted specific weapon slugs rather
   than a whole category — Rogue and Monk get `rapier`/`scimitar`/
@@ -290,7 +279,9 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   prerequisites (the sheet has no score history, and enforcing them would
   reject the corpus's own default-STR/DEX builds in C19-S09), choice-pool
   capacity (how many skills/invocations/styles a build may pick — Skilled's
-  grants are not in the corpus), `attunement_constraint`, untrained-armor
+  grants are not in the corpus) — and since C20 applies Fighting Style feats
+  in combat (2026-09-24), a build listing more styles than its pools allow (a
+  Fighter 1 with two) gets every one, `attunement_constraint`, untrained-armor
   penalties (`armor_training` is reported so a host can apply them), and
   magic items' own passive effects (hosts pass them as `active_effects`).
   Feat repeatability is also prose-only, so `DerivedSheet.feats` is not
@@ -382,17 +373,19 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   player-intent cast path calls `activities/forced_movement.py`, so a monster
   casting Thunderwave deals damage but pushes nobody.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::advance_monster_turn`)
-- **Opportunity attacks bypass the activity context — cover only**
-  (2026-08-27, condition gap closed 2026-09-01 C14 Task 9, visibility gap
-  closed 2026-09-02 C16b). The AoO path never calls `build_activity_context`,
-  so an opportunity attack still sees no cover — despite SRD 5.2's cover
-  rules applying to any attack roll. Condition-derived advantage/
-  disadvantage, Exhaustion's D20 Test penalty, Dodge, the "a creature that
-  you can see" trigger (`_combatant_can_see` — no Reaction spent on
-  failure), the `unseen` advantage source, and the Invisible/Frightened
-  carve-outs all now reach the roll. Remaining gap is cover on the AoO roll
-  itself.
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
+- **Opportunity attacks bypass the activity context — cover, Fighting Styles
+  and Martial Arts** (2026-08-27, condition gap closed 2026-09-01 C14 Task 9,
+  visibility gap closed 2026-09-02 C16b, amended 2026-09-24 C20). The AoO path
+  never calls `build_activity_context`, so an opportunity attack still sees no
+  cover — despite SRD 5.2's cover rules applying to any attack roll — and,
+  rolling from the legacy `attack_bonus` / `damage_dice` fields with no weapon,
+  gets neither a Fighting Style (Archery, Great Weapon Fighting) nor Martial
+  Arts (its die, Dexterous Attacks). Condition-derived advantage/disadvantage,
+  Exhaustion's D20 Test penalty, Dodge, the "a creature that you can see"
+  trigger (`_combatant_can_see` — no Reaction spent on failure), the `unseen`
+  advantage source, and the Invisible/Frightened carve-outs all now reach the
+  roll.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_fire_pc_opportunity_attacks_on_move`)
 
 ## Effect-change sidecars (2026-07-02)
 
@@ -419,6 +412,190 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   (The attack/damage, `spell.dc` and — as of F1d — `abilities.check` /
   `abilities.skill` / `abilities.<ab>.save` families are folded.)
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/heal.py`)
+- **Rage's Heavy-armor rules, its no-spells rule and its 10-minute cap are not
+  modelled (2026-09-24, C20 scope cut).** SRD 5.2: "You can enter it as a
+  Bonus Action if you aren't wearing Heavy armor"; it "ends early if you don
+  Heavy armor"; "No Concentration or Spells. You can't maintain
+  Concentration, and you can't cast spells."; "You can maintain a Rage for up
+  to 10 minutes." Entry isn't gated on `Combatant.worn_armor`, armor is never
+  donned in combat, and a raging barbarian may still cast and concentrate. The
+  corpus effect's `rounds: 10` (one minute) stays the outer cap, because
+  `rounds` wins over its `seconds: 600`.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_hook_rage_extension`)
+- **Persistent Rage's Rage recovery on rolling Initiative is not applied
+  (2026-09-25).** SRD 5.2 Persistent Rage (Barbarian 15): "When you roll
+  Initiative, you can regain all expended uses of Rage. After you regain uses
+  of Rage in this way, you can't do so again until you finish a Long Rest."
+  The corpus carries it as an activity triggered "When you roll initiative"
+  (`dnd5eactivity000`), which `start_combat` never runs, so Rage uses a host
+  seeds as spent (`PartyMemberSpec.custom_counters`) stay spent. The rest of
+  the feature applies (no extension needed; only Unconscious ends it early),
+  under the same one-minute outer cap as above where SRD 5.2 says it "now
+  lasts for 10 minutes".
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::start_combat`,
+  `packages/dnd5e-srd-data/src/dnd5e_srd_data/canonical/features/persistent-rage.json`)
+- **Monk's Focus features other than Flurry of Blows don't reach the action
+  economy (2026-09-24, C20 scope cut).** SRD 5.2 Patient Defense: "You can take
+  the Disengage action as a Bonus Action. Alternatively, you can expend 1
+  Focus Point to take both the Disengage and the Dodge actions as a Bonus
+  Action." Step of the Wind: "You can take the Dash action as a Bonus Action.
+  Alternatively, you can expend 1 Focus Point to take both the Disengage and
+  Dash actions as a Bonus Action, and your jump distance is doubled for the
+  turn." Both spend the right Focus Points (C20), but their corpus effects are
+  markers (a "Disengaged" effect, a `dodging` status) that never set
+  `Combatant.disengaging_this_turn` or `dodging`; Step of the Wind adds no
+  movement, and the corpus ships only its Focus Point version. Stunning
+  Strike's Focus Point isn't spent either: its cost names the Monk's Focus
+  pool — another feature's — which `_feature_activity_cost` never charges.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_feature_activity_cost`)
+- **A one-attack actor's turn still ends with its Attack action (2026-09-24,
+  C20 scope cut).** C14 ends the turn of an actor with one attack per Attack
+  action at its first swing (the back-compat pin
+  `test_one_attack_actor_ends_turn_on_first_swing_back_compat`), so a Monk 1–4
+  has to make its Bonus Unarmed Strike (or, from Monk 2, use Flurry of Blows),
+  and a Fighter 2–4 Action Surge, before the Attack action. Strikes a Flurry still owes keep the
+  turn open after that Attack action until they are made or the monk passes
+  (C20). SRD 5.2 imposes no such order.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_attack_action_is_spent`)
+- **Flurry of Blows strikes still owed are lost when a turn-ending Action
+  comes next (2026-09-25).** SRD 5.2 Flurry of Blows: "You can expend 1 Focus
+  Point to make two Unarmed Strikes as a Bonus Action." The Focus Point and
+  the Bonus Action are paid when the Flurry is committed, and the strikes are
+  the monk's next Unarmed Strike attacks. They keep the turn open after the
+  Attack action, but a Dodge, Help, Grapple or Shove still ends the turn at
+  once, so the paid strikes lapse unmade.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_end_action`)
+- **A Monk's Grapple or Shove can't be its Bonus Unarmed Strike or a Flurry
+  strike, and `use_bonus_action` on either is ignored (2026-09-25).** SRD 5.2
+  Martial Arts: "Bonus Unarmed Strike. You can make an Unarmed Strike as a
+  Bonus Action." An Unarmed Strike is "a melee attack that involves you using
+  your body to damage, grapple, or shove a target within 5 feet of you", and
+  Flurry of Blows makes "two Unarmed Strikes". The `grapple` and `shove`
+  intents always take the Action, even with `use_bonus_action=True` or Flurry
+  strikes owed; the flag is silently ignored rather than refused.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_handle_grapple`,
+  `packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_handle_shove`)
+- **Action Surge: a refused cast still ends the turn, and the extra action
+  funds no feature or item (2026-09-24, C20 scope cut).** A cast refused for
+  want of a slot, countered, attempted as a Ritual or over-counted ends the
+  turn as before, even with an extra action left. SRD 5.2 bars only the Magic
+  action ("On your turn, you can take one additional action, except the Magic
+  action."), but the corpus doesn't mark which features and items need one,
+  so every `use_feature` and `use_item` counts as a Magic action.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_MAGIC_ACTION_INTENTS`)
+- **Action Surge refuses an Attack action followed by a Magic action
+  (2026-09-25).** SRD 5.2 Action Surge: "On your turn, you can take one
+  additional action, except the Magic action." A surged turn may hold one
+  Magic action and one other action in either order, but the engine pays
+  each Action-costed intent with the base Action first and the extra action
+  second, and the extra action can't fund a Magic action. So an attack, then
+  a `cast_spell`, is refused (`CastFailed(reason="no_action_economy")`,
+  nothing spent, turn kept), while the cast, then the attack, works, although
+  the attack could have used the extra action.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_action_payment`)
+- **A Loading weapon gets no second shot on Action Surge's extra action
+  (2026-09-25).** SRD 5.2 Loading: "You can fire only one piece of ammunition
+  from a Loading weapon when you use an action, a Bonus Action, or a Reaction
+  to fire it, regardless of the number of attacks you can normally make." The
+  engine caps a Loading weapon at one shot per turn, a cap that assumed one
+  action per turn: after a surge, a Heavy Crossbow shot on the extra action is
+  refused with `AttackFailed(reason="weapon_already_fired")`, although that
+  action starts a new Attack action.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_loading_weapon_already_fired_failure`)
+- **Brutal Strike isn't tied to a Reckless Attack hit (2026-09-25; predates
+  C20).** SRD 5.2 Brutal Strike (Barbarian 9): "If you use Reckless Attack,
+  you can forgo any Advantage on one Strength-based attack roll of your choice
+  on your turn. The chosen attack roll mustn't have Disadvantage. If the
+  chosen attack roll hits, the target takes an extra 1d10 damage of the same
+  type dealt by the weapon or Unarmed Strike, and you can cause one Brutal
+  Strike effect of your choice." The corpus carries it as a
+  `special`-activation damage activity, and Reckless Attack has no activity,
+  so nothing binds it to an attack roll: `use_feature brutal-strike` costs the
+  Action like any feature use and deals its damage with no attack roll, no
+  Reckless Attack and no hit.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_resolve_feature_invocation`,
+  `packages/dnd5e-srd-data/src/dnd5e_srd_data/canonical/features/brutal-strike.json`)
+- **Bardic Inspiration applies to weapon attack rolls only (2026-09-24, C20
+  scope cut).** SRD 5.2: "Once within the next hour when the creature fails a
+  D20 Test, the creature can roll the Bardic Inspiration die and add the number
+  rolled to the d20". `redeem_granted_die` rides only an `attack` intent:
+  `cast_spell` ignores it, so a spell attack roll never uses the die. Saves and
+  ability checks have no intent field to carry the holder's choice, so the die
+  never helps them either. The grant isn't gated on "within 60 feet of yourself
+  who can see or hear you", and a die whose bard isn't in the combat can't be
+  redeemed (its size is read from that bard's `@scale.bard.inspiration`).
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py`,
+  `packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_redeemed_die`)
+- **Font of Inspiration and Superior Inspiration are not modelled
+  (2026-09-25).** SRD 5.2 Font of Inspiration (Bard 5): "You now regain all
+  your expended uses of Bardic Inspiration when you finish a Short or Long
+  Rest. In addition, you can expend a spell slot (no action required) to
+  regain one expended use of Bardic Inspiration." Superior Inspiration (Bard
+  18): "When you roll Initiative, you regain expended uses of Bardic
+  Inspiration until you have two if you have fewer than that." Now that
+  Bardic Inspiration is capped (C20), this bites: the corpus feature recovers
+  on a Long Rest only, so `recover_feature_uses` after a Short Rest leaves a
+  Bard 5's spent uses spent, and nothing restores a use from a spell slot or
+  at Initiative.
+  (`packages/dnd5e-srd-data/src/dnd5e_srd_data/canonical/features/bardic-inspiration.json`,
+  `packages/dnd5e-engine/src/dnd5e_engine/rest.py::recover_feature_uses`)
+- **Lay on Hands' Remove Poison spends 5 points but leaves Poisoned in place
+  (2026-09-24, C20 scope cut).** SRD 5.2: "You can also expend 5 Hit Points
+  from the pool of healing power to remove the Poisoned condition from the
+  creature". The corpus activity (`K6UeXQwTyDHWvis8`) carries no effect —
+  Foundry leaves the removal to the table — so the engine charges the pool and
+  removes nothing.
+  (`packages/dnd5e-srd-data/src/dnd5e_srd_data/canonical/features/lay-on-hands.json`,
+  `packages/dnd5e-engine/src/dnd5e_engine/activities/resolver.py`)
+- **`use_feature cunning-action` does nothing mechanical (2026-09-24, C20
+  scope cut).** Dash's and Disengage's corpus activities carry no effect
+  rider, so invoking either by `activity_id` spends the Bonus Action and
+  resolves nothing; Hide's carries one, but it points at an inert "Hiding"
+  marker (no `changes`, no `duration`, and `hiding` isn't a recognized SRD
+  condition), so it only emits a cosmetic `EffectApplied`. None of the three
+  runs the real mechanic — the feature works through the `dash` and
+  `disengage` intents with `use_bonus_action=True`; Hide charges no budget at
+  all (see "Hide costs no Action").
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_resolve_feature_invocation`)
+- **Picked features never reach the live feature gate (2026-09-24, C20 scope
+  cut).** `_granted_feature_slugs` walks each class's, the subclass's and the
+  species' fixed grants at their own levels, but a feature-choice pick — an
+  Eldritch Invocation, Blessed Warrior, a Metamagic option — lives only on
+  `DerivedSheet.features`, which `PartyMemberSpec` doesn't carry, so
+  `use_feature` rejects it as out of repertoire. Fighting Style picks ride
+  `PartyMemberSpec.feats` and do apply.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_granted_feature_slugs`)
+- **29 feature activities raise `ValueError` out of `submit_player_intent`
+  after their cost is spent (2026-09-25; predates C20).** Each uses a formula
+  shape the activity layer can't evaluate yet, and the raise comes after the
+  invocation's Action, Bonus Action or Reaction, and any use, is spent, so the
+  host gets an exception and a half-paid turn. By cause:
+  - a save DC by ability (`save.dc.calculation` `wis`, `dex` or empty), which
+    `activities/save.py::_resolve_dc` refuses — SRD 5.2 Monk's Focus: "Some
+    features that use Focus Points require your target to make a saving
+    throw. The save DC equals 8 plus your Wisdom modifier and Proficiency
+    Bonus.": Stunning Strike, Open Hand Technique (2 activities), Deflect
+    Attacks, Deflect Energy, Quivering Palm, Cunning Strike (2), Devious
+    Strikes (3), Relentless Rage's save and Intimidating Presence;
+  - a `spellcasting` save DC, which `use_feature` can't meet because it never
+    threads the class's spellcasting ability into the context
+    (`orchestrator.py::_resolve_intent_activities`) — SRD 5.2 Channel
+    Divinity: "If a Channel Divinity effect requires a saving throw, the DC
+    equals the spell save DC from this class's Spellcasting feature.":
+    Channel Divinity (Cleric, 2), Sear Undead, Land's Aid, Abjure Foes and
+    Hurl Through Hell;
+  - an unhandled roll-data token in `activities/formula.py`: `@scaling` in
+    Disciple of Life, Blessed Healer and Cunning Strike, `@item.uses.spent` in
+    Overchannel;
+  - a dice expression `activities/dice.py` can't parse: `*` in Relentless
+    Rage's heal, Preserve Life, Improved Blessed Strikes and Slow Fall,
+    `max(…)` in Tireless and Dark One's Blessing.
+  A check that refuses these before anything is spent would end the half-paid
+  state until each shape is supported.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/save.py`,
+  `packages/dnd5e-engine/src/dnd5e_engine/activities/formula.py`,
+  `packages/dnd5e-engine/src/dnd5e_engine/activities/dice.py`,
+  `packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_resolve_intent_activities`)
 
 ### Passive-stat projection (`activities/passive_stats.py`)
 
@@ -454,18 +631,6 @@ zone + apply logic:
 
 ## Rest & recovery
 
-- **Non-`@scale` symbolic feature-use caps fall back to uncapped** (2026-07-03,
-  narrowed 2026-07-04). `orchestrator.py::_feature_use_cap` now
-  resolves a literal-integer `uses.max` exactly AND a `@scale.<owner>.<key>`
-  max against the caster's real ScaleValue map (`build_scale_values`), so
-  Second Wind caps at its true level-scaled value (3 at Fighter L5 via the
-  `{1: 2, 4: 3, 10: 4}` table). The residual gap: a NON-`@scale` symbolic max
-  — `@prof` (9 features), `max(1, @abilities.cha.mod)` / `5 * @classes.paladin.levels`
-  (~6 more) — is not resolved and falls back to UNCAPPED rather than a wrong
-  floor (a capped resource is never wrongly rejected; this preserves pre-existing
-  behaviour for those features). Thread the caster's proficiency bonus / ability
-  modifiers into the cap resolver to close it
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`).
 - **Non-literal feature-recovery formulas are unhandled** (2026-07-04). `rest.recover_feature_uses` honours each feature's
   typed `uses.recovery` rules: `recoverAll` fully recharges, a literal-integer
   `formula` regains that many uses, and a period-miss (with recovery data
@@ -529,7 +694,9 @@ zone + apply logic:
   SRD 5.2 requires both hands free to wield a Two-Handed weapon (and bars
   it alongside a shield); the engine has no equipped-item/hand-occupancy
   model, so `PlayerIntent.two_handed` is accepted at face value with no
-  legality check. Equip-slot bookkeeping is a host concern.
+  legality check, even beside a Shield the combatant has equipped
+  (`Combatant.shield_equipped`, which only Great Weapon Fighting and Martial
+  Arts read). Equip-slot bookkeeping is a host concern.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py`)
 
 ## Audit 2026-08-26 — action economy & turn structure
@@ -549,7 +716,9 @@ zone + apply logic:
   approved S02 catalog script requires a hide-then-attack sequence inside
   one turn, and the first attack swing hard-requires the Action — an
   Action-consuming Hide would make that script unsatisfiable. Tighten once
-  strict Attack-action accounting lands.
+  strict Attack-action accounting lands. Cunning Action's Bonus-Action Hide is
+  just as free (2026-09-24, C20): Dash and Disengage charge the Bonus Action,
+  Hide charges nothing.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_handle_hide`)
 - **Help's ability-check flavor is unimplemented.** No check-advantage
   producer exists on the check-resolution path, so a helper cannot grant
@@ -680,20 +849,19 @@ now calls the engine rather than standing in for it. Residual gaps:
 - **Group checks and tool proficiencies are absent.** Neither is derived from
   class/background/equipment, nor accepted as an explicit build input.
   (`packages/dnd5e-engine/src/dnd5e_engine/build_spec.py`)
-- **Class features that are prose-only in the corpus:** Fighting Style, Divine
-  Smite, Metamagic / sorcery points, Eldritch Invocations. (Extra Attack
-  closed C14 Task 1 — `_attacks_per_action` reads the granted
-  `extra-attack`/`two-extra-attacks`/`three-extra-attacks` feature slugs.)
-  **Action Surge and Flurry of Blows are still not modelled** (2026-09-01):
-  both grant an extra Action/action-equivalent mid-turn, which needs its own
-  seam distinct from the per-Action `attacks_remaining` counter C14 added —
-  neither feature's `activities` array carries a typed effect the resolver
-  reads. Martial Arts ships passive changes
-  (`system.damage.base.custom.formula`) that are not in the `passive_stats`
-  allowlist. Bardic Inspiration grants a die nothing consumes. Rage never
-  ends for "didn't attack / take damage". Cunning Action's bonus-action Dash
-  is gated on `class_slug == "rogue"` rather than the feature.
-  (`packages/dnd5e-engine/src/dnd5e_engine/activities/passive_stats.py`)
+- **Class features that are prose-only in the corpus (amended 2026-09-24,
+  C20):** Divine Smite, Metamagic / Sorcery Points and Eldritch Invocations.
+  Nothing ties a Divine Smite cast to the Melee weapon or Unarmed Strike hit
+  it rides, and Paladin's Smite's free cast ("you can cast it without
+  expending a spell slot, but you must finish a Long Rest before you can cast
+  it in this way again") has no activity. `metamagic.json`, its option
+  features, `eldritch-invocations.json` and the invocation features carry no
+  activities. Font of Magic's two conversions price Sorcery Points with
+  formulas (`1 + @scaling + floor(@scaling / 3)`, `0 - @scaling`) the engine
+  doesn't evaluate, so each spends one point. None of these has an approved
+  scenario.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_feature_activity_cost`,
+  `packages/dnd5e-srd-data/src/dnd5e_srd_data/canonical/features/paladins-smite.json`)
 - **Equipment:** attunement limit (`requires_attunement` shipped, unread),
   ammunition decrement, versatile damage choice, shield don/doff, encumbrance —
   all absent. Magic-item charges are the one equipment mechanic that is real.
@@ -968,6 +1136,15 @@ layer over the engine — see `docs/bridge.md`. Gaps found while shipping it:
   Needs the weapon's `properties`/`weapon_kind` consulted to pick
   `max(str_mod, dex_mod)` for finesse or `dex_mod` for ranged
   (`packages/nat20-bridge/src/nat20_bridge/sheet.py`).
+- **The combat intent carries no class-feature field (2026-09-24, C20 scope
+  cut).** `_IntentRequest` forwards only `intent_type`, `spell_id`,
+  `target_id`, `item_id`, `weapon_id`, `feature_id` and `target_zone_id`, so a
+  bridge client can't pick an `activity_id` (Flurry of Blows, Lay on Hands,
+  Channel Divinity), set `use_bonus_action` (Cunning Action, the Bonus Unarmed
+  Strike) or `two_handed`, draw `pool_points` or redeem a Bardic die
+  (`redeem_granted_die`). `_view_route` doesn't expose `LiveCombatView.turn`
+  either, so `extra_actions_remaining` isn't visible over HTTP.
+  (`packages/nat20-bridge/src/nat20_bridge/routes_combat.py::_IntentRequest`)
 
 ---
 
@@ -1059,6 +1236,28 @@ translator/dataset.
 (`packages/dnd5e-srd-data/src/dnd5e_srd_data/canonical/items/dwarven-plate.json`,
 `elven-chain.json`, `demon-armor.json`, `plate-armor-of-etherealness.json`,
 `armor-1-2-or-3.json`, `adamantine-armor.json`, `mithral-armor.json`)
+
+## Feature-choice pools (2026-09-24, C20)
+
+The Champion's level-7 Fighting Style `ItemChoice` pool
+(`subclasses/champion.json`) copies Foundry's full list. Besides the four SRD
+5.2 styles it names Blind Fighting, Dueling, Interception, Protection, Thrown
+Weapon Fighting and Unarmed Fighting, whose UUIDs resolve to nothing in the
+corpus. Those six are not SRD 5.2 content and must not be implemented;
+`FightingStyle` accepts only the four. The translator could drop unresolvable
+pool entries.
+(`packages/dnd5e-srd-data/src/dnd5e_srd_data/canonical/subclasses/champion.json`)
+
+## Class scale-value defects (2026-09-25)
+
+- **A Barbarian 16 has 6 Rages; SRD 5.2 gives 5.** The SRD 5.2 Barbarian
+  Features table lists 5 Rages from level 12 through 16 and 6 from level 17,
+  but the Rages `ScaleValue` in `classes/barbarian.json` steps to 6 at level
+  16 (`"16": 6`), so the Rage use cap lets a Barbarian 16 rage once too often.
+  This predates C20. The fix belongs in the translator, as a correction like
+  `_WEAPON_BASE_DAMAGE_CORRECTIONS`.
+  (`packages/dnd5e-srd-data/src/dnd5e_srd_data/canonical/classes/barbarian.json`,
+  `packages/dnd5e-srd-data/tools/translators/foundry.py`)
 
 ---
 

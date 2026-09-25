@@ -28,6 +28,8 @@ if TYPE_CHECKING:
     from dnd5e_srd_data.schema.item import Armor
     from dnd5e_srd_data.schema.species import Species
 
+    from dnd5e_engine.types.combat import FightingStyle
+
 AbilityName = Literal["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"]
 
 ABILITY_NAME_BY_CODE: Final[dict[Ability, AbilityName]] = {
@@ -68,6 +70,24 @@ EXTRA_ATTACK_TIERS: Final[tuple[tuple[str, int], ...]] = (
 )
 
 
+def leveled_feature_levels(
+    sources: Sequence[tuple[Class | Subclass | Species | None, int]],
+) -> dict[str, int]:
+    """Feature slug → the level of the first source granting it at or below
+    that source's OWN level. SRD 5.2 Multiclassing: "When you gain a new level
+    in a class, you get its features for that level" — and a feature's own
+    ``@scale`` values read at that level. Source order is kept; ``None`` is
+    skipped."""
+    levels: dict[str, int] = {}
+    for source, level in sources:
+        if source is None:
+            continue
+        for grant in source.granted_features:
+            if grant.ref_type == "feature" and grant.level <= level and grant.slug not in levels:
+                levels[grant.slug] = level
+    return levels
+
+
 def leveled_feature_slugs(
     sources: Sequence[tuple[Class | Subclass | Species | None, int]],
 ) -> list[str]:
@@ -77,16 +97,7 @@ def leveled_feature_slugs(
     features for that level" — a Fighter 1 / Wizard 4 has the Fighter's level-1
     features only. Source order is kept, duplicates dropped, ``None`` skipped.
     """
-    slugs: list[str] = []
-    seen: set[str] = set()
-    for source, level in sources:
-        if source is None:
-            continue
-        for grant in source.granted_features:
-            if grant.ref_type == "feature" and grant.level <= level and grant.slug not in seen:
-                seen.add(grant.slug)
-                slugs.append(grant.slug)
-    return slugs
+    return list(leveled_feature_levels(sources))
 
 
 def granted_feature_slugs(
@@ -94,9 +105,7 @@ def granted_feature_slugs(
 ) -> list[str]:
     """Feature slugs ``sources`` grant at or below one shared ``level``.
 
-    The live combat path's projection: a ``Combatant`` carries one class and its
-    total level (BACKLOG.md, live multiclass). Shared by the USE_FEATURE
-    repertoire gate, ``build_scale_values`` and the condition-immunity fold.
+    Every source read at one level — for a caller with no per-class levels.
     """
     return leveled_feature_slugs([(source, level) for source in sources])
 
@@ -501,9 +510,34 @@ def armor_speed_penalty(body_armor: Armor | None, strength: int) -> int:
     return 10 if strength < body_armor.strength_min else 0
 
 
+FIGHTING_STYLES: Final[tuple[FightingStyle, ...]] = (
+    "archery",
+    "defense",
+    "great-weapon-fighting",
+    "two-weapon-fighting",
+)
+
+
+def styles_from_feats(
+    feats: Iterable[str], style: FightingStyle | None = None
+) -> tuple[FightingStyle, ...]:
+    """The Fighting Style feats among ``feats`` plus ``style``, once each, in
+    ``FIGHTING_STYLES`` order. Plural because a Champion's Additional Fighting
+    Style — "You gain another Fighting Style feat of your choice" — adds one."""
+    owned = {*feats, *((style,) if style else ())}
+    return tuple(s for s in FIGHTING_STYLES if s in owned)
+
+
+def defense_ac_bonus(feats: Collection[str], *, wearing_armor: bool) -> int:
+    """SRD 5.2 Defense: "While you're wearing Light, Medium, or Heavy armor, you
+    gain a +1 bonus to Armor Class." A Shield alone is not armor."""
+    return 1 if wearing_armor and "defense" in feats else 0
+
+
 __all__ = [
     "ABILITY_NAME_BY_CODE",
     "EXTRA_ATTACK_TIERS",
+    "FIGHTING_STYLES",
     "FOUNDRY_AC_CALC",
     "FOUNDRY_WEAPON_ID_TO_SLUG",
     "MAX_ATTUNED_ITEMS",
@@ -523,6 +557,7 @@ __all__ = [
     "armor_speed_penalty",
     "armor_training_from_changes",
     "attunement_limit",
+    "defense_ac_bonus",
     "extra_attack_count",
     "fixed_hit_points",
     "granted_feature_slugs",
@@ -531,8 +566,10 @@ __all__ = [
     "hit_die_size",
     "hit_point_bonus",
     "hit_points_max",
+    "leveled_feature_levels",
     "leveled_feature_slugs",
     "proficiency_grants",
+    "styles_from_feats",
     "subclass_gate_level",
     "validate_ability_score_method",
     "validate_increase_budget",

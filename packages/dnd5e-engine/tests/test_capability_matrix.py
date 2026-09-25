@@ -501,6 +501,78 @@ _PROBES: dict[str, tuple[Any, str]] = {
         lambda: "reliable_talent: bool = False" in _src("check.py"),
         "(C19)",
     ),
+    # C20: Rage's extension check is a registered ``turn_end`` hook.
+    "Rage's end-of-turn extension check (C20)": (
+        lambda: "engine:rage-extension" in _src("orchestrator.py"),
+        "Rage's end-of-turn extension check (C20)",
+    ),
+    # C20: Action Surge's extra action is counted on the live turn view.
+    "Action Surge's extra action (C20": (
+        lambda: "extra_actions_remaining" in _src("views.py"),
+        "Action Surge's extra action (C20",
+    ),
+    # C20: the Bonus-Action Dash/Disengage read the Cunning Action feature,
+    # not the class slug.
+    "| Dash, Disengage |": (
+        lambda: (
+            "_CUNNING_ACTION not in _granted_feature_slugs(current)" in _src("orchestrator.py")
+            and 'class_slug != "rogue"' not in _src("orchestrator.py")
+        ),
+        "Cunning Action",
+    ),
+    # C20: every corpus ``uses.max`` shape evaluates, and ``@scaling``
+    # resolves for an amount-scaled feature activity (Lay on Hands' Heal).
+    "Class/species feature activities": (
+        lambda: (
+            "def evaluate_uses_formula(" in _src("rules/uses.py")
+            and "scaling_value" in _src("activities/formula.py")
+        ),
+        "(C20)",
+    ),
+    # C20: the four SRD 5.2 Fighting Style feats, each at its own seam.
+    "| Fighting Style feats |": (
+        lambda: (
+            "def defense_ac_bonus(" in _src("rules/character.py")
+            and "_fighting_style_attack_bonus(" in _src("activities/attack.py")
+            and "_great_weapon_fighting_floor(" in _src("activities/attack.py")
+            and '"two-weapon-fighting"' in _src("orchestrator.py")
+        ),
+        "✅ Resolved",
+    ),
+    # C20: Martial Arts and the Flurry of Blows strikes.
+    "| Martial Arts and Monk's Focus |": (
+        lambda: (
+            "def _martial_arts_active(" in _src("orchestrator.py")
+            and "flurry_strikes_remaining" in _src("types/combat.py")
+        ),
+        "(C20)",
+    ),
+    # C20: Rage ends unless extended (and on Incapacitated).
+    "| Rage |": (
+        lambda: (
+            '"not_extended"' in _src("events.py")
+            and "engine:rage-extension" in _src("orchestrator.py")
+        ),
+        "(C20)",
+    ),
+    # C20: a Bardic Inspiration die is redeemed on a failed attack roll.
+    "| Bardic Inspiration |": (
+        lambda: (
+            '"no_granted_die"' in _event_class_body("AttackFailed")
+            and "granted_die" in _src("activities/context.py")
+        ),
+        "(C20)",
+    ),
+    # C20: per-class levels reach live combat through one owner walk.
+    "live combat reads `PartyMemberSpec.classes` (C20)": (
+        lambda: "def feature_owners(" in _src("activities/scale.py"),
+        "live combat reads `PartyMemberSpec.classes` (C20)",
+    ),
+    # C20: the Fighting Style feats apply.
+    "| Feats |": (
+        lambda: "def styles_from_feats(" in _src("rules/character.py"),
+        "Fighting Style feats apply (C20",
+    ),
 }
 
 

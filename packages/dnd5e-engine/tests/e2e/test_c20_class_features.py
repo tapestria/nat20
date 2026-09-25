@@ -2,10 +2,8 @@
 
 Transcribed from specs/e2e-scenario-catalog.md, Cluster 20
 (specs/catalog-v2/c20.md). Grid-only setups (``GridScene`` + ``cell_id``),
-same-seed A/B for every rider/bonus delta. C20-S11 documents today's
-ACTUAL (already-correct) gate behavior per the catalog's own framing —
-authored as a plain (non-xfail) regression, mirroring C22-S05's
-convention, since it would XPASS immediately if marked strict-xfail.
+same-seed A/B for every rider/bonus delta. Contract repairs S03, S04,
+S06, S07, S08, S09, S10 and S11 were approved on 2026-09-24 (C20 plan R1).
 """
 
 from __future__ import annotations
@@ -19,15 +17,15 @@ from dnd5e_engine.events import AttackRolled, DamageApplied
 from dnd5e_engine.orchestrator import (
     IntentRejectedError,
     _get_live,
+    advance_monster_turn,
     start_combat,
     submit_player_intent,
 )
 from dnd5e_engine.rules.dice import roll_d6
 from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
-from tests.e2e.harness import cell, events_of, grid_scene, run_async, xfail_cluster
+from tests.e2e.harness import cell, events_of, grid_scene, run_async
 
 
-@xfail_cluster(20, "class feature mechanics")
 def test_c20_s01_fighting_style_defense_grants_plus1_ac_while_armored():
     """C20-S01: SRD 5.2 ``feats24/fighting-style-feats/defense.yml``
     (identifier: defense) — "While you're wearing Light, Medium, or
@@ -90,7 +88,6 @@ def test_c20_s01_fighting_style_defense_grants_plus1_ac_while_armored():
     assert buffed_ac == base_ac + 1
 
 
-@xfail_cluster(20, "class feature mechanics")
 def test_c20_s02_fighting_style_archery_adds_plus2_ranged_attack():
     """C20-S02: SRD 5.2 ``feats24/fighting-style-feats/archery.yml`` —
     "You gain a +2 bonus to attack rolls you make with Ranged weapons."
@@ -150,7 +147,6 @@ def test_c20_s02_fighting_style_archery_adds_plus2_ranged_attack():
     assert buffed_to_hit == base_to_hit + 2
 
 
-@xfail_cluster(20, "class feature mechanics")
 def test_c20_s03_fighting_style_great_weapon_fighting_floors_1_2_damage_dice_at_3():
     """C20-S03: SRD 5.2 ``feats24/fighting-style-feats/great-weapon-fighting.yml``
     — "you can treat any 1 or 2 on a damage die as a 3." Foundry's own
@@ -164,14 +160,8 @@ def test_c20_s03_fighting_style_great_weapon_fighting_floors_1_2_damage_dice_at_
     seed's underlying 2d6 roll (never negative per die, never applied
     to dice showing 3-6) — per the catalog's own "pin the seed's raw
     die values via a direct ``rules/dice.py`` reseed-and-roll probe"
-    technique. Both ``_run`` calls raise a ``pydantic.ValidationError``
-    today (``fighting_style`` is not yet a valid ``PartyMemberSpec``
-    field — ``extra="forbid"`` rejects it before either combat ever
-    starts), so this exact-delta assertion is unreachable code today,
-    same as the weaker bound it replaces; the reseed probe below is a
-    best-effort reconstruction of the raw 2d6 for whichever RNG
-    position the real feature lands on and may need re-pinning once
-    ``fighting_style`` and the per-die floor actually ship.
+    technique. Contract repair (plan R1): seed 22, whose 2d6 — drawn after
+    the attack's d20 — shows a 2 and a 1; the probe skips that d20.
     """
 
     def _run(fighting_style: str | None):
@@ -206,7 +196,7 @@ def test_c20_s03_fighting_style_great_weapon_fighting_floors_1_2_damage_dice_at_
                 ],
                 scene_zones=None,
                 grid_scene=grid_scene(width=5, height=5),
-                rng_seed=13,
+                rng_seed=22,
             )
             live = _get_live(start.handle)
             await submit_player_intent(
@@ -225,14 +215,16 @@ def test_c20_s03_fighting_style_great_weapon_fighting_floors_1_2_damage_dice_at_
 
     # Reseed-and-roll probe (catalog's own sanctioned technique): pin the
     # raw 2d6 this seed produces so the delta assertion is exact, not a
-    # bare inequality.
-    raw_dice = roll_d6(count=2, rng=random.Random(13)).dice
+    # bare inequality. The attack's d20 is the stream's first draw.
+    probe = random.Random(22)
+    probe.randint(1, 20)
+    raw_dice = roll_d6(count=2, rng=probe).dice
     expected_delta = sum(max(0, 3 - d) for d in raw_dice if d in (1, 2))
 
+    assert buffed_total > base_total
     assert buffed_total - base_total == expected_delta
 
 
-@xfail_cluster(20, "class feature mechanics")
 def test_c20_s04_fighting_style_two_weapon_fighting_adds_ability_mod_to_offhand():
     """C20-S04: SRD 5.2 ``feats24/fighting-style-feats/two-weapon-fighting.yml``
     — "you can add your ability modifier to the damage of that attack
@@ -241,7 +233,9 @@ def test_c20_s04_fighting_style_two_weapon_fighting_adds_ability_mod_to_offhand(
     ``two-weapon-fighting.json`` ships ``activities: []``,
     ``passive_effects: []``; the engine's off-hand extra-attack damage
     formula already correctly omits the ability mod but has no flag to
-    re-add it for this feat.
+    re-add it for this feat. Contract repair (plan R1): SRD 5.2 Light —
+    "That extra attack must be made with a different Light weapon", so the
+    off-hand is a Dagger (Light, Finesse: DEX is its ability modifier).
     """
 
     def _run(fighting_style: str | None):
@@ -257,7 +251,7 @@ def test_c20_s04_fighting_style_two_weapon_fighting_adds_ability_mod_to_offhand(
                         hp_max=20,
                         attack_bonus=6,
                         dexterity=18,
-                        equipment=("shortsword", "shortsword"),
+                        equipment=("shortsword", "dagger"),
                         zone_id=cell(0, 0),
                         fighting_style=fighting_style,  # API delta (C20)
                     )
@@ -291,7 +285,7 @@ def test_c20_s04_fighting_style_two_weapon_fighting_adds_ability_mod_to_offhand(
                 actor_id="char:hero",
                 intent=PlayerIntent(
                     intent_type="attack",
-                    weapon_id="shortsword",
+                    weapon_id="dagger",
                     target_id="mon:foe",
                     use_bonus_action=True,
                 ),
@@ -307,7 +301,6 @@ def test_c20_s04_fighting_style_two_weapon_fighting_adds_ability_mod_to_offhand(
     assert buffed_offhand == base_offhand + 4
 
 
-@xfail_cluster(20, "class feature mechanics")
 def test_c20_s05_martial_arts_unarmed_strike_uses_scaling_die_and_dex():
     """C20-S05: SRD 5.2 ``classes24/monk/class-features/martial-arts.yml``
     (phbmnkMartialArt) — "roll 1d6 in place of the normal damage of
@@ -371,7 +364,6 @@ def test_c20_s05_martial_arts_unarmed_strike_uses_scaling_die_and_dex():
     assert 5 <= dex_total <= 10
 
 
-@xfail_cluster(20, "class feature mechanics")
 def test_c20_s06_flurry_of_blows_spends_focus_for_two_bonus_action_strikes():
     """C20-S06: SRD 5.2 ``classes24/monk/class-features/monks-focus.yml``
     (phbmnkMonksFocus), Flurry of Blows activity ``2ghJTBhilLrFn9xT`` —
@@ -379,7 +371,9 @@ def test_c20_s06_flurry_of_blows_spends_focus_for_two_bonus_action_strikes():
     Action." ``resolver.py``'s ``utility`` handling only applies
     ``effects[]`` riders; this activity's ``chatFlavor`` text carries
     no typed attack payload, and nothing represents "free follow-up
-    attacks paid for by a feature use" today.
+    attacks paid for by a feature use" today. Contract repair (plan R1):
+    the Monk gains Monk's Focus at level 2, and the two strikes that follow
+    a Flurry of Blows are Flurry strikes by engine inference (no flag).
     """
 
     async def _run():
@@ -393,7 +387,7 @@ def test_c20_s06_flurry_of_blows_spends_focus_for_two_bonus_action_strikes():
                     hp_current=20,
                     hp_max=20,
                     class_slug="monk",
-                    character_level=1,
+                    character_level=2,
                     dexterity=16,
                     attack_bonus=5,
                     zone_id=cell(0, 0),
@@ -427,29 +421,14 @@ def test_c20_s06_flurry_of_blows_spends_focus_for_two_bonus_action_strikes():
         )
         assert live.custom_counters_by_entity["char:monk"]["feature_use:monks-focus"]["spent"] == 1
 
-        # API delta (C20): riding a just-paid feature use with follow-up
-        # attack intents does not exist today — no flag on ``attack``
-        # marks "this swing was already paid for by Flurry of Blows".
-        await submit_player_intent(
-            start.handle,
-            actor_id="char:monk",
-            intent=PlayerIntent(
-                intent_type="attack",
-                weapon_id="unarmed-strike",
-                target_id="mon:foe",
-                redeem_granted_die=None,  # API delta (C20) placeholder for the ride flag
-            ),
-        )
-        await submit_player_intent(
-            start.handle,
-            actor_id="char:monk",
-            intent=PlayerIntent(
-                intent_type="attack",
-                weapon_id="unarmed-strike",
-                target_id="mon:foe",
-                redeem_granted_die=None,
-            ),
-        )
+        for _ in range(2):
+            await submit_player_intent(
+                start.handle,
+                actor_id="char:monk",
+                intent=PlayerIntent(
+                    intent_type="attack", weapon_id="unarmed-strike", target_id="mon:foe"
+                ),
+            )
         return live
 
     live = run_async(_run())
@@ -457,14 +436,17 @@ def test_c20_s06_flurry_of_blows_spends_focus_for_two_bonus_action_strikes():
     assert len(strikes) == 2
 
 
-@xfail_cluster(20, "class feature mechanics")
 def test_c20_s07_action_surge_grants_a_second_action_same_turn():
     """C20-S07: SRD 5.2 ``classes24/fighter/class-features/action-surge.yml``
     — "you can take one additional action, except the Magic action."
     ``Combatant`` only carries boolean ``action_available`` today —
     there is no "additional actions granted this turn" state anywhere
-    in ``orchestrator.py``; a second Attack-action swing in the same
-    turn is rejected with ``IntentRejectedError("no_action_economy")``.
+    in ``orchestrator.py``; the Attack action ends the one-attack Fighter's
+    turn (C14), so a second Attack-action swing in the same turn is
+    rejected with ``IntentRejectedError("not_actor_turn")``.
+    Contract repair (plan R1): the surge comes first, so the one-attack
+    Fighter's turn does not end after its first swing (the C14 rule that a
+    one-attack actor's turn ends after its Attack action stands).
     """
 
     async def _run():
@@ -505,18 +487,16 @@ def test_c20_s07_action_surge_grants_a_second_action_same_turn():
         await submit_player_intent(
             start.handle,
             actor_id="char:hero",
-            intent=PlayerIntent(intent_type="attack", weapon_id="longsword", target_id="mon:foe"),
-        )
-        await submit_player_intent(
-            start.handle,
-            actor_id="char:hero",
             intent=PlayerIntent(intent_type="use_feature", feature_id="action-surge"),
         )
-        await submit_player_intent(
-            start.handle,
-            actor_id="char:hero",
-            intent=PlayerIntent(intent_type="attack", weapon_id="longsword", target_id="mon:foe"),
-        )
+        for _ in range(2):
+            await submit_player_intent(
+                start.handle,
+                actor_id="char:hero",
+                intent=PlayerIntent(
+                    intent_type="attack", weapon_id="longsword", target_id="mon:foe"
+                ),
+            )
         return live
 
     live = run_async(_run())
@@ -524,15 +504,18 @@ def test_c20_s07_action_surge_grants_a_second_action_same_turn():
     assert len(strikes) == 2
 
 
-@xfail_cluster(20, "class feature mechanics")
 def test_c20_s08_bardic_inspiration_die_consumed_on_later_ally_roll():
     """C20-S08: SRD 5.2 ``classes24/bard/class-features/bardic-inspiration.yml``
-    — "That creature gains a Bardic Inspiration die (a d6)... the
-    creature can roll the die and add the number rolled to one ability
-    check, attack roll, or saving throw it makes." Nothing represents
-    "bank a d6 on the TARGET, redeemable on a LATER roll" today; no
-    ``attack``/``saving_throw``/``skill_check`` intent carries a
-    "redeem a banked die" flag.
+    — "That creature gains one of your Bardic Inspiration dice. ... Once
+    within the next hour when the creature fails a D20 Test, the creature
+    can roll the Bardic Inspiration die and add the number rolled to the
+    d20, potentially turning the failure into a success." Nothing
+    represents "bank a d6 on the TARGET, redeemable on a LATER roll" today;
+    no ``attack`` intent carries a "redeem a banked die" flag. Contract
+    repair (plan R1): the bard passes, so the ally attacks on its own turn
+    ("Each participant in the battle takes a turn in Initiative order");
+    seed 8's base attack (natural 8 + 3 = 11 against AC 14) fails, so the
+    die is rolled.
     """
 
     def _run(*, bank: bool, redeem: bool):
@@ -589,6 +572,9 @@ def test_c20_s08_bardic_inspiration_die_consumed_on_later_ally_roll():
                     ),
                 )
             await submit_player_intent(
+                start.handle, actor_id="char:bard", intent=PlayerIntent(intent_type="pass")
+            )
+            await submit_player_intent(
                 start.handle,
                 actor_id="char:ally",
                 intent=PlayerIntent(
@@ -609,15 +595,16 @@ def test_c20_s08_bardic_inspiration_die_consumed_on_later_ally_roll():
     assert 1 <= delta <= 6
 
 
-@xfail_cluster(20, "class feature mechanics")
-def test_c20_s09_rage_does_not_end_early_without_attack_or_damage():
+def test_c20_s09_rage_ends_at_end_of_next_turn_when_not_extended():
     """C20-S09: SRD 5.2 ``classes24/barbarian/class-features/rage.yml``
     — "The Rage lasts until the end of your next turn... you can
     extend the Rage for another round by... Make an attack roll...
     Force a saving throw... Take a Bonus Action to extend." Rage's
     ``ActiveEffect`` duration is decremented once per turn purely by
-    ``_tick_durations_at_turn_end`` with NO check for "did this actor
-    attack or take damage this turn" — the effect survives regardless.
+    ``_tick_durations_at_turn_end`` with no check for an extension — the
+    effect survives regardless. Contract repair (plan R1): the foe's turn
+    is driven between the barbarian's two turns ("Each participant in the
+    battle takes a turn in Initiative order").
     """
     from dnd5e_engine.events import EffectExpired
 
@@ -659,10 +646,13 @@ def test_c20_s09_rage_does_not_end_early_without_attack_or_damage():
             actor_id="char:hero",
             intent=PlayerIntent(intent_type="use_feature", feature_id="rage"),
         )
-        for _ in range(2):
-            await submit_player_intent(
-                start.handle, actor_id="char:hero", intent=PlayerIntent(intent_type="pass")
-            )
+        await submit_player_intent(
+            start.handle, actor_id="char:hero", intent=PlayerIntent(intent_type="pass")
+        )
+        await advance_monster_turn(start.handle)
+        await submit_player_intent(
+            start.handle, actor_id="char:hero", intent=PlayerIntent(intent_type="pass")
+        )
         return live
 
     live = run_async(_run())
@@ -671,10 +661,9 @@ def test_c20_s09_rage_does_not_end_early_without_attack_or_damage():
         for e in events_of(live, EffectExpired)
         if e.reason == "not_extended"  # API delta (C20)
     ]
-    assert not_extended, "Rage should expire when neither attacking nor taking damage"
+    assert not_extended, "Rage should end at the end of its next turn when not extended"
 
 
-@xfail_cluster(20, "class feature mechanics")
 def test_c20_s10_lay_on_hands_pool_caps_at_5x_paladin_level_per_long_rest():
     """C20-S10: SRD 5.2 ``classes24/paladin/class-features/lay-on-hands.yml``
     — "restore a total number of Hit Points equal to five times your
@@ -682,6 +671,10 @@ def test_c20_s10_lay_on_hands_pool_caps_at_5x_paladin_level_per_long_rest():
     string ``"5 * @classes.paladin.levels"`` — ``_feature_use_cap``
     only resolves literal ints and ``@scale.<owner>.<key>`` tokens, so
     this formula falls through unresolved (uncapped at runtime today).
+    Contract repair (plan R1): Lay on Hands is a Bonus Action and "You can
+    take only one Bonus Action on your turn", so the pool is probed with
+    two draws in one turn — 11 points (more than the pool holds: refused,
+    no Bonus Action spent) then 10.
     """
     from dnd5e_engine.events import HealingApplied
 
@@ -725,7 +718,7 @@ def test_c20_s10_lay_on_hands_pool_caps_at_5x_paladin_level_per_long_rest():
             rng_seed=1,
         )
         live = _get_live(start.handle)
-        for _ in range(11):
+        for points in (11, 10):
             await submit_player_intent(
                 start.handle,
                 actor_id="char:paladin",
@@ -734,7 +727,7 @@ def test_c20_s10_lay_on_hands_pool_caps_at_5x_paladin_level_per_long_rest():
                     feature_id="lay-on-hands",
                     activity_id="gXZh9aGHcywV9huC",
                     target_id="char:ally",
-                    pool_points=1,  # API delta (C20): variable-amount spend
+                    pool_points=points,  # API delta (C20): variable-amount spend
                 ),
             )
         return live
@@ -743,26 +736,23 @@ def test_c20_s10_lay_on_hands_pool_caps_at_5x_paladin_level_per_long_rest():
     total_healed = sum(
         e.amount for e in events_of(live, HealingApplied) if e.target_id == "char:ally"
     )
-    assert total_healed <= 10
+    assert total_healed == 10
 
 
 def test_c20_s11_cunning_action_dash_is_gated_by_feature_not_class_slug():
-    """C20-S11 (plain regression, NOT xfail): SRD 5.2
-    ``classes24/rogue/class-features/cunning-action.yml`` — "you can
-    take one of the following actions as a Bonus Action: Dash,
-    Disengage, or Hide." This scenario documents today's ACTUAL gate
-    per the catalog's own framing (``_handle_dash`` hardcodes
-    ``class_slug != "rogue"``, verified against
-    ``orchestrator.py:1105-1135``), not a bug fix — it passes today, so
-    marking it strict-xfail would XPASS immediately. A rogue's
-    bonus-action Dash succeeds; a fighter's is rejected with
+    """C20-S11: SRD 5.2 ``classes24/rogue/class-features/cunning-action.yml``
+    — "On your turn, you can take one of the following actions as a Bonus
+    Action: Dash, Disengage, or Hide." ``_handle_dash`` hardcodes
+    ``class_slug != "rogue"``. Contract repair (plan R1): Cunning Action is
+    a Rogue level-2 feature, so a Rogue 2's bonus-action Dash succeeds while
+    a Rogue 1's and a Fighter 1's are rejected with
     ``IntentRejectedError("no_action_economy")``.
     """
 
-    def _run(class_slug: str):
+    def _run(class_slug: str, level: int):
         async def _inner():
             start = await start_combat(
-                session_id=f"e2e-c20-s11-{class_slug}",
+                session_id=f"e2e-c20-s11-{class_slug}-{level}",
                 party=[
                     PartyMemberSpec(
                         entity_id="char:hero",
@@ -771,7 +761,7 @@ def test_c20_s11_cunning_action_dash_is_gated_by_feature_not_class_slug():
                         hp_current=20,
                         hp_max=20,
                         class_slug=class_slug,
-                        character_level=1,
+                        character_level=level,
                         base_speed=30,
                         zone_id=cell(0, 0),
                     )
@@ -802,7 +792,7 @@ def test_c20_s11_cunning_action_dash_is_gated_by_feature_not_class_slug():
 
         return run_async(_inner())
 
-    live_rogue = _run("rogue")
+    live_rogue = _run("rogue", 2)
     from dnd5e_engine.events import DashTaken
 
     dashes = [e for e in events_of(live_rogue, DashTaken) if e.actor_id == "char:hero"]
@@ -810,4 +800,6 @@ def test_c20_s11_cunning_action_dash_is_gated_by_feature_not_class_slug():
     assert dashes[0].budget_consumed == "bonus_action"
 
     with pytest.raises(IntentRejectedError):
-        _run("fighter")
+        _run("rogue", 1)
+    with pytest.raises(IntentRejectedError):
+        _run("fighter", 1)

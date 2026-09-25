@@ -84,6 +84,15 @@ EffectExpiryReason = Literal[
     "dispelled",
     "source_dead",
     "moved",
+    # SRD 5.2 Bardic Inspiration: "A Bardic Inspiration die is expended when
+    # it's rolled." (C20)
+    "expended",
+    # SRD 5.2 Rage: "The Rage lasts until the end of your next turn" — a Rage
+    # its barbarian didn't extend on that turn ends there (C20).
+    "not_extended",
+    # SRD 5.2 Rage: "it ends early if you ... have the Incapacitated
+    # condition" (C20).
+    "incapacitated",
 ]
 
 CastFailedReason = Literal[
@@ -488,9 +497,11 @@ class DashTaken(BaseModel):
 
     SRD §Combat — Dash: the actor's movement budget is doubled for the
     current turn (``movement_remaining += base_speed``). ``budget_consumed``
-    captures whether the Dash was taken as the Action (default) or as the
-    Rogue's Cunning Action Bonus Action. Dash does NOT advance the turn —
-    the actor keeps initiative and may follow with MOVE / other intents.
+    captures whether the Dash was taken as the Action (default) or as a
+    Cunning Action Bonus Action — granted at Rogue 2 and found via the
+    actor's per-class granted features, not its primary class slug. Dash does
+    NOT advance the turn — the actor keeps initiative and may follow with
+    MOVE / other intents.
     """
 
     type: Literal["dash_taken"] = "dash_taken"
@@ -556,6 +567,10 @@ class AttackFailed(BaseModel):
         # reaction-attack path exists, so action/bonus/reaction collapse
         # to the turn boundary). (C15)
         "weapon_already_fired",
+        # SRD 5.2 Bardic Inspiration — the attack asked to redeem a die
+        # (``PlayerIntent.redeem_granted_die``) its attacker does not hold, or
+        # whose bard is not in this combat. (C20)
+        "no_granted_die",
     ]
 
 

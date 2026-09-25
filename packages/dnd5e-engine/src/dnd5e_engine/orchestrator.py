@@ -55,8 +55,8 @@ import random
 import re
 import warnings
 from collections.abc import AsyncIterator, Callable, Collection, Mapping, Sequence
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Literal
+from dataclasses import dataclass, field, replace
+from typing import Any, Final, Literal
 
 from dnd5e_srd_data.schema.common import (
     ActivationBlock,
@@ -68,7 +68,7 @@ from dnd5e_srd_data.schema.common import (
     HealActivity,
     SaveActivity,
 )
-from dnd5e_srd_data.schema.item import Weapon, WeaponProperty
+from dnd5e_srd_data.schema.item import ArmorCategory, Weapon, WeaponProperty
 from dnd5e_srd_data.schema.monster import Monster, MonsterAction, MonsterTraitMechanic
 from dnd5e_srd_data.schema.spell import (
     CastingTimeUnit,
@@ -81,6 +81,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from dnd5e_engine.activities.actor_stats import (
     ABILITY_CODES,
+    ability_modifier_of,
     check_modifier,
     proficiency_bonus_of,
     save_modifier,
@@ -102,7 +103,7 @@ from dnd5e_engine.activities.monster_actions import (
 )
 from dnd5e_engine.activities.passive_stats import CombatantSenses, interpret_passive_stats
 from dnd5e_engine.activities.resolver import resolve_activity
-from dnd5e_engine.activities.scale import build_scale_values
+from dnd5e_engine.activities.scale import build_scale_values, feature_owners
 from dnd5e_engine.death_saves import DeathSaveState, roll_death_save
 from dnd5e_engine.events import (
     Ability,
@@ -150,7 +151,11 @@ from dnd5e_engine.outcome import (
     LootDrop,
 )
 from dnd5e_engine.rest import FEATURE_USE_COUNTER_PREFIX, ITEM_USE_COUNTER_PREFIX
-from dnd5e_engine.rules.character import extra_attack_count, granted_feature_slugs
+from dnd5e_engine.rules.character import (
+    extra_attack_count,
+    leveled_feature_slugs,
+    styles_from_feats,
+)
 from dnd5e_engine.rules.conditions import (
     Condition,
     active_condition_names,
@@ -165,6 +170,7 @@ from dnd5e_engine.rules.conditions import (
     project_speed,
 )
 from dnd5e_engine.rules.dice import ability_modifier
+from dnd5e_engine.rules.uses import UsesRollData, evaluate_uses_formula
 from dnd5e_engine.spatial import GridTopology, SpatialTopology, parse_cell
 from dnd5e_engine.specs import (
     EncounterMemberSpec,
@@ -185,16 +191,12 @@ from dnd5e_engine.turn_lifecycle import (
     run_turn_end,
     run_turn_start,
 )
-from dnd5e_engine.types.combat import BehaviorProfile, Combatant, MonsterActionUses
+from dnd5e_engine.types.combat import BehaviorProfile, Combatant, MonsterActionUses, WornArmor
 from dnd5e_engine.types.conditions import ActiveCondition
 from dnd5e_engine.types.effects import ActiveEffect, ActiveEffectChange, ActiveEffectDuration
 from dnd5e_engine.views import LiveCombatView
 
 _LOGGER = logging.getLogger(__name__)
-
-if TYPE_CHECKING:
-    from dnd5e_srd_data.schema.class_ import Class, Subclass
-    from dnd5e_srd_data.schema.species import Species
 
 
 # ── Typed boundary-input models ─────────────────────────────────────────────
@@ -209,6 +211,10 @@ if TYPE_CHECKING:
 # ``PlayerIntent.reaction_trigger``'s own docstring already named as its
 # intended examples.
 ReactionTrigger = Literal["cast_spell", "hit_by_attack", "targeted_by_magic_missile"]
+
+# SRD 5.2 granted dice a creature spends on its own roll. One today: "That
+# creature gains one of your Bardic Inspiration dice."
+GrantedDie = Literal["feature_grant:bardic-inspiration"]
 
 
 class PlayerIntent(BaseModel):
@@ -247,6 +253,22 @@ class PlayerIntent(BaseModel):
     # Charges to spend on a variable-cost item invocation (wand upcast).
     # Validated by the use_item charge gate against consumption.scaling.
     charges_to_spend: int | None = Field(default=None, ge=1)
+    # SRD 5.2 Lay on Hands: "draw power from the pool of healing to restore a
+    # number of Hit Points to that creature, up to the maximum amount remaining
+    # in the pool." The points a ``use_feature`` draws from an activity whose
+    # own-pool cost scales by amount (Foundry ``consumption.scaling``): both its
+    # ``@scaling`` value and what it spends. Omitted → 1. Refused with
+    # ``CastFailed(reason="invalid_charge_spend")`` on an activity that doesn't
+    # scale by amount, or above the points left. Ignored by other intent types.
+    pool_points: int | None = Field(default=None, ge=1)
+    # SRD 5.2 Bardic Inspiration: "Once within the next hour when the creature
+    # fails a D20 Test, the creature can roll the Bardic Inspiration die and add
+    # the number rolled to the d20, potentially turning the failure into a
+    # success." On an ``attack``: roll the die the attacker holds if the attack
+    # roll misses — a hit or a natural 1 keeps it banked. No die to roll →
+    # ``AttackFailed(reason="no_granted_die")`` before anything is spent.
+    # Ignored by other intent types (saves and checks carry no such choice).
+    redeem_granted_die: GrantedDie | None = None
     # SRD §Reactions — the trigger condition a ``"ready"`` intent pre-arms
     # 's pending-reaction queue). Consumed by
     # ``_pop_pending_reaction`` / ``_drain_targeted_reactions`` when a
@@ -263,10 +285,15 @@ class PlayerIntent(BaseModel):
     # omitted for a directional template the orchestrator aims from the caster
     # through ``target_id``. Ignored for sphere / cylinder and non-AoE intents.
     direction: tuple[int, int] | None = None
-    # SRD §Combat — Dash budget choice. False → Action (default). True → Bonus
-    # Action (Rogue Cunning Action). The orchestrator rejects the bonus-action
-    # path when the actor is not a Rogue. Carried from
+    # SRD §Combat — Dash / Disengage budget choice. False → Action (default).
+    # True → Bonus Action: for ``dash`` and ``disengage`` only with Cunning
+    # Action among the granted features (SRD 5.2 Rogue 2), else
+    # ``IntentRejectedError("no_action_economy")``. Carried from
     # ``ParsedIntent.use_bonus_action``.
+    # On an Unarmed Strike ``attack`` by an attacker whose Martial Arts is
+    # active it asks for SRD 5.2's "Bonus Unarmed Strike. You can make an
+    # Unarmed Strike as a Bonus Action."; without Martial Arts it changes
+    # nothing there (an Attack-action swing).
     use_bonus_action: bool = False
     # SRD 5.2 Unarmed Strike — Shove: "you either push it 5 feet away or
     # cause it to have the Prone condition" — the shover's pre-declared
@@ -1123,6 +1150,14 @@ def _side_of(live: _LiveCombat, entity_id: str) -> set[str] | None:
     if entity_id in live.encounter_ids:
         return live.encounter_ids
     return None
+
+
+def _is_enemy(live: _LiveCombat, entity_id: str, other_id: str) -> bool:
+    """``other_id`` fights on the other side from ``entity_id``
+    (``live.party_ids`` / ``live.encounter_ids``)."""
+    side = _side_of(live, entity_id)
+    other_side = _side_of(live, other_id)
+    return side is not None and other_side is not None and other_side is not side
 
 
 def _target_help_advantage_map(
@@ -3039,6 +3074,12 @@ class _LiveCombat:
     # folding ``ActivityResolutionContext.mastery_procs`` post-resolution
     # (controller ruling R4).
     vex_grants: dict[str, dict[str, int]] = field(default_factory=dict)
+    # SRD 5.2 Rage — "Take a Bonus Action to extend your Rage." The barbarians
+    # who took that Bonus Action this turn. The ``engine:rage-extension`` hook
+    # reads and clears the mark at that barbarian's turn end; the other two
+    # extensions (an attack roll against an enemy, an enemy's saving throw)
+    # are read from ``event_log``.
+    rage_bonus_extensions: set[str] = field(default_factory=set)
     # SRD 5.2 §Weapon Mastery — Sap (C15 Task 6): *"If you hit a creature
     # with this weapon, that creature has Disadvantage on its next attack
     # roll before the start of your next turn."* Keyed SAPPED-entity
@@ -3455,18 +3496,31 @@ def _fold_condition_onto_combatant(
             live.initiative[idx] = slot.model_copy(update={"conditions": new})
             break
     _clamp_movement_budget(live, entity_id)
-    # SRD 5.2 Incapacitated — "No Concentration. Your Concentration is
-    # broken." Applies when the condition is Incapacitated directly or
-    # implies it (Paralyzed / Petrified / Stunned / Unconscious via
-    # CONDITION_IMPLIES). Keyed to the state TRANSITION (this is the
-    # first materialisation of the condition on the combatant), not a raw
-    # HP threshold — see the rule card's 0-HP edge note.
-    if is_condition_active(Condition.INCAPACITATED, [condition]):
-        _drop_concentration(live, entity_id)
-        # SRD 5.2 "Ending a Grapple" — "The condition also ends if the
-        # grappler has the Incapacitated condition." Release every victim
-        # this newly-incapacitated combatant is currently grappling.
-        _release_grapple_victims_of(live, entity_id)
+    _end_what_incapacitation_ends(live, entity_id, condition)
+
+
+def _end_what_incapacitation_ends(live: _LiveCombat, entity_id: str, condition: str) -> None:
+    """What ``condition`` ends as it first lands on ``entity_id``, when it is
+    Incapacitated or implies it (Paralyzed / Petrified / Stunned / Unconscious
+    via ``CONDITION_IMPLIES``).
+
+    Keyed to the condition's first materialisation on ``Combatant.conditions``,
+    not a raw HP threshold. Two folds write that store, and whichever writes
+    the condition first calls this, so it runs once however the condition
+    arrives: ``_emit_apply_effect_applied`` for an effect's status (Hold
+    Person's Paralyzed, whose ``ConditionApplied`` then finds the condition
+    already there) and ``_fold_condition_onto_combatant`` for a bare
+    ``ConditionApplied`` (0 HP's Unconscious).
+    """
+    if not is_condition_active(Condition.INCAPACITATED, [condition]):
+        return
+    # SRD 5.2 Incapacitated — "No Concentration. Your Concentration is broken."
+    _drop_concentration(live, entity_id)
+    # SRD 5.2 "Ending a Grapple" — "The condition also ends if the grappler has
+    # the Incapacitated condition." Release every victim this newly
+    # incapacitated combatant is grappling.
+    _release_grapple_victims_of(live, entity_id)
+    _end_rage_on_incapacitation(live, entity_id, condition)
 
 
 def _strip_condition_from_combatant(live: _LiveCombat, entity_id: str, condition: str) -> None:
@@ -3576,6 +3630,47 @@ def _drop_concentration(
             break
 
 
+# SRD 5.2 armor categories a creature can wear; a Shield is tracked
+# separately (``Combatant.shield_equipped``). Keyed off the dataset's
+# ``ArmorCategory`` so an unhandled category surfaces as a KeyError rather
+# than a silently-dropped armor slug.
+_BODY_ARMOR: Final[dict[ArmorCategory, WornArmor]] = {
+    ArmorCategory.LIGHT: "light",
+    ArmorCategory.MEDIUM: "medium",
+    ArmorCategory.HEAVY: "heavy",
+}
+_MARTIAL_ARTS: Final = "martial-arts"
+
+
+def _worn_armor(equipment: Sequence[str]) -> tuple[WornArmor | None, bool]:
+    """Body armor category and Shield among ``equipment``: armor and Shields a
+    host lists there are worn (the ``derive_sheet`` convention)."""
+    loader = get_lib_loader()
+    body: WornArmor | None = None
+    shield = False
+    for slug in equipment:
+        armor = loader.get_armor(slug)
+        if armor is None:
+            continue
+        if armor.armor_category == ArmorCategory.SHIELD:
+            shield = True
+        else:
+            body = _BODY_ARMOR[armor.armor_category]
+    return body, shield
+
+
+def _martial_arts_active(c: Combatant) -> bool:
+    """SRD 5.2 Martial Arts: "You gain the following benefits while you are
+    unarmed or wielding only Monk weapons and you aren't wearing armor or
+    wielding a Shield." The weapon half is checked per attack (``attack.py``);
+    what the other hand holds is not modelled."""
+    return (
+        c.worn_armor is None
+        and not c.shield_equipped
+        and _MARTIAL_ARTS in _granted_feature_slugs(c)
+    )
+
+
 # ── C14 Task 6 — Unarmed Strike: the Grapple option + escape ────────────────
 #
 # SRD 5.2 (Unarmed Strike, "Grapple"): "The target must succeed on a Strength
@@ -3597,8 +3692,13 @@ def _drop_concentration(
 def _unarmed_option_dc(attacker: Combatant) -> int:
     """SRD 5.2 Unarmed Strike — Grapple / Shove: "The DC ... equals 8 plus
     your Strength modifier and Proficiency Bonus." Shared by both options
-    (C14 Task 7 reuses this for Shove)."""
-    return 8 + ability_modifier(attacker.strength) + proficiency_bonus_of(attacker)
+    (C14 Task 7 reuses this for Shove). Martial Arts (Dexterous Attacks):
+    "you can use your Dexterity modifier instead of your Strength modifier
+    to determine the save DC"."""
+    ability_mod = ability_modifier(attacker.strength)
+    if _martial_arts_active(attacker):
+        ability_mod = max(ability_mod, ability_modifier(attacker.dexterity))
+    return 8 + ability_mod + proficiency_bonus_of(attacker)
 
 
 def _emit_grapple_condition_applied(
@@ -3742,7 +3842,7 @@ def _handle_grapple(live: _LiveCombat, attacker: Combatant, intent: PlayerIntent
     Grappled condition with the escape DC + source effect stored on the
     ``ActiveCondition`` (see ``_emit_grapple_condition_applied``). The
     Action is already spent (budget consumed by the caller); Grapple
-    resolves no other activities and always ends the turn."""
+    resolves no other activities and ends the turn (``_end_action``)."""
     assert intent.target_id is not None  # narrowed by the range gate above
     target_id = intent.target_id
     target = _find_combatant(live, target_id)
@@ -3761,7 +3861,7 @@ def _handle_grapple(live: _LiveCombat, attacker: Combatant, intent: PlayerIntent
         _emit_grapple_condition_applied(
             live, target_id, save_dc=save.dc, source_effect_id=effect_id
         )
-    _end_turn_and_advance(live, attacker.entity_id)
+    _end_action(live, attacker.entity_id, intent)
 
 
 # SRD 5.2 Unarmed Strike, "Shove": "The target must succeed on a Strength or
@@ -3788,7 +3888,7 @@ def _handle_shove(live: _LiveCombat, attacker: Combatant, intent: PlayerIntent) 
     own — a plain D20 Test). On failure: Prone (default) or a 5-ft forced
     push away from the shover, per ``intent.shove_push``. No damage either
     way. The Action is already spent (budget consumed by the caller); Shove
-    resolves no other activities and always ends the turn."""
+    resolves no other activities and ends the turn (``_end_action``)."""
     assert intent.target_id is not None  # narrowed by the range gate above
     target_id = intent.target_id
     target = _find_combatant(live, target_id)
@@ -3801,7 +3901,7 @@ def _handle_shove(live: _LiveCombat, attacker: Combatant, intent: PlayerIntent) 
             push_combatant(live, target_id, origin_cell=origin_cell, distance_ft=5)
         else:
             _emit(live, ConditionApplied(target_id=target_id, condition="prone"))
-    _end_turn_and_advance(live, attacker.entity_id)
+    _end_action(live, attacker.entity_id, intent)
 
 
 def _escape_grapple_actor_invalid(current: Combatant) -> bool:
@@ -3836,8 +3936,7 @@ def _handle_escape_grapple(live: _LiveCombat, current: Combatant, intent: Player
     ruling R3 picks Athletics vs Acrobatics by whichever check modifier is
     higher (tie -> Athletics/STR), via the same ``check_modifier`` primitive
     every other skill check on this seam uses. The Action is already spent
-    (budget consumed by the caller); escape always ends the turn."""
-    del intent  # escape_grapple carries no target/spell/item fields.
+    (budget consumed by the caller); escape ends the turn (``_end_action``)."""
     grappled_ac = next((ac for ac in current.conditions if ac.condition == "grappled"), None)
     assert grappled_ac is not None  # narrowed by the gate above
     assert grappled_ac.save_dc is not None  # every grapple emit stores one
@@ -3873,7 +3972,7 @@ def _handle_escape_grapple(live: _LiveCombat, current: Combatant, intent: Player
     if succeeded:
         _release_one_grapple_effect(live, current.entity_id, grappled_ac.source_effect_id)
         _emit(live, ConditionRemoved(target_id=current.entity_id, condition="grappled"))
-    _end_turn_and_advance(live, current.entity_id)
+    _end_action(live, current.entity_id, intent)
 
 
 def _dispatch_simple_turn_ending_intent(
@@ -3888,12 +3987,12 @@ def _dispatch_simple_turn_ending_intent(
     under the lint ceiling."""
     if intent.intent_type == "dodge":
         _set_dodging(live, actor_id)
-        _end_turn_and_advance(live, actor_id)
+        _end_action(live, actor_id, intent)
         return True
     if intent.intent_type == "help":
         assert intent.target_id is not None  # mypy: narrowed by the gate above
         live.help_grants.setdefault(intent.target_id, []).append(actor_id)
-        _end_turn_and_advance(live, actor_id)
+        _end_action(live, actor_id, intent)
         return True
     if intent.intent_type == "grapple":
         _handle_grapple(live, current, intent)
@@ -3907,33 +4006,58 @@ def _dispatch_simple_turn_ending_intent(
     return False
 
 
+_CUNNING_ACTION: Final = "cunning-action"
+
+
+def _require_cunning_action(current: Combatant, action: Literal["Dash", "Disengage"]) -> None:
+    """SRD 5.2 Cunning Action (Rogue 2): "On your turn, you can take one of the
+    following actions as a Bonus Action: Dash, Disengage, or Hide." Taking
+    ``action`` as a Bonus Action needs the feature among the granted ones —
+    each class at its own level, so neither a Rogue 1 nor a non-Rogue has it —
+    and an unspent Bonus Action; else ``IntentRejectedError("no_action_economy")``."""
+    actor_id = current.entity_id
+    if _CUNNING_ACTION not in _granted_feature_slugs(current):
+        raise IntentRejectedError(
+            "no_action_economy",
+            f"actor_id={actor_id!r} cannot {action} as a Bonus Action without Cunning Action",
+        )
+    if not current.bonus_action_available:
+        raise IntentRejectedError(
+            "no_action_economy",
+            f"actor_id={actor_id!r} has no Bonus Action remaining for Cunning Action {action}",
+        )
+
+
+def _disengage_as_bonus_action(live: _LiveCombat, current: Combatant) -> None:
+    """Cunning Action's Disengage: the Bonus Action instead of the Action, with
+    the same effect — movement provokes no Opportunity Attacks for the rest of
+    the turn."""
+    _require_cunning_action(current, "Disengage")
+    _update_combatant(
+        live, current.entity_id, bonus_action_available=False, disengaging_this_turn=True
+    )
+    _emit(live, IntentSubmitted(actor_id=current.entity_id, intent_type="disengage"))
+
+
 def _handle_dash(live: _LiveCombat, current: Combatant, intent: PlayerIntent) -> None:
     """SRD §Combat — Dash: double the actor's movement budget for this turn.
 
     Adds ``base_speed`` to ``movement_remaining`` and consumes either the
-    Action (default) or the Bonus Action (Rogue Cunning Action when
+    Action (default; the Action path pays with the base Action, else an
+    Action Surge extra action) or the Bonus Action (Cunning Action, when
     ``intent.use_bonus_action`` is True). Dash does NOT advance the turn.
 
     Rejections raise ``IntentRejectedError("no_action_economy")``:
-      * ``use_bonus_action=True`` while ``class_slug != "rogue"``
+      * ``use_bonus_action=True`` without Cunning Action among the granted
+        features (``_require_cunning_action``)
       * the chosen budget slot is already spent
     """
     actor_id = current.entity_id
     budget_consumed: Literal["action", "bonus_action"]
     if intent.use_bonus_action:
-        if current.class_slug != "rogue":
-            raise IntentRejectedError(
-                "no_action_economy",
-                f"actor_id={actor_id!r} cannot Dash as a Bonus Action "
-                f"(class_slug={current.class_slug!r}, requires 'rogue')",
-            )
-        if not current.bonus_action_available:
-            raise IntentRejectedError(
-                "no_action_economy",
-                f"actor_id={actor_id!r} has no Bonus Action remaining for Cunning Action Dash",
-            )
+        _require_cunning_action(current, "Dash")
         budget_consumed = "bonus_action"
-    elif not current.action_available:
+    elif not (current.action_available or _extra_action_funds(current, "dash")):
         raise IntentRejectedError(
             "no_action_economy",
             f"actor_id={actor_id!r} has no Action remaining for Dash",
@@ -3943,13 +4067,15 @@ def _handle_dash(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
 
     # SRD 5.2 Dash adds the creature's (current) Speed; a Speed of 0 "can't increase".
     new_movement = current.movement_remaining + _effective_speed(current, live)
-    budget_field = (
-        "bonus_action_available" if budget_consumed == "bonus_action" else "action_available"
+    payment: dict[str, Any] = (
+        {"bonus_action_available": False}
+        if budget_consumed == "bonus_action"
+        else _action_payment(current, "dash")
     )
     for idx, c in enumerate(live.initiative):
         if c.entity_id == actor_id:
             live.initiative[idx] = c.model_copy(
-                update={budget_field: False, "movement_remaining": new_movement}
+                update={**payment, "movement_remaining": new_movement}
             )
             break
     _emit(
@@ -4173,26 +4299,29 @@ def _handle_disengage(live: _LiveCombat, current: Combatant, intent: PlayerInten
     """SRD §Actions in Combat, Disengage — *"Your movement doesn't provoke
     Opportunity Attacks for the rest of the turn."*
 
-    Consumes the Action (Disengage IS the Action — distinct from Dash's
-    Action/Bonus-Action dual economy) and sets ``disengaging_this_turn`` so
-    the monster-reactor opportunity-attack scan
+    Consumes the Action — or, with ``intent.use_bonus_action``, the Bonus
+    Action through Cunning Action (``_disengage_as_bonus_action``) — and sets
+    ``disengaging_this_turn`` so the monster-reactor opportunity-attack scan
     (``_fire_monster_opportunity_attacks_on_move``) suppresses AoOs for the
     rest of the turn. Does NOT advance the turn (mirrors Dash) so a
     same-turn Disengage→Move sequence works. Rejects with
-    ``IntentRejectedError("no_action_economy")`` when the Action is already
-    spent.
+    ``IntentRejectedError("no_action_economy")`` when neither the Action nor
+    an Action Surge extra action is left, or when the Bonus Action is asked
+    for without Cunning Action.
     """
+    if intent.use_bonus_action:
+        _disengage_as_bonus_action(live, current)
+        return
     actor_id = current.entity_id
-    if not current.action_available:
+    payment = _action_payment(current, "disengage")
+    if not payment:
         raise IntentRejectedError(
             "no_action_economy",
             f"actor_id={actor_id!r} has no Action remaining for Disengage",
         )
     for idx, c in enumerate(live.initiative):
         if c.entity_id == actor_id:
-            live.initiative[idx] = c.model_copy(
-                update={"action_available": False, "disengaging_this_turn": True}
-            )
+            live.initiative[idx] = c.model_copy(update={**payment, "disengaging_this_turn": True})
             break
     _emit(live, IntentSubmitted(actor_id=actor_id, intent_type="disengage"))
 
@@ -4504,6 +4633,13 @@ def _emit_apply_turn_started(live: _LiveCombat, event: TurnStarted) -> None:
                     # the cap resets at the actor's own TurnStarted (C15
                     # Task 7).
                     "cleave_spent_this_turn": False,
+                    # SRD 5.2 Flurry of Blows — strikes still owed lapse at
+                    # the actor's own turn start.
+                    "flurry_strikes_remaining": 0,
+                    # SRD 5.2 Action Surge — an unspent additional action and
+                    # the once-per-turn mark lapse at the actor's turn start.
+                    "extra_actions_remaining": 0,
+                    "action_surge_used_this_turn": False,
                 }
             )
             break
@@ -4853,10 +4989,10 @@ def _emit_apply_effect_applied(live: _LiveCombat, event: EffectApplied) -> None:
     # list so passive projections (advantage/disadvantage on attack,
     # save, etc.) observe the new state immediately.
     target_combatant = _find_combatant(live, applied.target_id)
+    added: list[str] = []
     if target_combatant is not None and applied.statuses:
         existing_slugs = {ac.condition for ac in target_combatant.conditions}
         new_conditions = list(target_combatant.conditions)
-        dirty = False
         for status in applied.statuses:
             if status in existing_slugs:
                 continue
@@ -4891,8 +5027,8 @@ def _emit_apply_effect_applied(live: _LiveCombat, event: EffectApplied) -> None:
                     source_effect_id=applied.id,
                 )
             )
-            dirty = True
-        if dirty:
+            added.append(status)
+        if added:
             for idx, c in enumerate(live.initiative):
                 if c.entity_id == applied.target_id:
                     live.initiative[idx] = c.model_copy(update={"conditions": new_conditions})
@@ -4907,6 +5043,12 @@ def _emit_apply_effect_applied(live: _LiveCombat, event: EffectApplied) -> None:
     if is_concentration and applied.target_id in live.party_ids:
         bucket = live.expended_resources.setdefault(applied.target_id, {})
         bucket[applied.name] = bucket.get(applied.name, 0) + 1
+    # This fold, not the ``ConditionApplied`` that follows, first writes an
+    # effect's status onto the combatant, so this is where an Incapacitated
+    # status ends concentration, grapples and Rage. The effect is fully folded
+    # first.
+    for status in added:
+        _end_what_incapacitation_ends(live, applied.target_id, status)
 
 
 def _emit_apply_effect_expired(live: _LiveCombat, event: EffectExpired) -> None:
@@ -6183,6 +6325,86 @@ def _hook_expire_vex_grants(live: _LiveCombat, actor_id: str | None) -> None:
         del live.vex_grants[actor_id]
 
 
+_RAGE_FEATURE: Final = "rage"
+_PERSISTENT_RAGE_FEATURE: Final = "persistent-rage"
+# The id ``passive_effect_to_active_effect`` gives the corpus effect named
+# "Rage"; a Rage a host seeds through ``start_combat`` carries it too.
+_RAGE_EFFECT_ID: Final = "effect:rage"
+
+
+def _rage_effect(live: _LiveCombat, entity_id: str) -> ActiveEffect | None:
+    """``entity_id``'s live Rage, or ``None`` when it isn't raging."""
+    return _live_effect(live, entity_id, _RAGE_EFFECT_ID)
+
+
+def _end_rage(live: _LiveCombat, entity_id: str, reason: EffectExpiryReason) -> None:
+    """End ``entity_id``'s Rage, if it has one."""
+    rage = _rage_effect(live, entity_id)
+    if rage is not None:
+        _emit(
+            live,
+            EffectExpired(
+                effect_id=rage.id, target_id=entity_id, origin=rage.origin, reason=reason
+            ),
+        )
+
+
+def _has_persistent_rage(live: _LiveCombat, entity_id: str) -> bool:
+    """SRD 5.2 Persistent Rage (Barbarian 15): "your Rage is so fierce that it
+    now lasts for 10 minutes without you needing to do anything to extend it
+    from round to round." """
+    c = _find_combatant(live, entity_id)
+    return c is not None and _PERSISTENT_RAGE_FEATURE in _granted_feature_slugs(c)
+
+
+def _end_rage_on_incapacitation(live: _LiveCombat, entity_id: str, condition: str) -> None:
+    """SRD 5.2 Rage: "it ends early if you don Heavy armor or have the
+    Incapacitated condition." ``condition`` is Incapacitated or implies it.
+    Persistent Rage: "Your Rage ends early if you have the Unconscious
+    condition (not just the Incapacitated condition)"."""
+    if _rage_effect(live, entity_id) is None:
+        return
+    unconscious = is_condition_active(Condition.UNCONSCIOUS, [condition])
+    if not unconscious and _has_persistent_rage(live, entity_id):
+        return
+    _end_rage(live, entity_id, "incapacitated")
+
+
+def _extends_rage(live: _LiveCombat, actor_id: str, event: CombatEvent) -> bool:
+    """One of SRD 5.2 Rage's roll extensions: "Make an attack roll against an
+    enemy. Force an enemy to make a saving throw." ``SaveRolled`` names no
+    source, so an enemy's save rolled during the barbarian's own turn counts as
+    one it forced."""
+    if isinstance(event, AttackRolled):
+        return event.attacker_id == actor_id and _is_enemy(live, actor_id, event.target_id)
+    return isinstance(event, SaveRolled) and _is_enemy(live, actor_id, event.target_id)
+
+
+def _hook_rage_extension(live: _LiveCombat, actor_id: str | None) -> None:
+    """``turn_end`` hook — SRD 5.2 Rage: "The Rage lasts until the end of your
+    next turn ... Each time the Rage is extended, it lasts until the end of
+    your next turn." At the barbarian's own turn end its Rage survives when
+    this turn entered it or extended it — the Bonus Action, or a roll
+    ``_extends_rage`` accepts — and otherwise ends with
+    ``reason="not_extended"``. A Rage seeded through ``start_combat`` wasn't
+    entered this turn, so its first turn must extend it. A Persistent Rage
+    (Barbarian 15) needs no extension (``_has_persistent_rage``). No RNG."""
+    if actor_id is None:
+        return
+    extended_by_bonus_action = actor_id in live.rage_bonus_extensions
+    live.rage_bonus_extensions.discard(actor_id)
+    rage = _rage_effect(live, actor_id)
+    if (
+        rage is None
+        or extended_by_bonus_action
+        or _effect_applied_during_current_turn(live, actor_id, (actor_id, rage.id, rage.origin))
+        or any(_extends_rage(live, actor_id, ev) for ev in _current_turn_events(live, actor_id))
+        or _has_persistent_rage(live, actor_id)
+    ):
+        return
+    _end_rage(live, actor_id, "not_extended")
+
+
 def _register_default_turn_hooks(live: _LiveCombat) -> None:
     """Register the engine's built-in turn-boundary hooks on ``live``.
 
@@ -6198,6 +6420,10 @@ def _register_default_turn_hooks(live: _LiveCombat) -> None:
     hooks, after ``engine:timed-effect-expiry``, so a same-boundary repeat save
     (``engine:repeat-save``, registered first) still rolls against a live
     effect before the concentration cap can cascade its drop.
+    ``engine:rage-extension`` (C20) is appended LAST among the ``turn_end``
+    hooks: it reads only the ending turn's own events and Bonus-Action mark,
+    and it runs after the ``rounds`` tick, so the corpus Rage's ``rounds: 10``
+    stays the outer cap.
     ``engine:repeat-save`` is registered FIRST among the ``turn_end`` hooks: the
     SRD repeat save (Hold Person / Hold Monster / Dominate Person) must resolve
     while its source effect is still live, so it runs before
@@ -6223,6 +6449,7 @@ def _register_default_turn_hooks(live: _LiveCombat) -> None:
         "turn_end", _hook_concentration_expiry, key="engine:concentration-expiry"
     )
     live.lifecycle.register("turn_end", _hook_expire_vex_grants, key="engine:vex-expiry")
+    live.lifecycle.register("turn_end", _hook_rage_extension, key="engine:rage-extension")
     live.lifecycle.register(
         "turn_start", _hook_expire_reaction_effects, key="engine:reaction-effect-expiry"
     )
@@ -6354,6 +6581,16 @@ def _duration_tick_matches_actor(*, origin: str, target_id: str, actor_id: str) 
     return target_id == actor_id
 
 
+def _current_turn_events(live: _LiveCombat, actor_id: str) -> list[CombatEvent]:
+    """The events since ``actor_id``'s most recent ``TurnStarted`` — from a
+    ``turn_end`` hook, the turn now ending. Empty before its first turn."""
+    for i in range(len(live.event_log) - 1, -1, -1):
+        ev = live.event_log[i]
+        if isinstance(ev, TurnStarted) and ev.actor_id == actor_id:
+            return live.event_log[i + 1 :]
+    return []
+
+
 def _effect_applied_during_current_turn(
     live: _LiveCombat, actor_id: str, identity: tuple[str, str, str]
 ) -> bool:
@@ -6369,20 +6606,12 @@ def _effect_applied_during_current_turn(
     read as "not applied this turn", which is the right answer for them.
     """
     target_id, effect_id, origin = identity
-    last_start = -1
-    for i in range(len(live.event_log) - 1, -1, -1):
-        ev = live.event_log[i]
-        if isinstance(ev, TurnStarted) and ev.actor_id == actor_id:
-            last_start = i
-            break
-    if last_start < 0:
-        return False
     return any(
         isinstance(ev, EffectApplied)
         and ev.effect.target_id == target_id
         and ev.effect.id == effect_id
         and ev.effect.origin == origin
-        for ev in live.event_log[last_start + 1 :]
+        for ev in _current_turn_events(live, actor_id)
     )
 
 
@@ -6647,18 +6876,19 @@ def _pc_condition_immunities(pc: PartyMemberSpec) -> list[str]:
     the walk-speed bonus).
     """
     immunities = list(pc.condition_immunities)
-    if not (pc.class_slug or pc.subclass_slug or pc.species_slug):
+    classes = _class_levels(pc)
+    if not (classes or pc.subclass_slug or pc.species_slug):
         return immunities
     loader = get_lib_loader()
-    sources: list[Class | Subclass | Species | None] = []
-    if pc.class_slug:
-        sources.append(loader.get_class(pc.class_slug))
-    if pc.subclass_slug:
-        sources.append(loader.get_subclass(pc.subclass_slug))
-    if pc.species_slug:
-        sources.append(loader.get_species(pc.species_slug))
+    owners = feature_owners(
+        classes=classes,
+        subclass_slug=pc.subclass_slug,
+        species_slug=pc.species_slug,
+        level=pc.character_level,
+        loader=loader,
+    )
     changes: list[Any] = []
-    for slug in granted_feature_slugs(sources, level=pc.character_level):
+    for slug in leveled_feature_slugs([(doc, level) for _, doc, level in owners]):
         feature = loader.get_feature(slug)
         if feature is None:
             continue
@@ -6713,6 +6943,7 @@ def _build_pc_combatants(
     ``None``.
     """
     for pc in party:
+        worn_armor, shield_equipped = _worn_armor(pc.equipment)
         combatants.append(
             Combatant(
                 entity_id=pc.entity_id,
@@ -6748,6 +6979,10 @@ def _build_pc_combatants(
                 movement_modes=pc.movement_modes,
                 melee_reach_ft=pc.reach_ft,
                 class_slug=pc.class_slug,
+                classes=dict(pc.classes),
+                fighting_styles=styles_from_feats(pc.feats, pc.fighting_style),
+                worn_armor=worn_armor,
+                shield_equipped=shield_equipped,
                 subclass_slug=pc.subclass_slug,
                 species_slug=pc.species_slug,
                 save_proficiencies=list(pc.save_proficiencies),
@@ -7282,33 +7517,67 @@ def _attack_action_is_spent(current: Combatant) -> bool:
     this Action, the actor gets exactly one attack per Action (multi-attack
     actors always keep the turn until their budget is exhausted), and no
     Light off-hand window is open (Bonus-Action-funded OR Nick — C15
-    Task 7, ``_offhand_window_open``)."""
+    Task 7, ``_offhand_window_open``). Flurry of Blows strikes still owed
+    keep the turn open the same way: the Focus Point and the Bonus Action
+    already paid for them."""
     return (
         current.attacks_remaining <= 0
         and _attacks_per_action(current) == 1
         and not _offhand_window_open(current)
+        and current.flurry_strikes_remaining <= 0
+    )
+
+
+def _class_levels(c: Combatant | PartyMemberSpec) -> dict[str, int]:
+    """Per-class levels: the host's ``classes`` map, else the one class at the
+    total character level (every host before 0.6)."""
+    if c.classes:
+        return dict(c.classes)
+    return {c.class_slug: c.character_level} if c.class_slug else {}
+
+
+def _scale_values_of(c: Combatant) -> dict[str, int | str]:
+    """``c``'s ``@scale.*`` values: each class and its subclass at that class's
+    level, the species at the character level (``build_scale_values``)."""
+    return build_scale_values(
+        class_slug=c.class_slug,
+        subclass_slug=c.subclass_slug,
+        species_slug=c.species_slug,
+        level=c.character_level,
+        loader=get_lib_loader(),
+        classes=_class_levels(c),
     )
 
 
 def _granted_feature_slugs(caster: Combatant) -> frozenset[str]:
-    """Feature slugs the caster's class (+ subclass) + species grants at/below its level.
+    """Feature slugs the caster's class(es) (+ subclass) + species grants at/below
+    each source's own level.
 
     The USE_FEATURE repertoire gate: a PC may only invoke a feature its
     class, subclass, or species ``granted_features`` list grants at a level no
-    higher than the caster's. The parser prompt routes both class AND species
-    features through USE_FEATURE, so the gate must accept either source.
-    Monsters / casters with no ``class_slug`` and no ``species_slug`` grant
-    nothing (empty set ⇒ every USE_FEATURE rejected, the correct default).
+    higher than that source's own level — each class at its own level, the
+    subclass at its class's level, the species at character level. The parser
+    prompt routes both class AND species features through USE_FEATURE, so the
+    gate must accept either source. Monsters / casters with no classes and no
+    ``species_slug`` grant nothing (empty set ⇒ every USE_FEATURE rejected,
+    the correct default).
     """
-    loader = get_lib_loader()
-    sources: list[Class | Subclass | Species | None] = []
-    if caster.class_slug:
-        sources.append(loader.get_class(caster.class_slug))
-    if caster.subclass_slug:
-        sources.append(loader.get_subclass(caster.subclass_slug))
-    if caster.species_slug:
-        sources.append(loader.get_species(caster.species_slug))
-    return frozenset(granted_feature_slugs(sources, level=caster.character_level))
+    owners = feature_owners(
+        classes=_class_levels(caster),
+        subclass_slug=caster.subclass_slug,
+        species_slug=caster.species_slug,
+        level=caster.character_level,
+        loader=get_lib_loader(),
+    )
+    return frozenset(leveled_feature_slugs([(doc, level) for _, doc, level in owners]))
+
+
+# The kinds of a ``special``-activation activity that costs nothing: it only
+# marks or grants (Action Surge's extra action, Sacred Weapon's enchantment).
+# Brutal Strike's ``special`` damage rides a Reckless Attack hit; invoked on its
+# own it has no attack to ride, so it keeps the Action a feature use costs
+# rather than dealing its 1d10 for free, again and again.
+_FREE_SPECIAL_ACTIVITY_KINDS: Final[frozenset[str]] = frozenset({"utility", "enchant"})
 
 
 @dataclass(frozen=True)
@@ -7326,36 +7595,44 @@ class _FeatureInvocation:
     activities: list[Any]
     passive_effects: list[Any]
     is_bonus_action: bool
+    # SRD 5.2 — an activity used as part of something else
+    # (``activation.type == "special"``) that resolves nothing by itself
+    # (``_FREE_SPECIAL_ACTIVITY_KINDS``: Action Surge, Sacred Weapon) takes no
+    # Action, Bonus Action or Reaction and keeps the turn.
+    is_free_action: bool = False
+    # SRD 5.2 Rage — a ``rage`` invocation by a creature already raging is the
+    # Bonus-Action extension, not a new Rage: it applies nothing
+    # (``_resolve_intent_activities``) and spends no use (``use_cost`` 0).
+    extends_rage: bool = False
     # SRD 5.2 §Limited-Use Features — the per-rest use cap resolved
     # from the feature's typed ``uses`` block (a literal or a ``@scale.*`` max
     # resolved against the caster's ScaleValue map), or ``None`` when the feature
     # is uncapped: no ``uses`` block, empty ``max``, or a symbolic ``max`` that
     # cannot be resolved. See ``_feature_use_cap``.
     use_cap: int | None = None
+    # Uses this invocation spends — ``_feature_activity_cost``.
+    use_cost: int = 1
+    # ``@scaling`` for this invocation: the pool points drawn, when the
+    # activity scales by amount.
+    scaling_value: int | None = None
 
 
-def _feature_use_cap(feature: Any, scale_values: Mapping[str, int | str]) -> int | None:
+def _uses_roll_data(caster: Combatant, scale_values: Mapping[str, int | str]) -> UsesRollData:
+    """The caster's numbers for a ``uses.max`` formula."""
+    return UsesRollData(
+        proficiency_bonus=proficiency_bonus_of(caster),
+        ability_modifiers={code: ability_modifier_of(caster, code) for code in ABILITY_CODES},
+        class_levels=_class_levels(caster),
+        scale_values=scale_values,
+    )
+
+
+def _feature_use_cap(feature: Any, roll_data: UsesRollData) -> int | None:
     """Resolve a feature's per-rest use cap from its typed ``uses`` block.
 
-    Returns ``None`` — meaning UNCAPPED, never gated — for a feature with no
-    ``uses`` block, an empty ``uses.max``, or a ``max`` this cannot resolve. The
-    resolvable cases:
-
-    * a literal integer ``max`` (``"1"``, ``"3"``) is honoured exactly;
-    * a Foundry ``@scale.<owner>.<key>`` roll-data token is resolved against
-      ``scale_values`` — the SAME per-caster ScaleValue map the orchestrator
-      already builds for activity resolution (``build_scale_values``). Second
-      Wind's ``@scale.fighter.second-wind`` resolves to 3 at Fighter level 5,
-      per the class scale table ``{1: 2, 4: 3, 10: 4}``.
-
-    Any OTHER symbolic ``max`` — ``@prof``, ``max(1, @abilities.cha.mod)``,
-    ``5 * @classes.paladin.levels`` — is NOT resolved here (it would need the
-    caster's proficiency bonus / ability modifiers threaded through, and no
-    scenario exercises it). Rather than guess or wrongly floor such a feature to
-    a single use per rest (which would REGRESS the pre-Cluster-9 behaviour, where
-    every feature was uncapped), it falls back to ``None`` / uncapped — a capped
-    resource is never wrongly rejected. Lifting that residual (non-``@scale``
-    symbolic maxes) is a recorded follow-up (see BACKLOG "Rest & recovery").
+    ``None`` — UNCAPPED, never gated — for no ``uses`` block, an empty
+    ``uses.max``, a formula ``rules.uses.evaluate_uses_formula`` can't
+    evaluate, or a result below 1 (no SRD feature has zero uses).
     """
     uses = getattr(feature, "uses", None)
     if uses is None:
@@ -7363,23 +7640,8 @@ def _feature_use_cap(feature: Any, scale_values: Mapping[str, int | str]) -> int
     max_raw = str(getattr(uses, "max", "") or "").strip()
     if not max_raw:
         return None
-    try:
-        parsed = int(max_raw)
-    except ValueError:
-        parsed = None
-    if parsed is not None:
-        # A literal max of "0" (or negative) maps to UNCAPPED today. No corpus
-        # feature carries max="0", and "0 uses" arguably means UNUSABLE rather
-        # than unlimited — revisit if such data ever appears.
-        return parsed if parsed > 0 else None
-    if max_raw.startswith("@scale."):
-        resolved = scale_values.get(max_raw[len("@scale.") :])
-        if isinstance(resolved, int) and resolved > 0:
-            return resolved
-    # Unresolvable symbolic max (``@prof``, ``max(1, ...)``, an absent @scale
-    # owner/key): fall back to UNCAPPED rather than wrongly gating (pre-C09
-    # behaviour). See BACKLOG.
-    return None
+    cap = evaluate_uses_formula(max_raw, roll_data)
+    return cap if cap is not None and cap > 0 else None
 
 
 def _feature_use_counter_key(feature_id: str) -> str:
@@ -7396,11 +7658,24 @@ def _feature_use_spent(live: _LiveCombat, entity_id: str, feature_id: str) -> in
     )
 
 
-def _increment_feature_use(live: _LiveCombat, entity_id: str, feature_id: str) -> None:
-    """Record one spent use of ``feature_id`` on the caster's sidecar counter."""
+def _increment_feature_use(
+    live: _LiveCombat, entity_id: str, feature_id: str, amount: int = 1
+) -> None:
+    """Record ``amount`` spent uses of ``feature_id`` on the caster's sidecar counter."""
     counters = live.custom_counters_by_entity.setdefault(entity_id, {})
     counter = counters.setdefault(_feature_use_counter_key(feature_id), {"spent": 0})
-    counter["spent"] = counter.get("spent", 0) + 1
+    counter["spent"] = counter.get("spent", 0) + amount
+
+
+def _feature_spend_fits_cap(
+    live: _LiveCombat, actor_id: str, feature_id: str, *, cap: int | None, cost: int
+) -> bool:
+    """True when spending ``cost`` more uses stays within ``cap`` — the one
+    comparison ``_feature_uses_exhausted`` and ``_feature_pool_request_failure``
+    both gate on, kept in a single place so it can't drift between them. An
+    uncapped feature (``cap is None``) always fits.
+    """
+    return cap is None or _feature_use_spent(live, actor_id, feature_id) + cost <= cap
 
 
 def _feature_uses_exhausted(
@@ -7416,8 +7691,10 @@ def _feature_uses_exhausted(
     reject shape, extended from a per-turn budget to a per-rest one. Uncapped
     features (``use_cap is None``) never gate.
     """
-    cap = feature_invocation.use_cap
-    if cap is None or _feature_use_spent(live, actor_id, feature_id) < cap:
+    cost = feature_invocation.use_cost
+    if cost == 0 or _feature_spend_fits_cap(
+        live, actor_id, feature_id, cap=feature_invocation.use_cap, cost=cost
+    ):
         return False
     _emit(live, CastFailed(actor_id=actor_id, spell_id="", reason="no_uses_remaining"))
     return True
@@ -7432,15 +7709,27 @@ def _record_capped_feature_use(
     """Increment the per-rest use counter for a committed capped-feature invocation.
 
     No-op for a non-feature intent (``feature_id`` / ``feature_invocation`` is
-    ``None``) or an uncapped feature (``use_cap is None``) — only a within-cap
-    invocation reaches here past the early exhaustion gate.
+    ``None``), an uncapped feature (``use_cap is None``), or a free activity
+    (``use_cost == 0`` — Patient Defense's Disengage-only option) — only a
+    within-cap, cost-bearing invocation reaches here past the early exhaustion
+    gate.
     """
     if (
         feature_id is not None
         and feature_invocation is not None
         and feature_invocation.use_cap is not None
+        and feature_invocation.use_cost > 0
     ):
-        _increment_feature_use(live, actor_id, feature_id)
+        _increment_feature_use(live, actor_id, feature_id, feature_invocation.use_cost)
+
+
+def _record_rage_extension(
+    live: _LiveCombat, actor_id: str, feature_invocation: _FeatureInvocation | None
+) -> None:
+    """Mark a committed Bonus-Action Rage extension for this turn's
+    ``engine:rage-extension`` hook; a no-op for every other intent."""
+    if feature_invocation is not None and feature_invocation.extends_rage:
+        live.rage_bonus_extensions.add(actor_id)
 
 
 def _item_use_counter_key(item_id: str) -> str:
@@ -7467,6 +7756,90 @@ def _activity_item_use_cost(item_slug: str, activity: Any) -> int:
         if value > 0:
             cost += value
     return cost
+
+
+def _own_pool_targets(activity: Any) -> list[Any]:
+    """The activity's ``itemUses`` consumption targets on its OWN feature's pool
+    (an empty ``target``); a target naming another feature (Stunning Strike →
+    Monk's Focus) spends a different pool."""
+    return [t for t in activity.consumption.targets if t.type == "itemUses" and not t.target]
+
+
+def _literal_int(value: str) -> int | None:
+    try:
+        return int(str(value).strip())
+    except ValueError:
+        return None
+
+
+def _feature_activity_cost(
+    activities: Sequence[Any], activity: Any, *, scaling_value: int | None
+) -> int:
+    """Uses one invocation of ``activity`` spends from its feature's pool.
+
+    Foundry ``consumption.targets``: each literal ``itemUses`` value on the
+    feature's own pool, plus one per step above the first when the target
+    scales by amount (Lay on Hands' Heal spends the points it draws). An
+    activity declaring no own-pool cost is free when a sibling activity does
+    declare one — SRD 5.2 Patient Defense: "You can take the Disengage action as
+    a Bonus Action. Alternatively, you can expend 1 Focus Point…" — and
+    otherwise spends one use: a lone activity with no declared cost
+    (Indomitable) is Foundry leaving the decrement to the player, and the SRD
+    still limits the feature. A formula cost the engine can't evaluate (Font of
+    Magic's slot conversion) spends one use.
+    """
+    own = _own_pool_targets(activity)
+    if not own:
+        declared_elsewhere = any(_own_pool_targets(a) for a in activities if a is not activity)
+        return 0 if declared_elsewhere else 1
+    cost = 0
+    for target in own:
+        value = _literal_int(target.value)
+        if value is None:
+            _LOGGER.info(
+                "feature_use_cost_symbolic activity_id=%s value=%r", activity.id, target.value
+            )
+            return 1
+        if value <= 0:
+            continue
+        steps = scaling_value - 1 if scaling_value and target.scaling.mode == "amount" else 0
+        cost += value + steps
+    return cost
+
+
+def _scales_by_amount(activity: Any) -> bool:
+    """True when the caster chooses how many own-pool uses to spend (Foundry
+    ``consumption.scaling`` with an ``amount`` target) — Lay on Hands' Heal,
+    whose ``@scaling`` is the points drawn."""
+    return bool(activity.consumption.scaling.allowed) and any(
+        target.scaling.mode == "amount" and _literal_int(target.value) is not None
+        for target in _own_pool_targets(activity)
+    )
+
+
+def _feature_pool_request_failure(
+    live: _LiveCombat,
+    actor_id: str,
+    intent: PlayerIntent,
+    feature_invocation: _FeatureInvocation,
+) -> bool:
+    """True (after emitting ``CastFailed(reason="invalid_charge_spend")``) when
+    ``pool_points`` names an activity that doesn't scale by amount, or asks for
+    more than the pool has left — SRD 5.2 Lay on Hands: "up to the maximum
+    amount remaining in the pool"."""
+    if intent.pool_points is None or intent.feature_id is None:
+        return False
+    fits = _feature_spend_fits_cap(
+        live,
+        actor_id,
+        intent.feature_id,
+        cap=feature_invocation.use_cap,
+        cost=feature_invocation.use_cost,
+    )
+    if feature_invocation.scaling_value is not None and fits:
+        return False
+    _emit(live, CastFailed(actor_id=actor_id, spell_id="", reason="invalid_charge_spend"))
+    return True
 
 
 def _item_charge_activity(item: Any, activity_id: str | None) -> Any | None:
@@ -7663,7 +8036,10 @@ def _gate_feature_and_item_uses(
     if (
         intent.feature_id
         and feature_invocation is not None
-        and _feature_uses_exhausted(live, actor_id, intent.feature_id, feature_invocation)
+        and (
+            _feature_pool_request_failure(live, actor_id, intent, feature_invocation)
+            or _feature_uses_exhausted(live, actor_id, intent.feature_id, feature_invocation)
+        )
     ):
         return True
     return _item_charge_gate(live, actor_id, intent)
@@ -7692,7 +8068,12 @@ def _record_item_charge_spend(live: _LiveCombat, actor_id: str, intent: PlayerIn
 
 
 def _resolve_feature_invocation(
-    caster: Combatant, feature_id: str, activity_id: str | None = None
+    caster: Combatant,
+    feature_id: str,
+    activity_id: str | None = None,
+    *,
+    pool_points: int | None = None,
+    raging: bool = False,
 ) -> _FeatureInvocation | None:
     """Resolve a USE_FEATURE intent to its single concrete activity, or ``None``.
 
@@ -7709,7 +8090,8 @@ def _resolve_feature_invocation(
 
     Rage / Second Wind activate as a Bonus Action (``activation.type ==
     "bonus"``); that does NOT end the turn, so the actor may rage then swing on
-    the same turn.
+    the same turn. ``raging``: the caster already has a live Rage (see
+    ``_FeatureInvocation.extends_rage``).
     """
     if feature_id not in _granted_feature_slugs(caster):
         _LOGGER.warning(
@@ -7723,44 +8105,142 @@ def _resolve_feature_invocation(
         )
         return None
     feature = get_lib_loader().get_feature(feature_id)
-    feature_activities = list(feature.activities) if feature else []
-    if not feature_activities:
+    all_activities = list(feature.activities) if feature else []
+    if not all_activities:
         _LOGGER.warning("class_feature_no_typed_activities feature_id=%s", feature_id)
         return None
-    if len(feature_activities) > 1:
+    selected = all_activities[0]
+    if len(all_activities) > 1:
         # Repertoire of ALTERNATIVES — resolve the caller-selected activity, or
         # defer with a loud, tracked no-op when no valid selection is supplied
         # (firing all of them is wrong; guessing one is worse).
-        selected = next((a for a in feature_activities if a.id == activity_id), None)
-        if selected is None:
+        chosen = next((a for a in all_activities if a.id == activity_id), None)
+        if chosen is None:
             _LOGGER.warning(
                 "feature_multi_activity_selection_deferred feature_id=%s count=%d activity_id=%s",
                 feature_id,
-                len(feature_activities),
+                len(all_activities),
                 activity_id,
             )
             return None
-        feature_activities = [selected]
-    is_bonus = getattr(feature_activities[0].activation, "type", None) == "bonus"
-    # Resolve the per-rest use cap against the caster's real ScaleValue map — the
-    # same ``build_scale_values`` machinery activity resolution uses — so a
-    # ``@scale.*`` max (Second Wind's ``@scale.fighter.second-wind`` → 3 at L5)
-    # yields its true, level-scaled cap rather than a conservative floor.
-    scale_values = build_scale_values(
-        class_slug=caster.class_slug,
-        subclass_slug=caster.subclass_slug,
-        species_slug=caster.species_slug,
-        level=caster.character_level,
-        loader=get_lib_loader(),
-    )
-    # Rage's mwak buff + resistances ride a PassiveEffect on the feature; thread
-    # them so its UtilityActivity's effect rider (``effects[].id``) resolves to a
-    # runtime ActiveEffect.
-    return _FeatureInvocation(
-        activities=feature_activities,
+        selected = chosen
+    scaling_value = (pool_points or 1) if _scales_by_amount(selected) else None
+    scale_values = _scale_values_of(caster)
+    activation = getattr(selected.activation, "type", None)
+    invocation = _FeatureInvocation(
+        activities=[selected],
         passive_effects=list(feature.passive_effects) if feature else [],
-        is_bonus_action=is_bonus,
-        use_cap=_feature_use_cap(feature, scale_values),
+        is_bonus_action=activation == "bonus",
+        is_free_action=activation == "special" and selected.kind in _FREE_SPECIAL_ACTIVITY_KINDS,
+        use_cap=_feature_use_cap(feature, _uses_roll_data(caster, scale_values)),
+        use_cost=_feature_activity_cost(all_activities, selected, scaling_value=scaling_value),
+        scaling_value=scaling_value,
+    )
+    if raging and feature_id == _RAGE_FEATURE:
+        # SRD 5.2 Rage: "Take a Bonus Action to extend your Rage." Already
+        # raging, the invocation extends it: the Bonus Action, no use, nothing
+        # applied.
+        return replace(invocation, use_cost=0, extends_rage=True)
+    return invocation
+
+
+# SRD 5.2 Bardic Inspiration. The die a creature holds is the "Inspired" effect
+# the Inspire activity applies to it (id from its name, origin
+# ``cast:inspired:<bard>``).
+_BARDIC_INSPIRATION: Final = "bardic-inspiration"
+_INSPIRED_EFFECT_ID: Final = "effect:inspired"
+_INSPIRED_ORIGIN_PREFIX: Final = "cast:inspired:"
+
+
+def _live_effect(live: _LiveCombat, entity_id: str, effect_id: str) -> ActiveEffect | None:
+    """``entity_id``'s live effect with id ``effect_id``, or ``None``."""
+    return next((e for e in live.active_effects.get(entity_id, []) if e.id == effect_id), None)
+
+
+def _inspiration_effect(live: _LiveCombat, entity_id: str) -> ActiveEffect | None:
+    """The Bardic Inspiration die ``entity_id`` holds — SRD 5.2: "A creature can
+    have only one Bardic Inspiration die at a time."""
+    return _live_effect(live, entity_id, _INSPIRED_EFFECT_ID)
+
+
+def _granted_die(live: _LiveCombat, holder: Combatant) -> str | None:
+    """The Bardic Inspiration die ``holder`` can roll, as ``"1d6"`` … ``"1d12"``.
+
+    It is "one of your Bardic Inspiration dice": the granting bard's
+    ``@scale.bard.inspiration`` at its Bard level, read now. A die whose bard is
+    not in this combat cannot be sized, so it is not redeemable (``None``, like
+    no die at all).
+    """
+    effect = _inspiration_effect(live, holder.entity_id)
+    if effect is None:
+        return None
+    bard = _find_combatant(live, effect.origin.removeprefix(_INSPIRED_ORIGIN_PREFIX))
+    if bard is None:
+        return None
+    die = _scale_values_of(bard).get("bard.inspiration.die")
+    return f"1{die}" if isinstance(die, str) else None
+
+
+def _redeemed_die(live: _LiveCombat, attacker: Combatant, intent: PlayerIntent) -> str | None:
+    """The die this ``attack`` asks to roll on a miss (``redeem_granted_die``);
+    ``None`` when it asks for none, and for every other intent type."""
+    if intent.intent_type != "attack" or intent.redeem_granted_die is None:
+        return None
+    return _granted_die(live, attacker)
+
+
+def _granted_die_failure(
+    live: _LiveCombat, current: Combatant, intent: PlayerIntent
+) -> CombatEvent | None:
+    """``AttackFailed(reason="no_granted_die")`` when an ``attack`` asks to
+    redeem a die its attacker cannot roll; ``None`` otherwise. One of the
+    ``pre_resolution_gates``, so the refusal spends nothing."""
+    if intent.intent_type != "attack" or intent.redeem_granted_die is None:
+        return None
+    if _granted_die(live, current) is not None:
+        return None
+    return AttackFailed(
+        actor_id=current.entity_id, target_id=intent.target_id, reason="no_granted_die"
+    )
+
+
+def _bardic_inspiration_target_failure(
+    live: _LiveCombat, actor_id: str, intent: PlayerIntent
+) -> CombatEvent | None:
+    """``CastFailed(reason="target_invalid")`` for a Bardic Inspiration with no
+    creature to inspire — SRD 5.2: "you can inspire another creature … A
+    creature can have only one Bardic Inspiration die at a time": no target in
+    this combat, the bard itself, or a creature already holding a die. Range
+    and sight are not modelled. ``None`` otherwise."""
+    if intent.feature_id != _BARDIC_INSPIRATION:
+        return None
+    target = _find_combatant(live, intent.target_id) if intent.target_id else None
+    if (
+        target is not None
+        and target.entity_id != actor_id
+        and _inspiration_effect(live, target.entity_id) is None
+    ):
+        return None
+    return CastFailed(actor_id=actor_id, spell_id="", reason="target_invalid")
+
+
+def _expend_granted_die(
+    live: _LiveCombat, holder: Combatant, actx: ActivityResolutionContext
+) -> None:
+    """SRD 5.2: "A Bardic Inspiration die is expended when it's rolled." Ends the
+    holder's "Inspired" effect once ``attack.py`` rolled the die; a hit or a
+    natural 1 left it unrolled and banked."""
+    effect = _inspiration_effect(live, holder.entity_id)
+    if not actx.granted_die_rolls or effect is None:
+        return
+    _emit(
+        live,
+        EffectExpired(
+            effect_id=effect.id,
+            target_id=holder.entity_id,
+            origin=effect.origin,
+            reason="expended",
+        ),
     )
 
 
@@ -7831,6 +8311,18 @@ def _end_turn_and_advance(live: _LiveCombat, actor_id: str) -> None:
         live.current_turn_index = 0
         live.round_number += 1
     _begin_turn(live, new_round=new_round)
+
+
+def _end_action(live: _LiveCombat, actor_id: str, intent: PlayerIntent) -> None:
+    """End ``actor_id``'s turn after an Action-costed intent, unless an Action
+    Surge extra action is still unspent — SRD 5.2: "On your turn, you can take
+    one additional action" — so the turn stays open for it (an unused one
+    lapses at the actor's next turn start). ``pass`` always ends the turn."""
+    actor = _find_combatant(live, actor_id)
+    if intent.intent_type != "pass" and actor is not None and actor.extra_actions_remaining > 0:
+        _maybe_roll_death_save(live)
+        return
+    _end_turn_and_advance(live, actor_id)
 
 
 def _validate_intent_preconditions(
@@ -8017,6 +8509,9 @@ class _ActionCost:
     is_bonus_action: bool
     is_reaction_cast: bool
     cast_spell_for_timing: Spell | None
+    # A free ``special``-activation feature (``_FeatureInvocation.is_free_action``):
+    # spends nothing and keeps the turn.
+    is_free_action: bool = False
 
 
 def _classify_action_cost(
@@ -8047,6 +8542,7 @@ def _classify_action_cost(
         is_bonus_action=is_bonus_action,
         is_reaction_cast=is_reaction_cast,
         cast_spell_for_timing=cast_spell_for_timing,
+        is_free_action=feature_invocation is not None and feature_invocation.is_free_action,
     )
 
 
@@ -8144,19 +8640,56 @@ def _cast_target_invalid_failure(
     return CastFailed(actor_id=actor_id, spell_id=intent.spell_id or "", reason="target_invalid")
 
 
-def _consume_action_budget(live: _LiveCombat, actor_id: str, cost: _ActionCost) -> Combatant:
+# SRD 5.2 Magic action: "When you take the Magic action, you cast a spell that
+# has a casting time of an action or use a feature or magic item that requires
+# a Magic action to be activated." The corpus does not mark which features or
+# items need it, so every Action-costed cast, item use and feature use counts.
+_MAGIC_ACTION_INTENTS: Final[frozenset[IntentType]] = frozenset(
+    {"cast_spell", "use_item", "use_feature"}
+)
+
+
+def _extra_action_funds(c: Combatant, intent_type: IntentType) -> bool:
+    """True when an Action Surge extra action can pay for ``intent_type`` —
+    SRD 5.2: "you can take one additional action, except the Magic action".
+    ``pass`` needs no action."""
+    return (
+        c.extra_actions_remaining > 0
+        and intent_type != "pass"
+        and intent_type not in _MAGIC_ACTION_INTENTS
+    )
+
+
+def _action_payment(c: Combatant, intent_type: IntentType) -> dict[str, Any]:
+    """The initiative-slot update that pays one Action for ``intent_type``: the
+    base Action while unspent, then an Action Surge extra action; empty when
+    neither can pay (``pass`` once its Action is gone)."""
+    if c.action_available:
+        return {"action_available": False}
+    if _extra_action_funds(c, intent_type):
+        return {"extra_actions_remaining": c.extra_actions_remaining - 1}
+    return {}
+
+
+def _consume_action_budget(
+    live: _LiveCombat, actor_id: str, cost: _ActionCost, intent_type: IntentType
+) -> Combatant:
     """Consume the classified action-economy budget on ``actor_id``'s
     initiative slot and return the refreshed current actor. ``current`` is a
     stale snapshot; mutate via slot model_copy so subsequent reads see the
-    updated state."""
+    updated state. An Action is paid by ``_action_payment`` (the base Action,
+    else an Action Surge extra action); a free ``special`` activation pays nothing."""
+    if cost.is_free_action:
+        return _current_actor(live)
     for idx, c in enumerate(live.initiative):
         if c.entity_id == actor_id:
             if cost.is_bonus_action:
-                live.initiative[idx] = c.model_copy(update={"bonus_action_available": False})
+                update: dict[str, Any] = {"bonus_action_available": False}
             elif cost.is_reaction_cast:
-                live.initiative[idx] = c.model_copy(update={"reaction_available": False})
+                update = {"reaction_available": False}
             else:
-                live.initiative[idx] = c.model_copy(update={"action_available": False})
+                update = _action_payment(c, intent_type)
+            live.initiative[idx] = c.model_copy(update=update)
             break
     return _current_actor(live)
 
@@ -8193,6 +8726,11 @@ def _action_economy_gate_failure(
     (e.g. after a multi-attack actor's swings, or after a plain Dash) has
     no way to end the turn: the generic ``not current.action_available``
     branch below would hard-reject ``pass`` itself, deadlocking the turn.
+
+    SRD 5.2 Action Surge (C20): with the base Action spent, an unspent extra
+    action admits any Action-costed intent but a Magic action, and an attack
+    whose Attack action's swings are spent takes another Attack action on it
+    (``_consume_attack_budget``).
     """
     if intent.intent_type == "pass":
         return None
@@ -8212,8 +8750,9 @@ def _action_economy_gate_failure(
                 reason="no_action_economy",
             )
         return None
+    extra_action = _extra_action_funds(current, intent.intent_type)
     if intent.intent_type == "attack":
-        if current.attacks_remaining <= 0:
+        if current.attacks_remaining <= 0 and not extra_action:
             return AttackFailed(
                 actor_id=current.entity_id,
                 target_id=intent.target_id,
@@ -8225,13 +8764,13 @@ def _action_economy_gate_failure(
         # sequence resolve for free). Subsequent swings this Action
         # (``attack_action_engaged`` True) skip this: the Action was
         # already paid for, or soft-consumed, by the first swing.
-        if not current.attack_action_engaged and not current.action_available:
+        if not current.attack_action_engaged and not current.action_available and not extra_action:
             raise IntentRejectedError(
                 "no_action_economy",
                 f"actor_id={current.entity_id!r} has no Action remaining this turn",
             )
         return None
-    if not current.action_available:
+    if not current.action_available and not extra_action:
         if intent.intent_type == "cast_spell":
             return CastFailed(
                 actor_id=current.entity_id,
@@ -8251,17 +8790,25 @@ def _consume_attack_budget(live: _LiveCombat, actor_id: str, current: Combatant)
     sequence (``attack_action_engaged`` False); a later swing this Action
     never re-pays it, and never rejects even if the Action was somehow
     already gone. Every resolved swing decrements ``attacks_remaining`` by
-    one and sets ``attack_action_engaged`` True."""
+    one and sets ``attack_action_engaged`` True. SRD 5.2 Action Surge: once
+    this Attack action's swings are spent, the next attack takes another
+    Attack action on an extra action, with fresh swings."""
     for idx, c in enumerate(live.initiative):
         if c.entity_id == actor_id:
-            spend_action = not c.attack_action_engaged and c.action_available
-            live.initiative[idx] = c.model_copy(
-                update={
-                    "action_available": False if spend_action else c.action_available,
+            if not c.attack_action_engaged:
+                update: dict[str, Any] = {
+                    **_action_payment(c, "attack"),
                     "attack_action_engaged": True,
                     "attacks_remaining": c.attacks_remaining - 1,
                 }
-            )
+            elif c.attacks_remaining > 0:
+                update = {"attacks_remaining": c.attacks_remaining - 1}
+            else:
+                update = {
+                    **_action_payment(c, "attack"),
+                    "attacks_remaining": _attacks_per_action(c) - 1,
+                }
+            live.initiative[idx] = c.model_copy(update=update)
             break
     return _current_actor(live)
 
@@ -8341,6 +8888,146 @@ def _consume_offhand_attack_budget(
             live.initiative[idx] = c.model_copy(update=update)
             break
     return _current_actor(live)
+
+
+# What pays for an ``attack`` intent's swing: the Attack action, or one of SRD
+# 5.2's swings outside it — the Light property's extra attack, a Flurry of
+# Blows strike, Martial Arts' Bonus Unarmed Strike.
+AttackFunding = Literal["action", "light_offhand", "flurry", "martial_arts_bonus"]
+
+_UNARMED_STRIKE: Final = "unarmed-strike"
+# Monk's Focus: the Flurry of Blows activity (Foundry id), and the Monk 10
+# feature that adds a third strike to it.
+_FLURRY_OF_BLOWS: Final = ("monks-focus", "2ghJTBhilLrFn9xT")
+_HEIGHTENED_FOCUS: Final = "heightened-focus"
+
+
+def _update_combatant(live: _LiveCombat, entity_id: str, **fields: Any) -> None:
+    """Write ``fields`` onto ``entity_id``'s initiative slot (``model_copy``), so
+    later reads of ``live.initiative`` see them."""
+    for idx, c in enumerate(live.initiative):
+        if c.entity_id == entity_id:
+            live.initiative[idx] = c.model_copy(update=fields)
+            return
+
+
+def _classify_attack_funding(
+    current: Combatant, intent: PlayerIntent, weapon: Weapon | None
+) -> AttackFunding:
+    """What pays for this ``attack`` intent's swing (``"action"`` for any other
+    intent), in priority order:
+
+    * ``"light_offhand"`` — the Light property's extra attack with a different
+      Light weapon (``_is_offhand_attack_swing``: the Bonus Action, or nothing
+      with Nick);
+    * ``"flurry"`` — an Unarmed Strike while a committed Flurry of Blows still
+      owes strikes ("You can expend 1 Focus Point to make two Unarmed Strikes as
+      a Bonus Action": the Focus Point and the Bonus Action already paid);
+    * ``"martial_arts_bonus"`` — an Unarmed Strike with ``use_bonus_action`` by
+      an attacker whose Martial Arts is active ("Bonus Unarmed Strike. You can
+      make an Unarmed Strike as a Bonus Action.");
+    * ``"action"`` — the Attack action.
+    """
+    if _is_offhand_attack_swing(current, intent, weapon):
+        return "light_offhand"
+    if intent.intent_type != "attack" or intent.weapon_id != _UNARMED_STRIKE:
+        return "action"
+    if current.flurry_strikes_remaining > 0:
+        return "flurry"
+    if intent.use_bonus_action and _martial_arts_active(current):
+        return "martial_arts_bonus"
+    return "action"
+
+
+def _intent_economy_failure(
+    current: Combatant, intent: PlayerIntent, cost: _ActionCost, funding: AttackFunding
+) -> CombatEvent | None:
+    """The action-economy gate for ``intent`` paid as ``funding``: the
+    turn-keeping rejection to emit, or ``None``. The Light extra attack and a
+    Flurry strike were admitted by ``_classify_attack_funding``; the Bonus
+    Unarmed Strike needs the Bonus Action; every other intent goes through
+    ``_action_economy_gate_failure`` (which may raise)."""
+    if funding == "martial_arts_bonus" and not current.bonus_action_available:
+        return AttackFailed(
+            actor_id=current.entity_id, target_id=intent.target_id, reason="no_action_economy"
+        )
+    if cost.is_free_action or funding != "action":
+        return None
+    return _action_economy_gate_failure(
+        current,
+        intent,
+        is_bonus_action=cost.is_bonus_action,
+        is_reaction_cast=cost.is_reaction_cast,
+    )
+
+
+def _consume_intent_budget(
+    live: _LiveCombat,
+    actor_id: str,
+    current: Combatant,
+    intent: PlayerIntent,
+    cost: _ActionCost,
+    funding: AttackFunding,
+    weapon: Weapon | None,
+) -> Combatant:
+    """Spend what pays for ``intent`` and return the refreshed current actor
+    (``current`` is a stale snapshot). A non-attack intent spends its classified
+    Action / Bonus Action / Reaction; an attack spends what ``funding`` names:
+    the Attack action's soft-consume, the Light extra attack's Bonus Action
+    (none with Nick), one owed Flurry strike, or the Bonus Action."""
+    if intent.intent_type != "attack":
+        return _consume_action_budget(live, actor_id, cost, intent.intent_type)
+    if funding == "action":
+        return _consume_attack_budget(live, actor_id, current)
+    if funding == "light_offhand":
+        return _consume_offhand_attack_budget(live, actor_id, current, weapon)
+    if funding == "flurry":
+        _update_combatant(
+            live, actor_id, flurry_strikes_remaining=current.flurry_strikes_remaining - 1
+        )
+    else:
+        _update_combatant(live, actor_id, bonus_action_available=False)
+    return _current_actor(live)
+
+
+def _grant_flurry_strikes(live: _LiveCombat, actor_id: str, intent: PlayerIntent) -> None:
+    """SRD 5.2 Monk's Focus: "Flurry of Blows. You can expend 1 Focus Point to
+    make two Unarmed Strikes as a Bonus Action." Heightened Focus: "make three
+    Unarmed Strikes with it instead of two." Called once the invocation is
+    committed; the owed strikes are this turn's next Unarmed Strike attacks
+    (``_classify_attack_funding``) and lapse at the monk's next turn start."""
+    if (intent.feature_id, intent.activity_id) != _FLURRY_OF_BLOWS:
+        return
+    strikes = 3 if _HEIGHTENED_FOCUS in _granted_feature_slugs(_current_actor(live)) else 2
+    _update_combatant(live, actor_id, flurry_strikes_remaining=strikes)
+
+
+_ACTION_SURGE: Final = "action-surge"
+
+
+def _action_surge_failure(current: Combatant, intent: PlayerIntent) -> CombatEvent | None:
+    """``CastFailed(reason="no_action_economy")`` for a second Action Surge on
+    one turn — SRD 5.2: "Starting at level 17, you can use it twice before a
+    rest but only once on a turn." — ``None`` otherwise. One of the
+    ``pre_resolution_gates``, so nothing is spent."""
+    if intent.feature_id != _ACTION_SURGE or not current.action_surge_used_this_turn:
+        return None
+    return CastFailed(actor_id=current.entity_id, spell_id="", reason="no_action_economy")
+
+
+def _grant_action_surge(live: _LiveCombat, actor_id: str, intent: PlayerIntent) -> None:
+    """SRD 5.2 Action Surge: "On your turn, you can take one additional action,
+    except the Magic action." Called once the invocation is committed; the
+    extra action lapses at the fighter's next turn start."""
+    if intent.feature_id != _ACTION_SURGE:
+        return
+    fighter = _current_actor(live)
+    _update_combatant(
+        live,
+        actor_id,
+        extra_actions_remaining=fighter.extra_actions_remaining + 1,
+        action_surge_used_this_turn=True,
+    )
 
 
 def _record_light_weapon_swing(
@@ -8681,7 +9368,9 @@ def _resolve_intent_activities(
         # returned early there; reaching here means ``feature_invocation`` holds
         # the resolved activity + its PassiveEffect riders.
         assert feature_invocation is not None
-        activities = feature_invocation.activities
+        # A Rage extension resolves nothing: the Rage it extends is already on
+        # the caster.
+        activities = [] if feature_invocation.extends_rage else feature_invocation.activities
         feature_passive_effects = feature_invocation.passive_effects
     return _ResolvedActivities(
         activities=activities,
@@ -9291,10 +9980,11 @@ async def _dispatch_turn_nonending_intent(
       ``distance_ft`` from the per-turn movement budget (movement is
       interleaved with Actions / Bonus Actions). Rejections emit
       ``MoveFailed`` without mutating budget or position.
-    * ``dash`` — SRD §Dash: spend the Action (or, for Rogues with Cunning
-      Action, the Bonus Action) to add ``base_speed`` to the movement
+    * ``dash`` — SRD §Dash: spend the Action (or, with Cunning Action, the
+      Bonus Action) to add ``base_speed`` to the movement
       budget. Rejections raise ``IntentRejectedError("no_action_economy")``.
-    * ``disengage`` — SRD §Disengage: spend the Action; movement provokes
+    * ``disengage`` — SRD §Disengage: spend the Action (or, with Cunning
+      Action, the Bonus Action); movement provokes
       no Opportunity Attacks for the rest of the turn. Like Dash, keeps
       the actor on turn so a same-turn Disengage→Move sequence works
       ; closes the discovered turn-ending fall-through where
@@ -9372,7 +10062,11 @@ async def submit_player_intent(
     feature_invocation: _FeatureInvocation | None = None
     if intent.feature_id:
         feature_invocation = _resolve_feature_invocation(
-            current, intent.feature_id, intent.activity_id
+            current,
+            intent.feature_id,
+            intent.activity_id,
+            pool_points=intent.pool_points,
+            raging=_rage_effect(live, actor_id) is not None,
         )
         if feature_invocation is None:
             return
@@ -9407,25 +10101,20 @@ async def submit_player_intent(
     is_bonus_action = action_cost.is_bonus_action
     is_reaction_cast = action_cost.is_reaction_cast
 
-    # SRD 5.2 §Two-Weapon Fighting — classify BEFORE the action-economy gate:
-    # an off-hand swing spends the Bonus Action (already gated by
-    # ``bonus_action_available`` inside the classifier itself), not the
-    # per-Action attack budget, so it must bypass the attack branch of
-    # ``_action_economy_gate_failure`` / ``_consume_attack_budget`` entirely.
-    # An attack-shaped intent that LOOKS like an off-hand swing but fails one
-    # of the classifier's gates (same weapon slug, no open window, Bonus
-    # Action already spent) falls through to the normal attack economy gate
-    # below — with ``attacks_remaining`` already exhausted by the main-hand
-    # swing, that gate's ``AttackFailed(reason="no_action_economy")`` covers
-    # the rejection (turn-keeping, per R2). Fetched here (ahead of the
-    # ``pre_resolution_gates`` tuple below) so the Loading gate (C15 Task 5)
-    # can reuse the same fetch instead of re-fetching the weapon.
-    offhand_weapon = (
+    # What pays for an attack's swing — the Attack action, the Light property's
+    # extra attack, a Flurry of Blows strike or Martial Arts' Bonus Unarmed
+    # Strike — is classified BEFORE the economy gate, which routes each funding
+    # (``_intent_economy_failure``). An attack that looks like a Light extra
+    # attack but fails one of its gates is an Attack-action swing; with
+    # ``attacks_remaining`` spent, that gate's turn-keeping
+    # ``AttackFailed(reason="no_action_economy")`` rejects it. The weapon is
+    # fetched once, here, and the Loading gate below reuses it.
+    attack_weapon = (
         get_lib_loader().get_weapon(intent.weapon_id)
         if intent.intent_type == "attack" and intent.weapon_id
         else None
     )
-    is_offhand_swing = _is_offhand_attack_swing(current, intent, offhand_weapon)
+    funding = _classify_attack_funding(current, intent, attack_weapon)
 
     # Pre-resolution reject gates — each checked BEFORE any action budget is
     # consumed, so a rejection spends no Action/Bonus Action/slot and leaves
@@ -9435,17 +10124,23 @@ async def submit_player_intent(
     # Loading) -> Charmed target (SRD 5.2 "You can't attack the charmer or
     # target the charmer with damaging abilities or magical effects") ->
     # pre-slot ``target_invalid`` (Hellish Rebuke's fixed target, SRD
-    # §Hellish Rebuke; an unaimed Cone/Line/Cube AoE template). The first
-    # gate whose failure-builder returns a non-``None`` event wins; that
-    # event is emitted and the intent is rejected.
+    # §Hellish Rebuke; an unaimed Cone/Line/Cube AoE template) -> a second
+    # Action Surge this turn (SRD 5.2 "only once on a turn") -> a Bardic
+    # Inspiration with no other creature to inspire -> an attack redeeming a
+    # die it cannot roll. The first gate whose failure-builder returns a
+    # non-``None`` event wins; that event is emitted and the intent is
+    # rejected.
     pre_resolution_gates: tuple[Callable[[], CombatEvent | None], ...] = (
         lambda: _spell_out_of_range_failure(live, actor_id, intent, cast_spell_for_timing),
         lambda: _attack_out_of_range_failure(live, actor_id, intent),
-        lambda: _loading_weapon_already_fired_failure(current, actor_id, intent, offhand_weapon),
+        lambda: _loading_weapon_already_fired_failure(current, actor_id, intent, attack_weapon),
         lambda: _charmed_target_failure(live, actor_id, current, intent),
         lambda: _cast_target_invalid_failure(
             live, current, actor_id, intent, cast_spell_for_timing
         ),
+        lambda: _action_surge_failure(current, intent),
+        lambda: _bardic_inspiration_target_failure(live, actor_id, intent),
+        lambda: _granted_die_failure(live, current, intent),
     )
     for build_pre_resolution_failure in pre_resolution_gates:
         failure = build_pre_resolution_failure()
@@ -9453,13 +10148,7 @@ async def submit_player_intent(
             _emit(live, failure)
             return
 
-    action_economy_failure = (
-        None
-        if is_offhand_swing
-        else _action_economy_gate_failure(
-            current, intent, is_bonus_action=is_bonus_action, is_reaction_cast=is_reaction_cast
-        )
-    )
+    action_economy_failure = _intent_economy_failure(current, intent, action_cost, funding)
     if action_economy_failure is not None:
         _emit(live, action_economy_failure)
         return
@@ -9488,19 +10177,12 @@ async def submit_player_intent(
     # pre-budget target gate above.
     _reject_invalid_escape_grapple_actor(actor_id, intent, current)
 
-    # Consume the budget now. ``current`` is a stale snapshot; mutate via
-    # initiative-list model_copy so subsequent reads (and the post-resolve
-    # turn-advance branch below) see the updated state. Attack intents use
-    # their own soft-consume path (R2): the Action is only spent by the
-    # FIRST swing of a multi-attack sequence; every swing decrements the
-    # per-Action attack budget. An off-hand swing (Task 2) spends the Bonus
-    # Action via its own dedicated consume path instead.
-    if intent.intent_type == "attack" and is_offhand_swing:
-        current = _consume_offhand_attack_budget(live, actor_id, current, offhand_weapon)
-    elif intent.intent_type == "attack":
-        current = _consume_attack_budget(live, actor_id, current)
-    else:
-        current = _consume_action_budget(live, actor_id, action_cost)
+    # Consume the budget now: what ``funding`` names for an attack, the
+    # classified Action / Bonus Action / Reaction otherwise. ``current`` is
+    # refreshed so the turn-advance branch below sees the spend.
+    current = _consume_intent_budget(
+        live, actor_id, current, intent, action_cost, funding, attack_weapon
+    )
 
     _emit(
         live,
@@ -9576,6 +10258,18 @@ async def submit_player_intent(
     # this only increments a within-cap use (no-op for uncapped / non-feature intents).
     _record_capped_feature_use(live, actor_id, intent.feature_id, feature_invocation)
 
+    # SRD 5.2 Rage — a committed Bonus-Action extension, read by this turn's
+    # ``engine:rage-extension`` hook.
+    _record_rage_extension(live, actor_id, feature_invocation)
+
+    # SRD 5.2 Flurry of Blows — the committed invocation owes the monk its
+    # Unarmed Strikes (no-op for every other intent).
+    _grant_flurry_strikes(live, actor_id, intent)
+
+    # SRD 5.2 Action Surge — the committed surge adds the extra action (no-op
+    # for every other intent).
+    _grant_action_surge(live, actor_id, intent)
+
     # SRD §Item Charges — the item-charge gate above has passed; commit the
     # spend on the actor's per-rest charge counter (no-op for uncapped /
     # non-use_item intents).
@@ -9640,14 +10334,8 @@ async def submit_player_intent(
         # formula tokens read these carriers — the formula resolver never
         # touches a loader. The species slug threads through so species @scale
         # tables (e.g. Dragonborn breath) resolve alongside class + subclass.
-        scale_values = build_scale_values(
-            class_slug=current.class_slug,
-            subclass_slug=current.subclass_slug,
-            species_slug=current.species_slug,
-            level=current.character_level,
-            loader=get_lib_loader(),
-        )
-        class_levels = {current.class_slug: current.character_level} if current.class_slug else {}
+        scale_values = _scale_values_of(current)
+        class_levels = _class_levels(current)
         # SRD 5.2 §Weapon Mastery — Cleave (C15 Task 7): the once-per-turn
         # gate + the R5 deterministic second target, both pre-resolved here
         # (spatial + per-turn state are orchestrator-owned); ``attack.py``
@@ -9763,6 +10451,15 @@ async def submit_player_intent(
             attacker_fear_source_in_sight=_fear_source_in_sight(live, current),
             scale_values=scale_values,
             class_levels=class_levels,
+            # SRD 5.2 Martial Arts: PRE-RESOLVED (armor/Shield + the granted
+            # feature) — ``attack.py`` still gates per swing on the weapon
+            # being unarmed or a Monk weapon.
+            martial_arts=_martial_arts_active(current),
+            # SRD 5.2 Bardic Inspiration: the die THIS attack asks to redeem
+            # (``PlayerIntent.redeem_granted_die``), sized from the granting
+            # bard now — ``None`` for every non-attack intent and an attack
+            # that asks for none.
+            granted_die=_redeemed_die(live, current, intent),
             # A FEATURE invocation must not inherit the blanket spell
             # save_dc_override; its save activity computes its own ability+PB DC.
             is_feature_invocation=bool(intent.feature_id),
@@ -9792,12 +10489,12 @@ async def submit_player_intent(
             # ATTACKER flag folded into attack disadvantage (attack.py,
             # "ranged_in_melee") for an effectively-ranged attack.
             attacker_ranged_in_melee=_hostile_adjacent_to_attacker(live, current),
-            # SRD 5.2 §Two-Weapon Fighting / Light property — an off-hand
-            # swing (Task 2) never adds a POSITIVE governing-ability
-            # modifier to its damage; a negative modifier still applies.
-            # False (the default) for every main-hand / monster / spell
-            # swing keeps their damage byte-identical to before this field.
-            suppress_positive_ability_damage_mod=is_offhand_swing,
+            # SRD 5.2 Light: the extra attack adds no positive ability modifier —
+            # unless Two-Weapon Fighting: "you can add your ability modifier to
+            # the damage of that attack if you aren't already adding it".
+            suppress_positive_ability_damage_mod=(
+                funding == "light_offhand" and "two-weapon-fighting" not in current.fighting_styles
+            ),
             # SRD 5.2 Versatile property (C15 Task 4) — see
             # ``use_versatile_damage`` computation above.
             use_versatile_damage=use_versatile_damage,
@@ -9828,9 +10525,18 @@ async def submit_player_intent(
             # real path a bearer (a zombie fought by the party) resolves
             # through, so this is wired here too, not just monster-side.
             undead_fortitude_holds=live.undead_fortitude_holds,
+            # SRD 5.2 Lay on Hands — the ``@scaling`` token this resolution's
+            # formulas see: the pool points drawn, set only when the resolved
+            # feature activity scales its own-pool cost by amount.
+            scaling_value=(
+                feature_invocation.scaling_value if feature_invocation is not None else None
+            ),
         )
         for activity in activities:
             resolve_activity(activity, actx, weapon=fetched_weapon)
+
+        # SRD 5.2 Bardic Inspiration — a die rolled this resolution is spent.
+        _expend_granted_die(live, current, actx)
 
         # SRD 5.2 §Actions in Combat — Help: one-use pop. If this attack
         # landed against a target the caster's Help grant was folded onto
@@ -9881,7 +10587,7 @@ async def submit_player_intent(
         # the main-hand swing landing).
         if (
             intent.intent_type == "attack"
-            and not is_offhand_swing
+            and funding != "light_offhand"
             and fetched_weapon is not None
             and WeaponProperty.LIGHT in fetched_weapon.properties
         ):
@@ -9935,17 +10641,15 @@ async def submit_player_intent(
     # SRD §Action Economy — a bonus action does NOT end the turn; the
     # actor keeps initiative and may follow with a regular Action.
     #
-    # FINAL-REVIEW FIX (F2): an off-hand (Two-Weapon Fighting) swing is
-    # ALSO a Bonus Action spend (R1 verbatim: "An off-hand (bonus-action)
-    # swing follows the existing bonus-action tail (never ends the turn)")
-    # — ``is_bonus_action`` only covers a bonus-action CAST's
-    # ``casting_time.unit``, so the off-hand attack needs its own check
-    # here. Without it, a 1-attack actor's off-hand swing falls through to
-    # ``_attack_action_is_spent`` below, which sees ``attacks_remaining <=
-    # 0`` (spent by the main-hand swing) and a now-closed TWF window
-    # (``offhand_attack_spent`` just flipped True) and wrongly ends the
-    # turn, discarding any movement the actor still owed.
-    if is_bonus_action or is_offhand_swing:
+    # Every swing outside the Attack action (``funding`` other than
+    # ``"action"``: the Light extra attack, a Flurry strike, the Bonus Unarmed
+    # Strike) is bonus-funded too, and ``is_bonus_action`` only covers a
+    # Bonus-Action cast or feature. Without this a one-attack actor's extra
+    # swing would reach ``_attack_action_is_spent`` below and end the turn,
+    # discarding the movement it still owes. A free ``special`` activation
+    # (Action Surge) is part of the turn rather than an action, so it keeps
+    # the turn too.
+    if is_bonus_action or action_cost.is_free_action or funding != "action":
         _maybe_roll_death_save(live)
         return
     # SRD §Extra Attack — a main-hand attack keeps the turn (R1) while
@@ -9956,7 +10660,8 @@ async def submit_player_intent(
     if intent.intent_type == "attack" and not _attack_action_is_spent(current):
         _maybe_roll_death_save(live)
         return
-    _end_turn_and_advance(live, actor_id)
+    # An Action intent ends the turn unless an Action Surge extra action is left.
+    _end_action(live, actor_id, intent)
 
 
 def _fire_pc_opportunity_attacks_on_move(

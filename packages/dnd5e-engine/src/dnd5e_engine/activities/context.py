@@ -512,6 +512,25 @@ class ActivityResolutionContext:
     # the golden corpus identical (no chain, no extra draws).
     cleave_available: bool = False
     cleave_candidate: Combatant | None = None
+    # Foundry's ``@scaling`` for this resolution — the scaling value the caster
+    # chose. Set only for a feature activity that scales its own-pool cost by
+    # amount (Lay on Hands' Heal: the points drawn). ``None`` keeps ``@scaling``
+    # an unhandled token, so a spell formula that names it still fails loudly.
+    scaling_value: int | None = None
+    # SRD 5.2 Martial Arts is active for the attacker: it has the feature and
+    # wears no armor and wields no Shield (orchestrator-checked). ``attack.py``
+    # applies it to an Unarmed Strike or a Monk weapon only.
+    martial_arts: bool = False
+    # SRD 5.2 Bardic Inspiration: "when the creature fails a D20 Test, the
+    # creature can roll the Bardic Inspiration die and add the number rolled to
+    # the d20". The die an ``attack`` intent redeems (``"1d6"`` … ``"1d12"``,
+    # sized by the orchestrator from the granting bard), or ``None``.
+    # ``attack.py`` rolls it at most once, only after a failed attack roll that
+    # isn't a natural 1, and appends the roll to ``granted_die_rolls`` — the
+    # writeback the orchestrator reads to expend the die (list mutation on the
+    # frozen dataclass, like ``mastery_procs``).
+    granted_die: str | None = None
+    granted_die_rolls: list[int] = field(default_factory=list)
 
     def ability_mod(self, ability: str) -> int:
         return (self.caster_abilities.get(ability, 10) - 10) // 2

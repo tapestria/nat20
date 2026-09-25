@@ -26,6 +26,9 @@ class TurnCombatView:
     """Per-current-actor turn-state projection (spec §6 row D2)."""
 
     attacks_remaining: int
+    # SRD 5.2 Action Surge — the current actor's unspent additional actions
+    # this turn (C20); 0 when none, when combat has ended or with no actor.
+    extra_actions_remaining: int = 0
 
 
 @dataclass(frozen=True)
@@ -78,8 +81,10 @@ class LiveCombatView:
     def from_live(cls, live: _LiveCombat) -> LiveCombatView:
         turn = TurnCombatView(attacks_remaining=0)
         if not live.ended and 0 <= live.current_turn_index < len(live.initiative):
+            actor = live.initiative[live.current_turn_index]
             turn = TurnCombatView(
-                attacks_remaining=live.initiative[live.current_turn_index].attacks_remaining
+                attacks_remaining=actor.attacks_remaining,
+                extra_actions_remaining=actor.extra_actions_remaining,
             )
         return cls(
             initiative=list(live.initiative),

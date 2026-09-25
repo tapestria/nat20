@@ -24,14 +24,10 @@ Scope — the roll-data tokens that appear in canonical DICE/DC FORMULA fields
 * ``@attributes.spell.mod`` — the spellcasting-ability modifier.
 * ``@attributes.spell.dc`` — the caster spell save DC (``8 + prof + spell mod``).
 
-``@scaling`` is deliberately OUT of scope here: scaling is owned by
-``dice.py``'s ``DamageScalingBlock`` path (``_scaling_die_increase`` folds
-upcast/cantrip steps into the die *count*). Substituting ``@scaling`` as a value
-here would double-apply scaling. In the canonical corpus ``@scaling`` appears only
-in ``roll.formula`` / ``check.dc.formula`` (kinds outside Piece-1 scope) and a
-single item ``damage.parts[].bonus`` — none in the in-scope spell corpus. If an
-in-scope formula ever carries ``@scaling`` it falls through to the unknown-token
-guard below (loud), which is the correct signal to wire it through dice.py.
+``@scaling`` resolves only when the context carries ``scaling_value`` — a
+feature activity whose own-pool cost scales by amount (Lay on Hands' Heal).
+Spell upcasting stays with ``dice.py``'s ``DamageScalingBlock`` path; a spell
+formula that names ``@scaling`` still reaches the unknown-token guard below.
 
 Any other ``@``-token reaching this resolver is out of scope for Piece 1: rather
 than leave it (``d20.parse`` would fail to parse and the failure site would be
@@ -62,6 +58,7 @@ _TOKEN_PROF: Final = "@prof"
 _TOKEN_MOD: Final = "@mod"
 _TOKEN_SPELL_MOD: Final = "@attributes.spell.mod"
 _TOKEN_SPELL_DC: Final = "@attributes.spell.dc"
+_TOKEN_SCALING: Final = "@scaling"
 
 # ``@abilities.<abil>.mod`` — capture the three-letter ability key.
 _ABILITY_MOD_RE: Final = re.compile(r"^@abilities\.([a-z]{3})\.mod$")
@@ -165,6 +162,9 @@ def _resolve_token(token: str, ctx: ActivityResolutionContext, ability: str | No
             _LOGGER.warning("roll_data_scale_unresolved token=%s", token)
             raise ValueError(f"Unresolved @scale token (absent from carrier): {token!r}")
         return value
+
+    if token == _TOKEN_SCALING and ctx.scaling_value is not None:
+        return ctx.scaling_value
 
     class_levels_match = _CLASS_LEVELS_RE.match(token)
     if class_levels_match is not None:
