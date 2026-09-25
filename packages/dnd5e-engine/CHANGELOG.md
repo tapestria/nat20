@@ -40,8 +40,9 @@ build through `build_party_member` and leave `ac`/`attack_bonus`/`hp_max`/
 `hp_current`/`base_speed` unset (now derived instead of defaulted), or that
 rely on the save/skill/weapon proficiencies it now derives.
 C20 changes results for raging barbarians, Rogue 1s taking a Bonus-Action
-Dash, newly capped features and unarmed strikes, and for hosts that send
-`classes`, `feats` or `fighting_style`.
+Dash, newly capped features and unarmed strikes, for hosts that send
+`classes`, `feats` or `fighting_style`, and wherever an effect makes a
+concentrating caster or a grappler Incapacitated.
 Behavioural deltas (and the fixtures they move) are enumerated in
 [`docs/migration/v0.5-to-v0.6.md`](../../docs/migration/v0.5-to-v0.6.md).
 
@@ -189,14 +190,16 @@ Behavioural deltas (and the fixtures they move) are enumerated in
   — never a Magic action, one surge per turn — counted on
   `LiveCombatView.turn.extra_actions_remaining`, and a `special`-activation
   feature that resolves nothing by itself (Action Surge, Sacred Weapon) costs
-  no Action. A Bardic Inspiration die is redeemed on a failed
-  attack roll (`PlayerIntent.redeem_granted_die`). Rage ends at the end of the
+  no Action. A Bardic Inspiration die is redeemed on a failed attack roll
+  (`PlayerIntent.redeem_granted_die`). Rage ends at the end of the
   barbarian's next turn unless an attack roll against an enemy, an enemy's
   saving throw or a Bonus Action (`use_feature rage` again, no use spent)
-  extends it, and it ends at once on the Incapacitated condition. Lay on
-  Hands' Heal draws `PlayerIntent.pool_points` from a pool of five times the
-  Paladin level. Cunning Action's Bonus-Action Dash and Disengage read the
-  feature at the Rogue's own level (Rogue 2), not `class_slug`. Every corpus
+  extends it, and it ends at once on the Incapacitated condition, however it
+  is applied; a Barbarian 15's Persistent Rage needs no extension and ends
+  early only on Unconscious. Lay on Hands' Heal draws
+  `PlayerIntent.pool_points` from a pool of five times the Paladin level.
+  Cunning Action's Bonus-Action Dash and Disengage read the feature at the
+  Rogue's own level (Rogue 2), not `class_slug`. Every corpus
   `uses.max` (`@prof`, `max(1, @abilities.<ab>.mod)`,
   `N * @classes.<class>.levels`) now caps its feature, and an invocation
   spends its activity's `consumption.targets` cost.
@@ -577,6 +580,14 @@ Behavioural deltas (and the fixtures they move) are enumerated in
 - **The free Patient Defense no longer spends a Focus Point (C20).** A feature
   activity is charged its own `consumption.targets` cost, and one that declares
   none is free when a sibling activity of the same feature declares one.
+- **An Incapacitated condition an effect imposes now breaks concentration and
+  releases grapples (C20).** Hold Person's Paralyzed, or any effect status that
+  is Incapacitated or implies it, left the creature concentrating and
+  grappling: the effect's fold wrote the condition onto the combatant first,
+  so the `ConditionApplied` fold that runs those consequences found it already
+  there and skipped them. Whichever fold writes the condition first now runs
+  them once, Rage's end included; for an effect, their events follow its
+  `EffectApplied`.
 
 ### Deprecated
 

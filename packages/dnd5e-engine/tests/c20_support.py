@@ -31,6 +31,21 @@ def pc(entity_id: str = "char:hero", **fields: Any) -> PartyMemberSpec:
     return PartyMemberSpec(**(base | fields))
 
 
+def wizard(entity_id: str = "char:wiz", **fields: Any) -> PartyMemberSpec:
+    """A Wizard 5 with INT 20 (spell save DC 16) who knows Hold Person, at cell
+    0,1, acting after the hero (initiative 15)."""
+    base: dict[str, Any] = {
+        "initiative": 15,
+        "zone_id": cell_id(0, 1),
+        "class_slug": "wizard",
+        "character_level": 5,
+        "intelligence": 20,
+        "spell_slots": {2: 3},
+        "spells_known": ["hold-person"],
+    }
+    return pc(entity_id, **(base | fields))
+
+
 def foe(**fields: Any) -> EncounterMemberSpec:
     """A template-less 500-HP, AC 1 foe at cell 1,0 (5 ft away) that acts last."""
     base: dict[str, Any] = {
@@ -70,6 +85,19 @@ def start(
 def act(handle: CombatHandle, actor_id: str, **intent: Any) -> None:
     """Submit one ``PlayerIntent`` for ``actor_id``."""
     asyncio.run(submit_player_intent(handle, actor_id=actor_id, intent=PlayerIntent(**intent)))
+
+
+def hold_person(handle: CombatHandle, target_id: str, caster_id: str = "char:wiz") -> None:
+    """SRD 5.2 Hold Person, at 2nd level: "The target must succeed on a Wisdom
+    saving throw or have the Paralyzed condition for the duration." """
+    act(
+        handle,
+        caster_id,
+        intent_type="cast_spell",
+        spell_id="hold-person",
+        target_id=target_id,
+        slot_level=2,
+    )
 
 
 def monster_turn(handle: CombatHandle) -> None:

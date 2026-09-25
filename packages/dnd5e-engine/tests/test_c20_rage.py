@@ -29,7 +29,7 @@ from dnd5e_engine.orchestrator import _emit
 from dnd5e_engine.spatial import cell_id
 from dnd5e_engine.specs import PartyMemberSpec
 from dnd5e_engine.types.effects import ActiveEffect
-from tests.c20_support import act, combatant, events, monster_turn, pc, start
+from tests.c20_support import act, combatant, events, hold_person, monster_turn, pc, start, wizard
 
 RAGE = "effect:rage"
 ALLY = "char:ally"
@@ -149,7 +149,9 @@ def test_a_bonus_action_extends_the_rage_without_spending_a_use() -> None:
 )
 def test_the_incapacitated_condition_ends_the_rage_at_once(condition: str, ends: bool) -> None:
     """ "...it ends early if you ... have the Incapacitated condition." Stunned
-    and Unconscious include it; Prone doesn't."""
+    and Unconscious include it; Prone doesn't. Here the condition arrives as a
+    bare ``ConditionApplied`` (0 HP's path); ``test_incapacitated_by_effect``
+    covers one an effect imposes."""
     handle, live = start([_barbarian()], seed=1)
     act(handle, "char:hero", intent_type="use_feature", feature_id="rage")
     _emit(live, ConditionApplied(target_id="char:hero", condition=condition))
@@ -174,3 +176,41 @@ def test_a_rage_carried_into_combat_must_be_extended_on_its_first_turn(
     handle, live = start([_barbarian()], seed=1, active_effects=[rage])
     act(handle, "char:hero", **intent)
     assert _raging(live) is extended
+
+
+# ── Persistent Rage (Barbarian 15) ───────────────────────────────────────────
+
+
+@pytest.mark.parametrize("carried_in", [False, True], ids=["entered", "carried-in"])
+@pytest.mark.parametrize("level", [15, 20])
+def test_a_persistent_rage_needs_no_extension(level: int, carried_in: bool) -> None:
+    """Persistent Rage: "your Rage is so fierce that it now lasts for 10 minutes
+    without you needing to do anything to extend it from round to round." A
+    turn with no attack roll, no forced save and no Bonus Action keeps it, for
+    a Rage entered in combat or carried into it."""
+    if carried_in:
+        rage = ActiveEffect(
+            id=RAGE, name="Rage", origin="cast:rage:char:hero", target_id="char:hero"
+        )
+        handle, live = start([_barbarian(character_level=level)], seed=1, active_effects=[rage])
+    else:
+        handle, live = start([_barbarian(character_level=level)], seed=1)
+        _rage_then_next_turn(handle)
+    act(handle, "char:hero", intent_type="pass")
+    assert (_rage_ends(live), _raging(live)) == ([], True)
+
+
+@pytest.mark.parametrize("level", [15, 20])
+def test_only_unconscious_ends_a_persistent_rage_early(level: int) -> None:
+    """Persistent Rage: "Your Rage ends early if you have the Unconscious
+    condition (not just the Incapacitated condition)". Hold Person's Paralyzed
+    leaves it running (seed 1: the Wisdom 6 save fails); Unconscious ends it."""
+    barbarian = _barbarian(character_level=level, wisdom=6, creature_type="humanoid")
+    handle, live = start([barbarian, wizard()], seed=1)
+    act(handle, "char:hero", intent_type="use_feature", feature_id="rage")
+    act(handle, "char:hero", intent_type="pass")
+    hold_person(handle, "char:hero")
+    assert any(c.condition == "paralyzed" for c in combatant(live).conditions)
+    assert (_rage_ends(live), _raging(live)) == ([], True)
+    _emit(live, ConditionApplied(target_id="char:hero", condition="unconscious"))
+    assert (_rage_ends(live), _raging(live)) == (["incapacitated"], False)

@@ -422,6 +422,18 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   corpus effect's `rounds: 10` (one minute) stays the outer cap, because
   `rounds` wins over its `seconds: 600`.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_hook_rage_extension`)
+- **Persistent Rage's Rage recovery on rolling Initiative is not applied
+  (2026-09-25).** SRD 5.2 Persistent Rage (Barbarian 15): "When you roll
+  Initiative, you can regain all expended uses of Rage. After you regain uses
+  of Rage in this way, you can't do so again until you finish a Long Rest."
+  The corpus carries it as an activity triggered "When you roll initiative"
+  (`dnd5eactivity000`), which `start_combat` never runs, so Rage uses a host
+  seeds as spent (`PartyMemberSpec.custom_counters`) stay spent. The rest of
+  the feature applies (no extension needed; only Unconscious ends it early),
+  under the same one-minute outer cap as above where SRD 5.2 says it "now
+  lasts for 10 minutes".
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::start_combat`,
+  `packages/dnd5e-srd-data/src/dnd5e_srd_data/canonical/features/persistent-rage.json`)
 - **Monk's Focus features other than Flurry of Blows don't reach the action
   economy (2026-09-24, C20 scope cut).** SRD 5.2 Patient Defense: "You can take
   the Disengage action as a Bonus Action. Alternatively, you can expend 1

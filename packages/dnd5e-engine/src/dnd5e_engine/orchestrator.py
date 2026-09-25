@@ -3496,21 +3496,31 @@ def _fold_condition_onto_combatant(
             live.initiative[idx] = slot.model_copy(update={"conditions": new})
             break
     _clamp_movement_budget(live, entity_id)
-    # SRD 5.2 Incapacitated — "No Concentration. Your Concentration is
-    # broken." Applies when the condition is Incapacitated directly or
-    # implies it (Paralyzed / Petrified / Stunned / Unconscious via
-    # CONDITION_IMPLIES). Keyed to the state TRANSITION (this is the
-    # first materialisation of the condition on the combatant), not a raw
-    # HP threshold — see the rule card's 0-HP edge note.
-    if is_condition_active(Condition.INCAPACITATED, [condition]):
-        _drop_concentration(live, entity_id)
-        # SRD 5.2 "Ending a Grapple" — "The condition also ends if the
-        # grappler has the Incapacitated condition." Release every victim
-        # this newly-incapacitated combatant is currently grappling.
-        _release_grapple_victims_of(live, entity_id)
-        # SRD 5.2 Rage: "it ends early if you ... have the Incapacitated
-        # condition."
-        _end_rage(live, entity_id, "incapacitated")
+    _end_what_incapacitation_ends(live, entity_id, condition)
+
+
+def _end_what_incapacitation_ends(live: _LiveCombat, entity_id: str, condition: str) -> None:
+    """What ``condition`` ends as it first lands on ``entity_id``, when it is
+    Incapacitated or implies it (Paralyzed / Petrified / Stunned / Unconscious
+    via ``CONDITION_IMPLIES``).
+
+    Keyed to the condition's first materialisation on ``Combatant.conditions``,
+    not a raw HP threshold. Two folds write that store, and whichever writes
+    the condition first calls this, so it runs once however the condition
+    arrives: ``_emit_apply_effect_applied`` for an
+    effect's status (Hold Person's Paralyzed, whose ``ConditionApplied`` then
+    finds the condition already there) and ``_fold_condition_onto_combatant``
+    for a bare ``ConditionApplied`` (0 HP's Unconscious).
+    """
+    if not is_condition_active(Condition.INCAPACITATED, [condition]):
+        return
+    # SRD 5.2 Incapacitated — "No Concentration. Your Concentration is broken."
+    _drop_concentration(live, entity_id)
+    # SRD 5.2 "Ending a Grapple" — "The condition also ends if the grappler has
+    # the Incapacitated condition." Release every victim this newly
+    # incapacitated combatant is grappling.
+    _release_grapple_victims_of(live, entity_id)
+    _end_rage_on_incapacitation(live, entity_id, condition)
 
 
 def _strip_condition_from_combatant(live: _LiveCombat, entity_id: str, condition: str) -> None:
@@ -4979,10 +4989,10 @@ def _emit_apply_effect_applied(live: _LiveCombat, event: EffectApplied) -> None:
     # list so passive projections (advantage/disadvantage on attack,
     # save, etc.) observe the new state immediately.
     target_combatant = _find_combatant(live, applied.target_id)
+    added: list[str] = []
     if target_combatant is not None and applied.statuses:
         existing_slugs = {ac.condition for ac in target_combatant.conditions}
         new_conditions = list(target_combatant.conditions)
-        dirty = False
         for status in applied.statuses:
             if status in existing_slugs:
                 continue
@@ -5017,8 +5027,8 @@ def _emit_apply_effect_applied(live: _LiveCombat, event: EffectApplied) -> None:
                     source_effect_id=applied.id,
                 )
             )
-            dirty = True
-        if dirty:
+            added.append(status)
+        if added:
             for idx, c in enumerate(live.initiative):
                 if c.entity_id == applied.target_id:
                     live.initiative[idx] = c.model_copy(update={"conditions": new_conditions})
@@ -5033,6 +5043,12 @@ def _emit_apply_effect_applied(live: _LiveCombat, event: EffectApplied) -> None:
     if is_concentration and applied.target_id in live.party_ids:
         bucket = live.expended_resources.setdefault(applied.target_id, {})
         bucket[applied.name] = bucket.get(applied.name, 0) + 1
+    # This fold, not the ``ConditionApplied`` that follows, first writes an
+    # effect's status onto the combatant, so this is where an Incapacitated
+    # status ends concentration, grapples and Rage. The effect is fully folded
+    # first.
+    for status in added:
+        _end_what_incapacitation_ends(live, applied.target_id, status)
 
 
 def _emit_apply_effect_expired(live: _LiveCombat, event: EffectExpired) -> None:
@@ -6310,6 +6326,7 @@ def _hook_expire_vex_grants(live: _LiveCombat, actor_id: str | None) -> None:
 
 
 _RAGE_FEATURE: Final = "rage"
+_PERSISTENT_RAGE_FEATURE: Final = "persistent-rage"
 # The id ``passive_effect_to_active_effect`` gives the corpus effect named
 # "Rage"; a Rage a host seeds through ``start_combat`` carries it too.
 _RAGE_EFFECT_ID: Final = "effect:rage"
@@ -6332,6 +6349,27 @@ def _end_rage(live: _LiveCombat, entity_id: str, reason: EffectExpiryReason) -> 
         )
 
 
+def _has_persistent_rage(live: _LiveCombat, entity_id: str) -> bool:
+    """SRD 5.2 Persistent Rage (Barbarian 15): "your Rage is so fierce that it
+    now lasts for 10 minutes without you needing to do anything to extend it
+    from round to round." """
+    c = _find_combatant(live, entity_id)
+    return c is not None and _PERSISTENT_RAGE_FEATURE in _granted_feature_slugs(c)
+
+
+def _end_rage_on_incapacitation(live: _LiveCombat, entity_id: str, condition: str) -> None:
+    """SRD 5.2 Rage: "it ends early if you don Heavy armor or have the
+    Incapacitated condition." ``condition`` is Incapacitated or implies it.
+    Persistent Rage: "Your Rage ends early if you have the Unconscious
+    condition (not just the Incapacitated condition)"."""
+    if _rage_effect(live, entity_id) is None:
+        return
+    unconscious = is_condition_active(Condition.UNCONSCIOUS, [condition])
+    if not unconscious and _has_persistent_rage(live, entity_id):
+        return
+    _end_rage(live, entity_id, "incapacitated")
+
+
 def _extends_rage(live: _LiveCombat, actor_id: str, event: CombatEvent) -> bool:
     """One of SRD 5.2 Rage's roll extensions: "Make an attack roll against an
     enemy. Force an enemy to make a saving throw." ``SaveRolled`` names no
@@ -6349,7 +6387,8 @@ def _hook_rage_extension(live: _LiveCombat, actor_id: str | None) -> None:
     this turn entered it or extended it — the Bonus Action, or a roll
     ``_extends_rage`` accepts — and otherwise ends with
     ``reason="not_extended"``. A Rage seeded through ``start_combat`` wasn't
-    entered this turn, so its first turn must extend it. No RNG."""
+    entered this turn, so its first turn must extend it. A Persistent Rage
+    (Barbarian 15) needs no extension (``_has_persistent_rage``). No RNG."""
     if actor_id is None:
         return
     extended_by_bonus_action = actor_id in live.rage_bonus_extensions
@@ -6360,6 +6399,7 @@ def _hook_rage_extension(live: _LiveCombat, actor_id: str | None) -> None:
         or extended_by_bonus_action
         or _effect_applied_during_current_turn(live, actor_id, (actor_id, rage.id, rage.origin))
         or any(_extends_rage(live, actor_id, ev) for ev in _current_turn_events(live, actor_id))
+        or _has_persistent_rage(live, actor_id)
     ):
         return
     _end_rage(live, actor_id, "not_extended")
