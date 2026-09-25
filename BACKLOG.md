@@ -600,7 +600,9 @@ zone + apply logic:
   SRD 5.2 requires both hands free to wield a Two-Handed weapon (and bars
   it alongside a shield); the engine has no equipped-item/hand-occupancy
   model, so `PlayerIntent.two_handed` is accepted at face value with no
-  legality check. Equip-slot bookkeeping is a host concern.
+  legality check, even beside a Shield the combatant has equipped
+  (`Combatant.shield_equipped`, which only Great Weapon Fighting and Martial
+  Arts read). Equip-slot bookkeeping is a host concern.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py`)
 
 ## Audit 2026-08-26 — action economy & turn structure

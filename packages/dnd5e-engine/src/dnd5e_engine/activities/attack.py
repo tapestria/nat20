@@ -911,11 +911,14 @@ def _great_weapon_fighting_floor(
     Fighting: "When you roll damage for an attack you make with a Melee weapon
     that you are holding with two hands ... The weapon must have the Two-Handed
     or Versatile property to gain this benefit." A Versatile weapon counts only
-    under the declared two-handed melee grip (``ctx.use_versatile_damage``)."""
+    under the declared two-handed melee grip (``ctx.use_versatile_damage``). A
+    Shield occupies a hand, so no weapon is held with two while one is
+    equipped."""
     if (
         weapon is None
         or "great-weapon-fighting" not in ctx.caster.fighting_styles
         or not _is_melee_weapon(weapon)
+        or ctx.caster.shield_equipped
     ):
         return None
     two_hands = WeaponProperty.TWO_HANDED in weapon.properties or (

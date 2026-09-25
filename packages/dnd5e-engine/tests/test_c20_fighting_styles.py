@@ -157,6 +157,31 @@ def test_gwf_on_a_versatile_weapon_needs_the_two_handed_grip(
     assert _damage("great-weapon-fighting", two_handed=two_handed) == with_style
 
 
+@pytest.mark.parametrize(
+    ("equipment", "damage"), [(("greatsword",), [9]), (("greatsword", "shield"), [6])]
+)
+def test_gwf_needs_no_shield_in_the_other_hand(
+    equipment: tuple[str, ...], damage: list[int]
+) -> None:
+    """Great Weapon Fighting: "...a Melee weapon that you are holding with two
+    hands". A Shield takes one of them. S03's seed 22: d20 hits; the
+    Greatsword's 2d6 shows 2 and 1, so 3 + 3 + STR 3 = 9 with the floor and
+    2 + 1 + 3 = 6 without it."""
+    handle, live = start(
+        [
+            pc(
+                attack_bonus=8,
+                strength=16,
+                equipment=equipment,
+                fighting_style="great-weapon-fighting",
+            )
+        ],
+        seed=22,
+    )
+    act(handle, "char:hero", intent_type="attack", weapon_id="greatsword", target_id="mon:foe")
+    assert [e.amount for e in events(live, DamageApplied)] == damage
+
+
 def test_gwf_ignores_a_two_handed_ranged_weapon() -> None:
     """A Shortbow is Two-Handed but a Ranged weapon. At 20 ft, seed 2: d20 2
     hits AC 1; d6 1 + DEX 2 = 3 with or without the style."""

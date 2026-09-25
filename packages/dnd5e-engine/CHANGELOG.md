@@ -180,9 +180,10 @@ Behavioural deltas (and the fixtures they move) are enumerated in
 - **Class feature mechanics (C20).** The four SRD 5.2 Fighting Style feats
   apply: Defense (+1 AC from `derive_sheet` while armor is worn), Archery (+2
   to Ranged-weapon attack rolls, on top of a pinned `attack_bonus`), Great
-  Weapon Fighting (a 1 or 2 on a damage die counts as a 3, with no extra draw)
-  and Two-Weapon Fighting (the Light off-hand swing keeps its ability
-  modifier). Martial Arts: an unarmored, shieldless monk's Unarmed Strike or
+  Weapon Fighting (a 1 or 2 on a damage die counts as a 3, with no extra draw,
+  for a weapon held in two hands and so never beside a Shield) and Two-Weapon
+  Fighting (the Light off-hand swing keeps its ability modifier). Martial
+  Arts: an unarmored, shieldless monk's Unarmed Strike or
   Monk weapon rolls the Martial Arts die when it beats the weapon's own, uses
   DEX when higher (the Grapple and Shove DC too), and gets a Bonus Unarmed
   Strike; Flurry of Blows spends 1 Focus Point for the next two Unarmed
