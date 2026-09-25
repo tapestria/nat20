@@ -23,7 +23,7 @@ from dnd5e_engine.orchestrator import (
 )
 from dnd5e_engine.rules.dice import roll_d6
 from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
-from tests.e2e.harness import cell, events_of, grid_scene, run_async, xfail_cluster
+from tests.e2e.harness import cell, events_of, grid_scene, run_async
 
 
 def test_c20_s01_fighting_style_defense_grants_plus1_ac_while_armored():
@@ -739,7 +739,6 @@ def test_c20_s10_lay_on_hands_pool_caps_at_5x_paladin_level_per_long_rest():
     assert total_healed == 10
 
 
-@xfail_cluster(20, "class feature mechanics")
 def test_c20_s11_cunning_action_dash_is_gated_by_feature_not_class_slug():
     """C20-S11: SRD 5.2 ``classes24/rogue/class-features/cunning-action.yml``
     — "On your turn, you can take one of the following actions as a Bonus

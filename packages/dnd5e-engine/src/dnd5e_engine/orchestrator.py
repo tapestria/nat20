@@ -285,9 +285,10 @@ class PlayerIntent(BaseModel):
     # omitted for a directional template the orchestrator aims from the caster
     # through ``target_id``. Ignored for sphere / cylinder and non-AoE intents.
     direction: tuple[int, int] | None = None
-    # SRD §Combat — Dash budget choice. False → Action (default). True → Bonus
-    # Action (Rogue Cunning Action). The orchestrator rejects the bonus-action
-    # path when the actor is not a Rogue. Carried from
+    # SRD §Combat — Dash / Disengage budget choice. False → Action (default).
+    # True → Bonus Action: for ``dash`` and ``disengage`` only with Cunning
+    # Action among the granted features (SRD 5.2 Rogue 2), else
+    # ``IntentRejectedError("no_action_economy")``. Carried from
     # ``ParsedIntent.use_bonus_action``.
     # On an Unarmed Strike ``attack`` by an attacker whose Martial Arts is
     # active it asks for SRD 5.2's "Bonus Unarmed Strike. You can make an
@@ -3995,32 +3996,56 @@ def _dispatch_simple_turn_ending_intent(
     return False
 
 
+_CUNNING_ACTION: Final = "cunning-action"
+
+
+def _require_cunning_action(current: Combatant, action: Literal["Dash", "Disengage"]) -> None:
+    """SRD 5.2 Cunning Action (Rogue 2): "On your turn, you can take one of the
+    following actions as a Bonus Action: Dash, Disengage, or Hide." Taking
+    ``action`` as a Bonus Action needs the feature among the granted ones —
+    each class at its own level, so neither a Rogue 1 nor a non-Rogue has it —
+    and an unspent Bonus Action; else ``IntentRejectedError("no_action_economy")``."""
+    actor_id = current.entity_id
+    if _CUNNING_ACTION not in _granted_feature_slugs(current):
+        raise IntentRejectedError(
+            "no_action_economy",
+            f"actor_id={actor_id!r} cannot {action} as a Bonus Action without Cunning Action",
+        )
+    if not current.bonus_action_available:
+        raise IntentRejectedError(
+            "no_action_economy",
+            f"actor_id={actor_id!r} has no Bonus Action remaining for Cunning Action {action}",
+        )
+
+
+def _disengage_as_bonus_action(live: _LiveCombat, current: Combatant) -> None:
+    """Cunning Action's Disengage: the Bonus Action instead of the Action, with
+    the same effect — movement provokes no Opportunity Attacks for the rest of
+    the turn."""
+    _require_cunning_action(current, "Disengage")
+    _update_combatant(
+        live, current.entity_id, bonus_action_available=False, disengaging_this_turn=True
+    )
+    _emit(live, IntentSubmitted(actor_id=current.entity_id, intent_type="disengage"))
+
+
 def _handle_dash(live: _LiveCombat, current: Combatant, intent: PlayerIntent) -> None:
     """SRD §Combat — Dash: double the actor's movement budget for this turn.
 
     Adds ``base_speed`` to ``movement_remaining`` and consumes either the
     Action (default; the Action path pays with the base Action, else an
-    Action Surge extra action) or the Bonus Action (Rogue Cunning Action when
+    Action Surge extra action) or the Bonus Action (Cunning Action, when
     ``intent.use_bonus_action`` is True). Dash does NOT advance the turn.
 
     Rejections raise ``IntentRejectedError("no_action_economy")``:
-      * ``use_bonus_action=True`` while ``class_slug != "rogue"``
+      * ``use_bonus_action=True`` without Cunning Action among the granted
+        features (``_require_cunning_action``)
       * the chosen budget slot is already spent
     """
     actor_id = current.entity_id
     budget_consumed: Literal["action", "bonus_action"]
     if intent.use_bonus_action:
-        if current.class_slug != "rogue":
-            raise IntentRejectedError(
-                "no_action_economy",
-                f"actor_id={actor_id!r} cannot Dash as a Bonus Action "
-                f"(class_slug={current.class_slug!r}, requires 'rogue')",
-            )
-        if not current.bonus_action_available:
-            raise IntentRejectedError(
-                "no_action_economy",
-                f"actor_id={actor_id!r} has no Bonus Action remaining for Cunning Action Dash",
-            )
+        _require_cunning_action(current, "Dash")
         budget_consumed = "bonus_action"
     elif not (current.action_available or _extra_action_funds(current, "dash")):
         raise IntentRejectedError(
@@ -4264,15 +4289,19 @@ def _handle_disengage(live: _LiveCombat, current: Combatant, intent: PlayerInten
     """SRD §Actions in Combat, Disengage — *"Your movement doesn't provoke
     Opportunity Attacks for the rest of the turn."*
 
-    Consumes the Action (Disengage IS the Action — distinct from Dash's
-    Action/Bonus-Action dual economy) and sets ``disengaging_this_turn`` so
-    the monster-reactor opportunity-attack scan
+    Consumes the Action — or, with ``intent.use_bonus_action``, the Bonus
+    Action through Cunning Action (``_disengage_as_bonus_action``) — and sets
+    ``disengaging_this_turn`` so the monster-reactor opportunity-attack scan
     (``_fire_monster_opportunity_attacks_on_move``) suppresses AoOs for the
     rest of the turn. Does NOT advance the turn (mirrors Dash) so a
     same-turn Disengage→Move sequence works. Rejects with
     ``IntentRejectedError("no_action_economy")`` when neither the Action nor
-    an Action Surge extra action is left.
+    an Action Surge extra action is left, or when the Bonus Action is asked
+    for without Cunning Action.
     """
+    if intent.use_bonus_action:
+        _disengage_as_bonus_action(live, current)
+        return
     actor_id = current.entity_id
     payment = _action_payment(current, "disengage")
     if not payment:
@@ -9903,10 +9932,11 @@ async def _dispatch_turn_nonending_intent(
       ``distance_ft`` from the per-turn movement budget (movement is
       interleaved with Actions / Bonus Actions). Rejections emit
       ``MoveFailed`` without mutating budget or position.
-    * ``dash`` — SRD §Dash: spend the Action (or, for Rogues with Cunning
-      Action, the Bonus Action) to add ``base_speed`` to the movement
+    * ``dash`` — SRD §Dash: spend the Action (or, with Cunning Action, the
+      Bonus Action) to add ``base_speed`` to the movement
       budget. Rejections raise ``IntentRejectedError("no_action_economy")``.
-    * ``disengage`` — SRD §Disengage: spend the Action; movement provokes
+    * ``disengage`` — SRD §Disengage: spend the Action (or, with Cunning
+      Action, the Bonus Action); movement provokes
       no Opportunity Attacks for the rest of the turn. Like Dash, keeps
       the actor on turn so a same-turn Disengage→Move sequence works
       ; closes the discovered turn-ending fall-through where
