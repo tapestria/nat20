@@ -20,7 +20,8 @@ from __future__ import annotations
 
 import logging
 import typing
-from typing import TYPE_CHECKING, get_args
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any, get_args
 
 from dnd5e_engine.activities.formula import resolve_roll_data
 from dnd5e_engine.events import ConditionApplied, ConditionType, EffectApplied
@@ -149,12 +150,14 @@ def passive_effect_to_active_effect(
     caster_id: str,
     concentration: bool = False,
     ctx: ActivityResolutionContext | None = None,
+    extra_flags: Mapping[str, Any] | None = None,
 ) -> ActiveEffect:
     """Build the runtime ``ActiveEffect`` the resolver emits for one target.
 
     ``id``/``origin`` follow the ieffect2 slug conventions so the orchestrator
     can parse them back in Piece 3. ``flags`` carries ``{"concentration": True}``
-    only when the caster's cast is concentration-gated; otherwise empty.
+    only when the caster's cast is concentration-gated, then ``extra_flags``
+    (an allowlisted conjuration's keys, e.g. the enchanted weapon's slug).
 
     ``ctx`` (when supplied) resolves level-scaled roll-data tokens in each
     change value at apply-time (Rage's ``@scale.barbarian.rage-damage`` → the
@@ -170,7 +173,7 @@ def passive_effect_to_active_effect(
         duration=_duration_from_passive(pe.duration),
         changes=[_passive_change_to_active(ch, ctx) for ch in pe.changes],
         statuses=set(pe.statuses),
-        flags={"concentration": True} if concentration else {},
+        flags={**({"concentration": True} if concentration else {}), **(extra_flags or {})},
     )
 
 
@@ -181,6 +184,7 @@ def apply_activity_effects(
     *,
     save_succeeded: bool | None,
     cast_level: int,
+    extra_flags: Mapping[str, Any] | None = None,
 ) -> None:
     """Apply an activity's effect riders to ``target``, emitting events.
 
@@ -197,6 +201,7 @@ def apply_activity_effects(
     ``save_succeeded`` is the target's save outcome for save activities (``None``
     for non-save kinds, which apply unconditionally). ``cast_level`` is the slot
     level the activity was cast at, gated against each ref's ``level`` block.
+    ``extra_flags`` are merged into every built effect's ``flags``.
 
     Mirrors (does not import) ``effects/ieffect2._apply_effect``'s emit shape.
     """
@@ -233,6 +238,7 @@ def apply_activity_effects(
             caster_id=ctx.caster.entity_id,
             concentration=ctx.concentration,
             ctx=ctx,
+            extra_flags=extra_flags,
         )
         ctx.event_emitter(EffectApplied(effect=ae))
 

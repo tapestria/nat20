@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from dnd5e_srd_data.schema.common import PassiveEffect
     from dnd5e_srd_data.schema.spell import Spell
 
+    from dnd5e_engine.activities.conjuration import ConjurationCarrier
     from dnd5e_engine.types.effects import ActiveEffect
 
 _ABILITIES = ("str", "dex", "con", "int", "wis", "cha")
@@ -219,6 +220,7 @@ def build_activity_context(
     scaling_value: int | None = None,
     martial_arts: bool = False,
     granted_die: str | None = None,
+    conjuration: ConjurationCarrier | None = None,
 ) -> ActivityResolutionContext:
     """Adapt the caster + the pre-computed hydration sidecars into the typed
     ``ActivityResolutionContext`` the new resolver consumes.
@@ -537,4 +539,5 @@ def build_activity_context(
         scaling_value=scaling_value,
         martial_arts=martial_arts,
         granted_die=granted_die,
+        conjuration=conjuration,
     )
