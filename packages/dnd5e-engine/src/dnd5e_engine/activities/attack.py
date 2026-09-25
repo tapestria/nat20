@@ -210,6 +210,21 @@ def resolve_attack(
             natural, total, effective_ac, activity, auto_crit_on_hit=auto_crit
         )
 
+        # SRD 5.2 Bardic Inspiration: "Once within the next hour when the
+        # creature fails a D20 Test, the creature can roll the Bardic
+        # Inspiration die and add the number rolled to the d20, potentially
+        # turning the failure into a success." Drawn after the d20 and the
+        # Bless-style dice, only on a miss the die could turn — a natural 1
+        # "misses regardless of any modifiers or the target's AC" — and once
+        # ("A Bardic Inspiration die is expended when it's rolled").
+        if ctx.granted_die and not is_hit and natural != 1 and not ctx.granted_die_rolls:
+            inspiration = roll_expr(ctx.granted_die, ctx.rng)
+            ctx.granted_die_rolls.append(inspiration)
+            total += inspiration
+            is_crit, is_hit = _resolve_hit_outcome(
+                natural, total, effective_ac, activity, auto_crit_on_hit=auto_crit
+            )
+
         ctx.event_emitter(
             AttackRolled(
                 attacker_id=ctx.caster.entity_id,

@@ -218,6 +218,7 @@ def build_activity_context(
     undead_fortitude_holds: dict[str, bool] | None = None,
     scaling_value: int | None = None,
     martial_arts: bool = False,
+    granted_die: str | None = None,
 ) -> ActivityResolutionContext:
     """Adapt the caster + the pre-computed hydration sidecars into the typed
     ``ActivityResolutionContext`` the new resolver consumes.
@@ -535,4 +536,5 @@ def build_activity_context(
         ),
         scaling_value=scaling_value,
         martial_arts=martial_arts,
+        granted_die=granted_die,
     )

@@ -504,7 +504,6 @@ def test_c20_s07_action_surge_grants_a_second_action_same_turn():
     assert len(strikes) == 2
 
 
-@xfail_cluster(20, "class feature mechanics")
 def test_c20_s08_bardic_inspiration_die_consumed_on_later_ally_roll():
     """C20-S08: SRD 5.2 ``classes24/bard/class-features/bardic-inspiration.yml``
     — "That creature gains one of your Bardic Inspiration dice. ... Once

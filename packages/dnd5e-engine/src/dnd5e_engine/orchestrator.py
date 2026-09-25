@@ -212,6 +212,10 @@ _LOGGER = logging.getLogger(__name__)
 # intended examples.
 ReactionTrigger = Literal["cast_spell", "hit_by_attack", "targeted_by_magic_missile"]
 
+# SRD 5.2 granted dice a creature spends on its own roll. One today: "That
+# creature gains one of your Bardic Inspiration dice."
+GrantedDie = Literal["feature_grant:bardic-inspiration"]
+
 
 class PlayerIntent(BaseModel):
     """A PC's submitted intent for the current turn.
@@ -257,6 +261,14 @@ class PlayerIntent(BaseModel):
     # ``CastFailed(reason="invalid_charge_spend")`` on an activity that doesn't
     # scale by amount, or above the points left. Ignored by other intent types.
     pool_points: int | None = Field(default=None, ge=1)
+    # SRD 5.2 Bardic Inspiration: "Once within the next hour when the creature
+    # fails a D20 Test, the creature can roll the Bardic Inspiration die and add
+    # the number rolled to the d20, potentially turning the failure into a
+    # success." On an ``attack``: roll the die the attacker holds if the attack
+    # roll misses — a hit or a natural 1 keeps it banked. No die to roll →
+    # ``AttackFailed(reason="no_granted_die")`` before anything is spent.
+    # Ignored by other intent types (saves and checks carry no such choice).
+    redeem_granted_die: GrantedDie | None = None
     # SRD §Reactions — the trigger condition a ``"ready"`` intent pre-arms
     # 's pending-reaction queue). Consumed by
     # ``_pop_pending_reaction`` / ``_drain_targeted_reactions`` when a
@@ -7947,6 +7959,111 @@ def _resolve_feature_invocation(
     )
 
 
+# SRD 5.2 Bardic Inspiration. The die a creature holds is the "Inspired" effect
+# the Inspire activity applies to it (id from its name, origin
+# ``cast:inspired:<bard>``).
+_BARDIC_INSPIRATION: Final = "bardic-inspiration"
+_INSPIRED_EFFECT_ID: Final = "effect:inspired"
+_INSPIRED_ORIGIN_PREFIX: Final = "cast:inspired:"
+
+
+def _inspiration_effect(live: _LiveCombat, entity_id: str) -> ActiveEffect | None:
+    """The Bardic Inspiration die ``entity_id`` holds — SRD 5.2: "A creature can
+    have only one Bardic Inspiration die at a time."""
+    return next(
+        (e for e in live.active_effects.get(entity_id, []) if e.id == _INSPIRED_EFFECT_ID),
+        None,
+    )
+
+
+def _granted_die(live: _LiveCombat, holder: Combatant) -> str | None:
+    """The Bardic Inspiration die ``holder`` can roll, as ``"1d6"`` … ``"1d12"``.
+
+    It is "one of your Bardic Inspiration dice": the granting bard's
+    ``@scale.bard.inspiration`` at its Bard level, read now. A die whose bard is
+    not in this combat cannot be sized, so it is not redeemable (``None``, like
+    no die at all).
+    """
+    effect = _inspiration_effect(live, holder.entity_id)
+    if effect is None:
+        return None
+    bard = _find_combatant(live, effect.origin.removeprefix(_INSPIRED_ORIGIN_PREFIX))
+    if bard is None:
+        return None
+    die = build_scale_values(
+        class_slug=bard.class_slug,
+        subclass_slug=bard.subclass_slug,
+        species_slug=bard.species_slug,
+        level=bard.character_level,
+        loader=get_lib_loader(),
+        classes=_class_levels(bard),
+    ).get("bard.inspiration.die")
+    return f"1{die}" if isinstance(die, str) else None
+
+
+def _redeemed_die(live: _LiveCombat, attacker: Combatant, intent: PlayerIntent) -> str | None:
+    """The die this ``attack`` asks to roll on a miss (``redeem_granted_die``);
+    ``None`` when it asks for none, and for every other intent type."""
+    if intent.intent_type != "attack" or intent.redeem_granted_die is None:
+        return None
+    return _granted_die(live, attacker)
+
+
+def _granted_die_failure(
+    live: _LiveCombat, current: Combatant, intent: PlayerIntent
+) -> CombatEvent | None:
+    """``AttackFailed(reason="no_granted_die")`` when an ``attack`` asks to
+    redeem a die its attacker cannot roll; ``None`` otherwise. One of the
+    ``pre_resolution_gates``, so the refusal spends nothing."""
+    if intent.intent_type != "attack" or intent.redeem_granted_die is None:
+        return None
+    if _granted_die(live, current) is not None:
+        return None
+    return AttackFailed(
+        actor_id=current.entity_id, target_id=intent.target_id, reason="no_granted_die"
+    )
+
+
+def _bardic_inspiration_target_failure(
+    live: _LiveCombat, actor_id: str, intent: PlayerIntent
+) -> CombatEvent | None:
+    """``CastFailed(reason="target_invalid")`` for a Bardic Inspiration with no
+    creature to inspire — SRD 5.2: "you can inspire another creature … A
+    creature can have only one Bardic Inspiration die at a time": no target in
+    this combat, the bard itself, or a creature already holding a die. Range
+    and sight are not modelled. ``None`` otherwise."""
+    if intent.feature_id != _BARDIC_INSPIRATION:
+        return None
+    target = _find_combatant(live, intent.target_id) if intent.target_id else None
+    if (
+        target is not None
+        and target.entity_id != actor_id
+        and _inspiration_effect(live, target.entity_id) is None
+    ):
+        return None
+    return CastFailed(actor_id=actor_id, spell_id="", reason="target_invalid")
+
+
+def _expend_granted_die(
+    live: _LiveCombat, holder: Combatant, actx: ActivityResolutionContext
+) -> None:
+    """SRD 5.2: "A Bardic Inspiration die is expended when it's rolled." Ends the
+    holder's "Inspired" effect once ``attack.py`` rolled the die; a hit or a
+    natural 1 left it unrolled and banked."""
+    effect = _inspiration_effect(live, holder.entity_id)
+    if not actx.granted_die_rolls or effect is None:
+        return
+    _emit(
+        live,
+        EffectExpired(
+            effect_id=effect.id,
+            target_id=holder.entity_id,
+            origin=effect.origin,
+            reason="expended",
+        ),
+    )
+
+
 def _begin_turn(live: _LiveCombat, *, new_round: bool) -> None:
     """Open the turn ``live.current_turn_index`` now points at.
 
@@ -9821,9 +9938,11 @@ async def submit_player_intent(
     # target the charmer with damaging abilities or magical effects") ->
     # pre-slot ``target_invalid`` (Hellish Rebuke's fixed target, SRD
     # §Hellish Rebuke; an unaimed Cone/Line/Cube AoE template) -> a second
-    # Action Surge this turn (SRD 5.2 "only once on a turn"). The first
-    # gate whose failure-builder returns a non-``None`` event wins; that
-    # event is emitted and the intent is rejected.
+    # Action Surge this turn (SRD 5.2 "only once on a turn") -> a Bardic
+    # Inspiration with no other creature to inspire -> an attack redeeming a
+    # die it cannot roll. The first gate whose failure-builder returns a
+    # non-``None`` event wins; that event is emitted and the intent is
+    # rejected.
     pre_resolution_gates: tuple[Callable[[], CombatEvent | None], ...] = (
         lambda: _spell_out_of_range_failure(live, actor_id, intent, cast_spell_for_timing),
         lambda: _attack_out_of_range_failure(live, actor_id, intent),
@@ -9833,6 +9952,8 @@ async def submit_player_intent(
             live, current, actor_id, intent, cast_spell_for_timing
         ),
         lambda: _action_surge_failure(current, intent),
+        lambda: _bardic_inspiration_target_failure(live, actor_id, intent),
+        lambda: _granted_die_failure(live, current, intent),
     )
     for build_pre_resolution_failure in pre_resolution_gates:
         failure = build_pre_resolution_failure()
@@ -10150,6 +10271,11 @@ async def submit_player_intent(
             # feature) — ``attack.py`` still gates per swing on the weapon
             # being unarmed or a Monk weapon.
             martial_arts=_martial_arts_active(current),
+            # SRD 5.2 Bardic Inspiration: the die THIS attack asks to redeem
+            # (``PlayerIntent.redeem_granted_die``), sized from the granting
+            # bard now — ``None`` for every non-attack intent and an attack
+            # that asks for none.
+            granted_die=_redeemed_die(live, current, intent),
             # A FEATURE invocation must not inherit the blanket spell
             # save_dc_override; its save activity computes its own ability+PB DC.
             is_feature_invocation=bool(intent.feature_id),
@@ -10224,6 +10350,9 @@ async def submit_player_intent(
         )
         for activity in activities:
             resolve_activity(activity, actx, weapon=fetched_weapon)
+
+        # SRD 5.2 Bardic Inspiration — a die rolled this resolution is spent.
+        _expend_granted_die(live, current, actx)
 
         # SRD 5.2 §Actions in Combat — Help: one-use pop. If this attack
         # landed against a target the caster's Help grant was folded onto

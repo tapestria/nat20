@@ -84,6 +84,9 @@ EffectExpiryReason = Literal[
     "dispelled",
     "source_dead",
     "moved",
+    # SRD 5.2 Bardic Inspiration: "A Bardic Inspiration die is expended when
+    # it's rolled." (C20)
+    "expended",
 ]
 
 CastFailedReason = Literal[
@@ -556,6 +559,10 @@ class AttackFailed(BaseModel):
         # reaction-attack path exists, so action/bonus/reaction collapse
         # to the turn boundary). (C15)
         "weapon_already_fired",
+        # SRD 5.2 Bardic Inspiration — the attack asked to redeem a die
+        # (``PlayerIntent.redeem_granted_die``) its attacker does not hold, or
+        # whose bard is not in this combat. (C20)
+        "no_granted_die",
     ]
 
 
