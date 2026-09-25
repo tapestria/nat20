@@ -277,6 +277,10 @@ class PlayerIntent(BaseModel):
     # Action (Rogue Cunning Action). The orchestrator rejects the bonus-action
     # path when the actor is not a Rogue. Carried from
     # ``ParsedIntent.use_bonus_action``.
+    # On an Unarmed Strike ``attack`` by an attacker whose Martial Arts is
+    # active it asks for SRD 5.2's "Bonus Unarmed Strike. You can make an
+    # Unarmed Strike as a Bonus Action."; without Martial Arts it changes
+    # nothing there (an Attack-action swing).
     use_bonus_action: bool = False
     # SRD 5.2 Unarmed Strike — Shove: "you either push it 5 feet away or
     # cause it to have the Prone condition" — the shover's pre-declared
@@ -4560,6 +4564,9 @@ def _emit_apply_turn_started(live: _LiveCombat, event: TurnStarted) -> None:
                     # the cap resets at the actor's own TurnStarted (C15
                     # Task 7).
                     "cleave_spent_this_turn": False,
+                    # SRD 5.2 Flurry of Blows — strikes still owed lapse at
+                    # the actor's own turn start.
+                    "flurry_strikes_remaining": 0,
                 }
             )
             break
@@ -7344,11 +7351,14 @@ def _attack_action_is_spent(current: Combatant) -> bool:
     this Action, the actor gets exactly one attack per Action (multi-attack
     actors always keep the turn until their budget is exhausted), and no
     Light off-hand window is open (Bonus-Action-funded OR Nick — C15
-    Task 7, ``_offhand_window_open``)."""
+    Task 7, ``_offhand_window_open``). Flurry of Blows strikes still owed
+    keep the turn open the same way: the Focus Point and the Bonus Action
+    already paid for them."""
     return (
         current.attacks_remaining <= 0
         and _attacks_per_action(current) == 1
         and not _offhand_window_open(current)
+        and current.flurry_strikes_remaining <= 0
     )
 
 
@@ -8505,6 +8515,118 @@ def _consume_offhand_attack_budget(
     return _current_actor(live)
 
 
+# What pays for an ``attack`` intent's swing: the Attack action, or one of SRD
+# 5.2's swings outside it — the Light property's extra attack, a Flurry of
+# Blows strike, Martial Arts' Bonus Unarmed Strike.
+AttackFunding = Literal["action", "light_offhand", "flurry", "martial_arts_bonus"]
+
+_UNARMED_STRIKE: Final = "unarmed-strike"
+# Monk's Focus: the Flurry of Blows activity (Foundry id), and the Monk 10
+# feature that adds a third strike to it.
+_FLURRY_OF_BLOWS: Final = ("monks-focus", "2ghJTBhilLrFn9xT")
+_HEIGHTENED_FOCUS: Final = "heightened-focus"
+
+
+def _update_combatant(live: _LiveCombat, entity_id: str, **fields: Any) -> None:
+    """Write ``fields`` onto ``entity_id``'s initiative slot (``model_copy``), so
+    later reads of ``live.initiative`` see them."""
+    for idx, c in enumerate(live.initiative):
+        if c.entity_id == entity_id:
+            live.initiative[idx] = c.model_copy(update=fields)
+            return
+
+
+def _classify_attack_funding(
+    current: Combatant, intent: PlayerIntent, weapon: Weapon | None
+) -> AttackFunding:
+    """What pays for this ``attack`` intent's swing (``"action"`` for any other
+    intent), in priority order:
+
+    * ``"light_offhand"`` — the Light property's extra attack with a different
+      Light weapon (``_is_offhand_attack_swing``: the Bonus Action, or nothing
+      with Nick);
+    * ``"flurry"`` — an Unarmed Strike while a committed Flurry of Blows still
+      owes strikes ("You can expend 1 Focus Point to make two Unarmed Strikes as
+      a Bonus Action": the Focus Point and the Bonus Action already paid);
+    * ``"martial_arts_bonus"`` — an Unarmed Strike with ``use_bonus_action`` by
+      an attacker whose Martial Arts is active ("Bonus Unarmed Strike. You can
+      make an Unarmed Strike as a Bonus Action.");
+    * ``"action"`` — the Attack action.
+    """
+    if _is_offhand_attack_swing(current, intent, weapon):
+        return "light_offhand"
+    if intent.intent_type != "attack" or intent.weapon_id != _UNARMED_STRIKE:
+        return "action"
+    if current.flurry_strikes_remaining > 0:
+        return "flurry"
+    if intent.use_bonus_action and _martial_arts_active(current):
+        return "martial_arts_bonus"
+    return "action"
+
+
+def _intent_economy_failure(
+    current: Combatant, intent: PlayerIntent, cost: _ActionCost, funding: AttackFunding
+) -> CombatEvent | None:
+    """The action-economy gate for ``intent`` paid as ``funding``: the
+    turn-keeping rejection to emit, or ``None``. The Light extra attack and a
+    Flurry strike were admitted by ``_classify_attack_funding``; the Bonus
+    Unarmed Strike needs the Bonus Action; every other intent goes through
+    ``_action_economy_gate_failure`` (which may raise)."""
+    if funding == "martial_arts_bonus" and not current.bonus_action_available:
+        return AttackFailed(
+            actor_id=current.entity_id, target_id=intent.target_id, reason="no_action_economy"
+        )
+    if funding != "action":
+        return None
+    return _action_economy_gate_failure(
+        current,
+        intent,
+        is_bonus_action=cost.is_bonus_action,
+        is_reaction_cast=cost.is_reaction_cast,
+    )
+
+
+def _consume_intent_budget(
+    live: _LiveCombat,
+    actor_id: str,
+    current: Combatant,
+    intent: PlayerIntent,
+    cost: _ActionCost,
+    funding: AttackFunding,
+    weapon: Weapon | None,
+) -> Combatant:
+    """Spend what pays for ``intent`` and return the refreshed current actor
+    (``current`` is a stale snapshot). A non-attack intent spends its classified
+    Action / Bonus Action / Reaction; an attack spends what ``funding`` names:
+    the Attack action's soft-consume, the Light extra attack's Bonus Action
+    (none with Nick), one owed Flurry strike, or the Bonus Action."""
+    if intent.intent_type != "attack":
+        return _consume_action_budget(live, actor_id, cost)
+    if funding == "action":
+        return _consume_attack_budget(live, actor_id, current)
+    if funding == "light_offhand":
+        return _consume_offhand_attack_budget(live, actor_id, current, weapon)
+    if funding == "flurry":
+        _update_combatant(
+            live, actor_id, flurry_strikes_remaining=current.flurry_strikes_remaining - 1
+        )
+    else:
+        _update_combatant(live, actor_id, bonus_action_available=False)
+    return _current_actor(live)
+
+
+def _grant_flurry_strikes(live: _LiveCombat, actor_id: str, intent: PlayerIntent) -> None:
+    """SRD 5.2 Monk's Focus: "Flurry of Blows. You can expend 1 Focus Point to
+    make two Unarmed Strikes as a Bonus Action." Heightened Focus: "make three
+    Unarmed Strikes with it instead of two." Called once the invocation is
+    committed; the owed strikes are this turn's next Unarmed Strike attacks
+    (``_classify_attack_funding``) and lapse at the monk's next turn start."""
+    if (intent.feature_id, intent.activity_id) != _FLURRY_OF_BLOWS:
+        return
+    strikes = 3 if _HEIGHTENED_FOCUS in _granted_feature_slugs(_current_actor(live)) else 2
+    _update_combatant(live, actor_id, flurry_strikes_remaining=strikes)
+
+
 def _record_light_weapon_swing(
     live: _LiveCombat, actor_id: str, current: Combatant, weapon_slug: str
 ) -> Combatant:
@@ -9569,25 +9691,20 @@ async def submit_player_intent(
     is_bonus_action = action_cost.is_bonus_action
     is_reaction_cast = action_cost.is_reaction_cast
 
-    # SRD 5.2 §Two-Weapon Fighting — classify BEFORE the action-economy gate:
-    # an off-hand swing spends the Bonus Action (already gated by
-    # ``bonus_action_available`` inside the classifier itself), not the
-    # per-Action attack budget, so it must bypass the attack branch of
-    # ``_action_economy_gate_failure`` / ``_consume_attack_budget`` entirely.
-    # An attack-shaped intent that LOOKS like an off-hand swing but fails one
-    # of the classifier's gates (same weapon slug, no open window, Bonus
-    # Action already spent) falls through to the normal attack economy gate
-    # below — with ``attacks_remaining`` already exhausted by the main-hand
-    # swing, that gate's ``AttackFailed(reason="no_action_economy")`` covers
-    # the rejection (turn-keeping, per R2). Fetched here (ahead of the
-    # ``pre_resolution_gates`` tuple below) so the Loading gate (C15 Task 5)
-    # can reuse the same fetch instead of re-fetching the weapon.
-    offhand_weapon = (
+    # What pays for an attack's swing — the Attack action, the Light property's
+    # extra attack, a Flurry of Blows strike or Martial Arts' Bonus Unarmed
+    # Strike — is classified BEFORE the economy gate, which routes each funding
+    # (``_intent_economy_failure``). An attack that looks like a Light extra
+    # attack but fails one of its gates is an Attack-action swing; with
+    # ``attacks_remaining`` spent, that gate's turn-keeping
+    # ``AttackFailed(reason="no_action_economy")`` rejects it. The weapon is
+    # fetched once, here, and the Loading gate below reuses it.
+    attack_weapon = (
         get_lib_loader().get_weapon(intent.weapon_id)
         if intent.intent_type == "attack" and intent.weapon_id
         else None
     )
-    is_offhand_swing = _is_offhand_attack_swing(current, intent, offhand_weapon)
+    funding = _classify_attack_funding(current, intent, attack_weapon)
 
     # Pre-resolution reject gates — each checked BEFORE any action budget is
     # consumed, so a rejection spends no Action/Bonus Action/slot and leaves
@@ -9603,7 +9720,7 @@ async def submit_player_intent(
     pre_resolution_gates: tuple[Callable[[], CombatEvent | None], ...] = (
         lambda: _spell_out_of_range_failure(live, actor_id, intent, cast_spell_for_timing),
         lambda: _attack_out_of_range_failure(live, actor_id, intent),
-        lambda: _loading_weapon_already_fired_failure(current, actor_id, intent, offhand_weapon),
+        lambda: _loading_weapon_already_fired_failure(current, actor_id, intent, attack_weapon),
         lambda: _charmed_target_failure(live, actor_id, current, intent),
         lambda: _cast_target_invalid_failure(
             live, current, actor_id, intent, cast_spell_for_timing
@@ -9615,13 +9732,7 @@ async def submit_player_intent(
             _emit(live, failure)
             return
 
-    action_economy_failure = (
-        None
-        if is_offhand_swing
-        else _action_economy_gate_failure(
-            current, intent, is_bonus_action=is_bonus_action, is_reaction_cast=is_reaction_cast
-        )
-    )
+    action_economy_failure = _intent_economy_failure(current, intent, action_cost, funding)
     if action_economy_failure is not None:
         _emit(live, action_economy_failure)
         return
@@ -9650,19 +9761,12 @@ async def submit_player_intent(
     # pre-budget target gate above.
     _reject_invalid_escape_grapple_actor(actor_id, intent, current)
 
-    # Consume the budget now. ``current`` is a stale snapshot; mutate via
-    # initiative-list model_copy so subsequent reads (and the post-resolve
-    # turn-advance branch below) see the updated state. Attack intents use
-    # their own soft-consume path (R2): the Action is only spent by the
-    # FIRST swing of a multi-attack sequence; every swing decrements the
-    # per-Action attack budget. An off-hand swing (Task 2) spends the Bonus
-    # Action via its own dedicated consume path instead.
-    if intent.intent_type == "attack" and is_offhand_swing:
-        current = _consume_offhand_attack_budget(live, actor_id, current, offhand_weapon)
-    elif intent.intent_type == "attack":
-        current = _consume_attack_budget(live, actor_id, current)
-    else:
-        current = _consume_action_budget(live, actor_id, action_cost)
+    # Consume the budget now: what ``funding`` names for an attack, the
+    # classified Action / Bonus Action / Reaction otherwise. ``current`` is
+    # refreshed so the turn-advance branch below sees the spend.
+    current = _consume_intent_budget(
+        live, actor_id, current, intent, action_cost, funding, attack_weapon
+    )
 
     _emit(
         live,
@@ -9737,6 +9841,10 @@ async def submit_player_intent(
     # above. The early gate rejects an over-cap invocation before reaching here, so
     # this only increments a within-cap use (no-op for uncapped / non-feature intents).
     _record_capped_feature_use(live, actor_id, intent.feature_id, feature_invocation)
+
+    # SRD 5.2 Flurry of Blows — the committed invocation owes the monk its
+    # Unarmed Strikes (no-op for every other intent).
+    _grant_flurry_strikes(live, actor_id, intent)
 
     # SRD §Item Charges — the item-charge gate above has passed; commit the
     # spend on the actor's per-rest charge counter (no-op for uncapped /
@@ -9963,7 +10071,7 @@ async def submit_player_intent(
             # unless Two-Weapon Fighting: "you can add your ability modifier to
             # the damage of that attack if you aren't already adding it".
             suppress_positive_ability_damage_mod=(
-                is_offhand_swing and "two-weapon-fighting" not in current.fighting_styles
+                funding == "light_offhand" and "two-weapon-fighting" not in current.fighting_styles
             ),
             # SRD 5.2 Versatile property (C15 Task 4) — see
             # ``use_versatile_damage`` computation above.
@@ -10054,7 +10162,7 @@ async def submit_player_intent(
         # the main-hand swing landing).
         if (
             intent.intent_type == "attack"
-            and not is_offhand_swing
+            and funding != "light_offhand"
             and fetched_weapon is not None
             and WeaponProperty.LIGHT in fetched_weapon.properties
         ):
@@ -10108,17 +10216,13 @@ async def submit_player_intent(
     # SRD §Action Economy — a bonus action does NOT end the turn; the
     # actor keeps initiative and may follow with a regular Action.
     #
-    # FINAL-REVIEW FIX (F2): an off-hand (Two-Weapon Fighting) swing is
-    # ALSO a Bonus Action spend (R1 verbatim: "An off-hand (bonus-action)
-    # swing follows the existing bonus-action tail (never ends the turn)")
-    # — ``is_bonus_action`` only covers a bonus-action CAST's
-    # ``casting_time.unit``, so the off-hand attack needs its own check
-    # here. Without it, a 1-attack actor's off-hand swing falls through to
-    # ``_attack_action_is_spent`` below, which sees ``attacks_remaining <=
-    # 0`` (spent by the main-hand swing) and a now-closed TWF window
-    # (``offhand_attack_spent`` just flipped True) and wrongly ends the
-    # turn, discarding any movement the actor still owed.
-    if is_bonus_action or is_offhand_swing:
+    # Every swing outside the Attack action (``funding`` other than
+    # ``"action"``: the Light extra attack, a Flurry strike, the Bonus Unarmed
+    # Strike) is bonus-funded too, and ``is_bonus_action`` only covers a
+    # Bonus-Action cast or feature. Without this a one-attack actor's extra
+    # swing would reach ``_attack_action_is_spent`` below and end the turn,
+    # discarding the movement it still owes.
+    if is_bonus_action or funding != "action":
         _maybe_roll_death_save(live)
         return
     # SRD §Extra Attack — a main-hand attack keeps the turn (R1) while

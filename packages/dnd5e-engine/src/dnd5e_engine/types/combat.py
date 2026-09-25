@@ -341,6 +341,12 @@ class Combatant(BaseModel):
     # this turn. Reset to False at the actor's own TurnStarted, alongside
     # the other per-turn attack-economy fields above (C15 Task 7).
     cleave_spent_this_turn: bool = False
+    # SRD 5.2 Flurry of Blows: "You can expend 1 Focus Point to make two
+    # Unarmed Strikes as a Bonus Action" (three with Heightened Focus). The
+    # strikes a committed Flurry still owes this turn; the actor's next Unarmed
+    # Strike attacks spend them instead of any action. Reset to 0 at the
+    # actor's own TurnStarted (unused strikes lapse).
+    flurry_strikes_remaining: int = 0
 
     @model_validator(mode="before")
     @classmethod

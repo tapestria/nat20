@@ -364,7 +364,6 @@ def test_c20_s05_martial_arts_unarmed_strike_uses_scaling_die_and_dex():
     assert 5 <= dex_total <= 10
 
 
-@xfail_cluster(20, "class feature mechanics")
 def test_c20_s06_flurry_of_blows_spends_focus_for_two_bonus_action_strikes():
     """C20-S06: SRD 5.2 ``classes24/monk/class-features/monks-focus.yml``
     (phbmnkMonksFocus), Flurry of Blows activity ``2ghJTBhilLrFn9xT`` —
