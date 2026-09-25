@@ -188,7 +188,8 @@ Behavioural deltas (and the fixtures they move) are enumerated in
   Strikes (three with Heightened Focus). Action Surge grants one extra action
   — never a Magic action, one surge per turn — counted on
   `LiveCombatView.turn.extra_actions_remaining`, and a `special`-activation
-  feature costs no Action. A Bardic Inspiration die is redeemed on a failed
+  feature that resolves nothing by itself (Action Surge, Sacred Weapon) costs
+  no Action. A Bardic Inspiration die is redeemed on a failed
   attack roll (`PlayerIntent.redeem_granted_die`). Rage ends at the end of the
   barbarian's next turn unless an attack roll against an enemy, an enemy's
   saving throw or a Bonus Action (`use_feature rage` again, no use spent)

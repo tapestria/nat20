@@ -7519,6 +7519,14 @@ def _granted_feature_slugs(caster: Combatant) -> frozenset[str]:
     return frozenset(leveled_feature_slugs([(doc, level) for _, doc, level in owners]))
 
 
+# The kinds of a ``special``-activation activity that costs nothing: it only
+# marks or grants (Action Surge's extra action, Sacred Weapon's enchantment).
+# Brutal Strike's ``special`` damage rides a Reckless Attack hit; invoked on its
+# own it has no attack to ride, so it keeps the Action a feature use costs
+# rather than dealing its 1d10 for free, again and again.
+_FREE_SPECIAL_ACTIVITY_KINDS: Final[frozenset[str]] = frozenset({"utility", "enchant"})
+
+
 @dataclass(frozen=True)
 class _FeatureInvocation:
     """A USE_FEATURE intent resolved to ONE concrete activity, after the
@@ -7535,8 +7543,9 @@ class _FeatureInvocation:
     passive_effects: list[Any]
     is_bonus_action: bool
     # SRD 5.2 — an activity used as part of something else
-    # (``activation.type == "special"``: Action Surge, Brutal Strike, Sacred
-    # Weapon) takes no Action, Bonus Action or Reaction and keeps the turn.
+    # (``activation.type == "special"``) that resolves nothing by itself
+    # (``_FREE_SPECIAL_ACTIVITY_KINDS``: Action Surge, Sacred Weapon) takes no
+    # Action, Bonus Action or Reaction and keeps the turn.
     is_free_action: bool = False
     # SRD 5.2 Rage — a ``rage`` invocation by a creature already raging is the
     # Bonus-Action extension, not a new Rage: it applies nothing
@@ -8076,7 +8085,7 @@ def _resolve_feature_invocation(
         activities=[selected],
         passive_effects=list(feature.passive_effects) if feature else [],
         is_bonus_action=activation == "bonus",
-        is_free_action=activation == "special",
+        is_free_action=activation == "special" and selected.kind in _FREE_SPECIAL_ACTIVITY_KINDS,
         use_cap=_feature_use_cap(feature, _uses_roll_data(caster, scale_values)),
         use_cost=_feature_activity_cost(all_activities, selected, scaling_value=scaling_value),
         scaling_value=scaling_value,
@@ -8461,7 +8470,7 @@ class _ActionCost:
     is_bonus_action: bool
     is_reaction_cast: bool
     cast_spell_for_timing: Spell | None
-    # A ``special``-activation feature (``_FeatureInvocation.is_free_action``):
+    # A free ``special``-activation feature (``_FeatureInvocation.is_free_action``):
     # spends nothing and keeps the turn.
     is_free_action: bool = False
 
@@ -8630,7 +8639,7 @@ def _consume_action_budget(
     initiative slot and return the refreshed current actor. ``current`` is a
     stale snapshot; mutate via slot model_copy so subsequent reads see the
     updated state. An Action is paid by ``_action_payment`` (the base Action,
-    else an Action Surge extra action); a ``special`` activation pays nothing."""
+    else an Action Surge extra action); a free ``special`` activation pays nothing."""
     if cost.is_free_action:
         return _current_actor(live)
     for idx, c in enumerate(live.initiative):
@@ -10605,7 +10614,7 @@ async def submit_player_intent(
     # Strike) is bonus-funded too, and ``is_bonus_action`` only covers a
     # Bonus-Action cast or feature. Without this a one-attack actor's extra
     # swing would reach ``_attack_action_is_spent`` below and end the turn,
-    # discarding the movement it still owes. A ``special`` activation
+    # discarding the movement it still owes. A free ``special`` activation
     # (Action Surge) is part of the turn rather than an action, so it keeps
     # the turn too.
     if is_bonus_action or action_cost.is_free_action or funding != "action":
