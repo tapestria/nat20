@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from dnd5e_engine.activities.passive_stats import CombatantMovementModes, CombatantSenses
 
@@ -127,6 +127,13 @@ class PartyMemberSpec(BaseModel):
     # bonus-action-Dash path is legal). ``None`` for non-classed entities and
     # fixtures that don't project class info.
     class_slug: str | None = None
+    # SRD 5.2 Multiclassing — ``{class_slug: level}`` in the order the classes
+    # were taken ("When you gain a new level in a class, you get its features for
+    # that level"): combat reads each class's features, ``@scale`` values and
+    # ``@classes.<slug>.levels`` at that class's own level. ``class_slug`` names
+    # one of them and ``character_level`` is their sum. Empty (the default) is a
+    # single class: ``class_slug`` at ``character_level``.
+    classes: dict[str, int] = Field(default_factory=dict)
     # SRD §Subclasses — subclass slug (e.g. ``"berserker"``). Carried across to
     # the live ``Combatant`` so subclass-feature activities (piece 4) can gate
     # on it. ``None`` for non-classed entities, fixtures, and graph PCs without
@@ -169,6 +176,24 @@ class PartyMemberSpec(BaseModel):
     skill_proficiencies: tuple[str, ...] = ()
     skill_expertise: tuple[str, ...] = ()
     weapon_proficiencies: tuple[str, ...] = ()
+
+    @model_validator(mode="after")
+    def _check_classes(self) -> PartyMemberSpec:
+        if not self.classes:
+            return self
+        if any(level < 1 for level in self.classes.values()):
+            raise ValueError(f"class levels must be positive: {self.classes}")
+        total = sum(self.classes.values())
+        if total != self.character_level:
+            raise ValueError(
+                f"character_level {self.character_level} does not equal "
+                f"the sum of classes ({total})"
+            )
+        if self.class_slug not in self.classes:
+            raise ValueError(
+                f"class_slug {self.class_slug!r} is not one of classes {sorted(self.classes)}"
+            )
+        return self
 
 
 class EncounterMemberSpec(BaseModel):

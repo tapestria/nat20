@@ -184,6 +184,9 @@ class Combatant(BaseModel):
     # Action Dash path (Rogue-only) consults this. ``None`` for monsters / NPCs
     # / fixtures that do not project class info.
     class_slug: str | None = None
+    # Per-class levels (``PartyMemberSpec.classes``); empty for a single class,
+    # a monster or a fixture.
+    classes: dict[str, int] = Field(default_factory=dict)
     # SRD §Subclasses — subclass slug for PCs (e.g. "berserker"). Copied from
     # ``PartyMemberSpec.subclass_slug`` at start_combat so subclass-feature
     # activities (piece 4) can gate on it. ``None`` for monsters / NPCs /

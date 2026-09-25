@@ -56,7 +56,7 @@ import re
 import warnings
 from collections.abc import AsyncIterator, Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Literal
+from typing import Any, Literal
 
 from dnd5e_srd_data.schema.common import (
     ActivationBlock,
@@ -102,7 +102,7 @@ from dnd5e_engine.activities.monster_actions import (
 )
 from dnd5e_engine.activities.passive_stats import CombatantSenses, interpret_passive_stats
 from dnd5e_engine.activities.resolver import resolve_activity
-from dnd5e_engine.activities.scale import build_scale_values
+from dnd5e_engine.activities.scale import build_scale_values, feature_owners
 from dnd5e_engine.death_saves import DeathSaveState, roll_death_save
 from dnd5e_engine.events import (
     Ability,
@@ -150,7 +150,7 @@ from dnd5e_engine.outcome import (
     LootDrop,
 )
 from dnd5e_engine.rest import FEATURE_USE_COUNTER_PREFIX, ITEM_USE_COUNTER_PREFIX
-from dnd5e_engine.rules.character import extra_attack_count, granted_feature_slugs
+from dnd5e_engine.rules.character import extra_attack_count, leveled_feature_slugs
 from dnd5e_engine.rules.conditions import (
     Condition,
     active_condition_names,
@@ -191,10 +191,6 @@ from dnd5e_engine.types.effects import ActiveEffect, ActiveEffectChange, ActiveE
 from dnd5e_engine.views import LiveCombatView
 
 _LOGGER = logging.getLogger(__name__)
-
-if TYPE_CHECKING:
-    from dnd5e_srd_data.schema.class_ import Class, Subclass
-    from dnd5e_srd_data.schema.species import Species
 
 
 # ── Typed boundary-input models ─────────────────────────────────────────────
@@ -6647,18 +6643,19 @@ def _pc_condition_immunities(pc: PartyMemberSpec) -> list[str]:
     the walk-speed bonus).
     """
     immunities = list(pc.condition_immunities)
-    if not (pc.class_slug or pc.subclass_slug or pc.species_slug):
+    classes = _class_levels(pc)
+    if not (classes or pc.subclass_slug or pc.species_slug):
         return immunities
     loader = get_lib_loader()
-    sources: list[Class | Subclass | Species | None] = []
-    if pc.class_slug:
-        sources.append(loader.get_class(pc.class_slug))
-    if pc.subclass_slug:
-        sources.append(loader.get_subclass(pc.subclass_slug))
-    if pc.species_slug:
-        sources.append(loader.get_species(pc.species_slug))
+    owners = feature_owners(
+        classes=classes,
+        subclass_slug=pc.subclass_slug,
+        species_slug=pc.species_slug,
+        level=pc.character_level,
+        loader=loader,
+    )
     changes: list[Any] = []
-    for slug in granted_feature_slugs(sources, level=pc.character_level):
+    for slug in leveled_feature_slugs([(doc, level) for _, doc, level in owners]):
         feature = loader.get_feature(slug)
         if feature is None:
             continue
@@ -6748,6 +6745,7 @@ def _build_pc_combatants(
                 movement_modes=pc.movement_modes,
                 melee_reach_ft=pc.reach_ft,
                 class_slug=pc.class_slug,
+                classes=dict(pc.classes),
                 subclass_slug=pc.subclass_slug,
                 species_slug=pc.species_slug,
                 save_proficiencies=list(pc.save_proficiencies),
@@ -7290,25 +7288,35 @@ def _attack_action_is_spent(current: Combatant) -> bool:
     )
 
 
+def _class_levels(c: Combatant | PartyMemberSpec) -> dict[str, int]:
+    """Per-class levels: the host's ``classes`` map, else the one class at the
+    total character level (every host before 0.6)."""
+    if c.classes:
+        return dict(c.classes)
+    return {c.class_slug: c.character_level} if c.class_slug else {}
+
+
 def _granted_feature_slugs(caster: Combatant) -> frozenset[str]:
-    """Feature slugs the caster's class (+ subclass) + species grants at/below its level.
+    """Feature slugs the caster's class(es) (+ subclass) + species grants at/below
+    each source's own level.
 
     The USE_FEATURE repertoire gate: a PC may only invoke a feature its
     class, subclass, or species ``granted_features`` list grants at a level no
-    higher than the caster's. The parser prompt routes both class AND species
-    features through USE_FEATURE, so the gate must accept either source.
-    Monsters / casters with no ``class_slug`` and no ``species_slug`` grant
-    nothing (empty set ⇒ every USE_FEATURE rejected, the correct default).
+    higher than that source's own level — each class at its own level, the
+    subclass at its class's level, the species at character level. The parser
+    prompt routes both class AND species features through USE_FEATURE, so the
+    gate must accept either source. Monsters / casters with no classes and no
+    ``species_slug`` grant nothing (empty set ⇒ every USE_FEATURE rejected,
+    the correct default).
     """
-    loader = get_lib_loader()
-    sources: list[Class | Subclass | Species | None] = []
-    if caster.class_slug:
-        sources.append(loader.get_class(caster.class_slug))
-    if caster.subclass_slug:
-        sources.append(loader.get_subclass(caster.subclass_slug))
-    if caster.species_slug:
-        sources.append(loader.get_species(caster.species_slug))
-    return frozenset(granted_feature_slugs(sources, level=caster.character_level))
+    owners = feature_owners(
+        classes=_class_levels(caster),
+        subclass_slug=caster.subclass_slug,
+        species_slug=caster.species_slug,
+        level=caster.character_level,
+        loader=get_lib_loader(),
+    )
+    return frozenset(leveled_feature_slugs([(doc, level) for _, doc, level in owners]))
 
 
 @dataclass(frozen=True)
@@ -7752,6 +7760,7 @@ def _resolve_feature_invocation(
         species_slug=caster.species_slug,
         level=caster.character_level,
         loader=get_lib_loader(),
+        classes=_class_levels(caster),
     )
     # Rage's mwak buff + resistances ride a PassiveEffect on the feature; thread
     # them so its UtilityActivity's effect rider (``effects[].id``) resolves to a
@@ -9646,8 +9655,9 @@ async def submit_player_intent(
             species_slug=current.species_slug,
             level=current.character_level,
             loader=get_lib_loader(),
+            classes=_class_levels(current),
         )
-        class_levels = {current.class_slug: current.character_level} if current.class_slug else {}
+        class_levels = _class_levels(current)
         # SRD 5.2 §Weapon Mastery — Cleave (C15 Task 7): the once-per-turn
         # gate + the R5 deterministic second target, both pre-resolved here
         # (spatial + per-turn state are orchestrator-owned); ``attack.py``

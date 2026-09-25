@@ -50,6 +50,7 @@ def build_party_member(
         concentration_effect_id=instance.concentration_effect_id,
         character_level=build_spec.level,
         class_slug=build_spec.class_slug,
+        classes=dict(build_spec.classes),
         subclass_slug=build_spec.subclass_slug,
         species_slug=build_spec.species_slug,
         base_speed=sheet.base_speed if instance.base_speed is None else instance.base_speed,

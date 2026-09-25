@@ -68,6 +68,24 @@ EXTRA_ATTACK_TIERS: Final[tuple[tuple[str, int], ...]] = (
 )
 
 
+def leveled_feature_levels(
+    sources: Sequence[tuple[Class | Subclass | Species | None, int]],
+) -> dict[str, int]:
+    """Feature slug → the level of the first source granting it at or below
+    that source's OWN level. SRD 5.2 Multiclassing: "When you gain a new level
+    in a class, you get its features for that level" — and a feature's own
+    ``@scale`` values read at that level. Source order is kept; ``None`` is
+    skipped."""
+    levels: dict[str, int] = {}
+    for source, level in sources:
+        if source is None:
+            continue
+        for grant in source.granted_features:
+            if grant.ref_type == "feature" and grant.level <= level and grant.slug not in levels:
+                levels[grant.slug] = level
+    return levels
+
+
 def leveled_feature_slugs(
     sources: Sequence[tuple[Class | Subclass | Species | None, int]],
 ) -> list[str]:
@@ -77,16 +95,7 @@ def leveled_feature_slugs(
     features for that level" — a Fighter 1 / Wizard 4 has the Fighter's level-1
     features only. Source order is kept, duplicates dropped, ``None`` skipped.
     """
-    slugs: list[str] = []
-    seen: set[str] = set()
-    for source, level in sources:
-        if source is None:
-            continue
-        for grant in source.granted_features:
-            if grant.ref_type == "feature" and grant.level <= level and grant.slug not in seen:
-                seen.add(grant.slug)
-                slugs.append(grant.slug)
-    return slugs
+    return list(leveled_feature_levels(sources))
 
 
 def granted_feature_slugs(
@@ -94,9 +103,7 @@ def granted_feature_slugs(
 ) -> list[str]:
     """Feature slugs ``sources`` grant at or below one shared ``level``.
 
-    The live combat path's projection: a ``Combatant`` carries one class and its
-    total level (BACKLOG.md, live multiclass). Shared by the USE_FEATURE
-    repertoire gate, ``build_scale_values`` and the condition-immunity fold.
+    Every source read at one level — for a caller with no per-class levels.
     """
     return leveled_feature_slugs([(source, level) for source in sources])
 
@@ -531,6 +538,7 @@ __all__ = [
     "hit_die_size",
     "hit_point_bonus",
     "hit_points_max",
+    "leveled_feature_levels",
     "leveled_feature_slugs",
     "proficiency_grants",
     "subclass_gate_level",
