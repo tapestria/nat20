@@ -448,8 +448,9 @@ def test_c20_s07_action_surge_grants_a_second_action_same_turn():
     — "you can take one additional action, except the Magic action."
     ``Combatant`` only carries boolean ``action_available`` today —
     there is no "additional actions granted this turn" state anywhere
-    in ``orchestrator.py``; a second Attack-action swing in the same
-    turn is rejected with ``IntentRejectedError("no_action_economy")``.
+    in ``orchestrator.py``; the Attack action ends the one-attack Fighter's
+    turn (C14), so a second Attack-action swing in the same turn is
+    rejected with ``IntentRejectedError("not_actor_turn")``.
     Contract repair (plan R1): the surge comes first, so the one-attack
     Fighter's turn does not end after its first swing (the C14 rule that a
     one-attack actor's turn ends after its Attack action stands).
