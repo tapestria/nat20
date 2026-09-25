@@ -1256,11 +1256,84 @@ def _trait_list(traits: dict[str, Any], key: str) -> list[str]:
     return []
 
 
-def _monster_ac(ac_doc: dict[str, Any]) -> int | None:
-    """Pick the first authoritative AC value Foundry provides. Returns ``None``
-    when Foundry omits a usable flat value — silently defaulting to 10 ships
-    wrong data for armored monsters (deferred: derive AC from equipped armor
-    + dex at runtime; see commit + backlog)."""
+#: Foundry ``CONFIG.DND5E.armorClasses`` base for the ``mage`` calculation
+#: ("13 + @abilities.dex.mod"): SRD 5.2 Mage Armor, "the target's base AC
+#: becomes 13 plus its Dexterity modifier".
+_MAGE_ARMOR_BASE_AC = 13
+#: The effect key and Foundry ``CONST.ACTIVE_EFFECT_MODES.OVERRIDE`` mode that
+#: replace an actor's AC calculation.
+_AC_CALC_KEY = "system.attributes.ac.calc"
+_EFFECT_MODE_OVERRIDE = 5
+_BODY_ARMOR_TYPES = frozenset({"light", "medium", "heavy"})
+#: SRD 5.2 Medium Armor: "Dex modifier (max 2)" — used when an item omits its cap.
+_MEDIUM_ARMOR_DEX_CAP = 2
+
+
+def _dex_mod(abilities: dict[str, Any]) -> int:
+    return _ability_mod(int((abilities.get("dex") or {}).get("value") or 10))
+
+
+def _first_equipped(items: list[dict[str, Any]], types: frozenset[str]) -> dict[str, Any] | None:
+    """The first equipped equipment item of one of ``types``. SRD 5.2: "A
+    creature can wear only one suit of armor at a time and wield only one Shield
+    at a time"; Foundry's ``prepareArmorClass`` likewise reads ``armors[0]`` and
+    ``shields[0]``."""
+    for item in items:
+        system = item.get("system") or {}
+        kind = (system.get("type") or {}).get("value")
+        if item.get("type") == "equipment" and system.get("equipped") and kind in types:
+            return system
+    return None
+
+
+def _default_ac(abilities: dict[str, Any], items: list[dict[str, Any]]) -> int:
+    """Foundry's ``calc: default`` Armor Class ("@attributes.ac.armor +
+    @attributes.ac.dex"): 10 + the DEX modifier without body armor ("Without
+    armor or a shield, your base Armor Class is 10 plus your Dexterity
+    modifier"); with it, the armor's ``armor.value`` plus the DEX modifier
+    (Light), the modifier capped by the item's ``armor.dex`` (Medium: "Dex
+    modifier (max 2)") or nothing (Heavy); plus an equipped Shield's
+    ``armor.value`` ("+2")."""
+    dex = _dex_mod(abilities)
+    armor = _first_equipped(items, _BODY_ARMOR_TYPES)
+    if armor is None:
+        base = 10 + dex
+    else:
+        value = int((armor.get("armor") or {}).get("value") or 0)
+        kind = (armor.get("type") or {}).get("value")
+        if kind == "light":
+            base = value + dex
+        elif kind == "medium":
+            cap = (armor.get("armor") or {}).get("dex")
+            base = value + min(dex, _MEDIUM_ARMOR_DEX_CAP if cap is None else int(cap))
+        else:
+            base = value
+    shield = _first_equipped(items, frozenset({"shield"}))
+    return base + (int((shield.get("armor") or {}).get("value") or 0) if shield else 0)
+
+
+def _with_actor_ac_calc(ac_doc: dict[str, Any], effects: list[dict[str, Any]]) -> dict[str, Any]:
+    """The actor's AC block after its own enabled effects that override the AC
+    calculation: Foundry applies an actor's effects before it prepares AC, so
+    the SRD 5.2 Mage's Mage Armor effect (``calc`` → ``mage``) gives its
+    "Armor Class: 15"."""
+    for effect in effects:
+        if effect.get("disabled"):
+            continue
+        for change in effect.get("changes") or []:
+            if change.get("key") == _AC_CALC_KEY and change.get("mode") == _EFFECT_MODE_OVERRIDE:
+                return {**ac_doc, "calc": change.get("value")}
+    return ac_doc
+
+
+def _monster_ac(
+    ac_doc: dict[str, Any], *, abilities: dict[str, Any], items: list[dict[str, Any]]
+) -> int | None:
+    """The monster's Armor Class: Foundry's flat value (``flat`` / ``natural``)
+    or an integer ``formula`` when it ships one; otherwise derived from the
+    calculation Foundry would run — ``default`` (armor and DEX, see
+    ``_default_ac``) or ``mage`` (13 + DEX). ``None`` for any other
+    calculation, rather than a guessed 10."""
     flat = ac_doc.get("flat")
     if isinstance(flat, int) and flat > 0:
         return flat
@@ -1272,6 +1345,11 @@ def _monster_ac(ac_doc: dict[str, Any]) -> int | None:
             return None
         if parsed > 0:
             return parsed
+    calc = ac_doc.get("calc")
+    if calc == "default":
+        return _default_ac(abilities, items)
+    if calc == "mage":
+        return _MAGE_ARMOR_BASE_AC + _dex_mod(abilities)
     return None
 
 
@@ -1706,7 +1784,7 @@ def translate_monster_yaml(
         passive_perception=passive_perception,
     )
 
-    ac_doc = attrs.get("ac", {}) or {}
+    ac_doc = _with_actor_ac_calc(attrs.get("ac", {}) or {}, doc.get("effects") or [])
     hp_doc = attrs.get("hp", {}) or {}
 
     actions, legendary_actions, lair_actions, special_abilities = _monster_actions(doc)
@@ -1718,7 +1796,7 @@ def translate_monster_yaml(
         creature_type=creature_type,
         creature_size=creature_size,
         alignment=details.get("alignment"),
-        ac=_monster_ac(ac_doc),
+        ac=_monster_ac(ac_doc, abilities=abilities, items=doc.get("items") or []),
         hp=int(hp_doc.get("value") or hp_doc.get("max") or 1),
         hp_dice=hp_doc.get("formula") or "",
         ability_scores=ability_scores,

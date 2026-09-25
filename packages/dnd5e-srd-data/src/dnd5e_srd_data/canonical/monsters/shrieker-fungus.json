@@ -7,7 +7,7 @@
     "str": 1,
     "wis": 3
   },
-  "ac": null,
+  "ac": 5,
   "actions": [
     {
       "activities": [
