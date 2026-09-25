@@ -317,6 +317,21 @@ class PlayerIntent(BaseModel):
     # reject (``CastFailed(reason="ritual_in_combat")``, slot untouched).
     # Out-of-combat rituals resolve via ``spellcasting.resolve_ritual_cast``.
     as_ritual: bool = False
+    # SRD 5.2 Wild Shape: "you shape-shift into a Beast form that you have
+    # learned for this feature"; Polymorph: "That form can be any Beast you
+    # choose that has a Challenge Rating equal to or less than the target's".
+    # The corpus monster slug of the chosen form, for a ``use_feature`` of
+    # Wild Shape or a ``cast_spell`` of Polymorph; a missing or illegal form is
+    # refused with ``CastFailed(reason="invalid_form")`` before anything is
+    # spent. Ignored by other intents.
+    form_id: str | None = None
+    # SRD 5.2 Wild Shape: "Your game statistics are replaced by the Beast's
+    # stat block". An action slug on the actor's current stat block (its Beast
+    # form, or a monster's own): an ``attack`` that makes one attack with that
+    # action instead of a weapon. An action the stat block lacks, or one that
+    # makes no attack roll, is refused with
+    # ``AttackFailed(reason="action_unavailable")``. Ignored by other intents.
+    stat_block_action_id: str | None = None
 
     @field_validator("direction")
     @classmethod

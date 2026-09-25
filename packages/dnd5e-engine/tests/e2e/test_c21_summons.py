@@ -1,12 +1,13 @@
 """C21 — Summons, transform, enchant.
 
 Transcribed from specs/e2e-scenario-catalog.md, Cluster 21
-(specs/catalog-v2/c21.md). Every scenario is a same-seed A/B or single-
-run "assert nothing happens today" probe against CURRENT public specs
-and real corpus slugs — no scenario requires the additive API to exist
-in order to be constructible; all of them show the gap by asserting on
-absence (or, once an API delta lands, by asserting the presence that
-delta introduces).
+(specs/catalog-v2/c21.md). Grid-only setups over real corpus slugs; each
+scenario is a same-seed A/B or a single seeded run that asserts the
+presence of the mechanic the SRD 5.2 text requires, and strict-xfails
+until the PR that lands it. Contract repairs S04, S05 and S06 were
+approved on 2026-09-25 (C21a plan R1): Magic Weapon names the weapon it
+touches, and Wild Shape and Polymorph name their Beast form
+(``PlayerIntent.form_id``).
 """
 
 from __future__ import annotations
@@ -283,7 +284,10 @@ def test_c21_s04_magic_weapon_enchant_grants_plus1_to_hit_and_damage():
     damage rolls." ``resolver.py`` routes ``EnchantActivity`` to the
     same narrative no-op as every other summon-family kind — no
     ``ActiveEffect`` is ever created via
-    ``activities/effects.py::apply_activity_effects``.
+    ``activities/effects.py::apply_activity_effects``. Contract repair
+    (plan R1): the cast names the weapon it touches ("You touch a
+    nonmagical weapon"), the hero's nonmagical ``longsword``; the cast
+    draws nothing, so both seed-11 runs roll d20 15 and 1d8 8.
     """
 
     def _run(*, enchant: bool):
@@ -327,7 +331,10 @@ def test_c21_s04_magic_weapon_enchant_grants_plus1_to_hit_and_damage():
                     start.handle,
                     actor_id="char:hero",
                     intent=PlayerIntent(
-                        intent_type="cast_spell", spell_id="magic-weapon", target_id="char:hero"
+                        intent_type="cast_spell",
+                        spell_id="magic-weapon",
+                        target_id="char:hero",
+                        weapon_id="longsword",
                     ),
                 )
             await submit_player_intent(
@@ -357,12 +364,21 @@ def test_c21_s04_magic_weapon_enchant_grants_plus1_to_hit_and_damage():
 
 @xfail_cluster(21, "summons, transform, enchant")
 def test_c21_s05_wild_shape_does_not_swap_stat_block_today():
-    """C21-S05: SRD 5.2 §Class Features (Wild Shape) — "Your game
-    statistics are replaced by the Beast's stat block... you gain a
-    number of Temporary Hit Points equal to your Druid level."
-    ``resolver.py`` routes ``TransformActivity`` to the narrative
-    no-op; the schema already models it fully via ``TransformActivity``/
-    ``TransformProfile``, but nothing consumes it.
+    """C21-S05: SRD 5.2 §Class Features (Wild Shape) — "As a Bonus
+    Action, you shape-shift into a Beast form that you have learned for
+    this feature"; "When you assume a Wild Shape form, you gain a number
+    of Temporary Hit Points equal to your Druid level"; "Your game
+    statistics are replaced by the Beast's stat block". ``resolver.py``
+    routes ``TransformActivity`` to the narrative no-op. Contract repair
+    (plan R1): the druid names its form, the Giant Badger (CR 1/4, no Fly
+    Speed, AC 13 — legal at Druid 6); the Temporary Hit Points are read
+    right after the shape change; and the druid passes before the
+    breaker's turn, since Wild Shape is a Bonus Action. Seed 13: Wild
+    Shape draws nothing; the breaker's d20 9 + 10 = 19 hits AC 13 for
+    8d6 = 33; the 6 Temporary Hit Points absorb first, so the druid ends
+    at 40 - 27 = 13 HP and stays in form ("You stay in that form ...
+    until you use Wild Shape again, have the Incapacitated condition, or
+    die").
     """
 
     async def _run():
@@ -404,18 +420,27 @@ def test_c21_s05_wild_shape_does_not_swap_stat_block_today():
             start.handle,
             actor_id="char:druid",
             intent=PlayerIntent(
-                intent_type="use_feature", feature_id="wild-shape", target_id="char:druid"
+                intent_type="use_feature",
+                feature_id="wild-shape",
+                target_id="char:druid",
+                form_id="giant-badger",
             ),
         )
         live1 = _get_live(start.handle)
         after_shape = next(c for c in live1.initiative if c.entity_id == "char:druid")
+        # Read now: ``live1`` is the live combat, and the breaker's hit spends
+        # these Temporary Hit Points.
+        temp_after = live1.tracked_temp_hp.get("char:druid", 0)
+        await submit_player_intent(
+            start.handle, actor_id="char:druid", intent=PlayerIntent(intent_type="pass")
+        )
         await advance_monster_turn(start.handle)
-        return baseline, after_shape, live1
+        return baseline, after_shape, temp_after
 
-    baseline, after_shape, live1 = run_async(_run())
+    baseline, after_shape, temp_after = run_async(_run())
 
     # API delta (C21): Wild Shape should grant temp HP and swap AC/attack.
-    assert live1.tracked_temp_hp.get("char:druid", 0) == 6
+    assert temp_after == 6
     assert after_shape.ac != baseline.ac
 
 
@@ -429,15 +454,12 @@ def test_c21_s06_polymorph_save_kind_resolves_save_but_no_transform_effect():
     half works via ``resolve_save``, but nothing implements the
     stat-block-swap-with-temp-HP-overlay consequence of a failed save.
 
-    Empirically verified in this worktree (``uv run python`` probe
-    against the real seeded engine, ``rng_seed`` 1-29, this exact
-    setup): ``rng_seed=17`` actually produces a SUCCEEDED save
-    (``roll_total=17`` vs ``dc=10``), not a failure as the catalog's
-    original placeholder seed assumed. ``rng_seed=1`` was empirically
-    confirmed to draw a natural roll totalling 5 against ``dc=10`` — a
-    real failed Wisdom save (mon:foe's WIS modifier is +0: no
-    per-ability save bonus is representable on ``EncounterMemberSpec``
-    today, per C18-S03's finding).
+    Contract repair (plan R1): the cast names its form, the Giant Badger
+    (CR 1/4, 15 HP, AC 13), and the foe takes the Tough template (a CR 1/2
+    Humanoid with WIS 10 and no Wisdom save proficiency), so the SRD's
+    Challenge Rating limit is met. Seed 1 fails the save: its one d20 is a
+    5, + WIS 0 against DC 10 (the classless wizard's spell save DC). The
+    catalog's seed 17 rolls a 17, a success.
     """
 
     async def _run():
@@ -465,6 +487,7 @@ def test_c21_s06_polymorph_save_kind_resolves_save_but_no_transform_effect():
                     hp_current=40,
                     hp_max=40,
                     ac=10,
+                    monster_template_slug="tough",
                     zone_id=cell(1, 0),
                 )
             ],
@@ -478,7 +501,10 @@ def test_c21_s06_polymorph_save_kind_resolves_save_but_no_transform_effect():
             start.handle,
             actor_id="char:wiz",
             intent=PlayerIntent(
-                intent_type="cast_spell", spell_id="polymorph", target_id="mon:foe"
+                intent_type="cast_spell",
+                spell_id="polymorph",
+                target_id="mon:foe",
+                form_id="giant-badger",
             ),
         )
         live1 = _get_live(start.handle)
