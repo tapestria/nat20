@@ -329,9 +329,12 @@ def test_feature_use_cap_resolves_scale_max_against_scale_values():
 
 
 def test_feature_use_cap_uncapped_for_unresolvable_symbolic_max():
-    """A non-``@scale`` symbolic max (``@prof`` / ``max(...)``), an empty max, or a
-    ``@scale`` token absent from the caster's map falls back to UNCAPPED (``None``)
-    — never wrongly gated to a floor of 1 (pre-Cluster-9 behaviour preserved)."""
+    """A max whose tokens the roll data can't supply falls back to UNCAPPED
+    (``None``), never to a floor of 1: here ``UsesRollData()`` carries no
+    Proficiency Bonus, ability modifier or scale value, so ``@prof``,
+    ``max(1, @abilities.cha.mod)`` and an absent ``@scale`` token stay
+    uncapped, as does an empty max. With a caster's numbers the first two cap
+    (``tests/test_rules_uses.py``)."""
     from dnd5e_engine.orchestrator import _feature_use_cap
 
     assert _feature_use_cap(_StubFeature(_StubUses("@prof")), UsesRollData()) is None

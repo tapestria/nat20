@@ -40,9 +40,12 @@ build through `build_party_member` and leave `ac`/`attack_bonus`/`hp_max`/
 `hp_current`/`base_speed` unset (now derived instead of defaulted), or that
 rely on the save/skill/weapon proficiencies it now derives.
 C20 changes results for raging barbarians, Rogue 1s taking a Bonus-Action
-Dash, newly capped features and unarmed strikes, for hosts that send
-`classes`, `feats` or `fighting_style`, and wherever an effect makes a
-concentrating caster or a grappler Incapacitated.
+Dash, any creature without Cunning Action sent a `disengage` with
+`use_bonus_action=True` (now refused with
+`IntentRejectedError("no_action_economy")` where it used to spend the Action),
+newly capped features and unarmed strikes, for hosts that send `classes`,
+`feats` or `fighting_style`, and wherever an effect makes a concentrating
+caster or a grappler Incapacitated.
 Behavioural deltas (and the fixtures they move) are enumerated in
 [`docs/migration/v0.5-to-v0.6.md`](../../docs/migration/v0.5-to-v0.6.md).
 

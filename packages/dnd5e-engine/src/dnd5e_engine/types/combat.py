@@ -188,9 +188,11 @@ class Combatant(BaseModel):
     # opportunity-attack detection in advance_monster_turn reads.
     melee_reach_ft: int = 5
     # SRD §Classes — character class slug for PCs (e.g. "rogue", "barbarian").
-    # Drives class-feature gating in the orchestrator — currently the Cunning
-    # Action Dash path (Rogue-only) consults this. ``None`` for monsters / NPCs
-    # / fixtures that do not project class info.
+    # With no ``classes`` map it is the one class, at ``character_level``; it
+    # also names the class whose spellcasting ability a caster uses. Class
+    # features are gated by what each class grants at its own level, never by
+    # this slug alone. ``None`` for monsters / NPCs / fixtures that do not
+    # project class info.
     class_slug: str | None = None
     # Per-class levels (``PartyMemberSpec.classes``); empty for a single class,
     # a monster or a fixture.

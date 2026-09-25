@@ -451,9 +451,9 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
 - **A one-attack actor's turn still ends with its Attack action (2026-09-24,
   C20 scope cut).** C14 ends the turn of an actor with one attack per Attack
   action at its first swing (the back-compat pin
-  `test_one_attack_actor_ends_turn_on_first_swing_back_compat`), so a Monk 2–4
-  has to use Flurry of Blows or its Bonus Unarmed Strike, and a Fighter 2–4
-  Action Surge, before the Attack action. Strikes a Flurry still owes keep the
+  `test_one_attack_actor_ends_turn_on_first_swing_back_compat`), so a Monk 1–4
+  has to make its Bonus Unarmed Strike (or, from Monk 2, use Flurry of Blows),
+  and a Fighter 2–4 Action Surge, before the Attack action. Strikes a Flurry still owes keep the
   turn open after that Attack action until they are made or the monk passes
   (C20). SRD 5.2 imposes no such order.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_attack_action_is_spent`)
