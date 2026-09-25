@@ -863,6 +863,29 @@ def _resolve_hit_outcome(
 
 # ── on-hit damage ────────────────────────────────────────────────────────────
 
+# SRD 5.2 Great Weapon Fighting: "you can treat any 1 or 2 on a damage die as a 3".
+_GREAT_WEAPON_FIGHTING_FLOOR: Final = 3
+
+
+def _great_weapon_fighting_floor(
+    ctx: ActivityResolutionContext, weapon: Weapon | None
+) -> int | None:
+    """The damage-die floor for this swing, or ``None``. SRD 5.2 Great Weapon
+    Fighting: "When you roll damage for an attack you make with a Melee weapon
+    that you are holding with two hands ... The weapon must have the Two-Handed
+    or Versatile property to gain this benefit." A Versatile weapon counts only
+    under the declared two-handed melee grip (``ctx.use_versatile_damage``)."""
+    if (
+        weapon is None
+        or "great-weapon-fighting" not in ctx.caster.fighting_styles
+        or not _is_melee_weapon(weapon)
+    ):
+        return None
+    two_hands = WeaponProperty.TWO_HANDED in weapon.properties or (
+        WeaponProperty.VERSATILE in weapon.properties and ctx.use_versatile_damage
+    )
+    return _GREAT_WEAPON_FIGHTING_FLOOR if two_hands else None
+
 
 def _apply_on_hit_damage(
     activity: AttackActivity,
@@ -896,12 +919,13 @@ def _apply_on_hit_damage(
         ctx.variables[_IN_CRIT] = 1
     total_dealt = 0
     try:
+        die_floor = _great_weapon_fighting_floor(ctx, weapon)
         by_type: dict[str, int] = defaultdict(int)
         first_type: str | None = None
 
         if activity.damage.include_base and weapon is not None:
             first_type = _roll_base_weapon_damage(
-                weapon, ctx, by_type, governing_ability, is_crit=is_crit
+                weapon, ctx, by_type, governing_ability, is_crit=is_crit, die_floor=die_floor
             )
 
         for part in activity.damage.parts:
@@ -915,6 +939,7 @@ def _apply_on_hit_damage(
                 resolved,
                 ctx.rng,
                 crit=is_crit,
+                die_floor=die_floor,
                 character_level=ctx.caster_level,
                 slot_level=ctx.slot_level,
                 base_level=ctx.base_spell_level,
@@ -1049,6 +1074,7 @@ def _roll_base_weapon_damage(
     governing_ability: str | None,
     *,
     is_crit: bool,
+    die_floor: int | None = None,
 ) -> str | None:
     """Roll the weapon's base ``damage_parts`` into ``by_type``; return first type.
 
@@ -1064,6 +1090,10 @@ def _roll_base_weapon_damage(
     melee swing) AND the weapon carries ``versatile_damage``, that single part
     is rolled INSTEAD OF ``damage_parts`` — crit doubling and the ability-mod
     fold apply identically to either die.
+
+    ``die_floor`` (from ``_great_weapon_fighting_floor``) raises every rolled
+    face on these dice to at least that value; ``None`` for every swing without
+    the feat, keeping today's rolls byte-identical.
     """
     first_type: str | None = None
     flat_addition = weapon.magical_bonus
@@ -1080,7 +1110,7 @@ def _roll_base_weapon_damage(
         parts = [weapon.versatile_damage]
 
     for index, part in enumerate(parts):
-        rolled = roll_damage_part(part, ctx.rng, crit=is_crit)
+        rolled = roll_damage_part(part, ctx.rng, crit=is_crit, die_floor=die_floor)
         if index == 0:
             rolled += flat_addition
             first_type = part.damage_type

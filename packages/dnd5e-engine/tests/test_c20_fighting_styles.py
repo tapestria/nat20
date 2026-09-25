@@ -3,14 +3,17 @@ Great Weapon Fighting and Two-Weapon Fighting (Task 7)."""
 
 from __future__ import annotations
 
+import random
 from collections.abc import Iterator
 
 import pytest
 from dnd5e_srd_data.loader import BundledAssetLoader
+from dnd5e_srd_data.schema.common import DamagePart
 from pydantic import ValidationError
 
 from dnd5e_engine import CharacterBuildSpec, CombatInstance, build_party_member, derive_sheet
-from dnd5e_engine.events import AttackRolled
+from dnd5e_engine.activities.dice import roll_damage_part
+from dnd5e_engine.events import AttackRolled, DamageApplied
 from dnd5e_engine.lib_loader import set_lib_loader_for_tests
 from dnd5e_engine.spatial import cell_id
 from tests.c20_support import act, combatant, events, foe, pc, start
@@ -109,3 +112,87 @@ def test_archery_ignores_melee_weapons_even_thrown(weapon: str, foe_cell: tuple[
         [attack] = events(live, AttackRolled)
         totals.append(attack.roll_total)
     assert totals == [16, 16]
+
+
+# ── Task 7 — Great Weapon Fighting, Two-Weapon Fighting ──────────────────────
+
+
+def _after_d20(seed: int) -> random.Random:
+    rng = random.Random(seed)
+    rng.randint(1, 20)
+    return rng
+
+
+def test_a_die_floor_raises_low_faces_without_changing_the_draws() -> None:
+    """Seed 22 after its d20: d6 faces 2, 1, 5, 4 (a crit rolls all four)."""
+    two_d6 = DamagePart(dice="2d6", damage_type="slashing")
+    assert roll_damage_part(two_d6, _after_d20(22)) == 3
+    assert roll_damage_part(two_d6, _after_d20(22), die_floor=3) == 6
+    assert roll_damage_part(two_d6, _after_d20(22), crit=True) == 12
+    assert roll_damage_part(two_d6, _after_d20(22), crit=True, die_floor=3) == 15
+
+
+def _damage(style: str | None, *, two_handed: bool) -> list[int]:
+    handle, live = start([pc(attack_bonus=5, fighting_style=style)], seed=10)
+    act(
+        handle,
+        "char:hero",
+        intent_type="attack",
+        weapon_id="longsword",
+        target_id="mon:foe",
+        two_handed=two_handed,
+    )
+    return [e.amount for e in events(live, DamageApplied)]
+
+
+@pytest.mark.parametrize(("two_handed", "with_style"), [(False, [1]), (True, [3])])
+def test_gwf_on_a_versatile_weapon_needs_the_two_handed_grip(
+    two_handed: bool, with_style: list[int]
+) -> None:
+    """Great Weapon Fighting: "...a Melee weapon that you are holding with two
+    hands ... The weapon must have the Two-Handed or Versatile property". Seed
+    10: d20 19 hits; the one-handed d8 and the two-handed d10 both show a 1
+    (STR 10 adds nothing)."""
+    assert _damage(None, two_handed=two_handed) == [1]
+    assert _damage("great-weapon-fighting", two_handed=two_handed) == with_style
+
+
+def test_gwf_ignores_a_two_handed_ranged_weapon() -> None:
+    """A Shortbow is Two-Handed but a Ranged weapon. At 20 ft, seed 2: d20 2
+    hits AC 1; d6 1 + DEX 2 = 3 with or without the style."""
+    for style in (None, "great-weapon-fighting"):
+        handle, live = start(
+            [pc(attack_bonus=5, dexterity=14, fighting_style=style)],
+            seed=2,
+            encounter=[foe(zone_id=cell_id(4, 0))],
+        )
+        act(handle, "char:hero", intent_type="attack", weapon_id="shortbow", target_id="mon:foe")
+        assert [e.amount for e in events(live, DamageApplied)] == [3]
+
+
+@pytest.mark.parametrize(("style", "offhand"), [(None, 2), ("two-weapon-fighting", 6)])
+def test_twf_changes_only_the_offhand_swing(style: str | None, offhand: int) -> None:
+    """S04's setup (seed 9): the Shortsword deals 9 either way; the Dagger's
+    1d4 = 2 gains DEX +4 only with the style."""
+    handle, live = start(
+        [
+            pc(
+                attack_bonus=6,
+                dexterity=18,
+                equipment=("shortsword", "dagger"),
+                fighting_style=style,
+            )
+        ],
+        seed=9,
+        encounter=[foe(zone_id=cell_id(0, 0))],
+    )
+    act(handle, "char:hero", intent_type="attack", weapon_id="shortsword", target_id="mon:foe")
+    act(
+        handle,
+        "char:hero",
+        intent_type="attack",
+        weapon_id="dagger",
+        target_id="mon:foe",
+        use_bonus_action=True,
+    )
+    assert [e.amount for e in events(live, DamageApplied)] == [9, offhand]

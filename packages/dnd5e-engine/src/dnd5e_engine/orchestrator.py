@@ -9906,12 +9906,12 @@ async def submit_player_intent(
             # ATTACKER flag folded into attack disadvantage (attack.py,
             # "ranged_in_melee") for an effectively-ranged attack.
             attacker_ranged_in_melee=_hostile_adjacent_to_attacker(live, current),
-            # SRD 5.2 §Two-Weapon Fighting / Light property — an off-hand
-            # swing (Task 2) never adds a POSITIVE governing-ability
-            # modifier to its damage; a negative modifier still applies.
-            # False (the default) for every main-hand / monster / spell
-            # swing keeps their damage byte-identical to before this field.
-            suppress_positive_ability_damage_mod=is_offhand_swing,
+            # SRD 5.2 Light: the extra attack adds no positive ability modifier —
+            # unless Two-Weapon Fighting: "you can add your ability modifier to
+            # the damage of that attack if you aren't already adding it".
+            suppress_positive_ability_damage_mod=(
+                is_offhand_swing and "two-weapon-fighting" not in current.fighting_styles
+            ),
             # SRD 5.2 Versatile property (C15 Task 4) — see
             # ``use_versatile_damage`` computation above.
             use_versatile_damage=use_versatile_damage,

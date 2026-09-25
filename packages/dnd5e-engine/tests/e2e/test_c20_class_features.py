@@ -147,7 +147,6 @@ def test_c20_s02_fighting_style_archery_adds_plus2_ranged_attack():
     assert buffed_to_hit == base_to_hit + 2
 
 
-@xfail_cluster(20, "class feature mechanics")
 def test_c20_s03_fighting_style_great_weapon_fighting_floors_1_2_damage_dice_at_3():
     """C20-S03: SRD 5.2 ``feats24/fighting-style-feats/great-weapon-fighting.yml``
     — "you can treat any 1 or 2 on a damage die as a 3." Foundry's own
@@ -226,7 +225,6 @@ def test_c20_s03_fighting_style_great_weapon_fighting_floors_1_2_damage_dice_at_
     assert buffed_total - base_total == expected_delta
 
 
-@xfail_cluster(20, "class feature mechanics")
 def test_c20_s04_fighting_style_two_weapon_fighting_adds_ability_mod_to_offhand():
     """C20-S04: SRD 5.2 ``feats24/fighting-style-feats/two-weapon-fighting.yml``
     — "you can add your ability modifier to the damage of that attack

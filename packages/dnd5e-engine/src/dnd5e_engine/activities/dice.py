@@ -111,28 +111,31 @@ def roll_expr(expr: str, rng: random.Random, *, crit: bool = False) -> int:
     return _eval_node(ast.roll, rng)
 
 
-def _eval_node(node: d20.ast.Node, rng: random.Random) -> int:
+def _eval_node(node: d20.ast.Node, rng: random.Random, die_floor: int | None = None) -> int:
     if isinstance(node, d20.ast.Literal):
         return int(node.value)
     if isinstance(node, d20.ast.Dice):
-        return sum(rng.randint(1, int(node.size)) for _ in range(int(node.num)))
+        faces = [rng.randint(1, int(node.size)) for _ in range(int(node.num))]
+        # A floor (SRD 5.2 Great Weapon Fighting) changes faces, never the number
+        # of draws, so the seeded stream is the same with or without it.
+        return sum(faces if die_floor is None else (max(face, die_floor) for face in faces))
     if isinstance(node, d20.ast.UnOp):
-        inner = _eval_node(node.value, rng)
+        inner = _eval_node(node.value, rng, die_floor)
         if node.op == "+":
             return inner
         if node.op == "-":
             return -inner
         raise ValueError(f"Unsupported unary op in dice expression: {node.op!r}")
     if isinstance(node, d20.ast.BinOp):
-        left = _eval_node(node.left, rng)
-        right = _eval_node(node.right, rng)
+        left = _eval_node(node.left, rng, die_floor)
+        right = _eval_node(node.right, rng, die_floor)
         if node.op == "+":
             return left + right
         if node.op == "-":
             return left - right
         raise ValueError(f"Unsupported binary op in dice expression: {node.op!r}")
     if isinstance(node, d20.ast.Parenthetical):
-        return _eval_node(node.value, rng)
+        return _eval_node(node.value, rng, die_floor)
     raise ValueError(f"Unsupported node in dice expression: {type(node).__name__}")
 
 
@@ -141,6 +144,7 @@ def roll_damage_part(
     rng: random.Random,
     *,
     crit: bool = False,
+    die_floor: int | None = None,
     character_level: int | None = None,
     slot_level: int | None = None,
     base_level: int | None = None,
@@ -151,6 +155,8 @@ def roll_damage_part(
     folded into the dice count FIRST, then crit doubling doubles the (already
     scaled) dice count. Crit doubles dice only, never the modifier.
 
+    * ``die_floor`` raises every rolled face to at least that value — Great
+      Weapon Fighting's 3.
     * ``character_level`` drives cantrip scaling (SRD §Cantrips: 1 die ≤4, 2
       dice 5–10, 3 dice 11–16, 4 dice 17+), applied via the part's
       ``scaling.number`` step size — mirrors Foundry treating cantrip growth as
@@ -184,7 +190,7 @@ def roll_damage_part(
     ast = _parse(expr)
     if crit:
         ast = _double_dice(ast)
-    total = _eval_node(ast.roll, rng)
+    total = _eval_node(ast.roll, rng, die_floor)
     return total + _scaling_formula_bonus(part, steps, rng)
 
 
