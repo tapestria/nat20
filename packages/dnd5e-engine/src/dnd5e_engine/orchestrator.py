@@ -2660,11 +2660,9 @@ def _resolve_monster_cast(
     if entry is not None and key in entry.uses_remaining:
         entry.uses_remaining[key] = max(0, entry.uses_remaining[key] - 1)
 
-    # Symmetric concentration writeback for spellcaster monsters (mirrors
-    # the PC path; ``concentration_max_rounds`` stays on the default here —
-    # same recorded follow-up as the mundane monster-attack site).
-    _writeback_concentration(live, current, pre_event_count)
-    _record_effect_lifecycle_links(live, current, pre_event_count)
+    # The PC path's fold; ``concentration_max_rounds`` stays on the default
+    # here — the same recorded follow-up as the mundane monster-attack site.
+    _fold_resolution_outcome(live, current, spell=spell, actx=actx, pre_event_count=pre_event_count)
     _sync_legendary_resistance(live, pre_event_count)
 
 
@@ -6280,6 +6278,79 @@ def _record_effect_lifecycle_links(
                 break
 
 
+#: ``ActiveEffect.flags`` key marking a concentration anchor: the caster-side
+#: effect a concentration spell holds when its resolution applied no
+#: concentration effect of its own.
+_ANCHOR_FLAG: Final = "concentration_anchor"
+
+
+def _anchor_identity(spell_slug: str, caster_id: str) -> tuple[str, str, str]:
+    """``caster_id``'s anchor for ``spell_slug`` as a ``concentration_chain``
+    entry, ``(target_id, effect_id, origin)``: the caster holds it."""
+    return (caster_id, f"effect:{spell_slug}", f"cast:{spell_slug}:{caster_id}")
+
+
+def _apply_concentration_anchor(
+    live: _LiveCombat, caster: Combatant, spell: Spell | None, pre_event_count: int
+) -> None:
+    """Anchor a concentration spell whose resolution applied no concentration
+    effect (a summon, a construct, a save every target passed) on its caster.
+
+    Concentration begins only from an applied concentration effect, yet SRD 5.2
+    holds for every such spell: "You lose Concentration on an effect the moment
+    you start casting a spell that requires Concentration". The anchor carries
+    no changes and no duration of its own, so C13 governs it like any other
+    concentration effect: one at a time, the damage CON save, Incapacitated and
+    death, the spell's maximum duration and the drop intent. C13 keeps an
+    identical chain entry across resolutions, so a recast of the same spell
+    first ends the running one — otherwise its dependents would outlive it."""
+    if spell is None or not spell.concentration:
+        return
+    if any(
+        isinstance(ev, EffectApplied) and ev.effect.flags.get("concentration")
+        for ev in live.event_log[pre_event_count:]
+    ):
+        return
+    identity = _anchor_identity(spell.slug, caster.entity_id)
+    if identity in live.concentration_chain.get(caster.entity_id, []):
+        _drop_concentration(live, caster.entity_id)
+    target_id, effect_id, origin = identity
+    _emit(
+        live,
+        EffectApplied(
+            effect=ActiveEffect(
+                id=effect_id,
+                name=spell.name,
+                origin=origin,
+                target_id=target_id,
+                flags={"concentration": True, _ANCHOR_FLAG: True},
+            )
+        ),
+    )
+
+
+def _fold_resolution_outcome(
+    live: _LiveCombat,
+    caster: Combatant,
+    *,
+    spell: Spell | None,
+    actx: ActivityResolutionContext | None,
+    pre_event_count: int,
+    concentration_max_rounds: int | None = None,
+) -> None:
+    """Fold one resolution into live state, the same way at every cast site
+    (on-turn, monster, readied). The anchor comes first so C13's writeback and
+    lifecycle links see it like any concentration effect: they record the
+    chain and end a different concentration the caster held before this
+    resolution. ``actx`` is the resolution's context, ``None`` when nothing
+    resolved."""
+    _apply_concentration_anchor(live, caster, spell, pre_event_count)
+    _writeback_concentration(live, caster, pre_event_count)
+    _record_effect_lifecycle_links(
+        live, caster, pre_event_count, concentration_max_rounds=concentration_max_rounds
+    )
+
+
 def _hook_run_end_of_turn_saves(live: _LiveCombat, actor_id: str | None) -> None:
     """``turn_end`` hook — adapt ``_run_end_of_turn_saves`` to ``TurnHook``."""
     if actor_id is None:
@@ -9787,6 +9858,16 @@ def _resolve_readied_spell_cast(
     pre_event_count = len(live.event_log)
     for activity in spell.activities:
         resolve_activity(activity, actx, weapon=None)
+
+    # A readied concentration spell concentrates like an on-turn cast.
+    _fold_resolution_outcome(
+        live,
+        reactor,
+        spell=spell,
+        actx=actx,
+        pre_event_count=pre_event_count,
+        concentration_max_rounds=_concentration_max_rounds(spell),
+    )
     _sync_legendary_resistance(live, pre_event_count)
 
     for ev in live.event_log[pre_event_count:]:
@@ -10331,6 +10412,7 @@ async def submit_player_intent(
     _apply_magic_missile_shield_carveout(payload, shielded_vs_magic_missile)
 
     pre_event_count = len(live.event_log)
+    actx: ActivityResolutionContext | None = None
 
     if not activities:
         # Slug absent from the lib (e.g. a wrapper-only spell) or a non-
@@ -10621,26 +10703,18 @@ async def submit_player_intent(
         ):
             current = _record_loading_weapon_fired(live, actor_id, current)
 
-    # SRD §Concentration — fold any emitted ``EffectApplied(is_concentration=True)``
-    # back onto the caster's ``Combatant.concentration_effect_id`` so the
-    # next hydration projects the existing concentration onto the sidecar
-    # (closes the wave-05 one-way wiring). The typed resolver preserves
-    # EffectApplied→ConditionApplied emit order, so this seam and
-    # ``_record_effect_lifecycle_links`` below keep working unchanged.
-    _writeback_concentration(live, current, pre_event_count)
-    _sync_legendary_resistance(live, pre_event_count)
-
-    # Persistent IEffect-graph linkage — record concentration ownership,
-    # effect→condition bijection, and any end-of-turn repeat-save specs
-    # produced by this resolution. Closes the codex shelf finding
-    # ``ieffect2.py`` P1 ("parent links don't survive across turns") by
-    # owning the lifecycle graph at the orchestrator.
-    _record_effect_lifecycle_links(
+    # SRD §Concentration — the concentration anchor, then C13's writeback of
+    # ``Combatant.concentration_effect_id`` and its persistent lifecycle links
+    # (concentration ownership, effect→condition bijection, repeat-save specs).
+    _fold_resolution_outcome(
         live,
         current,
-        pre_event_count,
+        spell=cast_spell,
+        actx=actx,
+        pre_event_count=pre_event_count,
         concentration_max_rounds=_concentration_max_rounds(cast_spell),
     )
+    _sync_legendary_resistance(live, pre_event_count)
 
     # SRD §Hold Person / §Hold Monster — *"At the end of each of its turns,
     # the target repeats the save."* This runs as the ``engine:repeat-save``
