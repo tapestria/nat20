@@ -294,6 +294,9 @@ def test_hooks_registered_by_the_engine_are_present_and_ordered():
       per-attacker mastery-grant counters with no cross-hook ordering
       dependency, so it only needs to run once per turn end, after the
       others.
+    * ``engine:rage-extension`` (C20, SRD 5.2 Rage) is appended LAST — it reads
+      only the ending turn's own events and the Bonus-Action mark, and follows
+      the round tick so the corpus Rage's ``rounds`` stays the outer cap.
     """
 
     async def _run():
@@ -310,5 +313,6 @@ def test_hooks_registered_by_the_engine_are_present_and_ordered():
             "engine:timed-effect-expiry",
             "engine:concentration-expiry",
             "engine:vex-expiry",
+            "engine:rage-extension",
         ],
     }

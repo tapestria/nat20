@@ -595,7 +595,6 @@ def test_c20_s08_bardic_inspiration_die_consumed_on_later_ally_roll():
     assert 1 <= delta <= 6
 
 
-@xfail_cluster(20, "class feature mechanics")
 def test_c20_s09_rage_ends_at_end_of_next_turn_when_not_extended():
     """C20-S09: SRD 5.2 ``classes24/barbarian/class-features/rage.yml``
     — "The Rage lasts until the end of your next turn... you can

@@ -87,6 +87,12 @@ EffectExpiryReason = Literal[
     # SRD 5.2 Bardic Inspiration: "A Bardic Inspiration die is expended when
     # it's rolled." (C20)
     "expended",
+    # SRD 5.2 Rage: "The Rage lasts until the end of your next turn" — a Rage
+    # its barbarian didn't extend on that turn ends there (C20).
+    "not_extended",
+    # SRD 5.2 Rage: "it ends early if you ... have the Incapacitated
+    # condition" (C20).
+    "incapacitated",
 ]
 
 CastFailedReason = Literal[

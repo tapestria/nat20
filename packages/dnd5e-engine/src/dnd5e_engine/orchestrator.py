@@ -55,7 +55,7 @@ import random
 import re
 import warnings
 from collections.abc import AsyncIterator, Callable, Collection, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, Final, Literal
 
 from dnd5e_srd_data.schema.common import (
@@ -1149,6 +1149,14 @@ def _side_of(live: _LiveCombat, entity_id: str) -> set[str] | None:
     if entity_id in live.encounter_ids:
         return live.encounter_ids
     return None
+
+
+def _is_enemy(live: _LiveCombat, entity_id: str, other_id: str) -> bool:
+    """``other_id`` fights on the other side from ``entity_id``
+    (``live.party_ids`` / ``live.encounter_ids``)."""
+    side = _side_of(live, entity_id)
+    other_side = _side_of(live, other_id)
+    return side is not None and other_side is not None and other_side is not side
 
 
 def _target_help_advantage_map(
@@ -3065,6 +3073,12 @@ class _LiveCombat:
     # folding ``ActivityResolutionContext.mastery_procs`` post-resolution
     # (controller ruling R4).
     vex_grants: dict[str, dict[str, int]] = field(default_factory=dict)
+    # SRD 5.2 Rage — "Take a Bonus Action to extend your Rage." The barbarians
+    # who took that Bonus Action this turn. The ``engine:rage-extension`` hook
+    # reads and clears the mark at that barbarian's turn end; the other two
+    # extensions (an attack roll against an enemy, an enemy's saving throw)
+    # are read from ``event_log``.
+    rage_bonus_extensions: set[str] = field(default_factory=set)
     # SRD 5.2 §Weapon Mastery — Sap (C15 Task 6): *"If you hit a creature
     # with this weapon, that creature has Disadvantage on its next attack
     # roll before the start of your next turn."* Keyed SAPPED-entity
@@ -3493,6 +3507,9 @@ def _fold_condition_onto_combatant(
         # grappler has the Incapacitated condition." Release every victim
         # this newly-incapacitated combatant is currently grappling.
         _release_grapple_victims_of(live, entity_id)
+        # SRD 5.2 Rage: "it ends early if you ... have the Incapacitated
+        # condition."
+        _end_rage(live, entity_id, "incapacitated")
 
 
 def _strip_condition_from_combatant(live: _LiveCombat, entity_id: str, condition: str) -> None:
@@ -6263,6 +6280,62 @@ def _hook_expire_vex_grants(live: _LiveCombat, actor_id: str | None) -> None:
         del live.vex_grants[actor_id]
 
 
+_RAGE_FEATURE: Final = "rage"
+# The id ``passive_effect_to_active_effect`` gives the corpus effect named
+# "Rage"; a Rage a host seeds through ``start_combat`` carries it too.
+_RAGE_EFFECT_ID: Final = "effect:rage"
+
+
+def _rage_effect(live: _LiveCombat, entity_id: str) -> ActiveEffect | None:
+    """``entity_id``'s live Rage, or ``None`` when it isn't raging."""
+    return _live_effect(live, entity_id, _RAGE_EFFECT_ID)
+
+
+def _end_rage(live: _LiveCombat, entity_id: str, reason: EffectExpiryReason) -> None:
+    """End ``entity_id``'s Rage, if it has one."""
+    rage = _rage_effect(live, entity_id)
+    if rage is not None:
+        _emit(
+            live,
+            EffectExpired(
+                effect_id=rage.id, target_id=entity_id, origin=rage.origin, reason=reason
+            ),
+        )
+
+
+def _extends_rage(live: _LiveCombat, actor_id: str, event: CombatEvent) -> bool:
+    """One of SRD 5.2 Rage's roll extensions: "Make an attack roll against an
+    enemy. Force an enemy to make a saving throw." ``SaveRolled`` names no
+    source, so an enemy's save rolled during the barbarian's own turn counts as
+    one it forced."""
+    if isinstance(event, AttackRolled):
+        return event.attacker_id == actor_id and _is_enemy(live, actor_id, event.target_id)
+    return isinstance(event, SaveRolled) and _is_enemy(live, actor_id, event.target_id)
+
+
+def _hook_rage_extension(live: _LiveCombat, actor_id: str | None) -> None:
+    """``turn_end`` hook — SRD 5.2 Rage: "The Rage lasts until the end of your
+    next turn ... Each time the Rage is extended, it lasts until the end of
+    your next turn." At the barbarian's own turn end its Rage survives when
+    this turn entered it or extended it — the Bonus Action, or a roll
+    ``_extends_rage`` accepts — and otherwise ends with
+    ``reason="not_extended"``. A Rage seeded through ``start_combat`` wasn't
+    entered this turn, so its first turn must extend it. No RNG."""
+    if actor_id is None:
+        return
+    extended_by_bonus_action = actor_id in live.rage_bonus_extensions
+    live.rage_bonus_extensions.discard(actor_id)
+    rage = _rage_effect(live, actor_id)
+    if (
+        rage is None
+        or extended_by_bonus_action
+        or _effect_applied_during_current_turn(live, actor_id, (actor_id, rage.id, rage.origin))
+        or any(_extends_rage(live, actor_id, ev) for ev in _current_turn_events(live, actor_id))
+    ):
+        return
+    _end_rage(live, actor_id, "not_extended")
+
+
 def _register_default_turn_hooks(live: _LiveCombat) -> None:
     """Register the engine's built-in turn-boundary hooks on ``live``.
 
@@ -6278,6 +6351,10 @@ def _register_default_turn_hooks(live: _LiveCombat) -> None:
     hooks, after ``engine:timed-effect-expiry``, so a same-boundary repeat save
     (``engine:repeat-save``, registered first) still rolls against a live
     effect before the concentration cap can cascade its drop.
+    ``engine:rage-extension`` (C20) is appended LAST among the ``turn_end``
+    hooks: it reads only the ending turn's own events and Bonus-Action mark,
+    and it runs after the ``rounds`` tick, so the corpus Rage's ``rounds: 10``
+    stays the outer cap.
     ``engine:repeat-save`` is registered FIRST among the ``turn_end`` hooks: the
     SRD repeat save (Hold Person / Hold Monster / Dominate Person) must resolve
     while its source effect is still live, so it runs before
@@ -6303,6 +6380,7 @@ def _register_default_turn_hooks(live: _LiveCombat) -> None:
         "turn_end", _hook_concentration_expiry, key="engine:concentration-expiry"
     )
     live.lifecycle.register("turn_end", _hook_expire_vex_grants, key="engine:vex-expiry")
+    live.lifecycle.register("turn_end", _hook_rage_extension, key="engine:rage-extension")
     live.lifecycle.register(
         "turn_start", _hook_expire_reaction_effects, key="engine:reaction-effect-expiry"
     )
@@ -6434,6 +6512,16 @@ def _duration_tick_matches_actor(*, origin: str, target_id: str, actor_id: str) 
     return target_id == actor_id
 
 
+def _current_turn_events(live: _LiveCombat, actor_id: str) -> list[CombatEvent]:
+    """The events since ``actor_id``'s most recent ``TurnStarted`` — from a
+    ``turn_end`` hook, the turn now ending. Empty before its first turn."""
+    for i in range(len(live.event_log) - 1, -1, -1):
+        ev = live.event_log[i]
+        if isinstance(ev, TurnStarted) and ev.actor_id == actor_id:
+            return live.event_log[i + 1 :]
+    return []
+
+
 def _effect_applied_during_current_turn(
     live: _LiveCombat, actor_id: str, identity: tuple[str, str, str]
 ) -> bool:
@@ -6449,20 +6537,12 @@ def _effect_applied_during_current_turn(
     read as "not applied this turn", which is the right answer for them.
     """
     target_id, effect_id, origin = identity
-    last_start = -1
-    for i in range(len(live.event_log) - 1, -1, -1):
-        ev = live.event_log[i]
-        if isinstance(ev, TurnStarted) and ev.actor_id == actor_id:
-            last_start = i
-            break
-    if last_start < 0:
-        return False
     return any(
         isinstance(ev, EffectApplied)
         and ev.effect.target_id == target_id
         and ev.effect.id == effect_id
         and ev.effect.origin == origin
-        for ev in live.event_log[last_start + 1 :]
+        for ev in _current_turn_events(live, actor_id)
     )
 
 
@@ -7429,6 +7509,10 @@ class _FeatureInvocation:
     # (``activation.type == "special"``: Action Surge, Brutal Strike, Sacred
     # Weapon) takes no Action, Bonus Action or Reaction and keeps the turn.
     is_free_action: bool = False
+    # SRD 5.2 Rage — a ``rage`` invocation by a creature already raging is the
+    # Bonus-Action extension, not a new Rage: it applies nothing
+    # (``_resolve_intent_activities``) and spends no use (``use_cost`` 0).
+    extends_rage: bool = False
     # SRD 5.2 §Limited-Use Features — the per-rest use cap resolved
     # from the feature's typed ``uses`` block (a literal or a ``@scale.*`` max
     # resolved against the caster's ScaleValue map), or ``None`` when the feature
@@ -7546,6 +7630,15 @@ def _record_capped_feature_use(
         and feature_invocation.use_cost > 0
     ):
         _increment_feature_use(live, actor_id, feature_id, feature_invocation.use_cost)
+
+
+def _record_rage_extension(
+    live: _LiveCombat, actor_id: str, feature_invocation: _FeatureInvocation | None
+) -> None:
+    """Mark a committed Bonus-Action Rage extension for this turn's
+    ``engine:rage-extension`` hook; a no-op for every other intent."""
+    if feature_invocation is not None and feature_invocation.extends_rage:
+        live.rage_bonus_extensions.add(actor_id)
 
 
 def _item_use_counter_key(item_id: str) -> str:
@@ -7889,6 +7982,7 @@ def _resolve_feature_invocation(
     activity_id: str | None = None,
     *,
     pool_points: int | None = None,
+    raging: bool = False,
 ) -> _FeatureInvocation | None:
     """Resolve a USE_FEATURE intent to its single concrete activity, or ``None``.
 
@@ -7905,7 +7999,8 @@ def _resolve_feature_invocation(
 
     Rage / Second Wind activate as a Bonus Action (``activation.type ==
     "bonus"``); that does NOT end the turn, so the actor may rage then swing on
-    the same turn.
+    the same turn. ``raging``: the caster already has a live Rage (see
+    ``_FeatureInvocation.extends_rage``).
     """
     if feature_id not in _granted_feature_slugs(caster):
         _LOGGER.warning(
@@ -7948,7 +8043,7 @@ def _resolve_feature_invocation(
         classes=_class_levels(caster),
     )
     activation = getattr(selected.activation, "type", None)
-    return _FeatureInvocation(
+    invocation = _FeatureInvocation(
         activities=[selected],
         passive_effects=list(feature.passive_effects) if feature else [],
         is_bonus_action=activation == "bonus",
@@ -7957,6 +8052,12 @@ def _resolve_feature_invocation(
         use_cost=_feature_activity_cost(all_activities, selected, scaling_value=scaling_value),
         scaling_value=scaling_value,
     )
+    if raging and feature_id == _RAGE_FEATURE:
+        # SRD 5.2 Rage: "Take a Bonus Action to extend your Rage." Already
+        # raging, the invocation extends it: the Bonus Action, no use, nothing
+        # applied.
+        return replace(invocation, use_cost=0, extends_rage=True)
+    return invocation
 
 
 # SRD 5.2 Bardic Inspiration. The die a creature holds is the "Inspired" effect
@@ -7967,13 +8068,15 @@ _INSPIRED_EFFECT_ID: Final = "effect:inspired"
 _INSPIRED_ORIGIN_PREFIX: Final = "cast:inspired:"
 
 
+def _live_effect(live: _LiveCombat, entity_id: str, effect_id: str) -> ActiveEffect | None:
+    """``entity_id``'s live effect with id ``effect_id``, or ``None``."""
+    return next((e for e in live.active_effects.get(entity_id, []) if e.id == effect_id), None)
+
+
 def _inspiration_effect(live: _LiveCombat, entity_id: str) -> ActiveEffect | None:
     """The Bardic Inspiration die ``entity_id`` holds — SRD 5.2: "A creature can
     have only one Bardic Inspiration die at a time."""
-    return next(
-        (e for e in live.active_effects.get(entity_id, []) if e.id == _INSPIRED_EFFECT_ID),
-        None,
-    )
+    return _live_effect(live, entity_id, _INSPIRED_EFFECT_ID)
 
 
 def _granted_die(live: _LiveCombat, holder: Combatant) -> str | None:
@@ -9188,7 +9291,9 @@ def _resolve_intent_activities(
         # returned early there; reaching here means ``feature_invocation`` holds
         # the resolved activity + its PassiveEffect riders.
         assert feature_invocation is not None
-        activities = feature_invocation.activities
+        # A Rage extension resolves nothing: the Rage it extends is already on
+        # the caster.
+        activities = [] if feature_invocation.extends_rage else feature_invocation.activities
         feature_passive_effects = feature_invocation.passive_effects
     return _ResolvedActivities(
         activities=activities,
@@ -9879,7 +9984,11 @@ async def submit_player_intent(
     feature_invocation: _FeatureInvocation | None = None
     if intent.feature_id:
         feature_invocation = _resolve_feature_invocation(
-            current, intent.feature_id, intent.activity_id, pool_points=intent.pool_points
+            current,
+            intent.feature_id,
+            intent.activity_id,
+            pool_points=intent.pool_points,
+            raging=_rage_effect(live, actor_id) is not None,
         )
         if feature_invocation is None:
             return
@@ -10070,6 +10179,10 @@ async def submit_player_intent(
     # above. The early gate rejects an over-cap invocation before reaching here, so
     # this only increments a within-cap use (no-op for uncapped / non-feature intents).
     _record_capped_feature_use(live, actor_id, intent.feature_id, feature_invocation)
+
+    # SRD 5.2 Rage — a committed Bonus-Action extension, read by this turn's
+    # ``engine:rage-extension`` hook.
+    _record_rage_extension(live, actor_id, feature_invocation)
 
     # SRD 5.2 Flurry of Blows — the committed invocation owes the monk its
     # Unarmed Strikes (no-op for every other intent).
