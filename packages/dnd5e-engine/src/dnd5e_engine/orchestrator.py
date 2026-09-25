@@ -7407,6 +7407,17 @@ def _increment_feature_use(
     counter["spent"] = counter.get("spent", 0) + amount
 
 
+def _feature_spend_fits_cap(
+    live: _LiveCombat, actor_id: str, feature_id: str, *, cap: int | None, cost: int
+) -> bool:
+    """True when spending ``cost`` more uses stays within ``cap`` — the one
+    comparison ``_feature_uses_exhausted`` and ``_feature_pool_request_failure``
+    both gate on, kept in a single place so it can't drift between them. An
+    uncapped feature (``cap is None``) always fits.
+    """
+    return cap is None or _feature_use_spent(live, actor_id, feature_id) + cost <= cap
+
+
 def _feature_uses_exhausted(
     live: _LiveCombat,
     actor_id: str,
@@ -7420,9 +7431,10 @@ def _feature_uses_exhausted(
     reject shape, extended from a per-turn budget to a per-rest one. Uncapped
     features (``use_cap is None``) never gate.
     """
-    cap = feature_invocation.use_cap
     cost = feature_invocation.use_cost
-    if cap is None or cost == 0 or _feature_use_spent(live, actor_id, feature_id) + cost <= cap:
+    if cost == 0 or _feature_spend_fits_cap(
+        live, actor_id, feature_id, cap=feature_invocation.use_cap, cost=cost
+    ):
         return False
     _emit(live, CastFailed(actor_id=actor_id, spell_id="", reason="no_uses_remaining"))
     return True
@@ -7548,9 +7560,12 @@ def _feature_pool_request_failure(
     amount remaining in the pool"."""
     if intent.pool_points is None or intent.feature_id is None:
         return False
-    cap = feature_invocation.use_cap
-    fits = cap is None or (
-        _feature_use_spent(live, actor_id, intent.feature_id) + feature_invocation.use_cost <= cap
+    fits = _feature_spend_fits_cap(
+        live,
+        actor_id,
+        intent.feature_id,
+        cap=feature_invocation.use_cap,
+        cost=feature_invocation.use_cost,
     )
     if feature_invocation.scaling_value is not None and fits:
         return False
