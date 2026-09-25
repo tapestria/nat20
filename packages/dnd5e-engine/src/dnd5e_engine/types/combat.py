@@ -347,6 +347,12 @@ class Combatant(BaseModel):
     # Strike attacks spend them instead of any action. Reset to 0 at the
     # actor's own TurnStarted (unused strikes lapse).
     flurry_strikes_remaining: int = 0
+    # SRD 5.2 Action Surge: "On your turn, you can take one additional action,
+    # except the Magic action." The additional actions a committed surge left
+    # unspent this turn, and whether one was used this turn ("only once on a
+    # turn"). Both reset at the actor's own TurnStarted: an unspent one lapses.
+    extra_actions_remaining: int = 0
+    action_surge_used_this_turn: bool = False
 
     @model_validator(mode="before")
     @classmethod

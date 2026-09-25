@@ -436,7 +436,6 @@ def test_c20_s06_flurry_of_blows_spends_focus_for_two_bonus_action_strikes():
     assert len(strikes) == 2
 
 
-@xfail_cluster(20, "class feature mechanics")
 def test_c20_s07_action_surge_grants_a_second_action_same_turn():
     """C20-S07: SRD 5.2 ``classes24/fighter/class-features/action-surge.yml``
     — "you can take one additional action, except the Magic action."
