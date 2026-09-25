@@ -512,6 +512,11 @@ class ActivityResolutionContext:
     # the golden corpus identical (no chain, no extra draws).
     cleave_available: bool = False
     cleave_candidate: Combatant | None = None
+    # Foundry's ``@scaling`` for this resolution — the scaling value the caster
+    # chose. Set only for a feature activity that scales its own-pool cost by
+    # amount (Lay on Hands' Heal: the points drawn). ``None`` keeps ``@scaling``
+    # an unhandled token, so a spell formula that names it still fails loudly.
+    scaling_value: int | None = None
 
     def ability_mod(self, ability: str) -> int:
         return (self.caster_abilities.get(ability, 10) - 10) // 2

@@ -2,17 +2,22 @@
 
 from __future__ import annotations
 
+import random
 from collections.abc import Iterator
+from dataclasses import replace
 from types import SimpleNamespace
 
 import pytest
 from dnd5e_srd_data.loader import BundledAssetLoader
 
-from dnd5e_engine.events import CastFailed
+from dnd5e_engine.activities.context import ActivityResolutionContext
+from dnd5e_engine.activities.formula import resolve_roll_data
+from dnd5e_engine.events import CastFailed, HealingApplied
 from dnd5e_engine.lib_loader import set_lib_loader_for_tests
 from dnd5e_engine.orchestrator import _feature_activity_cost, _feature_use_cap
 from dnd5e_engine.rules.uses import UsesRollData
 from dnd5e_engine.spatial import cell_id
+from dnd5e_engine.types.combat import Combatant
 from tests.c20_support import act, combatant, events, pc, start
 
 LOADER = BundledAssetLoader()
@@ -208,3 +213,91 @@ def test_a_lone_activity_with_no_declared_cost_still_spends_a_use() -> None:
     handle, live = start([pc(class_slug="fighter", character_level=9)], seed=1)
     act(handle, "char:hero", intent_type="use_feature", feature_id="indomitable")
     assert _counter(live, "char:hero", "indomitable") == {"spent": 1}
+
+
+# ── Task 5 — Lay on Hands' pool ──────────────────────────────────────────────
+
+
+def _paladin(**fields):
+    """A Paladin 2 (a pool of 10) at 0,0 and an ally at 0,1 with 1/200 HP."""
+    paladin = {"class_slug": "paladin", "character_level": 2} | fields
+    ally = pc("char:ally", initiative=10, hp_current=1, hp_max=200, zone_id=cell_id(0, 1))
+    return start([pc("char:paladin", **paladin), ally], seed=1)
+
+
+def _lay_on_hands(handle, activity_id: str = HEAL, **intent) -> None:
+    act(
+        handle,
+        "char:paladin",
+        intent_type="use_feature",
+        feature_id="lay-on-hands",
+        activity_id=activity_id,
+        target_id="char:ally",
+        **intent,
+    )
+
+
+def test_heal_draws_the_requested_points_and_spends_them() -> None:
+    handle, live = _paladin()
+    _lay_on_hands(handle, pool_points=7)
+    assert [e.amount for e in events(live, HealingApplied)] == [7]
+    assert _counter(live, "char:paladin", "lay-on-hands") == {"spent": 7}
+    assert combatant(live, "char:paladin").bonus_action_available is False
+
+
+def test_default_draw_is_one_point() -> None:
+    """Without ``pool_points`` the Heal draws 1 point (Foundry's default draw)."""
+    handle, live = _paladin()
+    _lay_on_hands(handle)
+    assert [e.amount for e in events(live, HealingApplied)] == [1]
+    assert _counter(live, "char:paladin", "lay-on-hands") == {"spent": 1}
+
+
+def test_an_overdraw_is_refused_before_the_bonus_action() -> None:
+    """ "...up to the maximum amount remaining in the pool": 11 of 10 is refused."""
+    handle, live = _paladin()
+    _lay_on_hands(handle, pool_points=11)
+    assert [e.reason for e in events(live, CastFailed)] == ["invalid_charge_spend"]
+    assert not events(live, HealingApplied)
+    assert _counter(live, "char:paladin", "lay-on-hands") is None
+    assert combatant(live, "char:paladin").bonus_action_available is True
+
+
+def test_pool_points_on_a_fixed_cost_activity_is_refused() -> None:
+    handle, live = _paladin()
+    _lay_on_hands(handle, REMOVE_POISON, pool_points=5)
+    assert [e.reason for e in events(live, CastFailed)] == ["invalid_charge_spend"]
+    assert _counter(live, "char:paladin", "lay-on-hands") is None
+
+
+def test_an_empty_pool_refuses_the_default_draw() -> None:
+    handle, live = _paladin(custom_counters={"feature_use:lay-on-hands": {"spent": 10}})
+    _lay_on_hands(handle)
+    assert [e.reason for e in events(live, CastFailed)] == ["no_uses_remaining"]
+
+
+def test_the_pool_follows_the_paladin_level_in_a_multiclass() -> None:
+    """Paladin 2 / Fighter 3: "five times your Paladin level" is 10, not 25."""
+    handle, live = _paladin(classes={"paladin": 2, "fighter": 3}, character_level=5)
+    _lay_on_hands(handle, pool_points=11)
+    _lay_on_hands(handle, pool_points=10)
+    assert [e.reason for e in events(live, CastFailed)] == ["invalid_charge_spend"]
+    assert [e.amount for e in events(live, HealingApplied)] == [10]
+
+
+def test_scaling_resolves_only_when_a_feature_supplies_it() -> None:
+    """``@scaling`` is the drawn points; without them it still fails loudly."""
+    caster = Combatant(
+        entity_id="char:paladin", entity_type="Character", name="P", initiative=1, hp_current=1
+    )
+    ctx = ActivityResolutionContext(
+        rng=random.Random(1),
+        caster=caster,
+        targets=[],
+        event_emitter=lambda _event: None,
+        caster_abilities={},
+        scaling_value=4,
+    )
+    assert resolve_roll_data("@scaling", ctx) == "4"
+    with pytest.raises(ValueError, match="@scaling"):
+        resolve_roll_data("@scaling", replace(ctx, scaling_value=None))

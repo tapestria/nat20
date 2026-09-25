@@ -673,7 +673,6 @@ def test_c20_s09_rage_ends_at_end_of_next_turn_when_not_extended():
     assert not_extended, "Rage should end at the end of its next turn when not extended"
 
 
-@xfail_cluster(20, "class feature mechanics")
 def test_c20_s10_lay_on_hands_pool_caps_at_5x_paladin_level_per_long_rest():
     """C20-S10: SRD 5.2 ``classes24/paladin/class-features/lay-on-hands.yml``
     — "restore a total number of Hit Points equal to five times your

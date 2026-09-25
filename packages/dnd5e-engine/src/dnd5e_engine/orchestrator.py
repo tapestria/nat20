@@ -245,6 +245,14 @@ class PlayerIntent(BaseModel):
     # Charges to spend on a variable-cost item invocation (wand upcast).
     # Validated by the use_item charge gate against consumption.scaling.
     charges_to_spend: int | None = Field(default=None, ge=1)
+    # SRD 5.2 Lay on Hands: "draw power from the pool of healing to restore a
+    # number of Hit Points to that creature, up to the maximum amount remaining
+    # in the pool." The points a ``use_feature`` draws from an activity whose
+    # own-pool cost scales by amount (Foundry ``consumption.scaling``): both its
+    # ``@scaling`` value and what it spends. Omitted → 1. Refused with
+    # ``CastFailed(reason="invalid_charge_spend")`` on an activity that doesn't
+    # scale by amount, or above the points left. Ignored by other intent types.
+    pool_points: int | None = Field(default=None, ge=1)
     # SRD §Reactions — the trigger condition a ``"ready"`` intent pre-arms
     # 's pending-reaction queue). Consumed by
     # ``_pop_pending_reaction`` / ``_drain_targeted_reactions`` when a
@@ -7344,6 +7352,9 @@ class _FeatureInvocation:
     use_cap: int | None = None
     # Uses this invocation spends — ``_feature_activity_cost``.
     use_cost: int = 1
+    # ``@scaling`` for this invocation: the pool points drawn, when the
+    # activity scales by amount.
+    scaling_value: int | None = None
 
 
 def _uses_roll_data(caster: Combatant, scale_values: Mapping[str, int | str]) -> UsesRollData:
@@ -7513,6 +7524,38 @@ def _feature_activity_cost(
         steps = scaling_value - 1 if scaling_value and target.scaling.mode == "amount" else 0
         cost += value + steps
     return cost
+
+
+def _scales_by_amount(activity: Any) -> bool:
+    """True when the caster chooses how many own-pool uses to spend (Foundry
+    ``consumption.scaling`` with an ``amount`` target) — Lay on Hands' Heal,
+    whose ``@scaling`` is the points drawn."""
+    return bool(activity.consumption.scaling.allowed) and any(
+        target.scaling.mode == "amount" and _literal_int(target.value) is not None
+        for target in _own_pool_targets(activity)
+    )
+
+
+def _feature_pool_request_failure(
+    live: _LiveCombat,
+    actor_id: str,
+    intent: PlayerIntent,
+    feature_invocation: _FeatureInvocation,
+) -> bool:
+    """True (after emitting ``CastFailed(reason="invalid_charge_spend")``) when
+    ``pool_points`` names an activity that doesn't scale by amount, or asks for
+    more than the pool has left — SRD 5.2 Lay on Hands: "up to the maximum
+    amount remaining in the pool"."""
+    if intent.pool_points is None or intent.feature_id is None:
+        return False
+    cap = feature_invocation.use_cap
+    fits = cap is None or (
+        _feature_use_spent(live, actor_id, intent.feature_id) + feature_invocation.use_cost <= cap
+    )
+    if feature_invocation.scaling_value is not None and fits:
+        return False
+    _emit(live, CastFailed(actor_id=actor_id, spell_id="", reason="invalid_charge_spend"))
+    return True
 
 
 def _item_charge_activity(item: Any, activity_id: str | None) -> Any | None:
@@ -7709,7 +7752,10 @@ def _gate_feature_and_item_uses(
     if (
         intent.feature_id
         and feature_invocation is not None
-        and _feature_uses_exhausted(live, actor_id, intent.feature_id, feature_invocation)
+        and (
+            _feature_pool_request_failure(live, actor_id, intent, feature_invocation)
+            or _feature_uses_exhausted(live, actor_id, intent.feature_id, feature_invocation)
+        )
     ):
         return True
     return _item_charge_gate(live, actor_id, intent)
@@ -7738,7 +7784,11 @@ def _record_item_charge_spend(live: _LiveCombat, actor_id: str, intent: PlayerIn
 
 
 def _resolve_feature_invocation(
-    caster: Combatant, feature_id: str, activity_id: str | None = None
+    caster: Combatant,
+    feature_id: str,
+    activity_id: str | None = None,
+    *,
+    pool_points: int | None = None,
 ) -> _FeatureInvocation | None:
     """Resolve a USE_FEATURE intent to its single concrete activity, or ``None``.
 
@@ -7788,6 +7838,7 @@ def _resolve_feature_invocation(
             )
             return None
         selected = chosen
+    scaling_value = (pool_points or 1) if _scales_by_amount(selected) else None
     scale_values = build_scale_values(
         class_slug=caster.class_slug,
         subclass_slug=caster.subclass_slug,
@@ -7801,7 +7852,8 @@ def _resolve_feature_invocation(
         passive_effects=list(feature.passive_effects) if feature else [],
         is_bonus_action=getattr(selected.activation, "type", None) == "bonus",
         use_cap=_feature_use_cap(feature, _uses_roll_data(caster, scale_values)),
-        use_cost=_feature_activity_cost(all_activities, selected, scaling_value=None),
+        use_cost=_feature_activity_cost(all_activities, selected, scaling_value=scaling_value),
+        scaling_value=scaling_value,
     )
 
 
@@ -9413,7 +9465,7 @@ async def submit_player_intent(
     feature_invocation: _FeatureInvocation | None = None
     if intent.feature_id:
         feature_invocation = _resolve_feature_invocation(
-            current, intent.feature_id, intent.activity_id
+            current, intent.feature_id, intent.activity_id, pool_points=intent.pool_points
         )
         if feature_invocation is None:
             return
@@ -9870,6 +9922,12 @@ async def submit_player_intent(
             # real path a bearer (a zombie fought by the party) resolves
             # through, so this is wired here too, not just monster-side.
             undead_fortitude_holds=live.undead_fortitude_holds,
+            # SRD 5.2 Lay on Hands — the ``@scaling`` token this resolution's
+            # formulas see: the pool points drawn, set only when the resolved
+            # feature activity scales its own-pool cost by amount.
+            scaling_value=(
+                feature_invocation.scaling_value if feature_invocation is not None else None
+            ),
         )
         for activity in activities:
             resolve_activity(activity, actx, weapon=fetched_weapon)

@@ -216,6 +216,7 @@ def build_activity_context(
     pack_tactics_ally_adjacent: dict[str, bool] | None = None,
     attacker_in_sunlight: bool = False,
     undead_fortitude_holds: dict[str, bool] | None = None,
+    scaling_value: int | None = None,
 ) -> ActivityResolutionContext:
     """Adapt the caster + the pre-computed hydration sidecars into the typed
     ``ActivityResolutionContext`` the new resolver consumes.
@@ -531,4 +532,5 @@ def build_activity_context(
         undead_fortitude_holds=(
             undead_fortitude_holds if undead_fortitude_holds is not None else {}
         ),
+        scaling_value=scaling_value,
     )
