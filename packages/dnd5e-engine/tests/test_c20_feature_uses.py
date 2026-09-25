@@ -1,4 +1,4 @@
-"""Limited-use caps and activity costs (Task 4) and Lay on Hands' pool (Task 5)."""
+"""Limited-use caps and activity costs, and Lay on Hands' pool."""
 
 from __future__ import annotations
 
@@ -39,7 +39,7 @@ def _counter(live, entity_id: str, feature: str) -> dict[str, int] | None:
     return live.custom_counters_by_entity.get(entity_id, {}).get(f"feature_use:{feature}")
 
 
-# ── Task 4 — caps ────────────────────────────────────────────────────────────
+# ── Caps ─────────────────────────────────────────────────────────────────────
 
 
 def test_feature_use_cap_reads_prof_ability_and_class_level_maxes() -> None:
@@ -115,7 +115,7 @@ def test_bardic_inspiration_stops_at_the_charisma_modifier(
     assert _counter(live, "char:bard", "bardic-inspiration") == {"spent": expected_spent}
 
 
-# ── Task 4 — activity costs ──────────────────────────────────────────────────
+# ── Activity costs ───────────────────────────────────────────────────────────
 
 
 @pytest.mark.parametrize(
@@ -215,7 +215,7 @@ def test_a_lone_activity_with_no_declared_cost_still_spends_a_use() -> None:
     assert _counter(live, "char:hero", "indomitable") == {"spent": 1}
 
 
-# ── Task 5 — Lay on Hands' pool ──────────────────────────────────────────────
+# ── Lay on Hands' pool ───────────────────────────────────────────────────────
 
 
 def _paladin(**fields):

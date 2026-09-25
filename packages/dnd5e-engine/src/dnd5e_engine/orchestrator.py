@@ -7536,6 +7536,19 @@ def _class_levels(c: Combatant | PartyMemberSpec) -> dict[str, int]:
     return {c.class_slug: c.character_level} if c.class_slug else {}
 
 
+def _scale_values_of(c: Combatant) -> dict[str, int | str]:
+    """``c``'s ``@scale.*`` values: each class and its subclass at that class's
+    level, the species at the character level (``build_scale_values``)."""
+    return build_scale_values(
+        class_slug=c.class_slug,
+        subclass_slug=c.subclass_slug,
+        species_slug=c.species_slug,
+        level=c.character_level,
+        loader=get_lib_loader(),
+        classes=_class_levels(c),
+    )
+
+
 def _granted_feature_slugs(caster: Combatant) -> frozenset[str]:
     """Feature slugs the caster's class(es) (+ subclass) + species grants at/below
     each source's own level.
@@ -8112,14 +8125,7 @@ def _resolve_feature_invocation(
             return None
         selected = chosen
     scaling_value = (pool_points or 1) if _scales_by_amount(selected) else None
-    scale_values = build_scale_values(
-        class_slug=caster.class_slug,
-        subclass_slug=caster.subclass_slug,
-        species_slug=caster.species_slug,
-        level=caster.character_level,
-        loader=get_lib_loader(),
-        classes=_class_levels(caster),
-    )
+    scale_values = _scale_values_of(caster)
     activation = getattr(selected.activation, "type", None)
     invocation = _FeatureInvocation(
         activities=[selected],
@@ -8171,14 +8177,7 @@ def _granted_die(live: _LiveCombat, holder: Combatant) -> str | None:
     bard = _find_combatant(live, effect.origin.removeprefix(_INSPIRED_ORIGIN_PREFIX))
     if bard is None:
         return None
-    die = build_scale_values(
-        class_slug=bard.class_slug,
-        subclass_slug=bard.subclass_slug,
-        species_slug=bard.species_slug,
-        level=bard.character_level,
-        loader=get_lib_loader(),
-        classes=_class_levels(bard),
-    ).get("bard.inspiration.die")
+    die = _scale_values_of(bard).get("bard.inspiration.die")
     return f"1{die}" if isinstance(die, str) else None
 
 
@@ -10335,14 +10334,7 @@ async def submit_player_intent(
         # formula tokens read these carriers — the formula resolver never
         # touches a loader. The species slug threads through so species @scale
         # tables (e.g. Dragonborn breath) resolve alongside class + subclass.
-        scale_values = build_scale_values(
-            class_slug=current.class_slug,
-            subclass_slug=current.subclass_slug,
-            species_slug=current.species_slug,
-            level=current.character_level,
-            loader=get_lib_loader(),
-            classes=_class_levels(current),
-        )
+        scale_values = _scale_values_of(current)
         class_levels = _class_levels(current)
         # SRD 5.2 §Weapon Mastery — Cleave (C15 Task 7): the once-per-turn
         # gate + the R5 deterministic second target, both pre-resolved here

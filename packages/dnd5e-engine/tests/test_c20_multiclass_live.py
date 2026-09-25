@@ -37,6 +37,13 @@ def test_classes_must_sum_to_character_level() -> None:
         pc(class_slug="fighter", classes={"fighter": 1, "wizard": 4}, character_level=4)
 
 
+def test_class_levels_must_be_positive() -> None:
+    """A zero level still sums to ``character_level`` here, so only the
+    positive-levels check can refuse it."""
+    with pytest.raises(ValidationError, match="class levels must be positive"):
+        pc(class_slug="fighter", classes={"fighter": 5, "wizard": 0}, character_level=5)
+
+
 def test_class_slug_must_be_one_of_the_classes() -> None:
     with pytest.raises(ValidationError, match="is not one of classes"):
         pc(class_slug="rogue", classes={"fighter": 1, "wizard": 4}, character_level=5)

@@ -1,5 +1,5 @@
-"""The four SRD 5.2 Fighting Style feats: carrier, Defense and Archery (Task 6);
-Great Weapon Fighting and Two-Weapon Fighting (Task 7)."""
+"""The four SRD 5.2 Fighting Style feats: the carrier, Defense and Archery;
+Great Weapon Fighting and Two-Weapon Fighting."""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ def _bundled_loader() -> Iterator[None]:
     set_lib_loader_for_tests(None)
 
 
-# ── Task 6 — carrier, Defense, Archery ───────────────────────────────────────
+# ── Carrier, Defense, Archery ────────────────────────────────────────────────
 
 
 def test_only_the_four_srd_styles_are_accepted() -> None:
@@ -114,7 +114,7 @@ def test_archery_ignores_melee_weapons_even_thrown(weapon: str, foe_cell: tuple[
     assert totals == [16, 16]
 
 
-# ── Task 7 — Great Weapon Fighting, Two-Weapon Fighting ──────────────────────
+# ── Great Weapon Fighting, Two-Weapon Fighting ───────────────────────────────
 
 
 def _after_d20(seed: int) -> random.Random:

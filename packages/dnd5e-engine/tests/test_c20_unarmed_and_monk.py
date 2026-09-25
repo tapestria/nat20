@@ -35,7 +35,7 @@ def _unarmed(handle, actor: str = "char:hero", **intent) -> None:
     )
 
 
-# ── Task 2 — Unarmed Strike base damage ──────────────────────────────────────
+# ── Unarmed Strike base damage ───────────────────────────────────────────────
 
 
 def test_unarmed_strike_deals_one_plus_strength() -> None:
@@ -58,7 +58,7 @@ def test_a_critical_unarmed_strike_has_no_die_to_double() -> None:
     assert [e.amount for e in events(live, DamageApplied)] == [4]
 
 
-# ── Task 8 — Martial Arts ────────────────────────────────────────────────────
+# ── Martial Arts ─────────────────────────────────────────────────────────────
 
 
 def _first_damage(live) -> int:
@@ -142,7 +142,7 @@ def test_worn_armor_comes_from_equipment() -> None:
     assert (hero.worn_armor, hero.shield_equipped) == ("heavy", True)
 
 
-# ── Task 9 — Flurry of Blows, Bonus Unarmed Strike ───────────────────────────
+# ── Flurry of Blows, Bonus Unarmed Strike ────────────────────────────────────
 
 _FLURRY = "2ghJTBhilLrFn9xT"
 
