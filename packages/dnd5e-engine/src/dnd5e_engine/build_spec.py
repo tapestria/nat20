@@ -43,6 +43,7 @@ from dnd5e_engine.rules.character import (
     armor_speed_penalty,
     armor_training_from_changes,
     attunement_limit,
+    defense_ac_bonus,
     extra_attack_count,
     has_flag,
     hit_dice_pool,
@@ -756,7 +757,8 @@ def derive_sheet(spec: CharacterBuildSpec, *, loader: AssetLoader) -> DerivedShe
             body_armor=worn.body,
             body_armor_bonus=worn.body_bonus,
             shield_bonus=worn.shield_bonus,
-        ),
+        )
+        + defense_ac_bonus(feats, wearing_armor=worn.body is not None),
         ac_calc_mode=mode,
     )
 

@@ -28,6 +28,8 @@ if TYPE_CHECKING:
     from dnd5e_srd_data.schema.item import Armor
     from dnd5e_srd_data.schema.species import Species
 
+    from dnd5e_engine.types.combat import FightingStyle
+
 AbilityName = Literal["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"]
 
 ABILITY_NAME_BY_CODE: Final[dict[Ability, AbilityName]] = {
@@ -508,9 +510,34 @@ def armor_speed_penalty(body_armor: Armor | None, strength: int) -> int:
     return 10 if strength < body_armor.strength_min else 0
 
 
+FIGHTING_STYLES: Final[tuple[FightingStyle, ...]] = (
+    "archery",
+    "defense",
+    "great-weapon-fighting",
+    "two-weapon-fighting",
+)
+
+
+def styles_from_feats(
+    feats: Iterable[str], style: FightingStyle | None = None
+) -> tuple[FightingStyle, ...]:
+    """The Fighting Style feats among ``feats`` plus ``style``, once each, in
+    ``FIGHTING_STYLES`` order. Plural because a Champion's Additional Fighting
+    Style — "You gain another Fighting Style feat of your choice" — adds one."""
+    owned = {*feats, *((style,) if style else ())}
+    return tuple(s for s in FIGHTING_STYLES if s in owned)
+
+
+def defense_ac_bonus(feats: Collection[str], *, wearing_armor: bool) -> int:
+    """SRD 5.2 Defense: "While you're wearing Light, Medium, or Heavy armor, you
+    gain a +1 bonus to Armor Class." A Shield alone is not armor."""
+    return 1 if wearing_armor and "defense" in feats else 0
+
+
 __all__ = [
     "ABILITY_NAME_BY_CODE",
     "EXTRA_ATTACK_TIERS",
+    "FIGHTING_STYLES",
     "FOUNDRY_AC_CALC",
     "FOUNDRY_WEAPON_ID_TO_SLUG",
     "MAX_ATTUNED_ITEMS",
@@ -530,6 +557,7 @@ __all__ = [
     "armor_speed_penalty",
     "armor_training_from_changes",
     "attunement_limit",
+    "defense_ac_bonus",
     "extra_attack_count",
     "fixed_hit_points",
     "granted_feature_slugs",
@@ -541,6 +569,7 @@ __all__ = [
     "leveled_feature_levels",
     "leveled_feature_slugs",
     "proficiency_grants",
+    "styles_from_feats",
     "subclass_gate_level",
     "validate_ability_score_method",
     "validate_increase_budget",

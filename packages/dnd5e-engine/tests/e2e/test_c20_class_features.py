@@ -26,7 +26,6 @@ from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
 from tests.e2e.harness import cell, events_of, grid_scene, run_async, xfail_cluster
 
 
-@xfail_cluster(20, "class feature mechanics")
 def test_c20_s01_fighting_style_defense_grants_plus1_ac_while_armored():
     """C20-S01: SRD 5.2 ``feats24/fighting-style-feats/defense.yml``
     (identifier: defense) — "While you're wearing Light, Medium, or
@@ -89,7 +88,6 @@ def test_c20_s01_fighting_style_defense_grants_plus1_ac_while_armored():
     assert buffed_ac == base_ac + 1
 
 
-@xfail_cluster(20, "class feature mechanics")
 def test_c20_s02_fighting_style_archery_adds_plus2_ranged_attack():
     """C20-S02: SRD 5.2 ``feats24/fighting-style-feats/archery.yml`` —
     "You gain a +2 bonus to attack rolls you make with Ranged weapons."

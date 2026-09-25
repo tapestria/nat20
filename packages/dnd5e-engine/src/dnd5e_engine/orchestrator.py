@@ -151,7 +151,11 @@ from dnd5e_engine.outcome import (
     LootDrop,
 )
 from dnd5e_engine.rest import FEATURE_USE_COUNTER_PREFIX, ITEM_USE_COUNTER_PREFIX
-from dnd5e_engine.rules.character import extra_attack_count, leveled_feature_slugs
+from dnd5e_engine.rules.character import (
+    extra_attack_count,
+    leveled_feature_slugs,
+    styles_from_feats,
+)
 from dnd5e_engine.rules.conditions import (
     Condition,
     active_condition_names,
@@ -6756,6 +6760,7 @@ def _build_pc_combatants(
                 melee_reach_ft=pc.reach_ft,
                 class_slug=pc.class_slug,
                 classes=dict(pc.classes),
+                fighting_styles=styles_from_feats(pc.feats, pc.fighting_style),
                 subclass_slug=pc.subclass_slug,
                 species_slug=pc.species_slug,
                 save_proficiencies=list(pc.save_proficiencies),

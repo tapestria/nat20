@@ -64,7 +64,7 @@ from __future__ import annotations
 import logging
 from collections import defaultdict
 from dataclasses import replace
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
 from dnd5e_srd_data.schema.item import WeaponProperty
 from dnd5e_srd_data.schema.monster import MonsterTraitMechanic
@@ -97,6 +97,18 @@ _LOGGER = logging.getLogger(__name__)
 # convention ``activities/damage.py`` reads. Scoped to a single target+call here.
 _IN_CRIT = "in_crit"
 
+# SRD 5.2 Archery: "You gain a +2 bonus to attack rolls you make with Ranged weapons."
+_ARCHERY_BONUS: Final = 2
+
+
+def _fighting_style_attack_bonus(ctx: ActivityResolutionContext, weapon: Weapon | None) -> int:
+    """Archery's +2 on a Ranged weapon's attack roll. It stacks on a host-pinned
+    to-hit bonus, like the engine's other situational bonuses (Bless, a magic
+    weapon's sidecar): the pin is the character's base bonus, not a total."""
+    if "archery" in ctx.caster.fighting_styles and _is_ranged_weapon(weapon):
+        return _ARCHERY_BONUS
+    return 0
+
 
 def resolve_attack(
     activity: AttackActivity,
@@ -116,9 +128,11 @@ def resolve_attack(
     governing_ability = _governing_ability(activity, ctx, weapon)
     # SRD 5.2 Exhaustion — an attack roll is a D20 Test, so the flat
     # ``-2 x level`` penalty rides on the attack bonus (no extra draw).
-    attack_bonus = _attack_bonus(
-        activity, ctx, weapon, governing_ability
-    ) + ctx.d20_test_penalty.get(ctx.caster.entity_id, 0)
+    attack_bonus = (
+        _attack_bonus(activity, ctx, weapon, governing_ability)
+        + ctx.d20_test_penalty.get(ctx.caster.entity_id, 0)
+        + _fighting_style_attack_bonus(ctx, weapon)
+    )
     cast_level = ctx.slot_level or ctx.base_spell_level or 0
     # SRD §Bless / §Bane apply a signed d4 to the affected creature's OWN attack
     # rolls (keyed on the attacker). Rolled once per attack so each swing draws a

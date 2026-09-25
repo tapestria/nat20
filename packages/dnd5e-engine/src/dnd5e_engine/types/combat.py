@@ -12,13 +12,17 @@ from __future__ import annotations
 from dataclasses import dataclass
 from dataclasses import field as dc_field
 from enum import StrEnum
-from typing import Any
+from typing import Any, Literal
 
 from dnd5e_srd_data.schema.monster import MonsterTraitMechanic
 from pydantic import BaseModel, Field, model_validator
 
 from dnd5e_engine.activities.passive_stats import CombatantMovementModes, CombatantSenses
 from dnd5e_engine.types.conditions import ActiveCondition
+
+# SRD 5.2 Fighting Style feats (``feats24/fighting-style-feats``): the four the
+# SRD ships. Dueling and the other 2024 styles are not SRD 5.2 content.
+FightingStyle = Literal["archery", "defense", "great-weapon-fighting", "two-weapon-fighting"]
 
 
 class BehaviorProfile(StrEnum):
@@ -187,6 +191,9 @@ class Combatant(BaseModel):
     # Per-class levels (``PartyMemberSpec.classes``); empty for a single class,
     # a monster or a fixture.
     classes: dict[str, int] = Field(default_factory=dict)
+    # SRD 5.2 Fighting Style feats in play (``PartyMemberSpec.feats`` plus
+    # ``fighting_style``), read by the attack resolver. Empty for monsters.
+    fighting_styles: tuple[FightingStyle, ...] = ()
     # SRD §Subclasses — subclass slug for PCs (e.g. "berserker"). Copied from
     # ``PartyMemberSpec.subclass_slug`` at start_combat so subclass-feature
     # activities (piece 4) can gate on it. ``None`` for monsters / NPCs /
@@ -352,5 +359,6 @@ class Combatant(BaseModel):
 __all__ = [
     "BehaviorProfile",
     "Combatant",
+    "FightingStyle",
     "MonsterActionUses",
 ]

@@ -55,6 +55,7 @@ def build_party_member(
         species_slug=build_spec.species_slug,
         base_speed=sheet.base_speed if instance.base_speed is None else instance.base_speed,
         equipment=build_spec.equipment,
+        feats=sheet.feats,
         damage_resistances=list(sheet.damage_resistances),
         damage_immunities=list(sheet.damage_immunities),
         condition_immunities=list(sheet.condition_immunities),

@@ -12,6 +12,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from dnd5e_engine.activities.passive_stats import CombatantMovementModes, CombatantSenses
+from dnd5e_engine.types.combat import FightingStyle
 
 
 class PartyMemberSpec(BaseModel):
@@ -151,6 +152,13 @@ class PartyMemberSpec(BaseModel):
     # reaches the spec. Empty for graph PCs (their mechanical equipment crosses
     # via the session-side enchantment projection, not this slug list).
     equipment: tuple[str, ...] = ()
+    # SRD 5.2 feats the PC has (``DerivedSheet.feats``; ``build_party_member``
+    # fills it). The Fighting Style feats among them apply in combat (Archery,
+    # Great Weapon Fighting, Two-Weapon Fighting); Defense is already in ``ac``
+    # when ``derive_sheet`` computed it. Other feats are recorded, not applied.
+    feats: tuple[str, ...] = ()
+    # One Fighting Style feat for a hand-built spec; merged with any in ``feats``.
+    fighting_style: FightingStyle | None = None
     # SRD Weapons table, Reach property — melee reach in feet (e.g. a Glaive's
     # Reach property adds 5 ft to the SRD baseline, landing at 10). Defaults to
     # 5 (mirrors ``Combatant.melee_reach_ft``'s own default — the SRD baseline
