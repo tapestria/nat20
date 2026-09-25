@@ -98,7 +98,12 @@
   ],
   "attunement_constraint": null,
   "cost_gp": 0.0,
-  "damage_parts": [],
+  "damage_parts": [
+    {
+      "damage_type": "bludgeoning",
+      "dice": "1"
+    }
+  ],
   "description": "",
   "item_kind": "weapon",
   "magical": false,
