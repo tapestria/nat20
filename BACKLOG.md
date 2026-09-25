@@ -457,6 +457,24 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   turn open after that Attack action until they are made or the monk passes
   (C20). SRD 5.2 imposes no such order.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_attack_action_is_spent`)
+- **Flurry of Blows strikes still owed are lost when a turn-ending Action
+  comes next (2026-09-25).** SRD 5.2 Flurry of Blows: "You can expend 1 Focus
+  Point to make two Unarmed Strikes as a Bonus Action." The Focus Point and
+  the Bonus Action are paid when the Flurry is committed, and the strikes are
+  the monk's next Unarmed Strike attacks. They keep the turn open after the
+  Attack action, but a Dodge, Help, Grapple or Shove still ends the turn at
+  once, so the paid strikes lapse unmade.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_end_action`)
+- **A Monk's Grapple or Shove can't be its Bonus Unarmed Strike or a Flurry
+  strike, and `use_bonus_action` on either is ignored (2026-09-25).** SRD 5.2
+  Martial Arts: "Bonus Unarmed Strike. You can make an Unarmed Strike as a
+  Bonus Action." An Unarmed Strike is "a melee attack that involves you using
+  your body to damage, grapple, or shove a target within 5 feet of you", and
+  Flurry of Blows makes "two Unarmed Strikes". The `grapple` and `shove`
+  intents always take the Action, even with `use_bonus_action=True` or Flurry
+  strikes owed; the flag is silently ignored rather than refused.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_handle_grapple`,
+  `packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_handle_shove`)
 - **Action Surge: a refused cast still ends the turn, and the extra action
   funds no feature or item (2026-09-24, C20 scope cut).** A cast refused for
   want of a slot, countered, attempted as a Ritual or over-counted ends the
@@ -465,6 +483,25 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   action."), but the corpus doesn't mark which features and items need one,
   so every `use_feature` and `use_item` counts as a Magic action.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_MAGIC_ACTION_INTENTS`)
+- **Action Surge refuses an Attack action followed by a Magic action
+  (2026-09-25).** SRD 5.2 Action Surge: "On your turn, you can take one
+  additional action, except the Magic action." A surged turn may hold one
+  Magic action and one other action in either order, but the engine pays
+  each Action-costed intent with the base Action first and the extra action
+  second, and the extra action can't fund a Magic action. So an attack, then
+  a `cast_spell`, is refused (`CastFailed(reason="no_action_economy")`,
+  nothing spent, turn kept), while the cast, then the attack, works, although
+  the attack could have used the extra action.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_action_payment`)
+- **A Loading weapon gets no second shot on Action Surge's extra action
+  (2026-09-25).** SRD 5.2 Loading: "You can fire only one piece of ammunition
+  from a Loading weapon when you use an action, a Bonus Action, or a Reaction
+  to fire it, regardless of the number of attacks you can normally make." The
+  engine caps a Loading weapon at one shot per turn, a cap that assumed one
+  action per turn: after a surge, a Heavy Crossbow shot on the extra action is
+  refused with `AttackFailed(reason="weapon_already_fired")`, although that
+  action starts a new Attack action.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_loading_weapon_already_fired_failure`)
 - **Bardic Inspiration applies to weapon attack rolls only (2026-09-24, C20
   scope cut).** SRD 5.2: "Once within the next hour when the creature fails a
   D20 Test, the creature can roll the Bardic Inspiration die and add the number
@@ -476,6 +513,19 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   redeemed (its size is read from that bard's `@scale.bard.inspiration`).
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py`,
   `packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_redeemed_die`)
+- **Font of Inspiration and Superior Inspiration are not modelled
+  (2026-09-25).** SRD 5.2 Font of Inspiration (Bard 5): "You now regain all
+  your expended uses of Bardic Inspiration when you finish a Short or Long
+  Rest. In addition, you can expend a spell slot (no action required) to
+  regain one expended use of Bardic Inspiration." Superior Inspiration (Bard
+  18): "When you roll Initiative, you regain expended uses of Bardic
+  Inspiration until you have two if you have fewer than that." Now that
+  Bardic Inspiration is capped (C20), this bites: the corpus feature recovers
+  on a Long Rest only, so `recover_feature_uses` after a Short Rest leaves a
+  Bard 5's spent uses spent, and nothing restores a use from a spell slot or
+  at Initiative.
+  (`packages/dnd5e-srd-data/src/dnd5e_srd_data/canonical/features/bardic-inspiration.json`,
+  `packages/dnd5e-engine/src/dnd5e_engine/rest.py::recover_feature_uses`)
 - **Lay on Hands' Remove Poison spends 5 points but leaves Poisoned in place
   (2026-09-24, C20 scope cut).** SRD 5.2: "You can also expend 5 Hit Points
   from the pool of healing power to remove the Poisoned condition from the
@@ -502,6 +552,37 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   `use_feature` rejects it as out of repertoire. Fighting Style picks ride
   `PartyMemberSpec.feats` and do apply.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_granted_feature_slugs`)
+- **29 feature activities raise `ValueError` out of `submit_player_intent`
+  after their cost is spent (2026-09-25; predates C20).** Each uses a formula
+  shape the activity layer can't evaluate yet, and the raise comes after the
+  invocation's Action, Bonus Action or Reaction, and any use, is spent, so the
+  host gets an exception and a half-paid turn. By cause:
+  - a save DC by ability (`save.dc.calculation` `wis`, `dex` or empty), which
+    `activities/save.py::_resolve_dc` refuses — SRD 5.2 Monk's Focus: "Some
+    features that use Focus Points require your target to make a saving
+    throw. The save DC equals 8 plus your Wisdom modifier and Proficiency
+    Bonus.": Stunning Strike, Open Hand Technique (2 activities), Deflect
+    Attacks, Deflect Energy, Quivering Palm, Cunning Strike (2), Devious
+    Strikes (3), Relentless Rage's save and Intimidating Presence;
+  - a `spellcasting` save DC, which `use_feature` can't meet because it never
+    threads the class's spellcasting ability into the context
+    (`orchestrator.py::_resolve_intent_activities`) — SRD 5.2 Channel
+    Divinity: "If a Channel Divinity effect requires a saving throw, the DC
+    equals the spell save DC from this class's Spellcasting feature.":
+    Channel Divinity (Cleric, 2), Sear Undead, Land's Aid, Abjure Foes and
+    Hurl Through Hell;
+  - an unhandled roll-data token in `activities/formula.py`: `@scaling` in
+    Disciple of Life, Blessed Healer and Cunning Strike, `@item.uses.spent` in
+    Overchannel;
+  - a dice expression `activities/dice.py` can't parse: `*` in Relentless
+    Rage's heal, Preserve Life, Improved Blessed Strikes and Slow Fall,
+    `max(…)` in Tireless and Dark One's Blessing.
+  A check that refuses these before anything is spent would end the half-paid
+  state until each shape is supported.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/save.py`,
+  `packages/dnd5e-engine/src/dnd5e_engine/activities/formula.py`,
+  `packages/dnd5e-engine/src/dnd5e_engine/activities/dice.py`,
+  `packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_resolve_intent_activities`)
 
 ### Passive-stat projection (`activities/passive_stats.py`)
 
@@ -1153,6 +1234,17 @@ corpus. Those six are not SRD 5.2 content and must not be implemented;
 `FightingStyle` accepts only the four. The translator could drop unresolvable
 pool entries.
 (`packages/dnd5e-srd-data/src/dnd5e_srd_data/canonical/subclasses/champion.json`)
+
+## Class scale-value defects (2026-09-25)
+
+- **A Barbarian 16 has 6 Rages; SRD 5.2 gives 5.** The SRD 5.2 Barbarian
+  Features table lists 5 Rages from level 12 through 16 and 6 from level 17,
+  but the Rages `ScaleValue` in `classes/barbarian.json` steps to 6 at level
+  16 (`"16": 6`), so the Rage use cap lets a Barbarian 16 rage once too often.
+  This predates C20. The fix belongs in the translator, as a correction like
+  `_WEAPON_BASE_DAMAGE_CORRECTIONS`.
+  (`packages/dnd5e-srd-data/src/dnd5e_srd_data/canonical/classes/barbarian.json`,
+  `packages/dnd5e-srd-data/tools/translators/foundry.py`)
 
 ---
 
