@@ -3507,10 +3507,10 @@ def _end_what_incapacitation_ends(live: _LiveCombat, entity_id: str, condition: 
     Keyed to the condition's first materialisation on ``Combatant.conditions``,
     not a raw HP threshold. Two folds write that store, and whichever writes
     the condition first calls this, so it runs once however the condition
-    arrives: ``_emit_apply_effect_applied`` for an
-    effect's status (Hold Person's Paralyzed, whose ``ConditionApplied`` then
-    finds the condition already there) and ``_fold_condition_onto_combatant``
-    for a bare ``ConditionApplied`` (0 HP's Unconscious).
+    arrives: ``_emit_apply_effect_applied`` for an effect's status (Hold
+    Person's Paralyzed, whose ``ConditionApplied`` then finds the condition
+    already there) and ``_fold_condition_onto_combatant`` for a bare
+    ``ConditionApplied`` (0 HP's Unconscious).
     """
     if not is_condition_active(Condition.INCAPACITATED, [condition]):
         return
