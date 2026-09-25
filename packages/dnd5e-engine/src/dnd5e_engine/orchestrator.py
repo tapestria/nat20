@@ -81,6 +81,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from dnd5e_engine.activities.actor_stats import (
     ABILITY_CODES,
+    ability_modifier_of,
     check_modifier,
     proficiency_bonus_of,
     save_modifier,
@@ -165,6 +166,7 @@ from dnd5e_engine.rules.conditions import (
     project_speed,
 )
 from dnd5e_engine.rules.dice import ability_modifier
+from dnd5e_engine.rules.uses import UsesRollData, evaluate_uses_formula
 from dnd5e_engine.spatial import GridTopology, SpatialTopology, parse_cell
 from dnd5e_engine.specs import (
     EncounterMemberSpec,
@@ -7340,30 +7342,26 @@ class _FeatureInvocation:
     # is uncapped: no ``uses`` block, empty ``max``, or a symbolic ``max`` that
     # cannot be resolved. See ``_feature_use_cap``.
     use_cap: int | None = None
+    # Uses this invocation spends — ``_feature_activity_cost``.
+    use_cost: int = 1
 
 
-def _feature_use_cap(feature: Any, scale_values: Mapping[str, int | str]) -> int | None:
+def _uses_roll_data(caster: Combatant, scale_values: Mapping[str, int | str]) -> UsesRollData:
+    """The caster's numbers for a ``uses.max`` formula."""
+    return UsesRollData(
+        proficiency_bonus=proficiency_bonus_of(caster),
+        ability_modifiers={code: ability_modifier_of(caster, code) for code in ABILITY_CODES},
+        class_levels=_class_levels(caster),
+        scale_values=scale_values,
+    )
+
+
+def _feature_use_cap(feature: Any, roll_data: UsesRollData) -> int | None:
     """Resolve a feature's per-rest use cap from its typed ``uses`` block.
 
-    Returns ``None`` — meaning UNCAPPED, never gated — for a feature with no
-    ``uses`` block, an empty ``uses.max``, or a ``max`` this cannot resolve. The
-    resolvable cases:
-
-    * a literal integer ``max`` (``"1"``, ``"3"``) is honoured exactly;
-    * a Foundry ``@scale.<owner>.<key>`` roll-data token is resolved against
-      ``scale_values`` — the SAME per-caster ScaleValue map the orchestrator
-      already builds for activity resolution (``build_scale_values``). Second
-      Wind's ``@scale.fighter.second-wind`` resolves to 3 at Fighter level 5,
-      per the class scale table ``{1: 2, 4: 3, 10: 4}``.
-
-    Any OTHER symbolic ``max`` — ``@prof``, ``max(1, @abilities.cha.mod)``,
-    ``5 * @classes.paladin.levels`` — is NOT resolved here (it would need the
-    caster's proficiency bonus / ability modifiers threaded through, and no
-    scenario exercises it). Rather than guess or wrongly floor such a feature to
-    a single use per rest (which would REGRESS the pre-Cluster-9 behaviour, where
-    every feature was uncapped), it falls back to ``None`` / uncapped — a capped
-    resource is never wrongly rejected. Lifting that residual (non-``@scale``
-    symbolic maxes) is a recorded follow-up (see BACKLOG "Rest & recovery").
+    ``None`` — UNCAPPED, never gated — for no ``uses`` block, an empty
+    ``uses.max``, a formula ``rules.uses.evaluate_uses_formula`` can't
+    evaluate, or a result below 1 (no SRD feature has zero uses).
     """
     uses = getattr(feature, "uses", None)
     if uses is None:
@@ -7371,23 +7369,8 @@ def _feature_use_cap(feature: Any, scale_values: Mapping[str, int | str]) -> int
     max_raw = str(getattr(uses, "max", "") or "").strip()
     if not max_raw:
         return None
-    try:
-        parsed = int(max_raw)
-    except ValueError:
-        parsed = None
-    if parsed is not None:
-        # A literal max of "0" (or negative) maps to UNCAPPED today. No corpus
-        # feature carries max="0", and "0 uses" arguably means UNUSABLE rather
-        # than unlimited — revisit if such data ever appears.
-        return parsed if parsed > 0 else None
-    if max_raw.startswith("@scale."):
-        resolved = scale_values.get(max_raw[len("@scale.") :])
-        if isinstance(resolved, int) and resolved > 0:
-            return resolved
-    # Unresolvable symbolic max (``@prof``, ``max(1, ...)``, an absent @scale
-    # owner/key): fall back to UNCAPPED rather than wrongly gating (pre-C09
-    # behaviour). See BACKLOG.
-    return None
+    cap = evaluate_uses_formula(max_raw, roll_data)
+    return cap if cap is not None and cap > 0 else None
 
 
 def _feature_use_counter_key(feature_id: str) -> str:
@@ -7404,11 +7387,13 @@ def _feature_use_spent(live: _LiveCombat, entity_id: str, feature_id: str) -> in
     )
 
 
-def _increment_feature_use(live: _LiveCombat, entity_id: str, feature_id: str) -> None:
-    """Record one spent use of ``feature_id`` on the caster's sidecar counter."""
+def _increment_feature_use(
+    live: _LiveCombat, entity_id: str, feature_id: str, amount: int = 1
+) -> None:
+    """Record ``amount`` spent uses of ``feature_id`` on the caster's sidecar counter."""
     counters = live.custom_counters_by_entity.setdefault(entity_id, {})
     counter = counters.setdefault(_feature_use_counter_key(feature_id), {"spent": 0})
-    counter["spent"] = counter.get("spent", 0) + 1
+    counter["spent"] = counter.get("spent", 0) + amount
 
 
 def _feature_uses_exhausted(
@@ -7425,7 +7410,8 @@ def _feature_uses_exhausted(
     features (``use_cap is None``) never gate.
     """
     cap = feature_invocation.use_cap
-    if cap is None or _feature_use_spent(live, actor_id, feature_id) < cap:
+    cost = feature_invocation.use_cost
+    if cap is None or cost == 0 or _feature_use_spent(live, actor_id, feature_id) + cost <= cap:
         return False
     _emit(live, CastFailed(actor_id=actor_id, spell_id="", reason="no_uses_remaining"))
     return True
@@ -7440,15 +7426,18 @@ def _record_capped_feature_use(
     """Increment the per-rest use counter for a committed capped-feature invocation.
 
     No-op for a non-feature intent (``feature_id`` / ``feature_invocation`` is
-    ``None``) or an uncapped feature (``use_cap is None``) — only a within-cap
-    invocation reaches here past the early exhaustion gate.
+    ``None``), an uncapped feature (``use_cap is None``), or a free activity
+    (``use_cost == 0`` — Patient Defense's Disengage-only option) — only a
+    within-cap, cost-bearing invocation reaches here past the early exhaustion
+    gate.
     """
     if (
         feature_id is not None
         and feature_invocation is not None
         and feature_invocation.use_cap is not None
+        and feature_invocation.use_cost > 0
     ):
-        _increment_feature_use(live, actor_id, feature_id)
+        _increment_feature_use(live, actor_id, feature_id, feature_invocation.use_cost)
 
 
 def _item_use_counter_key(item_id: str) -> str:
@@ -7474,6 +7463,55 @@ def _activity_item_use_cost(item_slug: str, activity: Any) -> int:
             continue
         if value > 0:
             cost += value
+    return cost
+
+
+def _own_pool_targets(activity: Any) -> list[Any]:
+    """The activity's ``itemUses`` consumption targets on its OWN feature's pool
+    (an empty ``target``); a target naming another feature (Stunning Strike →
+    Monk's Focus) spends a different pool."""
+    return [t for t in activity.consumption.targets if t.type == "itemUses" and not t.target]
+
+
+def _literal_int(value: str) -> int | None:
+    try:
+        return int(str(value).strip())
+    except ValueError:
+        return None
+
+
+def _feature_activity_cost(
+    activities: Sequence[Any], activity: Any, *, scaling_value: int | None
+) -> int:
+    """Uses one invocation of ``activity`` spends from its feature's pool.
+
+    Foundry ``consumption.targets``: each literal ``itemUses`` value on the
+    feature's own pool, plus one per step above the first when the target
+    scales by amount (Lay on Hands' Heal spends the points it draws). An
+    activity declaring no own-pool cost is free when a sibling activity does
+    declare one — SRD 5.2 Patient Defense: "You can take the Disengage action as
+    a Bonus Action. Alternatively, you can expend 1 Focus Point…" — and
+    otherwise spends one use: a lone activity with no declared cost
+    (Indomitable) is Foundry leaving the decrement to the player, and the SRD
+    still limits the feature. A formula cost the engine can't evaluate (Font of
+    Magic's slot conversion) spends one use.
+    """
+    own = _own_pool_targets(activity)
+    if not own:
+        declared_elsewhere = any(_own_pool_targets(a) for a in activities if a is not activity)
+        return 0 if declared_elsewhere else 1
+    cost = 0
+    for target in own:
+        value = _literal_int(target.value)
+        if value is None:
+            _LOGGER.info(
+                "feature_use_cost_symbolic activity_id=%s value=%r", activity.id, target.value
+            )
+            return 1
+        if value <= 0:
+            continue
+        steps = scaling_value - 1 if scaling_value and target.scaling.mode == "amount" else 0
+        cost += value + steps
     return cost
 
 
@@ -7731,29 +7769,25 @@ def _resolve_feature_invocation(
         )
         return None
     feature = get_lib_loader().get_feature(feature_id)
-    feature_activities = list(feature.activities) if feature else []
-    if not feature_activities:
+    all_activities = list(feature.activities) if feature else []
+    if not all_activities:
         _LOGGER.warning("class_feature_no_typed_activities feature_id=%s", feature_id)
         return None
-    if len(feature_activities) > 1:
+    selected = all_activities[0]
+    if len(all_activities) > 1:
         # Repertoire of ALTERNATIVES — resolve the caller-selected activity, or
         # defer with a loud, tracked no-op when no valid selection is supplied
         # (firing all of them is wrong; guessing one is worse).
-        selected = next((a for a in feature_activities if a.id == activity_id), None)
-        if selected is None:
+        chosen = next((a for a in all_activities if a.id == activity_id), None)
+        if chosen is None:
             _LOGGER.warning(
                 "feature_multi_activity_selection_deferred feature_id=%s count=%d activity_id=%s",
                 feature_id,
-                len(feature_activities),
+                len(all_activities),
                 activity_id,
             )
             return None
-        feature_activities = [selected]
-    is_bonus = getattr(feature_activities[0].activation, "type", None) == "bonus"
-    # Resolve the per-rest use cap against the caster's real ScaleValue map — the
-    # same ``build_scale_values`` machinery activity resolution uses — so a
-    # ``@scale.*`` max (Second Wind's ``@scale.fighter.second-wind`` → 3 at L5)
-    # yields its true, level-scaled cap rather than a conservative floor.
+        selected = chosen
     scale_values = build_scale_values(
         class_slug=caster.class_slug,
         subclass_slug=caster.subclass_slug,
@@ -7762,14 +7796,12 @@ def _resolve_feature_invocation(
         loader=get_lib_loader(),
         classes=_class_levels(caster),
     )
-    # Rage's mwak buff + resistances ride a PassiveEffect on the feature; thread
-    # them so its UtilityActivity's effect rider (``effects[].id``) resolves to a
-    # runtime ActiveEffect.
     return _FeatureInvocation(
-        activities=feature_activities,
+        activities=[selected],
         passive_effects=list(feature.passive_effects) if feature else [],
-        is_bonus_action=is_bonus,
-        use_cap=_feature_use_cap(feature, scale_values),
+        is_bonus_action=getattr(selected.activation, "type", None) == "bonus",
+        use_cap=_feature_use_cap(feature, _uses_roll_data(caster, scale_values)),
+        use_cost=_feature_activity_cost(all_activities, selected, scaling_value=None),
     )
 
 
