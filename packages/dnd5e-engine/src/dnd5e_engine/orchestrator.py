@@ -56,7 +56,7 @@ import re
 import warnings
 from collections.abc import AsyncIterator, Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from typing import Any, Final, Literal
 
 from dnd5e_srd_data.schema.common import (
     ActivationBlock,
@@ -68,7 +68,7 @@ from dnd5e_srd_data.schema.common import (
     HealActivity,
     SaveActivity,
 )
-from dnd5e_srd_data.schema.item import Weapon, WeaponProperty
+from dnd5e_srd_data.schema.item import ArmorCategory, Weapon, WeaponProperty
 from dnd5e_srd_data.schema.monster import Monster, MonsterAction, MonsterTraitMechanic
 from dnd5e_srd_data.schema.spell import (
     CastingTimeUnit,
@@ -191,7 +191,7 @@ from dnd5e_engine.turn_lifecycle import (
     run_turn_end,
     run_turn_start,
 )
-from dnd5e_engine.types.combat import BehaviorProfile, Combatant, MonsterActionUses
+from dnd5e_engine.types.combat import BehaviorProfile, Combatant, MonsterActionUses, WornArmor
 from dnd5e_engine.types.conditions import ActiveCondition
 from dnd5e_engine.types.effects import ActiveEffect, ActiveEffectChange, ActiveEffectDuration
 from dnd5e_engine.views import LiveCombatView
@@ -3586,6 +3586,47 @@ def _drop_concentration(
             break
 
 
+# SRD 5.2 armor categories a creature can wear; a Shield is tracked
+# separately (``Combatant.shield_equipped``). Keyed off the dataset's
+# ``ArmorCategory`` so an unhandled category surfaces as a KeyError rather
+# than a silently-dropped armor slug.
+_BODY_ARMOR: Final[dict[ArmorCategory, WornArmor]] = {
+    ArmorCategory.LIGHT: "light",
+    ArmorCategory.MEDIUM: "medium",
+    ArmorCategory.HEAVY: "heavy",
+}
+_MARTIAL_ARTS: Final = "martial-arts"
+
+
+def _worn_armor(equipment: Sequence[str]) -> tuple[WornArmor | None, bool]:
+    """Body armor category and Shield among ``equipment``: armor and Shields a
+    host lists there are worn (the ``derive_sheet`` convention)."""
+    loader = get_lib_loader()
+    body: WornArmor | None = None
+    shield = False
+    for slug in equipment:
+        armor = loader.get_armor(slug)
+        if armor is None:
+            continue
+        if armor.armor_category == ArmorCategory.SHIELD:
+            shield = True
+        else:
+            body = _BODY_ARMOR[armor.armor_category]
+    return body, shield
+
+
+def _martial_arts_active(c: Combatant) -> bool:
+    """SRD 5.2 Martial Arts: "You gain the following benefits while you are
+    unarmed or wielding only Monk weapons and you aren't wearing armor or
+    wielding a Shield." The weapon half is checked per attack (``attack.py``);
+    what the other hand holds is not modelled."""
+    return (
+        c.worn_armor is None
+        and not c.shield_equipped
+        and _MARTIAL_ARTS in _granted_feature_slugs(c)
+    )
+
+
 # ── C14 Task 6 — Unarmed Strike: the Grapple option + escape ────────────────
 #
 # SRD 5.2 (Unarmed Strike, "Grapple"): "The target must succeed on a Strength
@@ -3607,8 +3648,13 @@ def _drop_concentration(
 def _unarmed_option_dc(attacker: Combatant) -> int:
     """SRD 5.2 Unarmed Strike — Grapple / Shove: "The DC ... equals 8 plus
     your Strength modifier and Proficiency Bonus." Shared by both options
-    (C14 Task 7 reuses this for Shove)."""
-    return 8 + ability_modifier(attacker.strength) + proficiency_bonus_of(attacker)
+    (C14 Task 7 reuses this for Shove). Martial Arts (Dexterous Attacks):
+    "you can use your Dexterity modifier instead of your Strength modifier
+    to determine the save DC"."""
+    ability_mod = ability_modifier(attacker.strength)
+    if _martial_arts_active(attacker):
+        ability_mod = max(ability_mod, ability_modifier(attacker.dexterity))
+    return 8 + ability_mod + proficiency_bonus_of(attacker)
 
 
 def _emit_grapple_condition_applied(
@@ -6724,6 +6770,7 @@ def _build_pc_combatants(
     ``None``.
     """
     for pc in party:
+        worn_armor, shield_equipped = _worn_armor(pc.equipment)
         combatants.append(
             Combatant(
                 entity_id=pc.entity_id,
@@ -6761,6 +6808,8 @@ def _build_pc_combatants(
                 class_slug=pc.class_slug,
                 classes=dict(pc.classes),
                 fighting_styles=styles_from_feats(pc.feats, pc.fighting_style),
+                worn_armor=worn_armor,
+                shield_equipped=shield_equipped,
                 subclass_slug=pc.subclass_slug,
                 species_slug=pc.species_slug,
                 save_proficiencies=list(pc.save_proficiencies),
@@ -9877,6 +9926,10 @@ async def submit_player_intent(
             attacker_fear_source_in_sight=_fear_source_in_sight(live, current),
             scale_values=scale_values,
             class_levels=class_levels,
+            # SRD 5.2 Martial Arts: PRE-RESOLVED (armor/Shield + the granted
+            # feature) — ``attack.py`` still gates per swing on the weapon
+            # being unarmed or a Monk weapon.
+            martial_arts=_martial_arts_active(current),
             # A FEATURE invocation must not inherit the blanket spell
             # save_dc_override; its save activity computes its own ability+PB DC.
             is_feature_invocation=bool(intent.feature_id),

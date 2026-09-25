@@ -24,6 +24,10 @@ from dnd5e_engine.types.conditions import ActiveCondition
 # SRD ships. Dueling and the other 2024 styles are not SRD 5.2 content.
 FightingStyle = Literal["archery", "defense", "great-weapon-fighting", "two-weapon-fighting"]
 
+# The body armor a creature wears (SRD 5.2 armor categories); a Shield is
+# tracked on its own.
+WornArmor = Literal["light", "medium", "heavy"]
+
 
 class BehaviorProfile(StrEnum):
     """Monster AI posture consumed by the orchestrator's flee heuristic."""
@@ -194,6 +198,10 @@ class Combatant(BaseModel):
     # SRD 5.2 Fighting Style feats in play (``PartyMemberSpec.feats`` plus
     # ``fighting_style``), read by the attack resolver. Empty for monsters.
     fighting_styles: tuple[FightingStyle, ...] = ()
+    # SRD 5.2 armor worn and Shield wielded, from ``PartyMemberSpec.equipment``
+    # (armor and Shields listed there are worn). Martial Arts needs neither.
+    worn_armor: WornArmor | None = None
+    shield_equipped: bool = False
     # SRD §Subclasses — subclass slug for PCs (e.g. "berserker"). Copied from
     # ``PartyMemberSpec.subclass_slug`` at start_combat so subclass-feature
     # activities (piece 4) can gate on it. ``None`` for monsters / NPCs /
@@ -361,4 +369,5 @@ __all__ = [
     "Combatant",
     "FightingStyle",
     "MonsterActionUses",
+    "WornArmor",
 ]

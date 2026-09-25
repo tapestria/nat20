@@ -517,6 +517,10 @@ class ActivityResolutionContext:
     # amount (Lay on Hands' Heal: the points drawn). ``None`` keeps ``@scaling``
     # an unhandled token, so a spell formula that names it still fails loudly.
     scaling_value: int | None = None
+    # SRD 5.2 Martial Arts is active for the attacker: it has the feature and
+    # wears no armor and wields no Shield (orchestrator-checked). ``attack.py``
+    # applies it to an Unarmed Strike or a Monk weapon only.
+    martial_arts: bool = False
 
     def ability_mod(self, ability: str) -> int:
         return (self.caster_abilities.get(ability, 10) - 10) // 2

@@ -62,6 +62,7 @@ baked in, so the mod is added here, not double-counted.
 from __future__ import annotations
 
 import logging
+import re
 from collections import defaultdict
 from dataclasses import replace
 from typing import TYPE_CHECKING, Final
@@ -84,7 +85,7 @@ from dnd5e_engine.rules.conditions import (
 from dnd5e_engine.spatial import cover_bonus
 
 if TYPE_CHECKING:
-    from dnd5e_srd_data.schema.common import AttackActivity, DamagePartBlock
+    from dnd5e_srd_data.schema.common import AttackActivity, DamagePart, DamagePartBlock
     from dnd5e_srd_data.schema.item import Weapon
 
     from dnd5e_engine.types.combat import Combatant
@@ -648,6 +649,21 @@ def sneak_attack_triggers(
 # ── attack-bonus resolution ──────────────────────────────────────────────────
 
 
+def _is_monk_weapon(weapon: Weapon | None) -> bool:
+    """SRD 5.2 Martial Arts — "Monk weapons, which are the following: Simple
+    Melee weapons; Martial Melee weapons that have the Light property". The
+    corpus files the Unarmed Strike as a Simple Melee weapon."""
+    if weapon is None:
+        return False
+    if weapon.weapon_category == "simple_melee":
+        return True
+    return weapon.weapon_category == "martial_melee" and WeaponProperty.LIGHT in weapon.properties
+
+
+def _martial_arts_applies(ctx: ActivityResolutionContext, weapon: Weapon | None) -> bool:
+    return ctx.martial_arts and _is_monk_weapon(weapon)
+
+
 def _governing_ability(
     activity: AttackActivity, ctx: ActivityResolutionContext, weapon: Weapon | None
 ) -> str | None:
@@ -655,6 +671,8 @@ def _governing_ability(
 
     Resolution order (Foundry stores ``""`` and resolves the default at runtime):
 
+    0. Martial Arts (Dexterous Attacks) active for an Unarmed Strike or a Monk
+       weapon → the better of STR/DEX, ties keeping STR (as for Finesse).
     1. ``attack.ability`` when set (non-empty) → use it verbatim.
     2. else if a ``weapon`` is supplied → the weapon's SRD default ability
        (``_weapon_default_ability``): a melee non-finesse weapon uses STR, a
@@ -665,6 +683,10 @@ def _governing_ability(
     ``None`` only when neither a weapon nor a spellcasting ability is available
     (a flat attack needs no ability and simply contributes a +0 mod).
     """
+    if _martial_arts_applies(ctx, weapon):
+        # Dexterous Attacks: DEX instead of STR — the Unarmed Strike's own
+        # ``attack.ability`` is "str"; ties keep STR, as for Finesse.
+        return "dex" if ctx.ability_mod("dex") > ctx.ability_mod("str") else "str"
     if activity.attack.ability:
         return activity.attack.ability
     if weapon is not None:
@@ -1067,6 +1089,32 @@ def _damage_source_id(
     return None
 
 
+_SINGLE_DIE_RE = re.compile(r"^(\d*)d(\d+)$")
+
+
+def _average_damage(dice: str) -> float | None:
+    """Mean of a flat number or one ``NdM`` term; ``None`` for anything else."""
+    if dice.isdigit():
+        return float(dice)
+    match = _SINGLE_DIE_RE.match(dice)
+    if match is None:
+        return None
+    return int(match.group(1) or 1) * (int(match.group(2)) + 1) / 2
+
+
+def _martial_arts_parts(parts: list[DamagePart], die: int | str | None) -> list[DamagePart]:
+    """SRD 5.2 Martial Arts Die: "You can roll 1d6 in place of the normal damage
+    of your Unarmed Strike or Monk weapons" — taken only when it beats the
+    weapon's own damage on average (the Unarmed Strike's flat 1 always loses)."""
+    if not parts or not isinstance(die, str):
+        return parts
+    martial_die = f"1{die}" if die.startswith("d") else die
+    martial, own = _average_damage(martial_die), _average_damage(parts[0].dice)
+    if martial is None or own is None or martial <= own:
+        return parts
+    return [parts[0].model_copy(update={"dice": martial_die}), *parts[1:]]
+
+
 def _roll_base_weapon_damage(
     weapon: Weapon,
     ctx: ActivityResolutionContext,
@@ -1094,6 +1142,11 @@ def _roll_base_weapon_damage(
     ``die_floor`` (from ``_great_weapon_fighting_floor``) raises every rolled
     face on these dice to at least that value; ``None`` for every swing without
     the feat, keeping today's rolls byte-identical.
+
+    SRD 5.2 Martial Arts — when it applies to this swing (``_martial_arts_
+    applies``), the FIRST part's dice are swapped for the caster's Martial
+    Arts die via ``_martial_arts_parts`` (only when that die rolls higher on
+    average; the Unarmed Strike's flat 1 always loses to it).
     """
     first_type: str | None = None
     flat_addition = weapon.magical_bonus
@@ -1108,6 +1161,9 @@ def _roll_base_weapon_damage(
     parts = weapon.damage_parts
     if ctx.use_versatile_damage and weapon.versatile_damage is not None:
         parts = [weapon.versatile_damage]
+
+    if _martial_arts_applies(ctx, weapon):
+        parts = _martial_arts_parts(parts, ctx.scale_values.get("monk.die"))
 
     for index, part in enumerate(parts):
         rolled = roll_damage_part(part, ctx.rng, crit=is_crit, die_floor=die_floor)

@@ -301,7 +301,6 @@ def test_c20_s04_fighting_style_two_weapon_fighting_adds_ability_mod_to_offhand(
     assert buffed_offhand == base_offhand + 4
 
 
-@xfail_cluster(20, "class feature mechanics")
 def test_c20_s05_martial_arts_unarmed_strike_uses_scaling_die_and_dex():
     """C20-S05: SRD 5.2 ``classes24/monk/class-features/martial-arts.yml``
     (phbmnkMartialArt) — "roll 1d6 in place of the normal damage of
