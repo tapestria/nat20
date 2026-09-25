@@ -82,6 +82,19 @@ additive; old canonical JSON without the new keys still validates.
   Monk's copy its own slug.
   (`packages/dnd5e-srd-data/src/dnd5e_srd_data/canonical/features/unarmored-defense-monk.json`)
 
+### Fixed
+
+- **C20 — the Unarmed Strike deals its SRD 5.2 base damage.** SRD 5.2: "On a
+  hit, the target takes Bludgeoning damage equal to 1 plus your Strength
+  modifier." Foundry ships that damage only as a `custom.formula`
+  (`@mod + @prof`, which is not the SRD rule) that the translator drops, so
+  `items/unarmed-strike.json` had `damage_parts: []` and every unarmed hit
+  dealt 0. A one-entry, SRD-grounded correction table in
+  `tools/translators/foundry.py` (`_WEAPON_BASE_DAMAGE_CORRECTIONS`) now fills
+  an empty part list with a flat 1 Bludgeoning; the engine adds the Strength
+  modifier. Regen changes only that file.
+  (`packages/dnd5e-srd-data/src/dnd5e_srd_data/canonical/items/unarmed-strike.json`)
+
 ## [0.5.0]
 
 Lockstep release with `dnd5e-engine` 0.5.0 and `nat20-bridge` 0.5.0.

@@ -497,9 +497,11 @@ class DashTaken(BaseModel):
 
     SRD §Combat — Dash: the actor's movement budget is doubled for the
     current turn (``movement_remaining += base_speed``). ``budget_consumed``
-    captures whether the Dash was taken as the Action (default) or as the
-    Rogue's Cunning Action Bonus Action. Dash does NOT advance the turn —
-    the actor keeps initiative and may follow with MOVE / other intents.
+    captures whether the Dash was taken as the Action (default) or as a
+    Cunning Action Bonus Action — granted at Rogue 2 and found via the
+    actor's per-class granted features, not its primary class slug. Dash does
+    NOT advance the turn — the actor keeps initiative and may follow with
+    MOVE / other intents.
     """
 
     type: Literal["dash_taken"] = "dash_taken"

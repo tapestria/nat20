@@ -21,9 +21,13 @@ Exhaustion reduction, upcast target-count scaling, Counterspell/readied-cast
 slot+range gating, and out-of-combat Ritual resolution), **C18 — monster
 action economy** (Recharge, Regeneration, Legendary Actions, Legendary
 Resistance, stat-block spellcasting, and the remaining `MonsterTraitMechanic`
-consumers) and **C19 — character derivation** (`derive_sheet`/`DerivedSheet`,
+consumers), **C19 — character derivation** (`derive_sheet`/`DerivedSheet`,
 `build_party_member` explicit-wins merge, `CheckSpec` Jack of All Trades /
-Reliable Talent). Nothing public is removed or renamed, but C19 reshapes two
+Reliable Talent) and **C20 — class feature mechanics** (Fighting Style feats,
+Martial Arts, Flurry of Blows and the Focus economy, Action Surge, Bardic
+Inspiration on attack rolls, Rage's end conditions, Lay on Hands' pool,
+feature-gated Cunning Action, every corpus limited-use cap, and live
+multiclass). Nothing public is removed or renamed, but C19 reshapes two
 existing `CombatInstance` fields — `ac` and `attack_bonus` widen from
 defaulted `int`s to `int | None = None`, matching `hp_max`/`hp_current`/
 `base_speed` — and every other new field across this release is optional
@@ -35,6 +39,9 @@ newly-consumed trait on a combatant; C19 changes results for hosts that
 build through `build_party_member` and leave `ac`/`attack_bonus`/`hp_max`/
 `hp_current`/`base_speed` unset (now derived instead of defaulted), or that
 rely on the save/skill/weapon proficiencies it now derives.
+C20 changes results for raging barbarians, Rogue 1s taking a Bonus-Action
+Dash, newly capped features and unarmed strikes, and for hosts that send
+`classes`, `feats` or `fighting_style`.
 Behavioural deltas (and the fixtures they move) are enumerated in
 [`docs/migration/v0.5-to-v0.6.md`](../../docs/migration/v0.5-to-v0.6.md).
 
@@ -168,6 +175,33 @@ Behavioural deltas (and the fixtures they move) are enumerated in
   determinism-affecting delta list — a seeded replay reaching a monster
   turn with a recharge action, an unspent N/Day spell, a legendary action or
   a newly-consumed trait diverges from that point on.
+
+- **Class feature mechanics (C20).** The four SRD 5.2 Fighting Style feats
+  apply: Defense (+1 AC from `derive_sheet` while armor is worn), Archery (+2
+  to Ranged-weapon attack rolls, on top of a pinned `attack_bonus`), Great
+  Weapon Fighting (a 1 or 2 on a damage die counts as a 3, with no extra draw)
+  and Two-Weapon Fighting (the Light off-hand swing keeps its ability
+  modifier). Martial Arts: an unarmored, shieldless monk's Unarmed Strike or
+  Monk weapon rolls the Martial Arts die when it beats the weapon's own, uses
+  DEX when higher (the Grapple and Shove DC too), and gets a Bonus Unarmed
+  Strike; Flurry of Blows spends 1 Focus Point for the next two Unarmed
+  Strikes (three with Heightened Focus). Action Surge grants one extra action
+  — never a Magic action, one surge per turn — counted on
+  `LiveCombatView.turn.extra_actions_remaining`, and a `special`-activation
+  feature costs no Action. A Bardic Inspiration die is redeemed on a failed
+  attack roll (`PlayerIntent.redeem_granted_die`). Rage ends at the end of the
+  barbarian's next turn unless an attack roll against an enemy, an enemy's
+  saving throw or a Bonus Action (`use_feature rage` again, no use spent)
+  extends it, and it ends at once on the Incapacitated condition. Lay on
+  Hands' Heal draws `PlayerIntent.pool_points` from a pool of five times the
+  Paladin level. Cunning Action's Bonus-Action Dash and Disengage read the
+  feature at the Rogue's own level (Rogue 2), not `class_slug`. Every corpus
+  `uses.max` (`@prof`, `max(1, @abilities.<ab>.mod)`,
+  `N * @classes.<class>.levels`) now caps its feature, and an invocation
+  spends its activity's `consumption.targets` cost.
+  `PartyMemberSpec.classes` carries a multiclass character's per-class levels
+  into combat: features, scale values and `@classes.<class>.levels` per class.
+  See the migration guide for every delta and the determinism notes.
 
 ### Added
 
@@ -342,6 +376,21 @@ Behavioural deltas (and the fixtures they move) are enumerated in
   `views.MonsterActionUsesView` projects the first). `GridScene.sunlight:
   bool = False` — a whole-scene Sunlight Sensitivity flag. All additive
   with defaults reproducing pre-0.6 behaviour.
+- **Class feature surface (C20).** `PlayerIntent.pool_points: int | None`,
+  `PlayerIntent.redeem_granted_die: GrantedDie | None`;
+  `PartyMemberSpec.classes: dict[str, int]`, `.feats: tuple[str, ...]`,
+  `.fighting_style: FightingStyle | None`; `Combatant.classes`,
+  `.fighting_styles`, `.worn_armor`, `.shield_equipped`,
+  `.flurry_strikes_remaining`, `.extra_actions_remaining`,
+  `.action_surge_used_this_turn`; `TurnCombatView.extra_actions_remaining`;
+  `types.combat.FightingStyle` / `WornArmor`;
+  `ActivityResolutionContext.scaling_value` / `martial_arts` / `granted_die` /
+  `granted_die_rolls` and the matching `build_activity_context` keywords;
+  `build_scale_values(classes=)`; `roll_damage_part(die_floor=)`; the pure
+  `rules/uses.py` (`UsesRollData`, `evaluate_uses_formula`).
+  `EffectExpiryReason` gains `"expended"`, `"not_extended"` and
+  `"incapacitated"`; `AttackFailed.reason` gains `"no_granted_die"`. All
+  additive, with defaults that reproduce the pre-C20 behaviour.
 
 ### Changed
 
@@ -520,6 +569,13 @@ Behavioural deltas (and the fixtures they move) are enumerated in
   `build_party.py` host-party-building path always sets `attack_bonus`
   explicitly (from the pre-computed character sheet), so this fix does not
   change its output — pre-existing behaviour there, unchanged.
+- **Lay on Hands' Heal no longer crashes (C20).** Its `@scaling` healing
+  formula raised `ValueError: Unhandled roll-data token` out of
+  `submit_player_intent` after the Bonus Action was spent; `@scaling` now
+  resolves to the points drawn.
+- **The free Patient Defense no longer spends a Focus Point (C20).** A feature
+  activity is charged its own `consumption.targets` cost, and one that declares
+  none is free when a sibling activity of the same feature declares one.
 
 ### Deprecated
 

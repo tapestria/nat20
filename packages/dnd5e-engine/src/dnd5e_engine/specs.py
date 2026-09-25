@@ -123,10 +123,12 @@ class PartyMemberSpec(BaseModel):
     # multi-mode (collapsing to a single scalar is lossy). Empty by default.
     movement_modes: CombatantMovementModes = Field(default_factory=CombatantMovementModes)
     # SRD §Classes — character class slug (e.g. ``"rogue"``, ``"barbarian"``).
-    # Drives class-feature gating on the orchestrator seam — today only Cunning
-    # Action (Rogue) Dash uses it (``class_slug == "rogue"`` ⇒ the
-    # bonus-action-Dash path is legal). ``None`` for non-classed entities and
-    # fixtures that don't project class info.
+    # Class-feature grants — Cunning Action's Bonus-Action Dash and Disengage
+    # among them — are read from the granted features at each class's own
+    # level (``classes``), never by comparing this slug: a multiclass build's
+    # Rogue levels grant Cunning Action whatever its primary ``class_slug``.
+    # ``None`` for non-classed entities and fixtures that don't project class
+    # info.
     class_slug: str | None = None
     # SRD 5.2 Multiclassing — ``{class_slug: level}`` in the order the classes
     # were taken ("When you gain a new level in a class, you get its features for
