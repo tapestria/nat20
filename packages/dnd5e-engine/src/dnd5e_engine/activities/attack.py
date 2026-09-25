@@ -133,6 +133,7 @@ def resolve_attack(
         _attack_bonus(activity, ctx, weapon, governing_ability)
         + ctx.d20_test_penalty.get(ctx.caster.entity_id, 0)
         + _fighting_style_attack_bonus(ctx, weapon)
+        + ctx.weapon_enchantment_to_hit
     )
     cast_level = ctx.slot_level or ctx.base_spell_level or 0
     # SRD §Bless / §Bane apply a signed d4 to the affected creature's OWN attack

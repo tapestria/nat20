@@ -19,10 +19,14 @@ orchestrator import, no I/O.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Final, Literal
+
+from dnd5e_srd_data.schema.item import Weapon
+
+from dnd5e_engine.types.effects import ActiveEffect
 
 ConjurationKind = Literal["construct", "enchant", "transform", "transform_rider"]
 TransformSource = Literal["wild-shape", "polymorph"]
@@ -83,6 +87,43 @@ class TransformRequest:
     source: TransformSource
 
 
+# Foundry item-change keys an enchantment writes onto its weapon. Magic Weapon's
+# riders carry exactly these two plus a cosmetic ``name`` override.
+_MAGICAL_BONUS_KEY: Final = "system.magicalBonus"
+_PROPERTIES_KEY: Final = "system.properties"
+_MAGICAL_PROPERTY: Final = "mgc"
+
+
+def enchant_weapon(weapon: Weapon, effects: Sequence[ActiveEffect]) -> Weapon:
+    """``weapon`` as the enchantments among ``effects`` make it.
+
+    SRD 5.2 Magic Weapon: "that weapon becomes a magic weapon with a +1 bonus
+    to attack rolls and damage rolls." Only an effect whose
+    ``flags[ENCHANTED_WEAPON_FLAG]`` names this weapon's slug applies: an
+    ``upgrade`` of ``system.magicalBonus`` raises ``magical_bonus`` to at least
+    its value (a bonus never stacks with another), and an ``add`` of the
+    ``mgc`` property makes the weapon magical, which also overcomes resistance
+    to nonmagical damage. Every other change key (the ``name`` override) is
+    ignored. Returns ``weapon`` itself when nothing applies.
+    """
+    bonus, magical = weapon.magical_bonus, weapon.magical
+    for effect in effects:
+        if effect.flags.get(ENCHANTED_WEAPON_FLAG) != weapon.slug:
+            continue
+        for change in effect.changes:
+            if change.key == _MAGICAL_BONUS_KEY and change.mode == "upgrade":
+                bonus = max(bonus, int(change.value))
+            elif (
+                change.key == _PROPERTIES_KEY
+                and change.mode == "add"
+                and change.value == _MAGICAL_PROPERTY
+            ):
+                magical = True
+    if (bonus, magical) == (weapon.magical_bonus, weapon.magical):
+        return weapon
+    return weapon.model_copy(update={"magical_bonus": bonus, "magical": magical})
+
+
 __all__ = [
     "CONJURATION_ALLOWLIST",
     "ENCHANTED_WEAPON_FLAG",
@@ -92,4 +133,5 @@ __all__ = [
     "ConstructRequest",
     "TransformRequest",
     "TransformSource",
+    "enchant_weapon",
 ]

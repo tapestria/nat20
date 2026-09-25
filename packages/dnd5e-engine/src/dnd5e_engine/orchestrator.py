@@ -65,6 +65,7 @@ from dnd5e_srd_data.schema.common import (
     CastActivity,
     DamageActivity,
     DamagePartBlock,
+    EnchantActivity,
     HealActivity,
     SaveActivity,
 )
@@ -93,6 +94,12 @@ from dnd5e_engine.activities.attack import (
     sneak_attack_triggers,
 )
 from dnd5e_engine.activities.build_context import build_activity_context
+from dnd5e_engine.activities.conjuration import (
+    CONJURATION_ALLOWLIST,
+    ENCHANTED_WEAPON_FLAG,
+    ConjurationCarrier,
+    enchant_weapon,
+)
 from dnd5e_engine.activities.context import ActivityResolutionContext
 from dnd5e_engine.activities.d20 import AdvantageSources, roll_d20_test
 from dnd5e_engine.activities.dice import roll_damage_part
@@ -6344,6 +6351,7 @@ def _fold_resolution_outcome(
     chain and end a different concentration the caster held before this
     resolution. ``actx`` is the resolution's context, ``None`` when nothing
     resolved."""
+    _end_superseded_enchantments(live, caster, actx, pre_event_count)
     _apply_concentration_anchor(live, caster, spell, pre_event_count)
     _writeback_concentration(live, caster, pre_event_count)
     _record_effect_lifecycle_links(
@@ -8585,6 +8593,158 @@ def _handle_move(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
     # Turn stays live — no TurnEnded, no current_turn_index advance.
 
 
+# ── C21 conjurations: the shared pre-spend gate and the enchant ─────────────
+
+_ConjurationGate = Callable[[_LiveCombat, Combatant, PlayerIntent], CombatEvent | None]
+
+
+def _conjuration_gate_failure(
+    live: _LiveCombat, current: Combatant, intent: PlayerIntent
+) -> CombatEvent | None:
+    """The first C21 conjuration refusal for ``intent``, or ``None``. The last
+    of ``submit_player_intent``'s ``pre_resolution_gates``, so a refused
+    conjuration spends no slot, use or action. Each check is a no-op for an
+    intent it does not govern."""
+    # A readied conjuration is refused before the enchant gate reads its
+    # (absent) weapon; the remaining checks govern disjoint intents, so their
+    # order only fixes which reason a malformed intent reports.
+    checks: tuple[_ConjurationGate, ...] = (
+        _readied_conjuration_failure,
+        _enchant_cast_failure,
+    )
+    for check in checks:
+        failure = check(live, current, intent)
+        if failure is not None:
+            return failure
+    return None
+
+
+def _readied_conjuration_failure(
+    live: _LiveCombat, current: Combatant, intent: PlayerIntent
+) -> CombatEvent | None:
+    """``CastFailed(reason="target_invalid")`` for a ``ready`` naming an
+    allowlisted conjuration. A readied cast resolves from ``_PendingReaction``,
+    which carries only the spell and its slot level, never the weapon, form or
+    cell the conjuration needs."""
+    if intent.intent_type != "ready" or (intent.spell_id or "") not in CONJURATION_ALLOWLIST:
+        return None
+    return CastFailed(
+        actor_id=current.entity_id, spell_id=intent.spell_id or "", reason="target_invalid"
+    )
+
+
+def _enchant_cast_failure(
+    live: _LiveCombat, current: Combatant, intent: PlayerIntent
+) -> CombatEvent | None:
+    """``CastFailed(reason="target_invalid")`` for an allowlisted enchant cast
+    whose ``weapon_id`` its ``EnchantActivity.restrictions`` refuse.
+
+    SRD 5.2 Magic Weapon: "You touch a nonmagical weapon." The weapon must be
+    a corpus ``Weapon`` (``restrictions.type == "weapon"``) and, under
+    ``allow_magical: false``, neither magical nor a +N weapon. An Unarmed
+    Strike is not a weapon ("Instead of using a weapon to make a melee attack,
+    you can use a punch, kick, headbutt, or similar forceful blow"). Whether
+    the target carries the weapon is not checked: equipment is optional on a
+    hand-built spec.
+    """
+    spell_id = intent.spell_id or ""
+    if intent.intent_type != "cast_spell" or CONJURATION_ALLOWLIST.get(spell_id) != "enchant":
+        return None
+    loader = get_lib_loader()
+    weapon = loader.get_weapon(intent.weapon_id) if intent.weapon_id else None
+    spell = loader.get_spell(spell_id)
+    enchant = next(
+        (a for a in (spell.activities if spell else ()) if isinstance(a, EnchantActivity)), None
+    )
+    if (
+        weapon is not None
+        and weapon.slug != _UNARMED_STRIKE
+        and enchant is not None
+        and enchant.restrictions.type == "weapon"
+        and (enchant.restrictions.allow_magical or not (weapon.magical or weapon.magical_bonus))
+    ):
+        return None
+    return CastFailed(actor_id=current.entity_id, spell_id=spell_id, reason="target_invalid")
+
+
+def _conjuration_carrier(
+    live: _LiveCombat, current: Combatant, intent: PlayerIntent
+) -> ConjurationCarrier | None:
+    """The pre-validated inputs an allowlisted conjuration resolves with, or
+    ``None`` for every other intent (its activities stay narrative). Echoes
+    what ``_conjuration_gate_failure`` already accepted."""
+    source = (
+        intent.spell_id
+        if intent.intent_type == "cast_spell"
+        else intent.feature_id
+        if intent.intent_type == "use_feature"
+        else None
+    ) or ""
+    kind = CONJURATION_ALLOWLIST.get(source)
+    if kind == "enchant":
+        return ConjurationCarrier(source_slug=source, weapon_slug=intent.weapon_id)
+    return None
+
+
+def _end_superseded_enchantments(
+    live: _LiveCombat,
+    caster: Combatant,
+    actx: ActivityResolutionContext | None,
+    pre_event_count: int,
+) -> None:
+    """SRD 5.2 Magic Weapon: "The spell ends early if you cast it again." After
+    an enchant cast, every other live enchantment this caster made ends
+    (``remove_ieffect``), whichever weapon or creature it is on. A recast at
+    the same tier on the same creature has the same identity as the old
+    effect; the expiry fold pops the first match, which is the older one."""
+    if actx is None or actx.conjuration is None or actx.conjuration.weapon_slug is None:
+        return
+    applied_now = {
+        id(ev.effect) for ev in live.event_log[pre_event_count:] if isinstance(ev, EffectApplied)
+    }
+    superseded = [
+        effect
+        for effects in live.active_effects.values()
+        for effect in effects
+        if ENCHANTED_WEAPON_FLAG in effect.flags
+        and effect.origin.startswith("cast:")
+        and effect.origin.split(":", 2)[2:] == [caster.entity_id]
+        and id(effect) not in applied_now
+    ]
+    for effect in superseded:
+        _emit(
+            live,
+            EffectExpired(
+                effect_id=effect.id,
+                target_id=effect.target_id,
+                origin=effect.origin,
+                reason="remove_ieffect",
+            ),
+        )
+
+
+def _enchanted_weapon(
+    live: _LiveCombat, attacker: Combatant, weapon: Weapon | None
+) -> Weapon | None:
+    """``weapon`` with the attacker's live enchantments applied (the weapon
+    itself when none names it); ``None`` for a weapon-less intent."""
+    if weapon is None:
+        return None
+    return enchant_weapon(weapon, live.active_effects.get(attacker.entity_id, ()))
+
+
+def _weapon_enchantment_to_hit(
+    attacker: Combatant, base: Weapon | None, enchanted: Weapon | None
+) -> int:
+    """The enchantment's to-hit a host-pinned ``attack_bonus`` would drop:
+    ``_attack_bonus`` returns a pinned value verbatim, before the weapon's
+    ``magical_bonus``, so the delta rides on top of the pin (as Archery does).
+    0 for an unpinned attacker, whose ``magical_bonus`` already counts."""
+    if attacker.attack_bonus is None or base is None or enchanted is None:
+        return 0
+    return enchanted.magical_bonus - base.magical_bonus
+
+
 @dataclass
 class _ActionCost:
     """Action-economy classification for an intent: which budget it consumes
@@ -10223,9 +10383,10 @@ async def submit_player_intent(
     # §Hellish Rebuke; an unaimed Cone/Line/Cube AoE template) -> a second
     # Action Surge this turn (SRD 5.2 "only once on a turn") -> a Bardic
     # Inspiration with no other creature to inspire -> an attack redeeming a
-    # die it cannot roll. The first gate whose failure-builder returns a
-    # non-``None`` event wins; that event is emitted and the intent is
-    # rejected.
+    # die it cannot roll -> an allowlisted conjuration's own refusals
+    # (``_conjuration_gate_failure``). The first gate whose failure-builder
+    # returns a non-``None`` event wins; that event is emitted and the intent
+    # is rejected.
     pre_resolution_gates: tuple[Callable[[], CombatEvent | None], ...] = (
         lambda: _spell_out_of_range_failure(live, actor_id, intent, cast_spell_for_timing),
         lambda: _attack_out_of_range_failure(live, actor_id, intent),
@@ -10237,6 +10398,7 @@ async def submit_player_intent(
         lambda: _action_surge_failure(current, intent),
         lambda: _bardic_inspiration_target_failure(live, actor_id, intent),
         lambda: _granted_die_failure(live, current, intent),
+        lambda: _conjuration_gate_failure(live, current, intent),
     )
     for build_pre_resolution_failure in pre_resolution_gates:
         failure = build_pre_resolution_failure()
@@ -10379,7 +10541,7 @@ async def submit_player_intent(
     resolved = _resolve_intent_activities(intent, feature_invocation, current)
     activities = resolved.activities
     cast_spell = resolved.cast_spell
-    fetched_weapon = resolved.fetched_weapon
+    fetched_weapon = _enchanted_weapon(live, current, resolved.fetched_weapon)
     spellcasting_ability = resolved.spellcasting_ability
     feature_passive_effects = resolved.feature_passive_effects
 
@@ -10627,6 +10789,10 @@ async def submit_player_intent(
             # feature activity scales its own-pool cost by amount.
             scaling_value=(
                 feature_invocation.scaling_value if feature_invocation is not None else None
+            ),
+            conjuration=_conjuration_carrier(live, current, intent),
+            weapon_enchantment_to_hit=_weapon_enchantment_to_hit(
+                current, resolved.fetched_weapon, fetched_weapon
             ),
         )
         for activity in activities:

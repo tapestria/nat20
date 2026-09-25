@@ -547,6 +547,11 @@ class ActivityResolutionContext:
     # mutation on the frozen dataclass, like ``mastery_procs``).
     construct_requests: list[ConstructRequest] = field(default_factory=list)
     transform_requests: list[TransformRequest] = field(default_factory=list)
+    # SRD 5.2 Magic Weapon: "a +1 bonus to attack rolls and damage rolls". The
+    # part of an enchanted weapon's bonus a host-pinned to-hit would drop
+    # (``_attack_bonus`` returns a pinned override verbatim, before the
+    # weapon's ``magical_bonus``); 0 unless the attacker's bonus is pinned.
+    weapon_enchantment_to_hit: int = 0
 
     def ability_mod(self, ability: str) -> int:
         return (self.caster_abilities.get(ability, 10) - 10) // 2

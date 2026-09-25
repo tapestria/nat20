@@ -277,7 +277,6 @@ def test_c21_s03_spiritual_weapon_casts_with_no_attack_roll():
     assert dmg
 
 
-@xfail_cluster(21, "summons, transform, enchant")
 def test_c21_s04_magic_weapon_enchant_grants_plus1_to_hit_and_damage():
     """C21-S04: SRD 5.2 §Spell Descriptions (Magic Weapon) — "that
     weapon becomes a magic weapon with a +1 bonus to attack rolls and
