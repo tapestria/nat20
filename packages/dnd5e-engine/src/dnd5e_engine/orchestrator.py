@@ -134,6 +134,8 @@ from dnd5e_engine.events import (
     AttackRolled,
     CastFailed,
     CheckRolled,
+    CombatantLeft,
+    CombatantLeftReason,
     CombatantMoved,
     CombatEnded,
     CombatEvent,
@@ -919,7 +921,7 @@ def _run_monster_turn_start(live: _LiveCombat, current: Combatant) -> None:
     """SRD 5.2 "at the start of each of its turns" monster mechanics.
 
     Runs once per driven monster turn (idempotent on
-    ``(round_number, current_turn_index)``): legendary-action pool reset,
+    ``(round_number, entity_id)``): legendary-action pool reset,
     recharge rolls, then regeneration — in that fixed order. Lives here
     rather than as a ``turn_lifecycle`` ``turn_start`` hook because the
     engine emits ``TurnStarted`` at the PREVIOUS turn's end, before the
@@ -931,7 +933,7 @@ def _run_monster_turn_start(live: _LiveCombat, current: Combatant) -> None:
     at all: nothing runs, no recharge die is drawn and no ``RechargeRolled``
     is emitted for a corpse.
     """
-    key = (live.round_number, live.current_turn_index)
+    key = (live.round_number, current.entity_id)
     if live.monster_turn_start_done == key:
         return
     live.monster_turn_start_done = key
@@ -3152,10 +3154,13 @@ class _LiveCombat:
         default_factory=dict
     )
     # C18 — idempotency guard for ``_run_monster_turn_start``: the
-    # ``(round_number, current_turn_index)`` pair the turn-start mechanics
-    # (legendary reset, recharge rolls, regeneration) last ran for. ``None``
-    # before the first driven monster turn.
-    monster_turn_start_done: tuple[int, int] | None = None
+    # ``(round_number, entity_id)`` pair the turn-start mechanics (legendary
+    # reset, recharge rolls, regeneration) last ran for. ``None`` before the
+    # first driven monster turn. Keyed by the creature, not its slot: a
+    # creature that leaves the initiative order mid-round (C21) shifts every
+    # later slot back by one, and a slot key would then skip the next
+    # monster's turn start or run one twice.
+    monster_turn_start_done: tuple[int, str] | None = None
     # C18 §Monster action economy — legendary actions (Task 6). The
     # ``(round_number, actor_id)`` of the LAST turn to end (recorded in
     # ``_end_turn_and_advance`` before the round/turn-index bump), read by
@@ -8472,6 +8477,21 @@ def _begin_turn(live: _LiveCombat, *, new_round: bool) -> None:
     _maybe_roll_death_save(live)
 
 
+def _open_turn_at_current_index(live: _LiveCombat) -> None:
+    """Open the turn ``live.current_turn_index`` names, wrapping to a new
+    round when the index has run past the last slot.
+
+    Shared by ``_end_turn_and_advance`` (after the ending actor's turn-end
+    phase) and ``_leave_roster`` (a current actor that disappears has no end
+    of turn, C21), so neither path skips the next creature's turn.
+    """
+    new_round = live.current_turn_index >= len(live.initiative)
+    if new_round:
+        live.current_turn_index = 0
+        live.round_number += 1
+    _begin_turn(live, new_round=new_round)
+
+
 def _end_turn_and_advance(live: _LiveCombat, actor_id: str) -> None:
     """SRD §Action Economy — end ``actor_id``'s turn and start the next.
 
@@ -8496,7 +8516,13 @@ def _end_turn_and_advance(live: _LiveCombat, actor_id: str) -> None:
     hook rather than a call at the intent sites — so it fires exactly once per
     turn end and never on the bonus-action path, which returns before reaching
     here.
+
+    A creature that left the initiative order during its own turn (C21) has
+    no turn to end: its departure already opened the next creature's turn,
+    so a caller that later tries to end it does nothing.
     """
+    if _find_combatant(live, actor_id) is None:
+        return
     _emit(
         live,
         TurnPhase(actor_id=actor_id, phase="turn_end", round_number=live.round_number),
@@ -8508,11 +8534,7 @@ def _end_turn_and_advance(live: _LiveCombat, actor_id: str) -> None:
     # ``live.round_number`` past the round this turn just ended in.
     live.last_ended_turn = (live.round_number, actor_id)
     live.current_turn_index += 1
-    new_round = live.current_turn_index >= len(live.initiative)
-    if new_round:
-        live.current_turn_index = 0
-        live.round_number += 1
-    _begin_turn(live, new_round=new_round)
+    _open_turn_at_current_index(live)
 
 
 def _end_action(live: _LiveCombat, actor_id: str, intent: PlayerIntent) -> None:
@@ -8525,6 +8547,139 @@ def _end_action(live: _LiveCombat, actor_id: str, intent: PlayerIntent) -> None:
         _maybe_roll_death_save(live)
         return
     _end_turn_and_advance(live, actor_id)
+
+
+def _insert_into_roster(
+    live: _LiveCombat, combatant: Combatant, index: int, *, zone_id: str
+) -> None:
+    """Seat ``combatant`` at ``index`` of the initiative order (C21).
+
+    A positional insert, never a re-sort: SRD 5.2 Summon Dragon, "the
+    creature shares your Initiative count, but it takes its turn immediately
+    after yours". An insert at or before the current slot moves the pointer
+    on by one, so the creature whose turn it is keeps it. Registers the
+    creature's zone and tracked Hit Points; emits nothing (the caller emits
+    ``CombatantJoined`` with the seat's own fields).
+    """
+    live.initiative.insert(index, combatant)
+    if index <= live.current_turn_index:
+        live.current_turn_index += 1
+    live.actor_zone[combatant.entity_id] = zone_id
+    live.tracked_hp[combatant.entity_id] = combatant.hp_current
+
+
+def _purge_entity_state(live: _LiveCombat, entity_id: str) -> None:
+    """Drop every trace of a creature that left the initiative order (C21):
+    its own per-entity state, the marks and grants it holds or sourced, and
+    the effect identities that target it.
+
+    Another caster's concentration on it keeps running (its
+    ``concentration_chain`` entry is kept): SRD 5.2 is silent on a spell whose
+    target vanishes, so when that concentration ends its cascade still runs
+    and may name the departed id. A creature that leaves holds no
+    concentration of its own, so the purge never strands an effect it
+    maintains.
+    """
+    per_entity: tuple[dict[str, Any], ...] = (
+        live.actor_zone,
+        live.monster_slug_by_entity,
+        live.xp_value_by_entity,
+        live.tracked_hp,
+        live.tracked_temp_hp,
+        live.undead_fortitude_holds,
+        live.active_conditions,
+        live.active_effects,
+        live.expended_resources,
+        live.spell_slots_by_entity,
+        live.pact_slots_by_entity,
+        live.spells_known_by_entity,
+        live.custom_counters_by_entity,
+        live.concentration_chain,
+        live.concentration_rounds_remaining,
+        live.reaction_effects_pending_expiry,
+        live.help_grants,
+        live.vex_grants,
+        live.sap_marks,
+        live.slow_marks,
+        live.monster_action_uses_by_entity,
+        live.legendary_resistance_armed,
+        live.transforms,
+    )
+    for state in per_entity:
+        state.pop(entity_id, None)
+    live.hidden_entities.discard(entity_id)
+    live.rage_bonus_extensions.discard(entity_id)
+    by_identity: tuple[dict[tuple[str, str, str], Any], ...] = (
+        live.conditions_by_effect,
+        live.repeat_save_on_turn_end,
+    )
+    for identities in by_identity:
+        for identity in [key for key in identities if key[0] == entity_id]:
+            del identities[identity]
+    live.pending_reactions[:] = [r for r in live.pending_reactions if r.owner_id != entity_id]
+    for construct_id in [k for k, c in live.constructs.items() if c.owner_id == entity_id]:
+        del live.constructs[construct_id]
+    _purge_references_to(live, entity_id)
+
+
+def _purge_references_to(live: _LiveCombat, entity_id: str) -> None:
+    """Drop ``entity_id`` where it appears inside another creature's entry: a
+    Help grant it gave, a Vex grant against it, a Sap mark it sourced, a Slow
+    mark it sourced. An entry left empty goes with it."""
+    for target in list(live.help_grants):
+        helpers = [h for h in live.help_grants[target] if h != entity_id]
+        if helpers:
+            live.help_grants[target] = helpers
+        else:
+            del live.help_grants[target]
+    for attacker in list(live.vex_grants):
+        live.vex_grants[attacker].pop(entity_id, None)
+        if not live.vex_grants[attacker]:
+            del live.vex_grants[attacker]
+    for sapped in [s for s, source in live.sap_marks.items() if source == entity_id]:
+        del live.sap_marks[sapped]
+    for slowed in list(live.slow_marks):
+        live.slow_marks[slowed].discard(entity_id)
+        if not live.slow_marks[slowed]:
+            del live.slow_marks[slowed]
+
+
+def _remove_from_roster(live: _LiveCombat, entity_id: str) -> bool:
+    """Splice ``entity_id`` out of the initiative order and purge its state
+    (C21); return whether it was the current actor.
+
+    A removal before the current slot moves the pointer back by one, so the
+    current actor keeps its turn. Removing the current actor leaves the
+    pointer where it is: that slot now names the next creature, or runs past
+    the last slot (the caller opens that turn). Precondition: ``entity_id``
+    is in the roster.
+    """
+    index = next(i for i, c in enumerate(live.initiative) if c.entity_id == entity_id)
+    del live.initiative[index]
+    _purge_entity_state(live, entity_id)
+    was_current = index == live.current_turn_index
+    if index < live.current_turn_index:
+        live.current_turn_index -= 1
+    return was_current
+
+
+def _leave_roster(live: _LiveCombat, entity_id: str, reason: CombatantLeftReason) -> None:
+    """A creature disappears from the combat (C21). SRD 5.2 Summon Dragon:
+    "The creature disappears when it drops to 0 Hit Points or when the spell
+    ends."
+
+    Splices it out, emits ``CombatantLeft`` and, when it was the current
+    actor, opens the next creature's turn at once: it has no end of turn (no
+    ``turn_end`` phase, hooks or ``TurnEnded``), and nobody is skipped. A
+    no-op for an id not in the roster, so two expiries in one cascade never
+    remove it twice. Draws nothing.
+    """
+    if _find_combatant(live, entity_id) is None:
+        return
+    was_current = _remove_from_roster(live, entity_id)
+    _emit(live, CombatantLeft(entity_id=entity_id, reason=reason))
+    if was_current:
+        _open_turn_at_current_index(live)
 
 
 def _validate_intent_preconditions(
