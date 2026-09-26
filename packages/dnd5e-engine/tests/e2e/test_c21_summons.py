@@ -34,7 +34,6 @@ from dnd5e_engine.specs import EncounterMemberSpec, GridScene, PartyMemberSpec
 from tests.e2e.harness import cell, events_of, run_async, xfail_cluster
 
 
-@xfail_cluster(21, "summons, transform, enchant")
 def test_c21_s01_summon_dragon_casts_with_zero_roster_growth():
     """C21-S01: SRD 5.2 §Spell Descriptions (Summon Dragon) — "It
     manifests in an unoccupied space... In combat, the creature shares

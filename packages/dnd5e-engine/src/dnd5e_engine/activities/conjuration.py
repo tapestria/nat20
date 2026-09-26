@@ -2,14 +2,17 @@
 
 A few SRD 5.2 spells and features resolve by making something. Spiritual Weapon
 makes a construct: "You create a floating, spectral force that resembles a
-weapon of your choice". Magic Weapon enchants a weapon: "that weapon becomes a
-magic weapon". Wild Shape, and Polymorph on a failed save, put a creature in a
-Beast's stat block: "Your game statistics are replaced by the Beast's stat
-block". The dataset carries their Foundry ``summon`` / ``enchant`` /
-``transform`` activities, but no model the engine can resolve generically, so
-the engine keeps a typed registry keyed by source slug: a Python registry now,
-a dataset field later, as conditions and traits began (spec §6 D3). Every other
-summon, enchant and transform activity stays narrative.
+weapon of your choice". Summon Dragon makes a creature that joins the
+initiative order: "It manifests in an unoccupied space that you can see within
+range and uses the Draconic Spirit stat block". Magic Weapon enchants a weapon:
+"that weapon becomes a magic weapon". Wild Shape, and Polymorph on a failed
+save, put a creature in a Beast's stat block: "Your game statistics are
+replaced by the Beast's stat block". The dataset carries their Foundry
+``summon`` / ``enchant`` / ``transform`` activities, but no model the engine
+can resolve generically, so the engine keeps a typed registry keyed by source
+slug: a Python registry now, a dataset field later, as conditions and traits
+began (spec §6 D3). Every other summon, enchant and transform activity stays
+narrative.
 
 The resolver routes an allowlisted activity only when the orchestrator hands it
 a pre-validated ``ConjurationCarrier``, and reports what the orchestrator must
@@ -19,8 +22,13 @@ orchestrator import, no I/O.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+import ast
+import math
+import operator
+import re
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
+from fractions import Fraction
 from types import MappingProxyType
 from typing import Final, Literal
 
@@ -31,6 +39,8 @@ from dnd5e_srd_data.schema.common import (
     AttackTypeBlock,
     DamagePartBlock,
     DamageScalingBlock,
+    SummonBonusesBlock,
+    SummonMatchBlock,
 )
 from dnd5e_srd_data.schema.item import Weapon
 from dnd5e_srd_data.schema.monster import Monster
@@ -38,19 +48,21 @@ from dnd5e_srd_data.schema.monster import Monster
 from dnd5e_engine.events import DamageType
 from dnd5e_engine.types.effects import ActiveEffect
 
-ConjurationKind = Literal["construct", "enchant", "transform", "transform_rider"]
+ConjurationKind = Literal["construct", "enchant", "transform", "transform_rider", "summon"]
 TransformSource = Literal["wild-shape", "polymorph"]
 
 # The only sources the resolver routes. Polymorph is a ``save`` activity whose
 # failed save carries the transform (``"transform_rider"``), so its routing is
-# the orchestrator's; the monster summon riders, the item summons, Sacred Weapon
-# and the other Polymorph-family spells are absent and stay narrative.
+# the orchestrator's. Summon Dragon is the one creature summon (``SUMMONS``);
+# the other summon spells, the monster summon riders, the item summons, Sacred
+# Weapon and the other Polymorph-family spells are absent and stay narrative.
 CONJURATION_ALLOWLIST: Final[Mapping[str, ConjurationKind]] = MappingProxyType(
     {
         "spiritual-weapon": "construct",
         "magic-weapon": "enchant",
         "wild-shape": "transform",
         "polymorph": "transform_rider",
+        "summon-dragon": "summon",
     }
 )
 
@@ -204,10 +216,18 @@ class StatBlockMagnitudes:
     resolution context they replace the entity-type approximations (a
     Monster's uniform ``attack_bonus`` model), so a governing ability, ``@mod``
     and ``@prof`` read the stat block. SRD 5.2 Wild Shape: "Your game
-    statistics are replaced by the Beast's stat block"."""
+    statistics are replaced by the Beast's stat block".
+
+    A summoned creature also carries its summoner's numbers (SRD 5.2 Draconic
+    Spirit, Rend: "Bonus equals your spell attack modifier"; "1d6 + 4 + the
+    spell's level Piercing damage"): ``attack_bonus`` is a flat to-hit that
+    replaces ability modifier + Proficiency Bonus, and ``attack_damage_bonus``
+    is added to each attack's damage. A transformed creature sets neither."""
 
     ability_scores: Mapping[str, int]
     proficiency_bonus: int
+    attack_bonus: int | None = None
+    attack_damage_bonus: int = 0
 
 
 @dataclass(frozen=True)
@@ -267,10 +287,173 @@ TRANSFORM_RIDERS: Final[Mapping[str, TransformRider]] = MappingProxyType(
 )
 
 
+@dataclass(frozen=True)
+class SummonSpec:
+    """The stat block a creature-summoning spell seats."""
+
+    stat_block_slug: str
+
+
+# SRD 5.2 Summon Dragon: "It manifests in an unoccupied space that you can see
+# within range and uses the Draconic Spirit stat block." The spell's one
+# Foundry profile points at that stat block; the registry names it by slug.
+SUMMONS: Final[Mapping[str, SummonSpec]] = MappingProxyType(
+    {"summon-dragon": SummonSpec(stat_block_slug="draconic-spirit")}
+)
+
+
+@dataclass(frozen=True)
+class SummonRollData:
+    """The roll data a summoned creature's numbers read: the summoning spell's
+    slot level (Foundry ``@item.level`` in the activity's bonuses,
+    ``@flags.dnd5e.summon.level`` in the stat block) and its caster's
+    spellcasting ability modifier (``@flags.dnd5e.summon.mod``). SRD 5.2 Summon
+    Dragon: "Use the spell slot's level for the spell's level in the stat
+    block."
+    """
+
+    level: int
+    mod: int
+
+
+_SUMMON_TOKEN: Final = re.compile(r"@[A-Za-z_][\w.]*")
+_INLINE_FORMULA: Final = re.compile(r"\[\[([^\[\]]*)\]\]")
+_MULTIATTACK: Final = "multiattack"
+_SUMMON_OPERATORS: Final[Mapping[type[ast.operator], Callable[[Fraction, Fraction], Fraction]]] = (
+    MappingProxyType(
+        {
+            ast.Add: operator.add,
+            ast.Sub: operator.sub,
+            ast.Mult: operator.mul,
+            ast.Div: operator.truediv,
+        }
+    )
+)
+
+
+def evaluate_summon_formula(expr: str, roll_data: SummonRollData) -> int:
+    """The whole number a summon formula evaluates to at ``roll_data``.
+
+    A blank formula is 0. ``@item.level`` and ``@flags.dnd5e.summon.level``
+    read the slot level, ``@flags.dnd5e.summon.mod`` the caster's modifier;
+    then the arithmetic folds over the parsed tree (never ``eval``): integer
+    literals, unary minus, ``+ - * /`` with exact division, parentheses and
+    ``floor(x)``. Any other token or construct, or a fractional result, raises
+    ``ValueError`` before anything is seated.
+    """
+    if not expr.strip():
+        return 0
+    values = {
+        "@item.level": roll_data.level,
+        "@flags.dnd5e.summon.level": roll_data.level,
+        "@flags.dnd5e.summon.mod": roll_data.mod,
+    }
+
+    def _value(match: re.Match[str]) -> str:
+        token = match.group(0)
+        if token not in values:
+            raise ValueError(f"Unhandled summon roll-data token {token!r} in {expr!r}")
+        return f"({values[token]})"
+
+    try:
+        tree = ast.parse(_SUMMON_TOKEN.sub(_value, expr), mode="eval")
+    except SyntaxError as exc:
+        raise ValueError(f"Unparseable summon formula {expr!r}") from exc
+    result = _fold_summon_node(tree.body, expr)
+    if result.denominator != 1:
+        raise ValueError(f"Fractional summon formula result {result} from {expr!r}")
+    return int(result)
+
+
+def _fold_summon_node(node: ast.expr, expr: str) -> Fraction:
+    if isinstance(node, ast.Constant) and type(node.value) is int:
+        return Fraction(node.value)
+    if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.USub):
+        return -_fold_summon_node(node.operand, expr)
+    if isinstance(node, ast.BinOp) and type(node.op) in _SUMMON_OPERATORS:
+        fold = _SUMMON_OPERATORS[type(node.op)]
+        return fold(_fold_summon_node(node.left, expr), _fold_summon_node(node.right, expr))
+    if (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "floor"
+        and len(node.args) == 1
+        and not node.keywords
+    ):
+        return Fraction(math.floor(_fold_summon_node(node.args[0], expr)))
+    raise ValueError(f"Unsupported construct in summon formula {expr!r}: {ast.dump(node)}")
+
+
+def summon_attack_count(monster: Monster, roll_data: SummonRollData) -> int | None:
+    """How many attacks a summoned ``monster``'s Multiattack makes: the first
+    inline formula of its ``multiattack`` description that reads the summon
+    roll data, evaluated at ``roll_data``; ``None`` when there is none.
+
+    SRD 5.2 Draconic Spirit: "The spirit makes a number of Rend attacks equal
+    to half the spell's level (round down)" — Foundry's
+    ``[[floor(@flags.dnd5e.summon.level / 2)]]``. Item enrichers such as
+    ``[[/item Rend]]`` read no roll data and are skipped.
+    """
+    action = next((a for a in monster.actions if a.slug == _MULTIATTACK), None)
+    if action is None:
+        return None
+    for formula in _INLINE_FORMULA.findall(action.description):
+        if _SUMMON_ROLL_DATA in formula:
+            return evaluate_summon_formula(formula, roll_data)
+    return None
+
+
+def summon_magnitudes(
+    monster: Monster,
+    match: SummonMatchBlock,
+    *,
+    spell_attack_bonus: int,
+    proficiency_bonus: int,
+    attack_damage_bonus: int,
+) -> StatBlockMagnitudes:
+    """A summoned ``monster``'s numbers under its spell's ``match`` flags.
+
+    Its own six ability scores; the summoner's Proficiency Bonus when
+    ``match.proficiency`` (SRD 5.2 Draconic Spirit: "PB equals your Proficiency
+    Bonus"), else the stat block's; the summoner's spell attack bonus as a flat
+    to-hit when ``match.attacks`` ("Bonus equals your spell attack modifier");
+    and ``attack_damage_bonus`` on each attack's damage.
+    """
+    scores = monster.ability_scores
+    return StatBlockMagnitudes(
+        ability_scores={
+            "str": scores.str,
+            "dex": scores.dex,
+            "con": scores.con,
+            "int": scores.int,
+            "wis": scores.wis,
+            "cha": scores.cha,
+        },
+        proficiency_bonus=proficiency_bonus if match.proficiency else monster.proficiency_bonus,
+        attack_bonus=spell_attack_bonus if match.attacks else None,
+        attack_damage_bonus=attack_damage_bonus,
+    )
+
+
+@dataclass(frozen=True)
+class SummonRequest:
+    """A creature the orchestrator seats after resolution: the spell that
+    summoned it, its owner, the space it manifests in, the slot level, and the
+    spell's ``bonuses`` / ``match`` blocks its numbers read."""
+
+    spell_id: str
+    owner_id: str
+    cell: str
+    slot_level: int
+    bonuses: SummonBonusesBlock
+    match: SummonMatchBlock
+
+
 __all__ = [
     "CONJURATION_ALLOWLIST",
     "CONSTRUCTS",
     "ENCHANTED_WEAPON_FLAG",
+    "SUMMONS",
     "TRANSFORM_FORM_FLAG",
     "TRANSFORM_RIDERS",
     "WILD_SHAPE_TIERS",
@@ -279,12 +462,18 @@ __all__ = [
     "ConstructRequest",
     "ConstructSpec",
     "StatBlockMagnitudes",
+    "SummonRequest",
+    "SummonRollData",
+    "SummonSpec",
     "TransformRequest",
     "TransformRider",
     "TransformSource",
     "WildShapeTier",
     "construct_attack_activity",
     "enchant_weapon",
+    "evaluate_summon_formula",
+    "summon_attack_count",
+    "summon_magnitudes",
     "uses_summon_roll_data",
     "wild_shape_tier",
 ]

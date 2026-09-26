@@ -24,6 +24,7 @@ from .conjuration import (
     CONJURATION_ALLOWLIST,
     ENCHANTED_WEAPON_FLAG,
     ConstructRequest,
+    SummonRequest,
     TransformRequest,
     TransformSource,
 )
@@ -45,10 +46,10 @@ def _resolve_conjuration(activity: Activity, ctx: ActivityResolutionContext) -> 
     from the orchestrator's pre-validated carrier, returning whether it did.
 
     Only the carrier's source is routed, and only when the input its kind needs
-    is set: a construct's cell, an enchantment's weapon, a transform's form.
-    Anything else (no carrier, another source, a missing input) returns
-    ``False`` and stays narrative — the orchestrator validated legality before
-    anything was spent, so the resolver never refuses."""
+    is set: a construct's or a summon's cell, an enchantment's weapon, a
+    transform's form. Anything else (no carrier, another source, a missing
+    input) returns ``False`` and stays narrative — the orchestrator validated
+    legality before anything was spent, so the resolver never refuses."""
     carrier = ctx.conjuration
     if carrier is None:
         return False
@@ -62,6 +63,18 @@ def _resolve_conjuration(activity: Activity, ctx: ActivityResolutionContext) -> 
                 cell=carrier.cell,
                 slot_level=cast_level,
                 target_ids=tuple(t.entity_id for t in ctx.targets),
+            )
+        )
+        return True
+    if isinstance(activity, SummonActivity) and kind == "summon" and carrier.cell:
+        ctx.summon_requests.append(
+            SummonRequest(
+                spell_id=carrier.source_slug,
+                owner_id=ctx.caster.entity_id,
+                cell=carrier.cell,
+                slot_level=cast_level,
+                bonuses=activity.bonuses,
+                match=activity.match,
             )
         )
         return True

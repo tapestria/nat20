@@ -98,13 +98,19 @@ from dnd5e_engine.activities.conjuration import (
     CONJURATION_ALLOWLIST,
     CONSTRUCTS,
     ENCHANTED_WEAPON_FLAG,
+    SUMMONS,
     TRANSFORM_FORM_FLAG,
     TRANSFORM_RIDERS,
     ConjurationCarrier,
     StatBlockMagnitudes,
+    SummonRequest,
+    SummonRollData,
     TransformSource,
     construct_attack_activity,
     enchant_weapon,
+    evaluate_summon_formula,
+    summon_attack_count,
+    summon_magnitudes,
     uses_summon_roll_data,
     wild_shape_tier,
 )
@@ -133,7 +139,9 @@ from dnd5e_engine.events import (
     AttackFailed,
     AttackRolled,
     CastFailed,
+    CastFailedReason,
     CheckRolled,
+    CombatantJoined,
     CombatantLeft,
     CombatantLeftReason,
     CombatantMoved,
@@ -193,7 +201,7 @@ from dnd5e_engine.rules.conditions import (
 )
 from dnd5e_engine.rules.dice import ability_modifier
 from dnd5e_engine.rules.uses import UsesRollData, evaluate_uses_formula
-from dnd5e_engine.spatial import GridTopology, SpatialTopology, parse_cell
+from dnd5e_engine.spatial import GridTopology, SpatialTopology, cell_id, parse_cell
 from dnd5e_engine.specs import (
     EncounterMemberSpec,
     GridScene,
@@ -3232,6 +3240,9 @@ class _LiveCombat:
     # allegiance is its owner's (``_side_of``), so every reader of the side
     # sets as "the PCs" / "the foes" stays correct.
     summons: dict[str, _Summon] = field(default_factory=dict)
+    # C21 — roster summons each owner has made: never reset and never purged,
+    # so a summon id is never reused.
+    summon_counts: dict[str, int] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -6476,6 +6487,7 @@ def _fold_resolution_outcome(
     _end_superseded_enchantments(live, caster, actx, pre_event_count)
     _apply_concentration_anchor(live, caster, spell, pre_event_count)
     _apply_construct_requests(live, caster, actx)
+    _apply_summon_requests(live, caster, actx)
     _writeback_concentration(live, caster, pre_event_count)
     _record_effect_lifecycle_links(
         live, caster, pre_event_count, concentration_max_rounds=concentration_max_rounds
@@ -8928,6 +8940,7 @@ def _conjuration_gate_failure(
         _readied_conjuration_failure,
         _enchant_cast_failure,
         _construct_cast_failure,
+        _summon_cast_failure,
         _construct_attack_failure,
         _stat_block_attack_failure,
         _wild_shape_failure,
@@ -9006,6 +9019,11 @@ def _conjuration_carrier(
         return ConjurationCarrier(source_slug=source, weapon_slug=intent.weapon_id)
     if kind == "construct":
         return ConjurationCarrier(source_slug=source, cell=_construct_cell(live, current, intent))
+    if kind == "summon":
+        # SRD 5.2 Summon Dragon: the space ``_summon_cast_failure`` accepted.
+        return ConjurationCarrier(
+            source_slug=source, cell=_summon_placement(live, current, intent)[0]
+        )
     if kind == "transform":
         # SRD 5.2 Wild Shape: the Beast form ``_wild_shape_failure`` accepted;
         # a leave names none and resolves nothing.
@@ -9397,6 +9415,228 @@ def _end_anchor_dependents(live: _LiveCombat, event: EffectExpired) -> None:
         _leave_roster(live, summon_id, reason)
 
 
+# ── C21 roster summons (SRD 5.2 Summon Dragon) ─────────────────────────────
+
+
+def _grid_cells_by_distance(topology: GridTopology, origin: str, radius_ft: int) -> list[str]:
+    """Every valid cell within ``radius_ft`` of ``origin`` (Chebyshev), nearest
+    first, ties broken by row, then column: a fixed scan order, so the same
+    combat always places a summon in the same space."""
+    col, row = parse_cell(origin)
+    reach = radius_ft // topology.cell_size_ft
+    ranked = sorted(
+        (max(abs(dc), abs(dr)), row + dr, col + dc)
+        for dr in range(-reach, reach + 1)
+        for dc in range(-reach, reach + 1)
+    )
+    return [cid for _, r, c in ranked if topology.is_valid_cell(cid := cell_id(c, r))]
+
+
+def _summon_placement(
+    live: _LiveCombat, current: Combatant, intent: PlayerIntent
+) -> tuple[str | None, CastFailedReason | None]:
+    """Where a summon cast seats its creature, ``(cell, None)``, or why it
+    cannot, ``(None, reason)``.
+
+    SRD 5.2 Summon Dragon: "It manifests in an unoccupied space that you can
+    see within range". A space is legal when the caster can measure it, it is
+    within the spell's range with line of sight and not behind total cover,
+    and — on a grid, where spaces are exclusive — it is a valid cell no living
+    creature occupies. An explicit ``target_zone_id`` must be legal: an
+    invalid or occupied cell is ``"target_invalid"``, one beyond range or out
+    of sight ``"out_of_range"``. Without one, the first legal cell of the
+    fixed scan outward from the caster (on a zone graph, the caster's own
+    zone). A creature ``target_id`` plays no part: the spell targets a space.
+    """
+    caster_cell = live.actor_zone.get(current.entity_id)
+    spell = get_lib_loader().get_spell(intent.spell_id or "")
+    range_ft = (
+        spell.range.value
+        if spell is not None and spell.range.units == SpellRangeUnits.FEET
+        else None
+    )
+    if caster_cell is None or range_ft is None:
+        return None, "out_of_range"
+    grid = live.topology if isinstance(live.topology, GridTopology) else None
+    occupied = _occupied_cells(live, exclude=()) if grid is not None else set()
+
+    def _free(cell: str) -> bool:
+        return grid is None or (grid.is_valid_cell(cell) and cell not in occupied)
+
+    def _in_sight(cell: str) -> bool:
+        return live.topology.distance_ft(caster_cell, cell) is not None and _in_range_with_los(
+            live.topology, caster_cell, cell, range_ft
+        )
+
+    if intent.target_zone_id is not None:
+        if not _free(intent.target_zone_id):
+            return None, "target_invalid"
+        if not _in_sight(intent.target_zone_id):
+            return None, "out_of_range"
+        return intent.target_zone_id, None
+    if grid is None:
+        return caster_cell, None
+    cell = next(
+        (
+            c
+            for c in _grid_cells_by_distance(grid, caster_cell, range_ft)
+            if _free(c) and _in_sight(c)
+        ),
+        None,
+    )
+    return (cell, None) if cell is not None else (None, "out_of_range")
+
+
+def _summon_cast_failure(
+    live: _LiveCombat, current: Combatant, intent: PlayerIntent
+) -> CombatEvent | None:
+    """``CastFailed`` for a summon cast whose creature has no legal space
+    (``_summon_placement``'s reason), so the refusal spends no slot and no
+    Action; ``None`` for every other intent."""
+    spell_id = intent.spell_id or ""
+    if intent.intent_type != "cast_spell" or CONJURATION_ALLOWLIST.get(spell_id) != "summon":
+        return None
+    _, reason = _summon_placement(live, current, intent)
+    if reason is None:
+        return None
+    return CastFailed(actor_id=current.entity_id, spell_id=spell_id, reason=reason)
+
+
+def _summon_id(live: _LiveCombat, owner_id: str, stat_block_slug: str) -> str:
+    """``summon:<owner>:<stat block>:<n>``, ``n`` counting the owner's summons
+    from 1: a recast or a re-summon never reuses an id."""
+    count = live.summon_counts.get(owner_id, 0) + 1
+    live.summon_counts[owner_id] = count
+    return f"summon:{owner_id}:{stat_block_slug}:{count}"
+
+
+def _summon_insert_index(live: _LiveCombat, owner_id: str) -> int:
+    """The roster slot a new summon of ``owner_id`` takes: right after its
+    owner and after the owner's summons already acting there. SRD 5.2 Summon
+    Dragon: "the creature shares your Initiative count, but it takes its turn
+    immediately after yours" — a slot, never a re-sort (the tie-break by
+    Dexterity could put the creature ahead of its caster)."""
+    ids = [c.entity_id for c in live.initiative]
+    index = ids.index(owner_id) + 1
+    while (
+        index < len(ids)
+        and (summon := live.summons.get(ids[index])) is not None
+        and summon.owner_id == owner_id
+    ):
+        index += 1
+    return index
+
+
+def _summon_combatant(
+    owner: Combatant,
+    monster: Monster,
+    *,
+    entity_id: str,
+    ac: int,
+    hp: int,
+    magnitudes: StatBlockMagnitudes,
+) -> Combatant:
+    """The summoned creature as a ``Monster`` combatant acting from
+    ``monster``'s stat block at its summoner's numbers: ``ac`` and ``hp`` as
+    the spell's bonuses made them, the magnitudes' Proficiency Bonus, and the
+    flat to-hit on the legacy ``attack_bonus`` too. It shares its owner's
+    Initiative count and enters with its full walking Speed."""
+    return Combatant(
+        entity_id=entity_id,
+        entity_type="Monster",
+        name=monster.name,
+        initiative=owner.initiative,
+        hp_current=hp,
+        hp_max=hp,
+        creature_type=monster.creature_type.value,
+        attack_bonus=magnitudes.attack_bonus,
+        movement_remaining=monster.movement.walk or 0,
+        **(
+            _stat_block_fields(monster)
+            | {"ac": ac, "proficiency_bonus_override": magnitudes.proficiency_bonus}
+        ),
+    )
+
+
+def _seat_summon(live: _LiveCombat, caster: Combatant, request: SummonRequest) -> None:
+    """Seat the creature ``request`` summons and announce it with
+    ``CombatantJoined``. Draws nothing.
+
+    SRD 5.2 Summon Dragon: "Use the spell slot's level for the spell's level in
+    the stat block." The spell's ``bonuses`` give the Draconic Spirit's "AC 14
+    + the spell's level" and "HP 50 + 10 for each spell level above 5", and its
+    ``match`` flags the summoner's spell attack and Proficiency Bonus; the
+    Multiattack count reads the slot level. The creature records its caster's
+    concentration anchor, so it leaves when that concentration ends."""
+    monster = get_lib_loader().get_monster(SUMMONS[request.spell_id].stat_block_slug)
+    # The registry test pins that every ``SUMMONS`` stat block loads with an AC.
+    assert monster is not None
+    assert monster.ac is not None
+    ability = _construct_spellcasting_ability(caster)
+    spell_attack, modifier = spell_attack_magnitudes(caster, ability)
+    roll_data = SummonRollData(level=request.slot_level, mod=modifier)
+    ac = monster.ac + evaluate_summon_formula(request.bonuses.ac, roll_data)
+    hp = monster.hp + evaluate_summon_formula(request.bonuses.hp, roll_data)
+    magnitudes = summon_magnitudes(
+        monster,
+        request.match,
+        spell_attack_bonus=spell_attack,
+        proficiency_bonus=proficiency_bonus_of(caster),
+        attack_damage_bonus=evaluate_summon_formula(request.bonuses.attack_damage, roll_data),
+    )
+    count = summon_attack_count(monster, roll_data)
+    entity_id = _summon_id(live, caster.entity_id, monster.slug)
+    index = _summon_insert_index(live, caster.entity_id)
+    after = live.initiative[index - 1].entity_id
+    _insert_into_roster(
+        live,
+        _summon_combatant(
+            caster, monster, entity_id=entity_id, ac=ac, hp=hp, magnitudes=magnitudes
+        ),
+        index,
+        zone_id=request.cell,
+    )
+    live.monster_slug_by_entity[entity_id] = monster.slug
+    live.monster_action_uses_by_entity[entity_id] = _hydrate_monster_action_uses(monster)
+    live.summons[entity_id] = _Summon(
+        entity_id=entity_id,
+        owner_id=caster.entity_id,
+        spell_id=request.spell_id,
+        stat_block_slug=monster.slug,
+        slot_level=request.slot_level,
+        anchor=_anchor_identity(request.spell_id, caster.entity_id),
+        magnitudes=magnitudes,
+        attacks_per_action=count if count is not None else multiattack_count(monster),
+    )
+    _emit(
+        live,
+        CombatantJoined(
+            entity_id=entity_id,
+            name=monster.name,
+            stat_block_slug=monster.slug,
+            origin_caster_id=caster.entity_id,
+            spell_id=request.spell_id,
+            initiative_count=caster.initiative,
+            after_entity_id=after,
+            zone_id=request.cell,
+            hp_max=hp,
+            ac=ac,
+        ),
+    )
+
+
+def _apply_summon_requests(
+    live: _LiveCombat, caster: Combatant, actx: ActivityResolutionContext | None
+) -> None:
+    """Fold step 6: seat each creature this resolution summoned. Runs after the
+    concentration anchor, so the creature records a live identity, and a
+    same-spell recast's drop has already dismissed the old creature."""
+    if actx is None:
+        return
+    for request in actx.summon_requests:
+        _seat_summon(live, caster, request)
+
+
 # ── C21 transformations (SRD 5.2 Wild Shape, Polymorph) ────────────────────
 
 
@@ -9404,29 +9644,40 @@ def _transform_of(live: _LiveCombat, entity_id: str) -> _Transform | None:
     return live.transforms.get(entity_id)
 
 
-def _form_stat_fields(target: Combatant, form: Monster, source: TransformSource) -> dict[str, Any]:
-    """The ``Combatant`` fields a transformation into ``form`` replaces, with
-    the form's values.
+def _stat_block_fields(monster: Monster) -> dict[str, Any]:
+    """The ``Combatant`` fields of a creature acting wholly from ``monster``'s
+    stat block: its physical statistics (``_physical_stat_fields``) and its
+    INT / WIS / CHA, Proficiency Bonus, proficiencies, spellcasting ability and
+    legendary pools. A Polymorph form (SRD 5.2: "The target's game statistics
+    are replaced by the stat block of the chosen Beast") and a summoned
+    creature both take all of them."""
+    scores = monster.ability_scores
+    legendary_actions = _legendary_action_uses_max(monster)
+    legendary_resistances = _legendary_resistance_max(monster)
+    return _physical_stat_fields(monster) | {
+        "intelligence": scores.int,
+        "wisdom": scores.wis,
+        "charisma": scores.cha,
+        "proficiency_bonus_override": monster.proficiency_bonus,
+        "save_proficiencies": [
+            a for a in ABILITY_CODES if getattr(monster.saving_throws, a) is not None
+        ],
+        "skill_proficiencies": [k for k, v in monster.skills.model_dump().items() if v is not None],
+        "skill_expertise": [],
+        "spellcasting_ability": monster.spellcasting_ability,
+        "legendary_actions_max": legendary_actions,
+        "legendary_actions_remaining": legendary_actions,
+        "legendary_resistances_max": legendary_resistances,
+        "legendary_resistances_remaining": legendary_resistances,
+    }
 
-    Both sources swap the physical stat block: AC, STR / DEX / CON, Speed and
-    movement modes, senses, damage and condition traits, trait mechanics, and a
-    5-ft reach (the corpus carries no melee reach). SRD 5.2 Polymorph: "The
-    target's game statistics are replaced by the stat block of the chosen
-    Beast, but the target retains its alignment, personality, creature type,
-    Hit Points, and Hit Point Dice" — so it also takes the form's INT / WIS /
-    CHA, Proficiency Bonus, proficiencies, spellcasting ability and legendary
-    pools. SRD 5.2 Wild Shape: "you retain your creature type; Hit Points; Hit
-    Point Dice; Intelligence, Wisdom, and Charisma scores; class features;
-    languages; and feats. You also retain your skill and saving throw
-    proficiencies and use your Proficiency Bonus for them, in addition to
-    gaining the proficiencies of the creature." A druid's Proficiency Bonus is
-    never below a CR 1 or lower Beast's, so the union already gives "the one in
-    the stat block" whenever that is higher.
-    """
+
+def _physical_stat_fields(form: Monster) -> dict[str, Any]:
+    """AC, STR / DEX / CON, Speed and movement modes, senses, damage and
+    condition traits, trait mechanics, and a 5-ft reach (the corpus carries no
+    melee reach) — the stat block every transformation swaps in."""
     scores = form.ability_scores
-    saves = [a for a in ABILITY_CODES if getattr(form.saving_throws, a) is not None]
-    skills = [k for k, v in form.skills.model_dump().items() if v is not None]
-    fields: dict[str, Any] = {
+    return {
         "ac": form.ac,
         "strength": scores.str,
         "dexterity": scores.dex,
@@ -9452,32 +9703,40 @@ def _form_stat_fields(target: Combatant, form: Monster, source: TransformSource)
         "physical_resistances_nonmagical_only": False,
         "trait_mechanics": [a.mechanic for a in form.special_abilities if a.mechanic is not None],
     }
-    if source == "wild-shape":
-        return fields | {
-            "save_proficiencies": [
-                *target.save_proficiencies,
-                *(a for a in saves if a not in target.save_proficiencies),
-            ],
-            "skill_proficiencies": [
-                *target.skill_proficiencies,
-                *(k for k in skills if k not in target.skill_proficiencies),
-            ],
-        }
-    legendary_actions = _legendary_action_uses_max(form)
-    legendary_resistances = _legendary_resistance_max(form)
-    return fields | {
-        "intelligence": scores.int,
-        "wisdom": scores.wis,
-        "charisma": scores.cha,
-        "proficiency_bonus_override": form.proficiency_bonus,
-        "save_proficiencies": saves,
-        "skill_proficiencies": skills,
-        "skill_expertise": [],
-        "spellcasting_ability": form.spellcasting_ability,
-        "legendary_actions_max": legendary_actions,
-        "legendary_actions_remaining": legendary_actions,
-        "legendary_resistances_max": legendary_resistances,
-        "legendary_resistances_remaining": legendary_resistances,
+
+
+def _form_stat_fields(target: Combatant, form: Monster, source: TransformSource) -> dict[str, Any]:
+    """The ``Combatant`` fields a transformation into ``form`` replaces, with
+    the form's values.
+
+    Both sources swap the physical stat block: AC, STR / DEX / CON, Speed and
+    movement modes, senses, damage and condition traits, trait mechanics, and a
+    5-ft reach (the corpus carries no melee reach). SRD 5.2 Polymorph: "The
+    target's game statistics are replaced by the stat block of the chosen
+    Beast, but the target retains its alignment, personality, creature type,
+    Hit Points, and Hit Point Dice" — so it also takes the form's INT / WIS /
+    CHA, Proficiency Bonus, proficiencies, spellcasting ability and legendary
+    pools. SRD 5.2 Wild Shape: "you retain your creature type; Hit Points; Hit
+    Point Dice; Intelligence, Wisdom, and Charisma scores; class features;
+    languages; and feats. You also retain your skill and saving throw
+    proficiencies and use your Proficiency Bonus for them, in addition to
+    gaining the proficiencies of the creature." A druid's Proficiency Bonus is
+    never below a CR 1 or lower Beast's, so the union already gives "the one in
+    the stat block" whenever that is higher.
+    """
+    if source == "polymorph":
+        return _stat_block_fields(form)
+    saves = [a for a in ABILITY_CODES if getattr(form.saving_throws, a) is not None]
+    skills = [k for k, v in form.skills.model_dump().items() if v is not None]
+    return _physical_stat_fields(form) | {
+        "save_proficiencies": [
+            *target.save_proficiencies,
+            *(a for a in saves if a not in target.save_proficiencies),
+        ],
+        "skill_proficiencies": [
+            *target.skill_proficiencies,
+            *(k for k in skills if k not in target.skill_proficiencies),
+        ],
     }
 
 

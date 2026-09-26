@@ -16,6 +16,7 @@ if TYPE_CHECKING:
         ConjurationCarrier,
         ConstructRequest,
         StatBlockMagnitudes,
+        SummonRequest,
         TransformRequest,
     )
     from dnd5e_engine.types.effects import ActiveEffect
@@ -544,10 +545,12 @@ class ActivityResolutionContext:
     # the resolver never decides legality.
     conjuration: ConjurationCarrier | None = None
     # What an allowlisted conjuration asks the orchestrator to fold after
-    # resolution: a construct to register, a creature to shape-shift (list
-    # mutation on the frozen dataclass, like ``mastery_procs``).
+    # resolution: a construct to register, a creature to shape-shift, a
+    # creature to seat in the initiative order (list mutation on the frozen
+    # dataclass, like ``mastery_procs``).
     construct_requests: list[ConstructRequest] = field(default_factory=list)
     transform_requests: list[TransformRequest] = field(default_factory=list)
+    summon_requests: list[SummonRequest] = field(default_factory=list)
     # SRD 5.2 Magic Weapon: "a +1 bonus to attack rolls and damage rolls". The
     # part of an enchanted weapon's bonus a host-pinned to-hit would drop
     # (``_attack_bonus`` returns a pinned override verbatim, before the
