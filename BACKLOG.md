@@ -151,7 +151,8 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   spell ATTACK** (2026-09-03). Both `hit_by_attack`-trigger drain sites gate
   on an ATTACK activity, not any attack roll: the PC's
   `_drain_pre_resolution_reactions` fires the drain only for
-  `intent.intent_type == "attack"`, and the monster's shared
+  `intent.intent_type == "attack"` (and Spiritual Weapon's cast, whose force
+  attacks at once: C21a), and the monster's shared
   `_resolve_monster_attack_activities` fires it only from the mundane
   attack/legendary-action attack path. A spell attack roll
   (`intent_type == "cast_spell"` on the PC side, `_resolve_monster_cast` on
@@ -245,6 +246,40 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   so a 1-minute or 1-hour cast (Animate Dead, Find Familiar) resolves within
   one turn.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_classify_action_cost`)
+- **Concentration can start for a caster who fell Unconscious during its own
+  cast (2026-09-26, C21a).** SRD 5.2 Incapacitated: "Your Concentration is
+  broken." The fold records concentration after the resolution — C13's
+  writeback and the anchor alike — without checking the caster, so a readied
+  Wall of Ice that drops its own caster to 0 Hit Points (see "A readied spell
+  always targets its own caster") leaves it concentrating until its death.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_apply_concentration_anchor`)
+- **A monster's concentration has no duration cap (2026-09-26, C21a).** SRD
+  5.2 Concentration: "If the effect has a maximum duration, the effect's
+  description specifies how long the creator can concentrate on it: up to 1
+  minute, 1 hour, or some other duration." The monster cast site folds its
+  cast without `concentration_max_rounds`, so a monster's concentration, an
+  anchored one included, outlives the spell's duration and ends only by
+  damage, the Incapacitated condition, death or a new concentration spell.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_resolve_monster_cast`)
+- **A concentration spell cast from an item concentrates only through an
+  effect of its own (2026-09-26, C21a).** SRD 5.2 Staff of Frost: "you can
+  cast one of the spells on the following table from it" — a cast, so its Fog
+  Cloud or Wall of Ice concentrates. The anchor runs at the three cast sites
+  (a turn, a monster's stat block, a Ready) but not at `use_item`, whose fold
+  gets no spell: a Staff of Frost's Fog Cloud leaves no concentration, while a
+  Necklace of Prayer Beads' Bless, which applies a concentration effect, does
+  concentrate. Potions are the SRD's stated exception (see "A potion's spell
+  concentrates").
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_fold_resolution_outcome`)
+- **`CombatOutcome.expended_resources` counts a concentration spell where its
+  effect lands (2026-09-26, C21a).** SRD 5.2: "When you cast a spell, you
+  expend a slot of that spell's level or higher" — the caster's resource,
+  whatever the save. The fold charges a concentration-flagged
+  `EffectApplied` to its target when that target is a party member: a PC's
+  Hold Person or Polymorph that the monster saves against is counted (the
+  anchor sits on the caster), one it fails is not (the effect sits on the
+  monster), and a Polymorph on a PC ally charges the ally.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_emit_apply_effect_applied`)
 
 ## Movement (2026-08-22)
 
@@ -732,6 +767,40 @@ zone + apply logic:
   Magic Weapon on a monster combatant's weapon gives no bonus to hit or
   damage on that monster's own driven turn.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_monster_context_kwargs`)
+- **A Multiattack that "uses" an action counts it as a swing (2026-09-26,
+  C21a).** SRD 5.2 Giant Constrictor Snake: "The snake makes one Bite attack
+  and uses Constrict." `multiattack_count` sums every item the clause names,
+  so the form's Attack action admits two swings and a creature polymorphed
+  into the snake can Bite twice, where the SRD gives one Bite plus Constrict
+  (a save action a host can't command yet). The other 17 corpus Beast
+  Multiattacks count right.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/monster_actions.py::multiattack_count`)
+- **A form's Multiattack count outlives the form within its Attack action
+  (2026-09-26, C21a).** SRD 5.2 Wild Shape: "Your game statistics are replaced
+  by the Beast's stat block" — only while in the form. The revert doesn't
+  re-clamp `attacks_remaining`, so a Druid 4 who Rends once as a Black Bear,
+  takes the Bonus-Action leave and then swings a Scimitar still gets the
+  form's second swing. A monster's own turn has the same shape: a Giant
+  Constrictor Snake form whose Bite breaks the Polymorph's concentration still
+  resolves its Constrict, at the form's DC, after the revert.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_revert_transform_on_expiry`)
+- **A second caster's Polymorph ends the first caster's concentration
+  (2026-09-26, C21a).** SRD 5.2 Combining Spell Effects: "The most recent
+  effect applies if the castings are equally potent and their durations
+  overlap" — the first casting is overridden while both run, and its caster
+  keeps concentrating. Polymorphing an already-polymorphed creature ends the
+  first form with `remove_ieffect`, which drops the first caster's
+  concentration.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_apply_transform`)
+- **A form's skill modifiers lose its stat block's Expertise (2026-09-26,
+  C21a).** SRD 5.2 Polymorph: "The target's game statistics are replaced by
+  the stat block of the chosen Beast"; Wild Shape: "If a skill or saving throw
+  modifier in the Beast's stat block is higher than yours, use the one in the
+  stat block." A form adds only its skill proficiencies, so the 25 corpus
+  Beast skills printed above the ability modifier plus the Proficiency Bonus
+  come out low: a polymorphed Wolf's Perception is +3 against the printed +5,
+  a Giant Spider's Stealth +5 (+6 wild-shaped at Druid 8) against +7.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_form_stat_fields`)
 
 ## Rest & recovery
 
@@ -941,6 +1010,31 @@ zone + apply logic:
 - **Absorb Elements has no reaction path**; Hellish Rebuke is only a
   `last_damaged_by` target validator, not a trigger. (See "Reactions are not
   data-driven" above.)
+- **Four concentration spells raise after spending their slot (2026-09-26,
+  pre-existing).** Delayed Blast Fireball and Tsunami read `@item.uses.value`,
+  Spider Climb reads `@attributes.movement.walk`, and Phantasmal Killer's save
+  names no ability; the formula resolver has no handler for either token and
+  the save resolver refuses an empty ability, so `submit_player_intent` raises
+  `ValueError` once the slot is spent. All four are SRD 5.2 spells ("When you
+  cast a spell, you expend a slot"): the cast should resolve, or be refused
+  before the slot goes.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/formula.py::_resolve_token`)
+- **A readied spell always targets its own caster (2026-09-26,
+  pre-existing).** SRD 5.2 Ready: "When you Ready a spell, you cast it as
+  normal ... but hold its energy, which you release with your Reaction when
+  the trigger occurs." The engine resolves a readied spell with its reactor as
+  the sole target and ignores the `ready` intent's `target_id`, so a readied
+  Sunbeam or Wall of Ice hits its own caster; only a self-targeted spell
+  (Shield) resolves as written.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_resolve_readied_spell_cast`)
+- **A potion's spell concentrates (2026-09-26, pre-existing).** SRD 5.2
+  potions give a spell's effect "(no Concentration required)" — Potion of
+  Speed: "the effect of the *Haste* spell for 1 minute (no Concentration
+  required) without suffering the wave of lethargy". A potion's effects keep
+  the spell's concentration flag and join the drinker's concentration chain,
+  and both options land at once: Potion of Speed applies `effect:hasted` and
+  `effect:lethargy`, Potion of Growth `effect:enlarged` and `effect:reduced`.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_writeback_concentration`)
 
 ## Audit 2026-08-26 — character derivation
 
@@ -1399,6 +1493,15 @@ pool entries.
   values are kept as shipped), and `flying-snake` derives 12 against 14 (a
   recorded divergence in `tests/oracle/known_oracle_divergence.json`).
   (`packages/dnd5e-srd-data/tools/translators/foundry.py::_monster_ac`)
+- **Five Beast attacks differ from SRD 5.2 (2026-09-26, C21a).** Foundry data
+  that Wild Shape and Polymorph now put in a creature's hands: Giant Frog Bite
+  1d6 + 1 (SRD "5 (1d6 + 2) Piercing"), Giant Crab Claw and Giant Octopus
+  Tentacles Slashing (SRD Bludgeoning), Swarm of Insects Bites Piercing (SRD
+  "6 (2d4 + 1) Poison"), and Swarm of Venomous Snakes Bites with no Poison
+  rider (SRD "plus 10 (3d6) Poison damage"). Canonical content flows only
+  through the translator, so the fix is a correction there or a recorded
+  divergence per monster.
+  (`packages/dnd5e-srd-data/tools/translators/foundry.py`)
 
 ---
 
