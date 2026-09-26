@@ -360,7 +360,6 @@ def test_c21_s04_magic_weapon_enchant_grants_plus1_to_hit_and_damage():
     assert enchanted_total > base_total
 
 
-@xfail_cluster(21, "summons, transform, enchant")
 def test_c21_s05_wild_shape_does_not_swap_stat_block_today():
     """C21-S05: SRD 5.2 §Class Features (Wild Shape) — "As a Bonus
     Action, you shape-shift into a Beast form that you have learned for

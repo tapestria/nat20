@@ -33,6 +33,7 @@ from dnd5e_srd_data.schema.common import (
     DamageScalingBlock,
 )
 from dnd5e_srd_data.schema.item import Weapon
+from dnd5e_srd_data.schema.monster import Monster
 
 from dnd5e_engine.events import DamageType
 from dnd5e_engine.types.effects import ActiveEffect
@@ -209,11 +210,52 @@ class StatBlockMagnitudes:
     proficiency_bonus: int
 
 
+@dataclass(frozen=True)
+class WildShapeTier:
+    """One row of SRD 5.2's Beast Shapes table: from Druid level ``min_level``,
+    a Beast form of Challenge Rating up to ``max_cr``, with a Fly Speed only
+    when ``fly_allowed``."""
+
+    min_level: int
+    max_cr: float
+    fly_allowed: bool
+
+
+# SRD 5.2 Wild Shape, Beast Shapes table — Druid level 2: Max CR 1/4, no Fly
+# Speed; level 4: 1/2, no Fly Speed; level 8: 1, Fly Speed.
+WILD_SHAPE_TIERS: Final[tuple[WildShapeTier, ...]] = (
+    WildShapeTier(min_level=2, max_cr=0.25, fly_allowed=False),
+    WildShapeTier(min_level=4, max_cr=0.5, fly_allowed=False),
+    WildShapeTier(min_level=8, max_cr=1.0, fly_allowed=True),
+)
+
+
+def wild_shape_tier(druid_level: int) -> WildShapeTier | None:
+    """The Beast Shapes row a Druid of ``druid_level`` uses; ``None`` below
+    level 2, where there is no Wild Shape."""
+    rows = [tier for tier in WILD_SHAPE_TIERS if tier.min_level <= druid_level]
+    return rows[-1] if rows else None
+
+
+# The roll data a summon stat block reads from the spell that summons it
+# (``@flags.dnd5e.summon.level`` / ``.mod``).
+_SUMMON_ROLL_DATA: Final = "@flags.dnd5e.summon"
+
+
+def uses_summon_roll_data(monster: Monster) -> bool:
+    """True for a summon stat block such as Giant Insect: its formulas read the
+    summoning spell's level and its caster's modifier, so its numbers are
+    undefined without a summoner and it is never a Wild Shape or Polymorph
+    form."""
+    return _SUMMON_ROLL_DATA in monster.model_dump_json()
+
+
 __all__ = [
     "CONJURATION_ALLOWLIST",
     "CONSTRUCTS",
     "ENCHANTED_WEAPON_FLAG",
     "TRANSFORM_FORM_FLAG",
+    "WILD_SHAPE_TIERS",
     "ConjurationCarrier",
     "ConjurationKind",
     "ConstructRequest",
@@ -221,6 +263,9 @@ __all__ = [
     "StatBlockMagnitudes",
     "TransformRequest",
     "TransformSource",
+    "WildShapeTier",
     "construct_attack_activity",
     "enchant_weapon",
+    "uses_summon_roll_data",
+    "wild_shape_tier",
 ]

@@ -98,11 +98,14 @@ from dnd5e_engine.activities.conjuration import (
     CONJURATION_ALLOWLIST,
     CONSTRUCTS,
     ENCHANTED_WEAPON_FLAG,
+    TRANSFORM_FORM_FLAG,
     ConjurationCarrier,
     StatBlockMagnitudes,
     TransformSource,
     construct_attack_activity,
     enchant_weapon,
+    uses_summon_roll_data,
+    wild_shape_tier,
 )
 from dnd5e_engine.activities.context import ActivityResolutionContext
 from dnd5e_engine.activities.d20 import AdvantageSources, roll_d20_test
@@ -3616,6 +3619,9 @@ def _end_what_incapacitation_ends(live: _LiveCombat, entity_id: str, condition: 
     # incapacitated combatant is grappling.
     _release_grapple_victims_of(live, entity_id)
     _end_rage_on_incapacitation(live, entity_id, condition)
+    # SRD 5.2 Wild Shape: the form lasts "until you ... have the Incapacitated
+    # condition".
+    _end_wild_shape(live, entity_id, "incapacitated")
 
 
 def _strip_condition_from_combatant(live: _LiveCombat, entity_id: str, condition: str) -> None:
@@ -5285,6 +5291,9 @@ def _record_death(live: _LiveCombat, event: Death, *, killer_id: str | None) -> 
     # inside the _emit fold: the cascade emits no DamageApplied/Death, so
     # it cannot recurse into death synthesis.
     _drop_concentration(live, event.target_id)
+    # SRD 5.2 Wild Shape: "...or die"; shape-shifting: "You revert to your true
+    # form if you die."
+    _end_wild_shape(live, event.target_id, "source_dead")
 
 
 # ── Sidecar hydration (per-evaluation projection of session state) ──────────
@@ -6428,6 +6437,7 @@ def _fold_resolution_outcome(
     chain and end a different concentration the caster held before this
     resolution. ``actx`` is the resolution's context, ``None`` when nothing
     resolved."""
+    _apply_transform_requests(live, caster, actx)
     _end_superseded_enchantments(live, caster, actx, pre_event_count)
     _apply_concentration_anchor(live, caster, spell, pre_event_count)
     _apply_construct_requests(live, caster, actx)
@@ -6502,6 +6512,11 @@ _PERSISTENT_RAGE_FEATURE: Final = "persistent-rage"
 # The id ``passive_effect_to_active_effect`` gives the corpus effect named
 # "Rage"; a Rage a host seeds through ``start_combat`` carries it too.
 _RAGE_EFFECT_ID: Final = "effect:rage"
+
+_WILD_SHAPE_FEATURE: Final = "wild-shape"
+# The effect a Wild Shape form rides (C21): not concentration; it ends through
+# ``_end_wild_shape``.
+_WILD_SHAPE_EFFECT_ID: Final = "effect:wild-shape"
 
 
 def _rage_effect(live: _LiveCombat, entity_id: str) -> ActiveEffect | None:
@@ -7787,6 +7802,11 @@ class _FeatureInvocation:
     # Bonus-Action extension, not a new Rage: it applies nothing
     # (``_resolve_intent_activities``) and spends no use (``use_cost`` 0).
     extends_rage: bool = False
+    # SRD 5.2 Wild Shape — "You can also leave the form early as a Bonus
+    # Action." A ``wild-shape`` invocation without ``form_id`` by a creature in
+    # a Wild Shape form: it applies nothing (``_resolve_intent_activities``),
+    # spends no use (``use_cost`` 0), and ``_leave_wild_shape`` ends the form.
+    leaves_form: bool = False
     # SRD 5.2 §Limited-Use Features — the per-rest use cap resolved
     # from the feature's typed ``uses`` block (a literal or a ``@scale.*`` max
     # resolved against the caster's ScaleValue map), or ``None`` when the feature
@@ -7913,6 +7933,15 @@ def _record_rage_extension(
     ``engine:rage-extension`` hook; a no-op for every other intent."""
     if feature_invocation is not None and feature_invocation.extends_rage:
         live.rage_bonus_extensions.add(actor_id)
+
+
+def _leave_wild_shape(
+    live: _LiveCombat, actor_id: str, feature_invocation: _FeatureInvocation | None
+) -> None:
+    """End the form of a committed Bonus-Action Wild Shape leave; a no-op for
+    every other intent."""
+    if feature_invocation is not None and feature_invocation.leaves_form:
+        _end_wild_shape(live, actor_id, "remove_ieffect")
 
 
 def _item_use_counter_key(item_id: str) -> str:
@@ -8257,6 +8286,7 @@ def _resolve_feature_invocation(
     *,
     pool_points: int | None = None,
     raging: bool = False,
+    leaving_form: bool = False,
 ) -> _FeatureInvocation | None:
     """Resolve a USE_FEATURE intent to its single concrete activity, or ``None``.
 
@@ -8274,7 +8304,8 @@ def _resolve_feature_invocation(
     Rage / Second Wind activate as a Bonus Action (``activation.type ==
     "bonus"``); that does NOT end the turn, so the actor may rage then swing on
     the same turn. ``raging``: the caster already has a live Rage (see
-    ``_FeatureInvocation.extends_rage``).
+    ``_FeatureInvocation.extends_rage``). ``leaving_form``: the caster is in a
+    Wild Shape form and names none (see ``_FeatureInvocation.leaves_form``).
     """
     if feature_id not in _granted_feature_slugs(caster):
         _LOGGER.warning(
@@ -8324,6 +8355,8 @@ def _resolve_feature_invocation(
         # raging, the invocation extends it: the Bonus Action, no use, nothing
         # applied.
         return replace(invocation, use_cost=0, extends_rage=True)
+    if leaving_form and feature_id == _WILD_SHAPE_FEATURE:
+        return replace(invocation, use_cost=0, leaves_form=True)
     return invocation
 
 
@@ -8708,6 +8741,7 @@ def _conjuration_gate_failure(
         _construct_cast_failure,
         _construct_attack_failure,
         _stat_block_attack_failure,
+        _wild_shape_failure,
     )
     for check in checks:
         failure = check(live, current, intent)
@@ -8782,6 +8816,14 @@ def _conjuration_carrier(
         return ConjurationCarrier(source_slug=source, weapon_slug=intent.weapon_id)
     if kind == "construct":
         return ConjurationCarrier(source_slug=source, cell=_construct_cell(live, current, intent))
+    if kind == "transform":
+        # SRD 5.2 Wild Shape: the Beast form ``_wild_shape_failure`` accepted;
+        # a leave names none and resolves nothing.
+        return (
+            ConjurationCarrier(source_slug=source, form_slug=intent.form_id)
+            if intent.form_id
+            else None
+        )
     return None
 
 
@@ -8965,6 +9007,39 @@ def _stat_block_attack_failure(
         return AttackFailed(
             actor_id=current.entity_id, target_id=intent.target_id, reason="out_of_range"
         )
+    return None
+
+
+def _wild_shape_failure(
+    live: _LiveCombat, current: Combatant, intent: PlayerIntent
+) -> CombatEvent | None:
+    """SRD 5.2 Wild Shape (C21): ``use_feature`` of the allowlisted
+    ``"transform"`` feature names its Beast form in ``form_id``, checked
+    against the Beast Shapes table before anything is spent.
+    ``CastFailed(spell_id="", reason="invalid_form")`` for no ``form_id``
+    outside a Wild Shape form; a slug that is no usable Beast
+    (``_validated_beast_form``); a form above the Druid level's Max CR, or with
+    a Fly Speed below Druid level 8; or a creature under Polymorph, whose game
+    statistics — class features included — are its Beast's. No ``form_id``
+    inside a Wild Shape form is the Bonus-Action leave. ``None`` for every
+    other intent."""
+    if (
+        intent.intent_type != "use_feature"
+        or CONJURATION_ALLOWLIST.get(intent.feature_id or "") != "transform"
+        or (intent.form_id is None and _is_wild_shaped(live, current.entity_id))
+    ):
+        return None
+    form = _validated_beast_form(intent.form_id)
+    tier = wild_shape_tier(_class_levels(current).get("druid", 0))
+    transform = _transform_of(live, current.entity_id)
+    if (
+        form is None
+        or tier is None
+        or form.cr > tier.max_cr
+        or (bool(form.movement.fly) and not tier.fly_allowed)
+        or (transform is not None and transform.source == "polymorph")
+    ):
+        return CastFailed(actor_id=current.entity_id, spell_id="", reason="invalid_form")
     return None
 
 
@@ -9290,6 +9365,66 @@ def _revert_transform_on_expiry(live: _LiveCombat, event: EffectExpired) -> None
     if transform.clears_temp_hp_on_end:
         live.tracked_temp_hp[event.target_id] = 0
         _update_combatant(live, event.target_id, temp_hp=0)
+
+
+def _validated_beast_form(form_id: str | None) -> Monster | None:
+    """The corpus Beast ``form_id`` names when a shape-shift can take it (C21:
+    Wild Shape and Polymorph turn a creature into "a Beast form"): a Beast
+    stat block with an Armor Class that is not a summon stat block. ``None``
+    for an unknown slug, a non-Beast or an unusable stat block."""
+    form = get_lib_loader().get_monster(form_id) if form_id else None
+    if (
+        form is None
+        or form.creature_type != "beast"
+        or form.ac is None
+        or uses_summon_roll_data(form)
+    ):
+        return None
+    return form
+
+
+def _is_wild_shaped(live: _LiveCombat, entity_id: str) -> bool:
+    """``entity_id`` is in a Wild Shape form; a polymorphed creature has no
+    form of its own to leave."""
+    transform = _transform_of(live, entity_id)
+    return transform is not None and transform.source == "wild-shape"
+
+
+def _end_wild_shape(live: _LiveCombat, entity_id: str, reason: EffectExpiryReason) -> None:
+    """End ``entity_id``'s Wild Shape form, if it is in one. SRD 5.2: "You stay
+    in that form ... until you use Wild Shape again, have the Incapacitated
+    condition, or die. You can also leave the form early as a Bonus Action."
+    A Polymorph form is its spell's to end."""
+    if _is_wild_shaped(live, entity_id):
+        _end_transform(live, entity_id, reason)
+
+
+def _apply_transform_requests(
+    live: _LiveCombat, caster: Combatant, actx: ActivityResolutionContext | None
+) -> None:
+    """Fold step 1 (C21): shape-shift every creature this resolution's
+    ``transform`` activity asked for — Wild Shape, into the form
+    ``_wild_shape_failure`` validated. SRD 5.2: "When you assume a Wild Shape
+    form, you gain a number of Temporary Hit Points equal to your Druid
+    level." The form is not concentration; ``_end_wild_shape`` ends it."""
+    for request in actx.transform_requests if actx is not None else ():
+        form = _validated_beast_form(request.form_slug)
+        if form is None:  # validated before anything was spent
+            continue
+        _apply_transform(
+            live,
+            request.target_id,
+            form,
+            source=request.source,
+            effect=ActiveEffect(
+                id=_WILD_SHAPE_EFFECT_ID,
+                name="Wild Shape",
+                origin=f"cast:{_WILD_SHAPE_FEATURE}:{request.target_id}",
+                target_id=request.target_id,
+                flags={TRANSFORM_FORM_FLAG: request.form_slug},
+            ),
+            temp_hp=_class_levels(caster).get("druid", 0),
+        )
 
 
 def _stat_block_magnitudes_of(live: _LiveCombat, current: Combatant) -> StatBlockMagnitudes | None:
@@ -10273,9 +10408,13 @@ def _resolve_intent_activities(
         # returned early there; reaching here means ``feature_invocation`` holds
         # the resolved activity + its PassiveEffect riders.
         assert feature_invocation is not None
-        # A Rage extension resolves nothing: the Rage it extends is already on
-        # the caster.
-        activities = [] if feature_invocation.extends_rage else feature_invocation.activities
+        # A Rage extension or a Wild Shape leave resolves nothing: the Rage it
+        # extends is already on the caster, and the form's end is committed.
+        activities = (
+            []
+            if feature_invocation.extends_rage or feature_invocation.leaves_form
+            else feature_invocation.activities
+        )
         feature_passive_effects = feature_invocation.passive_effects
     return _ResolvedActivities(
         activities=activities,
@@ -10986,6 +11125,7 @@ async def submit_player_intent(
             intent.activity_id,
             pool_points=intent.pool_points,
             raging=_rage_effect(live, actor_id) is not None,
+            leaving_form=intent.form_id is None and _is_wild_shaped(live, actor_id),
         )
         if feature_invocation is None:
             return
@@ -11182,6 +11322,10 @@ async def submit_player_intent(
     # SRD 5.2 Rage — a committed Bonus-Action extension, read by this turn's
     # ``engine:rage-extension`` hook.
     _record_rage_extension(live, actor_id, feature_invocation)
+
+    # SRD 5.2 Wild Shape — a committed Bonus-Action leave ends the form (no-op
+    # for every other intent).
+    _leave_wild_shape(live, actor_id, feature_invocation)
 
     # SRD 5.2 Flurry of Blows — the committed invocation owes the monk its
     # Unarmed Strikes (no-op for every other intent).
