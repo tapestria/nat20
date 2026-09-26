@@ -181,9 +181,11 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   the bearer drops without rolling.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/apply.py`)
 - **A template monster attacks at its spec's `attack_bonus`, +0 by default
-  (2026-09-25, C21a).** Its to-hit, every `@mod` it rolls and its fallback
-  save DC (`8 + attack_bonus`) come from `EncounterMemberSpec.attack_bonus`,
-  not its stat block, and a natural weapon's base damage (folded into
+  (2026-09-25, C21a).** Its to-hit, every `@mod` it rolls, its passive skill
+  scores (`@skills.<code>.passive`: a template Crocodile's grapple escape DC is
+  `10 + attack_bonus`, where SRD 5.2 says 12) and its fallback save DC
+  (`8 + attack_bonus`) come from `EncounterMemberSpec.attack_bonus`, not its
+  stat block, and a natural weapon's base damage (folded into
   `parts[0]` without Foundry's implicit `@mod`) adds no ability modifier: by
   default a Tough's Mace rolls d20 + 0 for 1d6 where SRD 5.2 says +4 and
   1d6 + 2. Only a transformed creature gets its stat block's real numbers

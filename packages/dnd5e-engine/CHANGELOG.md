@@ -663,7 +663,10 @@ Behavioural deltas (and the fixtures they move) are enumerated in
   Bite: "the target ... has the Grappled condition (escape DC 12)" — so any
   caster hitting the token, transformed or not, raised `ValueError: Unhandled
   roll-data token`. It now resolves `10 + ability modifier + proficiency bonus
-  (doubled with Expertise) when the caster is proficient in that skill`.
+  (doubled with Expertise) when the caster is proficient in that skill`: a
+  transformed creature's form gives the SRD escape DC (a Crocodile's 12), while
+  a template monster's uniform `attack_bonus` numbers give `10 + attack_bonus`
+  (BACKLOG).
 - **A save action whose DC names an ability no longer crashes (C21a).**
   `activities/save.py` resolved only the `spellcasting` and `flat` DC
   calculations, so a save resolved without a fixed DC — a transformed

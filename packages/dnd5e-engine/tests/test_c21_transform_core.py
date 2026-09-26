@@ -1,6 +1,6 @@
 """The transformation core (C21): stash, swap and revert a creature's stat
 block for SRD 5.2 Wild Shape and Polymorph, driven directly through
-``_apply_transform`` / ``_end_transform`` (Tasks 9 and 10 add the producers)."""
+``_apply_transform`` / ``_end_transform`` rather than their intents."""
 
 from __future__ import annotations
 
@@ -60,7 +60,7 @@ def _shape(
     temp_hp: int = 6,
     caster_id: str = "char:wiz",
 ) -> None:
-    """Transform ``entity_id`` as the Wild Shape / Polymorph producers will:
+    """Transform ``entity_id`` as the Wild Shape / Polymorph producers do:
     Wild Shape's own effect on the druid, or Polymorph's concentration effect
     keyed to its caster."""
     form = LOADER.get_monster(form_slug)
