@@ -7,14 +7,18 @@ presence of the mechanic the SRD 5.2 text requires, and strict-xfails
 until the PR that lands it. Contract repairs S04, S05 and S06 were
 approved on 2026-09-25 (C21a plan R1): Magic Weapon names the weapon it
 touches, and Wild Shape and Polymorph name their Beast form
-(``PlayerIntent.form_id``).
+(``PlayerIntent.form_id``). Contract repair S02 was approved on
+2026-09-25 (C21b plan R1): the summon's own turn is driven before the
+breaker's, and its id is read from ``CombatantJoined``.
 """
 
 from __future__ import annotations
 
-from dnd5e_engine import ActiveEffect, ActiveEffectDuration, PlayerIntent
+from dnd5e_engine import PlayerIntent
 from dnd5e_engine.events import (
     AttackRolled,
+    CombatantJoined,
+    CombatantLeft,
     ConcentrationDropped,
     DamageApplied,
     EffectApplied,
@@ -95,35 +99,19 @@ def test_c21_s01_summon_dragon_casts_with_zero_roster_growth():
 def test_c21_s02_losing_concentration_dismisses_the_summoned_dragon():
     """C21-S02: SRD 5.2 §Spell Descriptions (Summon Dragon) — "The
     creature disappears when it drops to 0 Hit Points or when the spell
-    ends." ``_drop_concentration`` cascades ``ConcentrationDropped`` +
-    ``EffectExpired`` + ``ConditionRemoved`` today, but it does not
-    know about summoned combatants because none can exist yet (per
-    C21-S01) — there is no ``CombatantLeft`` event at all.
-
-    Empirically verified in this worktree (``uv run python`` probe
-    against the real seeded engine, ``rng_seed`` 1-29): casting
-    ``summon-dragon`` alone registers NO ``concentration_chain`` entry
-    at all, because the ``summon``-kind activity resolves to a
-    narrative no-op (per C21-S01) that never creates an ``ActiveEffect``
-    — so no seed ever produces a Constitution save from
-    ``mon:breaker``'s hit; the concentration-check mechanism the
-    catalog's "if the save fails by seed" hedge presumes never even
-    fires. To exercise the REAL, already-working half of this scenario
-    (does an existing concentration effect actually break on damage),
-    an ``ActiveEffect(flags={"concentration": True})`` is seeded on
-    ``char:druid`` at ``start_combat`` time — standing in for the
-    concentration link ``summon-dragon``'s cast SHOULD have registered
-    — via the same ``active_effects=`` seam C12/C13 use.
-    ``monster_template_slug="hill-giant"`` is required for
-    ``mon:breaker`` to attack at all: a monster with no
-    ``monster_template_slug`` has no typed action repertoire and
-    resolves its turn to a bare ``pass`` (``advance_monster_turn``
-    only reads ``Monster.actions`` off the lib loader by slug — the
-    legacy flat ``attack_bonus``/``damage_dice`` fields on
-    ``EncounterMemberSpec`` are read nowhere in that path). With both
-    fixes, ``rng_seed=4`` was empirically confirmed to produce a single
-    Tree Club hit (17 damage) and a failed CON save
-    (``roll_total=5`` vs ``dc=10``) — a real ``ConcentrationDropped``.
+    ends"; "In combat, the creature shares your Initiative count, but it
+    takes its turn immediately after yours... If you don't issue any, it
+    takes the Dodge action". §Concentration — "The DC equals 10 or half
+    the damage taken (round down)". Contract repair (plan R1): the cast
+    registers its own concentration, so no stand-in effect is seeded; the
+    summon's id is read from ``CombatantJoined``; and its uncommanded turn
+    (the Dodge) is driven before ``mon:breaker``'s, since it acts right
+    after the druid. Seed 4: the cast and the Dodge draw nothing;
+    ``mon:breaker`` (the Hill Giant stat block) rolls d20 8 (a miss), then
+    d20 10 (a hit) with Tree Club 3d8 = 17 against ``char:druid`` — the
+    lowest-HP target, at 15 against the summon's 50; the sixth draw is the
+    Constitution save, d20 5 against DC 10, a fail. The drop precedes the
+    0-HP branch, so the summon leaves with ``concentration_drop``.
     """
 
     async def _run():
@@ -167,18 +155,6 @@ def test_c21_s02_losing_concentration_dismisses_the_summoned_dragon():
             ],
             scene_zones=None,
             grid_scene=GridScene(width=10, height=10, wall_segments=[]),
-            active_effects=[
-                # Stands in for the concentration link summon-dragon's
-                # cast SHOULD register today (per C21-S01, it doesn't).
-                ActiveEffect(
-                    id="effect:summon-dragon-concentration",
-                    name="Summon Dragon",
-                    origin="cast:summon-dragon:char:druid",
-                    target_id="char:druid",
-                    duration=ActiveEffectDuration(rounds=10),
-                    flags={"concentration": True},
-                ),
-            ],
             rng_seed=4,
         )
         live = _get_live(start.handle)
@@ -189,30 +165,28 @@ def test_c21_s02_losing_concentration_dismisses_the_summoned_dragon():
                 intent_type="cast_spell", spell_id="summon-dragon", target_id="mon:foe"
             ),
         )
+        await advance_monster_turn(start.handle)  # the summon's uncommanded turn: the Dodge
         roster_before_hit = len(live.initiative)
         await advance_monster_turn(start.handle)  # mon:breaker attacks char:druid
         return live, roster_before_hit
 
     live, roster_before_hit = run_async(_run())
 
-    assert events_of(live, ConcentrationDropped), (
+    joined = [e for e in events_of(live, CombatantJoined) if e.origin_caster_id == "char:druid"]
+    assert len(joined) == 1
+    summon_id = joined[0].entity_id
+
+    dropped = events_of(live, ConcentrationDropped)
+    assert dropped, (
         "rng_seed=4 is empirically verified (see docstring) to fail "
         "char:druid's concentration save against mon:breaker's hit"
     )
-
-    # API delta (C21): CombatantLeft does not exist on events.py today —
-    # its absence (via AttributeError) drives this scenario's xfail
-    # regardless of the roster-shrink assertion below.
-    from dnd5e_engine import events as events_module
-
-    combatant_left_cls = events_module.CombatantLeft
-    left_events = [
-        e
-        for e in live.event_log
-        if isinstance(e, combatant_left_cls) and e.reason == "concentration_drop"
-    ]
-    assert left_events, "a dismissed summon should leave the roster on ConcentrationDropped"
-    assert len(live.initiative) < roster_before_hit
+    assert all(e.target_id == "char:druid" for e in dropped)
+    left_events = [e for e in events_of(live, CombatantLeft) if e.reason == "concentration_drop"]
+    assert [e.entity_id for e in left_events] == [summon_id], (
+        "a dismissed summon should leave the roster on ConcentrationDropped"
+    )
+    assert len(live.initiative) == roster_before_hit - 1
 
 
 def test_c21_s03_spiritual_weapon_casts_with_no_attack_roll():

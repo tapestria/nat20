@@ -1,5 +1,5 @@
-"""Seeded grid combats shared by the C21a tests: the concentration anchor,
-Magic Weapon, Spiritual Weapon, Wild Shape and Polymorph."""
+"""Seeded grid combats shared by the C21 tests: the concentration anchor,
+Magic Weapon, Spiritual Weapon, Wild Shape, Polymorph and Summon Dragon."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import asyncio
 from typing import Any
 
 from dnd5e_engine import CombatHandle, PlayerIntent
+from dnd5e_engine.events import CombatantJoined
 from dnd5e_engine.orchestrator import (
     _get_live,
     _LiveCombat,
@@ -117,3 +118,30 @@ def combatant(live: _LiveCombat, entity_id: str = "char:hero") -> Combatant:
 
 def events[T](live: _LiveCombat, kind: type[T]) -> list[T]:
     return [e for e in live.event_log if isinstance(e, kind)]
+
+
+# ── C21b: roster summons ─────────────────────────────────────────────────────
+
+
+def summoner(entity_id: str = "char:summoner", **fields: Any) -> PartyMemberSpec:
+    """A Wizard 9 with INT 18 at cell 0,0 who acts first: spell attack +8
+    (PB 4 + INT 4), spellcasting modifier +4. Knows Summon Dragon and Fog Cloud
+    (a rider-less concentration spell); two level-5 slots and one level-1 slot."""
+    base: dict[str, Any] = {
+        "class_slug": "wizard",
+        "character_level": 9,
+        "intelligence": 18,
+        "spells_known": ["summon-dragon", "fog-cloud"],
+        "spell_slots": {1: 1, 5: 2},
+    }
+    return pc(entity_id, **(base | fields))
+
+
+def joined(live: _LiveCombat, owner_id: str) -> list[CombatantJoined]:
+    """The ``CombatantJoined`` events of the summons ``owner_id`` made, in order."""
+    return [e for e in events(live, CombatantJoined) if e.origin_caster_id == owner_id]
+
+
+def roster(live: _LiveCombat) -> list[str]:
+    """The initiative order as entity ids."""
+    return [c.entity_id for c in live.initiative]

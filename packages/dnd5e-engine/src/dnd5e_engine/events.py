@@ -631,6 +631,53 @@ class ReactionTriggered(BaseModel):
     trigger_event_uuid: str
 
 
+# ── roster ──────────────────────────────────────────────────────────────────
+
+#: Why a summoned creature left the initiative order (C21). SRD 5.2 Summon
+#: Dragon: "The creature disappears when it drops to 0 Hit Points or when the
+#: spell ends."
+CombatantLeftReason = Literal["concentration_drop", "spell_ended", "zero_hp"]
+
+
+class CombatantJoined(BaseModel):
+    """A summoned creature joined the initiative order mid-combat (C21).
+
+    SRD 5.2 Summon Dragon: "In combat, the creature shares your Initiative
+    count, but it takes its turn immediately after yours." The event carries
+    everything a host needs to seat the creature itself; it is emitted once
+    the creature is in the order, so a live view read on it already lists it.
+    """
+
+    type: Literal["combatant_joined"] = "combatant_joined"
+    entity_id: str  # "summon:<owner>:<stat block>:<n>"
+    name: str  # the stat block's name ("Draconic Spirit")
+    stat_block_slug: str
+    origin_caster_id: str
+    spell_id: str
+    initiative_count: int  # the caster's count: "shares your Initiative count"
+    after_entity_id: str  # acts right after it: its caster, or that caster's previous summon
+    zone_id: str
+    hp_max: int
+    ac: int
+
+
+class CombatantLeft(BaseModel):
+    """A summoned creature left the initiative order (C21).
+
+    SRD 5.2 Summon Dragon: "The creature disappears when it drops to 0 Hit
+    Points or when the spell ends." ``concentration_drop`` when its caster's
+    concentration on the spell ends for any reason but the spell's maximum
+    duration, ``spell_ended`` at that duration, ``zero_hp`` at 0 Hit Points.
+    Emitted once the creature is out of the order: a live view read on it no
+    longer lists it, and when it was the current actor the next creature's
+    turn follows at once.
+    """
+
+    type: Literal["combatant_left"] = "combatant_left"
+    entity_id: str
+    reason: CombatantLeftReason
+
+
 # ── combat lifecycle ────────────────────────────────────────────────────────
 
 
@@ -693,6 +740,8 @@ CombatEvent = Annotated[
     | ZoneTransit
     | ActorMoved
     | CombatantMoved
+    | CombatantJoined
+    | CombatantLeft
     | DashTaken
     | MoveFailed
     | AttackFailed
@@ -737,6 +786,8 @@ ALL_COMBAT_EVENT_TYPES: tuple[type[BaseModel], ...] = (
     ZoneTransit,
     ActorMoved,
     CombatantMoved,
+    CombatantJoined,
+    CombatantLeft,
     DashTaken,
     MoveFailed,
     AttackFailed,
@@ -763,6 +814,9 @@ __all__ = [
     "CheckRolled",
     "CombatEnded",
     "CombatEvent",
+    "CombatantJoined",
+    "CombatantLeft",
+    "CombatantLeftReason",
     "CombatantMoved",
     "ConcentrationCheck",
     "ConcentrationDropped",
