@@ -2355,15 +2355,8 @@ def _monster_cast_candidate(
             continue
         if spell.casting_time.unit not in ("action", "bonus", "reaction"):
             continue
-        # A construct spell attacks through its force (SRD 5.2 Spiritual
-        # Weapon: "you can immediately make one melee spell attack"), so it is
-        # offensive although its only activity is a ``summon``.
-        if (
-            not any(
-                isinstance(a, (AttackActivity, SaveActivity, DamageActivity))
-                for a in spell.activities
-            )
-            and CONJURATION_ALLOWLIST.get(spell.slug) != "construct"
+        if not any(
+            isinstance(a, (AttackActivity, SaveActivity, DamageActivity)) for a in spell.activities
         ):
             continue
         return activity, spell
@@ -2644,17 +2637,6 @@ def _resolve_monster_cast(
     resolves from the monster's current position).
     """
     target_list = [chosen_target]
-    if CONJURATION_ALLOWLIST.get(spell.slug) == "construct":
-        # The force's immediate attack answers the target's readied reactions
-        # (Shield) before this resolution's event slice, as every attack path
-        # drains them: inside the slice, C13's fold would record a readied
-        # concentration spell as this caster's.
-        _drain_targeted_reactions(
-            live,
-            trigger="hit_by_attack",
-            triggering_actor_id=current.entity_id,
-            targets=target_list,
-        )
     slot_level = activity.spell.level if activity.spell.level is not None else spell.level
     spellcasting_ability = activity.spell.ability or current.spellcasting_ability
 
@@ -2671,7 +2653,6 @@ def _resolve_monster_cast(
         concentration=spell.concentration,
         source_passive_effects=list(spell.passive_effects),
         spell_book=_build_cast_spell_book(spell.activities),
-        conjuration=_monster_conjuration_carrier(live, spell, chosen_target),
         **_monster_context_kwargs(live, current, target_list, payload),
     )
     _emit_spell_cast(live, current.entity_id, spell, slot_level)
@@ -9074,18 +9055,6 @@ def _polymorph_form_failure(
     if form is None or ceiling is None or form.cr > ceiling:
         return CastFailed(actor_id=current.entity_id, spell_id=spell_id, reason="invalid_form")
     return None
-
-
-def _monster_conjuration_carrier(
-    live: _LiveCombat, spell: Spell, target: Combatant
-) -> ConjurationCarrier | None:
-    """The monster cast path's carrier: an allowlisted construct appears in the
-    AI's chosen target's space, since the AI picks no cell. ``None`` for
-    every other spell, which stays on its narrative branch."""
-    cell = live.actor_zone.get(target.entity_id)
-    if CONJURATION_ALLOWLIST.get(spell.slug) != "construct" or cell is None:
-        return None
-    return ConjurationCarrier(source_slug=spell.slug, cell=cell)
 
 
 def _apply_construct_requests(

@@ -52,9 +52,8 @@ caster or a grappler Incapacitated.
 C21a changes results wherever a concentration spell applies no concentration
 effect of its own (it now concentrates, so an earlier concentration ends and
 later damage draws a Constitution save), for readied concentration spells,
-for Magic Weapon, Wild Shape and Polymorph intents that name no weapon or
-form (now refused before anything is spent), and for Priests, whose bundled
-Spellcasting makes a Spiritual Weapon.
+and for Magic Weapon, Wild Shape and Polymorph intents that name no weapon or
+form (now refused before anything is spent).
 Behavioural deltas (and the fixtures they move) are enumerated in
 [`docs/migration/v0.5-to-v0.6.md`](../../docs/migration/v0.5-to-v0.6.md).
 
@@ -230,7 +229,7 @@ Behavioural deltas (and the fixtures they move) are enumerated in
   Unarmed Strike). Spiritual Weapon places a caster-owned force that attacks
   at once and, as a Bonus Action on later turns, moves up to 20 feet and
   attacks again (`attack` with `spell_id`); it ends with its concentration,
-  and the bundled Priest casts it. Wild Shape and Polymorph swap in the Beast
+  and no monster casts it (BACKLOG). Wild Shape and Polymorph swap in the Beast
   stat block `PlayerIntent.form_id` names, checked before anything is spent
   (the Beast Shapes table; a Challenge Rating up to the target's), with
   ordinary Temporary Hit Points — the Druid level, or the form's Hit Points.

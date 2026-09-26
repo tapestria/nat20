@@ -14,7 +14,6 @@ from dnd5e_srd_data.loader import BundledAssetLoader
 from dnd5e_engine import CombatHandle, get_live
 from dnd5e_engine.activities.build_context import spell_attack_magnitudes
 from dnd5e_engine.activities.conjuration import CONSTRUCTS, construct_attack_activity
-from dnd5e_engine.activities.monster_actions import rank_monster_actions
 from dnd5e_engine.events import (
     AttackFailed,
     AttackRolled,
@@ -29,8 +28,7 @@ from dnd5e_engine.lib_loader import set_lib_loader_for_tests
 from dnd5e_engine.orchestrator import (
     _get_live,
     _LiveCombat,
-    _monster_action_available,
-    _monster_limited_cast_remaining,
+    _monster_cast_candidate,
     start_combat,
 )
 from dnd5e_engine.spatial import cell_id
@@ -374,15 +372,25 @@ def test_duration_expiry_removes_the_force() -> None:
     assert live.constructs == {}
 
 
-def test_priest_casts_spiritual_weapon_and_attacks() -> None:
-    """The corpus Priest's 1/Day Spellcasting entry resolves to Spiritual
-    Weapon and ranks above its Multiattack. The force appears in the target's
-    space and attacks at once: WIS 16, PB 2 → +5, 1d8 + 3. Seed 9: 15 + 5 = 20
-    against AC 10; 6 + 3 = 9 Force. The use is spent and the Priest
-    concentrates."""
+@pytest.mark.parametrize(
+    ("seed", "rolls", "damage"),
+    [
+        (1, [(5, False), (19, True)], [(1, "bludgeoning"), (4, "radiant")]),
+        (2, [(2, False), (3, False)], []),
+        (9, [(15, True), (5, False)], [(5, "bludgeoning"), (6, "radiant")]),
+    ],
+)
+def test_the_priest_opens_with_its_multiattack(
+    seed: int, rolls: list[tuple[int, bool]], damage: list[tuple[int, str]]
+) -> None:
+    """SRD 5.2 Priest: "The priest makes two attacks, using Mace or Radiant
+    Flame in any combination." Its bundled 1/Day Spellcasting entry points at
+    Spiritual Weapon where the SRD's says Spirit Guardians (a data slip), and
+    no monster casts a construct spell (BACKLOG), so its first turn is the
+    same two attacks, roll for roll, as before Spiritual Weapon resolved."""
     handle, live = start(
         [pc(initiative=1, zone_id=cell_id(1, 0))],
-        seed=9,
+        seed=seed,
         encounter=[
             foe(
                 entity_id="mon:priest",
@@ -394,50 +402,36 @@ def test_priest_casts_spiritual_weapon_and_attacks() -> None:
         ],
     )
     monster_turn(handle)
-    assert [e.spell_id for e in events(live, SpellCast)] == [SW]
-    assert _hits(live) == [("mon:priest", 15, 5, 20)]
-    assert _damage(live) == [("char:hero", 9, "force")]
-    construct = live.constructs["construct:mon:priest:spiritual-weapon"]
-    assert (construct.owner_id, construct.cell) == ("mon:priest", cell_id(1, 0))
-    assert live.concentration_chain["mon:priest"] == [
-        ("mon:priest", "effect:spiritual-weapon", "cast:spiritual-weapon:mon:priest")
+    assert events(live, SpellCast) == []
+    assert [(e.attacker_id, e.natural, e.is_hit) for e in events(live, AttackRolled)] == [
+        ("mon:priest", *roll) for roll in rolls
     ]
-    uses = live.monster_action_uses_by_entity["mon:priest"]["spellcasting"].uses_remaining
-    assert uses["spellcasting:dZUIjm3iQXmEpRLf"] == 0
+    assert [(e.amount, e.damage_type) for e in events(live, DamageApplied)] == damage
+    assert live.constructs == {}
 
 
-def test_the_cultist_fanatics_spiritual_weapon_ranks_behind_its_pact_blade() -> None:
-    """The Cultist Fanatic's ``spiritual-weapon`` entry now counts as
-    offensive, but it has no uses cap in the corpus, so it ranks with the
-    at-will actions, after Pact Blade: the AI never picks it."""
+def test_the_cultist_fanatics_spiritual_weapon_is_no_monster_cast() -> None:
+    """The SRD 5.2 Cultist Fanatic has "Spiritual Weapon (2/Day)", but monster
+    casts of a construct spell are deferred (BACKLOG): its entry is no cast
+    candidate, so the AI never picks it."""
     _, live = start(
         [pc()],
         seed=1,
         encounter=[foe(entity_id="mon:fanatic", monster_template_slug="cultist-fanatic")],
     )
-    fanatic = combatant(live, "mon:fanatic")
     monster = LOADER.get_monster("cultist-fanatic")
     assert monster is not None
-    ranked = rank_monster_actions(
-        monster.actions,
-        is_available=lambda a: _monster_action_available(live, fanatic, a),
-        has_limited_use_remaining=lambda a: _monster_limited_cast_remaining(live, fanatic, a),
-    )
-    assert [a.slug for a in ranked] == ["spellcasting", "pact-blade", SW]
+    entry = next(a for a in monster.actions if a.slug == SW)
+    assert _monster_cast_candidate(live, combatant(live, "mon:fanatic"), entry) is None
 
 
 def test_a_readied_concentration_spell_stays_its_owners() -> None:
-    """The Priest's immediate attack fires the hero's readied Fog Cloud before
+    """The force's immediate attack fires its target's readied Fog Cloud before
     the cast resolves, as every attack drains reactions: the Fog Cloud
-    concentrates on the hero, and the Priest holds only its Spiritual Weapon.
-    Seed 9: the cast and the Fog Cloud draw nothing; d20 15 + 5 misses AC 30,
-    so no Concentration save follows."""
-    hero = pc(spells_known=["fog-cloud"], spell_slots={1: 1}, ac=30)
-    handle, live = start(
-        [hero],
-        seed=9,
-        encounter=[foe(entity_id="mon:priest", name="Priest", monster_template_slug="priest")],
-    )
+    concentrates on the hero, and the cleric holds only its Spiritual Weapon.
+    Seed 9: the Fog Cloud draws nothing; d20 15 + 6 misses AC 30."""
+    hero = pc(spells_known=["fog-cloud"], spell_slots={1: 1}, ac=30, zone_id=cell_id(0, 1))
+    handle, live = start([hero, cleric(initiative=19)], seed=9)
     act(
         handle,
         "char:hero",
@@ -446,12 +440,11 @@ def test_a_readied_concentration_spell_stays_its_owners() -> None:
         slot_level=1,
         reaction_trigger="hit_by_attack",
     )
-    monster_turn(handle)
+    _cast(handle, target_id="char:hero")
     assert {e.spell_id for e in events(live, SpellCast)} == {"fog-cloud", SW}
-    assert live.concentration_chain["mon:priest"] == [
-        ("mon:priest", "effect:spiritual-weapon", "cast:spiritual-weapon:mon:priest")
-    ]
+    assert _hits(live) == [("char:cleric", 15, 6, 21)]
+    assert live.concentration_chain["char:cleric"] == [ANCHOR]
     assert live.concentration_chain["char:hero"] == [
         ("char:hero", "effect:fog-cloud", "cast:fog-cloud:char:hero")
     ]
-    assert combatant(live, "mon:priest").concentration_effect_id == "effect:spiritual-weapon"
+    assert combatant(live).concentration_effect_id == "effect:fog-cloud"

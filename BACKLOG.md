@@ -44,11 +44,11 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   an attack ability, a damage type) and a carrier naming their item. True
   Polymorph, Animal Shapes and Shapechange ship no `transform` activity.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/conjuration.py::CONJURATION_ALLOWLIST`)
-- **Monster summon riders stay narrative, and no monster repeats Spiritual
-  Weapon (2026-09-25, C21a).** A monster attack or an item never gets a
-  conjuration carrier, so the 16 monster `summon` riders resolve nothing. A
-  Priest's Spiritual Weapon makes its immediate attack, but the monster AI
-  never takes the Bonus-Action move-and-repeat on a later turn.
+- **Monster summon riders stay narrative (2026-09-25, C21a).** A monster
+  attack or an item never gets a conjuration carrier, so the 16 monster
+  `summon` riders resolve nothing. Monster casts of a construct spell are
+  deferred too (see "No monster casts a construct spell" under Conjurations
+  and shape-shifting).
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/monster_actions.py::rank_monster_actions`)
 
 ## Monster action economy (2026-08-22)
@@ -706,6 +706,17 @@ zone + apply logic:
   only when its grant raised it; otherwise the creature keeps the older
   Temporary Hit Points, and their running out ends the spell.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_revert_transform_on_expiry`)
+- **No monster casts a construct spell (2026-09-26, C21a).** The monster AI
+  skips a spell with no attack, save or damage activity of its own, so no
+  monster casts Spiritual Weapon, whose only activity is a `summon`. Counting
+  it as offensive waits until the Priest's data slip is fixed (see "The
+  Priest's Spiritual Weapon is a data slip" under Conjuration and monster
+  data): with the uuid followed, the bundled Priest opens with a Spiritual
+  Weapon the SRD 5.2 Priest doesn't have, where its SRD Multiattack belongs.
+  The SRD 5.2 caster, the Cultist Fanatic ("Spiritual Weapon (2/Day)"), then
+  also needs a cell for the force (the AI picks none), its uses cap and the
+  Bonus-Action move-and-repeat on later turns.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_monster_cast_candidate`)
 - **Spiritual Weapon's force moves through walls (2026-09-25, C21a).** Its
   Bonus-Action move is checked as a distance (the force floats), with no
   pathing, so it can cross a wall to a cell 20 feet away.
@@ -1364,14 +1375,14 @@ pool entries.
   (`CONSTRUCTS`). Shipping them needs Foundry's `custom` type mapped, and
   belongs with the spells that need them.
   (`packages/dnd5e-srd-data/tools/translators/foundry.py`)
-- **The Priest's Spiritual Weapon is a data slip, and the Cultist Fanatic's is
-  never cast (2026-09-25, C21a).** `actors24/humanoid/priest.yml` points the
-  Priest's 1/Day Spellcasting at Spiritual Weapon's uuid, while the entry's
-  own text, like the SRD 5.2 Priest, says "1/Day Each: *Spirit Guardians*";
-  the engine follows the uuid, so a Priest makes a Spiritual Weapon. The SRD
-  5.2 caster is the Cultist Fanatic ("Spiritual Weapon (2/Day)", a Bonus
-  Action), whose corpus entry carries no uses cap, so the monster AI ranks it
-  behind Pact Blade and never casts it.
+- **The Priest's Spiritual Weapon is a data slip, and the Cultist Fanatic's
+  has no uses cap (2026-09-25, C21a).** `actors24/humanoid/priest.yml` points
+  the Priest's 1/Day Spellcasting at Spiritual Weapon's uuid, while the
+  entry's own text, like the SRD 5.2 Priest, says "1/Day Each: *Spirit
+  Guardians*"; the engine follows the uuid. The SRD 5.2 caster is the Cultist
+  Fanatic ("Spiritual Weapon (2/Day)", a Bonus Action), whose corpus entry
+  carries no uses cap. Monster casts of Spiritual Weapon wait on this row (see
+  "No monster casts a construct spell" under Conjurations and shape-shifting).
   (`packages/dnd5e-srd-data/tools/translators/foundry.py`)
 - **A monster attack's range inherited from its item is not resolved
   (2026-09-25, C21a).** An activity with `range.override: false` takes its
