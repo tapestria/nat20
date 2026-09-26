@@ -13,6 +13,7 @@ the test names.
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Iterator
 
 import pytest
@@ -20,7 +21,7 @@ from dnd5e_srd_data.loader import BundledAssetLoader
 from dnd5e_srd_data.schema.common import TransformActivity
 from dnd5e_srd_data.schema.monster import Monster
 
-from dnd5e_engine import CombatHandle, get_live
+from dnd5e_engine import CombatHandle, end_combat, get_live
 from dnd5e_engine.activities.conjuration import (
     TRANSFORM_FORM_FLAG,
     WILD_SHAPE_TIERS,
@@ -134,6 +135,16 @@ def test_wild_shape_survives_losing_its_temp_hp() -> None:
     assert combatant(live, DRUID).ac == 13
     assert get_live(handle).transformations[DRUID].form_slug == "giant-badger"
     assert _wild_shape_ends(live) == []
+
+
+def test_wild_shapes_temp_hp_carry_into_the_outcome() -> None:
+    """Only Polymorph's Temporary Hit Points vanish with the combat; Wild
+    Shape's are ordinary ones, kept like any others: the Druid 6's 6."""
+    handle, live = start([druid()], seed=1)
+    _wild_shape(handle, "giant-badger")
+    assert DRUID in live.transforms
+    outcome = asyncio.run(end_combat(handle)).outcome
+    assert outcome.residual_temp_hp == {DRUID: 6}
 
 
 def test_wild_shape_is_a_bonus_action_that_keeps_the_turn() -> None:

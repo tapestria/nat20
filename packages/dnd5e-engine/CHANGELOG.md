@@ -235,8 +235,9 @@ Behavioural deltas (and the fixtures they move) are enumerated in
   (the Beast Shapes table; a Challenge Rating up to the target's), with
   ordinary Temporary Hit Points — the Druid level, or the form's Hit Points.
   Wild Shape ends on reuse, Incapacitated, death or a Bonus-Action leave;
-  Polymorph with its concentration, or when its Temporary Hit Points are gone,
-  the rest of that hit landing on the creature. A transformed creature can't
+  Polymorph with its concentration, when its Temporary Hit Points are gone
+  (the rest of that hit landing on the creature) or with the combat (its grant
+  stays out of `CombatOutcome.residual_temp_hp`). A transformed creature can't
   cast, ready or release a readied spell, or make a weapon attack; it attacks
   with its form's actions through `PlayerIntent.stat_block_action_id` (or on
   its own monster turn) at the form's real ability scores and Proficiency

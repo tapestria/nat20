@@ -12612,7 +12612,8 @@ def _derive_ended_reason(live: _LiveCombat) -> Literal["victory", "defeat_tpk", 
 def _project_outcome(live: _LiveCombat) -> CombatOutcome:
     """Fold ``_LiveCombat`` event-derived running state into a ``CombatOutcome``.
 
-    Residual HP / temp HP — from the tracked dicts updated by ``_emit``.
+    Residual HP / temp HP — from the tracked dicts updated by ``_emit``, less
+    a still-running Polymorph's own grant.
     Carried conditions — every still-active ``ConditionApplied`` for a
     surviving combatant. Carried-effect duration is taken from the most
     recent ``EffectApplied`` (the duration the effect was registered with).
@@ -12628,8 +12629,14 @@ def _project_outcome(live: _LiveCombat) -> CombatOutcome:
     ``is_concentration=True`` during the combat.
     """
     residual_hp = {eid: hp for eid, hp in live.tracked_hp.items() if eid in live.party_ids}
+    # Effects end with the combat, and a live Polymorph's own Temporary Hit
+    # Points "vanish if any remain when the spell ends" (SRD 5.2), as
+    # ``_revert_transform_on_expiry`` empties them when it ends in combat.
+    vanishing = {eid for eid, t in live.transforms.items() if t.clears_temp_hp_on_end}
     residual_temp_hp = {
-        eid: thp for eid, thp in live.tracked_temp_hp.items() if eid in live.party_ids and thp > 0
+        eid: thp
+        for eid, thp in live.tracked_temp_hp.items()
+        if eid in live.party_ids and thp > 0 and eid not in vanishing
     }
 
     # SRD §Encounter XP: total XP from dead foes ÷ surviving PCs.

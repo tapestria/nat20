@@ -13,6 +13,7 @@ target's Wisdom save (WIS 10, +0, no proficiency): seed 1 rolls 5 (fails), seed
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Iterator
 from typing import Any
 
@@ -20,7 +21,7 @@ import pytest
 from dnd5e_srd_data.loader import BundledAssetLoader
 from dnd5e_srd_data.schema.monster import Monster
 
-from dnd5e_engine import CombatHandle, get_live
+from dnd5e_engine import CombatHandle, end_combat, get_live
 from dnd5e_engine.activities.conjuration import (
     CONJURATION_ALLOWLIST,
     TRANSFORM_RIDERS,
@@ -310,6 +311,22 @@ def test_a_polymorphed_monster_uses_its_forms_save_action(
     saves = [(e.ability, e.dc) for e in events(live, SaveRolled) if e.target_id == WIZ]
     assert [save for save in saves if save[0] == ability] == [(ability, dc)]
     assert live.initiative[live.current_turn_index].entity_id == WIZ
+
+
+def test_a_polymorph_running_at_combat_end_leaves_no_temp_hp_in_the_outcome() -> None:
+    """Effects end with the combat, and Polymorph's Temporary Hit Points "vanish
+    if any remain when the spell ends": the outcome carries the creature's own
+    state. Seed 3: the fighter's Wisdom save (WIS 3) fails; the Giant
+    Crocodile's 85 Hit Points are its Temporary Hit Points until the end."""
+    fighter = pc("char:f", initiative=19, class_slug="fighter", character_level=9, wisdom=3)
+    handle, live = start(
+        [wizard(zone_id=cell_id(0, 1)), fighter], seed=3, encounter=[foe(zone_id=cell_id(5, 5))]
+    )
+    _polymorph(handle, target_id="char:f", form_id="giant-crocodile")
+    assert live.tracked_temp_hp["char:f"] == 85
+    outcome = asyncio.run(end_combat(handle)).outcome
+    assert outcome.residual_temp_hp == {}
+    assert outcome.residual_hp == {WIZ: 40, "char:f": 40}
 
 
 def test_a_polymorphed_character_cannot_release_its_readied_spell() -> None:
