@@ -277,6 +277,40 @@ def test_polymorphed_monster_attacks_with_its_form() -> None:
     assert (bite.amount, bite.damage_type) == (5, "piercing")
 
 
+@pytest.mark.parametrize(
+    ("form_id", "template", "ability", "dc"),
+    [
+        # "Web ... Dexterity Saving Throw: DC 13": 8 + DEX 3 + PB 2.
+        ("giant-spider", "ogre", "dex", 13),
+        # "Boulder Toss ... Dexterity Saving Throw: DC 17": 8 + STR 6 + PB 3.
+        ("giant-ape", "stone-giant", "dex", 17),
+        # "Constrict. Strength Saving Throw: DC 14": 8 + STR 4 + PB 2.
+        ("giant-constrictor-snake", "ogre", "str", 14),
+        # "Cacophony ... Wisdom Saving Throw: DC 10": the stat block's own 8 + PB 2.
+        ("swarm-of-ravens", "ogre", "wis", 10),
+    ],
+)
+def test_a_polymorphed_monster_uses_its_forms_save_action(
+    form_id: str, template: str, ability: str, dc: int
+) -> None:
+    """A form's save action carries its DC as a stat-block calculation, not the
+    template's fixed DC. Seed 1: the target fails its Wisdom save, and its own
+    turn picks the form's save action against the wizard at the SRD-printed DC
+    (the snake Bites first, and the wizard's Constitution save for Polymorph's
+    concentration is not that action's); the turn then passes on."""
+    handle, live = start(
+        [wizard(hp_current=300, hp_max=300)],
+        seed=1,
+        encounter=[foe(monster_template_slug=template, hp_current=200, hp_max=200)],
+    )
+    _polymorph(handle, form_id=form_id)
+    assert live.monster_slug_by_entity[FOE] == form_id
+    monster_turn(handle)
+    saves = [(e.ability, e.dc) for e in events(live, SaveRolled) if e.target_id == WIZ]
+    assert [save for save in saves if save[0] == ability] == [(ability, dc)]
+    assert live.initiative[live.current_turn_index].entity_id == WIZ
+
+
 def test_a_polymorphed_character_cannot_cast() -> None:
     """ "...it can't speak or cast spells." Seed 1: the ally wizard's save rolls
     5; on its turn its Hold Person is refused and its slot is kept."""

@@ -22,10 +22,11 @@ bug: two failed targets of one Fireball must take the IDENTICAL 8d6, not two rol
 MIRRORS, does not import from, ``effects/save.py`` + ``effects/damage.py``:
 
 * DC resolution mirrors ``effects/save.py:_resolve_dc`` — a missing/empty DC
-  raises ``ValueError`` (loud), never silently defaults. The two SRD-2024 DC
-  calculations Foundry ships are ``"spellcasting"``
-  (``8 + prof + spellcasting-ability mod``) and ``"flat"`` (the parsed
-  ``save.dc.formula``); any other ``calculation`` raises.
+  raises ``ValueError`` (loud), never silently defaults. The DC calculations
+  Foundry ships are ``"spellcasting"`` (``8 + prof + spellcasting-ability mod``),
+  an ability code (``8 + prof + that ability's mod``, a stat block's own save
+  actions) and an empty calculation carrying a formula (the parsed
+  ``save.dc.formula``, like ``"flat"``); any other ``calculation`` raises.
 * The natural save d20 + the per-ability modifier + the ``total >= dc``
   comparison live in the shared ``activities/save_primitive.py:roll_save`` (also
   used by weapon-mastery topple). The d20 honors ``ctx.variables["force_save_d20"]``
@@ -142,10 +143,19 @@ def _resolve_dc(activity: SaveActivity, ctx: ActivityResolutionContext) -> int:
       §Spellcasting — Spell Save DCs). Requires a caster spellcasting ability;
       absent → ``ValueError`` (via ``ctx.ability_mod`` reading no score is fine,
       but the calculation is meaningless without one, so guard explicitly).
+    * an ability code (``"str"`` … ``"cha"``) → ``8 + prof + ability_mod(code)``,
+      Foundry's ``abilities.<code>.dc``; any formula beside it is not read. This
+      is how a stat block's own save actions state their DC, and it gives the
+      SRD-printed numbers (Giant Spider Web: 8 + DEX 3 + PB 2 = DC 13).
     * ``"flat"`` → the parsed ``save.dc.formula`` (@-tokens resolved, folded off
       the seeded rng); a flat DC carries no dice in the SRD corpus.
-    * empty / unknown ``calculation`` → ``ValueError`` (loud; mirrors
-      ``effects/save.py:_resolve_dc`` raising rather than silently defaulting).
+    * empty ``calculation`` → the formula, as ``"flat"`` (Foundry's custom-formula
+      branch). SRD 5.2 Saving Throw Effect Notation: a stat block's effect
+      "provides the save's DC"; the formula carries it, as a literal (Aboleth
+      16) or an expression (Swarm of Ravens Cacophony: ``8 + @prof`` = DC 10).
+    * an empty formula there, or any other ``calculation`` → ``ValueError`` (loud;
+      mirrors ``effects/save.py:_resolve_dc`` raising rather than silently
+      defaulting).
 
     A cast wrapper's fixed challenge override (``ctx.save_dc_override``) bypasses
     the calculation entirely — a scroll/item DC (Dragon Orb 18) is used verbatim.
@@ -153,6 +163,7 @@ def _resolve_dc(activity: SaveActivity, ctx: ActivityResolutionContext) -> int:
     if ctx.save_dc_override is not None:
         return ctx.save_dc_override
     calculation = activity.save.dc.calculation
+    formula = activity.save.dc.formula
     if calculation == "spellcasting":
         if ctx.spellcasting_ability is None:
             raise ValueError(
@@ -160,15 +171,25 @@ def _resolve_dc(activity: SaveActivity, ctx: ActivityResolutionContext) -> int:
                 "spellcasting ability but the context supplies none"
             )
         return 8 + ctx.caster_proficiency_bonus + ctx.ability_mod(ctx.spellcasting_ability)
-    if calculation == "flat":
-        resolved = resolve_roll_data(
-            activity.save.dc.formula, ctx, ability=ctx.spellcasting_ability
-        )
+    if calculation in _ABILITIES:
+        return 8 + ctx.caster_proficiency_bonus + ctx.ability_mod(calculation)
+    if calculation == "flat" or (calculation == "" and formula):
+        resolved = resolve_roll_data(formula, ctx, ability=ctx.spellcasting_ability)
         return roll_expr(resolved, ctx.rng)
     raise ValueError(
-        f"save.dc.calculation {calculation!r} is not resolvable "
-        f"(expected 'spellcasting' or 'flat'); refusing to default a save DC silently"
+        f"save.dc.calculation {calculation!r} is not resolvable (expected 'spellcasting', "
+        f"an ability code, 'flat', or a formula); refusing to default a save DC silently"
     )
+
+
+def _governing_ability(activity: SaveActivity, ctx: ActivityResolutionContext) -> str | None:
+    """The ability ``@mod`` reads in this activity's damage (Foundry's
+    ``SaveActivityData.ability``): the one an ability-code DC names, else the
+    caster's spellcasting ability. A stat block's own save action prints its
+    damage off the ability behind its DC (Giant Constrictor Snake Constrict:
+    "13 (2d8 + 4)", STR +4, DC 14)."""
+    calculation = activity.save.dc.calculation
+    return calculation if calculation in _ABILITIES else ctx.spellcasting_ability
 
 
 def _resolve_save_ability(activity: SaveActivity) -> Ability:
@@ -210,7 +231,7 @@ def _roll_shared_damage(
         damage_type = _part_type(part, activity.id, ctx)
         if damage_type is None:
             continue
-        resolved = resolve_damage_block(part, ctx, ability=ctx.spellcasting_ability)
+        resolved = resolve_damage_block(part, ctx, ability=_governing_ability(activity, ctx))
         raw_part = roll_damage_part(
             resolved,
             ctx.rng,

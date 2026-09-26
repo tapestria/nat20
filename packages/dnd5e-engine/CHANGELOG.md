@@ -653,6 +653,16 @@ Behavioural deltas (and the fixtures they move) are enumerated in
   caster hitting the token, transformed or not, raised `ValueError: Unhandled
   roll-data token`. It now resolves `10 + ability modifier + proficiency bonus
   (doubled with Expertise) when the caster is proficient in that skill`.
+- **A save action whose DC names an ability no longer crashes (C21a).**
+  `activities/save.py` resolved only the `spellcasting` and `flat` DC
+  calculations, so a save resolved without a fixed DC — a transformed
+  creature's stat-block action, a feature's save through `use_feature` —
+  raised `ValueError` on an ability-code DC (a Giant Spider's Web, a
+  Dragonborn's Breath Weapon) or a bare formula (a Swarm of Ravens'
+  Cacophony), and `@mod` in a monster save action's damage raised on the
+  monster's own turn. The DC is now 8 + that ability's modifier + the
+  Proficiency Bonus, or the formula, and `@mod` reads the ability the DC names
+  (Giant Constrictor Snake Constrict: 2d8 + 4).
 
 ### Deprecated
 

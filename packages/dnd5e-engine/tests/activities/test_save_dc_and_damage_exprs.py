@@ -23,7 +23,7 @@ from dnd5e_srd_data.schema.common import (
 from dnd5e_engine.activities.context import ActivityResolutionContext
 from dnd5e_engine.activities.dice import damage_part_to_expr
 from dnd5e_engine.activities.formula import resolve_damage_block
-from dnd5e_engine.activities.save import _resolve_dc
+from dnd5e_engine.activities.save import _resolve_dc, _roll_shared_damage
 from dnd5e_engine.types.combat import Combatant
 
 
@@ -83,6 +83,22 @@ def test_flat_dc_resolves_roll_data_tokens(fireball_save: SaveActivity) -> None:
     assert _resolve_dc(_with_dc(fireball_save, "flat", "10 + @prof"), _ctx()) == 12
 
 
+def test_ability_dc_is_8_plus_prof_plus_that_ability(fireball_save: SaveActivity) -> None:
+    # The stat block's own ability DC; a leftover formula is not read.
+    ctx = _ctx(caster_abilities={"str": 23, "dex": 14}, caster_proficiency_bonus=3)
+    assert _resolve_dc(_with_dc(fireball_save, "str", "11"), ctx) == 8 + 3 + 6
+    assert _resolve_dc(_with_dc(fireball_save, "dex"), ctx) == 8 + 3 + 2
+
+
+def test_empty_calculation_resolves_the_formula(fireball_save: SaveActivity) -> None:
+    assert _resolve_dc(_with_dc(fireball_save, "", "8 + @prof"), _ctx()) == 10
+
+
+def test_empty_calculation_without_a_formula_is_loud(fireball_save: SaveActivity) -> None:
+    with pytest.raises(ValueError, match="not resolvable"):
+        _resolve_dc(_with_dc(fireball_save, ""), _ctx())
+
+
 def test_unknown_dc_calculation_is_loud(fireball_save: SaveActivity) -> None:
     with pytest.raises(ValueError, match="not resolvable"):
         _resolve_dc(_with_dc(fireball_save, "mystery"), _ctx())
@@ -90,6 +106,21 @@ def test_unknown_dc_calculation_is_loud(fireball_save: SaveActivity) -> None:
 
 def test_save_dc_override_bypasses_the_calculation(fireball_save: SaveActivity) -> None:
     assert _resolve_dc(_with_dc(fireball_save, "mystery"), _ctx(save_dc_override=18)) == 18
+
+
+class _MaxDice(random.Random):
+    def randint(self, a: int, b: int) -> int:
+        return b
+
+
+def test_an_ability_dc_governs_mod_in_the_damage() -> None:
+    # Giant Constrictor Snake Constrict: "13 (2d8 + 4) Bludgeoning damage", STR +4.
+    snake = BundledAssetLoader().get_monster("giant-constrictor-snake")
+    assert snake is not None
+    constrict = next(a for act in snake.actions for a in act.activities if a.kind == "save")
+    assert isinstance(constrict, SaveActivity)
+    ctx = _ctx(rng=_MaxDice(0), caster_abilities={"str": 19}, spellcasting_ability=None)
+    assert _roll_shared_damage(constrict, ctx) == [("bludgeoning", 2 * 8 + 4)]
 
 
 # ── damage_part_to_expr ──────────────────────────────────────────────────────
