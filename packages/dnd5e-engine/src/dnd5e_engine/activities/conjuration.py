@@ -24,8 +24,17 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Final, Literal
 
+from dnd5e_srd_data.schema.common import (
+    AttackActivity,
+    AttackBlock,
+    AttackDamageBlock,
+    AttackTypeBlock,
+    DamagePartBlock,
+    DamageScalingBlock,
+)
 from dnd5e_srd_data.schema.item import Weapon
 
+from dnd5e_engine.events import DamageType
 from dnd5e_engine.types.effects import ActiveEffect
 
 ConjurationKind = Literal["construct", "enchant", "transform", "transform_rider"]
@@ -124,14 +133,80 @@ def enchant_weapon(weapon: Weapon, effects: Sequence[ActiveEffect]) -> Weapon:
     return weapon.model_copy(update={"magical_bonus": bonus, "magical": magical})
 
 
+@dataclass(frozen=True)
+class ConstructSpec:
+    """A caster-owned spell construct's fixed numbers: how far it reaches and
+    moves, and the damage its attack deals at the spell's base level."""
+
+    reach_ft: int
+    move_ft: int
+    damage_die: int
+    damage_type: DamageType
+    base_level: int
+
+
+# SRD 5.2 Spiritual Weapon: "you can immediately make one melee spell attack
+# against one creature within 5 feet of the force. On a hit, the target takes
+# Force damage equal to 1d8 plus your spellcasting ability modifier. As a Bonus
+# Action on your later turns, you can move the force up to 20 feet and repeat
+# the attack against a creature within 5 feet of it." The Foundry actor that
+# carries this attack upstream is a quarantined CC-BY conjuration, so the
+# registry holds the numbers (spec §6 D3).
+CONSTRUCTS: Final[Mapping[str, ConstructSpec]] = MappingProxyType(
+    {
+        "spiritual-weapon": ConstructSpec(
+            reach_ft=5, move_ft=20, damage_die=8, damage_type="force", base_level=2
+        ),
+    }
+)
+
+
+def construct_attack_activity(
+    spec: ConstructSpec, *, slot_level: int, attack_bonus: int, damage_bonus: int
+) -> AttackActivity:
+    """The construct's attack as a flat melee spell attack: ``attack_bonus`` to
+    hit and one damage part of ``spec.damage_die`` dice plus ``damage_bonus``.
+
+    SRD 5.2 Spiritual Weapon: "The damage increases by 1d8 for every slot
+    level above 2." The dice count carries the slot level, so the part's own
+    upcast scaling is zeroed: the resolution context also carries the slot
+    level (its spell level is what makes the hit magical) and would otherwise
+    add the same dice again. No ``@``-token: the caller resolves both numbers.
+    """
+    return AttackActivity(
+        id="construct-attack",
+        name="Construct attack",
+        attack=AttackBlock(
+            bonus=str(attack_bonus),
+            flat=True,
+            type=AttackTypeBlock(value="melee", classification="spell"),
+        ),
+        damage=AttackDamageBlock(
+            include_base=False,
+            parts=[
+                DamagePartBlock(
+                    number=1 + slot_level - spec.base_level,
+                    denomination=spec.damage_die,
+                    bonus=str(damage_bonus),
+                    types=[spec.damage_type],
+                    scaling=DamageScalingBlock(number=0),
+                )
+            ],
+        ),
+    )
+
+
 __all__ = [
     "CONJURATION_ALLOWLIST",
+    "CONSTRUCTS",
     "ENCHANTED_WEAPON_FLAG",
     "TRANSFORM_FORM_FLAG",
     "ConjurationCarrier",
     "ConjurationKind",
     "ConstructRequest",
+    "ConstructSpec",
     "TransformRequest",
     "TransformSource",
+    "construct_attack_activity",
     "enchant_weapon",
 ]

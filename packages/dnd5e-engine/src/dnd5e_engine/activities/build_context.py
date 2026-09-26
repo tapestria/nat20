@@ -120,6 +120,26 @@ def _attack_bonus_override(caster: Combatant, spellcasting_ability: str | None) 
     return caster.attack_bonus
 
 
+def spell_attack_magnitudes(caster: Combatant, spellcasting_ability: str | None) -> tuple[int, int]:
+    """``(spell attack bonus, spellcasting ability modifier)`` exactly as
+    ``caster``'s own spell attack resolves through ``build_activity_context``,
+    for an attack the engine builds itself (a construct's).
+
+    The to-hit is ``_attack_bonus_override`` when it sets one (a Character's
+    pinned ``attack_bonus``; a Monster's PB + its spellcasting modifier, or its
+    ``attack_bonus`` without a spellcasting ability), else the Character's PB
+    + the ability's modifier. Without a spellcasting ability the modifier is
+    the legacy ``_caster_mod`` and a Character's to-hit is its PB + 0 — the
+    fallbacks a classless caster's spell attack already gets.
+    """
+    ability = cast("Ability", spellcasting_ability) if spellcasting_ability else None
+    modifier = ability_modifier_of(caster, ability) if ability else _caster_mod(caster)
+    override = _attack_bonus_override(caster, spellcasting_ability)
+    if override is not None:
+        return override, modifier
+    return proficiency_bonus(caster.character_level) + (modifier if ability else 0), modifier
+
+
 def _spell_dc_bonus(
     caster: Combatant,
     passive_damage_modifiers: dict[str, dict[str, Any]],

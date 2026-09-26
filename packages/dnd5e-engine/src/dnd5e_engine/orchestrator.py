@@ -93,11 +93,13 @@ from dnd5e_engine.activities.attack import (
     sneak_attack_dice,
     sneak_attack_triggers,
 )
-from dnd5e_engine.activities.build_context import build_activity_context
+from dnd5e_engine.activities.build_context import build_activity_context, spell_attack_magnitudes
 from dnd5e_engine.activities.conjuration import (
     CONJURATION_ALLOWLIST,
+    CONSTRUCTS,
     ENCHANTED_WEAPON_FLAG,
     ConjurationCarrier,
+    construct_attack_activity,
     enchant_weapon,
 )
 from dnd5e_engine.activities.context import ActivityResolutionContext
@@ -2342,8 +2344,15 @@ def _monster_cast_candidate(
             continue
         if spell.casting_time.unit not in ("action", "bonus", "reaction"):
             continue
-        if not any(
-            isinstance(a, (AttackActivity, SaveActivity, DamageActivity)) for a in spell.activities
+        # A construct spell attacks through its force (SRD 5.2 Spiritual
+        # Weapon: "you can immediately make one melee spell attack"), so it is
+        # offensive although its only activity is a ``summon``.
+        if (
+            not any(
+                isinstance(a, (AttackActivity, SaveActivity, DamageActivity))
+                for a in spell.activities
+            )
+            and CONJURATION_ALLOWLIST.get(spell.slug) != "construct"
         ):
             continue
         return activity, spell
@@ -2621,6 +2630,17 @@ def _resolve_monster_cast(
     resolves from the monster's current position).
     """
     target_list = [chosen_target]
+    if CONJURATION_ALLOWLIST.get(spell.slug) == "construct":
+        # The force's immediate attack answers the target's readied reactions
+        # (Shield) before this resolution's event slice, as every attack path
+        # drains them: inside the slice, C13's fold would record a readied
+        # concentration spell as this caster's.
+        _drain_targeted_reactions(
+            live,
+            trigger="hit_by_attack",
+            triggering_actor_id=current.entity_id,
+            targets=target_list,
+        )
     slot_level = activity.spell.level if activity.spell.level is not None else spell.level
     spellcasting_ability = activity.spell.ability or current.spellcasting_ability
 
@@ -2637,6 +2657,7 @@ def _resolve_monster_cast(
         concentration=spell.concentration,
         source_passive_effects=list(spell.passive_effects),
         spell_book=_build_cast_spell_book(spell.activities),
+        conjuration=_monster_conjuration_carrier(live, spell, chosen_target),
         **_monster_context_kwargs(live, current, target_list, payload),
     )
     _emit_spell_cast(live, current.entity_id, spell, slot_level)
@@ -3185,6 +3206,10 @@ class _LiveCombat:
     # start/end of a turn" registers here rather than being open-coded into the
     # advance path.
     lifecycle: TurnLifecycle = field(default_factory=TurnLifecycle)
+    # C21 — caster-owned spell constructs (SRD 5.2 Spiritual Weapon's force),
+    # keyed ``_construct_id(owner, spell)``. Never combatants: absent from
+    # ``initiative`` and ``actor_zone``, never occupants or targets.
+    constructs: dict[str, _Construct] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -3201,6 +3226,22 @@ class _PendingReaction:
     trigger: ReactionTrigger
     spell_id: str | None
     slot_level: int | None
+
+
+@dataclass
+class _Construct:
+    """One live spell construct. ``anchor`` is its concentration anchor's
+    ``(target_id, effect_id, origin)`` identity: the construct ends when that
+    effect expires. ``cast_round`` is the round of the cast that made the
+    construct's immediate attack ("As a Bonus Action on your later turns")."""
+
+    construct_id: str
+    owner_id: str
+    spell_id: str
+    cell: str
+    slot_level: int
+    anchor: tuple[str, str, str]
+    cast_round: int
 
 
 _REGISTRY: dict[str, _LiveCombat] = {}
@@ -5116,6 +5157,7 @@ def _emit_apply_effect_expired(live: _LiveCombat, event: EffectExpired) -> None:
                     if c.entity_id == event.target_id:
                         live.initiative[idx] = c.model_copy(update={"conditions": new_conditions})
                         break
+    _end_anchor_dependents(live, event)
 
 
 def _maybe_roll_death_save(live: _LiveCombat) -> None:
@@ -6353,6 +6395,7 @@ def _fold_resolution_outcome(
     resolved."""
     _end_superseded_enchantments(live, caster, actx, pre_event_count)
     _apply_concentration_anchor(live, caster, spell, pre_event_count)
+    _apply_construct_requests(live, caster, actx)
     _writeback_concentration(live, caster, pre_event_count)
     _record_effect_lifecycle_links(
         live, caster, pre_event_count, concentration_max_rounds=concentration_max_rounds
@@ -8611,6 +8654,8 @@ def _conjuration_gate_failure(
     checks: tuple[_ConjurationGate, ...] = (
         _readied_conjuration_failure,
         _enchant_cast_failure,
+        _construct_cast_failure,
+        _construct_attack_failure,
     )
     for check in checks:
         failure = check(live, current, intent)
@@ -8683,6 +8728,8 @@ def _conjuration_carrier(
     kind = CONJURATION_ALLOWLIST.get(source)
     if kind == "enchant":
         return ConjurationCarrier(source_slug=source, weapon_slug=intent.weapon_id)
+    if kind == "construct":
+        return ConjurationCarrier(source_slug=source, cell=_construct_cell(live, current, intent))
     return None
 
 
@@ -8743,6 +8790,228 @@ def _weapon_enchantment_to_hit(
     if attacker.attack_bonus is None or base is None or enchanted is None:
         return 0
     return enchanted.magical_bonus - base.magical_bonus
+
+
+# ── C21 constructs (SRD 5.2 Spiritual Weapon) ─────────────────────────────
+
+
+def _construct_id(owner_id: str, spell_id: str) -> str:
+    """One construct per owner and spell: a recast replaces it."""
+    return f"construct:{owner_id}:{spell_id}"
+
+
+def _construct_cell(live: _LiveCombat, current: Combatant, intent: PlayerIntent) -> str | None:
+    """Where a construct cast places its force. SRD 5.2 Spiritual Weapon: "The
+    force appears within range in a space of your choice" — the intent's
+    ``target_zone_id``; else the named target's space (the immediate attack is
+    against "one creature within 5 feet of the force"); else the caster's."""
+    if intent.target_zone_id is not None:
+        return intent.target_zone_id
+    target_cell = live.actor_zone.get(intent.target_id) if intent.target_id else None
+    return target_cell or live.actor_zone.get(current.entity_id)
+
+
+def _construct_cast_failure(
+    live: _LiveCombat, current: Combatant, intent: PlayerIntent
+) -> CombatEvent | None:
+    """``CastFailed(reason="out_of_range")`` for a construct cast whose force
+    cannot be placed: an explicit ``target_zone_id`` the caster cannot reach
+    with the spell (off the map, beyond its range, out of sight or behind total
+    cover), or a named target farther from the force's space than its reach.
+    ``_spell_out_of_range_failure`` has already range-checked the named target
+    itself."""
+    spell_id = intent.spell_id or ""
+    spec = CONSTRUCTS.get(spell_id)
+    if intent.intent_type != "cast_spell" or spec is None:
+        return None
+    caster_cell = live.actor_zone.get(current.entity_id)
+    spell = get_lib_loader().get_spell(spell_id)
+    range_ft = (
+        spell.range.value
+        if spell is not None and spell.range.units == SpellRangeUnits.FEET
+        else None
+    )
+    in_range = intent.target_zone_id is None or (
+        caster_cell is not None
+        and range_ft is not None
+        and _in_range_with_los(live.topology, caster_cell, intent.target_zone_id, range_ft)
+    )
+    cell = _construct_cell(live, current, intent)
+    target_cell = live.actor_zone.get(intent.target_id) if intent.target_id else None
+    reach = live.topology.distance_ft(cell, target_cell) if cell and target_cell else None
+    in_reach = target_cell is None or (reach is not None and reach <= spec.reach_ft)
+    if in_range and in_reach:
+        return None
+    return CastFailed(actor_id=current.entity_id, spell_id=spell_id, reason="out_of_range")
+
+
+def _construct_attack_failure(
+    live: _LiveCombat, current: Combatant, intent: PlayerIntent
+) -> CombatEvent | None:
+    """The refusal for a construct's Bonus-Action repeat, or ``None``.
+
+    SRD 5.2 Spiritual Weapon: "As a Bonus Action on your later turns, you can
+    move the force up to 20 feet and repeat the attack against a creature
+    within 5 feet of it." ``action_unavailable``: the actor owns no live
+    construct of ``intent.spell_id``, or cast it this round (the cast made its
+    attack). ``target_invalid``: the target is unknown or dead.
+    ``out_of_range``: the new ``target_zone_id`` cannot be measured or is more
+    than the construct's move away (the force floats: distance, not a path),
+    or the target is beyond its reach from the force's (moved) space.
+    """
+    if intent.intent_type != "attack" or not intent.spell_id:
+        return None
+    construct = live.constructs.get(_construct_id(current.entity_id, intent.spell_id))
+    spec = CONSTRUCTS.get(intent.spell_id)
+    if construct is None or spec is None or construct.cast_round == live.round_number:
+        return AttackFailed(
+            actor_id=current.entity_id, target_id=intent.target_id, reason="action_unavailable"
+        )
+    target = _find_combatant(live, intent.target_id) if intent.target_id else None
+    if target is None or target.entity_id in live.dead_ids:
+        return AttackFailed(
+            actor_id=current.entity_id, target_id=intent.target_id, reason="target_invalid"
+        )
+    cell = intent.target_zone_id or construct.cell
+    moved = live.topology.distance_ft(construct.cell, cell)
+    target_cell = live.actor_zone.get(target.entity_id)
+    reach = live.topology.distance_ft(cell, target_cell) if target_cell else None
+    if moved is None or moved > spec.move_ft or reach is None or reach > spec.reach_ft:
+        return AttackFailed(
+            actor_id=current.entity_id, target_id=intent.target_id, reason="out_of_range"
+        )
+    return None
+
+
+def _monster_conjuration_carrier(
+    live: _LiveCombat, spell: Spell, target: Combatant
+) -> ConjurationCarrier | None:
+    """The monster cast path's carrier: an allowlisted construct appears in the
+    AI's chosen target's space, since the AI picks no cell. ``None`` for
+    every other spell, which stays on its narrative branch."""
+    cell = live.actor_zone.get(target.entity_id)
+    if CONJURATION_ALLOWLIST.get(spell.slug) != "construct" or cell is None:
+        return None
+    return ConjurationCarrier(source_slug=spell.slug, cell=cell)
+
+
+def _apply_construct_requests(
+    live: _LiveCombat, caster: Combatant, actx: ActivityResolutionContext | None
+) -> None:
+    """Fold step 5: seat each construct this resolution requested and make its
+    immediate attack (SRD 5.2 Spiritual Weapon: "you can immediately make one
+    melee spell attack against one creature within 5 feet of the force").
+
+    Runs after the concentration anchor, so the construct records a live
+    identity, and a same-spell recast's drop has already ended the old
+    construct. A living named target is attacked; with none, the force waits."""
+    if actx is None:
+        return
+    for request in actx.construct_requests:
+        construct = _Construct(
+            construct_id=_construct_id(request.owner_id, request.spell_id),
+            owner_id=request.owner_id,
+            spell_id=request.spell_id,
+            cell=request.cell,
+            slot_level=request.slot_level,
+            anchor=_anchor_identity(request.spell_id, request.owner_id),
+            cast_round=live.round_number,
+        )
+        live.constructs[construct.construct_id] = construct
+        for target_id in request.target_ids:
+            target = _find_combatant(live, target_id)
+            if target is not None and target_id not in live.dead_ids:
+                _resolve_construct_attack(live, caster, construct, target)
+
+
+def _construct_spellcasting_ability(owner: Combatant) -> str | None:
+    """The ability a construct's attack uses: the owner's class spellcasting
+    ability, else its stat block's (a monster), else ``None`` (the legacy
+    fallbacks of a classless caster)."""
+    return _resolve_caster_spellcasting_ability(owner) or owner.spellcasting_ability
+
+
+def _resolve_construct_attack(
+    live: _LiveCombat, owner: Combatant, construct: _Construct, target: Combatant
+) -> None:
+    """One melee spell attack by ``owner`` from ``construct``'s space against
+    ``target``: the owner's spell attack bonus and spellcasting modifier
+    (``spell_attack_magnitudes``), its hydration payload and conditions, with
+    cover and distance measured from the force. The slot level scales the dice
+    and the spell's level makes the hit magical. Draws the d20, then the damage
+    dice on a hit, through the ordinary attack path; the one-use Help / Vex /
+    Sap grants pop after. The target's readied reactions (Shield) have already
+    fired, before the resolution's event slice, as for every attack: inside
+    it, C13's fold would record a readied concentration spell as the
+    owner's."""
+    spec = CONSTRUCTS[construct.spell_id]
+    target_list = [target]
+    ability = _construct_spellcasting_ability(owner)
+    attack_bonus, modifier = spell_attack_magnitudes(owner, ability)
+    payload = _build_hydration_payload(live, caster=owner)
+    pre_event_count = len(live.event_log)
+    target_cell = live.actor_zone.get(target.entity_id)
+    distance = live.topology.distance_ft(construct.cell, target_cell) if target_cell else None
+    geometry = {
+        "target_cover": _target_cover_map(
+            live, owner.entity_id, target_list, origin_cell=construct.cell
+        ),
+        "target_distance_ft": {} if distance is None else {target.entity_id: distance},
+    }
+    actx = build_activity_context(
+        owner,
+        target_list,
+        rng=live.rng,
+        event_emitter=lambda ev: _emit(live, ev),
+        slot_level=construct.slot_level,
+        base_spell_level=spec.base_level,
+        spellcasting_ability=ability,
+        concentration=False,
+        source_passive_effects=[],
+        spell_book={},
+        active_effects=tuple(live.active_effects.get(owner.entity_id, [])),
+        **(_monster_context_kwargs(live, owner, target_list, payload) | geometry),
+    )
+    resolve_activity(
+        construct_attack_activity(
+            spec,
+            slot_level=construct.slot_level,
+            attack_bonus=attack_bonus,
+            damage_bonus=modifier,
+        ),
+        actx,
+    )
+    _consume_attack_roll_grants(live, owner, target_list, pre_event_count)
+
+
+def _resolve_construct_attack_intent(
+    live: _LiveCombat, current: Combatant, intent: PlayerIntent
+) -> None:
+    """A construct's Bonus-Action repeat: move the force to ``target_zone_id``
+    (when given), attack, and end the owner's Hide (SRD 5.2 Hide: the
+    condition ends "immediately after ... you make an attack roll"). A no-op
+    for every other intent; ``_construct_attack_failure`` validated this one
+    before anything was spent."""
+    if intent.intent_type != "attack" or not intent.spell_id:
+        return
+    construct = live.constructs.get(_construct_id(current.entity_id, intent.spell_id))
+    target = _find_combatant(live, intent.target_id) if intent.target_id else None
+    if construct is None or target is None:
+        return
+    if intent.target_zone_id is not None:
+        construct.cell = intent.target_zone_id
+    _resolve_construct_attack(live, current, construct, target)
+    _break_hide_on_attack_or_verbal_cast(live, current, intent, None)
+
+
+def _end_anchor_dependents(live: _LiveCombat, event: EffectExpired) -> None:
+    """Remove every construct whose concentration anchor just expired: the
+    force "lasts for the duration" of its concentration spell, so a broken or
+    dropped concentration, the spell's end, its owner's death or Incapacitated
+    condition, and a recast all end it here."""
+    identity = (event.target_id, event.effect_id, event.origin)
+    for construct_id in [cid for cid, c in live.constructs.items() if c.anchor == identity]:
+        del live.constructs[construct_id]
 
 
 @dataclass
@@ -9138,8 +9407,11 @@ def _consume_offhand_attack_budget(
 
 # What pays for an ``attack`` intent's swing: the Attack action, or one of SRD
 # 5.2's swings outside it — the Light property's extra attack, a Flurry of
-# Blows strike, Martial Arts' Bonus Unarmed Strike.
-AttackFunding = Literal["action", "light_offhand", "flurry", "martial_arts_bonus"]
+# Blows strike, Martial Arts' Bonus Unarmed Strike, a construct's repeat
+# (Spiritual Weapon: "As a Bonus Action on your later turns").
+AttackFunding = Literal[
+    "action", "light_offhand", "flurry", "martial_arts_bonus", "construct_bonus"
+]
 
 _UNARMED_STRIKE: Final = "unarmed-strike"
 # Monk's Focus: the Flurry of Blows activity (Foundry id), and the Monk 10
@@ -9163,6 +9435,8 @@ def _classify_attack_funding(
     """What pays for this ``attack`` intent's swing (``"action"`` for any other
     intent), in priority order:
 
+    * ``"construct_bonus"`` — an attack naming a construct's spell (the Bonus
+      Action; ``_construct_attack_failure`` has validated the construct);
     * ``"light_offhand"`` — the Light property's extra attack with a different
       Light weapon (``_is_offhand_attack_swing``: the Bonus Action, or nothing
       with Nick);
@@ -9174,6 +9448,8 @@ def _classify_attack_funding(
       make an Unarmed Strike as a Bonus Action.");
     * ``"action"`` — the Attack action.
     """
+    if intent.intent_type == "attack" and intent.spell_id:
+        return "construct_bonus"
     if _is_offhand_attack_swing(current, intent, weapon):
         return "light_offhand"
     if intent.intent_type != "attack" or intent.weapon_id != _UNARMED_STRIKE:
@@ -9191,9 +9467,10 @@ def _intent_economy_failure(
     """The action-economy gate for ``intent`` paid as ``funding``: the
     turn-keeping rejection to emit, or ``None``. The Light extra attack and a
     Flurry strike were admitted by ``_classify_attack_funding``; the Bonus
-    Unarmed Strike needs the Bonus Action; every other intent goes through
-    ``_action_economy_gate_failure`` (which may raise)."""
-    if funding == "martial_arts_bonus" and not current.bonus_action_available:
+    Unarmed Strike and a construct's repeat need the Bonus Action; every
+    other intent goes through ``_action_economy_gate_failure`` (which may
+    raise)."""
+    if funding in ("martial_arts_bonus", "construct_bonus") and not current.bonus_action_available:
         return AttackFailed(
             actor_id=current.entity_id, target_id=intent.target_id, reason="no_action_economy"
         )
@@ -9844,7 +10121,8 @@ def _drain_pre_resolution_reactions(
     intent: PlayerIntent,
     targets: Sequence[Combatant],
 ) -> set[str]:
-    """Drain target-owned pending reactions for a resolving PC intent.
+    """Drain target-owned pending reactions for a resolving PC intent and a
+    construct cast (Spiritual Weapon's immediate attack).
 
     ``"attack"`` intents fire ``hit_by_attack`` reactions (Shield's +5 AC
     lands before the hit/miss comparison); a ``magic-missile`` cast fires
@@ -9852,7 +10130,10 @@ def _drain_pre_resolution_reactions(
     reaction fired so the caller can inject the force carve-out. Every
     other intent drains nothing (the overwhelmingly common case).
     """
-    if intent.intent_type == "attack":
+    if intent.intent_type == "attack" or (
+        intent.intent_type == "cast_spell"
+        and CONJURATION_ALLOWLIST.get(intent.spell_id or "") == "construct"
+    ):
         _drain_targeted_reactions(
             live,
             trigger="hit_by_attack",
@@ -10574,6 +10855,11 @@ async def submit_player_intent(
     _apply_magic_missile_shield_carveout(payload, shielded_vs_magic_missile)
 
     pre_event_count = len(live.event_log)
+
+    # SRD 5.2 Spiritual Weapon — a construct's Bonus-Action repeat resolves
+    # here, after the target's readied reactions drained (no-op otherwise).
+    _resolve_construct_attack_intent(live, current, intent)
+
     actx: ActivityResolutionContext | None = None
 
     if not activities:

@@ -11,7 +11,7 @@ mutates them).
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from dnd5e_engine.outcome import CombatOutcome
@@ -19,6 +19,19 @@ from dnd5e_engine.types.combat import Combatant
 
 if TYPE_CHECKING:
     from dnd5e_engine.orchestrator import _LiveCombat
+
+
+@dataclass(frozen=True)
+class ConstructView:
+    """Read-only projection of one caster-owned spell construct (C21): SRD 5.2
+    Spiritual Weapon's force. Not a combatant: it has no initiative slot, no
+    HP and never appears in ``initiative`` or ``actor_zone``."""
+
+    construct_id: str
+    owner_id: str
+    spell_id: str
+    zone_id: str
+    slot_level: int
 
 
 @dataclass(frozen=True)
@@ -76,6 +89,9 @@ class LiveCombatView:
     # PCs and template-less foes are absent.
     legendary_actions_by_entity: dict[str, int]
     legendary_resistances_by_entity: dict[str, int]
+    # C21 — caster-owned spell constructs keyed by ``construct_id``; empty when
+    # none is live.
+    constructs: dict[str, ConstructView] = field(default_factory=dict)
 
     @classmethod
     def from_live(cls, live: _LiveCombat) -> LiveCombatView:
@@ -128,7 +144,17 @@ class LiveCombatView:
                 for c in live.initiative
                 if c.legendary_resistances_max
             },
+            constructs={
+                cid: ConstructView(
+                    construct_id=cid,
+                    owner_id=c.owner_id,
+                    spell_id=c.spell_id,
+                    zone_id=c.cell,
+                    slot_level=c.slot_level,
+                )
+                for cid, c in live.constructs.items()
+            },
         )
 
 
-__all__ = ["LiveCombatView", "MonsterActionUsesView", "TurnCombatView"]
+__all__ = ["ConstructView", "LiveCombatView", "MonsterActionUsesView", "TurnCombatView"]

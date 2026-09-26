@@ -215,7 +215,6 @@ def test_c21_s02_losing_concentration_dismisses_the_summoned_dragon():
     assert len(live.initiative) < roster_before_hit
 
 
-@xfail_cluster(21, "summons, transform, enchant")
 def test_c21_s03_spiritual_weapon_casts_with_no_attack_roll():
     """C21-S03: SRD 5.2 §Spell Descriptions (Spiritual Weapon) — "you
     can immediately make one melee spell attack against one creature
