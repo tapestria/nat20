@@ -99,6 +99,8 @@ from dnd5e_engine.activities.conjuration import (
     CONSTRUCTS,
     ENCHANTED_WEAPON_FLAG,
     ConjurationCarrier,
+    StatBlockMagnitudes,
+    TransformSource,
     construct_attack_activity,
     enchant_weapon,
 )
@@ -108,9 +110,14 @@ from dnd5e_engine.activities.dice import roll_damage_part
 from dnd5e_engine.activities.forced_movement import FORCED_MOVEMENT_RIDERS
 from dnd5e_engine.activities.monster_actions import (
     expand_action_to_activities,
+    multiattack_count,
     rank_monster_actions,
 )
-from dnd5e_engine.activities.passive_stats import CombatantSenses, interpret_passive_stats
+from dnd5e_engine.activities.passive_stats import (
+    CombatantMovementModes,
+    CombatantSenses,
+    interpret_passive_stats,
+)
 from dnd5e_engine.activities.resolver import resolve_activity
 from dnd5e_engine.activities.scale import build_scale_values, feature_owners
 from dnd5e_engine.death_saves import DeathSaveState, roll_death_save
@@ -3210,6 +3217,9 @@ class _LiveCombat:
     # keyed ``_construct_id(owner, spell)``. Never combatants: absent from
     # ``initiative`` and ``actor_zone``, never occupants or targets.
     constructs: dict[str, _Construct] = field(default_factory=dict)
+    # C21 — live transformations (SRD 5.2 Wild Shape, Polymorph) keyed by the
+    # transformed creature's entity id: at most one per creature.
+    transforms: dict[str, _Transform] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -3242,6 +3252,27 @@ class _Construct:
     slot_level: int
     anchor: tuple[str, str, str]
     cast_round: int
+
+
+@dataclass
+class _Transform:
+    """One live transformation. ``stash`` holds the original value of every
+    ``Combatant`` field the form replaced; ``original_monster_slug`` /
+    ``original_action_uses`` the monster target's own stat block (``None`` for
+    a Character, or a Monster with no template). ``(effect_id, origin)`` names
+    the effect whose expiry reverts it."""
+
+    entity_id: str
+    form_slug: str
+    source: TransformSource
+    effect_id: str
+    origin: str
+    stash: dict[str, Any]
+    original_monster_slug: str | None
+    original_action_uses: dict[str, MonsterActionUses] | None
+    form_proficiency_bonus: int
+    attacks_per_action: int
+    clears_temp_hp_on_end: bool
 
 
 _REGISTRY: dict[str, _LiveCombat] = {}
@@ -5158,6 +5189,7 @@ def _emit_apply_effect_expired(live: _LiveCombat, event: EffectExpired) -> None:
                         live.initiative[idx] = c.model_copy(update={"conditions": new_conditions})
                         break
     _end_anchor_dependents(live, event)
+    _revert_transform_on_expiry(live, event)
 
 
 def _maybe_roll_death_save(live: _LiveCombat) -> None:
@@ -8648,10 +8680,12 @@ def _conjuration_gate_failure(
     of ``submit_player_intent``'s ``pre_resolution_gates``, so a refused
     conjuration spends no slot, use or action. Each check is a no-op for an
     intent it does not govern."""
+    # A shape-shifted actor is refused first: it cannot cast any spell at all.
     # A readied conjuration is refused before the enchant gate reads its
     # (absent) weapon; the remaining checks govern disjoint intents, so their
     # order only fixes which reason a malformed intent reports.
     checks: tuple[_ConjurationGate, ...] = (
+        _shape_shifted_failure,
         _readied_conjuration_failure,
         _enchant_cast_failure,
         _construct_cast_failure,
@@ -9012,6 +9046,246 @@ def _end_anchor_dependents(live: _LiveCombat, event: EffectExpired) -> None:
     identity = (event.target_id, event.effect_id, event.origin)
     for construct_id in [cid for cid, c in live.constructs.items() if c.anchor == identity]:
         del live.constructs[construct_id]
+
+
+# ── C21 transformations (SRD 5.2 Wild Shape, Polymorph) ────────────────────
+
+
+def _transform_of(live: _LiveCombat, entity_id: str) -> _Transform | None:
+    return live.transforms.get(entity_id)
+
+
+def _form_stat_fields(target: Combatant, form: Monster, source: TransformSource) -> dict[str, Any]:
+    """The ``Combatant`` fields a transformation into ``form`` replaces, with
+    the form's values.
+
+    Both sources swap the physical stat block: AC, STR / DEX / CON, Speed and
+    movement modes, senses, damage and condition traits, trait mechanics, and a
+    5-ft reach (the corpus carries no melee reach). SRD 5.2 Polymorph: "The
+    target's game statistics are replaced by the stat block of the chosen
+    Beast, but the target retains its alignment, personality, creature type,
+    Hit Points, and Hit Point Dice" — so it also takes the form's INT / WIS /
+    CHA, Proficiency Bonus, proficiencies, spellcasting ability and legendary
+    pools. SRD 5.2 Wild Shape: "you retain your creature type; Hit Points; Hit
+    Point Dice; Intelligence, Wisdom, and Charisma scores; class features;
+    languages; and feats. You also retain your skill and saving throw
+    proficiencies and use your Proficiency Bonus for them, in addition to
+    gaining the proficiencies of the creature." A druid's Proficiency Bonus is
+    never below a CR 1 or lower Beast's, so the union already gives "the one in
+    the stat block" whenever that is higher.
+    """
+    scores = form.ability_scores
+    saves = [a for a in ABILITY_CODES if getattr(form.saving_throws, a) is not None]
+    skills = [k for k, v in form.skills.model_dump().items() if v is not None]
+    fields: dict[str, Any] = {
+        "ac": form.ac,
+        "strength": scores.str,
+        "dexterity": scores.dex,
+        "constitution": scores.con,
+        "base_speed": form.movement.walk or 0,
+        "movement_modes": CombatantMovementModes(
+            climb=form.movement.climb,
+            swim=form.movement.swim,
+            fly=form.movement.fly,
+            burrow=form.movement.burrow,
+        ),
+        "senses": CombatantSenses(
+            darkvision=form.senses.darkvision,
+            blindsight=form.senses.blindsight,
+            tremorsense=form.senses.tremorsense,
+            truesight=form.senses.truesight,
+        ),
+        "melee_reach_ft": 5,
+        "damage_resistances": list(form.damage_resistances),
+        "damage_immunities": list(form.damage_immunities),
+        "damage_vulnerabilities": list(form.damage_vulnerabilities),
+        "condition_immunities": list(form.condition_immunities),
+        "physical_resistances_nonmagical_only": False,
+        "trait_mechanics": [a.mechanic for a in form.special_abilities if a.mechanic is not None],
+    }
+    if source == "wild-shape":
+        return fields | {
+            "save_proficiencies": [
+                *target.save_proficiencies,
+                *(a for a in saves if a not in target.save_proficiencies),
+            ],
+            "skill_proficiencies": [
+                *target.skill_proficiencies,
+                *(k for k in skills if k not in target.skill_proficiencies),
+            ],
+        }
+    legendary_actions = _legendary_action_uses_max(form)
+    legendary_resistances = _legendary_resistance_max(form)
+    return fields | {
+        "intelligence": scores.int,
+        "wisdom": scores.wis,
+        "charisma": scores.cha,
+        "proficiency_bonus_override": form.proficiency_bonus,
+        "save_proficiencies": saves,
+        "skill_proficiencies": skills,
+        "skill_expertise": [],
+        "spellcasting_ability": form.spellcasting_ability,
+        "legendary_actions_max": legendary_actions,
+        "legendary_actions_remaining": legendary_actions,
+        "legendary_resistances_max": legendary_resistances,
+        "legendary_resistances_remaining": legendary_resistances,
+    }
+
+
+def _apply_transform(
+    live: _LiveCombat,
+    target_id: str,
+    form: Monster,
+    *,
+    source: TransformSource,
+    effect: ActiveEffect,
+    temp_hp: int,
+) -> None:
+    """Shape-shift ``target_id`` into ``form`` (which has an AC: the form gates
+    check it), carried by ``effect``.
+
+    An earlier transformation of the target ends first (Wild Shape used again;
+    a second Polymorph). Then the effect lands, the replaced fields are stashed
+    and swapped, a monster target acts from the form's actions, and the
+    creature gains ``temp_hp`` Temporary Hit Points in its one bucket.
+    Polymorph's grant vanishes when the spell ends ("These Temporary Hit Points
+    vanish if any remain when the spell ends"), but only a bucket the grant
+    raised is the grant's. The form's Multiattack sets the Attack action's
+    count; Wild Shape keeps the creature's own Extra Attack when that is more,
+    since it retains its class features.
+    """
+    _end_transform(live, target_id, "remove_ieffect")
+    target = _find_combatant(live, target_id)
+    if target is None:
+        return
+    _emit(live, EffectApplied(effect=effect))
+    fields = _form_stat_fields(target, form, source)
+    is_monster = target.entity_type != "Character"
+    attacks = multiattack_count(form)
+    live.transforms[target_id] = _Transform(
+        entity_id=target_id,
+        form_slug=form.slug,
+        source=source,
+        effect_id=effect.id,
+        origin=effect.origin,
+        stash={name: getattr(target, name) for name in fields},
+        original_monster_slug=live.monster_slug_by_entity.get(target_id) if is_monster else None,
+        original_action_uses=(
+            live.monster_action_uses_by_entity.get(target_id) if is_monster else None
+        ),
+        form_proficiency_bonus=form.proficiency_bonus,
+        attacks_per_action=(
+            max(attacks, _attacks_per_action(target)) if source == "wild-shape" else attacks
+        ),
+        clears_temp_hp_on_end=(
+            source == "polymorph" and temp_hp > live.tracked_temp_hp.get(target_id, 0)
+        ),
+    )
+    _update_combatant(live, target_id, **fields)
+    if is_monster:
+        live.monster_slug_by_entity[target_id] = form.slug
+        live.monster_action_uses_by_entity[target_id] = _hydrate_monster_action_uses(form)
+    _clamp_movement_budget(live, target_id)
+    _emit(live, TempHpApplied(target_id=target_id, amount=temp_hp))
+
+
+def _end_transform(live: _LiveCombat, entity_id: str, reason: EffectExpiryReason) -> None:
+    """End ``entity_id``'s transformation, if any, through its effect: a
+    transformation its caster concentrates on (Polymorph) ends that
+    concentration, the one path C13 cascades; any other (Wild Shape) expires
+    its effect directly. Either way ``_revert_transform_on_expiry`` reverts it."""
+    transform = live.transforms.get(entity_id)
+    if transform is None:
+        return
+    identity = (entity_id, transform.effect_id, transform.origin)
+    caster_id = transform.origin.split(":", 2)[-1]
+    if identity in live.concentration_chain.get(caster_id, []):
+        _drop_concentration(live, caster_id, reason=reason)
+        return
+    _emit(
+        live,
+        EffectExpired(
+            effect_id=transform.effect_id,
+            target_id=entity_id,
+            origin=transform.origin,
+            reason=reason,
+        ),
+    )
+
+
+def _revert_transform_on_expiry(live: _LiveCombat, event: EffectExpired) -> None:
+    """Revert the creature whose transformation effect just expired: restore
+    every stashed field and the monster's own actions, re-clamp its movement,
+    and — for Polymorph's own grant — empty its Temporary Hit Points ("These
+    Temporary Hit Points vanish if any remain when the spell ends"). Wild
+    Shape's Temporary Hit Points stay."""
+    transform = live.transforms.get(event.target_id)
+    if transform is None or (transform.effect_id, transform.origin) != (
+        event.effect_id,
+        event.origin,
+    ):
+        return
+    del live.transforms[event.target_id]
+    _update_combatant(live, event.target_id, **transform.stash)
+    if transform.original_monster_slug is None:
+        live.monster_slug_by_entity.pop(event.target_id, None)
+    else:
+        live.monster_slug_by_entity[event.target_id] = transform.original_monster_slug
+    if transform.original_action_uses is None:
+        live.monster_action_uses_by_entity.pop(event.target_id, None)
+    else:
+        live.monster_action_uses_by_entity[event.target_id] = transform.original_action_uses
+    _clamp_movement_budget(live, event.target_id)
+    if transform.clears_temp_hp_on_end:
+        live.tracked_temp_hp[event.target_id] = 0
+        _update_combatant(live, event.target_id, temp_hp=0)
+
+
+def _stat_block_magnitudes_of(live: _LiveCombat, current: Combatant) -> StatBlockMagnitudes | None:
+    """A transformed actor's stat-block numbers: its current six scores (the
+    form's physical ones; Wild Shape keeps its own INT / WIS / CHA) and the
+    form's Proficiency Bonus, which its stat-block attacks use. ``None`` for a
+    creature in its own form."""
+    transform = live.transforms.get(current.entity_id)
+    if transform is None:
+        return None
+    return StatBlockMagnitudes(
+        ability_scores={
+            "str": current.strength,
+            "dex": current.dexterity,
+            "con": current.constitution,
+            "int": current.intelligence,
+            "wis": current.wisdom,
+            "cha": current.charisma,
+        },
+        proficiency_bonus=transform.form_proficiency_bonus,
+    )
+
+
+def _shape_shifted_failure(
+    live: _LiveCombat, current: Combatant, intent: PlayerIntent
+) -> CombatEvent | None:
+    """The refusal for what a shape-shifted creature cannot do, or ``None``.
+
+    ``CastFailed(reason="no_spellcasting")`` for a cast or a readied spell —
+    SRD 5.2 Wild Shape: "You can't cast spells, but shapeshifting doesn't
+    break your Concentration"; Polymorph: "it can't speak or cast spells";
+    Ready: "When you Ready a spell, you cast it as normal". A running
+    concentration is untouched. ``AttackFailed(reason="action_unavailable")``
+    for a weapon attack — Wild Shape: "Your ability to handle objects is
+    determined by the form's limbs rather than your own"; Polymorph: "The
+    target's gear melds into the new form"."""
+    if current.entity_id not in live.transforms:
+        return None
+    if intent.intent_type == "cast_spell" or (intent.intent_type == "ready" and intent.spell_id):
+        return CastFailed(
+            actor_id=current.entity_id, spell_id=intent.spell_id or "", reason="no_spellcasting"
+        )
+    if intent.intent_type == "attack" and intent.weapon_id:
+        return AttackFailed(
+            actor_id=current.entity_id, target_id=intent.target_id, reason="action_unavailable"
+        )
+    return None
 
 
 @dataclass

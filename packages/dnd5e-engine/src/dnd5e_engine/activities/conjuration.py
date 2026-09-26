@@ -196,6 +196,19 @@ def construct_attack_activity(
     )
 
 
+@dataclass(frozen=True)
+class StatBlockMagnitudes:
+    """The numbers a creature acting from a stat block rolls with: its six
+    ability scores (``"str"`` … ``"cha"``) and its Proficiency Bonus. On a
+    resolution context they replace the entity-type approximations (a
+    Monster's uniform ``attack_bonus`` model), so a governing ability, ``@mod``
+    and ``@prof`` read the stat block. SRD 5.2 Wild Shape: "Your game
+    statistics are replaced by the Beast's stat block"."""
+
+    ability_scores: Mapping[str, int]
+    proficiency_bonus: int
+
+
 __all__ = [
     "CONJURATION_ALLOWLIST",
     "CONSTRUCTS",
@@ -205,6 +218,7 @@ __all__ = [
     "ConjurationKind",
     "ConstructRequest",
     "ConstructSpec",
+    "StatBlockMagnitudes",
     "TransformRequest",
     "TransformSource",
     "construct_attack_activity",

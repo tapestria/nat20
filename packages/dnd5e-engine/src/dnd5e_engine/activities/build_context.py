@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from dnd5e_srd_data.schema.common import PassiveEffect
     from dnd5e_srd_data.schema.spell import Spell
 
-    from dnd5e_engine.activities.conjuration import ConjurationCarrier
+    from dnd5e_engine.activities.conjuration import ConjurationCarrier, StatBlockMagnitudes
     from dnd5e_engine.types.effects import ActiveEffect
 
 _ABILITIES = ("str", "dex", "con", "int", "wis", "cha")
@@ -242,6 +242,7 @@ def build_activity_context(
     granted_die: str | None = None,
     conjuration: ConjurationCarrier | None = None,
     weapon_enchantment_to_hit: int = 0,
+    stat_block_magnitudes: StatBlockMagnitudes | None = None,
 ) -> ActivityResolutionContext:
     """Adapt the caster + the pre-computed hydration sidecars into the typed
     ``ActivityResolutionContext`` the new resolver consumes.
@@ -294,7 +295,13 @@ def build_activity_context(
     existed.
     """
     mod = _caster_mod(caster)
-    if caster.entity_type == "Character":
+    if stat_block_magnitudes is not None:
+        # A transformed creature rolls with its stat block's own numbers
+        # (D4 a): the entity-type branches below, and the fixed to-hit / save
+        # DC overrides they imply, do not apply.
+        caster_abilities = dict(stat_block_magnitudes.ability_scores)
+        caster_proficiency_bonus = stat_block_magnitudes.proficiency_bonus
+    elif caster.entity_type == "Character":
         # PCs carry real six-ability scores + character_level (piece 3), so the
         # `@mod`/`@prof`/`@abilities.<ab>.mod` tokens resolve to honest values.
         caster_abilities = {
@@ -427,7 +434,7 @@ def build_activity_context(
         base_spell_level=base_spell_level,
         save_dc_override=(
             None
-            if is_feature_invocation
+            if is_feature_invocation or stat_block_magnitudes is not None
             else _save_dc(
                 caster,
                 mod,
@@ -443,7 +450,11 @@ def build_activity_context(
         # pinned 0 override — no change needed at that call site, it already
         # treated ``None`` as "no override". A Monster's stat-block spell
         # attack uses PB + its spellcasting modifier instead.
-        attack_bonus_override=_attack_bonus_override(caster, spellcasting_ability),
+        attack_bonus_override=(
+            None
+            if stat_block_magnitudes is not None
+            else _attack_bonus_override(caster, spellcasting_ability)
+        ),
         passive_damage_modifiers=passive_damage_modifiers,
         passive_save_modifiers=passive_save_modifiers,
         passive_save_bonus=passive_save_bonus,
@@ -562,4 +573,5 @@ def build_activity_context(
         granted_die=granted_die,
         conjuration=conjuration,
         weapon_enchantment_to_hit=weapon_enchantment_to_hit,
+        stat_block_magnitudes=stat_block_magnitudes,
     )

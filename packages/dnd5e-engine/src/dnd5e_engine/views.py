@@ -14,6 +14,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from dnd5e_engine.activities.conjuration import TransformSource
 from dnd5e_engine.outcome import CombatOutcome
 from dnd5e_engine.types.combat import Combatant
 
@@ -32,6 +33,19 @@ class ConstructView:
     spell_id: str
     zone_id: str
     slot_level: int
+
+
+@dataclass(frozen=True)
+class TransformView:
+    """Read-only projection of one live transformation (C21): SRD 5.2 Wild
+    Shape or Polymorph. The creature's ``initiative`` entry already shows the
+    form's statistics; this names the form and the effect that ends it."""
+
+    entity_id: str
+    form_slug: str
+    source: TransformSource
+    effect_id: str
+    origin: str
 
 
 @dataclass(frozen=True)
@@ -92,6 +106,8 @@ class LiveCombatView:
     # C21 — caster-owned spell constructs keyed by ``construct_id``; empty when
     # none is live.
     constructs: dict[str, ConstructView] = field(default_factory=dict)
+    # C21 — transformed creatures keyed by entity id; empty when none is.
+    transformations: dict[str, TransformView] = field(default_factory=dict)
 
     @classmethod
     def from_live(cls, live: _LiveCombat) -> LiveCombatView:
@@ -154,7 +170,23 @@ class LiveCombatView:
                 )
                 for cid, c in live.constructs.items()
             },
+            transformations={
+                entity_id: TransformView(
+                    entity_id=entity_id,
+                    form_slug=t.form_slug,
+                    source=t.source,
+                    effect_id=t.effect_id,
+                    origin=t.origin,
+                )
+                for entity_id, t in live.transforms.items()
+            },
         )
 
 
-__all__ = ["ConstructView", "LiveCombatView", "MonsterActionUsesView", "TurnCombatView"]
+__all__ = [
+    "ConstructView",
+    "LiveCombatView",
+    "MonsterActionUsesView",
+    "TransformView",
+    "TurnCombatView",
+]

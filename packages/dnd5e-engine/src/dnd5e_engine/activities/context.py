@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from dnd5e_engine.activities.conjuration import (
         ConjurationCarrier,
         ConstructRequest,
+        StatBlockMagnitudes,
         TransformRequest,
     )
     from dnd5e_engine.types.effects import ActiveEffect
@@ -552,6 +553,11 @@ class ActivityResolutionContext:
     # (``_attack_bonus`` returns a pinned override verbatim, before the
     # weapon's ``magical_bonus``); 0 unless the attacker's bonus is pinned.
     weapon_enchantment_to_hit: int = 0
+    # SRD 5.2 Wild Shape / Polymorph: the transformed creature's stat-block
+    # scores and Proficiency Bonus. ``build_activity_context`` projects them
+    # onto ``caster_abilities`` / ``caster_proficiency_bonus``; ``None`` keeps
+    # the entity-type model.
+    stat_block_magnitudes: StatBlockMagnitudes | None = None
 
     def ability_mod(self, ability: str) -> int:
         return (self.caster_abilities.get(ability, 10) - 10) // 2
