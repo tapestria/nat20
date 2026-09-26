@@ -277,7 +277,7 @@ def test_the_force_cannot_repeat_on_the_cast_turn() -> None:
 @pytest.mark.parametrize("spell_id", ["fire-bolt", SW])
 def test_an_attack_naming_no_live_force_ignores_its_spell_id(spell_id: str) -> None:
     """``spell_id`` on an ``attack`` names the force only while its caster owns
-    one; otherwise the attack resolves as it always has, the field unread: a
+    one; otherwise the field is not read and the attack is an ordinary one: a
     Mace swing on the Attack action. Seed 9: d20 15 + 5 = 20; 1d6 5 + STR 2 = 7
     Bludgeoning."""
     handle, live = start([cleric(strength=14)], seed=9)
@@ -431,8 +431,8 @@ def test_the_priest_opens_with_its_multiattack(
     """SRD 5.2 Priest: "The priest makes two attacks, using Mace or Radiant
     Flame in any combination." Its bundled 1/Day Spellcasting entry points at
     Spiritual Weapon where the SRD's says Spirit Guardians (a data slip), and
-    no monster casts a construct spell (BACKLOG), so its first turn is the
-    same two attacks, roll for roll, as before Spiritual Weapon resolved."""
+    no monster casts a construct spell (BACKLOG), so its first turn is that
+    Multiattack, pinned roll for roll."""
     handle, live = start(
         [pc(initiative=1, zone_id=cell_id(1, 0))],
         seed=seed,

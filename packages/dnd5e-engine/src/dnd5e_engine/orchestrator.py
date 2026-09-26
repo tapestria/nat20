@@ -8890,8 +8890,8 @@ def _repeated_construct(
     live: _LiveCombat, current: Combatant, intent: PlayerIntent
 ) -> _Construct | None:
     """The live construct an ``attack`` repeats: the one its ``spell_id`` names
-    that ``current`` owns. ``spell_id`` on any other attack stays unread, so
-    that attack resolves as it did before constructs existed."""
+    that ``current`` owns. The field names a force only to that force's owner;
+    on any other attack it is not read."""
     if intent.intent_type != "attack" or not intent.spell_id:
         return None
     return live.constructs.get(_construct_id(current.entity_id, intent.spell_id))
@@ -10816,8 +10816,8 @@ def _pop_pending_reaction(
     ``targeted_by_magic_missile`` triggers are owned by the creature actually
     under attack/targeted, not any bystander), must be alive, must be neither
     Incapacitated nor shape-shifted, and must have ``reaction_available``.
-    Removes + returns the match (a reaction fires — and
-    is spent — at most once); ``None`` when nothing qualifies.
+    Removes + returns the match (a reaction fires — and is spent — at most
+    once); ``None`` when nothing qualifies.
 
     An armed reaction whose owner fails ``eligible`` is SKIPPED (left queued,
     no Reaction spent) — R4. The scan continues in initiative order to the
