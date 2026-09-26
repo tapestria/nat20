@@ -52,8 +52,9 @@ caster or a grappler Incapacitated.
 C21a changes results wherever a concentration spell applies no concentration
 effect of its own (it now concentrates, so an earlier concentration ends and
 later damage draws a Constitution save), for readied concentration spells,
-and for Magic Weapon, Wild Shape and Polymorph intents that name no weapon or
-form (now refused before anything is spent).
+for Magic Weapon, Wild Shape and Polymorph intents that name no weapon or
+form (now refused before anything is spent), and for a host-driven attacker
+with Pack Tactics (it now gets its Advantage).
 Behavioural deltas (and the fixtures they move) are enumerated in
 [`docs/migration/v0.5-to-v0.6.md`](../../docs/migration/v0.5-to-v0.6.md).
 
@@ -612,6 +613,15 @@ Behavioural deltas (and the fixtures they move) are enumerated in
   bypasses that validator (Pydantic does not re-run `mode="before"` on
   `model_copy`), so changing only one of `level`/`classes` via `model_copy`
   can desync them — construct a fresh instance instead.
+- **Pack Tactics applies to a host-driven attacker (C21a).** SRD 5.2: "The
+  tough has Advantage on an attack roll against a creature if at least one of
+  the tough's allies is within 5 feet of the creature and the ally doesn't
+  have the Incapacitated condition." The trait resolved only on a monster's
+  own `advance_monster_turn`; an attack through `submit_player_intent` by a
+  creature carrying it (a template NPC or monster the host drives: a Tough, a
+  Hobgoblin Warrior, a Kobold Warrior, a Wolf) now rolls with Advantage too,
+  one more d20, whenever such an ally stands within 5 feet of the target. A
+  seeded stream that has one moves from that roll on.
 
 ### Fixed
 

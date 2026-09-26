@@ -11701,9 +11701,10 @@ async def submit_player_intent(
             stat_block_magnitudes=(
                 _stat_block_magnitudes_of(live, current) if intent.stat_block_action_id else None
             ),
-            # SRD 5.2 stat-block trait "Pack Tactics": a form brings its traits
-            # (C21), so the PC path projects the ally map too. ``attack.py``
-            # applies it only to an attacker carrying the trait.
+            # SRD 5.2 stat-block trait "Pack Tactics" holds whichever entry
+            # point drives its bearer: a form's (C21) or a host-driven
+            # monster's. ``attack.py`` applies it only to an attacker carrying
+            # the trait.
             pack_tactics_ally_adjacent=_pack_tactics_map(live, current, geometry_targets),
         )
         for activity in activities:

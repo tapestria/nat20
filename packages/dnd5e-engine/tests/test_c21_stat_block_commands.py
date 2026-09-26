@@ -132,6 +132,31 @@ def test_the_wolf_forms_pack_tactics_comes_with_its_stat_block() -> None:
     assert "trait" in roll.advantage_sources
 
 
+@pytest.mark.parametrize(("ally_col", "advantage"), [(2, "advantage"), (5, "normal")])
+def test_a_host_driven_attacker_gets_its_pack_tactics(ally_col: int, advantage: str) -> None:
+    """Tough: "Pack Tactics. The tough has Advantage on an attack roll against a
+    creature if at least one of the tough's allies is within 5 feet of the
+    creature and the ally doesn't have the Incapacitated condition." The trait
+    holds whichever entry point drives its bearer: a Tough swinging its Mace
+    through ``submit_player_intent`` rolls with Advantage, one more d20, while
+    its ally stands 5 feet from the target, and normally with the ally 20 feet
+    away. Seed 1: d20s 5 and 19."""
+    tough = {"monster_template_slug": "tough"}
+    handle, live = start(
+        [pc(initiative=1, zone_id=cell_id(1, 0))],
+        seed=1,
+        encounter=[
+            foe(entity_id="mon:tough", initiative=20, zone_id=cell_id(0, 0), **tough),
+            foe(entity_id="mon:ally", initiative=19, zone_id=cell_id(ally_col, 0), **tough),
+        ],
+    )
+    act(handle, "mon:tough", intent_type="attack", target_id="char:hero", weapon_id="mace")
+    (roll,) = events(live, AttackRolled)
+    assert (roll.attacker_id, roll.advantage) == ("mon:tough", advantage)
+    assert roll.advantage_sources == (["trait"] if advantage == "advantage" else [])
+    assert roll.natural == (19 if advantage == "advantage" else 5)
+
+
 def test_a_form_taken_this_turn_swings_its_multiattack_count() -> None:
     """Black Bear: "Multiattack. The bear makes two Rend attacks." A creature
     that changes shape before it attacks (Wild Shape is a Bonus Action) takes
