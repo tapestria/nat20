@@ -250,11 +250,29 @@ def uses_summon_roll_data(monster: Monster) -> bool:
     return _SUMMON_ROLL_DATA in monster.model_dump_json()
 
 
+@dataclass(frozen=True)
+class TransformRider:
+    """A spell whose shape-shift rides its own saving throw (the
+    ``FORCED_MOVEMENT_RIDERS`` pattern): on a ``failed_save`` the target takes
+    the cast's Beast form as ``source``."""
+
+    trigger: Literal["failed_save"]
+    source: TransformSource
+
+
+# SRD 5.2 Polymorph: "The target must succeed on a Wisdom saving throw or
+# shape-shift into a Beast form for the duration."
+TRANSFORM_RIDERS: Final[Mapping[str, TransformRider]] = MappingProxyType(
+    {"polymorph": TransformRider(trigger="failed_save", source="polymorph")}
+)
+
+
 __all__ = [
     "CONJURATION_ALLOWLIST",
     "CONSTRUCTS",
     "ENCHANTED_WEAPON_FLAG",
     "TRANSFORM_FORM_FLAG",
+    "TRANSFORM_RIDERS",
     "WILD_SHAPE_TIERS",
     "ConjurationCarrier",
     "ConjurationKind",
@@ -262,6 +280,7 @@ __all__ = [
     "ConstructSpec",
     "StatBlockMagnitudes",
     "TransformRequest",
+    "TransformRider",
     "TransformSource",
     "WildShapeTier",
     "construct_attack_activity",

@@ -99,6 +99,7 @@ from dnd5e_engine.activities.conjuration import (
     CONSTRUCTS,
     ENCHANTED_WEAPON_FLAG,
     TRANSFORM_FORM_FLAG,
+    TRANSFORM_RIDERS,
     ConjurationCarrier,
     StatBlockMagnitudes,
     TransformSource,
@@ -4822,6 +4823,9 @@ def _emit_apply_damage(live: _LiveCombat, event: DamageApplied) -> None:
         absorbed = min(temp, remaining)
         live.tracked_temp_hp[event.target_id] = temp - absorbed
         remaining -= absorbed
+    # SRD 5.2 Polymorph ends the moment its Temporary Hit Points are gone; the
+    # rest of this hit then lands on the creature's own Hit Points.
+    _end_polymorph_on_depletion(live, event.target_id)
     new_hp = max(0, tracked - remaining)
     # C18 §Monster action economy, fix round 1 — SRD 5.2 stat-block trait
     # "Undead Fortitude": "On a successful save, the [monster] drops to 1
@@ -6438,6 +6442,7 @@ def _fold_resolution_outcome(
     resolution. ``actx`` is the resolution's context, ``None`` when nothing
     resolved."""
     _apply_transform_requests(live, caster, actx)
+    _apply_transform_riders(live, caster, actx, pre_event_count)
     _end_superseded_enchantments(live, caster, actx, pre_event_count)
     _apply_concentration_anchor(live, caster, spell, pre_event_count)
     _apply_construct_requests(live, caster, actx)
@@ -8730,10 +8735,11 @@ def _conjuration_gate_failure(
     # A shape-shifted actor is refused first: it cannot cast any spell at all,
     # nor make a weapon attack — so a form's weapon attack is refused here,
     # before the stat-block check below ever sees it. A readied conjuration is
-    # refused before the enchant gate reads its (absent) weapon; a construct's
-    # attack names a spell and a stat-block swing names an action, so the
-    # remaining checks each only ever refuse their own intent — their order
-    # only fixes which reason a malformed intent reports.
+    # refused before the enchant gate reads its (absent) weapon; the rest
+    # govern disjoint intents (a construct's attack names a spell, a
+    # stat-block swing names an action, Wild Shape and Polymorph each their
+    # own allowlisted source), so their order only fixes which reason a
+    # malformed intent reports.
     checks: tuple[_ConjurationGate, ...] = (
         _shape_shifted_failure,
         _readied_conjuration_failure,
@@ -8742,6 +8748,7 @@ def _conjuration_gate_failure(
         _construct_attack_failure,
         _stat_block_attack_failure,
         _wild_shape_failure,
+        _polymorph_form_failure,
     )
     for check in checks:
         failure = check(live, current, intent)
@@ -8824,6 +8831,10 @@ def _conjuration_carrier(
             if intent.form_id
             else None
         )
+    if kind == "transform_rider":
+        # SRD 5.2 Polymorph: the Beast form ``_polymorph_form_failure`` accepted;
+        # fold step 2 applies it on a failed save.
+        return ConjurationCarrier(source_slug=source, form_slug=intent.form_id)
     return None
 
 
@@ -9040,6 +9051,28 @@ def _wild_shape_failure(
         or (transform is not None and transform.source == "polymorph")
     ):
         return CastFailed(actor_id=current.entity_id, spell_id="", reason="invalid_form")
+    return None
+
+
+def _polymorph_form_failure(
+    live: _LiveCombat, current: Combatant, intent: PlayerIntent
+) -> CombatEvent | None:
+    """SRD 5.2 Polymorph (C21): the cast names its Beast form in ``form_id``,
+    checked before the slot is spent. ``CastFailed(reason="invalid_form")``
+    for a slug that is no usable Beast (``_validated_beast_form``), a target
+    with neither a Challenge Rating nor a level (``_challenge_rating_of``),
+    or a form whose Challenge Rating is above it. ``None`` for every other
+    intent."""
+    spell_id = intent.spell_id or ""
+    if (
+        intent.intent_type != "cast_spell"
+        or CONJURATION_ALLOWLIST.get(spell_id) != "transform_rider"
+    ):
+        return None
+    form = _validated_beast_form(intent.form_id)
+    ceiling = _challenge_rating_of(live, intent.target_id) if intent.target_id else None
+    if form is None or ceiling is None or form.cr > ceiling:
+        return CastFailed(actor_id=current.entity_id, spell_id=spell_id, reason="invalid_form")
     return None
 
 
@@ -9425,6 +9458,89 @@ def _apply_transform_requests(
             ),
             temp_hp=_class_levels(caster).get("druid", 0),
         )
+
+
+def _challenge_rating_of(live: _LiveCombat, entity_id: str) -> float | None:
+    """The Challenge Rating a Polymorph form is measured against. SRD 5.2: "a
+    Challenge Rating equal to or less than the target's (or the target's level
+    if it doesn't have a Challenge Rating)" — a Character's level; a monster's
+    template CR (its own, not its form's, while it is transformed); ``None``
+    for a template-less creature, which is refused rather than guessed."""
+    target = _find_combatant(live, entity_id)
+    if target is None:
+        return None
+    if target.entity_type == "Character":
+        return float(target.character_level)
+    transform = _transform_of(live, entity_id)
+    slug = (
+        transform.original_monster_slug
+        if transform is not None
+        else live.monster_slug_by_entity.get(entity_id)
+    )
+    monster = get_lib_loader().get_monster(slug) if slug else None
+    return monster.cr if monster is not None else None
+
+
+def _apply_transform_riders(
+    live: _LiveCombat,
+    caster: Combatant,
+    actx: ActivityResolutionContext | None,
+    pre_event_count: int,
+) -> None:
+    """Fold step 2 (C21): a ``TRANSFORM_RIDERS`` spell's failed save
+    shape-shifts its target into the form ``_polymorph_form_failure``
+    accepted. SRD 5.2 Polymorph: "The target must succeed on a Wisdom saving
+    throw or shape-shift into a Beast form for the duration" and "gains a
+    number of Temporary Hit Points equal to the Hit Points of the Beast form".
+    A target's FIRST ``SaveRolled`` in the resolution is the spell's own; a
+    later one is a Concentration save from damage (the
+    ``_apply_forced_movement_riders`` rule). The form rides the spell's
+    concentration effect (id and origin by the spell-effect convention), so
+    C13 governs it; a successful save applies nothing and the concentration
+    anchor follows."""
+    carrier = actx.conjuration if actx is not None else None
+    rider = TRANSFORM_RIDERS.get(carrier.source_slug) if carrier is not None else None
+    if carrier is None or rider is None:
+        return
+    form = _validated_beast_form(carrier.form_slug)
+    if form is None:  # validated before the slot was spent
+        return
+    judged: set[str] = set()
+    for event in live.event_log[pre_event_count:]:
+        if not isinstance(event, SaveRolled) or event.target_id in judged:
+            continue
+        judged.add(event.target_id)
+        if event.succeeded:
+            continue
+        _apply_transform(
+            live,
+            event.target_id,
+            form,
+            source=rider.source,
+            effect=ActiveEffect(
+                id=f"effect:{carrier.source_slug}",
+                name=carrier.source_slug.title(),
+                origin=f"cast:{carrier.source_slug}:{caster.entity_id}",
+                target_id=event.target_id,
+                flags={"concentration": True, TRANSFORM_FORM_FLAG: form.slug},
+            ),
+            temp_hp=form.hp,
+        )
+
+
+def _end_polymorph_on_depletion(live: _LiveCombat, target_id: str) -> None:
+    """SRD 5.2 Polymorph: "The spell ends early on the target if it has no
+    Temporary Hit Points left." The damage fold calls this after Temporary Hit
+    Points absorb a hit and before it writes Hit Points, so the rest of that
+    hit lands on the creature's own Hit Points. A Wild Shape form is kept: it
+    does not end with its Temporary Hit Points."""
+    transform = _transform_of(live, target_id)
+    if (
+        transform is not None
+        and transform.source == "polymorph"
+        and live.tracked_temp_hp.get(target_id, 0) == 0
+    ):
+        _end_transform(live, target_id, "temp_hp_depleted")
 
 
 def _stat_block_magnitudes_of(live: _LiveCombat, current: Combatant) -> StatBlockMagnitudes | None:

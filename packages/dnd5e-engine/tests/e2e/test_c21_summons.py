@@ -441,7 +441,6 @@ def test_c21_s05_wild_shape_does_not_swap_stat_block_today():
     assert after_shape.ac != baseline.ac
 
 
-@xfail_cluster(21, "summons, transform, enchant")
 def test_c21_s06_polymorph_save_kind_resolves_save_but_no_transform_effect():
     """C21-S06: SRD 5.2 §Spell Descriptions (Polymorph) — "The target
     must succeed on a Wisdom saving throw or shape-shift into a Beast
