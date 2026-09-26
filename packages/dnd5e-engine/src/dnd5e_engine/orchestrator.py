@@ -8915,8 +8915,8 @@ def _construct_cast_failure(
     cannot be placed: an explicit ``target_zone_id`` the caster cannot reach
     with the spell (off the map, beyond its range, out of sight or behind total
     cover), or a named target farther from the force's space than its reach.
-    ``_spell_out_of_range_failure`` has already range-checked the named target
-    itself."""
+    With no ``target_zone_id`` the force appears in the named target's space,
+    which ``_spell_out_of_range_failure`` has already range-checked."""
     spell_id = intent.spell_id or ""
     spec = CONSTRUCTS.get(spell_id)
     if intent.intent_type != "cast_spell" or spec is None:
@@ -9665,11 +9665,15 @@ def _spell_out_of_range(
 ) -> bool:
     """SRD §Spell Range — return ``True`` if this is a targeted cast whose
     target lies beyond the spell's metric range. ``self``/``special`` ranges
-    carry no metric distance and never gate."""
+    carry no metric distance and never gate. A construct placed in a named
+    space is measured there instead (``_construct_cast_failure``): SRD 5.2
+    Spiritual Weapon's force "appears within range", and its target need only
+    be "within 5 feet of the force"."""
     if not (
         intent.intent_type == "cast_spell"
         and cast_spell_for_timing is not None
         and intent.target_id is not None
+        and not (intent.target_zone_id is not None and cast_spell_for_timing.slug in CONSTRUCTS)
     ):
         return False
     spell_range = cast_spell_for_timing.range

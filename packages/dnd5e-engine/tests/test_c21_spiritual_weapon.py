@@ -227,13 +227,13 @@ def test_a_force_that_cannot_be_placed_is_refused_before_spending(
     assert not live.constructs
 
 
-def _wide_combat(seed: int) -> tuple[CombatHandle, _LiveCombat]:
-    """A 20x2 grid: the cleric at 0,0, the foe at 1,0."""
+def _wide_combat(seed: int, foe_col: int = 1) -> tuple[CombatHandle, _LiveCombat]:
+    """A 20x2 grid: the cleric at 0,0, the foe at ``foe_col``,0."""
     result = asyncio.run(
         start_combat(
             session_id=f"c21a-wide-{seed}",
             party=[cleric()],
-            encounter=[foe()],
+            encounter=[foe(zone_id=cell_id(foe_col, 0))],
             grid_scene=GridScene(width=20, height=2),
             rng_seed=seed,
         )
@@ -248,6 +248,19 @@ def test_the_force_appears_within_the_spells_range(col: int, placed: bool) -> No
     _cast(handle, target_zone_id=cell_id(col, 0))
     assert bool(live.constructs) is placed
     assert bool(events(live, CastFailed)) is not placed
+
+
+def test_the_target_is_measured_from_the_force() -> None:
+    """SRD 5.2: "The force appears within range in a space of your choice, and
+    you can immediately make one melee spell attack against one creature within
+    5 feet of the force." A force placed 60 feet away reaches a foe 65 feet
+    away. Seed 9: d20 15 + 6 = 21; 1d8 6 + 3 = 9 Force."""
+    handle, live = _wide_combat(9, foe_col=13)
+    _cast(handle, target_id="mon:foe", target_zone_id=cell_id(12, 0))
+    assert events(live, CastFailed) == []
+    assert live.constructs[FORCE_ID].cell == cell_id(12, 0)
+    assert _hits(live) == [("char:cleric", 15, 6, 21)]
+    assert _damage(live) == [("mon:foe", 9, "force")]
 
 
 def test_the_force_cannot_repeat_on_the_cast_turn() -> None:
