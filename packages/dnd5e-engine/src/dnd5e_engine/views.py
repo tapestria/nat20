@@ -49,6 +49,21 @@ class TransformView:
 
 
 @dataclass(frozen=True)
+class SummonView:
+    """Read-only projection of one summoned creature (C21): SRD 5.2 Summon
+    Dragon's Draconic Spirit. The creature itself is a combatant — it is in
+    ``initiative`` and ``actor_zone`` like any other, never in ``party_ids``
+    or ``encounter_ids`` — and this names who summoned it, with which spell
+    and at which slot level."""
+
+    entity_id: str
+    owner_id: str
+    spell_id: str
+    stat_block_slug: str
+    slot_level: int
+
+
+@dataclass(frozen=True)
 class TurnCombatView:
     """Per-current-actor turn-state projection (spec §6 row D2)."""
 
@@ -108,6 +123,8 @@ class LiveCombatView:
     constructs: dict[str, ConstructView] = field(default_factory=dict)
     # C21 — transformed creatures keyed by entity id; empty when none is.
     transformations: dict[str, TransformView] = field(default_factory=dict)
+    # C21 — summoned creatures keyed by entity id; empty when none is seated.
+    summons: dict[str, SummonView] = field(default_factory=dict)
 
     @classmethod
     def from_live(cls, live: _LiveCombat) -> LiveCombatView:
@@ -180,6 +197,16 @@ class LiveCombatView:
                 )
                 for entity_id, t in live.transforms.items()
             },
+            summons={
+                entity_id: SummonView(
+                    entity_id=entity_id,
+                    owner_id=s.owner_id,
+                    spell_id=s.spell_id,
+                    stat_block_slug=s.stat_block_slug,
+                    slot_level=s.slot_level,
+                )
+                for entity_id, s in live.summons.items()
+            },
         )
 
 
@@ -187,6 +214,7 @@ __all__ = [
     "ConstructView",
     "LiveCombatView",
     "MonsterActionUsesView",
+    "SummonView",
     "TransformView",
     "TurnCombatView",
 ]

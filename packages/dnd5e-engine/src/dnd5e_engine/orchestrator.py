@@ -1181,12 +1181,28 @@ def _target_distance_map(
 
 def _side_of(live: _LiveCombat, entity_id: str) -> set[str] | None:
     """The side (``live.party_ids`` or ``live.encounter_ids``) ``entity_id``
-    belongs to, or ``None`` for an unregistered id."""
+    belongs to, or ``None`` for an unregistered id. A summon fights on its
+    owner's side without joining its side set (C21). SRD 5.2 Summon Dragon:
+    "The creature is an ally to you and your allies."
+    """
+    summon = live.summons.get(entity_id)
+    if summon is not None:
+        return _side_of(live, summon.owner_id)
     if entity_id in live.party_ids:
         return live.party_ids
     if entity_id in live.encounter_ids:
         return live.encounter_ids
     return None
+
+
+def _allied_ids(live: _LiveCombat, entity_id: str) -> set[str]:
+    """Every combatant in the initiative order on ``entity_id``'s side, itself
+    included: its side set's members and the summons they own (C21). Empty
+    for an unregistered id. Without summons it is exactly the side set."""
+    side = _side_of(live, entity_id)
+    if side is None:
+        return set()
+    return {c.entity_id for c in live.initiative if _side_of(live, c.entity_id) is side}
 
 
 def _is_enemy(live: _LiveCombat, entity_id: str, other_id: str) -> bool:
@@ -1203,22 +1219,23 @@ def _target_help_advantage_map(
     """SRD 5.2 §Actions in Combat — Help, Assist an Attack Roll (C14 Task 4):
     per-TARGET, does an outstanding ``live.help_grants`` entry against this
     target belong to an ALLY of ``attacker_id`` (same side: both in
-    ``party_ids`` or both in ``encounter_ids``)? ``target == attacker_id``
+    ``party_ids`` or both in ``encounter_ids``, or a summon of that side —
+    ``_allied_ids``)? ``target == attacker_id``
     never qualifies — Help assists an ALLY's attack roll, not the
     helped-against target's own. Threaded into
     ``ActivityResolutionContext.target_help_advantage``; the one-use pop
     happens after resolution (``_pop_help_grant``) — this is a read-only
     projection.
     """
-    attacker_side = _side_of(live, attacker_id)
-    if attacker_side is None:
+    allies = _allied_ids(live, attacker_id)
+    if not allies:
         return {}
     out: dict[str, bool] = {}
     for target in targets:
         if target.entity_id == attacker_id:
             continue
         helpers = live.help_grants.get(target.entity_id)
-        if helpers and any(h in attacker_side for h in helpers):
+        if helpers and any(h in allies for h in helpers):
             out[target.entity_id] = True
     return out
 
@@ -1241,8 +1258,8 @@ def _pop_help_grant(
     roll" (singular, unconditional), not "the next attack roll that
     resolves with advantage".
     """
-    attacker_side = _side_of(live, attacker_id)
-    if attacker_side is None:
+    allies = _allied_ids(live, attacker_id)
+    if not allies:
         return
     recent = live.event_log[pre_event_count:]
     for target in targets:
@@ -1259,7 +1276,7 @@ def _pop_help_grant(
         if not fired:
             continue
         for idx, helper_id in enumerate(helpers):
-            if helper_id in attacker_side:
+            if helper_id in allies:
                 del helpers[idx]
                 break
         if not helpers:
@@ -1424,11 +1441,11 @@ def _cleave_candidate(
     """
     if weapon is None or weapon.mastery != "cleave" or not targets:
         return None
-    attacker_side = _side_of(live, attacker.entity_id)
+    allies = _allied_ids(live, attacker.entity_id)
     attacker_zone = live.actor_zone.get(attacker.entity_id)
     first = targets[0]
     first_zone = live.actor_zone.get(first.entity_id)
-    if attacker_side is None or attacker_zone is None or first_zone is None:
+    if not allies or attacker_zone is None or first_zone is None:
         return None
     reach = 10 if WeaponProperty.REACH in weapon.properties else 5
     # F4 — exclude EVERY primary target's id, not just ``first``'s: a
@@ -1440,7 +1457,7 @@ def _cleave_candidate(
     for other in live.initiative:
         if (
             other.entity_id in primary_target_ids
-            or other.entity_id in attacker_side
+            or other.entity_id in allies
             or other.entity_id in live.dead_ids
             or not other.is_alive
         ):
@@ -1513,18 +1530,16 @@ def _sneak_ally_adjacent_map(
 
     A new CONSUMER of the ``spatial.py`` distance seam (``within_range`` at 5
     ft), NOT a new spatial primitive. "Ally" = a living combatant on the
-    caster's own side (party vs encounter) other than the caster. The
+    caster's own side (party vs encounter; a summon is on its owner's —
+    ``_allied_ids``) other than the caster. The
     Incapacitated read uses the SRD condition-implication chain (Paralyzed /
     Stunned / Petrified / Unconscious all imply Incapacitated). Threaded into
     ``ActivityResolutionContext.sneak_attack_ally_adjacent`` so the pure
     resolver never touches the spatial seam. Absent zone data for the caster's
     side, a target, or every ally contributes no entry (⇒ no adjacent ally).
     """
-    if caster.entity_id in live.party_ids:
-        side = live.party_ids
-    elif caster.entity_id in live.encounter_ids:
-        side = live.encounter_ids
-    else:
+    side = _allied_ids(live, caster.entity_id)
+    if not side:
         return {}
     allies = [
         c
@@ -1554,8 +1569,8 @@ def _pack_tactics_map(
 ) -> dict[str, bool]:
     """SRD 5.2 stat-block trait "Pack Tactics" (R8) — per target, is at
     least one of the ATTACKER's allies (any OTHER living combatant on its
-    own side — the encounter for a monster attacker) within 5 ft of that
-    target and not Incapacitated?
+    own side — the encounter for a monster attacker, a summon on its
+    owner's) within 5 ft of that target and not Incapacitated?
 
     Mirrors ``_sneak_ally_adjacent_map``'s geometry (same spatial-seam
     consumer shape) with two differences per R8: the ally gate is
@@ -1570,11 +1585,8 @@ def _pack_tactics_map(
     attacker's side, a target, or every ally contributes no entry (⇒ no
     qualifying ally).
     """
-    if attacker.entity_id in live.party_ids:
-        side = live.party_ids
-    elif attacker.entity_id in live.encounter_ids:
-        side = live.encounter_ids
-    else:
+    side = _allied_ids(live, attacker.entity_id)
+    if not side:
         return {}
     allies = [
         c
@@ -1768,9 +1780,9 @@ def _hostile_adjacent_to_attacker(live: _LiveCombat, caster: Combatant) -> bool:
     the roll if you are within 5 feet of an enemy who can see you and
     doesn't have the Incapacitated condition."
 
-    Scans ``live.initiative`` for a LIVING hostile (opposite side of
-    ``caster``, via ``party_ids``/``encounter_ids``) within 5 ft of the
-    ATTACKER's own zone. The attack's TARGET is never special-cased — if it
+    Scans ``live.initiative`` for a LIVING hostile (any combatant outside
+    ``_allied_ids(caster)``, so an allied summon never counts) within 5 ft of
+    the ATTACKER's own zone. The attack's TARGET is never special-cased — if it
     happens to be adjacent it's simply one more entry in ``live.initiative``
     and counts like any other hostile (SRD: "an enemy", not "an enemy other
     than your target"). Excludes an Incapacitated hostile
@@ -1783,15 +1795,15 @@ def _hostile_adjacent_to_attacker(live: _LiveCombat, caster: Combatant) -> bool:
     source without importing the spatial seam. An unregistered side or an
     untracked attacker position yields ``False``.
     """
-    attacker_side = _side_of(live, caster.entity_id)
-    if attacker_side is None:
+    allies = _allied_ids(live, caster.entity_id)
+    if not allies:
         return False
     attacker_zone = live.actor_zone.get(caster.entity_id)
     if attacker_zone is None:
         return False
     for hostile in live.initiative:
         if (
-            hostile.entity_id in attacker_side
+            hostile.entity_id in allies
             or hostile.entity_id in live.dead_ids
             or not hostile.is_alive
         ):
@@ -2428,15 +2440,17 @@ def _mark_monster_action_used(live: _LiveCombat, current: Combatant, action: Mon
 
 
 def _select_monster_targets(live: _LiveCombat, current: Combatant) -> list[Combatant]:
-    """Alive-PC target pool for ``current``'s attack/legendary action: every
-    living party member, minus a charmer (SRD 5.2 Charmed — "You can't
-    attack the charmer"). Extracted from the main-turn targeting block so
-    a legendary action (Task 6) can share it byte-for-byte.
+    """Target pool for ``current``'s attack/legendary action: every living
+    enemy of ``current`` — the party's members and the summons they own
+    (C21: "The creature is an ally to you and your allies") — minus a
+    charmer (SRD 5.2 Charmed — "You can't attack the charmer"). Extracted
+    from the main-turn targeting block so a legendary action can share it
+    byte-for-byte.
     """
     alive_pcs = [
         c
         for c in live.initiative
-        if c.entity_id in live.party_ids and c.is_alive and c.hp_current > 0
+        if _is_enemy(live, current.entity_id, c.entity_id) and c.is_alive and c.hp_current > 0
     ]
     charmer_id = _condition_source_entity(live, current, "charmed")
     if charmer_id is not None:
@@ -3213,6 +3227,11 @@ class _LiveCombat:
     # C21 — live transformations (SRD 5.2 Wild Shape, Polymorph) keyed by the
     # transformed creature's entity id: at most one per creature.
     transforms: dict[str, _Transform] = field(default_factory=dict)
+    # C21 — roster summons (SRD 5.2 Summon Dragon's Draconic Spirit) keyed by
+    # entity id. Never in ``party_ids`` / ``encounter_ids``: a summon's
+    # allegiance is its owner's (``_side_of``), so every reader of the side
+    # sets as "the PCs" / "the foes" stays correct.
+    summons: dict[str, _Summon] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -3266,6 +3285,26 @@ class _Transform:
     form_proficiency_bonus: int
     attacks_per_action: int
     clears_temp_hp_on_end: bool
+
+
+@dataclass
+class _Summon:
+    """One summoned creature in the initiative order (C21): SRD 5.2 Summon
+    Dragon's Draconic Spirit. ``anchor`` is its caster's concentration-anchor
+    ``(target_id, effect_id, origin)`` identity: the creature disappears when
+    that effect expires ("when the spell ends"). ``magnitudes`` and
+    ``attacks_per_action`` are fixed when it is seated, from the slot level
+    and its caster ("Use the spell slot's level for the spell's level in the
+    stat block")."""
+
+    entity_id: str
+    owner_id: str
+    spell_id: str
+    stat_block_slug: str
+    slot_level: int
+    anchor: tuple[str, str, str]
+    magnitudes: StatBlockMagnitudes
+    attacks_per_action: int
 
 
 _REGISTRY: dict[str, _LiveCombat] = {}
@@ -4258,7 +4297,7 @@ def _handle_hide(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
     # hider's cell already breaks every enemy's line; the conjunct bites only
     # for a hider relying on obscurement/darkness alone.
     if cover not in ("three_quarters", "total"):
-        hider_side = _side_of(live, actor_id) or set()
+        hider_side = _allied_ids(live, actor_id)
         for hostile in live.initiative:
             if (
                 hostile.entity_id in hider_side
@@ -4931,7 +4970,12 @@ def _emit_apply_damage(live: _LiveCombat, event: DamageApplied) -> None:
         if not succeeded:
             _drop_concentration(live, event.target_id)
     if new_hp <= 0 and event.target_id not in live.dead_ids:
-        if event.target_id in live.party_ids:
+        if event.target_id in live.summons:
+            # SRD 5.2 Summon Dragon: "The creature disappears when it drops to
+            # 0 Hit Points" — no death, death save or XP. Its caster keeps
+            # concentrating (the SRD is silent; a host can drop it).
+            _leave_roster(live, event.target_id, "zero_hp")
+        elif event.target_id in live.party_ids:
             _apply_zero_hp_to_character(live, event, hp_before=tracked, damage_after_temp=remaining)
         else:
             # SRD 5.2 "Monster Death" — a monster dies the instant it drops to
@@ -8604,6 +8648,7 @@ def _purge_entity_state(live: _LiveCombat, entity_id: str) -> None:
         live.monster_action_uses_by_entity,
         live.legendary_resistance_armed,
         live.transforms,
+        live.summons,
     )
     for state in per_entity:
         state.pop(entity_id, None)
@@ -8790,9 +8835,9 @@ def _handle_move(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
         _emit(live, MoveFailed(actor_id=actor_id, reason="blocked_path"))
         return
     if on_grid:
-        # Enemy spaces are impassable on the grid only, for the same reason.
-        side = live.party_ids if actor_id in live.party_ids else live.encounter_ids
-        enemy_cells: Collection[str] = _occupied_cells(live, exclude=side)
+        # Enemy spaces are impassable on the grid only, for the same reason;
+        # an ally's space, a summon's included, may be passed through.
+        enemy_cells: Collection[str] = _occupied_cells(live, exclude=_allied_ids(live, actor_id))
         path = live.topology.shortest_path(start_zone, destination, avoid=enemy_cells)
         if not path:
             _emit(live, MoveFailed(actor_id=actor_id, reason="unreachable"))
@@ -8842,7 +8887,9 @@ def _handle_move(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
                 )
                 break
         live.actor_zone[actor_id] = next_zone
-    if spent == 0:
+    # A summon dropped to 0 HP on the way has left the order, and its
+    # departure already opened the next turn: no ActorMoved.
+    if spent == 0 or _find_combatant(live, actor_id) is None:
         return
     _emit(
         live,
@@ -9333,13 +9380,21 @@ def _resolve_construct_attack_intent(
 
 
 def _end_anchor_dependents(live: _LiveCombat, event: EffectExpired) -> None:
-    """Remove every construct whose concentration anchor just expired: the
-    force "lasts for the duration" of its concentration spell, so a broken or
-    dropped concentration, the spell's end, its owner's death or Incapacitated
-    condition, and a recast all end it here."""
+    """Remove every construct and summon whose concentration anchor just
+    expired: the force "lasts for the duration" of its concentration spell,
+    and a summoned creature "disappears ... when the spell ends", so a broken
+    or dropped concentration, the spell's end, its owner's death or
+    Incapacitated condition, and a recast all end them here. A summon leaves
+    with ``spell_ended`` at the spell's maximum duration and with
+    ``concentration_drop`` on every other path."""
     identity = (event.target_id, event.effect_id, event.origin)
     for construct_id in [cid for cid, c in live.constructs.items() if c.anchor == identity]:
         del live.constructs[construct_id]
+    reason: CombatantLeftReason = (
+        "spell_ended" if event.reason == "duration" else "concentration_drop"
+    )
+    for summon_id in [sid for sid, s in live.summons.items() if s.anchor == identity]:
+        _leave_roster(live, summon_id, reason)
 
 
 # ── C21 transformations (SRD 5.2 Wild Shape, Polymorph) ────────────────────
@@ -12273,14 +12328,20 @@ def _fire_monster_opportunity_attacks_on_move(
 
     Returns ``True`` if the mover dropped to 0 HP from any AoO — the caller
     cancels the move (SRD: *"The attack occurs right before it leaves your
-    reach"*; a dead mover stops in place).
+    reach"*; a dead mover stops in place, and a summon dropped to 0 HP has
+    left the initiative order).
     """
     mover = next((c for c in live.initiative if c.entity_id == mover_id), None)
     if mover is None or mover.disengaging_this_turn:
         return False
     mover_died = False
-    for idx, reactor in enumerate(live.initiative):
-        if reactor.entity_id not in live.encounter_ids:
+    # Iterate the ids and re-read each reactor: an opportunity attack can make
+    # a summon leave the order mid-loop (its caster's concentration breaks, or
+    # the summon is the mover), and a live-list iterator would then skip the
+    # next reactor. A reactor that left no longer reacts.
+    for reactor_id in [c.entity_id for c in live.initiative]:
+        reactor = _find_combatant(live, reactor_id)
+        if reactor is None or reactor_id not in live.encounter_ids:
             continue
         if not reactor.is_alive or reactor.hp_current <= 0:
             continue
@@ -12351,7 +12412,7 @@ def _fire_monster_opportunity_attacks_on_move(
         )
         # Consume the reaction regardless of hit/miss (SRD: reactions are
         # spent on use, not on success).
-        live.initiative[idx] = reactor.model_copy(update={"reaction_available": False})
+        _update_combatant(live, reactor_id, reaction_available=False)
         if is_hit:
             damage = _roll_damage_expression(live, reactor.damage_dice, crit=is_crit)
             if damage > 0:
@@ -12372,7 +12433,7 @@ def _fire_monster_opportunity_attacks_on_move(
                         is_crit=is_crit,
                     ),
                 )
-                if mover_id in live.dead_ids:
+                if mover_id in live.dead_ids or _find_combatant(live, mover_id) is None:
                     mover_died = True
                     break
     return mover_died
