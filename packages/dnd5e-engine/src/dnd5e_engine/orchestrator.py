@@ -2602,6 +2602,9 @@ def _monster_context_kwargs(
         # field docstring for the full contract — this MUST be the live
         # object itself, never a copy.
         "undead_fortitude_holds": live.undead_fortitude_holds,
+        # C21: a transformed monster's turn rolls at its form's real
+        # scores and Proficiency Bonus; ``None`` (the legacy model) otherwise.
+        "stat_block_magnitudes": _stat_block_magnitudes_of(live, current),
     }
 
 
@@ -4705,7 +4708,7 @@ def _emit_apply_turn_started(live: _LiveCombat, event: TurnStarted) -> None:
                     # SRD §Extra Attack / §Two-Weapon Fighting — refresh the
                     # per-Action attack budget and clear the TWF window at
                     # the start of the actor's own turn.
-                    "attacks_remaining": _attacks_per_action(c),
+                    "attacks_remaining": _attacks_per_action(live, c),
                     "attack_action_engaged": False,
                     "light_weapon_swing_slug": None,
                     "offhand_attack_spent": False,
@@ -7649,12 +7652,23 @@ async def start_combat(
     )
 
 
-def _attacks_per_action(current: Combatant) -> int:
+def _own_attacks_per_action(current: Combatant) -> int:
     """SRD 5.2 Extra Attack: one attack plus the highest qualifying tier's extra
     attacks (``rules.character.extra_attack_count``; tiers never add)."""
     if current.class_slug is None:
         return 1
     return 1 + extra_attack_count(_granted_feature_slugs(current))
+
+
+def _attacks_per_action(live: _LiveCombat, current: Combatant) -> int:
+    """The swings one Attack action gives ``current``: its form's count while
+    it is transformed (C21 — the form's Multiattack, or for Wild Shape the
+    higher of that and the creature's own Extra Attack, as ``_apply_transform``
+    fixed it), else its own (``_own_attacks_per_action``)."""
+    transform = _transform_of(live, current.entity_id)
+    if transform is not None:
+        return transform.attacks_per_action
+    return _own_attacks_per_action(current)
 
 
 def _offhand_window_open(current: Combatant) -> bool:
@@ -7680,7 +7694,7 @@ def _twf_window_open(current: Combatant) -> bool:
     return _offhand_window_open(current) and current.bonus_action_available
 
 
-def _attack_action_is_spent(current: Combatant) -> bool:
+def _attack_action_is_spent(live: _LiveCombat, current: Combatant) -> bool:
     """SRD §Extra Attack — R1: the Attack action is fully spent (and so the
     turn should end after a main-hand attack) only when NO swings remain
     this Action, the actor gets exactly one attack per Action (multi-attack
@@ -7691,7 +7705,7 @@ def _attack_action_is_spent(current: Combatant) -> bool:
     already paid for them."""
     return (
         current.attacks_remaining <= 0
-        and _attacks_per_action(current) == 1
+        and _attacks_per_action(live, current) == 1
         and not _offhand_window_open(current)
         and current.flurry_strikes_remaining <= 0
     )
@@ -8680,16 +8694,20 @@ def _conjuration_gate_failure(
     of ``submit_player_intent``'s ``pre_resolution_gates``, so a refused
     conjuration spends no slot, use or action. Each check is a no-op for an
     intent it does not govern."""
-    # A shape-shifted actor is refused first: it cannot cast any spell at all.
-    # A readied conjuration is refused before the enchant gate reads its
-    # (absent) weapon; the remaining checks govern disjoint intents, so their
-    # order only fixes which reason a malformed intent reports.
+    # A shape-shifted actor is refused first: it cannot cast any spell at all,
+    # nor make a weapon attack — so a form's weapon attack is refused here,
+    # before the stat-block check below ever sees it. A readied conjuration is
+    # refused before the enchant gate reads its (absent) weapon; a construct's
+    # attack names a spell and a stat-block swing names an action, so the
+    # remaining checks each only ever refuse their own intent — their order
+    # only fixes which reason a malformed intent reports.
     checks: tuple[_ConjurationGate, ...] = (
         _shape_shifted_failure,
         _readied_conjuration_failure,
         _enchant_cast_failure,
         _construct_cast_failure,
         _construct_attack_failure,
+        _stat_block_attack_failure,
     )
     for check in checks:
         failure = check(live, current, intent)
@@ -8911,6 +8929,39 @@ def _construct_attack_failure(
     target_cell = live.actor_zone.get(target.entity_id)
     reach = live.topology.distance_ft(cell, target_cell) if target_cell else None
     if moved is None or moved > spec.move_ft or reach is None or reach > spec.reach_ft:
+        return AttackFailed(
+            actor_id=current.entity_id, target_id=intent.target_id, reason="out_of_range"
+        )
+    return None
+
+
+def _stat_block_attack_failure(
+    live: _LiveCombat, current: Combatant, intent: PlayerIntent
+) -> CombatEvent | None:
+    """Stat-block commands (C21): an ``attack`` naming ``stat_block_action_id`` is one
+    swing of an attack action on the actor's current stat block (its form's
+    while transformed). ``AttackFailed(reason="action_unavailable")`` when
+    there is nothing to swing — no stat block, no such action, an action with
+    no attack roll (the Multiattack itself, since each swing is its own
+    intent, and save actions such as a Breath Weapon, which can't be
+    commanded yet), or a command that also names a weapon or a spell;
+    ``"out_of_range"`` when the target is beyond the action's reach or range.
+    ``None`` for every other intent. A refusal spends nothing."""
+    if intent.intent_type != "attack" or not intent.stat_block_action_id:
+        return None
+    found = _stat_block_action(
+        _current_stat_block_slug(live, current.entity_id), intent.stat_block_action_id
+    )
+    activities = list(found[1].activities) if found is not None else []
+    if (
+        intent.weapon_id
+        or intent.spell_id
+        or not any(isinstance(a, AttackActivity) for a in activities)
+    ):
+        return AttackFailed(
+            actor_id=current.entity_id, target_id=intent.target_id, reason="action_unavailable"
+        )
+    if _stat_block_target_out_of_range(live, current, intent.target_id, activities):
         return AttackFailed(
             actor_id=current.entity_id, target_id=intent.target_id, reason="out_of_range"
         )
@@ -9175,7 +9226,7 @@ def _apply_transform(
         ),
         form_proficiency_bonus=form.proficiency_bonus,
         attacks_per_action=(
-            max(attacks, _attacks_per_action(target)) if source == "wild-shape" else attacks
+            max(attacks, _own_attacks_per_action(target)) if source == "wild-shape" else attacks
         ),
         clears_temp_hp_on_end=(
             source == "polymorph" and temp_hp > live.tracked_temp_hp.get(target_id, 0)
@@ -9260,6 +9311,46 @@ def _stat_block_magnitudes_of(live: _LiveCombat, current: Combatant) -> StatBloc
         },
         proficiency_bonus=transform.form_proficiency_bonus,
     )
+
+
+def _current_stat_block_slug(live: _LiveCombat, entity_id: str) -> str | None:
+    """The stat block ``entity_id`` acts from: its form's while it is
+    transformed (C21), else its monster template's; ``None`` with neither (a
+    PC, a template-less foe)."""
+    transform = _transform_of(live, entity_id)
+    if transform is not None:
+        return transform.form_slug
+    return live.monster_slug_by_entity.get(entity_id)
+
+
+def _stat_block_action(
+    stat_block_slug: str | None, action_id: str | None
+) -> tuple[Monster, MonsterAction] | None:
+    """Stat block ``stat_block_slug`` and its action ``action_id``, or ``None``
+    when either is missing."""
+    if not stat_block_slug or not action_id:
+        return None
+    monster = get_lib_loader().get_monster(stat_block_slug)
+    if monster is None:
+        return None
+    action = next((a for a in monster.actions if a.slug == action_id), None)
+    return None if action is None else (monster, action)
+
+
+def _stat_block_target_out_of_range(
+    live: _LiveCombat, current: Combatant, target_id: str | None, activities: Sequence[Any]
+) -> bool:
+    """True iff ``target_id`` is beyond the stat-block attack's reach or range
+    from ``current``, out of its line of sight or behind total cover — the
+    monster path's reading of the action (``_monster_attack_range_ft``: an
+    explicit ``ft`` range, else the attacker's melee reach). ``False`` with no
+    target or an untracked position, as the weapon-reach gate does."""
+    range_ft = _monster_attack_range_ft(activities, current.melee_reach_ft)
+    attacker_zone = live.actor_zone.get(current.entity_id)
+    target_zone = live.actor_zone.get(target_id) if target_id is not None else None
+    if range_ft is None or attacker_zone is None or target_zone is None:
+        return False
+    return not _in_range_with_los(live.topology, attacker_zone, target_zone, range_ft)
 
 
 def _shape_shifted_failure(
@@ -9581,21 +9672,26 @@ def _consume_attack_budget(live: _LiveCombat, actor_id: str, current: Combatant)
     already gone. Every resolved swing decrements ``attacks_remaining`` by
     one and sets ``attack_action_engaged`` True. SRD 5.2 Action Surge: once
     this Attack action's swings are spent, the next attack takes another
-    Attack action on an extra action, with fresh swings."""
+    Attack action on an extra action, with fresh swings. The first swing
+    takes the Action's count as it stands (C21: a form adopted earlier this
+    turn)."""
     for idx, c in enumerate(live.initiative):
         if c.entity_id == actor_id:
             if not c.attack_action_engaged:
                 update: dict[str, Any] = {
                     **_action_payment(c, "attack"),
                     "attack_action_engaged": True,
-                    "attacks_remaining": c.attacks_remaining - 1,
+                    # The count is read as the Action is taken: a form adopted
+                    # earlier this turn (Wild Shape is a Bonus Action) swings
+                    # with the form's count.
+                    "attacks_remaining": _attacks_per_action(live, c) - 1,
                 }
             elif c.attacks_remaining > 0:
                 update = {"attacks_remaining": c.attacks_remaining - 1}
             else:
                 update = {
                     **_action_payment(c, "attack"),
-                    "attacks_remaining": _attacks_per_action(c) - 1,
+                    "attacks_remaining": _attacks_per_action(live, c) - 1,
                 }
             live.initiative[idx] = c.model_copy(update=update)
             break
@@ -10102,11 +10198,17 @@ def _resolve_caster_spellcasting_ability(caster: Combatant) -> str | None:
 
 
 def _resolve_intent_activities(
-    intent: PlayerIntent, feature_invocation: _FeatureInvocation | None, caster: Combatant
+    intent: PlayerIntent,
+    feature_invocation: _FeatureInvocation | None,
+    caster: Combatant,
+    *,
+    stat_block_slug: str | None = None,
 ) -> _ResolvedActivities:
     """Fetch the typed entity for the intent's kind from the lib loader and
     collect the activities the resolver will walk. This is the sole PC
-    resolution path; the old the legacy evaluator IR path was retired in ."""
+    resolution path; the old the legacy evaluator IR path was retired in .
+    ``stat_block_slug`` is the stat block an ``attack`` naming
+    ``stat_block_action_id`` swings from (``_current_stat_block_slug``)."""
     cast_spell: Spell | None = None
     fetched_weapon: Weapon | None = None
     activities: list[Any] = []
@@ -10127,6 +10229,12 @@ def _resolve_intent_activities(
             # with the OLD ``_synthesize_weapon_attack``).
             if not activities:
                 activities = [_synthesize_attack_from_weapon(fetched_weapon)]
+    elif intent.intent_type == "attack" and intent.stat_block_action_id:
+        # A stat-block command (C21): one swing of an action on the actor's current
+        # stat block, riders included, as a monster's own turn resolves it
+        # (``_stat_block_attack_failure`` has already vetted the action).
+        found = _stat_block_action(stat_block_slug, intent.stat_block_action_id)
+        activities = list(expand_action_to_activities(*found)) if found is not None else []
     elif intent.intent_type == "cast_spell" and intent.spell_id:
         cast_spell = get_lib_loader().get_spell(intent.spell_id)
         if cast_spell is not None:
@@ -11093,7 +11201,12 @@ async def submit_player_intent(
     # Fetch the typed entity for the intent's kind from the lib loader and
     # collect the activities the resolver will walk. This is the sole PC
     # resolution path; the old the legacy evaluator IR path was retired in .
-    resolved = _resolve_intent_activities(intent, feature_invocation, current)
+    resolved = _resolve_intent_activities(
+        intent,
+        feature_invocation,
+        current,
+        stat_block_slug=_current_stat_block_slug(live, current.entity_id),
+    )
     activities = resolved.activities
     cast_spell = resolved.cast_spell
     fetched_weapon = _enchanted_weapon(live, current, resolved.fetched_weapon)
@@ -11354,6 +11467,15 @@ async def submit_player_intent(
             weapon_enchantment_to_hit=_weapon_enchantment_to_hit(
                 current, resolved.fetched_weapon, fetched_weapon
             ),
+            # A stat-block command (C21) rolls at the stat block's
+            # own scores and Proficiency Bonus.
+            stat_block_magnitudes=(
+                _stat_block_magnitudes_of(live, current) if intent.stat_block_action_id else None
+            ),
+            # SRD 5.2 stat-block trait "Pack Tactics": a form brings its traits
+            # (C21), so the PC path projects the ally map too. ``attack.py``
+            # applies it only to an attacker carrying the trait.
+            pack_tactics_ally_adjacent=_pack_tactics_map(live, current, geometry_targets),
         )
         for activity in activities:
             resolve_activity(activity, actx, weapon=fetched_weapon)
@@ -11472,7 +11594,7 @@ async def submit_player_intent(
     # is still open (Task 2 fills the window itself in; until then
     # ``_twf_window_open`` is always False, so a 1-attack actor's attack
     # ends the turn exactly as before this feature — the back-compat bar).
-    if intent.intent_type == "attack" and not _attack_action_is_spent(current):
+    if intent.intent_type == "attack" and not _attack_action_is_spent(live, current):
         _maybe_roll_death_save(live)
         return
     # An Action intent ends the turn unless an Action Surge extra action is left.

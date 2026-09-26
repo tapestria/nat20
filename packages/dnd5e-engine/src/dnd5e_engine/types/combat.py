@@ -243,9 +243,10 @@ class Combatant(BaseModel):
     # SRD §Extra Attack — "you can attack twice, instead of once, whenever
     # you take the Attack action on your turn" (and thrice/four-times at
     # higher tiers). The remaining main-hand swings this Action; refreshed
-    # to ``_attacks_per_action(current)`` at the actor's own TurnStarted,
-    # decremented once per resolved main-hand attack. 1 for every combatant
-    # without a qualifying Extra Attack feature (the SRD default).
+    # to ``_attacks_per_action(live, current)`` at the actor's own TurnStarted
+    # (a transformed creature's form count, C21) and re-read as the Action is
+    # taken, decremented once per resolved main-hand attack. 1 for every
+    # combatant without a qualifying Extra Attack feature (the SRD default).
     attacks_remaining: int = 1
     # SRD §Action Economy — True once this turn's Attack action has
     # consumed its Action (the FIRST main-hand swing of a multi-attack
