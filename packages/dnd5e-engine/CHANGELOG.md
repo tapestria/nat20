@@ -237,10 +237,11 @@ Behavioural deltas (and the fixtures they move) are enumerated in
   Wild Shape ends on reuse, Incapacitated, death or a Bonus-Action leave;
   Polymorph with its concentration, or when its Temporary Hit Points are gone,
   the rest of that hit landing on the creature. A transformed creature can't
-  cast, ready a spell or make a weapon attack; it attacks with its form's
-  actions through `PlayerIntent.stat_block_action_id` (or on its own monster
-  turn) at the form's real ability scores and Proficiency Bonus, with the
-  form's Multiattack count. See the migration guide for every delta.
+  cast, ready or release a readied spell, or make a weapon attack; it attacks
+  with its form's actions through `PlayerIntent.stat_block_action_id` (or on
+  its own monster turn) at the form's real ability scores and Proficiency
+  Bonus, with the form's Multiattack count. See the migration guide for every
+  delta.
 
 ### Added
 

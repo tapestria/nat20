@@ -10810,8 +10810,9 @@ def _pop_pending_reaction(
     reactor must not be the triggering actor themselves, must match
     ``only_owner_id`` when given (the ``hit_by_attack`` /
     ``targeted_by_magic_missile`` triggers are owned by the creature actually
-    under attack/targeted, not any bystander), must be alive, and must have
-    ``reaction_available``. Removes + returns the match (a reaction fires — and
+    under attack/targeted, not any bystander), must be alive, must be neither
+    Incapacitated nor shape-shifted, and must have ``reaction_available``.
+    Removes + returns the match (a reaction fires — and
     is spent — at most once); ``None`` when nothing qualifies.
 
     An armed reaction whose owner fails ``eligible`` is SKIPPED (left queued,
@@ -10827,6 +10828,12 @@ def _pop_pending_reaction(
             continue
         # SRD 5.2 Incapacitated — no Reaction (so no opportunity attack either).
         if conditions_block_actions(_condition_names(reactor)):
+            continue
+        # Every armed reaction releases a spell, which this engine casts at the
+        # release, and a shape-shifted creature "can't cast spells" (SRD 5.2
+        # Wild Shape, Polymorph). The spell stays armed: shapeshifting "doesn't
+        # break your Concentration", which holds a readied spell (SRD 5.2 Ready).
+        if reactor.entity_id in live.transforms:
             continue
         if not reactor.reaction_available:
             continue

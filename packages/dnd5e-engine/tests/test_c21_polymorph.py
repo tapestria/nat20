@@ -33,6 +33,7 @@ from dnd5e_engine.events import (
     EffectApplied,
     EffectExpired,
     SaveRolled,
+    SpellCast,
 )
 from dnd5e_engine.lib_loader import get_lib_loader, set_lib_loader_for_tests
 from dnd5e_engine.orchestrator import _emit, _LiveCombat
@@ -309,6 +310,31 @@ def test_a_polymorphed_monster_uses_its_forms_save_action(
     saves = [(e.ability, e.dc) for e in events(live, SaveRolled) if e.target_id == WIZ]
     assert [save for save in saves if save[0] == ability] == [(ability, dc)]
     assert live.initiative[live.current_turn_index].entity_id == WIZ
+
+
+def test_a_polymorphed_character_cannot_release_its_readied_spell() -> None:
+    """ "...it can't speak or cast spells." The engine casts a readied spell as
+    it releases it, so a readied Shield lets the trigger pass while its reactor
+    is a Beast: no Reaction, slot or effect is spent, and the Shield stays
+    armed (shapeshifting "doesn't break your Concentration"). Seed 1: the ally
+    wizard's Polymorph save (WIS 6) fails; the foe's swing then lands on the
+    Giant Badger's AC 13."""
+    reader = wizard(
+        "char:a", wisdom=6, spells_known=["shield"], spell_slots={1: 2}, zone_id=cell_id(0, 0)
+    )
+    caster = wizard(initiative=19, zone_id=cell_id(0, 1))
+    handle, live = start(
+        [reader, caster], seed=1, encounter=[foe(attack_bonus=5, damage_dice="1d6")]
+    )
+    act(handle, "char:a", intent_type="ready", spell_id="shield", reaction_trigger="hit_by_attack")
+    _polymorph(handle, target_id="char:a")
+    assert "char:a" in live.transforms
+    monster_turn(handle)
+    assert [e.target_id for e in events(live, AttackRolled)] == ["char:a"]
+    assert [e.spell_id for e in events(live, SpellCast)] == ["polymorph"]
+    assert live.spell_slots_by_entity["char:a"] == {1: 2}
+    assert combatant(live, "char:a").reaction_available
+    assert [p.spell_id for p in live.pending_reactions] == ["shield"]
 
 
 def test_a_polymorphed_character_cannot_cast() -> None:
