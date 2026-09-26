@@ -26,6 +26,22 @@ EncounterMemberSpec(
 Omit it and you get a generic combatant driven by the inline `attack_bonus` /
 `damage_dice` fields — fine for a training dummy, but it has no real repertoire.
 
+The template supplies the creature's actions, ability scores (Dexterity too,
+while the spec leaves it at 10), proficiencies, traits and spellcasting
+ability. Its Armor Class, Hit Points, speed and `attack_bonus` stay the
+spec's. A template monster's attacks roll to hit at that `attack_bonus` and
+add no ability modifier to their damage, and with no spellcasting ability its
+save DC is `8 + attack_bonus` — so with the default `attack_bonus=0` a Tough's
+Mace rolls d20 + 0 for 1d6, where its stat block says +4 and 1d6 + 2. Pin `ac`
+and `attack_bonus` from the stat block: every SRD monster in the dataset now
+carries its Armor Class (`Monster.ac`, C21).
+
+Only a transformed creature — a druid in a Wild Shape form, or a creature
+under *Polymorph* — rolls at a stat block's real numbers: the form's ability
+scores and Proficiency Bonus, so a Wolf form bites at +4 for 1d6 + 2 (C21). A
+host can command one attack from a creature's current stat block with
+`PlayerIntent(intent_type="attack", stat_block_action_id=..., target_id=...)`.
+
 ## How the AI chooses
 
 The built-in AI is deliberately simple and predictable:
@@ -78,6 +94,8 @@ engine consumes.
 - **Lair actions** — the corpus ships none.
 - Some `special_abilities` (Flyby, Nimble Escape) and the ability-check half of
   Sunlight Sensitivity.
+- Real stat-block numbers for a template monster that is not transformed, and
+  commanding a stat block's save actions (a Breath Weapon).
 
 All are tracked in `BACKLOG.md`. If you need them, resolve them host-side and
 apply the results through the engine's normal paths.

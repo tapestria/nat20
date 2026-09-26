@@ -12,6 +12,12 @@ if TYPE_CHECKING:
     from dnd5e_srd_data.schema.common import PassiveEffect
     from dnd5e_srd_data.schema.spell import Spell
 
+    from dnd5e_engine.activities.conjuration import (
+        ConjurationCarrier,
+        ConstructRequest,
+        StatBlockMagnitudes,
+        TransformRequest,
+    )
     from dnd5e_engine.types.effects import ActiveEffect
 
 
@@ -531,6 +537,27 @@ class ActivityResolutionContext:
     # frozen dataclass, like ``mastery_procs``).
     granted_die: str | None = None
     granted_die_rolls: list[int] = field(default_factory=list)
+    # The orchestrator's pre-validated inputs for an allowlisted conjuration
+    # (``activities/conjuration.py``, C21): the weapon Magic Weapon touches,
+    # the form Wild Shape takes, the cell Spiritual Weapon's force appears in.
+    # ``None`` keeps every summon / enchant / transform activity narrative;
+    # the resolver never decides legality.
+    conjuration: ConjurationCarrier | None = None
+    # What an allowlisted conjuration asks the orchestrator to fold after
+    # resolution: a construct to register, a creature to shape-shift (list
+    # mutation on the frozen dataclass, like ``mastery_procs``).
+    construct_requests: list[ConstructRequest] = field(default_factory=list)
+    transform_requests: list[TransformRequest] = field(default_factory=list)
+    # SRD 5.2 Magic Weapon: "a +1 bonus to attack rolls and damage rolls". The
+    # part of an enchanted weapon's bonus a host-pinned to-hit would drop
+    # (``_attack_bonus`` returns a pinned override verbatim, before the
+    # weapon's ``magical_bonus``); 0 unless the attacker's bonus is pinned.
+    weapon_enchantment_to_hit: int = 0
+    # SRD 5.2 Wild Shape / Polymorph: the transformed creature's stat-block
+    # scores and Proficiency Bonus. ``build_activity_context`` projects them
+    # onto ``caster_abilities`` / ``caster_proficiency_bonus``; ``None`` keeps
+    # the entity-type model.
+    stat_block_magnitudes: StatBlockMagnitudes | None = None
 
     def ability_mod(self, ability: str) -> int:
         return (self.caster_abilities.get(ability, 10) - 10) // 2

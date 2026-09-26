@@ -23,11 +23,14 @@ action economy** (Recharge, Regeneration, Legendary Actions, Legendary
 Resistance, stat-block spellcasting, and the remaining `MonsterTraitMechanic`
 consumers), **C19 — character derivation** (`derive_sheet`/`DerivedSheet`,
 `build_party_member` explicit-wins merge, `CheckSpec` Jack of All Trades /
-Reliable Talent) and **C20 — class feature mechanics** (Fighting Style feats,
+Reliable Talent), **C20 — class feature mechanics** (Fighting Style feats,
 Martial Arts, Flurry of Blows and the Focus economy, Action Surge, Bardic
 Inspiration on attack rolls, Rage's end conditions, Lay on Hands' pool,
 feature-gated Cunning Action, every corpus limited-use cap, and live
-multiclass). Nothing public is removed or renamed, but C19 reshapes two
+multiclass) and **C21a — summons foundations** (every concentration spell
+concentrates; Magic Weapon; Spiritual Weapon's caster-owned force; Wild Shape
+and Polymorph as stat-block swaps with Temporary Hit Points; stat-block attack
+commands). Nothing public is removed or renamed, but C19 reshapes two
 existing `CombatInstance` fields — `ac` and `attack_bonus` widen from
 defaulted `int`s to `int | None = None`, matching `hp_max`/`hp_current`/
 `base_speed` — and every other new field across this release is optional
@@ -46,6 +49,12 @@ Dash, any creature without Cunning Action sent a `disengage` with
 newly capped features and unarmed strikes, for hosts that send `classes`,
 `feats` or `fighting_style`, and wherever an effect makes a concentrating
 caster or a grappler Incapacitated.
+C21a changes results wherever a concentration spell applies no concentration
+effect of its own (it now concentrates, so an earlier concentration ends and
+later damage draws a Constitution save), for readied concentration spells,
+for Magic Weapon, Wild Shape and Polymorph intents that name no weapon or
+form (now refused before anything is spent), and for a host-driven attacker
+with Pack Tactics (it now gets its Advantage).
 Behavioural deltas (and the fixtures they move) are enumerated in
 [`docs/migration/v0.5-to-v0.6.md`](../../docs/migration/v0.5-to-v0.6.md).
 
@@ -210,6 +219,30 @@ Behavioural deltas (and the fixtures they move) are enumerated in
   `PartyMemberSpec.classes` carries a multiclass character's per-class levels
   into combat: features, scale values and `@classes.<class>.levels` per class.
   See the migration guide for every delta and the determinism notes.
+
+- **Summons foundations (C21a).** Every concentration spell concentrates: one
+  that applies no concentration effect of its own (Spiritual Weapon, a Hold
+  Person every target saved against, a Polymorph whose save succeeded) leaves
+  a caster-held anchor effect, on a turn, a monster's cast or a readied cast.
+  Four SRD 5.2 sources on an allowlist resolve. Magic Weapon enchants the
+  weapon `PlayerIntent.weapon_id` names (+1/+2/+3 to hit and damage, magical,
+  on top of a pinned `attack_bonus`; a recast ends the old one; never an
+  Unarmed Strike). Spiritual Weapon places a caster-owned force that attacks
+  at once and, as a Bonus Action on later turns, moves up to 20 feet and
+  attacks again (`attack` with `spell_id`); it ends with its concentration,
+  and no monster casts it (BACKLOG). Wild Shape and Polymorph swap in the Beast
+  stat block `PlayerIntent.form_id` names, checked before anything is spent
+  (the Beast Shapes table; a Challenge Rating up to the target's), with
+  ordinary Temporary Hit Points — the Druid level, or the form's Hit Points.
+  Wild Shape ends on reuse, Incapacitated, death or a Bonus-Action leave;
+  Polymorph with its concentration, when its Temporary Hit Points are gone
+  (the rest of that hit landing on the creature) or with the combat (its grant
+  stays out of `CombatOutcome.residual_temp_hp`). A transformed creature can't
+  cast, ready or release a readied spell, or make a weapon attack; it attacks
+  with its form's actions through `PlayerIntent.stat_block_action_id` (or on
+  its own monster turn) at the form's real ability scores and Proficiency
+  Bonus, with the form's Multiattack count. See the migration guide for every
+  delta.
 
 ### Added
 
@@ -399,6 +432,25 @@ Behavioural deltas (and the fixtures they move) are enumerated in
   `EffectExpiryReason` gains `"expended"`, `"not_extended"` and
   `"incapacitated"`; `AttackFailed.reason` gains `"no_granted_die"`. All
   additive, with defaults that reproduce the pre-C20 behaviour.
+- **Summons foundations surface (C21a).** `PlayerIntent.form_id: str | None`,
+  `PlayerIntent.stat_block_action_id: str | None`; `views.ConstructView`,
+  `views.TransformView`, `LiveCombatView.constructs` / `.transformations`; the
+  pure `activities/conjuration.py` (`CONJURATION_ALLOWLIST`, `ConjurationKind`,
+  `TransformSource`, `ConjurationCarrier`, `ConstructRequest`,
+  `TransformRequest`, `ENCHANTED_WEAPON_FLAG`, `TRANSFORM_FORM_FLAG`,
+  `enchant_weapon`, `ConstructSpec`, `CONSTRUCTS`, `construct_attack_activity`,
+  `StatBlockMagnitudes`, `WildShapeTier`, `WILD_SHAPE_TIERS`,
+  `wild_shape_tier`, `uses_summon_roll_data`, `TransformRider`,
+  `TRANSFORM_RIDERS`); `ActivityResolutionContext.conjuration` /
+  `construct_requests` / `transform_requests` / `weapon_enchantment_to_hit` /
+  `stat_block_magnitudes` and the matching `build_activity_context` keywords;
+  `extra_flags=` on `apply_activity_effects` and
+  `passive_effect_to_active_effect`; `build_context.spell_attack_magnitudes`;
+  `monster_actions.multiattack_count`. `CastFailedReason` gains
+  `"invalid_form"` and `"no_spellcasting"`, `AttackFailed.reason`
+  `"action_unavailable"`, `EffectExpiryReason` `"temp_hp_depleted"`. All
+  additive, with defaults that reproduce the pre-C21a behaviour; no event type
+  is added and `dnd5e_engine.__all__` is unchanged.
 
 ### Changed
 
@@ -563,6 +615,15 @@ Behavioural deltas (and the fixtures they move) are enumerated in
   bypasses that validator (Pydantic does not re-run `mode="before"` on
   `model_copy`), so changing only one of `level`/`classes` via `model_copy`
   can desync them — construct a fresh instance instead.
+- **Pack Tactics applies to a host-driven attacker (C21a).** SRD 5.2: "The
+  tough has Advantage on an attack roll against a creature if at least one of
+  the tough's allies is within 5 feet of the creature and the ally doesn't
+  have the Incapacitated condition." The trait resolved only on a monster's
+  own `advance_monster_turn`; an attack through `submit_player_intent` by a
+  creature carrying it (a template NPC or monster the host drives: a Tough, a
+  Hobgoblin Warrior, a Kobold Warrior, a Wolf) now rolls with Advantage too,
+  one more d20, whenever such an ally stands within 5 feet of the target. A
+  seeded stream that has one moves from that roll on.
 
 ### Fixed
 
@@ -592,6 +653,30 @@ Behavioural deltas (and the fixtures they move) are enumerated in
   there and skipped them. Whichever fold writes the condition first now runs
   them once, Rage's end included; for an effect, their events follow its
   `EffectApplied`.
+- **A readied concentration spell now concentrates (C21a).** A readied cast
+  ran none of the concentration bookkeeping, so it never started
+  concentration, never ended an earlier one and never made later damage draw
+  a Constitution save.
+- **A stat-block on-hit trait's escape DC no longer crashes (C21a).**
+  `activities/formula.py` had no handler for `@skills.<code>.passive` — the
+  attacker's own passive score for a Foundry skill code, e.g. the Crocodile's
+  Bite: "the target ... has the Grappled condition (escape DC 12)" — so any
+  caster hitting the token, transformed or not, raised `ValueError: Unhandled
+  roll-data token`. It now resolves `10 + ability modifier + proficiency bonus
+  (doubled with Expertise) when the caster is proficient in that skill`: a
+  transformed creature's form gives the SRD escape DC (a Crocodile's 12), while
+  a template monster's uniform `attack_bonus` numbers give `10 + attack_bonus`
+  (BACKLOG).
+- **A save action whose DC names an ability no longer crashes (C21a).**
+  `activities/save.py` resolved only the `spellcasting` and `flat` DC
+  calculations, so a save resolved without a fixed DC — a transformed
+  creature's stat-block action, a feature's save through `use_feature` —
+  raised `ValueError` on an ability-code DC (a Giant Spider's Web, a
+  Dragonborn's Breath Weapon) or a bare formula (a Swarm of Ravens'
+  Cacophony), and `@mod` in a monster save action's damage raised on the
+  monster's own turn. The DC is now 8 + that ability's modifier + the
+  Proficiency Bonus, or the formula, and `@mod` reads the ability the DC names
+  (Giant Constrictor Snake Constrict: 2d8 + 4).
 
 ### Deprecated
 

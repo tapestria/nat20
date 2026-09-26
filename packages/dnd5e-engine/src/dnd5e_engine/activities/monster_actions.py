@@ -293,6 +293,20 @@ def _parse_item_counts(description: str) -> list[tuple[str, int]] | None:
     return pairs
 
 
+def multiattack_count(monster: Monster) -> int:
+    """How many attacks ``monster``'s Multiattack makes: the sum of the named
+    counts when its clause parses precisely ("one Bite attack and one Claw
+    attack" is 2), else its leading count ("two attacks, using Bite or Claw in
+    any combination" is 2); 1 for a monster without a Multiattack."""
+    action = next((a for a in monster.actions if a.slug == _MULTIATTACK_SLUG), None)
+    if action is None:
+        return 1
+    parsed = _parse_item_counts(action.description)
+    if parsed:
+        return sum(count for _, count in parsed)
+    return _parse_multiattack_count(_multiattack_clause(action.description))
+
+
 def _activity_range_ft(activity: Activity, melee_reach_ft: int) -> int | None:
     """The effective reach, in feet, of an attack/save activity for sibling choice.
 

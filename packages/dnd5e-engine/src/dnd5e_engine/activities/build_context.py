@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from dnd5e_srd_data.schema.common import PassiveEffect
     from dnd5e_srd_data.schema.spell import Spell
 
+    from dnd5e_engine.activities.conjuration import ConjurationCarrier, StatBlockMagnitudes
     from dnd5e_engine.types.effects import ActiveEffect
 
 _ABILITIES = ("str", "dex", "con", "int", "wis", "cha")
@@ -117,6 +118,26 @@ def _attack_bonus_override(caster: Combatant, spellcasting_ability: str | None) 
             caster, cast("Ability", spellcasting_ability)
         )
     return caster.attack_bonus
+
+
+def spell_attack_magnitudes(caster: Combatant, spellcasting_ability: str | None) -> tuple[int, int]:
+    """``(spell attack bonus, spellcasting ability modifier)`` exactly as
+    ``caster``'s own spell attack resolves through ``build_activity_context``,
+    for an attack the engine builds itself (a construct's).
+
+    The to-hit is ``_attack_bonus_override`` when it sets one (a Character's
+    pinned ``attack_bonus``; a Monster's PB + its spellcasting modifier, or its
+    ``attack_bonus`` without a spellcasting ability), else the Character's PB
+    + the ability's modifier. Without a spellcasting ability the modifier is
+    the legacy ``_caster_mod`` and a Character's to-hit is its PB + 0 — the
+    fallbacks a classless caster's spell attack already gets.
+    """
+    ability = cast("Ability", spellcasting_ability) if spellcasting_ability else None
+    modifier = ability_modifier_of(caster, ability) if ability else _caster_mod(caster)
+    override = _attack_bonus_override(caster, spellcasting_ability)
+    if override is not None:
+        return override, modifier
+    return proficiency_bonus(caster.character_level) + (modifier if ability else 0), modifier
 
 
 def _spell_dc_bonus(
@@ -219,6 +240,9 @@ def build_activity_context(
     scaling_value: int | None = None,
     martial_arts: bool = False,
     granted_die: str | None = None,
+    conjuration: ConjurationCarrier | None = None,
+    weapon_enchantment_to_hit: int = 0,
+    stat_block_magnitudes: StatBlockMagnitudes | None = None,
 ) -> ActivityResolutionContext:
     """Adapt the caster + the pre-computed hydration sidecars into the typed
     ``ActivityResolutionContext`` the new resolver consumes.
@@ -271,7 +295,13 @@ def build_activity_context(
     existed.
     """
     mod = _caster_mod(caster)
-    if caster.entity_type == "Character":
+    if stat_block_magnitudes is not None:
+        # A transformed creature rolls with its stat block's own numbers
+        # (D4 a): the entity-type branches below, and the fixed to-hit / save
+        # DC overrides they imply, do not apply.
+        caster_abilities = dict(stat_block_magnitudes.ability_scores)
+        caster_proficiency_bonus = stat_block_magnitudes.proficiency_bonus
+    elif caster.entity_type == "Character":
         # PCs carry real six-ability scores + character_level (piece 3), so the
         # `@mod`/`@prof`/`@abilities.<ab>.mod` tokens resolve to honest values.
         caster_abilities = {
@@ -404,7 +434,7 @@ def build_activity_context(
         base_spell_level=base_spell_level,
         save_dc_override=(
             None
-            if is_feature_invocation
+            if is_feature_invocation or stat_block_magnitudes is not None
             else _save_dc(
                 caster,
                 mod,
@@ -420,7 +450,11 @@ def build_activity_context(
         # pinned 0 override — no change needed at that call site, it already
         # treated ``None`` as "no override". A Monster's stat-block spell
         # attack uses PB + its spellcasting modifier instead.
-        attack_bonus_override=_attack_bonus_override(caster, spellcasting_ability),
+        attack_bonus_override=(
+            None
+            if stat_block_magnitudes is not None
+            else _attack_bonus_override(caster, spellcasting_ability)
+        ),
         passive_damage_modifiers=passive_damage_modifiers,
         passive_save_modifiers=passive_save_modifiers,
         passive_save_bonus=passive_save_bonus,
@@ -537,4 +571,7 @@ def build_activity_context(
         scaling_value=scaling_value,
         martial_arts=martial_arts,
         granted_die=granted_die,
+        conjuration=conjuration,
+        weapon_enchantment_to_hit=weapon_enchantment_to_hit,
+        stat_block_magnitudes=stat_block_magnitudes,
     )

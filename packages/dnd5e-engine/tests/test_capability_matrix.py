@@ -1,6 +1,6 @@
 """Keeps ``docs/capabilities.md`` honest.
 
-The capability matrix publishes hard counts ("108 of 339 spells resolve to
+The capability matrix publishes hard counts ("106 of 339 spells resolve to
 nothing"). A published number that drifts is worse than no number, so the counts
 are recomputed from the shipped corpus here and compared against what the page
 claims. Change the behaviour, and this test tells you which sentence to update.
@@ -15,11 +15,14 @@ from typing import Any
 
 import pytest
 
+from dnd5e_engine.activities.conjuration import CONJURATION_ALLOWLIST
+
 CAPABILITIES_MD = Path(__file__).resolve().parents[3] / "docs" / "capabilities.md"
 
 #: Activity kinds the resolver actually turns into ``CombatEvent``s. A
 #: ``utility`` activity counts only when it carries effect riders — mirrors
-#: ``dnd5e_engine.activities.resolver.resolve_activity``.
+#: ``dnd5e_engine.activities.resolver.resolve_activity``; an allowlisted
+#: conjuration (``_CONJURED_SPELLS``) resolves too.
 MECHANICAL_KINDS = frozenset({"attack", "damage", "save", "heal", "check", "cast"})
 
 
@@ -28,6 +31,21 @@ def _resolves(activity: dict[str, Any]) -> bool:
     if kind in MECHANICAL_KINDS:
         return True
     return kind == "utility" and bool(activity.get("effects"))
+
+
+#: Spells whose ``summon`` / ``enchant`` activity the engine resolves (C21):
+#: the conjuration allowlist's construct and enchant entries — never either
+#: kind wholesale. Polymorph's form rides its ``save`` activity, which already
+#: counts, and Wild Shape is a feature.
+_CONJURED_SPELLS = frozenset(
+    slug for slug, kind in CONJURATION_ALLOWLIST.items() if kind in {"construct", "enchant"}
+)
+
+
+def _spell_resolves(spell: dict[str, Any]) -> bool:
+    return spell.get("slug") in _CONJURED_SPELLS or any(
+        _resolves(a) for a in spell.get("activities", [])
+    )
 
 
 @pytest.fixture(scope="module")
@@ -43,7 +61,7 @@ def spell_stats(canonical_dir: Path) -> dict[str, int]:
     for path in sorted((canonical_dir / "spells").glob("*.json")):
         spell = json.loads(path.read_text())
         total += 1
-        if not any(_resolves(a) for a in spell.get("activities", [])):
+        if not _spell_resolves(spell):
             inert += 1
             if spell.get("concentration"):
                 inert_concentration += 1
@@ -86,7 +104,6 @@ def test_named_inert_concentration_spells_really_are_inert(canonical_dir: Path) 
         "blur",
         "darkness",
         "fog-cloud",
-        "spiritual-weapon",
         "wall-of-force",
         "silent-image",
         "globe-of-invulnerability",
@@ -94,7 +111,7 @@ def test_named_inert_concentration_spells_really_are_inert(canonical_dir: Path) 
     ):
         spell = json.loads((canonical_dir / "spells" / f"{slug}.json").read_text())
         assert spell.get("concentration"), f"{slug} is no longer a concentration spell"
-        assert not any(_resolves(a) for a in spell.get("activities", [])), (
+        assert not _spell_resolves(spell), (
             f"{slug} now resolves — remove it from the inert list in capabilities.md"
         )
 
@@ -572,6 +589,35 @@ _PROBES: dict[str, tuple[Any, str]] = {
     "| Feats |": (
         lambda: "def styles_from_feats(" in _src("rules/character.py"),
         "Fighting Style feats apply (C20",
+    ),
+    # C21: every concentration spell concentrates — a caster-held anchor for
+    # one that applies no concentration effect of its own.
+    "concentration spell concentrates (C21)": (
+        lambda: "def _apply_concentration_anchor(" in _src("orchestrator.py"),
+        "concentration spell concentrates (C21)",
+    ),
+    "| Concentration |": (
+        lambda: "def _apply_concentration_anchor(" in _src("orchestrator.py"),
+        "(C13, C21",
+    ),
+    # C21: the conjuration allowlist resolves four SRD 5.2 sources; every other
+    # summon, transform and enchant stays narrative, so the row is Partial.
+    "Summoning / polymorph / enchant-a-weapon": (
+        lambda: "CONJURATION_ALLOWLIST" in _src("activities/conjuration.py"),
+        "⚠️ Partial",
+    ),
+    # C21: Wild Shape's form gate reads the Beast Shapes table.
+    "| Wild Shape |": (
+        lambda: (
+            "def _wild_shape_failure(" in _src("orchestrator.py")
+            and "WILD_SHAPE_TIERS" in _src("activities/conjuration.py")
+        ),
+        "(C21)",
+    ),
+    # C21: one swing of an attack action on the actor's current stat block.
+    "| Stat-block attack commands |": (
+        lambda: "def _stat_block_attack_failure(" in _src("orchestrator.py"),
+        "(C21)",
     ),
 }
 

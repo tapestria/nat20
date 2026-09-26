@@ -65,6 +65,7 @@ from dnd5e_srd_data.schema.common import (
     CastActivity,
     DamageActivity,
     DamagePartBlock,
+    EnchantActivity,
     HealActivity,
     SaveActivity,
 )
@@ -92,16 +93,35 @@ from dnd5e_engine.activities.attack import (
     sneak_attack_dice,
     sneak_attack_triggers,
 )
-from dnd5e_engine.activities.build_context import build_activity_context
+from dnd5e_engine.activities.build_context import build_activity_context, spell_attack_magnitudes
+from dnd5e_engine.activities.conjuration import (
+    CONJURATION_ALLOWLIST,
+    CONSTRUCTS,
+    ENCHANTED_WEAPON_FLAG,
+    TRANSFORM_FORM_FLAG,
+    TRANSFORM_RIDERS,
+    ConjurationCarrier,
+    StatBlockMagnitudes,
+    TransformSource,
+    construct_attack_activity,
+    enchant_weapon,
+    uses_summon_roll_data,
+    wild_shape_tier,
+)
 from dnd5e_engine.activities.context import ActivityResolutionContext
 from dnd5e_engine.activities.d20 import AdvantageSources, roll_d20_test
 from dnd5e_engine.activities.dice import roll_damage_part
 from dnd5e_engine.activities.forced_movement import FORCED_MOVEMENT_RIDERS
 from dnd5e_engine.activities.monster_actions import (
     expand_action_to_activities,
+    multiattack_count,
     rank_monster_actions,
 )
-from dnd5e_engine.activities.passive_stats import CombatantSenses, interpret_passive_stats
+from dnd5e_engine.activities.passive_stats import (
+    CombatantMovementModes,
+    CombatantSenses,
+    interpret_passive_stats,
+)
 from dnd5e_engine.activities.resolver import resolve_activity
 from dnd5e_engine.activities.scale import build_scale_values, feature_owners
 from dnd5e_engine.death_saves import DeathSaveState, roll_death_save
@@ -317,6 +337,21 @@ class PlayerIntent(BaseModel):
     # reject (``CastFailed(reason="ritual_in_combat")``, slot untouched).
     # Out-of-combat rituals resolve via ``spellcasting.resolve_ritual_cast``.
     as_ritual: bool = False
+    # SRD 5.2 Wild Shape: "you shape-shift into a Beast form that you have
+    # learned for this feature"; Polymorph: "That form can be any Beast you
+    # choose that has a Challenge Rating equal to or less than the target's".
+    # The corpus monster slug of the chosen form, for a ``use_feature`` of
+    # Wild Shape or a ``cast_spell`` of Polymorph; a missing or illegal form is
+    # refused with ``CastFailed(reason="invalid_form")`` before anything is
+    # spent. Ignored by other intents.
+    form_id: str | None = None
+    # SRD 5.2 Wild Shape: "Your game statistics are replaced by the Beast's
+    # stat block". An action slug on the actor's current stat block (its Beast
+    # form, or a monster's own): an ``attack`` that makes one attack with that
+    # action instead of a weapon. An action the stat block lacks, or one that
+    # makes no attack roll, is refused with
+    # ``AttackFailed(reason="action_unavailable")``. Ignored by other intents.
+    stat_block_action_id: str | None = None
 
     @field_validator("direction")
     @classmethod
@@ -2564,6 +2599,9 @@ def _monster_context_kwargs(
         # field docstring for the full contract — this MUST be the live
         # object itself, never a copy.
         "undead_fortitude_holds": live.undead_fortitude_holds,
+        # C21: a transformed monster's turn rolls at its form's real
+        # scores and Proficiency Bonus; ``None`` (the legacy model) otherwise.
+        "stat_block_magnitudes": _stat_block_magnitudes_of(live, current),
     }
 
 
@@ -2645,11 +2683,9 @@ def _resolve_monster_cast(
     if entry is not None and key in entry.uses_remaining:
         entry.uses_remaining[key] = max(0, entry.uses_remaining[key] - 1)
 
-    # Symmetric concentration writeback for spellcaster monsters (mirrors
-    # the PC path; ``concentration_max_rounds`` stays on the default here —
-    # same recorded follow-up as the mundane monster-attack site).
-    _writeback_concentration(live, current, pre_event_count)
-    _record_effect_lifecycle_links(live, current, pre_event_count)
+    # The PC path's fold; ``concentration_max_rounds`` stays on the default
+    # here — the same recorded follow-up as the mundane monster-attack site.
+    _fold_resolution_outcome(live, current, spell=spell, actx=actx, pre_event_count=pre_event_count)
     _sync_legendary_resistance(live, pre_event_count)
 
 
@@ -3165,6 +3201,13 @@ class _LiveCombat:
     # start/end of a turn" registers here rather than being open-coded into the
     # advance path.
     lifecycle: TurnLifecycle = field(default_factory=TurnLifecycle)
+    # C21 — caster-owned spell constructs (SRD 5.2 Spiritual Weapon's force),
+    # keyed ``_construct_id(owner, spell)``. Never combatants: absent from
+    # ``initiative`` and ``actor_zone``, never occupants or targets.
+    constructs: dict[str, _Construct] = field(default_factory=dict)
+    # C21 — live transformations (SRD 5.2 Wild Shape, Polymorph) keyed by the
+    # transformed creature's entity id: at most one per creature.
+    transforms: dict[str, _Transform] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -3181,6 +3224,43 @@ class _PendingReaction:
     trigger: ReactionTrigger
     spell_id: str | None
     slot_level: int | None
+
+
+@dataclass
+class _Construct:
+    """One live spell construct. ``anchor`` is its concentration anchor's
+    ``(target_id, effect_id, origin)`` identity: the construct ends when that
+    effect expires. ``cast_round`` is the round of the cast that made the
+    construct's immediate attack ("As a Bonus Action on your later turns")."""
+
+    construct_id: str
+    owner_id: str
+    spell_id: str
+    cell: str
+    slot_level: int
+    anchor: tuple[str, str, str]
+    cast_round: int
+
+
+@dataclass
+class _Transform:
+    """One live transformation. ``stash`` holds the original value of every
+    ``Combatant`` field the form replaced; ``original_monster_slug`` /
+    ``original_action_uses`` the monster target's own stat block (``None`` for
+    a Character, or a Monster with no template). ``(effect_id, origin)`` names
+    the effect whose expiry reverts it."""
+
+    entity_id: str
+    form_slug: str
+    source: TransformSource
+    effect_id: str
+    origin: str
+    stash: dict[str, Any]
+    original_monster_slug: str | None
+    original_action_uses: dict[str, MonsterActionUses] | None
+    form_proficiency_bonus: int
+    attacks_per_action: int
+    clears_temp_hp_on_end: bool
 
 
 _REGISTRY: dict[str, _LiveCombat] = {}
@@ -3521,6 +3601,9 @@ def _end_what_incapacitation_ends(live: _LiveCombat, entity_id: str, condition: 
     # incapacitated combatant is grappling.
     _release_grapple_victims_of(live, entity_id)
     _end_rage_on_incapacitation(live, entity_id, condition)
+    # SRD 5.2 Wild Shape: the form lasts "until you ... have the Incapacitated
+    # condition".
+    _end_wild_shape(live, entity_id, "incapacitated")
 
 
 def _strip_condition_from_combatant(live: _LiveCombat, entity_id: str, condition: str) -> None:
@@ -4613,7 +4696,7 @@ def _emit_apply_turn_started(live: _LiveCombat, event: TurnStarted) -> None:
                     # SRD §Extra Attack / §Two-Weapon Fighting — refresh the
                     # per-Action attack budget and clear the TWF window at
                     # the start of the actor's own turn.
-                    "attacks_remaining": _attacks_per_action(c),
+                    "attacks_remaining": _attacks_per_action(live, c),
                     "attack_action_engaged": False,
                     "light_weapon_swing_slug": None,
                     "offhand_attack_spent": False,
@@ -4721,6 +4804,9 @@ def _emit_apply_damage(live: _LiveCombat, event: DamageApplied) -> None:
         absorbed = min(temp, remaining)
         live.tracked_temp_hp[event.target_id] = temp - absorbed
         remaining -= absorbed
+    # SRD 5.2 Polymorph ends the moment its Temporary Hit Points are gone; the
+    # rest of this hit then lands on the creature's own Hit Points.
+    _end_polymorph_on_depletion(live, event.target_id)
     new_hp = max(0, tracked - remaining)
     # C18 §Monster action economy, fix round 1 — SRD 5.2 stat-block trait
     # "Undead Fortitude": "On a successful save, the [monster] drops to 1
@@ -5096,6 +5182,8 @@ def _emit_apply_effect_expired(live: _LiveCombat, event: EffectExpired) -> None:
                     if c.entity_id == event.target_id:
                         live.initiative[idx] = c.model_copy(update={"conditions": new_conditions})
                         break
+    _end_anchor_dependents(live, event)
+    _revert_transform_on_expiry(live, event)
 
 
 def _maybe_roll_death_save(live: _LiveCombat) -> None:
@@ -5188,6 +5276,9 @@ def _record_death(live: _LiveCombat, event: Death, *, killer_id: str | None) -> 
     # inside the _emit fold: the cascade emits no DamageApplied/Death, so
     # it cannot recurse into death synthesis.
     _drop_concentration(live, event.target_id)
+    # SRD 5.2 Wild Shape: "...or die"; shape-shifting: "You revert to your true
+    # form if you die."
+    _end_wild_shape(live, event.target_id, "source_dead")
 
 
 # ── Sidecar hydration (per-evaluation projection of session state) ──────────
@@ -6265,6 +6356,83 @@ def _record_effect_lifecycle_links(
                 break
 
 
+#: ``ActiveEffect.flags`` key marking a concentration anchor: the caster-side
+#: effect a concentration spell holds when its resolution applied no
+#: concentration effect of its own.
+_ANCHOR_FLAG: Final = "concentration_anchor"
+
+
+def _anchor_identity(spell_slug: str, caster_id: str) -> tuple[str, str, str]:
+    """``caster_id``'s anchor for ``spell_slug`` as a ``concentration_chain``
+    entry, ``(target_id, effect_id, origin)``: the caster holds it."""
+    return (caster_id, f"effect:{spell_slug}", f"cast:{spell_slug}:{caster_id}")
+
+
+def _apply_concentration_anchor(
+    live: _LiveCombat, caster: Combatant, spell: Spell | None, pre_event_count: int
+) -> None:
+    """Anchor a concentration spell whose resolution applied no concentration
+    effect (a summon, a construct, a save every target passed) on its caster.
+
+    Concentration begins only from an applied concentration effect, yet SRD 5.2
+    holds for every such spell: "You lose Concentration on an effect the moment
+    you start casting a spell that requires Concentration". The anchor carries
+    no changes and no duration of its own, so C13 governs it like any other
+    concentration effect: one at a time, the damage CON save, Incapacitated and
+    death, the spell's maximum duration and the drop intent. C13 keeps an
+    identical chain entry across resolutions, so a recast of the same spell
+    first ends the running one — otherwise its dependents would outlive it."""
+    if spell is None or not spell.concentration:
+        return
+    if any(
+        isinstance(ev, EffectApplied) and ev.effect.flags.get("concentration")
+        for ev in live.event_log[pre_event_count:]
+    ):
+        return
+    identity = _anchor_identity(spell.slug, caster.entity_id)
+    if identity in live.concentration_chain.get(caster.entity_id, []):
+        _drop_concentration(live, caster.entity_id)
+    target_id, effect_id, origin = identity
+    _emit(
+        live,
+        EffectApplied(
+            effect=ActiveEffect(
+                id=effect_id,
+                name=spell.name,
+                origin=origin,
+                target_id=target_id,
+                flags={"concentration": True, _ANCHOR_FLAG: True},
+            )
+        ),
+    )
+
+
+def _fold_resolution_outcome(
+    live: _LiveCombat,
+    caster: Combatant,
+    *,
+    spell: Spell | None,
+    actx: ActivityResolutionContext | None,
+    pre_event_count: int,
+    concentration_max_rounds: int | None = None,
+) -> None:
+    """Fold one resolution into live state, the same way at every cast site
+    (on-turn, monster, readied). The anchor comes first so C13's writeback and
+    lifecycle links see it like any concentration effect: they record the
+    chain and end a different concentration the caster held before this
+    resolution. ``actx`` is the resolution's context, ``None`` when nothing
+    resolved."""
+    _apply_transform_requests(live, caster, actx)
+    _apply_transform_riders(live, caster, actx, pre_event_count)
+    _end_superseded_enchantments(live, caster, actx, pre_event_count)
+    _apply_concentration_anchor(live, caster, spell, pre_event_count)
+    _apply_construct_requests(live, caster, actx)
+    _writeback_concentration(live, caster, pre_event_count)
+    _record_effect_lifecycle_links(
+        live, caster, pre_event_count, concentration_max_rounds=concentration_max_rounds
+    )
+
+
 def _hook_run_end_of_turn_saves(live: _LiveCombat, actor_id: str | None) -> None:
     """``turn_end`` hook — adapt ``_run_end_of_turn_saves`` to ``TurnHook``."""
     if actor_id is None:
@@ -6330,6 +6498,11 @@ _PERSISTENT_RAGE_FEATURE: Final = "persistent-rage"
 # The id ``passive_effect_to_active_effect`` gives the corpus effect named
 # "Rage"; a Rage a host seeds through ``start_combat`` carries it too.
 _RAGE_EFFECT_ID: Final = "effect:rage"
+
+_WILD_SHAPE_FEATURE: Final = "wild-shape"
+# The effect a Wild Shape form rides (C21): not concentration; it ends through
+# ``_end_wild_shape``.
+_WILD_SHAPE_EFFECT_ID: Final = "effect:wild-shape"
 
 
 def _rage_effect(live: _LiveCombat, entity_id: str) -> ActiveEffect | None:
@@ -7480,12 +7653,23 @@ async def start_combat(
     )
 
 
-def _attacks_per_action(current: Combatant) -> int:
+def _own_attacks_per_action(current: Combatant) -> int:
     """SRD 5.2 Extra Attack: one attack plus the highest qualifying tier's extra
     attacks (``rules.character.extra_attack_count``; tiers never add)."""
     if current.class_slug is None:
         return 1
     return 1 + extra_attack_count(_granted_feature_slugs(current))
+
+
+def _attacks_per_action(live: _LiveCombat, current: Combatant) -> int:
+    """The swings one Attack action gives ``current``: its form's count while
+    it is transformed (C21 — the form's Multiattack, or for Wild Shape the
+    higher of that and the creature's own Extra Attack, as ``_apply_transform``
+    fixed it), else its own (``_own_attacks_per_action``)."""
+    transform = _transform_of(live, current.entity_id)
+    if transform is not None:
+        return transform.attacks_per_action
+    return _own_attacks_per_action(current)
 
 
 def _offhand_window_open(current: Combatant) -> bool:
@@ -7511,7 +7695,7 @@ def _twf_window_open(current: Combatant) -> bool:
     return _offhand_window_open(current) and current.bonus_action_available
 
 
-def _attack_action_is_spent(current: Combatant) -> bool:
+def _attack_action_is_spent(live: _LiveCombat, current: Combatant) -> bool:
     """SRD §Extra Attack — R1: the Attack action is fully spent (and so the
     turn should end after a main-hand attack) only when NO swings remain
     this Action, the actor gets exactly one attack per Action (multi-attack
@@ -7522,7 +7706,7 @@ def _attack_action_is_spent(current: Combatant) -> bool:
     already paid for them."""
     return (
         current.attacks_remaining <= 0
-        and _attacks_per_action(current) == 1
+        and _attacks_per_action(live, current) == 1
         and not _offhand_window_open(current)
         and current.flurry_strikes_remaining <= 0
     )
@@ -7604,6 +7788,11 @@ class _FeatureInvocation:
     # Bonus-Action extension, not a new Rage: it applies nothing
     # (``_resolve_intent_activities``) and spends no use (``use_cost`` 0).
     extends_rage: bool = False
+    # SRD 5.2 Wild Shape — "You can also leave the form early as a Bonus
+    # Action." A ``wild-shape`` invocation without ``form_id`` by a creature in
+    # a Wild Shape form: it applies nothing (``_resolve_intent_activities``),
+    # spends no use (``use_cost`` 0), and ``_leave_wild_shape`` ends the form.
+    leaves_form: bool = False
     # SRD 5.2 §Limited-Use Features — the per-rest use cap resolved
     # from the feature's typed ``uses`` block (a literal or a ``@scale.*`` max
     # resolved against the caster's ScaleValue map), or ``None`` when the feature
@@ -7730,6 +7919,15 @@ def _record_rage_extension(
     ``engine:rage-extension`` hook; a no-op for every other intent."""
     if feature_invocation is not None and feature_invocation.extends_rage:
         live.rage_bonus_extensions.add(actor_id)
+
+
+def _leave_wild_shape(
+    live: _LiveCombat, actor_id: str, feature_invocation: _FeatureInvocation | None
+) -> None:
+    """End the form of a committed Bonus-Action Wild Shape leave; a no-op for
+    every other intent."""
+    if feature_invocation is not None and feature_invocation.leaves_form:
+        _end_wild_shape(live, actor_id, "remove_ieffect")
 
 
 def _item_use_counter_key(item_id: str) -> str:
@@ -8074,6 +8272,7 @@ def _resolve_feature_invocation(
     *,
     pool_points: int | None = None,
     raging: bool = False,
+    leaving_form: bool = False,
 ) -> _FeatureInvocation | None:
     """Resolve a USE_FEATURE intent to its single concrete activity, or ``None``.
 
@@ -8091,7 +8290,8 @@ def _resolve_feature_invocation(
     Rage / Second Wind activate as a Bonus Action (``activation.type ==
     "bonus"``); that does NOT end the turn, so the actor may rage then swing on
     the same turn. ``raging``: the caster already has a live Rage (see
-    ``_FeatureInvocation.extends_rage``).
+    ``_FeatureInvocation.extends_rage``). ``leaving_form``: the caster is in a
+    Wild Shape form and names none (see ``_FeatureInvocation.leaves_form``).
     """
     if feature_id not in _granted_feature_slugs(caster):
         _LOGGER.warning(
@@ -8141,6 +8341,8 @@ def _resolve_feature_invocation(
         # raging, the invocation extends it: the Bonus Action, no use, nothing
         # applied.
         return replace(invocation, use_cost=0, extends_rage=True)
+    if leaving_form and feature_id == _WILD_SHAPE_FEATURE:
+        return replace(invocation, use_cost=0, leaves_form=True)
     return invocation
 
 
@@ -8499,6 +8701,915 @@ def _handle_move(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
     # Turn stays live — no TurnEnded, no current_turn_index advance.
 
 
+# ── C21 conjurations: the shared pre-spend gate and the enchant ─────────────
+
+_ConjurationGate = Callable[[_LiveCombat, Combatant, PlayerIntent], CombatEvent | None]
+
+
+def _conjuration_gate_failure(
+    live: _LiveCombat, current: Combatant, intent: PlayerIntent
+) -> CombatEvent | None:
+    """The first C21 conjuration refusal for ``intent``, or ``None``. The last
+    of ``submit_player_intent``'s ``pre_resolution_gates``, so a refused
+    conjuration spends no slot, use or action. Each check is a no-op for an
+    intent it does not govern."""
+    # A shape-shifted actor is refused first: it cannot cast any spell at all,
+    # nor make a weapon attack — so a form's weapon attack is refused here,
+    # before the stat-block check below ever sees it. A readied conjuration is
+    # refused before the enchant gate reads its (absent) weapon; the rest
+    # govern disjoint intents (a construct's attack names a spell, a
+    # stat-block swing names an action, Wild Shape and Polymorph each their
+    # own allowlisted source), so their order only fixes which reason a
+    # malformed intent reports.
+    checks: tuple[_ConjurationGate, ...] = (
+        _shape_shifted_failure,
+        _readied_conjuration_failure,
+        _enchant_cast_failure,
+        _construct_cast_failure,
+        _construct_attack_failure,
+        _stat_block_attack_failure,
+        _wild_shape_failure,
+        _polymorph_form_failure,
+    )
+    for check in checks:
+        failure = check(live, current, intent)
+        if failure is not None:
+            return failure
+    return None
+
+
+def _readied_conjuration_failure(
+    live: _LiveCombat, current: Combatant, intent: PlayerIntent
+) -> CombatEvent | None:
+    """``CastFailed(reason="target_invalid")`` for a ``ready`` naming an
+    allowlisted conjuration. A readied cast resolves from ``_PendingReaction``,
+    which carries only the spell and its slot level, never the weapon, form or
+    cell the conjuration needs."""
+    if intent.intent_type != "ready" or (intent.spell_id or "") not in CONJURATION_ALLOWLIST:
+        return None
+    return CastFailed(
+        actor_id=current.entity_id, spell_id=intent.spell_id or "", reason="target_invalid"
+    )
+
+
+def _enchant_cast_failure(
+    live: _LiveCombat, current: Combatant, intent: PlayerIntent
+) -> CombatEvent | None:
+    """``CastFailed(reason="target_invalid")`` for an allowlisted enchant cast
+    whose ``weapon_id`` its ``EnchantActivity.restrictions`` refuse.
+
+    SRD 5.2 Magic Weapon: "You touch a nonmagical weapon." The weapon must be
+    a corpus ``Weapon`` (``restrictions.type == "weapon"``) and, under
+    ``allow_magical: false``, neither magical nor a +N weapon. An Unarmed
+    Strike is not a weapon ("Instead of using a weapon to make a melee attack,
+    you can use a punch, kick, headbutt, or similar forceful blow"). Whether
+    the target carries the weapon is not checked: equipment is optional on a
+    hand-built spec.
+    """
+    spell_id = intent.spell_id or ""
+    if intent.intent_type != "cast_spell" or CONJURATION_ALLOWLIST.get(spell_id) != "enchant":
+        return None
+    loader = get_lib_loader()
+    weapon = loader.get_weapon(intent.weapon_id) if intent.weapon_id else None
+    spell = loader.get_spell(spell_id)
+    enchant = next(
+        (a for a in (spell.activities if spell else ()) if isinstance(a, EnchantActivity)), None
+    )
+    if (
+        weapon is not None
+        and weapon.slug != _UNARMED_STRIKE
+        and enchant is not None
+        and enchant.restrictions.type == "weapon"
+        and (enchant.restrictions.allow_magical or not (weapon.magical or weapon.magical_bonus))
+    ):
+        return None
+    return CastFailed(actor_id=current.entity_id, spell_id=spell_id, reason="target_invalid")
+
+
+def _conjuration_carrier(
+    live: _LiveCombat, current: Combatant, intent: PlayerIntent
+) -> ConjurationCarrier | None:
+    """The pre-validated inputs an allowlisted conjuration resolves with, or
+    ``None`` for every other intent (its activities stay narrative). Echoes
+    what ``_conjuration_gate_failure`` already accepted."""
+    source = (
+        intent.spell_id
+        if intent.intent_type == "cast_spell"
+        else intent.feature_id
+        if intent.intent_type == "use_feature"
+        else None
+    ) or ""
+    kind = CONJURATION_ALLOWLIST.get(source)
+    if kind == "enchant":
+        return ConjurationCarrier(source_slug=source, weapon_slug=intent.weapon_id)
+    if kind == "construct":
+        return ConjurationCarrier(source_slug=source, cell=_construct_cell(live, current, intent))
+    if kind == "transform":
+        # SRD 5.2 Wild Shape: the Beast form ``_wild_shape_failure`` accepted;
+        # a leave names none and resolves nothing.
+        return (
+            ConjurationCarrier(source_slug=source, form_slug=intent.form_id)
+            if intent.form_id
+            else None
+        )
+    if kind == "transform_rider":
+        # SRD 5.2 Polymorph: the Beast form ``_polymorph_form_failure`` accepted;
+        # fold step 2 applies it on a failed save.
+        return ConjurationCarrier(source_slug=source, form_slug=intent.form_id)
+    return None
+
+
+def _end_superseded_enchantments(
+    live: _LiveCombat,
+    caster: Combatant,
+    actx: ActivityResolutionContext | None,
+    pre_event_count: int,
+) -> None:
+    """SRD 5.2 Magic Weapon: "The spell ends early if you cast it again." After
+    an enchant cast, every other live enchantment this caster made ends
+    (``remove_ieffect``), whichever weapon or creature it is on. A recast at
+    the same tier on the same creature has the same identity as the old
+    effect; the expiry fold pops the first match, which is the older one."""
+    if actx is None or actx.conjuration is None or actx.conjuration.weapon_slug is None:
+        return
+    applied_now = {
+        id(ev.effect) for ev in live.event_log[pre_event_count:] if isinstance(ev, EffectApplied)
+    }
+    superseded = [
+        effect
+        for effects in live.active_effects.values()
+        for effect in effects
+        if ENCHANTED_WEAPON_FLAG in effect.flags
+        and effect.origin.startswith("cast:")
+        and effect.origin.split(":", 2)[2:] == [caster.entity_id]
+        and id(effect) not in applied_now
+    ]
+    for effect in superseded:
+        _emit(
+            live,
+            EffectExpired(
+                effect_id=effect.id,
+                target_id=effect.target_id,
+                origin=effect.origin,
+                reason="remove_ieffect",
+            ),
+        )
+
+
+def _enchanted_weapon(
+    live: _LiveCombat, attacker: Combatant, weapon: Weapon | None
+) -> Weapon | None:
+    """``weapon`` with the attacker's live enchantments applied (the weapon
+    itself when none names it); ``None`` for a weapon-less intent."""
+    if weapon is None:
+        return None
+    return enchant_weapon(weapon, live.active_effects.get(attacker.entity_id, ()))
+
+
+def _weapon_enchantment_to_hit(
+    attacker: Combatant, base: Weapon | None, enchanted: Weapon | None
+) -> int:
+    """The enchantment's to-hit a host-pinned ``attack_bonus`` would drop:
+    ``_attack_bonus`` returns a pinned value verbatim, before the weapon's
+    ``magical_bonus``, so the delta rides on top of the pin (as Archery does).
+    0 for an unpinned attacker, whose ``magical_bonus`` already counts."""
+    if attacker.attack_bonus is None or base is None or enchanted is None:
+        return 0
+    return enchanted.magical_bonus - base.magical_bonus
+
+
+# ── C21 constructs (SRD 5.2 Spiritual Weapon) ─────────────────────────────
+
+
+def _construct_id(owner_id: str, spell_id: str) -> str:
+    """One construct per owner and spell: a recast replaces it."""
+    return f"construct:{owner_id}:{spell_id}"
+
+
+def _repeated_construct(
+    live: _LiveCombat, current: Combatant, intent: PlayerIntent
+) -> _Construct | None:
+    """The live construct an ``attack`` repeats: the one its ``spell_id`` names
+    that ``current`` owns. The field names a force only to that force's owner;
+    on any other attack it is not read."""
+    if intent.intent_type != "attack" or not intent.spell_id:
+        return None
+    return live.constructs.get(_construct_id(current.entity_id, intent.spell_id))
+
+
+def _construct_cell(live: _LiveCombat, current: Combatant, intent: PlayerIntent) -> str | None:
+    """Where a construct cast places its force. SRD 5.2 Spiritual Weapon: "The
+    force appears within range in a space of your choice" — the intent's
+    ``target_zone_id``; else the named target's space (the immediate attack is
+    against "one creature within 5 feet of the force"); else the caster's."""
+    if intent.target_zone_id is not None:
+        return intent.target_zone_id
+    target_cell = live.actor_zone.get(intent.target_id) if intent.target_id else None
+    return target_cell or live.actor_zone.get(current.entity_id)
+
+
+def _construct_cast_failure(
+    live: _LiveCombat, current: Combatant, intent: PlayerIntent
+) -> CombatEvent | None:
+    """``CastFailed(reason="out_of_range")`` for a construct cast whose force
+    cannot be placed: an explicit ``target_zone_id`` the caster cannot reach
+    with the spell (off the map, beyond its range, out of sight or behind total
+    cover), or a named target farther from the force's space than its reach.
+    With no ``target_zone_id`` the force appears in the named target's space,
+    which ``_spell_out_of_range_failure`` has already range-checked."""
+    spell_id = intent.spell_id or ""
+    spec = CONSTRUCTS.get(spell_id)
+    if intent.intent_type != "cast_spell" or spec is None:
+        return None
+    caster_cell = live.actor_zone.get(current.entity_id)
+    spell = get_lib_loader().get_spell(spell_id)
+    range_ft = (
+        spell.range.value
+        if spell is not None and spell.range.units == SpellRangeUnits.FEET
+        else None
+    )
+    in_range = intent.target_zone_id is None or (
+        caster_cell is not None
+        and range_ft is not None
+        and _in_range_with_los(live.topology, caster_cell, intent.target_zone_id, range_ft)
+    )
+    cell = _construct_cell(live, current, intent)
+    target_cell = live.actor_zone.get(intent.target_id) if intent.target_id else None
+    reach = live.topology.distance_ft(cell, target_cell) if cell and target_cell else None
+    in_reach = target_cell is None or (reach is not None and reach <= spec.reach_ft)
+    if in_range and in_reach:
+        return None
+    return CastFailed(actor_id=current.entity_id, spell_id=spell_id, reason="out_of_range")
+
+
+def _construct_attack_failure(
+    live: _LiveCombat, current: Combatant, intent: PlayerIntent
+) -> CombatEvent | None:
+    """The refusal for a construct's Bonus-Action repeat, or ``None`` (also for
+    an attack that repeats no construct: ``_repeated_construct``).
+
+    SRD 5.2 Spiritual Weapon: "As a Bonus Action on your later turns, you can
+    move the force up to 20 feet and repeat the attack against a creature
+    within 5 feet of it." ``action_unavailable``: the construct was cast this
+    round (the cast made its attack), or the repeat also names a weapon — the
+    force's attack is the whole of it, and a weapon swing riding the Bonus
+    Action would be a free attack. ``target_invalid``: the target is unknown or
+    dead. ``out_of_range``: the new ``target_zone_id`` cannot be measured or is
+    more than the construct's move away (the force floats: distance, not a
+    path), or the target is beyond its reach from the force's (moved) space.
+    """
+    construct = _repeated_construct(live, current, intent)
+    if construct is None:
+        return None
+    spec = CONSTRUCTS[construct.spell_id]
+    if intent.weapon_id or construct.cast_round == live.round_number:
+        return AttackFailed(
+            actor_id=current.entity_id, target_id=intent.target_id, reason="action_unavailable"
+        )
+    target = _find_combatant(live, intent.target_id) if intent.target_id else None
+    if target is None or target.entity_id in live.dead_ids:
+        return AttackFailed(
+            actor_id=current.entity_id, target_id=intent.target_id, reason="target_invalid"
+        )
+    cell = intent.target_zone_id or construct.cell
+    moved = live.topology.distance_ft(construct.cell, cell)
+    target_cell = live.actor_zone.get(target.entity_id)
+    reach = live.topology.distance_ft(cell, target_cell) if target_cell else None
+    if moved is None or moved > spec.move_ft or reach is None or reach > spec.reach_ft:
+        return AttackFailed(
+            actor_id=current.entity_id, target_id=intent.target_id, reason="out_of_range"
+        )
+    return None
+
+
+def _stat_block_attack_failure(
+    live: _LiveCombat, current: Combatant, intent: PlayerIntent
+) -> CombatEvent | None:
+    """Stat-block commands (C21): an ``attack`` naming ``stat_block_action_id`` is one
+    swing of an attack action on the actor's current stat block (its form's
+    while transformed). ``AttackFailed(reason="action_unavailable")`` when
+    there is nothing to swing — no stat block, no such action, an action with
+    no attack roll (the Multiattack itself, since each swing is its own
+    intent, and save actions such as a Breath Weapon, which can't be
+    commanded yet), or a command that also names a weapon or a spell;
+    ``"out_of_range"`` when the target is beyond the action's reach or range.
+    ``None`` for every other intent. A refusal spends nothing."""
+    if intent.intent_type != "attack" or not intent.stat_block_action_id:
+        return None
+    found = _stat_block_action(
+        _current_stat_block_slug(live, current.entity_id), intent.stat_block_action_id
+    )
+    activities = list(found[1].activities) if found is not None else []
+    if (
+        intent.weapon_id
+        or intent.spell_id
+        or not any(isinstance(a, AttackActivity) for a in activities)
+    ):
+        return AttackFailed(
+            actor_id=current.entity_id, target_id=intent.target_id, reason="action_unavailable"
+        )
+    if _stat_block_target_out_of_range(live, current, intent.target_id, activities):
+        return AttackFailed(
+            actor_id=current.entity_id, target_id=intent.target_id, reason="out_of_range"
+        )
+    return None
+
+
+def _wild_shape_failure(
+    live: _LiveCombat, current: Combatant, intent: PlayerIntent
+) -> CombatEvent | None:
+    """SRD 5.2 Wild Shape (C21): ``use_feature`` of the allowlisted
+    ``"transform"`` feature names its Beast form in ``form_id``, checked
+    against the Beast Shapes table before anything is spent.
+    ``CastFailed(spell_id="", reason="invalid_form")`` for no ``form_id``
+    outside a Wild Shape form; a slug that is no usable Beast
+    (``_validated_beast_form``); a form above the Druid level's Max CR, or with
+    a Fly Speed below Druid level 8; or a creature under Polymorph, whose game
+    statistics — class features included — are its Beast's. No ``form_id``
+    inside a Wild Shape form is the Bonus-Action leave. ``None`` for every
+    other intent."""
+    if (
+        intent.intent_type != "use_feature"
+        or CONJURATION_ALLOWLIST.get(intent.feature_id or "") != "transform"
+        or (intent.form_id is None and _is_wild_shaped(live, current.entity_id))
+    ):
+        return None
+    form = _validated_beast_form(intent.form_id)
+    tier = wild_shape_tier(_class_levels(current).get("druid", 0))
+    transform = _transform_of(live, current.entity_id)
+    if (
+        form is None
+        or tier is None
+        or form.cr > tier.max_cr
+        or (bool(form.movement.fly) and not tier.fly_allowed)
+        or (transform is not None and transform.source == "polymorph")
+    ):
+        return CastFailed(actor_id=current.entity_id, spell_id="", reason="invalid_form")
+    return None
+
+
+def _polymorph_form_failure(
+    live: _LiveCombat, current: Combatant, intent: PlayerIntent
+) -> CombatEvent | None:
+    """SRD 5.2 Polymorph (C21): the cast names its Beast form in ``form_id``,
+    checked before the slot is spent. ``CastFailed(reason="invalid_form")``
+    for a slug that is no usable Beast (``_validated_beast_form``), a target
+    with neither a Challenge Rating nor a level (``_challenge_rating_of``),
+    or a form whose Challenge Rating is above it. ``None`` for every other
+    intent."""
+    spell_id = intent.spell_id or ""
+    if (
+        intent.intent_type != "cast_spell"
+        or CONJURATION_ALLOWLIST.get(spell_id) != "transform_rider"
+    ):
+        return None
+    form = _validated_beast_form(intent.form_id)
+    ceiling = _challenge_rating_of(live, intent.target_id) if intent.target_id else None
+    if form is None or ceiling is None or form.cr > ceiling:
+        return CastFailed(actor_id=current.entity_id, spell_id=spell_id, reason="invalid_form")
+    return None
+
+
+def _apply_construct_requests(
+    live: _LiveCombat, caster: Combatant, actx: ActivityResolutionContext | None
+) -> None:
+    """Fold step 5: seat each construct this resolution requested and make its
+    immediate attack (SRD 5.2 Spiritual Weapon: "you can immediately make one
+    melee spell attack against one creature within 5 feet of the force").
+
+    Runs after the concentration anchor, so the construct records a live
+    identity, and a same-spell recast's drop has already ended the old
+    construct. A living named target is attacked; with none, the force waits."""
+    if actx is None:
+        return
+    for request in actx.construct_requests:
+        construct = _Construct(
+            construct_id=_construct_id(request.owner_id, request.spell_id),
+            owner_id=request.owner_id,
+            spell_id=request.spell_id,
+            cell=request.cell,
+            slot_level=request.slot_level,
+            anchor=_anchor_identity(request.spell_id, request.owner_id),
+            cast_round=live.round_number,
+        )
+        live.constructs[construct.construct_id] = construct
+        for target_id in request.target_ids:
+            target = _find_combatant(live, target_id)
+            if target is not None and target_id not in live.dead_ids:
+                _resolve_construct_attack(live, caster, construct, target)
+
+
+def _construct_spellcasting_ability(owner: Combatant) -> str | None:
+    """The ability a construct's attack uses: the owner's class spellcasting
+    ability, else its stat block's (a monster), else ``None`` (the legacy
+    fallbacks of a classless caster)."""
+    return _resolve_caster_spellcasting_ability(owner) or owner.spellcasting_ability
+
+
+def _resolve_construct_attack(
+    live: _LiveCombat, owner: Combatant, construct: _Construct, target: Combatant
+) -> None:
+    """One melee spell attack by ``owner`` from ``construct``'s space against
+    ``target``: the owner's spell attack bonus and spellcasting modifier
+    (``spell_attack_magnitudes``), its hydration payload and conditions, with
+    cover and distance measured from the force. The slot level scales the dice
+    and the spell's level makes the hit magical. Draws the d20, then the damage
+    dice on a hit, through the ordinary attack path; the one-use Help / Vex /
+    Sap grants pop after. The target's readied reactions (Shield) have already
+    fired, before the resolution's event slice, as for every attack: inside
+    it, C13's fold would record a readied concentration spell as the
+    owner's."""
+    spec = CONSTRUCTS[construct.spell_id]
+    target_list = [target]
+    ability = _construct_spellcasting_ability(owner)
+    attack_bonus, modifier = spell_attack_magnitudes(owner, ability)
+    payload = _build_hydration_payload(live, caster=owner)
+    pre_event_count = len(live.event_log)
+    target_cell = live.actor_zone.get(target.entity_id)
+    distance = live.topology.distance_ft(construct.cell, target_cell) if target_cell else None
+    geometry = {
+        "target_cover": _target_cover_map(
+            live, owner.entity_id, target_list, origin_cell=construct.cell
+        ),
+        "target_distance_ft": {} if distance is None else {target.entity_id: distance},
+    }
+    actx = build_activity_context(
+        owner,
+        target_list,
+        rng=live.rng,
+        event_emitter=lambda ev: _emit(live, ev),
+        slot_level=construct.slot_level,
+        base_spell_level=spec.base_level,
+        spellcasting_ability=ability,
+        concentration=False,
+        source_passive_effects=[],
+        spell_book={},
+        active_effects=tuple(live.active_effects.get(owner.entity_id, [])),
+        **(_monster_context_kwargs(live, owner, target_list, payload) | geometry),
+    )
+    resolve_activity(
+        construct_attack_activity(
+            spec,
+            slot_level=construct.slot_level,
+            attack_bonus=attack_bonus,
+            damage_bonus=modifier,
+        ),
+        actx,
+    )
+    _consume_attack_roll_grants(live, owner, target_list, pre_event_count)
+
+
+def _resolve_construct_attack_intent(
+    live: _LiveCombat, current: Combatant, intent: PlayerIntent
+) -> None:
+    """A construct's Bonus-Action repeat: move the force to ``target_zone_id``
+    (when given), attack, and end the owner's Hide (SRD 5.2 Hide: the
+    condition ends "immediately after ... you make an attack roll"). A no-op
+    for every other intent; ``_construct_attack_failure`` validated this one
+    before anything was spent."""
+    construct = _repeated_construct(live, current, intent)
+    target = _find_combatant(live, intent.target_id) if intent.target_id else None
+    if construct is None or target is None:
+        return
+    if intent.target_zone_id is not None:
+        construct.cell = intent.target_zone_id
+    _resolve_construct_attack(live, current, construct, target)
+    _break_hide_on_attack_or_verbal_cast(live, current, intent, None)
+
+
+def _end_anchor_dependents(live: _LiveCombat, event: EffectExpired) -> None:
+    """Remove every construct whose concentration anchor just expired: the
+    force "lasts for the duration" of its concentration spell, so a broken or
+    dropped concentration, the spell's end, its owner's death or Incapacitated
+    condition, and a recast all end it here."""
+    identity = (event.target_id, event.effect_id, event.origin)
+    for construct_id in [cid for cid, c in live.constructs.items() if c.anchor == identity]:
+        del live.constructs[construct_id]
+
+
+# ── C21 transformations (SRD 5.2 Wild Shape, Polymorph) ────────────────────
+
+
+def _transform_of(live: _LiveCombat, entity_id: str) -> _Transform | None:
+    return live.transforms.get(entity_id)
+
+
+def _form_stat_fields(target: Combatant, form: Monster, source: TransformSource) -> dict[str, Any]:
+    """The ``Combatant`` fields a transformation into ``form`` replaces, with
+    the form's values.
+
+    Both sources swap the physical stat block: AC, STR / DEX / CON, Speed and
+    movement modes, senses, damage and condition traits, trait mechanics, and a
+    5-ft reach (the corpus carries no melee reach). SRD 5.2 Polymorph: "The
+    target's game statistics are replaced by the stat block of the chosen
+    Beast, but the target retains its alignment, personality, creature type,
+    Hit Points, and Hit Point Dice" — so it also takes the form's INT / WIS /
+    CHA, Proficiency Bonus, proficiencies, spellcasting ability and legendary
+    pools. SRD 5.2 Wild Shape: "you retain your creature type; Hit Points; Hit
+    Point Dice; Intelligence, Wisdom, and Charisma scores; class features;
+    languages; and feats. You also retain your skill and saving throw
+    proficiencies and use your Proficiency Bonus for them, in addition to
+    gaining the proficiencies of the creature." A druid's Proficiency Bonus is
+    never below a CR 1 or lower Beast's, so the union already gives "the one in
+    the stat block" whenever that is higher.
+    """
+    scores = form.ability_scores
+    saves = [a for a in ABILITY_CODES if getattr(form.saving_throws, a) is not None]
+    skills = [k for k, v in form.skills.model_dump().items() if v is not None]
+    fields: dict[str, Any] = {
+        "ac": form.ac,
+        "strength": scores.str,
+        "dexterity": scores.dex,
+        "constitution": scores.con,
+        "base_speed": form.movement.walk or 0,
+        "movement_modes": CombatantMovementModes(
+            climb=form.movement.climb,
+            swim=form.movement.swim,
+            fly=form.movement.fly,
+            burrow=form.movement.burrow,
+        ),
+        "senses": CombatantSenses(
+            darkvision=form.senses.darkvision,
+            blindsight=form.senses.blindsight,
+            tremorsense=form.senses.tremorsense,
+            truesight=form.senses.truesight,
+        ),
+        "melee_reach_ft": 5,
+        "damage_resistances": list(form.damage_resistances),
+        "damage_immunities": list(form.damage_immunities),
+        "damage_vulnerabilities": list(form.damage_vulnerabilities),
+        "condition_immunities": list(form.condition_immunities),
+        "physical_resistances_nonmagical_only": False,
+        "trait_mechanics": [a.mechanic for a in form.special_abilities if a.mechanic is not None],
+    }
+    if source == "wild-shape":
+        return fields | {
+            "save_proficiencies": [
+                *target.save_proficiencies,
+                *(a for a in saves if a not in target.save_proficiencies),
+            ],
+            "skill_proficiencies": [
+                *target.skill_proficiencies,
+                *(k for k in skills if k not in target.skill_proficiencies),
+            ],
+        }
+    legendary_actions = _legendary_action_uses_max(form)
+    legendary_resistances = _legendary_resistance_max(form)
+    return fields | {
+        "intelligence": scores.int,
+        "wisdom": scores.wis,
+        "charisma": scores.cha,
+        "proficiency_bonus_override": form.proficiency_bonus,
+        "save_proficiencies": saves,
+        "skill_proficiencies": skills,
+        "skill_expertise": [],
+        "spellcasting_ability": form.spellcasting_ability,
+        "legendary_actions_max": legendary_actions,
+        "legendary_actions_remaining": legendary_actions,
+        "legendary_resistances_max": legendary_resistances,
+        "legendary_resistances_remaining": legendary_resistances,
+    }
+
+
+def _apply_transform(
+    live: _LiveCombat,
+    target_id: str,
+    form: Monster,
+    *,
+    source: TransformSource,
+    effect: ActiveEffect,
+    temp_hp: int,
+) -> None:
+    """Shape-shift ``target_id`` into ``form`` (which has an AC: the form gates
+    check it), carried by ``effect``.
+
+    An earlier transformation of the target ends first (Wild Shape used again;
+    a second Polymorph). Then the effect lands, the replaced fields are stashed
+    and swapped, a monster target acts from the form's actions, and the
+    creature gains ``temp_hp`` Temporary Hit Points in its one bucket.
+    Polymorph's grant vanishes when the spell ends ("These Temporary Hit Points
+    vanish if any remain when the spell ends"), but only a bucket the grant
+    raised is the grant's. The form's Multiattack sets the Attack action's
+    count; Wild Shape keeps the creature's own Extra Attack when that is more,
+    since it retains its class features.
+    """
+    _end_transform(live, target_id, "remove_ieffect")
+    target = _find_combatant(live, target_id)
+    if target is None:
+        return
+    _emit(live, EffectApplied(effect=effect))
+    fields = _form_stat_fields(target, form, source)
+    is_monster = target.entity_type != "Character"
+    attacks = multiattack_count(form)
+    live.transforms[target_id] = _Transform(
+        entity_id=target_id,
+        form_slug=form.slug,
+        source=source,
+        effect_id=effect.id,
+        origin=effect.origin,
+        stash={name: getattr(target, name) for name in fields},
+        original_monster_slug=live.monster_slug_by_entity.get(target_id) if is_monster else None,
+        original_action_uses=(
+            live.monster_action_uses_by_entity.get(target_id) if is_monster else None
+        ),
+        form_proficiency_bonus=form.proficiency_bonus,
+        attacks_per_action=(
+            max(attacks, _own_attacks_per_action(target)) if source == "wild-shape" else attacks
+        ),
+        clears_temp_hp_on_end=(
+            source == "polymorph" and temp_hp > live.tracked_temp_hp.get(target_id, 0)
+        ),
+    )
+    _update_combatant(live, target_id, **fields)
+    if is_monster:
+        live.monster_slug_by_entity[target_id] = form.slug
+        live.monster_action_uses_by_entity[target_id] = _hydrate_monster_action_uses(form)
+    _clamp_movement_budget(live, target_id)
+    _emit(live, TempHpApplied(target_id=target_id, amount=temp_hp))
+
+
+def _end_transform(live: _LiveCombat, entity_id: str, reason: EffectExpiryReason) -> None:
+    """End ``entity_id``'s transformation, if any, through its effect: a
+    transformation its caster concentrates on (Polymorph) ends that
+    concentration, the one path C13 cascades; any other (Wild Shape) expires
+    its effect directly. Either way ``_revert_transform_on_expiry`` reverts it."""
+    transform = live.transforms.get(entity_id)
+    if transform is None:
+        return
+    identity = (entity_id, transform.effect_id, transform.origin)
+    caster_id = transform.origin.split(":", 2)[-1]
+    if identity in live.concentration_chain.get(caster_id, []):
+        _drop_concentration(live, caster_id, reason=reason)
+        return
+    _emit(
+        live,
+        EffectExpired(
+            effect_id=transform.effect_id,
+            target_id=entity_id,
+            origin=transform.origin,
+            reason=reason,
+        ),
+    )
+
+
+def _revert_transform_on_expiry(live: _LiveCombat, event: EffectExpired) -> None:
+    """Revert the creature whose transformation effect just expired: restore
+    every stashed field and the monster's own actions, re-clamp its movement,
+    and — for Polymorph's own grant — empty its Temporary Hit Points ("These
+    Temporary Hit Points vanish if any remain when the spell ends"). Wild
+    Shape's Temporary Hit Points stay."""
+    transform = live.transforms.get(event.target_id)
+    if transform is None or (transform.effect_id, transform.origin) != (
+        event.effect_id,
+        event.origin,
+    ):
+        return
+    del live.transforms[event.target_id]
+    _update_combatant(live, event.target_id, **transform.stash)
+    if transform.original_monster_slug is None:
+        live.monster_slug_by_entity.pop(event.target_id, None)
+    else:
+        live.monster_slug_by_entity[event.target_id] = transform.original_monster_slug
+    if transform.original_action_uses is None:
+        live.monster_action_uses_by_entity.pop(event.target_id, None)
+    else:
+        live.monster_action_uses_by_entity[event.target_id] = transform.original_action_uses
+    _clamp_movement_budget(live, event.target_id)
+    if transform.clears_temp_hp_on_end:
+        live.tracked_temp_hp[event.target_id] = 0
+        _update_combatant(live, event.target_id, temp_hp=0)
+
+
+def _validated_beast_form(form_id: str | None) -> Monster | None:
+    """The corpus Beast ``form_id`` names when a shape-shift can take it (C21:
+    Wild Shape and Polymorph turn a creature into "a Beast form"): a Beast
+    stat block with an Armor Class that is not a summon stat block. ``None``
+    for an unknown slug, a non-Beast or an unusable stat block."""
+    form = get_lib_loader().get_monster(form_id) if form_id else None
+    if (
+        form is None
+        or form.creature_type != "beast"
+        or form.ac is None
+        or uses_summon_roll_data(form)
+    ):
+        return None
+    return form
+
+
+def _is_wild_shaped(live: _LiveCombat, entity_id: str) -> bool:
+    """``entity_id`` is in a Wild Shape form; a polymorphed creature has no
+    form of its own to leave."""
+    transform = _transform_of(live, entity_id)
+    return transform is not None and transform.source == "wild-shape"
+
+
+def _end_wild_shape(live: _LiveCombat, entity_id: str, reason: EffectExpiryReason) -> None:
+    """End ``entity_id``'s Wild Shape form, if it is in one. SRD 5.2: "You stay
+    in that form ... until you use Wild Shape again, have the Incapacitated
+    condition, or die. You can also leave the form early as a Bonus Action."
+    A Polymorph form is its spell's to end."""
+    if _is_wild_shaped(live, entity_id):
+        _end_transform(live, entity_id, reason)
+
+
+def _apply_transform_requests(
+    live: _LiveCombat, caster: Combatant, actx: ActivityResolutionContext | None
+) -> None:
+    """Fold step 1 (C21): shape-shift every creature this resolution's
+    ``transform`` activity asked for — Wild Shape, into the form
+    ``_wild_shape_failure`` validated. SRD 5.2: "When you assume a Wild Shape
+    form, you gain a number of Temporary Hit Points equal to your Druid
+    level." The form is not concentration; ``_end_wild_shape`` ends it."""
+    for request in actx.transform_requests if actx is not None else ():
+        form = _validated_beast_form(request.form_slug)
+        if form is None:  # validated before anything was spent
+            continue
+        _apply_transform(
+            live,
+            request.target_id,
+            form,
+            source=request.source,
+            effect=ActiveEffect(
+                id=_WILD_SHAPE_EFFECT_ID,
+                name="Wild Shape",
+                origin=f"cast:{_WILD_SHAPE_FEATURE}:{request.target_id}",
+                target_id=request.target_id,
+                flags={TRANSFORM_FORM_FLAG: request.form_slug},
+            ),
+            temp_hp=_class_levels(caster).get("druid", 0),
+        )
+
+
+def _challenge_rating_of(live: _LiveCombat, entity_id: str) -> float | None:
+    """The Challenge Rating a Polymorph form is measured against. SRD 5.2: "a
+    Challenge Rating equal to or less than the target's (or the target's level
+    if it doesn't have a Challenge Rating)" — a Character's level; a monster's
+    template CR (its own, not its form's, while it is transformed); ``None``
+    for a template-less creature, which is refused rather than guessed."""
+    target = _find_combatant(live, entity_id)
+    if target is None:
+        return None
+    if target.entity_type == "Character":
+        return float(target.character_level)
+    transform = _transform_of(live, entity_id)
+    slug = (
+        transform.original_monster_slug
+        if transform is not None
+        else live.monster_slug_by_entity.get(entity_id)
+    )
+    monster = get_lib_loader().get_monster(slug) if slug else None
+    return monster.cr if monster is not None else None
+
+
+def _apply_transform_riders(
+    live: _LiveCombat,
+    caster: Combatant,
+    actx: ActivityResolutionContext | None,
+    pre_event_count: int,
+) -> None:
+    """Fold step 2 (C21): a ``TRANSFORM_RIDERS`` spell's failed save
+    shape-shifts its target into the form ``_polymorph_form_failure``
+    accepted. SRD 5.2 Polymorph: "The target must succeed on a Wisdom saving
+    throw or shape-shift into a Beast form for the duration" and "gains a
+    number of Temporary Hit Points equal to the Hit Points of the Beast form".
+    A target's FIRST ``SaveRolled`` in the resolution is the spell's own; a
+    later one is a Concentration save from damage (the
+    ``_apply_forced_movement_riders`` rule). The form rides the spell's
+    concentration effect (id and origin by the spell-effect convention), so
+    C13 governs it; a successful save applies nothing and the concentration
+    anchor follows."""
+    carrier = actx.conjuration if actx is not None else None
+    rider = TRANSFORM_RIDERS.get(carrier.source_slug) if carrier is not None else None
+    if carrier is None or rider is None:
+        return
+    form = _validated_beast_form(carrier.form_slug)
+    if form is None:  # validated before the slot was spent
+        return
+    judged: set[str] = set()
+    for event in live.event_log[pre_event_count:]:
+        if not isinstance(event, SaveRolled) or event.target_id in judged:
+            continue
+        judged.add(event.target_id)
+        if event.succeeded:
+            continue
+        _apply_transform(
+            live,
+            event.target_id,
+            form,
+            source=rider.source,
+            effect=ActiveEffect(
+                id=f"effect:{carrier.source_slug}",
+                name=carrier.source_slug.title(),
+                origin=f"cast:{carrier.source_slug}:{caster.entity_id}",
+                target_id=event.target_id,
+                flags={"concentration": True, TRANSFORM_FORM_FLAG: form.slug},
+            ),
+            temp_hp=form.hp,
+        )
+
+
+def _end_polymorph_on_depletion(live: _LiveCombat, target_id: str) -> None:
+    """SRD 5.2 Polymorph: "The spell ends early on the target if it has no
+    Temporary Hit Points left." The damage fold calls this after Temporary Hit
+    Points absorb a hit and before it writes Hit Points, so the rest of that
+    hit lands on the creature's own Hit Points. A Wild Shape form is kept: it
+    does not end with its Temporary Hit Points."""
+    transform = _transform_of(live, target_id)
+    if (
+        transform is not None
+        and transform.source == "polymorph"
+        and live.tracked_temp_hp.get(target_id, 0) == 0
+    ):
+        _end_transform(live, target_id, "temp_hp_depleted")
+
+
+def _stat_block_magnitudes_of(live: _LiveCombat, current: Combatant) -> StatBlockMagnitudes | None:
+    """A transformed actor's stat-block numbers: its current six scores (the
+    form's physical ones; Wild Shape keeps its own INT / WIS / CHA) and the
+    form's Proficiency Bonus, which its stat-block attacks use. ``None`` for a
+    creature in its own form."""
+    transform = live.transforms.get(current.entity_id)
+    if transform is None:
+        return None
+    return StatBlockMagnitudes(
+        ability_scores={
+            "str": current.strength,
+            "dex": current.dexterity,
+            "con": current.constitution,
+            "int": current.intelligence,
+            "wis": current.wisdom,
+            "cha": current.charisma,
+        },
+        proficiency_bonus=transform.form_proficiency_bonus,
+    )
+
+
+def _current_stat_block_slug(live: _LiveCombat, entity_id: str) -> str | None:
+    """The stat block ``entity_id`` acts from: its form's while it is
+    transformed (C21), else its monster template's; ``None`` with neither (a
+    PC, a template-less foe)."""
+    transform = _transform_of(live, entity_id)
+    if transform is not None:
+        return transform.form_slug
+    return live.monster_slug_by_entity.get(entity_id)
+
+
+def _stat_block_action(
+    stat_block_slug: str | None, action_id: str | None
+) -> tuple[Monster, MonsterAction] | None:
+    """Stat block ``stat_block_slug`` and its action ``action_id``, or ``None``
+    when either is missing."""
+    if not stat_block_slug or not action_id:
+        return None
+    monster = get_lib_loader().get_monster(stat_block_slug)
+    if monster is None:
+        return None
+    action = next((a for a in monster.actions if a.slug == action_id), None)
+    return None if action is None else (monster, action)
+
+
+def _stat_block_target_out_of_range(
+    live: _LiveCombat, current: Combatant, target_id: str | None, activities: Sequence[Any]
+) -> bool:
+    """True iff ``target_id`` is beyond the stat-block attack's reach or range
+    from ``current``, out of its line of sight or behind total cover — the
+    monster path's reading of the action (``_monster_attack_range_ft``: an
+    explicit ``ft`` range, else the attacker's melee reach). ``False`` with no
+    target or an untracked position, as the weapon-reach gate does."""
+    range_ft = _monster_attack_range_ft(activities, current.melee_reach_ft)
+    attacker_zone = live.actor_zone.get(current.entity_id)
+    target_zone = live.actor_zone.get(target_id) if target_id is not None else None
+    if range_ft is None or attacker_zone is None or target_zone is None:
+        return False
+    return not _in_range_with_los(live.topology, attacker_zone, target_zone, range_ft)
+
+
+def _shape_shifted_failure(
+    live: _LiveCombat, current: Combatant, intent: PlayerIntent
+) -> CombatEvent | None:
+    """The refusal for what a shape-shifted creature cannot do, or ``None``.
+
+    ``CastFailed(reason="no_spellcasting")`` for a cast or a readied spell —
+    SRD 5.2 Wild Shape: "You can't cast spells, but shapeshifting doesn't
+    break your Concentration"; Polymorph: "it can't speak or cast spells";
+    Ready: "When you Ready a spell, you cast it as normal". A running
+    concentration is untouched. ``AttackFailed(reason="action_unavailable")``
+    for a weapon attack — Wild Shape: "Your ability to handle objects is
+    determined by the form's limbs rather than your own"; Polymorph: "The
+    target's gear melds into the new form"."""
+    if current.entity_id not in live.transforms:
+        return None
+    if intent.intent_type == "cast_spell" or (intent.intent_type == "ready" and intent.spell_id):
+        return CastFailed(
+            actor_id=current.entity_id, spell_id=intent.spell_id or "", reason="no_spellcasting"
+        )
+    if intent.intent_type == "attack" and intent.weapon_id:
+        return AttackFailed(
+            actor_id=current.entity_id, target_id=intent.target_id, reason="action_unavailable"
+        )
+    return None
+
+
 @dataclass
 class _ActionCost:
     """Action-economy classification for an intent: which budget it consumes
@@ -8554,11 +9665,15 @@ def _spell_out_of_range(
 ) -> bool:
     """SRD §Spell Range — return ``True`` if this is a targeted cast whose
     target lies beyond the spell's metric range. ``self``/``special`` ranges
-    carry no metric distance and never gate."""
+    carry no metric distance and never gate. A construct placed in a named
+    space is measured there instead (``_construct_cast_failure``): SRD 5.2
+    Spiritual Weapon's force "appears within range", and its target need only
+    be "within 5 feet of the force"."""
     if not (
         intent.intent_type == "cast_spell"
         and cast_spell_for_timing is not None
         and intent.target_id is not None
+        and not (intent.target_zone_id is not None and cast_spell_for_timing.slug in CONSTRUCTS)
     ):
         return False
     spell_range = cast_spell_for_timing.range
@@ -8792,21 +9907,26 @@ def _consume_attack_budget(live: _LiveCombat, actor_id: str, current: Combatant)
     already gone. Every resolved swing decrements ``attacks_remaining`` by
     one and sets ``attack_action_engaged`` True. SRD 5.2 Action Surge: once
     this Attack action's swings are spent, the next attack takes another
-    Attack action on an extra action, with fresh swings."""
+    Attack action on an extra action, with fresh swings. The first swing
+    takes the Action's count as it stands (C21: a form adopted earlier this
+    turn)."""
     for idx, c in enumerate(live.initiative):
         if c.entity_id == actor_id:
             if not c.attack_action_engaged:
                 update: dict[str, Any] = {
                     **_action_payment(c, "attack"),
                     "attack_action_engaged": True,
-                    "attacks_remaining": c.attacks_remaining - 1,
+                    # The count is read as the Action is taken: a form adopted
+                    # earlier this turn (Wild Shape is a Bonus Action) swings
+                    # with the form's count.
+                    "attacks_remaining": _attacks_per_action(live, c) - 1,
                 }
             elif c.attacks_remaining > 0:
                 update = {"attacks_remaining": c.attacks_remaining - 1}
             else:
                 update = {
                     **_action_payment(c, "attack"),
-                    "attacks_remaining": _attacks_per_action(c) - 1,
+                    "attacks_remaining": _attacks_per_action(live, c) - 1,
                 }
             live.initiative[idx] = c.model_copy(update=update)
             break
@@ -8892,8 +10012,11 @@ def _consume_offhand_attack_budget(
 
 # What pays for an ``attack`` intent's swing: the Attack action, or one of SRD
 # 5.2's swings outside it — the Light property's extra attack, a Flurry of
-# Blows strike, Martial Arts' Bonus Unarmed Strike.
-AttackFunding = Literal["action", "light_offhand", "flurry", "martial_arts_bonus"]
+# Blows strike, Martial Arts' Bonus Unarmed Strike, a construct's repeat
+# (Spiritual Weapon: "As a Bonus Action on your later turns").
+AttackFunding = Literal[
+    "action", "light_offhand", "flurry", "martial_arts_bonus", "construct_bonus"
+]
 
 _UNARMED_STRIKE: Final = "unarmed-strike"
 # Monk's Focus: the Flurry of Blows activity (Foundry id), and the Monk 10
@@ -8912,11 +10035,18 @@ def _update_combatant(live: _LiveCombat, entity_id: str, **fields: Any) -> None:
 
 
 def _classify_attack_funding(
-    current: Combatant, intent: PlayerIntent, weapon: Weapon | None
+    current: Combatant,
+    intent: PlayerIntent,
+    weapon: Weapon | None,
+    *,
+    repeats_construct: bool = False,
 ) -> AttackFunding:
     """What pays for this ``attack`` intent's swing (``"action"`` for any other
     intent), in priority order:
 
+    * ``"construct_bonus"`` — an attack repeating a live construct its actor
+      owns (``repeats_construct``, from ``_repeated_construct``; the Bonus
+      Action; ``_construct_attack_failure`` validates the repeat);
     * ``"light_offhand"`` — the Light property's extra attack with a different
       Light weapon (``_is_offhand_attack_swing``: the Bonus Action, or nothing
       with Nick);
@@ -8928,6 +10058,8 @@ def _classify_attack_funding(
       make an Unarmed Strike as a Bonus Action.");
     * ``"action"`` — the Attack action.
     """
+    if repeats_construct:
+        return "construct_bonus"
     if _is_offhand_attack_swing(current, intent, weapon):
         return "light_offhand"
     if intent.intent_type != "attack" or intent.weapon_id != _UNARMED_STRIKE:
@@ -8945,9 +10077,10 @@ def _intent_economy_failure(
     """The action-economy gate for ``intent`` paid as ``funding``: the
     turn-keeping rejection to emit, or ``None``. The Light extra attack and a
     Flurry strike were admitted by ``_classify_attack_funding``; the Bonus
-    Unarmed Strike needs the Bonus Action; every other intent goes through
-    ``_action_economy_gate_failure`` (which may raise)."""
-    if funding == "martial_arts_bonus" and not current.bonus_action_available:
+    Unarmed Strike and a construct's repeat need the Bonus Action; every
+    other intent goes through ``_action_economy_gate_failure`` (which may
+    raise)."""
+    if funding in ("martial_arts_bonus", "construct_bonus") and not current.bonus_action_available:
         return AttackFailed(
             actor_id=current.entity_id, target_id=intent.target_id, reason="no_action_economy"
         )
@@ -9305,11 +10438,17 @@ def _resolve_caster_spellcasting_ability(caster: Combatant) -> str | None:
 
 
 def _resolve_intent_activities(
-    intent: PlayerIntent, feature_invocation: _FeatureInvocation | None, caster: Combatant
+    intent: PlayerIntent,
+    feature_invocation: _FeatureInvocation | None,
+    caster: Combatant,
+    *,
+    stat_block_slug: str | None = None,
 ) -> _ResolvedActivities:
     """Fetch the typed entity for the intent's kind from the lib loader and
     collect the activities the resolver will walk. This is the sole PC
-    resolution path; the old the legacy evaluator IR path was retired in ."""
+    resolution path; the old the legacy evaluator IR path was retired in .
+    ``stat_block_slug`` is the stat block an ``attack`` naming
+    ``stat_block_action_id`` swings from (``_current_stat_block_slug``)."""
     cast_spell: Spell | None = None
     fetched_weapon: Weapon | None = None
     activities: list[Any] = []
@@ -9330,6 +10469,12 @@ def _resolve_intent_activities(
             # with the OLD ``_synthesize_weapon_attack``).
             if not activities:
                 activities = [_synthesize_attack_from_weapon(fetched_weapon)]
+    elif intent.intent_type == "attack" and intent.stat_block_action_id:
+        # A stat-block command (C21): one swing of an action on the actor's current
+        # stat block, riders included, as a monster's own turn resolves it
+        # (``_stat_block_attack_failure`` has already vetted the action).
+        found = _stat_block_action(stat_block_slug, intent.stat_block_action_id)
+        activities = list(expand_action_to_activities(*found)) if found is not None else []
     elif intent.intent_type == "cast_spell" and intent.spell_id:
         cast_spell = get_lib_loader().get_spell(intent.spell_id)
         if cast_spell is not None:
@@ -9368,9 +10513,13 @@ def _resolve_intent_activities(
         # returned early there; reaching here means ``feature_invocation`` holds
         # the resolved activity + its PassiveEffect riders.
         assert feature_invocation is not None
-        # A Rage extension resolves nothing: the Rage it extends is already on
-        # the caster.
-        activities = [] if feature_invocation.extends_rage else feature_invocation.activities
+        # A Rage extension or a Wild Shape leave resolves nothing: the Rage it
+        # extends is already on the caster, and the form's end is committed.
+        activities = (
+            []
+            if feature_invocation.extends_rage or feature_invocation.leaves_form
+            else feature_invocation.activities
+        )
         feature_passive_effects = feature_invocation.passive_effects
     return _ResolvedActivities(
         activities=activities,
@@ -9598,7 +10747,8 @@ def _drain_pre_resolution_reactions(
     intent: PlayerIntent,
     targets: Sequence[Combatant],
 ) -> set[str]:
-    """Drain target-owned pending reactions for a resolving PC intent.
+    """Drain target-owned pending reactions for a resolving PC intent and a
+    construct cast (Spiritual Weapon's immediate attack).
 
     ``"attack"`` intents fire ``hit_by_attack`` reactions (Shield's +5 AC
     lands before the hit/miss comparison); a ``magic-missile`` cast fires
@@ -9606,7 +10756,10 @@ def _drain_pre_resolution_reactions(
     reaction fired so the caller can inject the force carve-out. Every
     other intent drains nothing (the overwhelmingly common case).
     """
-    if intent.intent_type == "attack":
+    if intent.intent_type == "attack" or (
+        intent.intent_type == "cast_spell"
+        and CONJURATION_ALLOWLIST.get(intent.spell_id or "") == "construct"
+    ):
         _drain_targeted_reactions(
             live,
             trigger="hit_by_attack",
@@ -9661,9 +10814,10 @@ def _pop_pending_reaction(
     reactor must not be the triggering actor themselves, must match
     ``only_owner_id`` when given (the ``hit_by_attack`` /
     ``targeted_by_magic_missile`` triggers are owned by the creature actually
-    under attack/targeted, not any bystander), must be alive, and must have
-    ``reaction_available``. Removes + returns the match (a reaction fires — and
-    is spent — at most once); ``None`` when nothing qualifies.
+    under attack/targeted, not any bystander), must be alive, must be neither
+    Incapacitated nor shape-shifted, and must have ``reaction_available``.
+    Removes + returns the match (a reaction fires — and is spent — at most
+    once); ``None`` when nothing qualifies.
 
     An armed reaction whose owner fails ``eligible`` is SKIPPED (left queued,
     no Reaction spent) — R4. The scan continues in initiative order to the
@@ -9678,6 +10832,12 @@ def _pop_pending_reaction(
             continue
         # SRD 5.2 Incapacitated — no Reaction (so no opportunity attack either).
         if conditions_block_actions(_condition_names(reactor)):
+            continue
+        # Every armed reaction releases a spell, which this engine casts at the
+        # release, and a shape-shifted creature "can't cast spells" (SRD 5.2
+        # Wild Shape, Polymorph). The spell stays armed: shapeshifting "doesn't
+        # break your Concentration", which holds a readied spell (SRD 5.2 Ready).
+        if reactor.entity_id in live.transforms:
             continue
         if not reactor.reaction_available:
             continue
@@ -9772,6 +10932,16 @@ def _resolve_readied_spell_cast(
     pre_event_count = len(live.event_log)
     for activity in spell.activities:
         resolve_activity(activity, actx, weapon=None)
+
+    # A readied concentration spell concentrates like an on-turn cast.
+    _fold_resolution_outcome(
+        live,
+        reactor,
+        spell=spell,
+        actx=actx,
+        pre_event_count=pre_event_count,
+        concentration_max_rounds=_concentration_max_rounds(spell),
+    )
     _sync_legendary_resistance(live, pre_event_count)
 
     for ev in live.event_log[pre_event_count:]:
@@ -10067,6 +11237,7 @@ async def submit_player_intent(
             intent.activity_id,
             pool_points=intent.pool_points,
             raging=_rage_effect(live, actor_id) is not None,
+            leaving_form=intent.form_id is None and _is_wild_shaped(live, actor_id),
         )
         if feature_invocation is None:
             return
@@ -10114,7 +11285,12 @@ async def submit_player_intent(
         if intent.intent_type == "attack" and intent.weapon_id
         else None
     )
-    funding = _classify_attack_funding(current, intent, attack_weapon)
+    funding = _classify_attack_funding(
+        current,
+        intent,
+        attack_weapon,
+        repeats_construct=_repeated_construct(live, current, intent) is not None,
+    )
 
     # Pre-resolution reject gates — each checked BEFORE any action budget is
     # consumed, so a rejection spends no Action/Bonus Action/slot and leaves
@@ -10127,9 +11303,10 @@ async def submit_player_intent(
     # §Hellish Rebuke; an unaimed Cone/Line/Cube AoE template) -> a second
     # Action Surge this turn (SRD 5.2 "only once on a turn") -> a Bardic
     # Inspiration with no other creature to inspire -> an attack redeeming a
-    # die it cannot roll. The first gate whose failure-builder returns a
-    # non-``None`` event wins; that event is emitted and the intent is
-    # rejected.
+    # die it cannot roll -> an allowlisted conjuration's own refusals
+    # (``_conjuration_gate_failure``). The first gate whose failure-builder
+    # returns a non-``None`` event wins; that event is emitted and the intent
+    # is rejected.
     pre_resolution_gates: tuple[Callable[[], CombatEvent | None], ...] = (
         lambda: _spell_out_of_range_failure(live, actor_id, intent, cast_spell_for_timing),
         lambda: _attack_out_of_range_failure(live, actor_id, intent),
@@ -10141,6 +11318,7 @@ async def submit_player_intent(
         lambda: _action_surge_failure(current, intent),
         lambda: _bardic_inspiration_target_failure(live, actor_id, intent),
         lambda: _granted_die_failure(live, current, intent),
+        lambda: _conjuration_gate_failure(live, current, intent),
     )
     for build_pre_resolution_failure in pre_resolution_gates:
         failure = build_pre_resolution_failure()
@@ -10262,6 +11440,10 @@ async def submit_player_intent(
     # ``engine:rage-extension`` hook.
     _record_rage_extension(live, actor_id, feature_invocation)
 
+    # SRD 5.2 Wild Shape — a committed Bonus-Action leave ends the form (no-op
+    # for every other intent).
+    _leave_wild_shape(live, actor_id, feature_invocation)
+
     # SRD 5.2 Flurry of Blows — the committed invocation owes the monk its
     # Unarmed Strikes (no-op for every other intent).
     _grant_flurry_strikes(live, actor_id, intent)
@@ -10280,10 +11462,15 @@ async def submit_player_intent(
     # Fetch the typed entity for the intent's kind from the lib loader and
     # collect the activities the resolver will walk. This is the sole PC
     # resolution path; the old the legacy evaluator IR path was retired in .
-    resolved = _resolve_intent_activities(intent, feature_invocation, current)
+    resolved = _resolve_intent_activities(
+        intent,
+        feature_invocation,
+        current,
+        stat_block_slug=_current_stat_block_slug(live, current.entity_id),
+    )
     activities = resolved.activities
     cast_spell = resolved.cast_spell
-    fetched_weapon = resolved.fetched_weapon
+    fetched_weapon = _enchanted_weapon(live, current, resolved.fetched_weapon)
     spellcasting_ability = resolved.spellcasting_ability
     feature_passive_effects = resolved.feature_passive_effects
 
@@ -10316,6 +11503,12 @@ async def submit_player_intent(
     _apply_magic_missile_shield_carveout(payload, shielded_vs_magic_missile)
 
     pre_event_count = len(live.event_log)
+
+    # SRD 5.2 Spiritual Weapon — a construct's Bonus-Action repeat resolves
+    # here, after the target's readied reactions drained (no-op otherwise).
+    _resolve_construct_attack_intent(live, current, intent)
+
+    actx: ActivityResolutionContext | None = None
 
     if not activities:
         # Slug absent from the lib (e.g. a wrapper-only spell) or a non-
@@ -10531,6 +11724,20 @@ async def submit_player_intent(
             scaling_value=(
                 feature_invocation.scaling_value if feature_invocation is not None else None
             ),
+            conjuration=_conjuration_carrier(live, current, intent),
+            weapon_enchantment_to_hit=_weapon_enchantment_to_hit(
+                current, resolved.fetched_weapon, fetched_weapon
+            ),
+            # A stat-block command (C21) rolls at the stat block's
+            # own scores and Proficiency Bonus.
+            stat_block_magnitudes=(
+                _stat_block_magnitudes_of(live, current) if intent.stat_block_action_id else None
+            ),
+            # SRD 5.2 stat-block trait "Pack Tactics" holds whichever entry
+            # point drives its bearer: a form's (C21) or a host-driven
+            # monster's. ``attack.py`` applies it only to an attacker carrying
+            # the trait.
+            pack_tactics_ally_adjacent=_pack_tactics_map(live, current, geometry_targets),
         )
         for activity in activities:
             resolve_activity(activity, actx, weapon=fetched_weapon)
@@ -10606,26 +11813,18 @@ async def submit_player_intent(
         ):
             current = _record_loading_weapon_fired(live, actor_id, current)
 
-    # SRD §Concentration — fold any emitted ``EffectApplied(is_concentration=True)``
-    # back onto the caster's ``Combatant.concentration_effect_id`` so the
-    # next hydration projects the existing concentration onto the sidecar
-    # (closes the wave-05 one-way wiring). The typed resolver preserves
-    # EffectApplied→ConditionApplied emit order, so this seam and
-    # ``_record_effect_lifecycle_links`` below keep working unchanged.
-    _writeback_concentration(live, current, pre_event_count)
-    _sync_legendary_resistance(live, pre_event_count)
-
-    # Persistent IEffect-graph linkage — record concentration ownership,
-    # effect→condition bijection, and any end-of-turn repeat-save specs
-    # produced by this resolution. Closes the codex shelf finding
-    # ``ieffect2.py`` P1 ("parent links don't survive across turns") by
-    # owning the lifecycle graph at the orchestrator.
-    _record_effect_lifecycle_links(
+    # SRD §Concentration — the concentration anchor, then C13's writeback of
+    # ``Combatant.concentration_effect_id`` and its persistent lifecycle links
+    # (concentration ownership, effect→condition bijection, repeat-save specs).
+    _fold_resolution_outcome(
         live,
         current,
-        pre_event_count,
+        spell=cast_spell,
+        actx=actx,
+        pre_event_count=pre_event_count,
         concentration_max_rounds=_concentration_max_rounds(cast_spell),
     )
+    _sync_legendary_resistance(live, pre_event_count)
 
     # SRD §Hold Person / §Hold Monster — *"At the end of each of its turns,
     # the target repeats the save."* This runs as the ``engine:repeat-save``
@@ -10657,7 +11856,7 @@ async def submit_player_intent(
     # is still open (Task 2 fills the window itself in; until then
     # ``_twf_window_open`` is always False, so a 1-attack actor's attack
     # ends the turn exactly as before this feature — the back-compat bar).
-    if intent.intent_type == "attack" and not _attack_action_is_spent(current):
+    if intent.intent_type == "attack" and not _attack_action_is_spent(live, current):
         _maybe_roll_death_save(live)
         return
     # An Action intent ends the turn unless an Action Surge extra action is left.
@@ -11417,7 +12616,8 @@ def _derive_ended_reason(live: _LiveCombat) -> Literal["victory", "defeat_tpk", 
 def _project_outcome(live: _LiveCombat) -> CombatOutcome:
     """Fold ``_LiveCombat`` event-derived running state into a ``CombatOutcome``.
 
-    Residual HP / temp HP — from the tracked dicts updated by ``_emit``.
+    Residual HP / temp HP — from the tracked dicts updated by ``_emit``, less
+    a still-running Polymorph's own grant.
     Carried conditions — every still-active ``ConditionApplied`` for a
     surviving combatant. Carried-effect duration is taken from the most
     recent ``EffectApplied`` (the duration the effect was registered with).
@@ -11433,8 +12633,14 @@ def _project_outcome(live: _LiveCombat) -> CombatOutcome:
     ``is_concentration=True`` during the combat.
     """
     residual_hp = {eid: hp for eid, hp in live.tracked_hp.items() if eid in live.party_ids}
+    # Effects end with the combat, and a live Polymorph's own Temporary Hit
+    # Points "vanish if any remain when the spell ends" (SRD 5.2), as
+    # ``_revert_transform_on_expiry`` empties them when it ends in combat.
+    vanishing = {eid for eid, t in live.transforms.items() if t.clears_temp_hp_on_end}
     residual_temp_hp = {
-        eid: thp for eid, thp in live.tracked_temp_hp.items() if eid in live.party_ids and thp > 0
+        eid: thp
+        for eid, thp in live.tracked_temp_hp.items()
+        if eid in live.party_ids and thp > 0 and eid not in vanishing
     }
 
     # SRD §Encounter XP: total XP from dead foes ÷ surviving PCs.

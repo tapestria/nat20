@@ -16,8 +16,13 @@ An `ActiveEffect` carries:
 - `changes` — a list of `ActiveEffectChange` entries (the mechanical
   modifications it applies).
 - `statuses` — the set of condition slugs it imposes.
-- `flags` — a free-form dict (Phase 6 uses it for concentration and
-  applicable-action-type metadata).
+- `flags` — a free-form dict. The engine reads a few keys: `concentration`
+  (the effect is its caster's concentration), `applicable_action_types` (a
+  weapon-only bonus), and three from C21: `concentration_anchor` (the marker a
+  concentration spell that applied no effect of its own leaves on its caster),
+  `enchanted_weapon` (a weapon slug: the effect's changes apply to attacks with
+  that weapon only) and `transform_form` (a monster slug: the effect carries a
+  Wild Shape or *Polymorph* form).
 
 ## Durations
 
@@ -38,6 +43,41 @@ a one-turn grace if it was applied during that actor's own turn.
 Concentration-flagged effects are exempt from all of the above — the
 concentration cascade and the per-turn repeat save own their lifetime, and the
 imported packs carry display-only counters on them.
+
+## Concentration anchors, enchantments and forms
+
+Every concentration spell concentrates. When a cast applies no concentration
+effect of its own — *Spiritual Weapon*, a *Hold Person* every target saved
+against — the engine puts an anchor on the caster: `effect:<spell>`, origin
+`cast:<spell>:<caster>`, flags `concentration` and `concentration_anchor`, and
+no changes. It joins `concentration_chain` and ends like any concentration
+effect, and what depends on it (a *Spiritual Weapon* force) ends with it.
+
+*Magic Weapon* lands on the creature it touches, with `enchanted_weapon`
+naming the weapon (`PlayerIntent.weapon_id`); the engine applies the effect's
+`system.magicalBonus` (upgrade) and `mgc` property changes to that weapon's
+attacks only. A host can carry one into a combat:
+
+```python
+ActiveEffect(
+    id="effect:magic_weapon_+1",
+    name="Magic Weapon +1",
+    origin="cast:magic_weapon_+1:char:hero",
+    target_id="char:hero",
+    changes=[
+        ActiveEffectChange(key="system.magicalBonus", mode="upgrade", value="1"),
+        ActiveEffectChange(key="system.properties", mode="add", value="mgc"),
+    ],
+    duration=ActiveEffectDuration(seconds=3600),
+    flags={"enchanted_weapon": "longsword"},
+)
+```
+
+A Wild Shape or *Polymorph* form rides `effect:wild-shape` or
+`effect:polymorph`, with `transform_form` naming the Beast. The form's
+statistics show on the creature's `initiative` entry, and the effect's expiry
+restores its own. Seeding a form through `start_combat(active_effects=...)`
+does not transform the creature (BACKLOG.md).
 
 ## Lifecycle and scope
 

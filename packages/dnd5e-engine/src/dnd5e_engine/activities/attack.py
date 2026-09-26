@@ -133,6 +133,7 @@ def resolve_attack(
         _attack_bonus(activity, ctx, weapon, governing_ability)
         + ctx.d20_test_penalty.get(ctx.caster.entity_id, 0)
         + _fighting_style_attack_bonus(ctx, weapon)
+        + ctx.weapon_enchantment_to_hit
     )
     cast_level = ctx.slot_level or ctx.base_spell_level or 0
     # SRD §Bless / §Bane apply a signed d4 to the affected creature's OWN attack
@@ -693,7 +694,9 @@ def _governing_ability(
        (``_weapon_default_ability``): a melee non-finesse weapon uses STR, a
        ranged weapon uses DEX, and a finesse weapon uses whichever of STR/DEX
        has the higher modifier.
-    3. else (a spell attack with no weapon) → the caster's spellcasting ability.
+    3. else under a stat-block carrier (``ctx.stat_block_magnitudes``, C21) →
+       DEX for a ranged attack, STR otherwise;
+    4. else (a spell attack with no weapon) → the caster's spellcasting ability.
 
     ``None`` only when neither a weapon nor a spellcasting ability is available
     (a flat attack needs no ability and simply contributes a +0 mod).
@@ -706,6 +709,11 @@ def _governing_ability(
         return activity.attack.ability
     if weapon is not None:
         return _weapon_default_ability(weapon, ctx)
+    if ctx.stat_block_magnitudes is not None:
+        # A stat-block natural weapon (C21: a transformed creature's form).
+        # Foundry gives an attack with no ability of its own the weapon's
+        # default: DEX for a ranged attack, STR otherwise.
+        return "dex" if activity.attack.type.value == "ranged" else "str"
     return ctx.spellcasting_ability
 
 
@@ -968,7 +976,7 @@ def _apply_on_hit_damage(
                 weapon, ctx, by_type, governing_ability, is_crit=is_crit, die_floor=die_floor
             )
 
-        for part in activity.damage.parts:
+        for part in _stat_block_damage_parts(activity, ctx, weapon):
             damage_type = _part_type(part, activity.id, ctx)
             if damage_type is None:
                 continue
@@ -1084,6 +1092,36 @@ def _apply_on_hit_damage(
             else:
                 ctx.variables[_IN_CRIT] = previous
     return total_dealt
+
+
+def _stat_block_damage_parts(
+    activity: AttackActivity, ctx: ActivityResolutionContext, weapon: Weapon | None
+) -> list[DamagePartBlock]:
+    """The damage parts a hit rolls.
+
+    Foundry adds the ability modifier to a weapon's base damage as it rolls it
+    (``AttackActivityData._processDamagePart``: "Ensure `@mod` is present in
+    damage unless it is positive and an off-hand attack or damage is a flat
+    value"), and the dataset folds a stat-block attack's base damage into
+    ``parts[0]`` without that ``@mod``. Under a stat-block carrier (C21: a
+    transformed creature's form) the modifier comes back — for an
+    ``include_base`` attack with no weapon, a first part that rolls dice, and
+    no part already carrying ``@mod`` — so the Wolf's Bite is 1d6 + 2. Every
+    other attack rolls its parts as shipped.
+    """
+    parts = list(activity.damage.parts)
+    first = parts[0] if parts else None
+    if (
+        ctx.stat_block_magnitudes is None
+        or weapon is not None
+        or not activity.damage.include_base
+        or first is None
+        or not (first.number and first.denomination)
+        or any("@mod" in part.bonus or "@mod" in part.custom.formula for part in parts)
+    ):
+        return parts
+    bonus = f"{first.bonus} + @mod" if first.bonus else "@mod"
+    return [first.model_copy(update={"bonus": bonus}), *parts[1:]]
 
 
 def _damage_source_id(

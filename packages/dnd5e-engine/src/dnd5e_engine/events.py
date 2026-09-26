@@ -93,6 +93,9 @@ EffectExpiryReason = Literal[
     # SRD 5.2 Rage: "it ends early if you ... have the Incapacitated
     # condition" (C20).
     "incapacitated",
+    # SRD 5.2 Polymorph: "The spell ends early on the target if it has no
+    # Temporary Hit Points left." (C21)
+    "temp_hp_depleted",
 ]
 
 CastFailedReason = Literal[
@@ -126,6 +129,14 @@ CastFailedReason = Literal[
     # host it, hosts resolve rituals between combats via
     # ``spellcasting.resolve_ritual_cast``.
     "ritual_in_combat",
+    # SRD 5.2 Wild Shape and Polymorph — the named Beast form is missing, not a
+    # Beast, or beyond the Druid level's or the target's Challenge Rating
+    # limit: "That form can be any Beast you choose that has a Challenge Rating
+    # equal to or less than the target's". (C21)
+    "invalid_form",
+    # SRD 5.2 Wild Shape: "You can't cast spells"; Polymorph: "it can't speak
+    # or cast spells" — a shape-shifted caster's cast is refused. (C21)
+    "no_spellcasting",
 ]
 
 IntentType = Literal[
@@ -571,6 +582,14 @@ class AttackFailed(BaseModel):
         # (``PlayerIntent.redeem_granted_die``) its attacker does not hold, or
         # whose bard is not in this combat. (C20)
         "no_granted_die",
+        # The attack names something its attacker can't attack with now (C21):
+        # an action its current stat block lacks or that makes no attack roll;
+        # a weapon while shape-shifted (SRD 5.2 Polymorph: "The target's gear
+        # melds into the new form"); or a Spiritual Weapon force it doesn't
+        # own, or on the turn the spell made its attack ("As a Bonus Action on
+        # your later turns, you can move the force up to 20 feet and repeat the
+        # attack").
+        "action_unavailable",
     ]
 
 

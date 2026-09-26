@@ -6,7 +6,7 @@ non-stacking rule means the single highest-count qualifying feature sets
 the cap (counts never sum): ``extra-attack`` -> 2, ``two-extra-attacks``
 -> 3, ``three-extra-attacks`` -> 4.
 
-``_attacks_per_action`` is the pure-ish lookup (reads the lib loader via
+``_own_attacks_per_action`` is the pure-ish lookup (reads the lib loader via
 ``_granted_feature_slugs``); the orchestrator-level behavior (turn-keeping
 attack intents, the ``no_action_economy`` reject, back-compat for
 1-attack actors) is exercised end-to-end via ``submit_player_intent``.
@@ -25,8 +25,8 @@ from dnd5e_engine.events import AttackFailed, AttackRolled, DamageApplied
 from dnd5e_engine.lib_loader import set_lib_loader_for_tests
 from dnd5e_engine.orchestrator import (
     IntentRejectedError,
-    _attacks_per_action,
     _get_live,
+    _own_attacks_per_action,
     _twf_window_open,
     start_combat,
     submit_player_intent,
@@ -59,22 +59,22 @@ def _combatant(**overrides: object) -> Combatant:
 class TestAttacksPerAction:
     def test_fighter_level_5_gets_two_attacks(self):
         c = _combatant(class_slug="fighter", character_level=5)
-        assert _attacks_per_action(c) == 2
+        assert _own_attacks_per_action(c) == 2
 
     def test_fighter_level_4_gets_one_attack(self):
         c = _combatant(class_slug="fighter", character_level=4)
-        assert _attacks_per_action(c) == 1
+        assert _own_attacks_per_action(c) == 1
 
     def test_no_class_slug_gets_one_attack(self):
         c = _combatant(class_slug=None, character_level=20)
-        assert _attacks_per_action(c) == 1
+        assert _own_attacks_per_action(c) == 1
 
     def test_fighter_level_11_gets_three_attacks_never_five(self):
         """Multiclass non-stacking: level 11 Fighter grants BOTH
         ``extra-attack`` (2) and ``two-extra-attacks`` (3); the highest
         tier wins — the counts are never summed to 2 + 3 = 5."""
         c = _combatant(class_slug="fighter", character_level=11)
-        assert _attacks_per_action(c) == 3
+        assert _own_attacks_per_action(c) == 3
 
 
 def _fighter_party(*, character_level: int = 5) -> list[PartyMemberSpec]:

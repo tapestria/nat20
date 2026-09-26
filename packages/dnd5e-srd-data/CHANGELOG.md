@@ -12,7 +12,8 @@ keep only in Python — and C18 — `Monster.spellcasting_ability`, the field
 that lets stat-block monster spellcasting derive an honest save DC from the
 monster's own ability score instead of a flat approximation, plus the typed
 legendary pool sizes (`legendary_resistance_uses`, `legendary_action_uses`). Every change is
-additive; old canonical JSON without the new keys still validates.
+additive; old canonical JSON without the new keys still validates. C21a
+derives the Armor Class of the 133 monsters that shipped none (below).
 
 ### Added
 
@@ -94,6 +95,21 @@ additive; old canonical JSON without the new keys still validates.
   an empty part list with a flat 1 Bludgeoning; the engine adds the Strength
   modifier. Regen changes only that file.
   (`packages/dnd5e-srd-data/src/dnd5e_srd_data/canonical/items/unarmed-strike.json`)
+- **C21a — every monster ships its Armor Class.** 133 of 341 monsters had
+  `ac: null`: Foundry computes their AC (`attributes.ac.calc: "default"`), and
+  the translator kept only flat values. `tools/translators/foundry.py` now
+  derives it: 10 + the Dexterity modifier, or the equipped body armor's
+  formula (light: base + DEX; medium: base + DEX up to the armor's cap; heavy:
+  base), plus one equipped Shield (a creature wields only one). An actor
+  effect that overrides the AC calculation is honoured first, so the Mage's
+  Mage Armor (13 + DEX) gives it the SRD's 15. Every AC that shipped before is
+  unchanged, and the regen changes only the `ac` field of those 133 files.
+  Checked against the SRD 5.2 stat blocks, Flying Snake derives 12 against the
+  SRD's 14, recorded in `tests/oracle/known_oracle_divergence.json`; `elk`'s
+  flat 11 (SRD: 10) predates this change (BACKLOG). The engine reads
+  `Monster.ac` for Wild Shape and Polymorph forms, so the lockstep 0.6.0
+  release must raise the engine's `dnd5e-srd-data` floor.
+  (`packages/dnd5e-srd-data/src/dnd5e_srd_data/canonical/monsters/`)
 
 ## [0.5.0]
 

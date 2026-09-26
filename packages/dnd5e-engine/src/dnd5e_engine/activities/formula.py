@@ -23,6 +23,11 @@ Scope — the roll-data tokens that appear in canonical DICE/DC FORMULA fields
 * ``@abilities.<abil>.mod`` — a specific ability modifier.
 * ``@attributes.spell.mod`` — the spellcasting-ability modifier.
 * ``@attributes.spell.dc`` — the caster spell save DC (``8 + prof + spell mod``).
+* ``@skills.<code>.passive`` — the caster's passive score for a Foundry
+  3-letter skill code (a stat-block on-hit trait DC, e.g. the Crocodile's
+  Bite: "the target ... has the Grappled condition (escape DC 12)", Foundry's
+  ``[[lookup @skills.ath.passive]]``): ``10 + ability mod + Proficiency Bonus
+  (doubled with Expertise) when the caster is proficient``.
 
 ``@scaling`` resolves only when the context carries ``scaling_value`` — a
 feature activity whose own-pool cost scales by amount (Lay on Hands' Heal).
@@ -40,6 +45,9 @@ from __future__ import annotations
 import logging
 import re
 from typing import TYPE_CHECKING, Final
+
+from dnd5e_engine.activities.actor_stats import skill_ability
+from dnd5e_engine.rules.skills import SKILL_CODE_TO_SLUG
 
 if TYPE_CHECKING:
     from dnd5e_srd_data.schema.common import DamagePartBlock
@@ -69,6 +77,9 @@ _ABILITY_MOD_RE: Final = re.compile(r"^@abilities\.([a-z]{3})\.mod$")
 _SCALE_PREFIX: Final = "@scale."
 # ``@classes.<class>.levels`` — capture the class slug (Second Wind's heal).
 _CLASS_LEVELS_RE: Final = re.compile(r"^@classes\.([a-z0-9-]+)\.levels$")
+
+# ``@skills.<code>.passive`` — capture the Foundry 3-letter skill code.
+_SKILL_PASSIVE_RE: Final = re.compile(r"^@skills\.([a-z]{3})\.passive$")
 
 
 def resolve_roll_data(
@@ -175,8 +186,33 @@ def _resolve_token(token: str, ctx: ActivityResolutionContext, ability: str | No
             raise ValueError(f"Unresolved @classes levels token (absent from carrier): {token!r}")
         return level
 
+    skill_match = _SKILL_PASSIVE_RE.match(token)
+    if skill_match is not None:
+        return _resolve_skill_passive(skill_match.group(1), ctx, token)
+
     _LOGGER.warning("roll_data_token_unhandled token=%s", token)
     raise ValueError(f"Unhandled roll-data token: {token!r}")
+
+
+def _resolve_skill_passive(code: str, ctx: ActivityResolutionContext, token: str) -> int:
+    """SRD 5.2 passive skill score for the caster: ``10 + ability modifier +
+    Proficiency Bonus (doubled with Expertise) when proficient`` — a
+    stat-block on-hit trait's own DC (the Crocodile's Bite: "escape DC"
+    equal to its passive Athletics). ``ctx.ability_mod``/
+    ``ctx.caster_proficiency_bonus`` already read the acting stat block (the
+    caster's own, or its form's under a transform, C21), and
+    ``ctx.caster.skill_proficiencies``/``.skill_expertise`` are kept in step
+    with it the same way (``orchestrator._apply_transform``).
+    """
+    slug = SKILL_CODE_TO_SLUG.get(code)
+    ability = skill_ability(slug) if slug is not None else None
+    if slug is None or ability is None:
+        _LOGGER.warning("roll_data_skill_unhandled token=%s", token)
+        raise ValueError(f"Unresolved @skills passive token (unknown skill code): {token!r}")
+    proficient = slug in ctx.caster.skill_proficiencies
+    expertise = proficient and slug in ctx.caster.skill_expertise
+    prof = ctx.caster_proficiency_bonus * (2 if expertise else 1) if proficient else 0
+    return 10 + ctx.ability_mod(ability) + prof
 
 
 def _spellcasting_ability(ctx: ActivityResolutionContext, token: str) -> str:
