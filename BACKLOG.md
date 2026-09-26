@@ -24,17 +24,32 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
 
 ## Unimplemented activity kinds (2026-08-22)
 
-- **`summon`, `transform` and `enchant` activities are narrative no-ops.**
-  `activities/resolver.py::resolve_activity` routes all three to a logged
-  no-op, as it does a `utility` activity carrying no effect riders. The
-  measured consequence: **108 of 339 SRD spells (32%) load correctly and emit
-  no events**, including 32 concentration spells — *Blur, Darkness, Fog Cloud,
-  Spiritual Weapon, Wall of Force, Silent Image, Globe of Invulnerability,
-  Expeditious Retreat*. Several are combat staples a host will reach for
-  immediately. `summon` is the largest single bucket (35 spell activities) and
-  needs a design decision first: summoned creatures imply adding combatants
-  mid-combat, which the initiative model does not currently support.
+- **Most `summon`, `transform` and `enchant` activities are narrative no-ops
+  (amended 2026-09-25, C21a).** `activities/resolver.py::resolve_activity`
+  routes them to a logged no-op, as it does a `utility` activity carrying no
+  effect riders, unless the orchestrator hands the resolution a conjuration
+  carrier for an allowlisted source: Spiritual Weapon, Magic Weapon, Wild
+  Shape and Polymorph resolve (C21a), and Summon Dragon is next (C21b). The
+  measured consequence: **106 of 339 SRD spells (31%) load correctly and emit
+  no events**, 31 of them concentration spells — *Blur, Darkness, Fog Cloud,
+  Wall of Force, Silent Image, Globe of Invulnerability, Expeditious
+  Retreat* — which at least concentrate now. Several are combat staples a host
+  will reach for immediately.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/resolver.py`)
+- **Enchantments other than Magic Weapon, and shape-shifts other than Wild
+  Shape and Polymorph, stay narrative (2026-09-25, C21a).** `enchant_weapon`
+  reads two item-change keys (`system.magicalBonus`, `system.properties`);
+  Sacred Weapon, Shillelagh, True Strike, Contingency, Pact of the Blade and
+  40 item enchantments need a general item-change interpreter (a damage die,
+  an attack ability, a damage type) and a carrier naming their item. True
+  Polymorph, Animal Shapes and Shapechange ship no `transform` activity.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/conjuration.py::CONJURATION_ALLOWLIST`)
+- **Monster summon riders stay narrative, and no monster repeats Spiritual
+  Weapon (2026-09-25, C21a).** A monster attack or an item never gets a
+  conjuration carrier, so the 16 monster `summon` riders resolve nothing. A
+  Priest's Spiritual Weapon makes its immediate attack, but the monster AI
+  never takes the Bonus-Action move-and-repeat on a later turn.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/monster_actions.py::rank_monster_actions`)
 
 ## Monster action economy (2026-08-22)
 
@@ -165,6 +180,16 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   the bearer's HP but together exceed it never triggers the save at all and
   the bearer drops without rolling.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/apply.py`)
+- **A template monster attacks at its spec's `attack_bonus`, +0 by default
+  (2026-09-25, C21a).** Its to-hit, every `@mod` it rolls and its fallback
+  save DC (`8 + attack_bonus`) come from `EncounterMemberSpec.attack_bonus`,
+  not its stat block, and a natural weapon's base damage (folded into
+  `parts[0]` without Foundry's implicit `@mod`) adds no ability modifier: by
+  default a Tough's Mace rolls d20 + 0 for 1d6 where SRD 5.2 says +4 and
+  1d6 + 2. Only a transformed creature gets its stat block's real numbers
+  (`StatBlockMagnitudes`); giving them to every template monster re-pins
+  every template-monster fixture.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/build_context.py::_attack_bonus_override`)
 
 ## Core combat rules not modelled (2026-08-22)
 
@@ -207,6 +232,17 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   chained one, so a future data change (a Finesse/ranged weapon gaining
   the `cleave` mastery) would silently double-fold the rider.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py::_resolve_cleave_chain`)
+- **An earlier concentration ends only after the new concentration spell
+  resolves (2026-09-25, C21a).** SRD 5.2: "You lose Concentration on an effect
+  the moment you start casting a spell that requires Concentration". The
+  engine drops the old chain after the new spell's resolution, so a self-cast
+  Bless's d4 still applies to Spiritual Weapon's immediate attack roll.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_record_effect_lifecycle_links`)
+- **A cast longer than a turn resolves as an Action (2026-09-25, C21a).**
+  `_classify_action_cost` special-cases only Bonus Action and Reaction casts,
+  so a 1-minute or 1-hour cast (Animate Dead, Find Familiar) resolves within
+  one turn.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_classify_action_cost`)
 
 ## Movement (2026-08-22)
 
@@ -373,9 +409,10 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   player-intent cast path calls `activities/forced_movement.py`, so a monster
   casting Thunderwave deals damage but pushes nobody.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::advance_monster_turn`)
-- **Opportunity attacks bypass the activity context — cover, Fighting Styles
-  and Martial Arts** (2026-08-27, condition gap closed 2026-09-01 C14 Task 9,
-  visibility gap closed 2026-09-02 C16b, amended 2026-09-24 C20). The AoO path
+- **Opportunity attacks bypass the activity context — cover, Fighting Styles,
+  Martial Arts, enchantments and forms** (2026-08-27, condition gap closed
+  2026-09-01 C14 Task 9, visibility gap closed 2026-09-02 C16b, amended
+  2026-09-24 C20 and 2026-09-25, C21a). The AoO path
   never calls `build_activity_context`, so an opportunity attack still sees no
   cover — despite SRD 5.2's cover rules applying to any attack roll — and,
   rolling from the legacy `attack_bonus` / `damage_dice` fields with no weapon,
@@ -385,6 +422,9 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   trigger (`_combatant_can_see` — no Reaction spent on failure), the `unseen`
   advantage source, and the Invisible/Frightened carve-outs all now reach the
   roll.
+  A Magic Weapon enchantment doesn't reach an opportunity attack, which names
+  no weapon, and a transformed creature's opportunity attack rolls those
+  legacy fields, not its form's attack.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_fire_pc_opportunity_attacks_on_move`)
 
 ## Effect-change sidecars (2026-07-02)
@@ -628,6 +668,57 @@ zone + apply logic:
   rather than resolving the level-scaled bonus a real ScaleValue lookup would
   give.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/passive_stats.py`)
+
+## Conjurations and shape-shifting (2026-09-25, C21a)
+
+- **Only attack-roll actions of a stat block can be commanded, and a
+  Multiattack's composition is not enforced (2026-09-25, C21a).**
+  `stat_block_action_id` refuses a save action (a Breath Weapon, Venomous
+  Spew, a Roar) and the Multiattack itself; the host picks every swing of the
+  Attack action, so "one Bite attack and one Claw attack" can be two Bites.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_stat_block_attack_failure`)
+- **A form's melee reach is 5 feet (2026-09-25, C21a).** The corpus carries
+  no melee reach for a monster, so a transformed creature swings at 5 feet
+  whatever its form.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_form_stat_fields`)
+- **A shape-shifted creature keeps its items and class features
+  (2026-09-25, C21a).** Casting, readying a spell and weapon attacks are
+  refused, but `use_item` is not — SRD 5.2 Wild Shape: "Your ability to
+  handle objects is determined by the form's limbs rather than your own";
+  Polymorph: "The creature can't use or otherwise benefit from any of that
+  equipment" — and a polymorphed creature can still `use_feature`, though
+  Polymorph replaces its game statistics (only its Wild Shape is refused).
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_shape_shifted_failure`)
+- **Beast Spells (Druid 18) is not modelled (2026-09-25, C21a).** SRD 5.2:
+  "While using Wild Shape, you can cast spells in Beast form, except for any
+  spell that has a Material component with a cost specified or that consumes
+  its Material component." A Druid 18 in a form is refused every spell.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_shape_shifted_failure`)
+- **A form can't be carried into a combat (2026-09-25, C21a).** An effect
+  flagged `transform_form` passed to `start_combat(active_effects=...)` sits
+  on the creature without swapping its statistics, so a Wild Shape or
+  Polymorph begun before the combat is lost.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_seed_active_effects`)
+- **Temporary Hit Points are one bucket (2026-09-25, C21a).** SRD 5.2: "If
+  you have Temporary Hit Points and receive more of them, you decide whether
+  to keep the ones you have or to gain the new ones." The engine keeps the
+  larger and can't tell sources apart: Polymorph's end empties the bucket
+  only when its grant raised it; otherwise the creature keeps the older
+  Temporary Hit Points, and their running out ends the spell.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_revert_transform_on_expiry`)
+- **Spiritual Weapon's force moves through walls (2026-09-25, C21a).** Its
+  Bonus-Action move is checked as a distance (the force floats), with no
+  pathing, so it can cross a wall to a cell 20 feet away.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_construct_attack_failure`)
+- **A monster-turn attacker's ally-enchanted weapon grants no Magic Weapon
+  bonus (2026-09-25, C21a).** Magic Weapon's `enchanted_weapon` flag and
+  `weapon_enchantment_to_hit` reach only the on-turn `submit_player_intent`
+  attack path; `advance_monster_turn`'s own attack-context build
+  (`_monster_context_kwargs`) never threads either one, and a monster attack
+  carries no `Weapon` object to enchant in the first place, so an ally's
+  Magic Weapon on a monster combatant's weapon gives no bonus to hit or
+  damage on that monster's own driven turn.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_monster_context_kwargs`)
 
 ## Rest & recovery
 
@@ -1136,14 +1227,18 @@ layer over the engine — see `docs/bridge.md`. Gaps found while shipping it:
   Needs the weapon's `properties`/`weapon_kind` consulted to pick
   `max(str_mod, dex_mod)` for finesse or `dex_mod` for ranged
   (`packages/nat20-bridge/src/nat20_bridge/sheet.py`).
-- **The combat intent carries no class-feature field (2026-09-24, C20 scope
-  cut).** `_IntentRequest` forwards only `intent_type`, `spell_id`,
-  `target_id`, `item_id`, `weapon_id`, `feature_id` and `target_zone_id`, so a
-  bridge client can't pick an `activity_id` (Flurry of Blows, Lay on Hands,
-  Channel Divinity), set `use_bonus_action` (Cunning Action, the Bonus Unarmed
-  Strike) or `two_handed`, draw `pool_points` or redeem a Bardic die
-  (`redeem_granted_die`). `_view_route` doesn't expose `LiveCombatView.turn`
-  either, so `extra_actions_remaining` isn't visible over HTTP.
+- **The combat intent carries no class-feature or form field (2026-09-24, C20
+  scope cut; amended 2026-09-25, C21a).** `_IntentRequest` forwards only
+  `intent_type`, `spell_id`, `target_id`, `item_id`, `weapon_id`,
+  `feature_id` and `target_zone_id`, so a bridge client can't pick an
+  `activity_id` (Flurry of Blows, Lay on Hands, Channel Divinity), set
+  `use_bonus_action` (Cunning Action, the Bonus Unarmed Strike) or
+  `two_handed`, draw `pool_points`, redeem a Bardic die
+  (`redeem_granted_die`), name a Wild Shape or Polymorph form (`form_id`:
+  both are refused with `invalid_form`) or command a stat-block attack
+  (`stat_block_action_id`). `_view_route` doesn't expose `LiveCombatView.turn`,
+  `constructs` or `transformations` either, so `extra_actions_remaining`, a
+  Spiritual Weapon force and a creature's form aren't visible over HTTP.
   (`packages/nat20-bridge/src/nat20_bridge/routes_combat.py::_IntentRequest`)
 
 ---
@@ -1258,6 +1353,39 @@ pool entries.
   `_WEAPON_BASE_DAMAGE_CORRECTIONS`.
   (`packages/dnd5e-srd-data/src/dnd5e_srd_data/canonical/classes/barbarian.json`,
   `packages/dnd5e-srd-data/tools/translators/foundry.py`)
+
+## Conjuration and monster data (2026-09-25, C21a)
+
+- **26 conjuration actors and 7 magic-item actors are quarantined
+  (2026-09-25, C21a).** 24 conjuration and companion stat blocks and the 7
+  items fail on `'custom' is not a valid CreatureType`, and 2 stat blocks on
+  all-zero ability scores, so none ships. Spiritual Weapon's upstream attack
+  lives on one of them; the engine carries that attack in a registry instead
+  (`CONSTRUCTS`). Shipping them needs Foundry's `custom` type mapped, and
+  belongs with the spells that need them.
+  (`packages/dnd5e-srd-data/tools/translators/foundry.py`)
+- **The Priest's Spiritual Weapon is a data slip, and the Cultist Fanatic's is
+  never cast (2026-09-25, C21a).** `actors24/humanoid/priest.yml` points the
+  Priest's 1/Day Spellcasting at Spiritual Weapon's uuid, while the entry's
+  own text, like the SRD 5.2 Priest, says "1/Day Each: *Spirit Guardians*";
+  the engine follows the uuid, so a Priest makes a Spiritual Weapon. The SRD
+  5.2 caster is the Cultist Fanatic ("Spiritual Weapon (2/Day)", a Bonus
+  Action), whose corpus entry carries no uses cap, so the monster AI ranks it
+  behind Pact Blade and never casts it.
+  (`packages/dnd5e-srd-data/tools/translators/foundry.py`)
+- **A monster attack's range inherited from its item is not resolved
+  (2026-09-25, C21a).** An activity with `range.override: false` takes its
+  item's range in Foundry, but canonical stores the activity's own
+  (`units: "self"`), so the Ape's Rock (SRD 5.2: range 25/50 ft.) reads as a
+  5-foot melee reach, for the monster AI and a commanded stat-block swing
+  alike. It is the same inheritance regen as the activation row under
+  "Shipped prose quality".
+  (`packages/dnd5e-srd-data/tools/translators/foundry.py`)
+- **Two monster Armor Classes disagree with SRD 5.2 (2026-09-25, C21a).**
+  `elk` ships Foundry's flat natural armor 11 against the SRD's 10 (flat
+  values are kept as shipped), and `flying-snake` derives 12 against 14 (a
+  recorded divergence in `tests/oracle/known_oracle_divergence.json`).
+  (`packages/dnd5e-srd-data/tools/translators/foundry.py::_monster_ac`)
 
 ---
 

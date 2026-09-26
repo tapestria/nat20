@@ -17,7 +17,9 @@ without failing CI.
     Content resolves if it carries an activity of a *mechanical* kind — `attack`,
     `damage`, `save`, `heal`, `check`, `cast`, or a `utility` activity carrying
     effect riders. A `summon`, `transform`, or `enchant` activity, or a bare
-    `utility`, loads fine and emits **no events**.
+    `utility`, loads fine and emits **no events**, unless it belongs to one of
+    the conjurations the engine resolves itself (C21: Spiritual Weapon, Magic
+    Weapon, Wild Shape).
 
 ## Combat loop
 
@@ -37,7 +39,7 @@ without failing CI.
 | Opportunity attacks | ✅ Resolved | Both directions (PC↔monster); same-zone reach approximation. Rolls through `roll_d20_test` with condition, dodging-target and Exhaustion sources (C14), and now also honors the C16b "can see" trigger (`_combatant_can_see`, both directions — a sight-blocked reactor never triggers, no Reaction spent) plus the `unseen`, Invisible and Frightened carve-outs; cover on the AoO roll itself remains unmodelled (BACKLOG.md) |
 | Death saves, stabilization | ✅ Resolved | |
 | Instant death (massive damage) | ✅ Resolved | A Character whose damage remainder equals or exceeds their Hit Point maximum dies outright — `Death(reason="instant_kill")` (C12) |
-| Concentration, incl. damage-triggered saves and cascade drop | ✅ Resolved | Damage save with real CON modifier + DC clamped to [10, 30]; one-at-a-time (a new concentration cast cascades the old drop); ends on death and Incapacitated-implying conditions; voluntary "drop_concentration" intent (no action cost); maximum-duration expiry from the typed spell duration at the caster's turn end. A pre-armed Legendary Resistance can convert a failed concentration save into a success (C18, `resolve_legendary_resistance`); Magic Resistance is still not folded into this or the end-of-turn repeat-save path (BACKLOG.md). |
+| Concentration, incl. damage-triggered saves and cascade drop | ✅ Resolved | Damage save with real CON modifier + DC clamped to [10, 30]; one-at-a-time (a new concentration cast cascades the old drop); ends on death and Incapacitated-implying conditions; voluntary "drop_concentration" intent (no action cost); maximum-duration expiry from the typed spell duration at the caster's turn end. Every concentration spell concentrates (C21): one that applies no concentration effect of its own (Spiritual Weapon, a Hold Person every target saved against, a Polymorph whose save succeeded) leaves a caster-held anchor effect, `effect:<spell>` flagged `concentration_anchor`, whether cast on a turn, by a monster or from a Ready. The earlier concentration ends only after the new spell resolves, so a self-cast Bless's d4 still rides Spiritual Weapon's immediate attack (BACKLOG.md). A pre-armed Legendary Resistance can convert a failed concentration save into a success (C18, `resolve_legendary_resistance`); Magic Resistance is still not folded into this or the end-of-turn repeat-save path (BACKLOG.md). |
 | Temporary HP, healing | ✅ Resolved | |
 | Conditions (the 15 SRD conditions) | ⚠️ Partial | Applied/removed and gated by immunities (an immune creature never acquires the condition on either store) — Weapon-mastery Topple honors condition immunity too (C15: the save still rolls, only the resulting `prone` is gated, via the shared `is_condition_immune` helper). Enforced on the live path: attack-roll advantage/disadvantage for every SRD 5.2 row incl. Prone (distance-aware), Grappled (grappler-aware), Frightened — now gated on line of sight to a known, living, tracked fear source (C16b `_fear_source_in_sight`; an unknown/dead/untracked source keeps the SRD-conservative disadvantage) — and Invisible — the "can somehow see you" carve-out now pierces only via blindsight/truesight in range with line of sight (C16b `_pierces_invisibility`), which also covers a hidden creature; Incapacitated (and Paralyzed/Stunned/Petrified/Unconscious) rejects action/bonus/reaction intents with `IntentRejectedError("actor_incapacitated")` and skips reactions; Speed 0 (`MoveFailed(reason="speed_zero")`) and Frightened's "can't willingly move closer" rule toward a fear source it can see (`MoveFailed(reason="frightened")`, C16b; SRD 5.2 imposes this unconditionally with no line-of-sight conjunct on the no-approach sentence — an engine deviation, see BACKLOG.md); auto-failed STR/DEX saves and Restrained DEX disadvantage on every save path; Paralyzed/Unconscious auto-crit within 5 ft; Charmed cannot attack or harmfully target the charmer (a charmed monster will not select them either); Characters fall Unconscious at 0 HP, including a Character hydrated into combat already at 0 HP (massive damage kills). **Partial because two SRD rows are still unenforced:** Frightened's ability-check line-of-sight gate (the attack-roll half and the no-approach movement rule are now enforced, C16b) and Blinded/Deafened sense-based check auto-fail — each needs a seam another cluster owns. Incapacitated's initiative disadvantage closed via C14 Task 8 (2026-09-01) — `start_combat` rolls Initiative at Disadvantage for entities with a seeded incapacitated-implying `active_effects` status. See BACKLOG.md "Conditions — SRD 5.2 rows not enforced". |
 | Exhaustion | ✅ Resolved | SRD 5.2: every D20 Test (attacks, saves incl. death saves, checks) is reduced by `2 × level`; Speed by `5 ft × level`. Long Rest reduces the level by 1 (`resolve_long_rest(exhaustion_level=)`); level-6 death is still unmodelled. |
@@ -68,31 +70,33 @@ without failing CI.
 
 The engine resolves a spell by walking its typed activities. Spells whose only
 activities are `summon`, `transform`, `enchant`, or a rider-less `utility` load
-correctly and **emit no events**.
+correctly and **emit no events** — unless the conjuration allowlist resolves
+them (C21: Spiritual Weapon and Magic Weapon).
 
 | | Count |
 |---|---|
 | Spells in the corpus | **339** |
-| Resolve to at least one mechanical activity | **231** (68%) |
-| Load but resolve to nothing | **108** (32%) |
-| …of which are concentration spells | **32** |
+| Resolve to at least one mechanical activity | **233** (69%) |
+| Load but resolve to nothing | **106** (31%) |
+| …of which are concentration spells | **31** |
 
 Inert concentration spells include staples a combat host will reach for:
-*Blur, Darkness, Fog Cloud, Spiritual Weapon, Wall of Force, Silent Image,
-Globe of Invulnerability, Expeditious Retreat.* Others in the inert set
-(*Alarm, Augury, Clairvoyance, Create Food and Water*) are out of scope for a
-combat engine by nature.
+*Blur, Darkness, Fog Cloud, Wall of Force, Silent Image, Globe of
+Invulnerability, Expeditious Retreat.* Each still concentrates when cast
+(C21), so it ends the caster's earlier concentration and later damage draws
+the Constitution save. Others in the inert set (*Alarm, Augury, Clairvoyance,
+Create Food and Water*) are out of scope for a combat engine by nature.
 
 | Spell mechanic | Status |
 |---|---|
 | Spell slots, upcasting, at-will/innate casting | ⚠️ Partial — per-class/multiclass/Pact tables derived engine-side (`derive_spell_slots`, `derive_multiclass_slots`, `derive_pact_slots`); rests restore slots; Pact Magic is a second pool; upcasting scales dice AND target count (`target.affects.count`); attack-kind repeat instances still not scaled |
 | Spell attack rolls & save DCs (incl. flat overrides) | ✅ Resolved |
-| Concentration | ✅ full lifecycle (C13) |
+| Concentration | ✅ full lifecycle (C13, C21: every concentration spell concentrates, including one that applies no effect of its own) |
 | Counterspell, Shield, Hellish Rebuke, Magic Missile interactions | ⚠️ Partial | Implemented, but as named special cases rather than data-driven rules; slot-gated and range-gated at drain time |
 | Ritual casting | ⚠️ Partial | Out-of-combat via `resolve_ritual_cast`; in-combat rejected |
 | Material components / component pouches | ⚠️ Partial | Metadata on `SpellCast`, not enforced |
 | Dispel Magic | ❌ Not modelled | Inert (no mechanical activity) |
-| Summoning / polymorph / enchant-a-weapon | ❌ Not modelled | The three activity kinds are narrative no-ops |
+| Summoning / polymorph / enchant-a-weapon | ⚠️ Partial | An allowlist resolves four SRD 5.2 sources (C21). Spiritual Weapon: a caster-owned force placed at `target_zone_id` (else in the target's space) makes its melee spell attack at once; on later turns an `attack` naming `spell_id` moves it up to 20 feet and repeats the attack as a Bonus Action; it ends with its concentration (`LiveCombatView.constructs`). Magic Weapon: +1, +2 or +3 to hit and damage on the weapon `PlayerIntent.weapon_id` names, on top of a pinned `attack_bonus`, and the weapon counts as magical. Wild Shape (Characters, below) and Polymorph: the Beast stat block `PlayerIntent.form_id` names replaces the creature's statistics, with ordinary Temporary Hit Points (`LiveCombatView.transformations`); Polymorph's form must be a Beast of Challenge Rating up to the target's (a character's level), a target with neither is refused, and it ends early when its Temporary Hit Points are gone. Roster summons (Summon Dragon) come next; every other summon, transform and enchant — Sacred Weapon, Shillelagh, True Strike, the monster and item summons, Animate Objects, True Polymorph, Shapechange — stays narrative (BACKLOG.md) |
 
 ## Monsters
 
@@ -100,6 +104,7 @@ combat engine by nature.
 |---|---|---|
 | Typed action selection + built-in AI | ✅ Resolved | Targets lowest-HP living PC; three behavior profiles; `rank_monster_actions` (C18) ranks a live recharge action first, a Spellcasting action with an N/Day offensive spell still unspent second (it casts that spell), `multiattack` third, then every other offensive action (at-will spells included) in list order — a monster with such actions available no longer defaults to whichever action happened to be listed first |
 | Multiattack fan-out | ⚠️ Partial | Multiattacks with named/labelled tokens resolve precisely (C22 labelled every bare sibling token, fixing the five opaque-key monsters — bandit captain, doppelganger, chain devil, scout, ettin); "in any combination" clauses distribute range-aware. Recharge gating landed in C18 (limited-use gating covers N/Day spells only — typed `uses_per_day` actions are still at will, BACKLOG.md); conditional clauses ("uses X if …") are still not modelled (BACKLOG.md). |
+| Stat-block attack commands | ⚠️ Partial | An `attack` naming `PlayerIntent.stat_block_action_id` is one swing of an attack action on the actor's current stat block: a transformed creature's form, or a template monster's own (C21). A transformed creature rolls at its form's real ability scores and Proficiency Bonus (the Wolf's Bite: +4, 1d6 + 2), on its own `advance_monster_turn` too, and its Attack action takes the form's Multiattack count, the host picking each swing. Only attack-roll actions can be commanded (not a Breath Weapon or other save actions); a template monster that is not transformed still rolls at its spec's `attack_bonus`, and a ranged natural weapon whose range lives on its item (the Ape's Rock) reads as melee (BACKLOG.md) |
 | Monster spellcasting | ✅ Resolved | Stat-block Innate/Spellcasting actions now select and cast (C18): the spell book comes from the compendium uuids already in the data, the save DC and spell attack bonus use the monster's own `spellcasting_ability` + proficiency bonus (falling back to the flat `8 + attack_bonus` / `attack_bonus` approximation when unresolvable), an N/Day spell with a use left is cast before an at-will one, and N/Day activity uses are tracked per entity; `SpellCast` is emitted on the monster path. Mummy Lord's ability is stated only in trait prose and resolves to `None` (BACKLOG.md). |
 | Flee / retreat behaviour | ⚠️ Partial | Zone-graph only; on a grid the monster still holds still (`_plan_flee_destination` returns `None`, BACKLOG.md). `Combatant.has_fled` now persists across turns and `ended_reason` can be `"flee"` when every living foe has fled (C18); the stance check does not consider Incapacitated (BACKLOG.md). |
 | **Legendary actions** | ✅ Resolved | 30 monsters carry them in the data; `advance_monster_turn(legendary=True, actor_id=...)` spends one legendary action from a pool that refills at the start of the creature's own turn (`LegendaryActionUsed`, C18); the pool size is the typed `Monster.legendary_action_uses` (3 for all 30). Utility-only actions and one costing more than 1 use are never selected by the built-in AI (BACKLOG.md). |
@@ -122,6 +127,7 @@ combat engine by nature.
 | Martial Arts and Monk's Focus | ⚠️ Partial | While unarmored and without a Shield (armor and Shields in `PartyMemberSpec.equipment` count as worn), an Unarmed Strike or Monk weapon rolls the Martial Arts die when it beats the weapon's own, and uses DEX when higher — for the Grapple and Shove DC too; the Bonus Unarmed Strike spends the Bonus Action; Flurry of Blows spends 1 Focus Point for the next two Unarmed Strikes, three with Heightened Focus (C20). Patient Defense's dodging status, Step of the Wind's Dash and Stunning Strike's Focus Point are not applied, and opportunity attacks get no Martial Arts (BACKLOG.md) |
 | Rage | ⚠️ Partial | Lasts until the end of the barbarian's next turn; an attack roll against an enemy, an enemy's saving throw during that turn, or `use_feature rage` again as a Bonus Action (no use spent) extends it, and the Incapacitated condition ends it at once, however it is applied — `EffectExpired` with `reason="not_extended"` or `"incapacitated"` (C20). A Barbarian 15's Persistent Rage needs no extension, and only Unconscious ends it early; its Rage recovery on rolling Initiative isn't applied. Heavy armor, "No Concentration or Spells" and the 10-minute cap are not modelled; the corpus effect's 10 rounds stay the outer cap (BACKLOG.md) |
 | Bardic Inspiration | ⚠️ Partial | A Bonus Action gives another creature one die (the bard's `@scale.bard.inspiration`); the holder redeems it on an attack with `PlayerIntent.redeem_granted_die`, and it is rolled only after the attack roll misses, never on a natural 1 (C20). Spell attacks (`cast_spell`), saves and ability checks can't redeem it, range and sight aren't checked, and a die whose bard has left the combat can't be rolled (BACKLOG.md) |
+| Wild Shape | ⚠️ Partial | `use_feature wild-shape` with `PlayerIntent.form_id` (a corpus Beast) takes the form as a Bonus Action and grants Temporary Hit Points equal to the Druid level (C21). The Beast Shapes table is checked before a use is spent — Max CR 1/4, 1/2 or 1 at Druid 2, 4 or 8, a Fly Speed only from 8 — and anything else is refused with `CastFailed(reason="invalid_form")`. The form's AC, Strength, Dexterity, Constitution, speeds, senses, resistances, traits and attacks replace the druid's; its Hit Points, mental scores, class features and running concentration stay. It attacks through `stat_block_action_id` and can't cast, ready a spell or make a weapon attack. The form ends on reuse, the Incapacitated condition, death or `use_feature wild-shape` without `form_id` (a Bonus Action, no use) — not when its Temporary Hit Points run out. Known forms are the host's to track; Beast Spells (Druid 18) and item use in form are not modelled (BACKLOG.md) |
 | Weapon mastery (2024) | ✅ Resolved | All eight (C15): Graze, Topple, Vex, Sap, Slow, Push, Cleave, Nick. Push ignores the "Large or smaller" size gate (no creature-size attribute yet) |
 | Sneak Attack | ✅ Resolved | Once per turn, ally-adjacency or advantage trigger |
 | Short/long rest, hit dice, feature & item recharge | ✅ Resolved | Long Rest also restores Spellcasting/Pact Magic slots and reduces Exhaustion by 1; Short Rest restores only the Pact Magic pool |
