@@ -261,11 +261,43 @@ def test_the_force_cannot_repeat_on_the_cast_turn() -> None:
     assert len(events(live, AttackRolled)) == 1
 
 
-def test_a_repeat_without_a_force_is_refused() -> None:
-    handle, live = start([cleric()], seed=9)
-    _repeat(handle)
+@pytest.mark.parametrize("spell_id", ["fire-bolt", SW])
+def test_an_attack_naming_no_live_force_ignores_its_spell_id(spell_id: str) -> None:
+    """``spell_id`` on an ``attack`` names the force only while its caster owns
+    one; otherwise the attack resolves as it always has, the field unread: a
+    Mace swing on the Attack action. Seed 9: d20 15 + 5 = 20; 1d6 5 + STR 2 = 7
+    Bludgeoning."""
+    handle, live = start([cleric(strength=14)], seed=9)
+    act(
+        handle,
+        "char:cleric",
+        intent_type="attack",
+        target_id="mon:foe",
+        weapon_id="mace",
+        spell_id=spell_id,
+    )
+    assert events(live, AttackFailed) == []
+    assert _hits(live) == [("char:cleric", 15, 5, 20)]
+    assert _damage(live) == [("mon:foe", 7, "bludgeoning")]
+    cleric_now = combatant(live, "char:cleric")
+    assert (cleric_now.action_available, cleric_now.bonus_action_available) == (False, True)
+
+
+def test_a_repeat_that_also_names_a_weapon_is_refused() -> None:
+    """The repeat is the force's attack alone: one naming a weapon as well
+    would add a free weapon swing to the Bonus Action. It is refused before
+    anything is spent — the force stays put, the Action and the Bonus Action
+    stay open — and the repeat alone still works."""
+    handle, live = _parked_force(3)
+    rolls = len(events(live, AttackRolled))
+    _repeat(handle, target_zone_id=cell_id(1, 1), weapon_id="mace")
     assert [e.reason for e in events(live, AttackFailed)] == ["action_unavailable"]
-    assert combatant(live, "char:cleric").bonus_action_available
+    assert len(events(live, AttackRolled)) == rolls
+    assert live.constructs[FORCE_ID].cell == cell_id(5, 0)
+    cleric_now = combatant(live, "char:cleric")
+    assert (cleric_now.action_available, cleric_now.bonus_action_available) == (True, True)
+    _repeat(handle, target_zone_id=cell_id(1, 1))
+    assert _damage(live) == [("mon:foe", 6, "force")]
 
 
 @pytest.mark.parametrize(

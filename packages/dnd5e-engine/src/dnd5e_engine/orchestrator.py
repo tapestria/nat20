@@ -8886,6 +8886,17 @@ def _construct_id(owner_id: str, spell_id: str) -> str:
     return f"construct:{owner_id}:{spell_id}"
 
 
+def _repeated_construct(
+    live: _LiveCombat, current: Combatant, intent: PlayerIntent
+) -> _Construct | None:
+    """The live construct an ``attack`` repeats: the one its ``spell_id`` names
+    that ``current`` owns. ``spell_id`` on any other attack stays unread, so
+    that attack resolves as it did before constructs existed."""
+    if intent.intent_type != "attack" or not intent.spell_id:
+        return None
+    return live.constructs.get(_construct_id(current.entity_id, intent.spell_id))
+
+
 def _construct_cell(live: _LiveCombat, current: Combatant, intent: PlayerIntent) -> str | None:
     """Where a construct cast places its force. SRD 5.2 Spiritual Weapon: "The
     force appears within range in a space of your choice" — the intent's
@@ -8934,22 +8945,24 @@ def _construct_cast_failure(
 def _construct_attack_failure(
     live: _LiveCombat, current: Combatant, intent: PlayerIntent
 ) -> CombatEvent | None:
-    """The refusal for a construct's Bonus-Action repeat, or ``None``.
+    """The refusal for a construct's Bonus-Action repeat, or ``None`` (also for
+    an attack that repeats no construct: ``_repeated_construct``).
 
     SRD 5.2 Spiritual Weapon: "As a Bonus Action on your later turns, you can
     move the force up to 20 feet and repeat the attack against a creature
-    within 5 feet of it." ``action_unavailable``: the actor owns no live
-    construct of ``intent.spell_id``, or cast it this round (the cast made its
-    attack). ``target_invalid``: the target is unknown or dead.
-    ``out_of_range``: the new ``target_zone_id`` cannot be measured or is more
-    than the construct's move away (the force floats: distance, not a path),
-    or the target is beyond its reach from the force's (moved) space.
+    within 5 feet of it." ``action_unavailable``: the construct was cast this
+    round (the cast made its attack), or the repeat also names a weapon — the
+    force's attack is the whole of it, and a weapon swing riding the Bonus
+    Action would be a free attack. ``target_invalid``: the target is unknown or
+    dead. ``out_of_range``: the new ``target_zone_id`` cannot be measured or is
+    more than the construct's move away (the force floats: distance, not a
+    path), or the target is beyond its reach from the force's (moved) space.
     """
-    if intent.intent_type != "attack" or not intent.spell_id:
+    construct = _repeated_construct(live, current, intent)
+    if construct is None:
         return None
-    construct = live.constructs.get(_construct_id(current.entity_id, intent.spell_id))
-    spec = CONSTRUCTS.get(intent.spell_id)
-    if construct is None or spec is None or construct.cast_round == live.round_number:
+    spec = CONSTRUCTS[construct.spell_id]
+    if intent.weapon_id or construct.cast_round == live.round_number:
         return AttackFailed(
             actor_id=current.entity_id, target_id=intent.target_id, reason="action_unavailable"
         )
@@ -9154,9 +9167,7 @@ def _resolve_construct_attack_intent(
     condition ends "immediately after ... you make an attack roll"). A no-op
     for every other intent; ``_construct_attack_failure`` validated this one
     before anything was spent."""
-    if intent.intent_type != "attack" or not intent.spell_id:
-        return
-    construct = live.constructs.get(_construct_id(current.entity_id, intent.spell_id))
+    construct = _repeated_construct(live, current, intent)
     target = _find_combatant(live, intent.target_id) if intent.target_id else None
     if construct is None or target is None:
         return
@@ -10020,13 +10031,18 @@ def _update_combatant(live: _LiveCombat, entity_id: str, **fields: Any) -> None:
 
 
 def _classify_attack_funding(
-    current: Combatant, intent: PlayerIntent, weapon: Weapon | None
+    current: Combatant,
+    intent: PlayerIntent,
+    weapon: Weapon | None,
+    *,
+    repeats_construct: bool = False,
 ) -> AttackFunding:
     """What pays for this ``attack`` intent's swing (``"action"`` for any other
     intent), in priority order:
 
-    * ``"construct_bonus"`` — an attack naming a construct's spell (the Bonus
-      Action; ``_construct_attack_failure`` has validated the construct);
+    * ``"construct_bonus"`` — an attack repeating a live construct its actor
+      owns (``repeats_construct``, from ``_repeated_construct``; the Bonus
+      Action; ``_construct_attack_failure`` validates the repeat);
     * ``"light_offhand"`` — the Light property's extra attack with a different
       Light weapon (``_is_offhand_attack_swing``: the Bonus Action, or nothing
       with Nick);
@@ -10038,7 +10054,7 @@ def _classify_attack_funding(
       make an Unarmed Strike as a Bonus Action.");
     * ``"action"`` — the Attack action.
     """
-    if intent.intent_type == "attack" and intent.spell_id:
+    if repeats_construct:
         return "construct_bonus"
     if _is_offhand_attack_swing(current, intent, weapon):
         return "light_offhand"
@@ -11258,7 +11274,12 @@ async def submit_player_intent(
         if intent.intent_type == "attack" and intent.weapon_id
         else None
     )
-    funding = _classify_attack_funding(current, intent, attack_weapon)
+    funding = _classify_attack_funding(
+        current,
+        intent,
+        attack_weapon,
+        repeats_construct=_repeated_construct(live, current, intent) is not None,
+    )
 
     # Pre-resolution reject gates — each checked BEFORE any action budget is
     # consumed, so a rejection spends no Action/Bonus Action/slot and leaves
