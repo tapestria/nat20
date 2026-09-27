@@ -1757,21 +1757,30 @@ def _pierces_invisibility(live: _LiveCombat, viewer: Combatant, target: Combatan
     (whether or not ``target`` actually carries it — the maps below are
     computed unconditionally; the SRD row in ``rules/conditions.py`` gates on
     the condition itself)? SRD 5.2 Blindsight: "in that range, you can see
-    something has the Invisible condition." Truesight: "You see creatures and
-    objects that have the Invisible condition." Both need REACH
-    (``_special_sense_reaches``) AND line of sight
-    (``SpatialTopology.can_see`` with the viewer's own senses) — Darkvision
-    never pierces (it only re-grades light, and is excluded from
-    ``_special_sense_reaches``). Untracked positions ⇒ False (mirrors
+    something has the Invisible condition ... even if you have the Blinded
+    condition." Truesight: "You see creatures and objects that have the
+    Invisible condition" — enhanced vision, not an exemption from Blinded's
+    "You can't see". So a Blinded viewer pierces only through Blindsight
+    (``_blindsight_reaches_zone``); an unblinded viewer through either sense
+    (``_special_sense_reaches_zone``) — the same split ``_combatant_can_see``
+    applies. Either way REACH AND line of sight (``SpatialTopology.can_see``
+    with the viewer's own senses) are both required — Darkvision never
+    pierces (it only re-grades light). Untracked positions ⇒ False (mirrors
     ``_special_sense_reaches``; an untracked pair never grants a piercing
     benefit, unlike the "everyone seen" convention used for the raw
     visibility maps).
     """
-    if not _special_sense_reaches(live, viewer, target):
+    target_zone = live.actor_zone.get(target.entity_id)
+    if target_zone is None:
+        return False
+    if is_condition_active(Condition.BLINDED, _condition_names(viewer)):
+        reaches = _blindsight_reaches_zone(live, viewer, target_zone)
+    else:
+        reaches = _special_sense_reaches_zone(live, viewer, target_zone)
+    if not reaches:
         return False
     viewer_zone = live.actor_zone.get(viewer.entity_id)
-    target_zone = live.actor_zone.get(target.entity_id)
-    if viewer_zone is None or target_zone is None:
+    if viewer_zone is None:
         return False
     return live.topology.can_see(viewer_zone, target_zone, viewer.senses)
 

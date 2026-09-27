@@ -16,6 +16,7 @@ from dnd5e_engine.orchestrator import (
     _fire_monster_opportunity_attacks_on_move,
     _fire_pc_opportunity_attacks_on_move,
     _get_live,
+    _pierces_invisibility,
     start_combat,
     submit_player_intent,
 )
@@ -664,6 +665,21 @@ def test_truesight_does_not_pierce_the_blinded_condition():
     assert _combatant_can_see(live, hero, foe) is False
     _give_senses(live, "char:hero", truesight=30, blindsight=10)
     assert _combatant_can_see(live, hero, foe) is True
+
+
+def test_pierces_invisibility_requires_blindsight_when_viewer_is_blinded():
+    """M1 fix: ``_pierces_invisibility`` must gate Truesight on Blinded the
+    same way ``_combatant_can_see`` does. SRD 5.2 Blinded: "You can't see".
+    Truesight is enhanced vision ("your vision pierces through" Darkness and
+    Invisibility), not an exemption from Blinded; only Blindsight works
+    "even if you have the Blinded condition"."""
+    _handle, live = _start([_hero()], [_foe()], GridScene(width=10, height=10))
+    _give_condition(live, "char:hero", "blinded")
+    hero, foe = _combatant(live, "char:hero"), _combatant(live, "mon:foe")
+    _give_senses(live, "char:hero", truesight=30)
+    assert _pierces_invisibility(live, hero, foe) is False
+    _give_senses(live, "char:hero", truesight=30, blindsight=10)
+    assert _pierces_invisibility(live, hero, foe) is True
 
 
 def test_a_host_driven_foe_draws_no_opportunity_attack_from_its_own_side():
