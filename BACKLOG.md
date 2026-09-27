@@ -310,6 +310,24 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   anchor sits on the caster), one it fails is not (the effect sits on the
   monster), and a Polymorph on a PC ally charges the ally.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_emit_apply_effect_applied`)
+- **An AoE spell with "creature of your choice" targeting language still
+  affects everyone standing in its area, the caster included, with no way to
+  exclude anyone (2026-09-27).** SRD 5.2 Sleep: "Each creature of your choice
+  in a 5-foot-radius Sphere centered on a point within range must succeed on
+  a Wisdom saving throw..." `_expand_aoe_target_list` gathers every alive
+  combatant standing in the measured template's area with no exclusion
+  mechanism — correct for a spell that carries no such qualifier (its own
+  docstring: "allies and the caster included when the geometry says so —
+  Fireball hits the caster in its own radius") — but the same list feeds
+  Sleep's save resolution too, so a caster standing in its own Sleep sphere
+  rolls the Wisdom save alongside its targets and can fall Sleeping itself.
+  Confirmed on both spatial backends, the zone graph and `GridTopology`. The
+  dataset schema carries a `target.affects.choice` flag for exactly this
+  Foundry semantic (set on Spirit Guardians, Holy Aura, Weird and others),
+  but no resolver code reads it — "of your choice" area targeting is
+  unmodelled generally; Sleep is the observed case.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_expand_aoe_target_list`,
+  `packages/dnd5e-srd-data/src/dnd5e_srd_data/schema/common.py::TargetAffectsBlock`)
 
 ## Movement (2026-08-22)
 
