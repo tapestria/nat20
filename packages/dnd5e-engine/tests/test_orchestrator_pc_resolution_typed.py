@@ -309,7 +309,10 @@ def test_hold_person_effect_precedes_condition_and_links_recorded():
     # The cast must have applied a condition (target failed the save).
     assert effect_idxs, "hold-person must emit EffectApplied"
     assert cond_idxs, "hold-person must emit ConditionApplied (paralyzed)"
-    # EffectApplied lands immediately before its ConditionApplied.
+    # With nothing for the paralysis to end (the foe neither concentrates nor
+    # grapples), EffectApplied lands immediately before its ConditionApplied;
+    # what an Incapacitated condition does end lands between the two
+    # (tests/test_incapacitated_by_effect.py pins that order).
     for ci in cond_idxs:
         assert (ci - 1) in effect_idxs, "ConditionApplied must directly follow EffectApplied"
     # The orchestrator wired the effect→condition link.

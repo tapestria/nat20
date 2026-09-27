@@ -3919,9 +3919,9 @@ def _release_one_grapple_effect(live: _LiveCombat, victim_id: str, effect_id: st
 def _release_grapple_victims_of(live: _LiveCombat, grappler_id: str) -> None:
     """SRD 5.2 "Ending a Grapple" — "The condition also ends if the grappler
     has the Incapacitated condition." Called from
-    ``_fold_condition_onto_combatant``'s Incapacitated branch (beside the
-    C13 concentration drop) whenever ``grappler_id`` newly becomes
-    Incapacitated: release every combatant currently Grappled BY it (per
+    ``_end_what_incapacitation_ends`` (beside the concentration drop) whenever
+    ``grappler_id`` newly becomes Incapacitated, however the condition
+    arrives: release every combatant currently Grappled BY it (per
     ``_condition_source_entity``'s resolution of the ``grapple:`` origin
     prefix)."""
     for victim in list(live.initiative):
@@ -8448,10 +8448,16 @@ def _resolve_feature_invocation(
             return None
         selected = chosen
     scaling_value = (pool_points or 1) if _scales_by_amount(selected) else None
+    # The per-rest cap resolves against the caster's real ScaleValue map, so a
+    # ``@scale.*`` maximum (Second Wind's ``@scale.fighter.second-wind``, 3 at
+    # Fighter 5) gives its level-scaled cap rather than a conservative floor.
     scale_values = _scale_values_of(caster)
     activation = getattr(selected.activation, "type", None)
     invocation = _FeatureInvocation(
         activities=[selected],
+        # Rage's melee damage bonus and resistances ride a PassiveEffect on the
+        # feature; threading it lets the UtilityActivity's effect rider resolve
+        # to a runtime ActiveEffect.
         passive_effects=list(feature.passive_effects) if feature else [],
         is_bonus_action=activation == "bonus",
         is_free_action=activation == "special" and selected.kind in _FREE_SPECIAL_ACTIVITY_KINDS,
@@ -8732,8 +8738,8 @@ def _insert_into_roster(
 
 def _purge_entity_state(live: _LiveCombat, entity_id: str) -> None:
     """Drop every trace of a creature that left the initiative order (C21):
-    its own per-entity state, the marks and grants it holds or sourced, and
-    the effect identities that target it.
+    its own per-entity state, the marks and grants it holds or sourced, the
+    constructs it owns, and the effect identities that target it.
 
     Another caster's concentration on it keeps running (its
     ``concentration_chain`` entry is kept): SRD 5.2 is silent on a spell whose

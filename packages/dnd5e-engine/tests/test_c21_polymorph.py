@@ -37,7 +37,7 @@ from dnd5e_engine.events import (
     SpellCast,
 )
 from dnd5e_engine.lib_loader import get_lib_loader, set_lib_loader_for_tests
-from dnd5e_engine.orchestrator import _emit, _LiveCombat
+from dnd5e_engine.orchestrator import _challenge_rating_of, _emit, _LiveCombat
 from dnd5e_engine.spatial import cell_id
 from dnd5e_engine.specs import EncounterMemberSpec
 from tests.c21_support import act, combatant, events, foe, monster_turn, pc, start, wizard
@@ -123,6 +123,16 @@ def test_a_successful_save_applies_nothing_but_the_wizard_concentrates() -> None
     assert FOE not in get_live(handle).transformations
     assert (live.tracked_temp_hp.get(FOE, 0), combatant(live, FOE).ac) == (0, 10)
     assert live.concentration_chain[WIZ] == [(WIZ, POLYMORPH, f"cast:polymorph:{WIZ}")]
+
+
+def test_a_polymorphed_monster_keeps_its_own_challenge_rating() -> None:
+    """SRD 5.2 Polymorph measures the form against "the target's" Challenge
+    Rating: the Tough's own 1/2, not the 1/4 of the Giant Badger it already
+    is (seed 1: the save fails)."""
+    handle, live = start([wizard()], seed=1, encounter=[_tough()])
+    _polymorph(handle)
+    assert live.monster_slug_by_entity[FOE] == "giant-badger"
+    assert _challenge_rating_of(live, FOE) == 0.5
 
 
 @pytest.mark.parametrize(

@@ -201,6 +201,22 @@ def test_dash_and_disengage_can_take_the_surge_action() -> None:
         act(handle, "char:hero", intent_type="dash")
 
 
+@pytest.mark.parametrize(("first", "second"), [("grapple", "shove"), ("shove", "grapple")])
+def test_grapple_and_shove_can_take_the_surge_action(first: str, second: str) -> None:
+    """SRD 5.2 Grapple and Shove are options of an Unarmed Strike, made with the
+    Attack action: either takes the base Action, the other the surge's extra
+    action, and the turn ends only after the second."""
+    handle, live = _fighter()
+    _surge(handle)
+    act(handle, "char:hero", intent_type=first, target_id="mon:foe")
+    hero = combatant(live)
+    assert (hero.action_available, hero.extra_actions_remaining) == (False, 1)
+    assert live.current_actor_id == "char:hero"
+    act(handle, "char:hero", intent_type=second, target_id="mon:foe")
+    assert combatant(live).extra_actions_remaining == 0
+    assert live.current_actor_id == "mon:foe"
+
+
 def test_one_surge_per_turn_from_level_17() -> None:
     """ "Starting at level 17, you can use it twice before a rest but only once
     on a turn." The second surge that turn is refused before its use is spent;

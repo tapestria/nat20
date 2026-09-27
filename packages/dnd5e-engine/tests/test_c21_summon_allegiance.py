@@ -330,6 +330,7 @@ def test_a_hit_that_drops_a_summon_finishes_without_error() -> None:
     swings = [e for e in events(live, AttackRolled) if e.attacker_id == "mon:giant"]
     assert [e.target_id for e in swings] == [SPIRIT, SPIRIT]
     assert events(live, CombatantLeft) == [CombatantLeft(entity_id=SPIRIT, reason="zero_hp")]
+    assert not events(live, Death)
     assert roster(live) == [OWNER, "mon:giant"]
     assert (_current_actor(live).entity_id, live.round_number) == (OWNER, 2)
 
@@ -421,7 +422,7 @@ def test_a_summon_dropped_on_its_own_move_hands_the_turn_on() -> None:
         TurnStarted(actor_id="mon:foe"),
     ]
     assert live.last_ended_turn == (1, SPIRIT)
-    assert not [e for e in tail if isinstance(e, ActorMoved)]
+    assert not [e for e in tail if isinstance(e, (ActorMoved, Death))]
     assert (roster(live), _current_actor(live).entity_id) == ([OWNER, "mon:foe"], "mon:foe")
     with pytest.raises(IntentRejectedError) as rejected:
         act(handle, SPIRIT, intent_type="pass")

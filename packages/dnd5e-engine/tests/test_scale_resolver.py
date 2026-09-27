@@ -227,3 +227,32 @@ def test_formula_unresolved_classes_levels_raises() -> None:
     ctx = _ctx(class_levels={})
     with pytest.raises(ValueError, match="Unresolved @classes levels token"):
         resolve_roll_data("@classes.fighter.levels", ctx)
+
+
+@pytest.mark.parametrize(
+    ("proficiencies", "expertise", "passive"),
+    [([], [], 13), (["athletics"], [], 16), (["athletics"], ["athletics"], 19)],
+    ids=["untrained", "proficient", "expertise"],
+)
+def test_skill_passive_token(proficiencies: list[str], expertise: list[str], passive: int) -> None:
+    """SRD 5.2 passive score: 10 + the ability modifier, plus the Proficiency
+    Bonus when proficient, doubled with Expertise (STR 16, Proficiency Bonus 3)."""
+    caster = Combatant(
+        entity_id="char:aaaaaaaaaaaa",
+        entity_type="Character",
+        name="PC",
+        initiative=10,
+        hp_current=20,
+        attack_bonus=5,
+        character_level=5,
+        skill_proficiencies=proficiencies,
+        skill_expertise=expertise,
+    )
+    abilities = {a: 10 for a in ("str", "dex", "con", "int", "wis", "cha")} | {"str": 16}
+    ctx = _ctx(caster=caster, caster_abilities=abilities)
+    assert resolve_roll_data("@skills.ath.passive", ctx) == str(passive)
+
+
+def test_an_unknown_skill_code_raises() -> None:
+    with pytest.raises(ValueError, match="unknown skill code"):
+        resolve_roll_data("@skills.zzz.passive", _ctx())

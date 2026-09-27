@@ -99,11 +99,20 @@ def _minded_druid(**fields: Any) -> PartyMemberSpec:
 
 @pytest.mark.parametrize(
     ("slug", "count"),
-    [("ape", 2), ("black-bear", 2), ("brown-bear", 2), ("wolf", 1), ("giant-badger", 1)],
+    [
+        ("ape", 2),
+        ("black-bear", 2),
+        ("brown-bear", 2),
+        ("wolf", 1),
+        ("giant-badger", 1),
+        ("assassin", 3),
+    ],
 )
 def test_multiattack_count(slug: str, count: int) -> None:
     """Ape and Black Bear: "makes two … attacks"; Brown Bear: "one Bite attack
-    and one Claw attack"; no Multiattack: 1."""
+    and one Claw attack"; no Multiattack: 1. A clause of alternatives reads
+    its leading count — Assassin: "makes three attacks, using Shortsword or
+    Light Crossbow in any combination"."""
     monster = LOADER.get_monster(slug)
     assert monster is not None
     assert multiattack_count(monster) == count

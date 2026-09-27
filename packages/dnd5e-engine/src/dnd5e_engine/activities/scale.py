@@ -164,8 +164,8 @@ def feature_owners(
     level: int,
     loader: AssetLoader,
 ) -> list[tuple[str, Class | Subclass | Species, int]]:
-    """Every document that grants a character features, with the level it is
-    read at. SRD 5.2 Multiclassing: "When you gain a new level in a class, you
+    """Every document that grants features to a character, with the level it
+    is read at. SRD 5.2 Multiclassing: "When you gain a new level in a class, you
     get its features for that level." Each class reads at its own level, the
     subclass at its class's level (``level`` when that class isn't listed), the
     species at character ``level``. Unknown slugs are skipped."""
