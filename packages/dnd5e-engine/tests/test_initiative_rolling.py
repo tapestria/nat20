@@ -18,6 +18,10 @@ from __future__ import annotations
 
 import asyncio
 import random
+from collections.abc import Iterator
+
+import pytest
+from dnd5e_srd_data.loader import BundledAssetLoader
 
 from dnd5e_engine import (
     EncounterMemberSpec,
@@ -28,6 +32,7 @@ from dnd5e_engine import (
     start_combat,
     submit_player_intent,
 )
+from dnd5e_engine.lib_loader import set_lib_loader_for_tests
 from dnd5e_engine.orchestrator import _get_live, drain_pending_events
 from dnd5e_engine.types.effects import ActiveEffect
 
@@ -240,3 +245,61 @@ def test_fixed_initiative_is_a_no_op_even_when_surprised() -> None:
         return next(c for c in live.initiative if c.entity_id == "char:ambushed").initiative
 
     assert asyncio.run(_inner()) == 17
+
+
+@pytest.fixture
+def _bundled_loader() -> Iterator[None]:
+    set_lib_loader_for_tests(BundledAssetLoader())
+    yield
+    set_lib_loader_for_tests(None)
+
+
+def _goblin_initiative(**fields: object) -> int:
+    """The engine-rolled Initiative of a Goblin Warrior template (DEX 15, +2)
+    rolling first, beside a PC with a fixed Initiative (no draw)."""
+    goblin = EncounterMemberSpec(
+        entity_id="mon:goblin",
+        entity_type="Monster",
+        name="Goblin",
+        initiative=None,
+        hp_current=10,
+        hp_max=10,
+        zone_id=cell_id(2, 0),
+        monster_template_slug="goblin-warrior",
+        **fields,  # type: ignore[arg-type]
+    )
+    hero = PartyMemberSpec(
+        entity_id="char:hero",
+        name="Hero",
+        initiative=10,
+        hp_current=20,
+        hp_max=20,
+        zone_id=cell_id(0, 0),
+    )
+
+    async def _inner() -> int:
+        start = await start_combat(
+            session_id="initiative-template-dex",
+            party=[hero],
+            encounter=[goblin],
+            grid_scene=GridScene(width=10, height=10),
+            rng_seed=3,
+        )
+        live = _get_live(start.handle)
+        return next(c.initiative for c in live.initiative if c.entity_id == "mon:goblin")
+
+    return asyncio.run(_inner())
+
+
+@pytest.mark.usefixtures("_bundled_loader")
+def test_rolled_initiative_uses_the_template_dexterity() -> None:
+    """SRD 5.2 Initiative: "they make a Dexterity check". A templated foe whose
+    spec leaves ``dexterity`` at 10 fights with the template's Dexterity, so
+    its Initiative adds that modifier too (the combat's first draw)."""
+    assert _goblin_initiative() == random.Random(3).randint(1, 20) + 2
+
+
+@pytest.mark.usefixtures("_bundled_loader")
+def test_rolled_initiative_keeps_a_host_dexterity() -> None:
+    """A Dexterity the host set (anything but the 10 default) still wins."""
+    assert _goblin_initiative(dexterity=18) == random.Random(3).randint(1, 20) + 4

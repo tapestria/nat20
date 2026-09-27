@@ -1650,6 +1650,19 @@ def _special_sense_reaches_zone(live: _LiveCombat, viewer: Combatant, zone: str)
     return False
 
 
+def _blindsight_reaches_zone(live: _LiveCombat, viewer: Combatant, zone: str) -> bool:
+    """The one sense that works through the Blinded condition. SRD 5.2
+    Blindsight: "you can see anything that isn't behind Total Cover even if
+    you have the Blinded condition"; Truesight is enhanced vision ("your
+    vision pierces through" Darkness and Invisibility), and a Blinded creature
+    "can't see". Untracked viewer position ⇒ False."""
+    viewer_zone = live.actor_zone.get(viewer.entity_id)
+    reach = viewer.senses.blindsight
+    if viewer_zone is None or not reach:
+        return False
+    return live.topology.within_range(viewer_zone, zone, reach)
+
+
 def _combatant_can_see(live: _LiveCombat, viewer: Combatant, target: Combatant) -> bool:
     """C16b composite "can see" predicate (plan ruling R4) for every SRD 5.2
     "can see" conjunct: Dodge, Ranged Attacks in Close Combat, Opportunity
@@ -1658,8 +1671,8 @@ def _combatant_can_see(live: _LiveCombat, viewer: Combatant, target: Combatant) 
     1. Untracked position on either side ⇒ True (a scene with no positional
        data can never impose a penalty — same convention as
        ``_target_visibility_maps``).
-    2. Blinded viewer (SRD 5.2 Blinded: "You can't see") ⇒ False unless a
-       special sense reaches (``_special_sense_reaches``).
+    2. Blinded viewer (SRD 5.2 Blinded: "You can't see") ⇒ False unless its
+       Blindsight reaches (``_blindsight_reaches_zone``; Truesight is sight).
     3. Invisible target (SRD 5.2 Invisible: "If a creature can somehow see
        you, you don't gain this benefit against that creature") ⇒ False
        unless a special sense reaches — plan ruling R3. A creature hidden
@@ -1674,10 +1687,13 @@ def _combatant_can_see(live: _LiveCombat, viewer: Combatant, target: Combatant) 
     target_zone = live.actor_zone.get(target.entity_id)
     if viewer_zone is None or target_zone is None:
         return True
-    special = _special_sense_reaches(live, viewer, target)
-    if is_condition_active(Condition.BLINDED, _condition_names(viewer)) and not special:
+    if is_condition_active(
+        Condition.BLINDED, _condition_names(viewer)
+    ) and not _blindsight_reaches_zone(live, viewer, target_zone):
         return False
-    if is_condition_active(Condition.INVISIBLE, _condition_names(target)) and not special:
+    if is_condition_active(
+        Condition.INVISIBLE, _condition_names(target)
+    ) and not _special_sense_reaches(live, viewer, target):
         return False
     return live.topology.can_see(viewer_zone, target_zone, viewer.senses)
 
@@ -7560,7 +7576,23 @@ def _resolve_initiative(
         return spec.initiative
     disadvantage = spec.is_surprised or spec.entity_id in seeded_incapacitated
     sources = AdvantageSources(disadvantage=("condition:attacker",) if disadvantage else ())
-    return roll_d20_test(rng, ability_modifier(spec.dexterity), sources).total
+    return roll_d20_test(rng, ability_modifier(_initiative_dexterity(spec)), sources).total
+
+
+def _initiative_dexterity(spec: PartyMemberSpec | EncounterMemberSpec) -> int:
+    """The Dexterity score an engine-rolled Initiative adds. An encounter
+    member's ``10`` defers to its resolvable ``monster_template_slug``, exactly
+    as the combatant's own ``dexterity`` does (``_build_foe_combatants``), so
+    the roll and the tie-break read the same score."""
+    if (
+        isinstance(spec, EncounterMemberSpec)
+        and spec.dexterity == 10
+        and spec.monster_template_slug
+    ):
+        monster = get_lib_loader().get_monster(spec.monster_template_slug)
+        if monster is not None:
+            return monster.ability_scores.dex
+    return spec.dexterity
 
 
 async def start_combat(
@@ -9526,7 +9558,7 @@ def _summon_placement(
     see within range". A space is legal when the caster can measure it, it is
     within the spell's range with line of sight and not behind total cover,
     the caster is not Blinded (SRD 5.2: "You can't see") unless its Blindsight
-    or Truesight reaches the space, and — on a grid, where spaces are
+    reaches the space (``_blindsight_reaches_zone``), and — on a grid, where spaces are
     exclusive — it is one of the grid's own cell ids (``col,row``) that no
     living creature occupies. An explicit ``target_zone_id`` must be legal: an
     invalid, non-canonical or occupied cell is ``"target_invalid"``, one
@@ -9556,7 +9588,7 @@ def _summon_placement(
         )
 
     def _seen(cell: str) -> bool:
-        return not blinded or _special_sense_reaches_zone(live, current, cell)
+        return not blinded or _blindsight_reaches_zone(live, current, cell)
 
     def _in_sight(cell: str) -> bool:
         return (
@@ -12753,7 +12785,13 @@ def _fire_monster_opportunity_attacks_on_move(
     # next reactor. A reactor that left no longer reacts.
     for reactor_id in [c.entity_id for c in live.initiative]:
         reactor = _find_combatant(live, reactor_id)
-        if reactor is None or reactor_id not in live.encounter_ids:
+        # Only the mover's foes react: a creature can't leave its own reach,
+        # and a host-driven foe's move must not draw its allies' attacks.
+        if (
+            reactor is None
+            or reactor_id not in live.encounter_ids
+            or not _is_enemy(live, reactor_id, mover_id)
+        ):
             continue
         if not reactor.is_alive or reactor.hp_current <= 0:
             continue

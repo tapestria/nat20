@@ -353,6 +353,21 @@ def test_blindsight_sees_a_space_while_blinded(target_zone_id: str, seated: bool
     assert [e.zone_id for e in joined(live, SUMMONER)] == ([target_zone_id] if seated else [])
 
 
+def test_a_blinded_caster_with_only_truesight_places_no_summon() -> None:
+    """SRD 5.2 Blinded: "You can't see", and Truesight is sight ("your vision
+    pierces through" Darkness and Invisibility): a Blinded caster whose only
+    special sense is Truesight sees no space, and the cast is refused before
+    anything is spent."""
+    handle, live = start([summoner(senses=CombatantSenses(truesight=120))], seed=1)
+    _emit(live, ConditionApplied(target_id=SUMMONER, condition="blinded"))
+    _cast(handle)
+    assert events(live, CastFailed) == [
+        CastFailed(actor_id=SUMMONER, spell_id=SD, reason="out_of_range")
+    ]
+    assert not events(live, CombatantJoined)
+    assert live.spell_slots_by_entity[SUMMONER] == {1: 1, 5: 2}
+
+
 def test_polymorph_refuses_the_spirit_which_has_no_challenge_rating() -> None:
     """SRD 5.2 Draconic Spirit: "CR None". Polymorph's form needs "a Challenge
     Rating equal to or less than the target's (or the target's level if it
