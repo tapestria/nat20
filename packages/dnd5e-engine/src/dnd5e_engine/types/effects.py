@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
 ChangeMode = Literal["custom", "multiply", "add", "downgrade", "upgrade", "override"]
 
@@ -124,6 +124,13 @@ class ActiveEffect(BaseModel):
     changes: list[ActiveEffectChange] = Field(default_factory=list)
     statuses: set[str] = Field(default_factory=set)
     flags: dict[str, Any] = Field(default_factory=dict)
+
+    @field_serializer("statuses")
+    def _statuses_sorted(self, statuses: set[str]) -> list[str]:
+        # A set iterates in the order of the process's string hash seed, so an
+        # unsorted dump gives a multi-status effect a different order in every
+        # process; sorted, a replayed stream stays byte-stable in any dump mode.
+        return sorted(statuses)
 
 
 __all__ = [
