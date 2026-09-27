@@ -193,18 +193,40 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   default a Tough's Mace rolls d20 + 0 for 1d6 where SRD 5.2 says +4 and
   1d6 + 2. Only a transformed creature gets its stat block's real numbers
   (`StatBlockMagnitudes`); giving them to every template monster re-pins
-  every template-monster fixture.
-  (`packages/dnd5e-engine/src/dnd5e_engine/activities/build_context.py::_attack_bonus_override`)
+  every template-monster fixture. The bridge's `/v1/combat` passes no
+  `attack_bonus`, so every foe it builds rolls at +0.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/build_context.py::_attack_bonus_override`,
+  `packages/nat20-bridge/src/nat20_bridge/routes_combat.py::_build_encounter_specs`)
 
 ## Core combat rules not modelled (2026-08-22)
 
+- **A host-driven foe's move provokes no opportunity attack
+  (2026-09-27, C23).** `_handle_move` fires only the monster-reactor direction, which
+  takes only the mover's foes, so a foe moved through `submit_player_intent`
+  leaves a character's reach freely; the character-reactor direction runs
+  only on the monster AI's own walk. (C23 stopped such a move from drawing
+  attacks from the foe itself and its allies.)
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_handle_move`)
+- **An `attack` that names no weapon resolves nothing but spends the Action
+  (2026-09-27, C23).** A character's `attack` with neither `weapon_id` nor
+  `stat_block_action_id` emits only `IntentSubmitted` and ends the turn: no
+  attack roll, the Action gone. It should be refused before anything is spent.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::submit_player_intent`)
+- **A seeded Incapacitated effect ends nothing (2026-09-27, C23).** SRD 5.2
+  Incapacitated: "Your Concentration is broken." `_seed_active_effects` writes
+  a seeded effect's statuses onto the combatant without
+  `_end_what_incapacitation_ends`, so a Paralyzed effect passed to
+  `start_combat(active_effects=...)` leaves a seeded Rage, concentration or
+  grapple in place, where the same effect applied during the combat ends
+  them (C20).
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_seed_active_effects`)
 - **Grapple's/Shove's size gate, free-hand gate, and distance-exceeded
   auto-release are not modelled** (2026-09-01). SRD 5.2 Grapple/Shove
   require "a hand free" (Grapple only) and cap the actor at one size larger
   than the target; "Ending a Grapple" also ends the condition when a forced
   move separates the pair beyond reach. None of the three block or
-  auto-release `grapple`/`shove`/`escape_grapple` today — deferred to C14
-  Task 10. The Push weapon mastery's "if it is Large or smaller" gate
+  auto-release `grapple`/`shove`/`escape_grapple` today: no combatant has a
+  size attribute to read. The Push weapon mastery's "if it is Large or smaller" gate
   (2026-09-02, C15 Task 7) shares the same missing creature-size attribute
   and pushes every target.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_handle_grapple`,
@@ -300,6 +322,12 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
 
 ## Event stream observability (2026-08-22)
 
+- **`DeathRecord.killer_id` names the current actor, not the attacker
+  (2026-09-27, C23).** Every death is recorded with `live.current_actor_id`,
+  so a kill landed off the killer's own turn names whoever's turn it is: an
+  opportunity attack that kills a moving creature credits the mover itself,
+  and a readied spell or a reaction credits the creature whose turn it is.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_record_death`)
 - **Spell/save/heal damage is not attributed (2026-09-02, narrowed by C15).**
   C15 added `DamageApplied.source_id` (weapon slug / synthesized activity id
   / `"mastery:<slug>"` for a mastery proc) and `is_crit`, and threads both
@@ -393,7 +421,7 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   claim that new content is a data change, not an engine change: The typed
   vocabulary now ships (`ActivationBlock.reaction_conditions` /
   `ReactionTriggerKind`, C22); the orchestrator's `ReactionTrigger` Literal and
-  the per-spell branches still need to read it (C13/C14 follow-up). Note the
+  the per-spell branches still need to read it (no cluster owns it). Note the
   shipped canonical still stores the inheriting activity's own `type` (e.g.
   Shield's utility activity says `action` while carrying populated
   `reaction_conditions`) — consumers must not gate on
@@ -407,10 +435,12 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   fall back to the Python registry. Still open after C12 and C18 (neither
   reads the category); unowned.
   (`packages/dnd5e-engine/src/dnd5e_engine/rules/conditions.py`)
-- **`orchestrator.py` is ~5.5k lines**, about a third of the engine, holding the
-  reaction queue, item/feature charge accounting, the monster turn, the effect
-  lifecycle and the turn loop. Each is a coherent module; splitting them would
-  make the combat loop readable without changing behaviour.
+- **`orchestrator.py` is ~13.4k lines**, well over a third of the engine,
+  holding the reaction queue, item/feature charge accounting, the monster
+  turn, the effect lifecycle, the conjurations and the turn loop. Each is a
+  coherent module; splitting them would make the combat loop readable
+  without changing behaviour.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
 
 ## Spatial mechanics (grid backend is in place; these are additive)
 
@@ -446,14 +476,24 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   space, an area of effect misses it). A `move` to one fails `unreachable`,
   and Summon Dragon refuses one with `target_invalid`.
   (`packages/dnd5e-engine/src/dnd5e_engine/spatial.py::GridTopology.is_valid_cell`)
+- **Truesight sees into Heavily Obscured cells (2026-09-27, C23).** SRD 5.2
+  Truesight: "your vision pierces through" Darkness, Invisibility, visual
+  illusions, transformations and the Ethereal Plane — not fog or foliage. The
+  scene model treats Truesight like Blindsight at an `obscurement_cells`
+  "heavy" cell (pinned by `test_can_see_heavy_obscurement_beats_darkvision_but_not_blindsight`),
+  and a grid cell can't say whether its heavy obscurement is magical
+  Darkness or fog, so the fix needs that distinction first. (C23 stopped
+  Truesight from working through the Blinded condition.)
+  (`packages/dnd5e-engine/src/dnd5e_engine/spatial.py::GridTopology.can_see`)
 - **Vision is scene-lit only** (2026-08-27, amended 2026-09-02, 2026-09-03).
   No light sources (torches, *Light*, *Darkness*), no viewer-side
   obscurement, no Blinded emission from darkness; `can_see` reads
   `GridScene.lighting` / `obscurement_cells` plus the viewer's projected
   senses. Sunlight Sensitivity's attack-roll half closed C18 (the new
   whole-scene `GridScene.sunlight` flag); its ability-check half (the
-  trait disadvantages ALL ability checks in sunlight) is still open (see "Typed traits are hydrated..." under "Audit 2026-08-26 —
-  monsters" below). No *See Invisibility*-style effect flag
+  trait disadvantages ALL ability checks in sunlight) is still open (see
+  "Typed traits are hydrated..." under "Audit 2026-08-26 — monsters" below).
+  No *See Invisibility*-style effect flag
   pierces the Invisible condition either (C16b plan ruling R3) — only
   blindsight/
   truesight in range with line of sight do, via
@@ -493,10 +533,10 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   bonuses.save` spellings) into the `check_modifiers` / `save_modifiers`
   sidecars. An ActiveEffect authored against one key set is therefore INERT on
   the other surface. Recommended resolution: alias the standalone resolver's key
-  set onto the `abilities.*` family (one normalization table, both consumers) as
-  part of C12 / C19 — not aliased now, deliberately, to keep the F1d change
-  behaviour-preserving.
-  (`packages/dnd5e-engine/src/dnd5e_engine/check.py:108`,
+  set onto the `abilities.*` family (one normalization table, both consumers).
+  Not aliased, deliberately, so F1d stayed behaviour-preserving; neither C12
+  nor C19 took it up.
+  (`packages/dnd5e-engine/src/dnd5e_engine/check.py::_KIND_TO_BUCKETS`,
   `packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_fold_d20_test_bonus`).
 ## Class / species feature mechanics
 
@@ -670,8 +710,14 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
     features that use Focus Points require your target to make a saving
     throw. The save DC equals 8 plus your Wisdom modifier and Proficiency
     Bonus.": Stunning Strike, Open Hand Technique (2 activities), Deflect
-    Attacks, Deflect Energy, Quivering Palm, Cunning Strike (2), Devious
-    Strikes (3), Relentless Rage's save and Intimidating Presence;
+    Attacks, Deflect Energy and Quivering Palm; Cunning Strike: "If a Cunning
+    Strike effect requires a saving throw, the DC equals 8 plus your
+    Dexterity modifier and Proficiency Bonus." (2), and Devious Strikes (3),
+    whose effects "are now among your Cunning Strike options"; Relentless
+    Rage: "you can make a DC 10 Constitution saving throw … Each time you use
+    this feature after the first, the DC increases by 5."; and Intimidating
+    Presence: "a Wisdom saving throw (DC 8 plus your Strength modifier and
+    Proficiency Bonus)";
   - a `spellcasting` save DC, which `use_feature` can't meet because it never
     threads the class's spellcasting ability into the context
     (`orchestrator.py::_resolve_intent_activities`) — SRD 5.2 Channel
@@ -698,7 +744,7 @@ The interpreter now projects always-on `dr` (damage resistance), `di`
 (immunity), `dv` (vulnerability), `ci` (condition immunity), `senses`, and
 `movement` (walk-speed bonus + typed non-walk modes) at combat start, plus the
 activation-gated Rage `dr` fold on the active-effect path. One entry
-of the the passive-projection spec allowlist remains recognized-but-deferred for lack of a landing
+of the passive-projection spec allowlist remains recognized-but-deferred for lack of a landing
 zone + apply logic:
 
 - **Ability scores (direct passive overrides) and languages** (amended
@@ -873,7 +919,8 @@ zone + apply logic:
   block can be commanded").
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_seat_summon`)
 - **Summons end with the combat (2026-09-26, C21b).** Summon Dragon lasts up
-  to an hour, but `EndCombatResult` and `CombatOutcome` report no summon, and
+  to an hour, but `EndCombatResult` and `CombatOutcome` report no surviving
+  summon, and
   `start_combat` has no input for one: a concentration anchor seeded through
   `start_combat(active_effects=...)` concentrates with no creature.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_project_outcome`)
@@ -898,15 +945,16 @@ zone + apply logic:
 - **Summon Dragon's "space that you can see" ignores light (2026-09-27,
   C21b).** SRD 5.2: "It manifests in an unoccupied space that you can see
   within range." Placement reads range, line of sight, total cover and a
-  Blinded caster (with its Blindsight or Truesight), but not the light or
+  Blinded caster (with its Blindsight), but not the light or
   obscurement at the space against the caster's senses: a caster without
   Darkvision can place the spirit in Darkness or a Heavily Obscured cell.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_summon_placement`)
 
 ## Rest & recovery
 
-- **Non-literal feature-recovery formulas are unhandled** (2026-07-04). `rest.recover_feature_uses` honours each feature's
-  typed `uses.recovery` rules: `recoverAll` fully recharges, a literal-integer
+- **Non-literal feature-recovery formulas are unhandled** (2026-07-04).
+  `rest.recover_feature_uses` honours each feature's typed `uses.recovery`
+  rules: `recoverAll` fully recharges, a literal-integer
   `formula` regains that many uses, and a period-miss (with recovery data
   supplied) correctly preserves `spent` (lr-only features do not recharge on a
   Short Rest). The residual: a NON-literal recovery formula (e.g. an
@@ -916,34 +964,6 @@ zone + apply logic:
   `"1"`); thread roll-data evaluation through if such data ever lands
   (`packages/dnd5e-engine/src/dnd5e_engine/rest.py`).
 
-## Discovered during demo webapp final review (2026-08-19)
-
-- **`_REGISTRY` retains `_LiveCombat` entries after `end_combat` — no
-  eviction.** `_REGISTRY: dict[str, _LiveCombat] = {}`
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py:969`) is a
-  module-global dict keyed by `handle.handle_id`. `end_combat` reads the
-  live combat, builds the outcome, and returns — it never pops the entry
-  out of `_REGISTRY`. The only way an entry ever leaves the dict is a
-  wholesale `_reset_registry_for_tests()` `.clear()` (line ~5474), a
-  test-only seam with no production caller. Every caller that opens and
-  closes a combat therefore leaks one dict entry per combat, unbounded,
-  for the lifetime of the process. The nat20 demo app
-  (`apps/demo/src/nat20_demo/replay.py::replay_fight`) is a stateless
-  HTTP handler that calls `start_combat` + `end_combat` once per request —
-  a textbook case of exactly this pattern — and measurably leaks: ~43KB
-  RSS retained per request, 201 combats still resident in `_REGISTRY`
-  after 200 sequential /play requests against a single process. The
-  demo mitigates operationally rather than fixing the root cause (Fly.io
-  auto-stop recycles the machine on idle; `MAX_COMMANDS = 500` in
-  `replay.py` caps per-combat size), but neither bounds total leaked
-  entries under sustained traffic. Suggested engine fix: evict the
-  `_REGISTRY` entry inside `end_combat` once the outcome is built, while
-  caching the built `CombatOutcome` (e.g. keyed by `handle_id`, or
-  returned from a small completed-handles cache) so a second `end_combat`
-  call on the same handle still returns the same outcome rather than
-  raising `UnknownHandleError` — `end_combat` is documented as
-  idempotent under double-call and that guarantee must survive the fix.
-
 ## Audit 2026-08-26 — rolls & modifiers
 
 - **Standalone out-of-combat `resolve_check` has no exhaustion seam**
@@ -952,7 +972,7 @@ zone + apply logic:
   library consumer rolling a check outside combat cannot express the SRD 5.2
   `-2 x level` D20 Test penalty. Additive fix: an `exhaustion_level: int = 0`
   (or projected `modifier`) on `CheckSpec`.
-  (`packages/dnd5e-engine/src/dnd5e_engine/check.py:36`)
+  (`packages/dnd5e-engine/src/dnd5e_engine/check.py::CheckSpec`)
 - **`ammunition` is parsed and never read (2026-09-02, narrowed by C15).**
   C15 wired `finesse`, `reach`, `loading` (one-shot-per-turn cap),
   `thrown` (thrown-at-range attacks), `light` (Nick's off-hand-swing
@@ -1161,9 +1181,12 @@ now calls the engine rather than standing in for it. Residual gaps:
   scenario.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_feature_activity_cost`,
   `packages/dnd5e-srd-data/src/dnd5e_srd_data/canonical/features/paladins-smite.json`)
-- **Equipment:** attunement limit (`requires_attunement` shipped, unread),
-  ammunition decrement, versatile damage choice, shield don/doff, encumbrance —
-  all absent. Magic-item charges are the one equipment mechanic that is real.
+- **Equipment:** ammunition decrement, shield don/doff and encumbrance are
+  absent (C19 validates `attuned_items` against the attunement limit and
+  `requires_attunement`; C15 picks versatile damage from
+  `PlayerIntent.two_handed`). Magic-item charges are the one other equipment
+  mechanic that is real.
+  (`packages/dnd5e-engine/src/dnd5e_engine/build_spec.py`)
 - **No Heroic Inspiration** (reroll) anywhere; XP is summed at `end_combat`
   but no threshold table / level-up path exists (host concern; noting the hook).
 
@@ -1187,15 +1210,17 @@ now calls the engine rather than standing in for it. Residual gaps:
   modelled; Keen Senses and Aggressive are absent from the SRD 5.2 corpus
   entirely.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/save_primitive.py`)
-- **Target selection is hard-coded lowest-HP living PC** (`orchestrator.py:5069`)
-  with no reach/LoS/threat consideration — the monster AI never consults
+- **Target selection is hard-coded lowest-HP living enemy** (a PC or a
+  party-side summon since C21b), with no reach/LoS/threat
+  consideration — the monster AI never consults
   `_combatant_can_see` or a Frightened monster's own line-of-sight/
   no-approach rule when choosing a target or walking; confirmed still open
   after C18 (2026-09-03) — a rule card scoped it out as not an SRD rule, so
   this stands as a deliberate scope cut, not an oversight. Same status for
-  flee planning, which returns `None` on a grid (`_plan_flee_destination:695`,
-  C18 S08 needs only the `has_fled` flag, not movement) so a fleeing
-  monster holds still.
+  flee planning, which returns `None` on a grid (C18 S08 needs only the
+  `has_fled` flag, not movement) so a fleeing monster holds still.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_select_monster_targets`,
+  `packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_plan_flee_destination`)
 - **`PartyMemberSpec` has no `physical_resistances_nonmagical_only`
   counterpart** (2026-08-30). PCs are pinned to the nonmagical-only reading of
   host-authored B/P/S resistances; a PC whose resistance should be
@@ -1242,8 +1267,10 @@ a cluster; they are consolidated here so they are not re-discovered.
 - **`EncounterMemberSpec.dexterity: int = 10` is a lossy sentinel.** The monster
   template hydration cannot distinguish "host left the default" from "host
   explicitly set 10", so an explicit 10 always defers to the template's DEX.
-  Retype to `int | None = None` (additive; needs a migration note) in C23
-  (C18 did not retype it).
+  Retyping to `int | None = None` changes results for a host that passes an
+  explicit 10 for a template whose Dexterity differs, so it waits for a minor
+  release with a migration note; an engine-rolled Initiative reads the same
+  sentinel since C23.
   (`packages/dnd5e-engine/src/dnd5e_engine/specs.py`)
 - **Roll events cannot report bonus DICE.** `roll_total == natural + modifier`
   only when no Bless/Bane-style bonus die applied; `modifier` deliberately
@@ -1271,46 +1298,42 @@ a cluster; they are consolidated here so they are not re-discovered.
   condition projections (auto-fail, Restrained DEX disadvantage, exhaustion)
   but still not the effect-derived `passive_save_bonus` (Bless/Bane). The
   repeat-save path also honours `passive_save_dis` but not `passive_save_adv`.
-  Owned by C13.
+  Unowned since C13.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
+- **A turn-start or round-start hook that removes a creature would strand
+  the turn (2026-09-27, C23).** A current actor that leaves the initiative
+  order hands its turn on through `_hand_off_departed_turn` once the intent
+  or legendary action that removed it has resolved. `_begin_turn` runs the
+  `round_start` and `turn_start` hooks and the pending death save with no
+  such hand-off, so a removal there would leave `departed_actor_id` set and
+  no `TurnStarted`. No registered hook can remove a creature today (the
+  turn-start one expires reaction effects); whoever adds one needs the
+  hand-off too.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_begin_turn`)
 
 ## Damage at 0 Hit Points (2026-08-29)
 
 Surfaced while landing C12-S06 (Characters fall Unconscious at 0 HP).
 
-The first two entries are **ACCEPTED KNOWINGLY** by the C12 controller ruling
-(2026-08-29): both are halves of the same missing seam — per-damage-instance
-attribution on `DamageApplied` (a shared `source_id` / instance id, plus the
-crit flag). **C15 (attack rules) owns that seam and therefore owns both fixes**;
-neither is repairable inside C12 without inventing the event field C15 will add.
+C15 added `DamageApplied.is_crit`, which closed the Critical Hit half (a
+Critical Hit on a creature at 0 Hit Points costs two failures). The
+per-instance half below remains: `source_id` names a weapon or activity, not
+one hit.
 
 - **A multi-type hit inflicts one death-save failure PER DAMAGE TYPE.** SRD 5.2
   "Damage at 0 Hit Points" charges one failure per instance of damage, but
   `activities/apply.py` emits one `DamageApplied` per damage type and the 0-HP
   fold counts a failure per event, so a fire+slashing hit on a downed Character
-  costs two failures. Needs per-event attribution (a shared `source_id` /
-  instance id on `DamageApplied`) so the fold can collapse the events of one
-  attack — the same seam the Critical-Hit entry below needs. Owner: **C15**.
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py:1877`
-  `_apply_zero_hp_to_character`,
-  `packages/dnd5e-engine/src/dnd5e_engine/activities/apply.py:75`)
-- **Two death-save failures on a Critical Hit at 0 HP are not applied.** SRD 5.2
-  "Damage at 0 Hit Points": a Critical Hit inflicts two failures. C12 landed the
-  auto-crit itself (Paralyzed/Unconscious target within 5 ft), so the engine now
-  produces exactly the situation the rule covers — but `DamageApplied` carries
-  no crit flag, so `_apply_zero_hp_to_character` calls
-  `state.apply_damage_while_unconscious(False)` with the argument hard-coded and
-  always records one failure. Same `DamageApplied` attribution seam as the
-  multi-type entry above; fixing either alone would be guesswork. Owner: **C15**.
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py:1920`
-  `_apply_zero_hp_to_character`)
+  costs two failures. Needs a per-hit instance id on `DamageApplied` so the
+  fold can collapse the events of one attack.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_apply_zero_hp_to_character`,
+  `packages/dnd5e-engine/src/dnd5e_engine/activities/apply.py::apply_damage`)
 - **A death-save failure from damage at 0 HP surfaces no event.** The failure is
   written straight onto `Combatant.death_saves`; hosts narrating from the event
   stream see the `DamageApplied` but never learn a failure landed (only
   `DeathSaveRolled`, from the turn-start roll, carries counters). The fix needs
-  a new `CombatEvent` member (or a counters payload on an existing one), which
-  the C12 constraints forbid mid-cluster.
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py:1877`)
+  a new `CombatEvent` member or a counters payload on an existing one.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_apply_zero_hp_to_character`)
 
 ## Conditions — SRD 5.2 rows not enforced (2026-08-27)
 
@@ -1355,10 +1378,6 @@ cluster owns.
 Small, real and deliberately not worth their own task; recorded so they are not
 re-discovered.
 
-- **`_condition_source_entity`'s effect-origin fallback is untested.** The
-  `ActiveCondition.source_entity_id` branch is covered; the branch that walks
-  `live.active_effects` for a `cast:<slug>:<id>` origin has no test.
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py:600`)
 - **`activities/check.py::_check_modifier`'s skill-branch penalty fold is
   untested.** The exhaustion penalty is pinned on the ability branch only; the
   `return int(skills[key]) + penalty` line has no direct test.
@@ -1366,10 +1385,10 @@ re-discovered.
 - **`_monster_dash_movement_budget`'s parameter is still named `base_speed`**
   although its caller now passes the condition/exhaustion-PROJECTED speed. A
   rename to `effective_speed` is cosmetic but removes a real reading trap.
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py:736`)
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_monster_dash_movement_budget`)
 - **The `enumerate(live.initiative)` → `model_copy` → slot-replace loop is
-  open-coded 32 times** (four of them added by C12). A single
-  `_update_combatant(live, entity_id, **update)` helper would collapse them.
+  still open-coded 31 times**, although `_update_combatant(live, entity_id,
+  **fields)` now exists (C21) and ten call sites use it.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
 
 ## Blocked
@@ -1509,11 +1528,6 @@ layer over the engine — see `docs/bridge.md`. Gaps found while shipping it:
   effective block but leaves `type` as shipped. Resolving it changes bytes on
   every inheriting activity — do it as its own regen PR.
   (`packages/dnd5e-srd-data/tools/translators/foundry.py::_effective_activation`)
-
-## Missing categories (2026-08-22)
-
-- **`lair_actions` is empty for all 341 monsters** even though SRD 5.2 defines
-  them for several creatures, and the schema field exists.
 
 ## Monster spellcasting ability gaps (2026-09-04)
 
