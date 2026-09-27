@@ -54,6 +54,7 @@ import logging
 import random
 import re
 import warnings
+from collections import deque
 from collections.abc import AsyncIterator, Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from typing import Any, Final, Literal
@@ -3335,6 +3336,15 @@ class _Summon:
 
 
 _REGISTRY: dict[str, _LiveCombat] = {}
+
+#: How many ended combats stay readable after ``end_combat`` (a repeat close,
+#: a late ``drain_pending_events`` / ``narration_events`` drain, a last
+#: ``get_live``) before the oldest is released, so a long-running host holds a
+#: bounded number of them rather than every combat it ever ran.
+_ENDED_COMBATS_KEPT: Final = 64
+#: The ended combats still in ``_REGISTRY``, oldest first, each with the handle
+#: id it was registered under.
+_ENDED: deque[tuple[str, _LiveCombat]] = deque()
 
 
 def _get_live(handle: CombatHandle) -> _LiveCombat:
@@ -13309,8 +13319,11 @@ async def end_combat(handle: CombatHandle) -> EndCombatResult:
 
     Idempotent: calling twice returns the same outcome (with an empty
     ``events`` list on subsequent calls — the close events were only
-    emitted once on the first invocation), no re-emission of events, no
-    double-removal from the registry.
+    emitted once on the first invocation), no re-emission of events. The
+    ended combat stays readable — a repeat ``end_combat``, ``get_live``,
+    ``drain_pending_events``, ``narration_events`` — until
+    ``_ENDED_COMBATS_KEPT`` later combats have ended; its handle then raises
+    ``UnknownHandleError`` (``_keep_ended``).
     """
     live = _get_live(handle)
     surviving = tuple(eff for target_list in live.active_effects.values() for eff in target_list)
@@ -13333,6 +13346,7 @@ async def end_combat(handle: CombatHandle) -> EndCombatResult:
 
     live.ended = True
     live.final_outcome = outcome
+    _keep_ended(live)
     # Re-snapshot after CombatEnded emission in case any listener mutated
     # the active_effects registry (e.g. expire handler).
     surviving = tuple(eff for target_list in live.active_effects.values() for eff in target_list)
@@ -13341,6 +13355,18 @@ async def end_combat(handle: CombatHandle) -> EndCombatResult:
         events=end_events,
         final_active_effects=surviving,
     )
+
+
+def _keep_ended(live: _LiveCombat) -> None:
+    """Record ``live`` as ended and release the oldest ended combat beyond
+    ``_ENDED_COMBATS_KEPT``. A live combat is never released, and neither is a
+    new combat a later ``start_combat`` registered under a reused handle id
+    (``combat:<session>:<seed>``): only the very combat that ended leaves."""
+    _ENDED.append((live.handle_id, live))
+    while len(_ENDED) > _ENDED_COMBATS_KEPT:
+        handle_id, ended = _ENDED.popleft()
+        if _REGISTRY.get(handle_id) is ended:
+            del _REGISTRY[handle_id]
 
 
 def _reset_registry_for_tests() -> None:
@@ -13352,6 +13378,7 @@ def _reset_registry_for_tests() -> None:
     tests start from a clean slate.
     """
     _REGISTRY.clear()
+    _ENDED.clear()
 
 
 __all__ = [
