@@ -1376,8 +1376,8 @@ re-discovered.
   rename to `effective_speed` is cosmetic but removes a real reading trap.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_monster_dash_movement_budget`)
 - **The `enumerate(live.initiative)` → `model_copy` → slot-replace loop is
-  still open-coded 31 times**, although `_update_combatant(live, entity_id,
-  **fields)` now exists (C21) and ten call sites use it.
+  still open-coded 38 times**, although `_update_combatant(live, entity_id,
+  **fields)` now exists (C21) and 9 call sites use it.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
 
 ## Blocked
