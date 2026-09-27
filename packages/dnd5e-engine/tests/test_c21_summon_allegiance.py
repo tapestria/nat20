@@ -30,6 +30,8 @@ from dnd5e_engine.events import (
     IntentSubmitted,
     MoveFailed,
     SaveRolled,
+    TurnEnded,
+    TurnPhase,
     TurnStarted,
     Unconscious,
 )
@@ -50,6 +52,7 @@ from dnd5e_engine.orchestrator import (
     _sneak_ally_adjacent_map,
     _target_help_advantage_map,
     _update_combatant,
+    advance_monster_turn,
     end_combat,
     get_live,
     start_combat,
@@ -71,6 +74,7 @@ from tests.c21_support import (
     events,
     foe,
     monster_turn,
+    pc,
     roster,
     seat_summon,
     start,
@@ -411,12 +415,54 @@ def test_a_summon_dropped_on_its_own_move_hands_the_turn_on() -> None:
     act(handle, SPIRIT, intent_type="move", target_zone_id="zone:b")
     tail = live.event_log[logged:]
     left = tail.index(CombatantLeft(entity_id=SPIRIT, reason="zero_hp"))
-    assert tail[left + 1] == TurnStarted(actor_id="mon:foe")
+    assert tail[left + 1 : left + 4] == [
+        TurnPhase(actor_id=SPIRIT, phase="turn_end", round_number=1),
+        TurnEnded(actor_id=SPIRIT),
+        TurnStarted(actor_id="mon:foe"),
+    ]
+    assert live.last_ended_turn == (1, SPIRIT)
     assert not [e for e in tail if isinstance(e, ActorMoved)]
     assert (roster(live), _current_actor(live).entity_id) == ([OWNER, "mon:foe"], "mon:foe")
     with pytest.raises(IntentRejectedError) as rejected:
         act(handle, SPIRIT, intent_type="pass")
     assert rejected.value.reason == "actor_not_in_initiative"
+
+
+def test_a_legendary_action_that_drops_the_current_summon_opens_no_window() -> None:
+    # SRD 5.2 Legendary Actions: taken "immediately after another creature's
+    # turn" — here the summoner's, before its spirit acts. The spirit leaves
+    # with no turn to end, so no window opens after it; the next creature's
+    # turn opens once the legendary action has resolved.
+    lich = foe(
+        entity_id="mon:lich",
+        name="Lich",
+        initiative=10,
+        hp_current=256,
+        hp_max=256,
+        ac=19,
+        monster_template_slug="lich",
+        zone_id=cell_id(2, 1),
+    )
+    handle, live = start(
+        [summoner(hp_current=90, hp_max=90), pc("char:ally", initiative=15, zone_id=cell_id(0, 2))],
+        seed=1,
+        encounter=[lich],
+        active_effects=[anchor_effect(OWNER)],
+    )
+    seat_summon(live, OWNER, zone_id=cell_id(1, 1), hp=3)
+    act(handle, OWNER, intent_type="pass")
+    assert _current_actor(live).entity_id == SPIRIT
+    first = len(live.event_log)
+    asyncio.run(advance_monster_turn(handle, legendary=True))
+    tail = live.event_log[first:]
+    started = tail.index(TurnStarted(actor_id="char:ally"))
+    assert CombatantLeft(entity_id=SPIRIT, reason="zero_hp") in tail[:started]
+    assert [type(e) for e in tail[started:]] == [TurnStarted, TurnPhase]
+    assert not [e for e in tail if isinstance(e, TurnEnded)]
+    assert live.last_ended_turn == (1, OWNER)
+    with pytest.raises(IntentRejectedError) as refused:
+        asyncio.run(advance_monster_turn(handle, legendary=True))
+    assert refused.value.reason == "no_legendary_action"
 
 
 def test_every_reactor_still_reacts_after_a_summon_leaves_mid_loop() -> None:

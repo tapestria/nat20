@@ -14,6 +14,7 @@ then its damage dice.
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Iterator
 from typing import Any
 
@@ -30,8 +31,10 @@ from dnd5e_engine.events import (
     ConcentrationDropped,
     ConditionApplied,
     DamageApplied,
+    DeathSaveRolled,
     EffectExpired,
     IntentSubmitted,
+    LegendaryActionUsed,
     SaveRolled,
     TurnEnded,
     TurnPhase,
@@ -44,6 +47,7 @@ from dnd5e_engine.orchestrator import (
     _emit,
     _LiveCombat,
     _stat_block_magnitudes_of,
+    advance_monster_turn,
 )
 from dnd5e_engine.spatial import cell_id
 from dnd5e_engine.types.effects import ActiveEffect
@@ -346,3 +350,80 @@ def test_a_broken_concentration_dismisses_the_spirit_on_seed_4() -> None:
     assert left == CombatantLeft(entity_id=spirit, reason="concentration_drop")
     assert roster(live) == ["char:druid", "mon:breaker", "mon:foe"]
     assert len(events(live, CombatantJoined)) == 1
+
+
+# ── A command the spirit does not survive ────────────────────────────────────
+
+
+def _rend_own_summoner(
+    *, ally_hp: int = 0, encounter: list[Any] | None = None
+) -> tuple[CombatHandle, _LiveCombat, list[Any]]:
+    """Seed 1: the spirit's first Rend (d20 5 → 13) hits its 3-HP summoner for
+    14. The summoner drops to 0 Hit Points and its concentration ends, so the
+    spirit leaves with a Rend still owed; the ally at 0,2 acts next. Returns
+    the Rend's events and everything after them."""
+    handle, live = start(
+        [
+            summoner(hp_current=3),
+            pc("char:ally", initiative=15, hp_current=ally_hp, zone_id=cell_id(0, 2)),
+        ],
+        seed=1,
+        encounter=encounter,
+    )
+    act(handle, SUMMONER, intent_type="cast_spell", spell_id="summon-dragon")
+    # A legendary creature already spent its window after the summoner's turn.
+    live.legendary_windows_used.update((1, SUMMONER, m) for m in live.encounter_ids)
+    first = len(live.event_log)
+    _rend(handle, SUMMONER)
+    assert events(live, CombatantLeft) == [
+        CombatantLeft(entity_id=SPIRIT, reason="concentration_drop")
+    ]
+    return handle, live, live.event_log[first:]
+
+
+def test_a_spirit_that_leaves_mid_command_hands_the_turn_on_once() -> None:
+    """The next creature's turn starts once, so the ally rolls one death save
+    ("Whenever you start your turn with 0 Hit Points, you must make a special
+    saving throw")."""
+    _, live, tail = _rend_own_summoner()
+    assert [e.actor_id for e in tail if isinstance(e, TurnStarted)] == ["char:ally"]
+    assert [e.target_id for e in tail if isinstance(e, DeathSaveRolled)] == ["char:ally"]
+    assert live.current_actor_id == "char:ally"
+
+
+def test_the_whole_command_precedes_the_next_turn() -> None:
+    """Every event of the Rend, the summoner's fall included, comes before the
+    next creature's ``TurnStarted``; then the spirit's turn ends as any turn
+    does, so the round's order of events reads as it happened."""
+    _, live, tail = _rend_own_summoner()
+    started = tail.index(TurnStarted(actor_id="char:ally"))
+    assert [e for e in tail[:started] if isinstance(e, Unconscious)] == [
+        Unconscious(target_id=SUMMONER)
+    ]
+    assert tail[started - 2 : started] == [
+        TurnPhase(actor_id=SPIRIT, phase="turn_end", round_number=1),
+        TurnEnded(actor_id=SPIRIT),
+    ]
+    assert not [e for e in tail[started:] if isinstance(e, (Unconscious, ConditionApplied))]
+    assert live.last_ended_turn == (1, SPIRIT)
+
+
+def test_a_legendary_action_may_follow_the_spirits_last_turn() -> None:
+    """SRD 5.2 Legendary Actions: taken "immediately after another creature's
+    turn". The spirit's turn ends when it leaves, so a legendary creature gets
+    that window like any other."""
+    dragon = foe(
+        entity_id="mon:dragon",
+        name="Dragon",
+        initiative=5,
+        hp_current=195,
+        hp_max=195,
+        ac=19,
+        monster_template_slug="adult-black-dragon",
+        zone_id=cell_id(9, 9),
+    )
+    handle, live, _ = _rend_own_summoner(ally_hp=40, encounter=[dragon])
+    first = len(live.event_log)
+    asyncio.run(advance_monster_turn(handle, legendary=True, actor_id="mon:dragon"))
+    [used] = [e for e in live.event_log[first:] if isinstance(e, LegendaryActionUsed)]
+    assert used.actor_id == "mon:dragon"

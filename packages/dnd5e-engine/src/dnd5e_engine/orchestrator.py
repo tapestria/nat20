@@ -3189,6 +3189,12 @@ class _LiveCombat:
     # ``_eligible_legendary_actor``'s "immediately after ANOTHER creature's
     # turn" gate. ``None`` before any turn has ended.
     last_ended_turn: tuple[int, str] | None = None
+    # The current actor that left the initiative order while an intent or a
+    # legendary action was resolving (C21). The turn passes on only once that
+    # resolution completes (``_hand_off_departed_turn``), so every event it
+    # emits precedes the next ``TurnStarted``. While it is set no turn is
+    # running: the pointer names the next creature to open.
+    departed_actor_id: str | None = None
     # C18 §Monster action economy — one-shot guard for "only one of these
     # actions can be taken at a time": every ``(round, ended_actor_id,
     # monster_id)`` window that has already spent a legendary action.
@@ -8542,8 +8548,9 @@ def _open_turn_at_current_index(live: _LiveCombat) -> None:
     round when the index has run past the last slot.
 
     Shared by ``_end_turn_and_advance`` (after the ending actor's turn-end
-    phase) and ``_leave_roster`` (a current actor that disappears has no end
-    of turn, C21), so neither path skips the next creature's turn.
+    phase) and ``_hand_off_departed_turn`` (a current actor that left the
+    initiative order, whose removal already moved the pointer on, C21), so
+    neither path skips the next creature's turn.
     """
     new_round = live.current_turn_index >= len(live.initiative)
     if new_round:
@@ -8557,9 +8564,10 @@ def _end_turn_and_advance(live: _LiveCombat, actor_id: str) -> None:
 
     The ONE turn-advance implementation in the engine: ``submit_player_intent``
     (both the spell-slot reject paths and the normal post-resolution path) and
-    ``advance_monster_turn`` all route through here, and ``start_combat`` runs
-    the second half via ``_begin_turn``. Before F3a each of those three sites
-    carried its own copy of the emit-and-wrap block.
+    ``advance_monster_turn`` all route through here, ``start_combat`` runs
+    the second half via ``_begin_turn``, and ``_hand_off_departed_turn``
+    reuses both halves for a creature that left mid-turn (C21). Before F3a
+    each of those three sites carried its own copy of the emit-and-wrap block.
 
     Event order at the boundary is fixed and pinned by
     ``tests/test_turn_lifecycle.py``::
@@ -8577,12 +8585,22 @@ def _end_turn_and_advance(live: _LiveCombat, actor_id: str) -> None:
     turn end and never on the bonus-action path, which returns before reaching
     here.
 
-    A creature that left the initiative order during its own turn (C21) has
-    no turn to end: its departure already opened the next creature's turn,
-    so a caller that later tries to end it does nothing.
+    A creature that left the initiative order during its own turn (C21) is
+    no longer in it: its removal already moved the pointer to the next
+    creature, so ending its turn is the pending hand-off
+    (``_hand_off_departed_turn``), done once.
     """
     if _find_combatant(live, actor_id) is None:
+        _hand_off_departed_turn(live)
         return
+    _close_turn(live, actor_id)
+    live.current_turn_index += 1
+    _open_turn_at_current_index(live)
+
+
+def _close_turn(live: _LiveCombat, actor_id: str) -> None:
+    """The first half of the turn boundary: ``actor_id``'s turn-end phase and
+    hooks, ``TurnEnded``, and the legendary-action window after it."""
     _emit(
         live,
         TurnPhase(actor_id=actor_id, phase="turn_end", round_number=live.round_number),
@@ -8590,11 +8608,43 @@ def _end_turn_and_advance(live: _LiveCombat, actor_id: str) -> None:
     run_turn_end(live, actor_id)
     _emit(live, TurnEnded(actor_id=actor_id))
     # C18 §Monster action economy — record the window a legendary action may
-    # be taken in, BEFORE the round/turn-index bump below moves
+    # be taken in, BEFORE the caller's round/turn-index bump moves
     # ``live.round_number`` past the round this turn just ended in.
     live.last_ended_turn = (live.round_number, actor_id)
-    live.current_turn_index += 1
+
+
+def _hand_off_departed_turn(live: _LiveCombat, *, turn_began: bool = True) -> None:
+    """Open the next creature's turn after the current actor left the
+    initiative order (C21), once the intent or legendary action that removed
+    it has resolved, so all of that resolution's events precede the next
+    ``TurnStarted``. Its removal already moved the pointer to the next
+    creature, so the pointer is not bumped. A no-op when nothing is pending.
+
+    A creature that left during its own intent had a turn, and it ends as any
+    turn does — the ``turn_end`` phase and hooks, ``TurnEnded``, and the
+    window SRD 5.2 Legendary Actions open "immediately after another
+    creature's turn". ``turn_began=False`` is a legendary action's removal:
+    taken in the window after the previous creature's turn, before this one
+    acted, so the departed creature had no turn to end and opens no window.
+    """
+    departed = live.departed_actor_id
+    if departed is None:
+        return
+    if turn_began:
+        _close_turn(live, departed)
+    live.departed_actor_id = None
     _open_turn_at_current_index(live)
+
+
+def _keep_turn(live: _LiveCombat) -> None:
+    """The tail of an intent that keeps its actor's turn: roll the actor's
+    pending death save — unless the actor left the initiative order during
+    the intent, whose turn is then handed on instead (the pointer already
+    names the next creature, whose own turn start rolls its death save)."""
+    if live.departed_actor_id is not None:
+        _hand_off_departed_turn(live)
+        return
+    _maybe_roll_death_save(live)
 
 
 def _end_action(live: _LiveCombat, actor_id: str, intent: PlayerIntent) -> None:
@@ -8729,18 +8779,21 @@ def _leave_roster(live: _LiveCombat, entity_id: str, reason: CombatantLeftReason
     "The creature disappears when it drops to 0 Hit Points or when the spell
     ends."
 
-    Splices it out, emits ``CombatantLeft`` and, when it was the current
-    actor, opens the next creature's turn at once: it has no end of turn (no
-    ``turn_end`` phase, hooks or ``TurnEnded``), and nobody is skipped. A
-    no-op for an id not in the roster, so two expiries in one cascade never
-    remove it twice. Draws nothing.
+    Splices it out and emits ``CombatantLeft``. When it was the current
+    actor, the turn passes on — nobody skipped — once the resolution in
+    progress completes (``_hand_off_departed_turn``), so the rest of that
+    resolution never lands inside the next turn. While that hand-off is
+    pending no turn is running, so a creature removed from the slot the
+    pointer names never had a turn to end. A no-op for an id not in the
+    roster, so two expiries in one cascade never remove it twice. Draws
+    nothing.
     """
     if _find_combatant(live, entity_id) is None:
         return
     was_current = _remove_from_roster(live, entity_id)
     _emit(live, CombatantLeft(entity_id=entity_id, reason=reason))
-    if was_current:
-        _open_turn_at_current_index(live)
+    if was_current and live.departed_actor_id is None:
+        live.departed_actor_id = entity_id
 
 
 def _validate_intent_preconditions(
@@ -11711,6 +11764,9 @@ async def submit_player_intent(
     # ``_dispatch_turn_nonending_intent``'s docstring for the SRD framing
     # of each.
     if await _dispatch_turn_nonending_intent(live, current, intent):
+        # The actor keeps its turn — unless an opportunity attack on its move
+        # made it leave the initiative order.
+        _hand_off_departed_turn(live)
         return
 
     # USE_FEATURE — resolve the feature to its single concrete activity BEFORE
@@ -12339,7 +12395,7 @@ async def submit_player_intent(
     # (Action Surge) is part of the turn rather than an action, so it keeps
     # the turn too.
     if is_bonus_action or action_cost.is_free_action or funding != "action":
-        _maybe_roll_death_save(live)
+        _keep_turn(live)
         return
     # SRD §Extra Attack — a main-hand attack keeps the turn (R1) while
     # swings remain this Action, OR a two-weapon-fighting off-hand window
@@ -12347,7 +12403,7 @@ async def submit_player_intent(
     # ``_twf_window_open`` is always False, so a 1-attack actor's attack
     # ends the turn exactly as before this feature — the back-compat bar).
     if intent.intent_type == "attack" and not _attack_action_is_spent(live, current):
-        _maybe_roll_death_save(live)
+        _keep_turn(live)
         return
     # An Action intent ends the turn unless an Action Surge extra action is left.
     _end_action(live, actor_id, intent)
@@ -12798,6 +12854,7 @@ async def advance_monster_turn(
 
     if legendary:
         _take_legendary_action(live, _eligible_legendary_actor(live, actor_id))
+        _hand_off_departed_turn(live, turn_began=False)
         return
 
     current = _current_actor(live)

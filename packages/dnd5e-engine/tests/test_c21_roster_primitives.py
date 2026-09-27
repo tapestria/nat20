@@ -22,6 +22,7 @@ from dnd5e_engine.orchestrator import (
     _current_actor,
     _end_action,
     _end_turn_and_advance,
+    _hand_off_departed_turn,
     _insert_into_roster,
     _leave_roster,
     _LiveCombat,
@@ -131,21 +132,24 @@ def test_remove_at_every_index_keeps_the_turn_order() -> None:
             assert roster(live) == [e for e in order if e != removed], case
 
 
-def test_removing_the_current_actor_opens_the_next_turn() -> None:
+def test_removing_the_current_actor_ends_its_turn_after_the_resolution() -> None:
     handle, live = _seated(2)  # hero, A, the newcomer, B, C
     act(handle, HERO, intent_type="pass")
     monster_turn(handle)  # A
     assert _current_actor(live).entity_id == NEW
-    ended_before = live.last_ended_turn
     logged = len(live.event_log)
     _leave_roster(live, NEW, "zero_hp")
-    tail = live.event_log[logged:]
-    assert tail[0] == CombatantLeft(entity_id=NEW, reason="zero_hp")
-    assert tail[1] == TurnStarted(actor_id="mon:b")
-    assert tail[2] == TurnPhase(actor_id="mon:b", phase="turn_start", round_number=1)
-    assert not [e for e in events(live, TurnEnded) if e.actor_id == NEW]
-    assert not [e for e in events(live, TurnPhase) if e.actor_id == NEW and e.phase == "turn_end"]
-    assert live.last_ended_turn == ended_before == (1, "mon:a")
+    assert live.event_log[logged:] == [CombatantLeft(entity_id=NEW, reason="zero_hp")]
+    assert live.departed_actor_id == NEW
+    _hand_off_departed_turn(live)
+    assert live.event_log[logged + 1 :][:4] == [
+        TurnPhase(actor_id=NEW, phase="turn_end", round_number=1),
+        TurnEnded(actor_id=NEW),
+        TurnStarted(actor_id="mon:b"),
+        TurnPhase(actor_id="mon:b", phase="turn_start", round_number=1),
+    ]
+    assert live.last_ended_turn == (1, NEW)
+    assert live.departed_actor_id is None
     assert roster(live) == [HERO, "mon:a", "mon:b", "mon:c"]
     assert (live.current_turn_index, live.round_number) == (2, 1)
 
@@ -158,24 +162,47 @@ def test_removing_the_last_slot_while_current_wraps_to_a_new_round() -> None:
     assert _current_actor(live).entity_id == NEW
     logged = len(live.event_log)
     _leave_roster(live, NEW, "spell_ended")
+    _hand_off_departed_turn(live)
     tail = live.event_log[logged:]
-    assert tail[0] == CombatantLeft(entity_id=NEW, reason="spell_ended")
-    assert tail[1] == RoundStarted(round_number=2)
-    assert tail[2] == TurnPhase(actor_id=None, phase="round_start", round_number=2)
-    assert tail[3] == TurnStarted(actor_id=HERO)
+    assert tail[:6] == [
+        CombatantLeft(entity_id=NEW, reason="spell_ended"),
+        TurnPhase(actor_id=NEW, phase="turn_end", round_number=1),
+        TurnEnded(actor_id=NEW),
+        RoundStarted(round_number=2),
+        TurnPhase(actor_id=None, phase="round_start", round_number=2),
+        TurnStarted(actor_id=HERO),
+    ]
     assert (live.current_turn_index, live.round_number) == (0, 2)
 
 
-def test_ending_a_departed_actors_turn_is_a_no_op() -> None:
+def test_ending_a_departed_actors_turn_hands_it_on_once() -> None:
     handle, live = _seated(2)
     act(handle, HERO, intent_type="pass")
     monster_turn(handle)  # A
     _leave_roster(live, NEW, "zero_hp")
+    _end_turn_and_advance(live, NEW)
+    assert [e.actor_id for e in events(live, TurnEnded)][-1:] == [NEW]
     logged = len(live.event_log)
     _end_turn_and_advance(live, NEW)
     _end_action(live, NEW, PlayerIntent(intent_type="attack", target_id=HERO))
+    _hand_off_departed_turn(live)
     assert len(live.event_log) == logged
     assert _current_actor(live).entity_id == "mon:b"
+
+
+def test_a_second_departure_before_the_hand_off_skips_nobody() -> None:
+    # While a hand-off is pending no turn is running: the slot the pointer
+    # names is the next creature to open, so its departure moves the pointer
+    # on to the creature after it rather than ending a turn it never began.
+    handle, live = _seated(2)  # hero, A, the newcomer, B, C
+    act(handle, HERO, intent_type="pass")
+    monster_turn(handle)  # A
+    _leave_roster(live, NEW, "zero_hp")
+    _leave_roster(live, "mon:b", "zero_hp")
+    _hand_off_departed_turn(live)
+    assert [e.actor_id for e in events(live, TurnEnded)][-1:] == [NEW]
+    assert _current_actor(live).entity_id == "mon:c"
+    assert live.current_actor_id == "mon:c"
 
 
 def test_leaving_twice_is_a_no_op() -> None:
@@ -325,6 +352,7 @@ def test_primitives_draw_nothing() -> None:
     _insert_into_roster(live, late, 1, zone_id=NEW_ZONE)  # before the current actor
     _remove_from_roster(live, "mon:late")
     _end_turn_and_advance(live, "mon:a")  # the newcomer's turn opens
-    _leave_roster(live, NEW, "zero_hp")  # the current actor leaves: B's turn opens
+    _leave_roster(live, NEW, "zero_hp")  # the current actor leaves
+    _hand_off_departed_turn(live)  # its turn ends and B's opens
     assert _current_actor(live).entity_id == "mon:b"
     assert live.rng.getstate() == state

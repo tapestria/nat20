@@ -669,8 +669,11 @@ class CombatantLeft(BaseModel):
     concentration on the spell ends for any reason but the spell's maximum
     duration, ``spell_ended`` at that duration, ``zero_hp`` at 0 Hit Points.
     Emitted once the creature is out of the order: a live view read on it no
-    longer lists it, and when it was the current actor the next creature's
-    turn follows at once.
+    longer lists it. When it was the current actor, the turn passes on once
+    the intent or legendary action that removed it has resolved: after the
+    rest of that resolution's events, a creature that left during its own
+    intent gets its ``TurnPhase(turn_end)`` and ``TurnEnded`` as any turn
+    ends, then the next creature's ``TurnStarted`` follows.
     """
 
     type: Literal["combatant_left"] = "combatant_left"
