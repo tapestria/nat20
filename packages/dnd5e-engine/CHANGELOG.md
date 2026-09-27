@@ -11,8 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Lockstep release with `dnd5e-srd-data` 0.6.0 and `nat20-bridge` 0.6.0. The
 engine now depends on `dnd5e-srd-data>=0.6.0` (it reads the typed monster
-traits, `Monster.ac`, `spellcasting_ability` and the legendary pool sizes);
-`nat20-bridge` requires both at `>=0.6.0`.
+traits and `spellcasting_ability`, the legendary pool sizes, and now-filled
+`Monster.ac` values for every monster); `nat20-bridge` requires both at
+`>=0.6.0`.
 
 Core-mechanics **foundations** (F1 actor stat projection, F2 unified d20 test,
 F3 turn lifecycle) and clusters **C12 — conditions enforced**, **C13 —
@@ -22,7 +23,12 @@ initiative with Surprise, and opportunity attacks through the shared d20
 primitive), **C15 — attack rules** (weapon proficiency, range tiers,
 thrown weapons, Ranged Attacks in Close Combat, Heavy, versatile grip,
 damage attribution, crit-at-0-HP, Loading, and all eight 2024 weapon
-masteries), **C17 — spell slots, rests and upcasting** (per-class/
+masteries), **C16 — grid AoE targeting** (typed-template enumeration with
+line-of-effect, creature cover, multi-cell grid movement and forced
+movement), **C16b — vision & light** (scene lighting/obscurement and the
+`_combatant_can_see` composite gating Dodge, Ranged Attacks in Close Combat,
+Opportunity Attacks, Hide and Frightened), **C17 — spell slots, rests and
+upcasting** (per-class/
 multiclass/Pact Magic slot derivation, rest-based slot recovery and
 Exhaustion reduction, upcast target-count scaling, Counterspell/readied-cast
 slot+range gating, and out-of-combat Ritual resolution), **C18 — monster
@@ -764,6 +770,9 @@ Behavioural deltas (and the fixtures they move) are enumerated in
 - **`nat20-bridge` reports its own version (C23).** `/v1/health` said
   `"0.3.2"` since 0.3.2; `nat20_bridge.__version__` now reads the installed
   package.
+- **`GET /v1/combat/{cid}` returns a `grid` block.** The response now
+  carries the combat's `GridScene`, or `null` for a zone-graph combat — the
+  SillyTavern extension's map view reads it.
 
 ### Deprecated
 

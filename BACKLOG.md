@@ -328,6 +328,16 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   opportunity attack that kills a moving creature credits the mover itself,
   and a readied spell or a reaction credits the creature whose turn it is.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_record_death`)
+- **A second late `narration_events` consumer on an ended combat awaits
+  forever (2026-09-27, C23).** `end_combat` enqueues a `None` sentinel;
+  `narration_events` takes it off the queue and returns without putting it
+  back, unlike `drain_pending_events`, which re-queues it so another
+  consumer still sees it. A first late consumer started after `end_combat`
+  gets the sentinel and returns cleanly; a second one finds the queue empty
+  and blocks on `event_queue.get()` with nothing left to ever wake it.
+  Pre-existing, but this release's migration guide now advertises a late
+  consumer draining `combat_ended` after close.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::narration_events`)
 - **Spell/save/heal damage is not attributed (2026-09-02, narrowed by C15).**
   C15 added `DamageApplied.source_id` (weapon slug / synthesized activity id
   / `"mastery:<slug>"` for a mastery proc) and `is_crit`, and threads both
@@ -1210,6 +1220,31 @@ now calls the engine rather than standing in for it. Residual gaps:
   modelled; Keen Senses and Aggressive are absent from the SRD 5.2 corpus
   entirely.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/save_primitive.py`)
+- **A templated monster's senses are never hydrated (2026-09-27, C23).**
+  `EncounterMemberSpec` has no `senses` field, and `_build_foe_combatants`
+  copies a template's ability scores, proficiency bonus, save/skill
+  proficiencies, trait mechanics and spellcasting ability onto the live
+  `Combatant` but never its Blindsight, Darkvision, Truesight or
+  Tremorsense — every templated foe keeps `Combatant.senses`'s all-`None`
+  default. So C23's Blindsight-through-Blinded rule, and every other
+  sense-gated consumer (Dodge, Ranged Attacks in Close Combat, Opportunity
+  Attacks, Hide, Frightened, the Invisible carve-out), never reaches a
+  templated monster. Hydrating it changes seeded results (a templated foe
+  that currently can't see in the dark or through Invisible would start
+  seeing), so the fix belongs in its own cluster.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_build_foe_combatants`)
+- **An engine-rolled Initiative reads a monster's Dexterity modifier, never
+  its own Initiative modifier (2026-09-27, C23).** SRD 5.2: "A monster's
+  Initiative modifier is typically equal to its Dexterity modifier, but some
+  monsters have additional modifiers, such as Proficiency Bonus."
+  `_initiative_dexterity` (C23) reads only `Monster.ability_scores.dex`, and
+  the dataset carries no separate Initiative-modifier field to read
+  instead. Measured over the 329 SRD stat blocks, the true Initiative
+  modifier differs from the Dexterity modifier in 110 of them (e.g. the
+  Aboleth: DEX modifier +0, SRD Initiative modifier +3) — C23 moved the
+  rolled total closer to the SRD value for most of them, but not onto it.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_initiative_dexterity`,
+  `packages/dnd5e-srd-data/src/dnd5e_srd_data/schema/monster.py::Monster`)
 - **Target selection is hard-coded lowest-HP living enemy** (a PC or a
   party-side summon since C21b), with no reach/LoS/threat
   consideration — the monster AI never consults

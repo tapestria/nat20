@@ -8,7 +8,10 @@ a host to submit.
 
 Pass `monster_template_slug` on an `EncounterMemberSpec` and the engine resolves
 that creature from the bundled SRD corpus, giving it its actual actions,
-resistances, senses and saves:
+resistances and saves. It does NOT hydrate the template's senses (Blindsight,
+Darkvision, Truesight, Tremorsense) — `EncounterMemberSpec` has no `senses`
+field, so a templated foe keeps `Combatant.senses`'s all-`None` default
+(BACKLOG.md):
 
 ```python
 EncounterMemberSpec(
@@ -46,7 +49,7 @@ host can command one attack from a creature's current stat block with
 
 The built-in AI is deliberately simple and predictable:
 
-1. **Target** the lowest-HP living PC.
+1. **Target** the lowest-HP living enemy — a PC or a party-side summon.
 2. **Prefer Multiattack** when the creature has it — it is the full-action play.
 3. **Otherwise** pick an action whose own range covers the target, closing the
    distance first if needed (and Dashing when that helps).

@@ -766,12 +766,17 @@ _PROBES: dict[str, tuple[Any, str]] = {
         ),
         "✅",
     ),
+    # M2 (2026-09-27, C23 final review): both directions only when each side
+    # moves through its own path; ``_handle_move`` fires only the
+    # monster-reactor direction (the comment below), so a host-driven foe's
+    # move draws no character-reactor AoO (BACKLOG.md).
     "| Opportunity attack |": (
         lambda: (
             "def _fire_pc_opportunity_attacks_on_move(" in _src("orchestrator.py")
             and "def _fire_monster_opportunity_attacks_on_move(" in _src("orchestrator.py")
+            and "monster-reactor / PC-mover direction" in _src("orchestrator.py")
         ),
-        "(both directions)",
+        "⚠️ Partial",
     ),
     "Shield (incl. vs. Magic Missile)": (
         lambda: "def _apply_magic_missile_shield_carveout(" in _src("orchestrator.py"),
