@@ -70,7 +70,10 @@ ability, skill or saving throw with no handle at all.
 `end_combat(handle)` returns an `EndCombatResult` carrying a `CombatOutcome`
 — its `ended_reason` (victory, defeat, flee, forced), `residual_hp`,
 `deaths`, and `loot_drops` — plus the final tuple of `ActiveEffect`s, which
-the engine discards (effects are combat-scoped).
+the engine discards (effects are combat-scoped). The ended combat stays
+readable — a repeat `end_combat`, `get_live`, a last `drain_pending_events`
+— until 64 later combats have ended; its handle then raises
+`UnknownHandleError`.
 
 Not every SRD rule is resolved. The [capability matrix](../capabilities.md) is
 the per-mechanic inventory of what is and is not enforced.

@@ -131,8 +131,9 @@ a scene did before the fields existed. No light sources, and darkness does not
 apply the Blinded condition.
 
 A composite predicate (`orchestrator.py::_combatant_can_see`) layers Blinded
-(viewer) and Invisible (target) on top of `can_see`, piercing either only when
-blindsight/truesight reaches with line of sight — never darkvision. Every SRD
+(viewer) and Invisible (target) on top of `can_see`: only Blindsight in range
+sees through Blinded, and Blindsight or Truesight in range, with line of
+sight, sees an Invisible target — never darkvision. Every SRD
 5.2 rule phrased as "if you can see" other than the raw attack-roll `unseen`
 row reads this composite: the Dodge action's attack-disadvantage half, Ranged
 Attacks in Close Combat, the Opportunity Attack trigger in both directions,

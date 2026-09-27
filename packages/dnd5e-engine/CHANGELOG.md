@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0]
+
+Lockstep release with `dnd5e-srd-data` 0.6.0 and `nat20-bridge` 0.6.0. The
+engine now depends on `dnd5e-srd-data>=0.6.0` (it reads the typed monster
+traits, `Monster.ac`, `spellcasting_ability` and the legendary pool sizes);
+`nat20-bridge` requires both at `>=0.6.0`.
+
 Core-mechanics **foundations** (F1 actor stat projection, F2 unified d20 test,
 F3 turn lifecycle) and clusters **C12 — conditions enforced**, **C13 —
 concentration lifecycle**, **C14 — action economy** (Dodge, Help, Hide,
@@ -32,7 +39,9 @@ concentrates; Magic Weapon; Spiritual Weapon's caster-owned force; Wild Shape
 and Polymorph as stat-block swaps with Temporary Hit Points; stat-block attack
 commands) and **C21b — roster summons** (Summon Dragon's Draconic Spirit joins
 the initiative order right after its caster, takes the Dodge action unless
-commanded, and leaves at 0 Hit Points or with its caster's concentration).
+commanded, and leaves at 0 Hit Points or with its caster's concentration),
+closed out by **C23** (a bounded live-combat registry, sorted
+`ActiveEffect.statuses`, three rules corrections and the 0.6.0 floors).
 Nothing public is removed or renamed, but C19 reshapes two
 existing `CombatInstance` fields — `ac` and `attack_bonus` widen from
 defaulted `int`s to `int | None = None`, matching `hp_max`/`hp_current`/
@@ -350,8 +359,9 @@ Behavioural deltas (and the fixtures they move) are enumerated in
   / `attacker_unseen_by` feed the `unseen` `AdvantageSource` both directions.
 - **Vision & light consumers (C16b).** A new composite predicate,
   `orchestrator.py::_combatant_can_see(live, viewer, target)`, folds Blinded
-  (viewer) and Invisible (target) — piercing only via blindsight/truesight
-  reach with line of sight, never darkvision — on top of `GridTopology.can_see`.
+  (viewer; only blindsight in range sees through it) and Invisible (target;
+  blindsight or truesight in range, with line of sight, sees it) — never
+  darkvision — on top of `GridTopology.can_see`.
   It now backs every SRD 5.2 "can see" conjunct outside the raw `unseen`
   attack-roll row: Dodge's "if you can see the attacker" attack-disadvantage
   half (both the regular-attack context sites and opportunity attacks),
@@ -667,7 +677,7 @@ Behavioural deltas (and the fixtures they move) are enumerated in
   `CastFailed` — `target_invalid` for a named cell that is off the map,
   blocked, occupied or not the grid's own `col,row` id, `out_of_range` for one
   beyond range or out of sight, when no cell in range is free, or when the
-  caster is Blinded (unless its Blindsight or Truesight reaches the space) —
+  caster is Blinded (unless its Blindsight reaches the space) —
   and a `ready` naming it with `target_invalid`.
 - **Allegiance reads a summon's caster (C21b).** The monster AI picks its
   lowest-HP target among every enemy (`_is_enemy`), a summon included, instead
@@ -679,6 +689,9 @@ Behavioural deltas (and the fixtures they move) are enumerated in
   legendary action reset, recharge rolls and regeneration run once per round
   and creature rather than per round and turn index, so a removal mid-round
   neither skips nor repeats them. Unchanged while the roster never changes.
+- **`ActiveEffect.statuses` serializes sorted (C23).** The field stays a
+  `set[str]`; every dump mode emits a sorted list, so a multi-status
+  effect's JSON no longer follows the process's hash seed.
 
 ### Fixed
 
@@ -732,6 +745,25 @@ Behavioural deltas (and the fixtures they move) are enumerated in
   monster's own turn. The DC is now 8 + that ability's modifier + the
   Proficiency Bonus, or the formula, and `@mod` reads the ability the DC names
   (Giant Constrictor Snake Constrict: 2d8 + 4).
+- **Ended combats no longer stay in memory for the life of the process
+  (C23).** `end_combat` keeps the 64 most recently ended combats readable
+  (a repeat close, `get_live`, `drain_pending_events`, `narration_events`)
+  and releases older ones; their handles raise `UnknownHandleError`. A live
+  combat, or a new one registered under a reused handle id, is never
+  released.
+- **Truesight no longer lets a Blinded creature see (C23).** SRD 5.2 lets
+  only Blindsight work "even if you have the Blinded condition"; the "can
+  see" composite and Summon Dragon's placement now agree. Truesight still
+  sees an Invisible creature.
+- **A host-moved foe no longer draws opportunity attacks from its own side
+  (C23).** The monster-reactor direction takes only the mover's foes.
+- **An engine-rolled Initiative reads a template's Dexterity (C23).** An
+  encounter member with a resolvable `monster_template_slug` and
+  `dexterity` left at 10 adds the template's modifier, the Dexterity it
+  fights with.
+- **`nat20-bridge` reports its own version (C23).** `/v1/health` said
+  `"0.3.2"` since 0.3.2; `nat20_bridge.__version__` now reads the installed
+  package.
 
 ### Deprecated
 

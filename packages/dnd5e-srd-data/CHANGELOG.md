@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0]
+
+Lockstep release with `dnd5e-engine` 0.6.0 and `nat20-bridge` 0.6.0.
+
 Core-mechanics C22 — the dataset now carries the mechanics the engine used to
 keep only in Python — and C18 — `Monster.spellcasting_ability`, the field
 that lets stat-block monster spellcasting derive an honest save DC from the
@@ -107,9 +111,14 @@ derives the Armor Class of the 133 monsters that shipped none (below).
   Checked against the SRD 5.2 stat blocks, Flying Snake derives 12 against the
   SRD's 14, recorded in `tests/oracle/known_oracle_divergence.json`; `elk`'s
   flat 11 (SRD: 10) predates this change (BACKLOG). The engine reads
-  `Monster.ac` for Wild Shape and Polymorph forms, so the lockstep 0.6.0
-  release must raise the engine's `dnd5e-srd-data` floor.
+  `Monster.ac` for Wild Shape and Polymorph forms, so `dnd5e-engine` 0.6.0
+  requires `dnd5e-srd-data>=0.6.0`.
   (`packages/dnd5e-srd-data/src/dnd5e_srd_data/canonical/monsters/`)
+- **C23 — the translator applies the last AC-calculation override.** Foundry
+  applies an actor's changes in priority order, so of several enabled
+  overrides the last applied wins; the translator took the first. No
+  shipped monster has two, so no canonical file changes.
+  (`packages/dnd5e-srd-data/tools/translators/foundry.py::_with_actor_ac_calc`)
 
 ## [0.5.0]
 

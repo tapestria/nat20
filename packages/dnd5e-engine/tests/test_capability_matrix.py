@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from dnd5e_srd_data.loader import BundledAssetLoader
 
 from dnd5e_engine.activities.conjuration import CONJURATION_ALLOWLIST
 
@@ -174,6 +175,14 @@ def _event_class_body(name: str) -> str:
     head = source.split(f"\nclass {name}(", 1)
     assert len(head) == 2, f"events.py no longer defines {name}"
     return head[1].split("\nclass ", 1)[0]
+
+
+def _canonical_spell(slug: str) -> dict[str, Any]:
+    """One shipped spell's canonical JSON."""
+    import dnd5e_srd_data
+
+    path = Path(dnd5e_srd_data.__file__).parent / "canonical" / "spells" / f"{slug}.json"
+    return dict(json.loads(path.read_text()))
 
 
 #: row substring → (probe over the shipped source, substring the row must carry
@@ -625,6 +634,157 @@ _PROBES: dict[str, tuple[Any, str]] = {
         lambda: "def _stat_block_attack_failure(" in _src("orchestrator.py"),
         "(C21)",
     ),
+    # C23: every status row carries a probe (``test_every_status_row_has_a_probe``).
+    # Each fact below is the cheapest witness of the row's claim; a ❌ row's
+    # probe is True while the mechanic is still absent.
+    "Effect durations (`rounds`, `turns`, `seconds`": (
+        lambda: (
+            'key="engine:timed-effect-expiry"' in _src("orchestrator.py")
+            and "until_end_of_next_turn_of" in _src("orchestrator.py")
+        ),
+        "✅",
+    ),
+    "Death saves, stabilization": (
+        lambda: (
+            "def roll_death_save(" in _src("death_saves.py")
+            and "Stabilized(" in _src("death_saves.py")
+        ),
+        "✅",
+    ),
+    "Temporary HP, healing": (
+        lambda: (
+            "TempHpApplied(" in _src("activities/heal.py")
+            and "HealingApplied(" in _src("activities/heal.py")
+        ),
+        "✅",
+    ),
+    "| Cover, line of sight |": (
+        lambda: (
+            "def cover_on_cell(" in _src("spatial.py")
+            and "def has_line_of_sight(" in _src("spatial.py")
+        ),
+        "✅",
+    ),
+    # Flanking is an optional variant, not an SRD 5.2 rule: nothing names it.
+    "| Flanking |": (
+        lambda: "flank" not in _src("orchestrator.py").lower(),
+        "❌",
+    ),
+    "2-D grid, Chebyshev distance": (
+        lambda: "def _chebyshev(" in _src("spatial.py"),
+        "✅",
+    ),
+    "Blocked cells, difficult terrain": (
+        lambda: "difficult_terrain_cells" in _src("spatial.py"),
+        "✅",
+    ),
+    "| Walls / line of sight |": (
+        lambda: "def has_line_of_sight(" in _src("spatial.py"),
+        "✅",
+    ),
+    "Elevation / flying altitude": (
+        lambda: not re.search("elevation|altitude", _src("spatial.py"), re.IGNORECASE),
+        "❌",
+    ),
+    # A footprint needs a creature size, which the combatant model lacks.
+    "Multi-tile (Large+) creature footprints": (
+        lambda: not re.search(r"^    size\b", _src("types/combat.py"), re.MULTILINE),
+        "❌",
+    ),
+    # A cheapest-route search needs a priority queue; the route is BFS.
+    "Threat-aware or cost-aware pathfinding": (
+        lambda: "heapq" not in _src("spatial.py"),
+        "❌",
+    ),
+    "Spell attack rolls & save DCs": (
+        lambda: "def _resolve_dc(" in _src("activities/save.py"),
+        "✅",
+    ),
+    # Partial because the interactions are named special cases, not data.
+    "Counterspell, Shield, Hellish Rebuke, Magic Missile interactions": (
+        lambda: "def _apply_magic_missile_shield_carveout(" in _src("orchestrator.py"),
+        "⚠️ Partial",
+    ),
+    "| Dispel Magic |": (
+        lambda: not _spell_resolves(_canonical_spell("dispel-magic")),
+        "❌",
+    ),
+    "Typed action selection + built-in AI": (
+        lambda: "def rank_monster_actions(" in _src("activities/monster_actions.py"),
+        "✅",
+    ),
+    "| Multiattack fan-out |": (
+        lambda: "_ANY_COMBINATION_RE" in _src("activities/monster_actions.py"),
+        "⚠️ Partial",
+    ),
+    "| Monster spellcasting |": (
+        lambda: "def _resolve_monster_cast(" in _src("orchestrator.py"),
+        "✅",
+    ),
+    "Flee / retreat behaviour": (
+        lambda: (
+            "def _plan_flee_destination(" in _src("orchestrator.py")
+            and "has_fled" in _src("types/combat.py")
+        ),
+        "⚠️ Partial",
+    ),
+    "**Legendary actions**": (
+        lambda: "LegendaryActionUsed(" in _src("orchestrator.py"),
+        "✅",
+    ),
+    "**Lair actions**": (
+        lambda: "lair" not in _src("orchestrator.py").lower(),
+        "❌",
+    ),
+    "Recharge (5–6) abilities": (
+        lambda: "RechargeRolled(" in _src("orchestrator.py"),
+        "✅",
+    ),
+    "| Regeneration |": (
+        lambda: "MonsterTraitMechanic.REGENERATION" in _src("orchestrator.py"),
+        "✅",
+    ),
+    "Dataset categories `conditions/` + `traits/`": (
+        lambda: (
+            hasattr(BundledAssetLoader, "get_condition")
+            and hasattr(BundledAssetLoader, "get_trait")
+        ),
+        "✅",
+    ),
+    "Ability scores, proficiency, expertise": (
+        lambda: "ability_score_method" in _src("build_spec.py"),
+        "⚠️ Partial",
+    ),
+    "| Sneak Attack |": (
+        lambda: "def sneak_attack_triggers(" in _src("activities/attack.py"),
+        "✅",
+    ),
+    "Short/long rest, hit dice, feature & item recharge": (
+        lambda: (
+            "def resolve_long_rest(" in _src("rest.py")
+            and "def recover_item_uses(" in _src("rest.py")
+        ),
+        "✅",
+    ),
+    "| Opportunity attack |": (
+        lambda: (
+            "def _fire_pc_opportunity_attacks_on_move(" in _src("orchestrator.py")
+            and "def _fire_monster_opportunity_attacks_on_move(" in _src("orchestrator.py")
+        ),
+        "(both directions)",
+    ),
+    "Shield (incl. vs. Magic Missile)": (
+        lambda: "def _apply_magic_missile_shield_carveout(" in _src("orchestrator.py"),
+        "✅",
+    ),
+    # A readied reaction fires only on one of the engine's named triggers.
+    "Ready an action with a custom trigger": (
+        lambda: (
+            'ReactionTrigger = Literal["cast_spell", "hit_by_attack", "targeted_by_magic_missile"]'
+            in _src("orchestrator.py")
+        ),
+        "❌",
+    ),
 }
 
 
@@ -638,3 +798,25 @@ def test_status_rows_match_code_probes(row: str, matrix_text: str) -> None:
         f"{'claims' if status_if_true in lines[0] else 'does not claim'} "
         f"{status_if_true!r}, the source says {probe()}"
     )
+
+
+_STATUS_MARKS = ("✅", "⚠️", "❌")
+
+
+def _status_rows(text: str) -> list[str]:
+    """Every table row whose status (second) cell opens with a status mark."""
+    rows = []
+    for line in text.splitlines():
+        cells = line.strip().strip("|").split("|")
+        if line.startswith("|") and len(cells) > 1 and cells[1].strip().startswith(_STATUS_MARKS):
+            rows.append(line)
+    return rows
+
+
+def test_every_status_row_has_a_probe(matrix_text: str) -> None:
+    """A status row with no probe can drift from the code unnoticed, as ten
+    once did: every ✅/⚠️/❌ row must contain a ``_PROBES`` key."""
+    rows = _status_rows(matrix_text)
+    assert len(rows) > 70
+    unprobed = [row[:70] for row in rows if not any(key in row for key in _PROBES)]
+    assert unprobed == []

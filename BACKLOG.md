@@ -9,9 +9,9 @@ application concerns (narrators, persistence, world state, UI) are out of scope.
 closes it. When you discover one, add it under the right section with a date and
 a `packages/…` file anchor. Keep entries engine/data-centric — no host-app paths.
 
-Anchors are current as of `dnd5e-engine` / `dnd5e-srd-data` **v0.5.0** (Gen 1
-`dispatch.py` / `rules/combat.py` were removed in 0.5.0; anchors re-verified
-2026-08-26 by a code audit — see the "Audit 2026-08-26" sections).
+Anchors are current as of `dnd5e-engine` / `dnd5e-srd-data` **v0.6.0**
+(re-verified 2026-09-27 by the C23 scrub: every anchor names a file and a
+symbol, never a line number).
 
 The user-facing summary of the same information is
 [`docs/capabilities.md`](docs/capabilities.md) — the per-mechanic matrix of what
@@ -1240,17 +1240,6 @@ covers the steeds Find Steed and Phantom Steed summon (SRD 5.2 Find Steed:
 the steed "functions as a controlled mount while you ride it"), so both
 spells stay narrative (2026-09-26, C21b;
 `packages/dnd5e-engine/src/dnd5e_engine/activities/conjuration.py::SUMMONS`).
-
-## Documentation drift
-
-- `docs/capabilities.md` had ten ✅ rows the code did not back (Dodge/Hide/Help,
-  monster spellcasting, saves, background, weapon mastery, concentration
-  exclusivity, AoE templates, Extra Attack-less action economy, opportunity
-  attacks' "can see" check, ability-score/proficiency derivation). Corrected
-  2026-08-26. Closed 2026-08-26: `test_capability_matrix.py::
-  test_status_rows_match_code_probes` now pins ten representative rows to a
-  grep-level code probe in both directions (five added by C16, 2026-08-27). The probe set is a sample, not
-  exhaustive — **add a probe entry whenever a status row is flipped.**
 
 ## Foundations follow-ups (2026-08-26)
 
