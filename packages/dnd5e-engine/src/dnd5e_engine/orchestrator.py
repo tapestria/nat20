@@ -1632,12 +1632,19 @@ def _special_sense_reaches(live: _LiveCombat, viewer: Combatant, target: Combata
     line of sight is re-checked by ``SpatialTopology.can_see``. Untracked
     positions ⇒ False. Darkvision is NOT a special sense here (it only
     re-grades light — SRD 5.2 Darkvision)."""
-    viewer_zone = live.actor_zone.get(viewer.entity_id)
     target_zone = live.actor_zone.get(target.entity_id)
-    if viewer_zone is None or target_zone is None:
+    return target_zone is not None and _special_sense_reaches_zone(live, viewer, target_zone)
+
+
+def _special_sense_reaches_zone(live: _LiveCombat, viewer: Combatant, zone: str) -> bool:
+    """``_special_sense_reaches`` for a space rather than a creature: the
+    viewer's Blindsight or Truesight range reaches ``zone``. Untracked viewer
+    position ⇒ False."""
+    viewer_zone = live.actor_zone.get(viewer.entity_id)
+    if viewer_zone is None:
         return False
     for range_ft in (viewer.senses.blindsight, viewer.senses.truesight):
-        if range_ft and live.topology.within_range(viewer_zone, target_zone, range_ft):
+        if range_ft and live.topology.within_range(viewer_zone, zone, range_ft):
             return True
     return False
 
@@ -9505,12 +9512,15 @@ def _summon_placement(
     SRD 5.2 Summon Dragon: "It manifests in an unoccupied space that you can
     see within range". A space is legal when the caster can measure it, it is
     within the spell's range with line of sight and not behind total cover,
-    and — on a grid, where spaces are exclusive — it is a valid cell no living
-    creature occupies. An explicit ``target_zone_id`` must be legal: an
-    invalid or occupied cell is ``"target_invalid"``, one beyond range or out
-    of sight ``"out_of_range"``. Without one, the first legal cell of the
-    fixed scan outward from the caster (on a zone graph, the caster's own
-    zone). A creature ``target_id`` plays no part: the spell targets a space.
+    the caster is not Blinded (SRD 5.2: "You can't see") unless its Blindsight
+    or Truesight reaches the space, and — on a grid, where spaces are
+    exclusive — it is one of the grid's own cell ids (``col,row``) that no
+    living creature occupies. An explicit ``target_zone_id`` must be legal: an
+    invalid, non-canonical or occupied cell is ``"target_invalid"``, one
+    beyond range or out of sight ``"out_of_range"``. Without one, the first
+    legal cell of the fixed scan outward from the caster (on a zone graph, the
+    caster's own zone). A creature ``target_id`` plays no part: the spell
+    targets a space.
     """
     caster_cell = live.actor_zone.get(current.entity_id)
     spell = get_lib_loader().get_spell(intent.spell_id or "")
@@ -9523,13 +9533,23 @@ def _summon_placement(
         return None, "out_of_range"
     grid = live.topology if isinstance(live.topology, GridTopology) else None
     occupied = _occupied_cells(live, exclude=()) if grid is not None else set()
+    blinded = is_condition_active(Condition.BLINDED, _condition_names(current))
 
     def _free(cell: str) -> bool:
-        return grid is None or (grid.is_valid_cell(cell) and cell not in occupied)
+        # ``is_valid_cell`` parses with ``int()``, which also reads "1, 1": a
+        # creature seated there would match no other position check.
+        return grid is None or (
+            grid.is_valid_cell(cell) and cell == cell_id(*parse_cell(cell)) and cell not in occupied
+        )
+
+    def _seen(cell: str) -> bool:
+        return not blinded or _special_sense_reaches_zone(live, current, cell)
 
     def _in_sight(cell: str) -> bool:
-        return live.topology.distance_ft(caster_cell, cell) is not None and _in_range_with_los(
-            live.topology, caster_cell, cell, range_ft
+        return (
+            live.topology.distance_ft(caster_cell, cell) is not None
+            and _in_range_with_los(live.topology, caster_cell, cell, range_ft)
+            and _seen(cell)
         )
 
     if intent.target_zone_id is not None:
@@ -9539,7 +9559,7 @@ def _summon_placement(
             return None, "out_of_range"
         return intent.target_zone_id, None
     if grid is None:
-        return caster_cell, None
+        return (caster_cell, None) if _seen(caster_cell) else (None, "out_of_range")
     cell = next(
         (
             c
@@ -10027,9 +10047,11 @@ def _challenge_rating_of(live: _LiveCombat, entity_id: str) -> float | None:
     Challenge Rating equal to or less than the target's (or the target's level
     if it doesn't have a Challenge Rating)" — a Character's level; a monster's
     template CR (its own, not its form's, while it is transformed); ``None``
-    for a template-less creature, which is refused rather than guessed."""
+    for a template-less creature, which is refused rather than guessed, and
+    for a summoned creature, whose stat block reads "CR None" (the Draconic
+    Spirit's dataset ``cr`` of 0 cannot say so)."""
     target = _find_combatant(live, entity_id)
-    if target is None:
+    if target is None or entity_id in live.summons:
         return None
     if target.entity_type == "Character":
         return float(target.character_level)

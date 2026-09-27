@@ -18,12 +18,14 @@ import pytest
 from dnd5e_srd_data.loader import BundledAssetLoader
 
 from dnd5e_engine import CombatHandle, get_live
+from dnd5e_engine.activities.passive_stats import CombatantSenses
 from dnd5e_engine.events import (
     CastFailed,
     CastFailedReason,
     CombatantJoined,
     CombatantLeft,
     ConcentrationDropped,
+    ConditionApplied,
     DamageApplied,
     SpellCast,
     TurnEnded,
@@ -52,6 +54,7 @@ from tests.c21_support import (
     roster,
     start,
     summoner,
+    wizard,
 )
 
 SD = "summon-dragon"
@@ -247,8 +250,21 @@ _WALLED = GridScene(width=10, height=10, wall_segments=[WallSegment(x1=2, y1=0, 
         (GridScene(width=15, height=1), cell_id(13, 0), "out_of_range"),  # 65 ft
         (_WALLED, cell_id(3, 3), "out_of_range"),  # behind the wall
         (GridScene(width=2, height=1), None, "out_of_range"),  # no free cell at all
+        (GridScene(width=10, height=10), "1, 1", "target_invalid"),  # not the grid's own id
+        (GridScene(width=10, height=10), " 1,1", "target_invalid"),
+        (GridScene(width=10, height=10), "01,1", "target_invalid"),
     ],
-    ids=["occupied", "off-map", "blocked", "beyond-60-ft", "out-of-sight", "no-free-cell"],
+    ids=[
+        "occupied",
+        "off-map",
+        "blocked",
+        "beyond-60-ft",
+        "out-of-sight",
+        "no-free-cell",
+        "spaced-id",
+        "padded-id",
+        "zero-led-id",
+    ],
 )
 def test_no_legal_space_refuses_the_cast_before_anything_is_spent(
     scene: GridScene, target_zone_id: str | None, reason: CastFailedReason
@@ -293,6 +309,76 @@ def test_ready_summon_dragon_is_refused() -> None:
     ]
     assert live.pending_reactions == []
     assert combatant(live, SUMMONER).action_available
+
+
+@pytest.mark.parametrize("target_zone_id", [None, cell_id(0, 1)])
+def test_a_blinded_caster_sees_no_space(target_zone_id: str | None) -> None:
+    """SRD 5.2 Blinded: "You can't see" — so no space is one "that you can
+    see", and the cast is refused before anything is spent."""
+    handle, live = start([summoner()], seed=1)
+    _emit(live, ConditionApplied(target_id=SUMMONER, condition="blinded"))
+    _cast(handle, target_zone_id=target_zone_id)
+    assert events(live, CastFailed) == [
+        CastFailed(actor_id=SUMMONER, spell_id=SD, reason="out_of_range")
+    ]
+    assert not events(live, CombatantJoined)
+    assert live.spell_slots_by_entity[SUMMONER] == {1: 1, 5: 2}
+    assert combatant(live, SUMMONER).action_available
+
+
+def test_a_blinded_caster_sees_no_zone_either() -> None:
+    """On a zone graph the default space is the caster's own zone, which a
+    Blinded caster can't see either."""
+    scene = SceneTopology(
+        zones=["near", "far"], edges=[ZoneEdge(a="near", b="far", distance_ft=30)]
+    )
+    handle, live = _start_on([summoner(zone_id="near")], [foe(zone_id="far")], scene_zones=scene)
+    _emit(live, ConditionApplied(target_id=SUMMONER, condition="blinded"))
+    _cast(handle)
+    assert events(live, CastFailed) == [
+        CastFailed(actor_id=SUMMONER, spell_id=SD, reason="out_of_range")
+    ]
+    assert not events(live, CombatantJoined)
+
+
+@pytest.mark.parametrize(
+    ("target_zone_id", "seated"), [(cell_id(0, 2), True), (cell_id(0, 3), False)]
+)
+def test_blindsight_sees_a_space_while_blinded(target_zone_id: str, seated: bool) -> None:
+    """SRD 5.2 Blindsight: "you can see anything that isn't behind Total Cover
+    even if you have the Blinded condition" — within its 10 feet."""
+    handle, live = start([summoner(senses=CombatantSenses(blindsight=10))], seed=1)
+    _emit(live, ConditionApplied(target_id=SUMMONER, condition="blinded"))
+    _cast(handle, target_zone_id=target_zone_id)
+    assert [e.zone_id for e in joined(live, SUMMONER)] == ([target_zone_id] if seated else [])
+
+
+def test_polymorph_refuses_the_spirit_which_has_no_challenge_rating() -> None:
+    """SRD 5.2 Draconic Spirit: "CR None". Polymorph's form needs "a Challenge
+    Rating equal to or less than the target's (or the target's level if it
+    doesn't have a Challenge Rating)"; the spirit has neither, so even a CR 0
+    Cat is refused before anything is spent."""
+    handle, live = start(
+        [summoner(), wizard(initiative=15, zone_id=cell_id(0, 2))],
+        seed=1,
+        encounter=[foe(zone_id=cell_id(8, 8))],
+    )
+    _cast(handle)
+    monster_turn(handle)  # the spirit's Dodge
+    act(
+        handle,
+        "char:wiz",
+        intent_type="cast_spell",
+        spell_id="polymorph",
+        target_id=SPIRIT,
+        form_id="cat",
+    )
+    assert events(live, CastFailed) == [
+        CastFailed(actor_id="char:wiz", spell_id="polymorph", reason="invalid_form")
+    ]
+    assert live.spell_slots_by_entity["char:wiz"] == {2: 2, 4: 1}
+    assert combatant(live, "char:wiz").action_available
+    assert SPIRIT not in live.transforms
 
 
 # ── The anchor, recasts and ids ──────────────────────────────────────────────
