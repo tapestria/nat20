@@ -258,11 +258,16 @@ Behavioural deltas (and the fixtures they move) are enumerated in
   level (round down) of Rends per Attack action at the caster's spell attack
   bonus for 1d6 + 4 + the slot level. `advance_monster_turn` has it take the
   Dodge action when uncommanded (a pass when it can't act); a host commands
-  each Rend through `stat_block_action_id`. Its allegiance is its caster's,
-  but it never enters `party_ids`, `encounter_ids` or `CombatOutcome`. It
-  leaves at 0 Hit Points — no death, no XP — or when its caster's
-  concentration ends, and the next creature's turn starts at once if it was
-  the current actor. See the migration guide for every delta.
+  each Rend through `stat_block_action_id`, and any other attack, Grapple,
+  Shove or spell it is commanded is refused before anything is spent. Its
+  allegiance is its caster's, but it never enters `party_ids` or
+  `encounter_ids`, and `CombatOutcome` holds no Hit Points, XP or death of its
+  own, though a `DeathRecord.killer_id` can name it (resolve it through
+  `CombatantJoined.origin_caster_id`). It leaves at 0 Hit Points — no death,
+  no XP — or when its caster's concentration ends; if it was the current
+  actor, the turn passes on once the intent or legendary action that removed
+  it has resolved, and a turn it left during its own intent ends with
+  `TurnEnded`. See the migration guide for every delta.
 
 ### Added
 
@@ -660,9 +665,10 @@ Behavioural deltas (and the fixtures they move) are enumerated in
   (C21b).** The cast used to spend its slot and Action and anchor its
   concentration, with nothing else. With no legal space it is now refused with
   `CastFailed` — `target_invalid` for a named cell that is off the map,
-  blocked or occupied, `out_of_range` for one beyond range or out of sight, or
-  when no cell in range is free — and a `ready` naming it with
-  `target_invalid`.
+  blocked, occupied or not the grid's own `col,row` id, `out_of_range` for one
+  beyond range or out of sight, when no cell in range is free, or when the
+  caster is Blinded (unless its Blindsight or Truesight reaches the space) —
+  and a `ready` naming it with `target_invalid`.
 - **Allegiance reads a summon's caster (C21b).** The monster AI picks its
   lowest-HP target among every enemy (`_is_enemy`), a summon included, instead
   of among `party_ids`; Help, Cleave, Sneak Attack and Pack Tactics adjacency,

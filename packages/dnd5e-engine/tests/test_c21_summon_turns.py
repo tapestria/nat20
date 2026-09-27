@@ -21,7 +21,7 @@ from typing import Any
 import pytest
 from dnd5e_srd_data.loader import BundledAssetLoader
 
-from dnd5e_engine import CombatHandle, PlayerIntent, get_live
+from dnd5e_engine import CombatHandle, PlayerIntent, end_combat, get_live
 from dnd5e_engine.activities.conjuration import TRANSFORM_FORM_FLAG
 from dnd5e_engine.events import (
     AttackFailed,
@@ -430,6 +430,20 @@ def test_a_broken_concentration_dismisses_the_spirit_on_seed_4() -> None:
     assert left == CombatantLeft(entity_id=spirit, reason="concentration_drop")
     assert roster(live) == ["char:druid", "mon:breaker", "mon:foe"]
     assert len(events(live, CombatantJoined)) == 1
+
+
+def test_a_kill_on_the_spirits_turn_names_it_as_the_killer() -> None:
+    """A death record names the current actor that dealt the blow, the
+    spirit here; a host resolves that id to its caster through
+    ``CombatantJoined.origin_caster_id``. Seed 1: the Rend's 13 hits AC 5 and
+    its 14 Piercing drops the 3-HP foe."""
+    handle, live = start([summoner()], seed=1, encounter=[foe(hp_current=3, hp_max=3, ac=5)])
+    act(handle, SUMMONER, intent_type="cast_spell", spell_id="summon-dragon")
+    _rend(handle)
+    [death] = asyncio.run(end_combat(handle)).outcome.deaths
+    assert (death.target_id, death.killer_id) == ("mon:foe", SPIRIT)
+    [seated] = joined(live, SUMMONER)
+    assert (seated.entity_id, seated.origin_caster_id) == (SPIRIT, SUMMONER)
 
 
 # ── A command the spirit does not survive ────────────────────────────────────

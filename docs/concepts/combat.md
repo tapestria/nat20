@@ -37,17 +37,22 @@ creature it acts after, its cell, Hit Point maximum and Armor Class. "The
 creature disappears when it drops to 0 Hit Points or when the spell ends": the
 engine removes it and emits `CombatantLeft` with the reason (`"zero_hp"`,
 `"concentration_drop"` or `"spell_ended"`). If it was the current actor, the
-next creature's turn starts at once.
+next creature's turn starts once the intent or legendary action that removed
+it has resolved; if it left during its own intent, its own turn first ends as
+any turn does, with `TurnEnded`.
 
 A summon's id starts with `summon:` and its `entity_type` is `"Monster"`, so a
 host loop that calls `advance_monster_turn` whenever the engine's pointer names
 a non-PC needs no summon tracking: on the summon's turn the engine plays the
 SRD default, the Dodge action. To command it instead, submit its intents
 through `submit_player_intent(handle, <summon id>, intent)` — each Rend is one
-`attack` naming `stat_block_action_id="rend"`. `LiveCombatView.summons` maps
-each summon's id to its owner, spell, stat block and slot level. A summon is
-its caster's ally, but it never enters `party_ids`, `encounter_ids` or the
-`CombatOutcome`.
+`attack` naming `stat_block_action_id="rend"`; an attack off its stat block,
+or a spell, is refused. `LiveCombatView.summons` maps each summon's id to its
+owner, spell, stat block and slot level. A summon is its caster's ally, but it
+never enters `party_ids` or `encounter_ids`, and the `CombatOutcome` holds no
+Hit Points, XP or death of its own. A `DeathRecord.killer_id` can still name
+it, as the current actor that dealt the blow: `CombatantJoined.origin_caster_id`
+names its caster.
 
 ## Determinism and events
 

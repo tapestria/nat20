@@ -438,6 +438,14 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   treated as a 1-cell ray and a wider `template.width` is ignored.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_walk_zone_path`,
   `packages/dnd5e-engine/src/dnd5e_engine/spatial.py::cells_in_template`)
+- **A spaced cell id is stored as written (2026-09-27, C21b).**
+  `GridTopology.is_valid_cell` parses with `int()`, which also reads `"1, 1"`
+  or `" 1,1"`, so `start_combat` seats a combatant at such a `zone_id` and
+  Spiritual Weapon places its force at such a `target_zone_id` verbatim: a
+  string no other position check matches (another creature can enter that
+  space, an area of effect misses it). A `move` to one fails `unreachable`,
+  and Summon Dragon refuses one with `target_invalid`.
+  (`packages/dnd5e-engine/src/dnd5e_engine/spatial.py::GridTopology.is_valid_cell`)
 - **Vision is scene-lit only** (2026-08-27, amended 2026-09-02, 2026-09-03).
   No light sources (torches, *Light*, *Darkness*), no viewer-side
   obscurement, no Blinded emission from darkness; `can_see` reads
@@ -878,6 +886,22 @@ zone + apply logic:
   and may leave a stale entry keyed by its id, read by nothing that walks the
   roster.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_purge_entity_state`)
+- **A readied conjuration is refused (2026-09-27, C21b).** SRD 5.2 Ready:
+  "When you Ready a spell, you cast it as normal (expending any resources used
+  to cast it) but hold its energy, which you release with your Reaction when
+  the trigger occurs." A `ready` naming Summon Dragon is refused with
+  `CastFailed(reason="target_invalid")`, as C21a's Spiritual Weapon, Magic
+  Weapon and Polymorph are: the reaction queue's `_PendingReaction` carries
+  only the spell and its slot level, never the space, weapon or form the
+  conjuration needs.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_readied_conjuration_failure`)
+- **Summon Dragon's "space that you can see" ignores light (2026-09-27,
+  C21b).** SRD 5.2: "It manifests in an unoccupied space that you can see
+  within range." Placement reads range, line of sight, total cover and a
+  Blinded caster (with its Blindsight or Truesight), but not the light or
+  obscurement at the space against the caster's senses: a caster without
+  Darkvision can place the spirit in Darkness or a Heavily Obscured cell.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_summon_placement`)
 
 ## Rest & recovery
 
@@ -1424,7 +1448,8 @@ layer over the engine — see `docs/bridge.md`. Gaps found while shipping it:
   `two_handed`, draw `pool_points`, redeem a Bardic die
   (`redeem_granted_die`), name a Wild Shape or Polymorph form (`form_id`:
   both are refused with `invalid_form`) or command a stat-block attack
-  (`stat_block_action_id`), a summoned Draconic Spirit's Rend included.
+  (`stat_block_action_id`) — so a summoned Draconic Spirit, whose only
+  commandable attack is its Rend, can't be made to attack at all.
   `_view_route` doesn't expose `LiveCombatView.turn`, `constructs`,
   `transformations` or `summons` either, so `extra_actions_remaining`, a
   Spiritual Weapon force, a creature's form and a summon's caster aren't
