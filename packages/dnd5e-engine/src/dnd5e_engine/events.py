@@ -135,7 +135,8 @@ CastFailedReason = Literal[
     # equal to or less than the target's". (C21)
     "invalid_form",
     # SRD 5.2 Wild Shape: "You can't cast spells"; Polymorph: "it can't speak
-    # or cast spells" — a shape-shifted caster's cast is refused. (C21)
+    # or cast spells" — a shape-shifted caster's cast is refused, and so is a
+    # summoned creature's, whose stat block has no Spellcasting. (C21)
     "no_spellcasting",
 ]
 
@@ -585,9 +586,11 @@ class AttackFailed(BaseModel):
         # The attack names something its attacker can't attack with now (C21):
         # an action its current stat block lacks or that makes no attack roll;
         # a weapon while shape-shifted (SRD 5.2 Polymorph: "The target's gear
-        # melds into the new form"); or a Spiritual Weapon force it doesn't
-        # own, or on the turn the spell made its attack ("As a Bonus Action on
-        # your later turns, you can move the force up to 20 feet and repeat the
+        # melds into the new form"); for a summoned creature, anything but one
+        # of its stat block's attacks (a weapon, an Unarmed Strike, a Grapple
+        # or a Shove included); or a Spiritual Weapon force it doesn't own, or
+        # on the turn the spell made its attack ("As a Bonus Action on your
+        # later turns, you can move the force up to 20 feet and repeat the
         # attack").
         "action_unavailable",
     ]

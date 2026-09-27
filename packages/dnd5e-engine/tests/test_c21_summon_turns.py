@@ -21,11 +21,12 @@ from typing import Any
 import pytest
 from dnd5e_srd_data.loader import BundledAssetLoader
 
-from dnd5e_engine import CombatHandle, get_live
+from dnd5e_engine import CombatHandle, PlayerIntent, get_live
 from dnd5e_engine.activities.conjuration import TRANSFORM_FORM_FLAG
 from dnd5e_engine.events import (
     AttackFailed,
     AttackRolled,
+    CastFailed,
     CombatantJoined,
     CombatantLeft,
     ConcentrationDropped,
@@ -47,6 +48,7 @@ from dnd5e_engine.orchestrator import (
     _emit,
     _LiveCombat,
     _stat_block_magnitudes_of,
+    _summon_command_failure,
     advance_monster_turn,
 )
 from dnd5e_engine.spatial import cell_id
@@ -277,6 +279,84 @@ def test_transformed_numbers_are_unchanged() -> None:
     [damage] = events(live, DamageApplied)
     assert (roll.natural, roll.modifier, roll.roll_total) == (15, 4, 19)
     assert damage.amount == 7
+
+
+# ── The command surface: its stat block ─────────────────────────────────────
+
+
+def _nothing_spent(handle: CombatHandle, live: _LiveCombat, intent: dict[str, Any]) -> list[Any]:
+    """Submit ``intent`` for the spirit and return its events, after checking
+    that it spent nothing: no die, no Action, no Rend, and the turn is the
+    spirit's still."""
+    spirit = combatant(live, SPIRIT)
+    before = (spirit.action_available, spirit.attacks_remaining, live.rng.getstate())
+    first = len(live.event_log)
+    act(handle, SPIRIT, **intent)
+    spirit = combatant(live, SPIRIT)
+    assert (spirit.action_available, spirit.attacks_remaining, live.rng.getstate()) == before
+    assert live.current_actor_id == SPIRIT
+    return live.event_log[first:]
+
+
+@pytest.mark.parametrize(
+    "intent",
+    [
+        {"intent_type": "attack", "target_id": "mon:foe"},
+        {"intent_type": "attack", "weapon_id": "longsword", "target_id": "mon:foe"},
+        {"intent_type": "attack", "weapon_id": "unarmed-strike", "target_id": "mon:foe"},
+        {"intent_type": "grapple", "target_id": "mon:foe"},
+        {"intent_type": "shove", "target_id": "mon:foe"},
+    ],
+)
+def test_an_attack_off_the_stat_block_is_refused_before_anything_is_spent(
+    intent: dict[str, Any],
+) -> None:
+    """SRD 5.2 Draconic Spirit, Actions: Multiattack, Rend and Breath Weapon —
+    no weapon, so a command's attack names one of them. A plain attack, a
+    weapon or an Unarmed Strike (its damage, Grapple or Shove) is refused."""
+    handle, live = _summoned(seed=1)
+    assert _nothing_spent(handle, live, intent) == [
+        AttackFailed(actor_id=SPIRIT, target_id="mon:foe", reason="action_unavailable")
+    ]
+
+
+@pytest.mark.parametrize(
+    "intent",
+    [
+        {"intent_type": "cast_spell", "spell_id": "resistance", "target_id": SUMMONER},
+        {"intent_type": "cast_spell", "spell_id": "fire-bolt", "target_id": "mon:foe"},
+        {"intent_type": "ready", "spell_id": "fire-bolt", "reaction_trigger": "hit_by_attack"},
+    ],
+)
+def test_a_summon_casts_no_spell(intent: dict[str, Any]) -> None:
+    """The Draconic Spirit's stat block has no Spellcasting, and SRD 5.2 Ready:
+    "When you Ready a spell, you cast it as normal"."""
+    handle, live = _summoned(seed=1)
+    assert _nothing_spent(handle, live, intent) == [
+        CastFailed(actor_id=SPIRIT, spell_id=intent["spell_id"], reason="no_spellcasting")
+    ]
+
+
+@pytest.mark.parametrize(
+    "intent",
+    [
+        {"intent_type": "attack", "stat_block_action_id": "rend", "target_id": "mon:foe"},
+        {"intent_type": "dodge"},
+        {"intent_type": "dash"},
+        {"intent_type": "disengage"},
+        {"intent_type": "help", "target_id": SUMMONER},
+        {"intent_type": "hide"},
+        {"intent_type": "move", "target_zone_id": cell_id(0, 2)},
+        {"intent_type": "pass"},
+    ],
+)
+def test_the_actions_open_to_every_creature_stay_open(intent: dict[str, Any]) -> None:
+    """SRD 5.2 Monsters, Actions: "A monster can take the actions in this
+    section or take one of the actions available to all creatures" — Dash,
+    Disengage, Dodge, Help and Hide among them, and its movement."""
+    _, live = _summoned(seed=1)
+    spirit = combatant(live, SPIRIT)
+    assert _summon_command_failure(live, spirit, PlayerIntent(**intent)) is None
 
 
 # ── Dismissal end to end ─────────────────────────────────────────────────────

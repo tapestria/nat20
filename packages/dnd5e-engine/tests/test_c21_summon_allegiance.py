@@ -15,7 +15,7 @@ from typing import Any
 
 import pytest
 
-from dnd5e_engine import CombatHandle
+from dnd5e_engine import ActiveEffect, CombatHandle
 from dnd5e_engine.activities.passive_stats import CombatantSenses
 from dnd5e_engine.events import (
     ActorMoved,
@@ -488,6 +488,41 @@ def test_every_reactor_still_reacts_after_a_summon_leaves_mid_loop() -> None:
     assert not combatant(live, "mon:two").reaction_available
     assert live.actor_zone[OWNER] == "zone:b"
     assert events(live, ConcentrationDropped)[0].target_id == OWNER
+
+
+def test_a_departing_creatures_own_concentration_ends_with_it() -> None:
+    # Whatever a departing creature concentrates on ends through the drop
+    # cascade before it leaves, so none of its effects outlives it. A summon
+    # casts no spell, so the spirit's own chain is seeded: a Resistance it
+    # maintains on its summoner.
+    handle, live = _summoned()
+    origin = f"cast:resistance:{SPIRIT}"
+    live.active_effects.setdefault(OWNER, []).append(
+        ActiveEffect(
+            id="effect:resistance",
+            name="Resistance",
+            origin=origin,
+            target_id=OWNER,
+            flags={"concentration": True},
+        )
+    )
+    live.concentration_chain[SPIRIT] = [(OWNER, "effect:resistance", origin)]
+    first = len(live.event_log)
+    act(handle, OWNER, intent_type="drop_concentration")
+    cascade = [
+        (type(e).__name__, getattr(e, "target_id", None) or getattr(e, "entity_id", None))
+        for e in live.event_log[first:]
+        if isinstance(e, (ConcentrationDropped, EffectExpired, CombatantLeft))
+    ]
+    assert cascade == [
+        ("ConcentrationDropped", OWNER),
+        ("EffectExpired", OWNER),
+        ("ConcentrationDropped", SPIRIT),
+        ("EffectExpired", OWNER),
+        ("CombatantLeft", SPIRIT),
+    ]
+    assert not [e for e in live.active_effects.get(OWNER, []) if e.origin == origin]
+    assert SPIRIT not in live.concentration_chain
 
 
 def test_a_concentration_on_a_departed_summon_still_ends() -> None:

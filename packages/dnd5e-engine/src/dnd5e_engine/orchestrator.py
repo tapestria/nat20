@@ -8686,9 +8686,10 @@ def _purge_entity_state(live: _LiveCombat, entity_id: str) -> None:
     Another caster's concentration on it keeps running (its
     ``concentration_chain`` entry is kept): SRD 5.2 is silent on a spell whose
     target vanishes, so when that concentration ends its cascade still runs
-    and may name the departed id. A creature that leaves holds no
-    concentration of its own, so the purge never strands an effect it
-    maintains.
+    and may name the departed id. Its own chain is only dropped here: its
+    concentration must already have ended through ``_drop_concentration``
+    (``_leave_roster`` runs it first), or the effects it maintained on other
+    creatures would outlive it with nothing left to end them.
     """
     per_entity: tuple[dict[str, Any], ...] = (
         live.actor_zone,
@@ -8779,7 +8780,9 @@ def _leave_roster(live: _LiveCombat, entity_id: str, reason: CombatantLeftReason
     "The creature disappears when it drops to 0 Hit Points or when the spell
     ends."
 
-    Splices it out and emits ``CombatantLeft``. When it was the current
+    Ends whatever it concentrates on through the drop cascade (nothing it
+    maintained outlives it), then splices it out and emits
+    ``CombatantLeft``. When it was the current
     actor, the turn passes on — nobody skipped — once the resolution in
     progress completes (``_hand_off_departed_turn``), so the rest of that
     resolution never lands inside the next turn. While that hand-off is
@@ -8790,6 +8793,7 @@ def _leave_roster(live: _LiveCombat, entity_id: str, reason: CombatantLeftReason
     """
     if _find_combatant(live, entity_id) is None:
         return
+    _drop_concentration(live, entity_id)
     was_current = _remove_from_roster(live, entity_id)
     _emit(live, CombatantLeft(entity_id=entity_id, reason=reason))
     if was_current and live.departed_actor_id is None:
@@ -8986,14 +8990,17 @@ def _conjuration_gate_failure(
     intent it does not govern."""
     # A shape-shifted actor is refused first: it cannot cast any spell at all,
     # nor make a weapon attack — so a form's weapon attack is refused here,
-    # before the stat-block check below ever sees it. A readied conjuration is
-    # refused before the enchant gate reads its (absent) weapon; the rest
-    # govern disjoint intents (a construct's attack names a spell, a
-    # stat-block swing names an action, Wild Shape and Polymorph each their
-    # own allowlisted source), so their order only fixes which reason a
-    # malformed intent reports.
+    # before the stat-block check below ever sees it. A summon's own limits
+    # come next, for the same reason: it casts nothing, so a readied
+    # conjuration of its reports that, and only its stat block's attacks reach
+    # the stat-block check. A readied conjuration is refused before the
+    # enchant gate reads its (absent) weapon; the rest govern disjoint intents
+    # (a construct's attack names a spell, a stat-block swing names an action,
+    # Wild Shape and Polymorph each their own allowlisted source), so their
+    # order only fixes which reason a malformed intent reports.
     checks: tuple[_ConjurationGate, ...] = (
         _shape_shifted_failure,
+        _summon_command_failure,
         _readied_conjuration_failure,
         _enchant_cast_failure,
         _construct_cast_failure,
@@ -9557,6 +9564,40 @@ def _summon_cast_failure(
     if reason is None:
         return None
     return CastFailed(actor_id=current.entity_id, spell_id=spell_id, reason=reason)
+
+
+def _summon_command_failure(
+    live: _LiveCombat, current: Combatant, intent: PlayerIntent
+) -> CombatEvent | None:
+    """What a summoned creature cannot be commanded to do (C21): anything off
+    its stat block. ``None`` for every other creature.
+
+    ``CastFailed(reason="no_spellcasting")`` for a cast or a readied spell:
+    the Draconic Spirit's stat block has no Spellcasting, and SRD 5.2 Ready
+    says "When you Ready a spell, you cast it as normal".
+    ``AttackFailed(reason="action_unavailable")`` for an attack that names no
+    stat-block action — a plain attack, a weapon, or an Unarmed Strike ("a
+    melee attack that involves you using your body to damage, grapple, or
+    shove a target"), so a Grapple or a Shove too: its attacks are its stat
+    block's (``_stat_block_attack_failure`` vets the one a command names).
+    Every other action stands — SRD 5.2 Monsters: "A monster can take the
+    actions in this section or take one of the actions available to all
+    creatures", Dash, Disengage, Dodge, Help and Hide among them. A refusal
+    spends nothing.
+    """
+    if current.entity_id not in live.summons:
+        return None
+    if intent.intent_type == "cast_spell" or (intent.intent_type == "ready" and intent.spell_id):
+        return CastFailed(
+            actor_id=current.entity_id, spell_id=intent.spell_id or "", reason="no_spellcasting"
+        )
+    if intent.intent_type in ("grapple", "shove") or (
+        intent.intent_type == "attack" and not intent.stat_block_action_id
+    ):
+        return AttackFailed(
+            actor_id=current.entity_id, target_id=intent.target_id, reason="action_unavailable"
+        )
+    return None
 
 
 def _summon_id(live: _LiveCombat, owner_id: str, stat_block_slug: str) -> str:
