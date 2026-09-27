@@ -1316,14 +1316,27 @@ def _with_actor_ac_calc(ac_doc: dict[str, Any], effects: list[dict[str, Any]]) -
     """The actor's AC block after its own enabled effects that override the AC
     calculation: Foundry applies an actor's effects before it prepares AC, so
     the SRD 5.2 Mage's Mage Armor effect (``calc`` → ``mage``) gives its
-    "Armor Class: 15"."""
-    for effect in effects:
-        if effect.get("disabled"):
-            continue
-        for change in effect.get("changes") or []:
-            if change.get("key") == _AC_CALC_KEY and change.get("mode") == _EFFECT_MODE_OVERRIDE:
-                return {**ac_doc, "calc": change.get("value")}
-    return ac_doc
+    "Armor Class: 15". Foundry applies every change in ascending priority (an
+    unset one defaults to its mode × 10), in order within a priority, so of
+    several overrides the last one applied wins."""
+    overrides = [
+        change
+        for effect in effects
+        if not effect.get("disabled")
+        for change in effect.get("changes") or []
+        if change.get("key") == _AC_CALC_KEY and change.get("mode") == _EFFECT_MODE_OVERRIDE
+    ]
+    if not overrides:
+        return ac_doc
+    applied = sorted(overrides, key=_change_priority)
+    return {**ac_doc, "calc": applied[-1].get("value")}
+
+
+def _change_priority(change: dict[str, Any]) -> int:
+    """Foundry's application priority for one effect change: its own
+    ``priority``, else its mode × 10."""
+    priority = change.get("priority")
+    return int(priority) if priority is not None else int(change.get("mode") or 0) * 10
 
 
 def _monster_ac(

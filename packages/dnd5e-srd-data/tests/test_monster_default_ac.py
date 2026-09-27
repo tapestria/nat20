@@ -22,6 +22,8 @@ import yaml
 from dnd5e_srd_data import BundledAssetLoader
 from tools.translators.foundry import _default_ac, _monster_ac, _with_actor_ac_calc
 
+_CALC = "system.attributes.ac.calc"
+
 ROOT = Path(__file__).resolve().parent.parent
 CANONICAL = ROOT / "src" / "dnd5e_srd_data" / "canonical" / "monsters"
 PACKS = ROOT / "raw_sources" / "foundry" / "packs" / "_source"
@@ -135,6 +137,22 @@ def test_an_actor_mage_armor_effect_sets_the_mage_calculation() -> None:
     assert _monster_ac(ac_doc, abilities={"dex": {"value": 14}}, items=[]) == 15
     disabled = {**mage_armor, "disabled": True}
     assert _with_actor_ac_calc({"calc": "default", "flat": None}, [disabled])["calc"] == "default"
+
+
+def test_the_last_applied_ac_override_wins() -> None:
+    """Foundry applies an actor's changes in ascending priority and in order
+    within one, so a later override replaces an earlier one and a
+    higher-priority override applies last."""
+    mage = {"disabled": False, "changes": [{"key": _CALC, "mode": 5, "value": "mage"}]}
+    natural = {"disabled": False, "changes": [{"key": _CALC, "mode": 5, "value": "natural"}]}
+    first = {
+        "disabled": False,
+        "changes": [{"key": _CALC, "mode": 5, "value": "mage", "priority": 60}],
+    }
+    base = {"calc": "default", "flat": None}
+    assert _with_actor_ac_calc(base, [mage, natural])["calc"] == "natural"
+    assert _with_actor_ac_calc(base, [natural, mage])["calc"] == "mage"
+    assert _with_actor_ac_calc(base, [first, natural])["calc"] == "mage"
 
 
 # ── The canonical corpus (hermetic) ──────────────────────────────────────────
