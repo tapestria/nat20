@@ -27,10 +27,13 @@ Reliable Talent), **C20 — class feature mechanics** (Fighting Style feats,
 Martial Arts, Flurry of Blows and the Focus economy, Action Surge, Bardic
 Inspiration on attack rolls, Rage's end conditions, Lay on Hands' pool,
 feature-gated Cunning Action, every corpus limited-use cap, and live
-multiclass) and **C21a — summons foundations** (every concentration spell
+multiclass), **C21a — summons foundations** (every concentration spell
 concentrates; Magic Weapon; Spiritual Weapon's caster-owned force; Wild Shape
 and Polymorph as stat-block swaps with Temporary Hit Points; stat-block attack
-commands). Nothing public is removed or renamed, but C19 reshapes two
+commands) and **C21b — roster summons** (Summon Dragon's Draconic Spirit joins
+the initiative order right after its caster, takes the Dodge action unless
+commanded, and leaves at 0 Hit Points or with its caster's concentration).
+Nothing public is removed or renamed, but C19 reshapes two
 existing `CombatInstance` fields — `ac` and `attack_bonus` widen from
 defaulted `int`s to `int | None = None`, matching `hp_max`/`hp_current`/
 `base_speed` — and every other new field across this release is optional
@@ -55,6 +58,9 @@ later damage draws a Constitution save), for readied concentration spells,
 for Magic Weapon, Wild Shape and Polymorph intents that name no weapon or
 form (now refused before anything is spent), and for a host-driven attacker
 with Pack Tactics (it now gets its Advantage).
+C21b changes results only where a summon is in play: a Summon Dragon cast
+seats a creature, or is refused before anything is spent when it has no legal
+space; a `ready` that names it is refused; and foes may attack the creature.
 Behavioural deltas (and the fixtures they move) are enumerated in
 [`docs/migration/v0.5-to-v0.6.md`](../../docs/migration/v0.5-to-v0.6.md).
 
@@ -243,6 +249,20 @@ Behavioural deltas (and the fixtures they move) are enumerated in
   its own monster turn) at the form's real ability scores and Proficiency
   Bonus, with the form's Multiattack count. See the migration guide for every
   delta.
+
+- **Roster summons (C21b).** Summon Dragon seats a Draconic Spirit in an
+  unoccupied space its caster can see within 60 feet (`target_zone_id`, else
+  the nearest free cell), in the initiative slot right after its caster at the
+  caster's count, with the spell's numbers: AC 14 + the slot level, HP 50 + 10
+  per slot level above 5, the caster's Proficiency Bonus, and half the slot
+  level (round down) of Rends per Attack action at the caster's spell attack
+  bonus for 1d6 + 4 + the slot level. `advance_monster_turn` has it take the
+  Dodge action when uncommanded (a pass when it can't act); a host commands
+  each Rend through `stat_block_action_id`. Its allegiance is its caster's,
+  but it never enters `party_ids`, `encounter_ids` or `CombatOutcome`. It
+  leaves at 0 Hit Points — no death, no XP — or when its caster's
+  concentration ends, and the next creature's turn starts at once if it was
+  the current actor. See the migration guide for every delta.
 
 ### Added
 
@@ -451,6 +471,18 @@ Behavioural deltas (and the fixtures they move) are enumerated in
   `"action_unavailable"`, `EffectExpiryReason` `"temp_hp_depleted"`. All
   additive, with defaults that reproduce the pre-C21a behaviour; no event type
   is added and `dnd5e_engine.__all__` is unchanged.
+- **Roster summons surface (C21b).** `events.CombatantJoined(entity_id, name,
+  stat_block_slug, origin_caster_id, spell_id, initiative_count,
+  after_entity_id, zone_id, hp_max, ac)`, `events.CombatantLeft(entity_id,
+  reason)` and `events.CombatantLeftReason` (`"concentration_drop"`,
+  `"spell_ended"`, `"zero_hp"`); both classes join the `CombatEvent` union and
+  `ALL_COMBAT_EVENT_TYPES`. `views.SummonView`, `LiveCombatView.summons`. In
+  `activities/conjuration.py`: `SummonSpec`, `SUMMONS`, `SummonRollData`,
+  `evaluate_summon_formula`, `summon_attack_count`, `summon_magnitudes`,
+  `SummonRequest`, the `"summon"` member of `ConjurationKind`, and
+  `StatBlockMagnitudes.attack_bonus` / `.attack_damage_bonus`;
+  `ActivityResolutionContext.summon_requests`. All additive, with defaults
+  that reproduce the pre-C21b behaviour; `dnd5e_engine.__all__` is unchanged.
 
 ### Changed
 
@@ -624,6 +656,23 @@ Behavioural deltas (and the fixtures they move) are enumerated in
   Hobgoblin Warrior, a Kobold Warrior, a Wolf) now rolls with Advantage too,
   one more d20, whenever such an ally stands within 5 feet of the target. A
   seeded stream that has one moves from that roll on.
+- **Summon Dragon seats a creature, or is refused before anything is spent
+  (C21b).** The cast used to spend its slot and Action and anchor its
+  concentration, with nothing else. With no legal space it is now refused with
+  `CastFailed` — `target_invalid` for a named cell that is off the map,
+  blocked or occupied, `out_of_range` for one beyond range or out of sight, or
+  when no cell in range is free — and a `ready` naming it with
+  `target_invalid`.
+- **Allegiance reads a summon's caster (C21b).** The monster AI picks its
+  lowest-HP target among every enemy (`_is_enemy`), a summon included, instead
+  of among `party_ids`; Help, Cleave, Sneak Attack and Pack Tactics adjacency,
+  the ranged attack's close-combat check, Hide and grid movement treat a
+  summon as its caster's ally. For a roster without a summon each reads as
+  before.
+- **Monster turn-start mechanics are keyed on the creature (C21b).** The
+  legendary action reset, recharge rolls and regeneration run once per round
+  and creature rather than per round and turn index, so a removal mid-round
+  neither skips nor repeats them. Unchanged while the roster never changes.
 
 ### Fixed
 

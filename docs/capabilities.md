@@ -18,8 +18,8 @@ without failing CI.
     `damage`, `save`, `heal`, `check`, `cast`, or a `utility` activity carrying
     effect riders. A `summon`, `transform`, or `enchant` activity, or a bare
     `utility`, loads fine and emits **no events**, unless it belongs to one of
-    the conjurations the engine resolves itself (C21: Spiritual Weapon, Magic
-    Weapon, Wild Shape).
+    the conjurations the engine resolves itself (C21: Spiritual Weapon, Summon
+    Dragon, Magic Weapon, Wild Shape).
 
 ## Combat loop
 
@@ -61,7 +61,7 @@ without failing CI.
 | AoE templates (sphere / cone / line / cube / cylinder) | ✅ Resolved | Grid only; `cells_in_template` with line of effect from the point of origin (walls / blocked cells exclude cells); `PlayerIntent.direction` aims cones, lines and cubes |
 | **Multi-cell movement in one intent** | ✅ Resolved | A `"move"` intent paths to any reachable cell within budget (allies passable, enemies block, no ending in an occupied cell); one `ActorMoved` per intent; `MoveFailed` reasons `unreachable` / `occupied` / `blocked_path` |
 | Elevation / flying altitude | ❌ Not modelled | The grid is strictly 2-D |
-| Multi-tile (Large+) creature footprints | ❌ Not modelled | Every creature occupies one cell |
+| Multi-tile (Large+) creature footprints | ❌ Not modelled | Every creature occupies one cell, a Large summoned Draconic Spirit included (C21) |
 | Threat-aware or cost-aware pathfinding | ❌ Not modelled | `shortest_path` is fewest-squares BFS; the route's terrain cost is charged but not minimised |
 | Forced movement (push) | ✅ Resolved | `push_combatant` → `CombatantMoved(forced=True)`; wired for Thunderwave, Shove's push option (C14), and the Push weapon mastery (C15, always the full 10 ft — the "Large or smaller" size gate is unmodelled, see BACKLOG.md) |
 | Vision and light (darkness, darkvision, blindsight, truesight, obscurement) | ⚠️ Partial | Grid only; `GridScene.lighting` / `obscurement_cells` + `GridTopology.can_see` feed the `unseen` attack advantage/disadvantage both ways. The composite `_combatant_can_see` predicate (Blinded viewer, Invisible target, blindsight/truesight reach, else the scene model) gates every other SRD "can see" conjunct: the "if you can see the attacker" half of a dodging combatant's attack-disadvantage, Ranged Attacks in Close Combat, the Opportunity Attack trigger (both directions), Hide's "out of any enemy's line of sight" check, and Frightened's line-of-sight gate (attack-roll disadvantage and the "can't willingly move closer" movement rule). A dark cell now also satisfies Hide's Heavily Obscured gate. Still no light sources (torches, *Light*, *Darkness*) and no Blinded emission from darkness |
@@ -71,14 +71,14 @@ without failing CI.
 The engine resolves a spell by walking its typed activities. Spells whose only
 activities are `summon`, `transform`, `enchant`, or a rider-less `utility` load
 correctly and **emit no events** — unless the conjuration allowlist resolves
-them (C21: Spiritual Weapon and Magic Weapon).
+them (C21: Spiritual Weapon, Summon Dragon and Magic Weapon).
 
 | | Count |
 |---|---|
 | Spells in the corpus | **339** |
-| Resolve to at least one mechanical activity | **233** (69%) |
-| Load but resolve to nothing | **106** (31%) |
-| …of which are concentration spells | **31** |
+| Resolve to at least one mechanical activity | **234** (69%) |
+| Load but resolve to nothing | **105** (31%) |
+| …of which are concentration spells | **30** |
 
 Inert concentration spells include staples a combat host will reach for:
 *Blur, Darkness, Fog Cloud, Wall of Force, Silent Image, Globe of
@@ -96,7 +96,7 @@ Create Food and Water*) are out of scope for a combat engine by nature.
 | Ritual casting | ⚠️ Partial | Out-of-combat via `resolve_ritual_cast`; in-combat rejected |
 | Material components / component pouches | ⚠️ Partial | Metadata on `SpellCast`, not enforced |
 | Dispel Magic | ❌ Not modelled | Inert (no mechanical activity) |
-| Summoning / polymorph / enchant-a-weapon | ⚠️ Partial | An allowlist resolves four SRD 5.2 sources (C21). Spiritual Weapon: a caster-owned force placed at `target_zone_id` (else in the target's space) makes its melee spell attack at once; on later turns an `attack` naming `spell_id` moves it up to 20 feet and repeats the attack as a Bonus Action; it ends with its concentration (`LiveCombatView.constructs`). Magic Weapon: +1, +2 or +3 to hit and damage on the weapon `PlayerIntent.weapon_id` names, on top of a pinned `attack_bonus`, and the weapon counts as magical. Wild Shape (Characters, below) and Polymorph: the Beast stat block `PlayerIntent.form_id` names replaces the creature's statistics, with ordinary Temporary Hit Points (`LiveCombatView.transformations`); Polymorph's form must be a Beast of Challenge Rating up to the target's (a character's level), a target with neither is refused, and it ends early when its Temporary Hit Points are gone. Roster summons (Summon Dragon) come next; every other summon, transform and enchant — Sacred Weapon, Shillelagh, True Strike, the monster and item summons, Animate Objects, True Polymorph, Shapechange — stays narrative (BACKLOG.md) |
+| Summoning / polymorph / enchant-a-weapon | ⚠️ Partial | An allowlist resolves five SRD 5.2 sources (C21). Spiritual Weapon: a caster-owned force placed at `target_zone_id` (else in the target's space) makes its melee spell attack at once; on later turns an `attack` naming `spell_id` moves it up to 20 feet and repeats the attack as a Bonus Action; it ends with its concentration (`LiveCombatView.constructs`). Magic Weapon: +1, +2 or +3 to hit and damage on the weapon `PlayerIntent.weapon_id` names, on top of a pinned `attack_bonus`, and the weapon counts as magical. Wild Shape (Characters, below) and Polymorph: the Beast stat block `PlayerIntent.form_id` names replaces the creature's statistics, with ordinary Temporary Hit Points (`LiveCombatView.transformations`); Polymorph's form must be a Beast of Challenge Rating up to the target's (a character's level), a target with neither is refused, and it ends early when its Temporary Hit Points are gone. Summon Dragon: a Draconic Spirit joins the initiative order right after its caster, at the caster's count (`CombatantJoined`), in an unoccupied space the caster can see within 60 feet — `target_zone_id`, else the nearest free cell; with no such space the cast is refused before anything is spent (`out_of_range` / `target_invalid`). It has AC 14 + the slot level and HP 50 + 10 per slot level above 5, uses the caster's Proficiency Bonus, and makes half the slot level (round down) of Rends per Attack action, each at the caster's spell attack bonus for 1d6 + 4 + the slot level. Uncommanded, `advance_monster_turn` has it take the `dodge` action; a host commands each Rend through `stat_block_action_id`. It never joins `party_ids` or `CombatOutcome`, and it leaves at 0 Hit Points or when the caster's concentration ends (`CombatantLeft`; `LiveCombatView.summons`). Every other summon, transform and enchant — Sacred Weapon, Shillelagh, True Strike, the monster and item summons, Giant Insect, Animate Objects, True Polymorph, Shapechange — stays narrative (BACKLOG.md) |
 
 ## Monsters
 

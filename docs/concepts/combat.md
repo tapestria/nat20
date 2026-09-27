@@ -26,6 +26,29 @@ path-find, so crossing ground takes one intent per step. Off-turn reactions
 (Shield, Counterspell, opportunity attacks) are never prompted for
 mid-resolution; they must be [pre-armed](reactions.md).
 
+### Summoned creatures
+
+The initiative order can grow and shrink mid-combat. SRD 5.2 Summon Dragon
+seats a Draconic Spirit that "shares your Initiative count, but it takes its
+turn immediately after yours": the engine inserts it in the slot after its
+caster and emits `CombatantJoined`, which carries everything a host needs to
+seat the creature itself — its id, name, stat block, caster, spell, count, the
+creature it acts after, its cell, Hit Point maximum and Armor Class. "The
+creature disappears when it drops to 0 Hit Points or when the spell ends": the
+engine removes it and emits `CombatantLeft` with the reason (`"zero_hp"`,
+`"concentration_drop"` or `"spell_ended"`). If it was the current actor, the
+next creature's turn starts at once.
+
+A summon's id starts with `summon:` and its `entity_type` is `"Monster"`, so a
+host loop that calls `advance_monster_turn` whenever the engine's pointer names
+a non-PC needs no summon tracking: on the summon's turn the engine plays the
+SRD default, the Dodge action. To command it instead, submit its intents
+through `submit_player_intent(handle, <summon id>, intent)` — each Rend is one
+`attack` naming `stat_block_action_id="rend"`. `LiveCombatView.summons` maps
+each summon's id to its owner, spell, stat block and slot level. A summon is
+its caster's ally, but it never enters `party_ids`, `encounter_ids` or the
+`CombatOutcome`.
+
 ## Determinism and events
 
 Every die roll flows through the seeded RNG you pass to `start_combat`, so a

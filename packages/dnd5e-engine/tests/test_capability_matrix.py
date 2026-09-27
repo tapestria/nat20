@@ -1,6 +1,6 @@
 """Keeps ``docs/capabilities.md`` honest.
 
-The capability matrix publishes hard counts ("106 of 339 spells resolve to
+The capability matrix publishes hard counts ("105 of 339 spells resolve to
 nothing"). A published number that drifts is worse than no number, so the counts
 are recomputed from the shipped corpus here and compared against what the page
 claims. Change the behaviour, and this test tells you which sentence to update.
@@ -34,11 +34,13 @@ def _resolves(activity: dict[str, Any]) -> bool:
 
 
 #: Spells whose ``summon`` / ``enchant`` activity the engine resolves (C21):
-#: the conjuration allowlist's construct and enchant entries — never either
-#: kind wholesale. Polymorph's form rides its ``save`` activity, which already
-#: counts, and Wild Shape is a feature.
+#: the conjuration allowlist's construct, enchant and summon entries — never
+#: any kind wholesale. Polymorph's form rides its ``save`` activity, which
+#: already counts, and Wild Shape is a feature.
 _CONJURED_SPELLS = frozenset(
-    slug for slug, kind in CONJURATION_ALLOWLIST.items() if kind in {"construct", "enchant"}
+    slug
+    for slug, kind in CONJURATION_ALLOWLIST.items()
+    if kind in {"construct", "enchant", "summon"}
 )
 
 
@@ -600,10 +602,14 @@ _PROBES: dict[str, tuple[Any, str]] = {
         lambda: "def _apply_concentration_anchor(" in _src("orchestrator.py"),
         "(C13, C21",
     ),
-    # C21: the conjuration allowlist resolves four SRD 5.2 sources; every other
-    # summon, transform and enchant stays narrative, so the row is Partial.
+    # C21: the conjuration allowlist resolves five SRD 5.2 sources, Summon
+    # Dragon's creature through the summon registry; every other summon,
+    # transform and enchant stays narrative, so the row is Partial.
     "Summoning / polymorph / enchant-a-weapon": (
-        lambda: "CONJURATION_ALLOWLIST" in _src("activities/conjuration.py"),
+        lambda: (
+            "CONJURATION_ALLOWLIST" in _src("activities/conjuration.py")
+            and "SUMMONS" in _src("activities/conjuration.py")
+        ),
         "⚠️ Partial",
     ),
     # C21: Wild Shape's form gate reads the Beast Shapes table.

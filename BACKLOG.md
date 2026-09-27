@@ -25,13 +25,15 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
 ## Unimplemented activity kinds (2026-08-22)
 
 - **Most `summon`, `transform` and `enchant` activities are narrative no-ops
-  (amended 2026-09-25, C21a).** `activities/resolver.py::resolve_activity`
-  routes them to a logged no-op, as it does a `utility` activity carrying no
-  effect riders, unless the orchestrator hands the resolution a conjuration
-  carrier for an allowlisted source: Spiritual Weapon, Magic Weapon, Wild
-  Shape and Polymorph resolve (C21a), and Summon Dragon is next (C21b). The
-  measured consequence: **106 of 339 SRD spells (31%) load correctly and emit
-  no events**, 31 of them concentration spells — *Blur, Darkness, Fog Cloud,
+  (amended 2026-09-25, C21a; 2026-09-26, C21b).**
+  `activities/resolver.py::resolve_activity` routes them to a logged no-op, as
+  it does a `utility` activity carrying no effect riders, unless the
+  orchestrator hands the resolution a conjuration carrier for an allowlisted
+  source: Spiritual Weapon, Magic Weapon, Wild Shape and Polymorph resolve
+  (C21a), and Summon Dragon seats its Draconic Spirit (C21b; the other
+  summons are under "Roster summons"). The measured consequence: **105 of 339
+  SRD spells (31%) load correctly and emit no events**, 30 of them
+  concentration spells — *Blur, Darkness, Fog Cloud,
   Wall of Force, Silent Image, Globe of Invulnerability, Expeditious
   Retreat* — which at least concentrate now. Several are combat staples a host
   will reach for immediately.
@@ -46,9 +48,9 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/conjuration.py::CONJURATION_ALLOWLIST`)
 - **Monster summon riders stay narrative (2026-09-25, C21a).** A monster
   attack or an item never gets a conjuration carrier, so the 16 monster
-  `summon` riders resolve nothing. Monster casts of a construct spell are
-  deferred too (see "No monster casts a construct spell" under Conjurations
-  and shape-shifting).
+  `summon` riders resolve nothing. Monster casts of a construct or summon
+  spell are deferred too (see "No monster casts a construct or summon spell"
+  under Conjurations and shape-shifting).
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/monster_actions.py::rank_monster_actions`)
 
 ## Monster action economy (2026-08-22)
@@ -236,15 +238,21 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   the `cleave` mastery) would silently double-fold the rider.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py::_resolve_cleave_chain`)
 - **An earlier concentration ends only after the new concentration spell
-  resolves (2026-09-25, C21a).** SRD 5.2: "You lose Concentration on an effect
-  the moment you start casting a spell that requires Concentration". The
-  engine drops the old chain after the new spell's resolution, so a self-cast
-  Bless's d4 still applies to Spiritual Weapon's immediate attack roll.
+  resolves (2026-09-25, C21a; amended 2026-09-26, C21b).** SRD 5.2: "You lose
+  Concentration on an effect the moment you start casting a spell that
+  requires Concentration". The engine drops the old chain after the new
+  spell's resolution, so a self-cast Bless's d4 still applies to Spiritual
+  Weapon's immediate attack roll, and a recast of Summon Dragon places its new
+  spirit while the old one still stands: the old spirit's space counts as
+  occupied, though the old spirit leaves before the new one joins.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_record_effect_lifecycle_links`)
-- **A cast longer than a turn resolves as an Action (2026-09-25, C21a).**
-  `_classify_action_cost` special-cases only Bonus Action and Reaction casts,
-  so a 1-minute or 1-hour cast (Animate Dead, Find Familiar) resolves within
-  one turn.
+- **A cast longer than a turn resolves as an Action (2026-09-25, C21a;
+  amended 2026-09-26, C21b).** `_classify_action_cost` special-cases only
+  Bonus Action and Reaction casts, so a 1-minute or 1-hour cast resolves
+  within one turn. Of the creature summons, Find Familiar (1 hour or a
+  ritual), Animate Dead and Create Undead (1 minute each) can't be cast in a
+  combat turn at all, and `start_combat` has no input for a creature summoned
+  before the combat that outlives it, so all three stay narrative.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_classify_action_cost`)
 - **Concentration can start for a caster who fell Unconscious during its own
   cast (2026-09-26, C21a).** SRD 5.2 Incapacitated: "Your Concentration is
@@ -285,8 +293,10 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
 
 - **No elevation.** The grid is strictly 2-D, so flying creatures have no
   altitude and `movement_modes` beyond walk speed do not affect positioning.
-- **No multi-tile creature footprints.** Every creature occupies one cell
-  regardless of size.
+- **No multi-tile creature footprints (amended 2026-09-26, C21b).** Every
+  creature occupies one cell regardless of size, a Large summoned Draconic
+  Spirit included: its placement needs one free cell.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_summon_placement`)
 
 ## Event stream observability (2026-08-22)
 
@@ -709,15 +719,21 @@ zone + apply logic:
 ## Conjurations and shape-shifting (2026-09-25, C21a)
 
 - **Only attack-roll actions of a stat block can be commanded, and a
-  Multiattack's composition is not enforced (2026-09-25, C21a).**
-  `stat_block_action_id` refuses a save action (a Breath Weapon, Venomous
-  Spew, a Roar) and the Multiattack itself; the host picks every swing of the
-  Attack action, so "one Bite attack and one Claw attack" can be two Bites.
+  Multiattack's composition is not enforced (2026-09-25, C21a; amended
+  2026-09-26, C21b).** `stat_block_action_id` refuses a save action (a Breath
+  Weapon, Venomous Spew, a Roar) and the Multiattack itself; the host picks
+  every swing of the Attack action, so "one Bite attack and one Claw attack"
+  can be two Bites. A summoned Draconic Spirit's Breath Weapon is refused too,
+  so its Multiattack ("…and it uses Breath Weapon") gives only the Rends;
+  Summon Dragon's `match.saves` (the caster's spell save DC) lands with the
+  first commandable save action.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_stat_block_attack_failure`)
-- **A form's melee reach is 5 feet (2026-09-25, C21a).** The corpus carries
-  no melee reach for a monster, so a transformed creature swings at 5 feet
-  whatever its form.
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_form_stat_fields`)
+- **A form's melee reach is 5 feet (2026-09-25, C21a; amended 2026-09-26,
+  C21b).** The corpus carries no melee reach for a monster, so a transformed
+  creature swings at 5 feet whatever its form. A summoned Draconic Spirit's
+  `melee_reach_ft` is 5 too, though its Rend reaches 10 feet; a commanded
+  Rend reads the action's own range, so only a reader of the field sees 5.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_physical_stat_fields`)
 - **A shape-shifted creature keeps its items and class features
   (2026-09-25, C21a).** Casting, readying a spell and weapon attacks are
   refused, but `use_item` is not — SRD 5.2 Wild Shape: "Your ability to
@@ -743,16 +759,26 @@ zone + apply logic:
   only when its grant raised it; otherwise the creature keeps the older
   Temporary Hit Points, and their running out ends the spell.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_revert_transform_on_expiry`)
-- **No monster casts a construct spell (2026-09-26, C21a).** The monster AI
-  skips a spell with no attack, save or damage activity of its own, so no
-  monster casts Spiritual Weapon, whose only activity is a `summon`. Counting
-  it as offensive waits until the Priest's data slip is fixed (see "The
-  Priest's Spiritual Weapon is a data slip" under Conjuration and monster
-  data): with the uuid followed, the bundled Priest opens with a Spiritual
-  Weapon the SRD 5.2 Priest doesn't have, where its SRD Multiattack belongs.
-  The SRD 5.2 caster, the Cultist Fanatic ("Spiritual Weapon (2/Day)"), then
-  also needs a cell for the force (the AI picks none), its uses cap and the
-  Bonus-Action move-and-repeat on later turns.
+- **No monster casts a construct or summon spell (2026-09-26, C21a; amended
+  2026-09-26, C21b).** The monster AI skips a spell with no attack, save or
+  damage activity of its own, so no monster casts Spiritual Weapon or Summon
+  Dragon, whose only activity is a `summon`. Counting Spiritual Weapon as
+  offensive waits until the Priest's data slip is fixed (see "The Priest's
+  Spiritual Weapon is a data slip" under Conjuration and monster data): with
+  the uuid followed, the bundled Priest opens with a Spiritual Weapon the SRD
+  5.2 Priest doesn't have, where its SRD Multiattack belongs. The SRD 5.2
+  caster, the Cultist Fanatic ("Spiritual Weapon (2/Day)"), then also needs a
+  cell for the force (the AI picks none), its uses cap and the Bonus-Action
+  move-and-repeat on later turns. A monster's Summon Dragon would also need a
+  conjuration carrier (`_resolve_monster_cast` builds none, so the cast would
+  stay narrative), and a foe the host drives can't cast it either: an
+  `EncounterMemberSpec` carries no spell slots. A summon's allegiance already
+  resolves through its caster, on either side, but
+  `_fire_pc_opportunity_attacks_on_move` is safe only while every summon is
+  party-side: it writes reactors back by slot index, and a monster mover that
+  owns a summon could lose its concentration to a PC's opportunity attack and
+  dismiss the summon mid-loop. It then needs the departure-safe loop that
+  `_fire_monster_opportunity_attacks_on_move` has.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_monster_cast_candidate`)
 - **Spiritual Weapon's force moves through walls (2026-09-25, C21a).** Its
   Bonus-Action move is checked as a distance (the force floats), with no
@@ -801,6 +827,57 @@ zone + apply logic:
   come out low: a polymorphed Wolf's Perception is +3 against the printed +5,
   a Giant Spider's Stealth +5 (+6 wild-shaped at Druid 8) against +7.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_form_stat_fields`)
+
+## Roster summons (2026-09-26, C21b)
+
+- **Only Summon Dragon seats a creature (2026-09-26, C21b).** `SUMMONS` maps
+  one spell to its stat block. Giant Insect's SRD stat block is variant-gated
+  (its profiles point at excluded variant actors). Animate Objects needs
+  objects as targets, count formulas and its Slam's
+  `@flags.dnd5e.summon.mod`, and with it the `activities/formula.py` carrier
+  for summon roll data (`@flags.dnd5e.summon.*` and `@item.level` still raise
+  there). Finger of Death's Zombie ("A Humanoid killed by this spell rises at
+  the start of your next turn as a Zombie") joins a turn later, with no
+  concentration to end it. The remaining spell summons — illusions, sensors,
+  lights, Mage Hand, Unseen Servant, Floating Disk, Secret Chest, Arcane Eye,
+  Arcane Hand, Arcane Sword, Flaming Sphere, Guardian of Faith, Conjure
+  Animals, Conjure Elemental, Conjure Fey, Faithful Hound — stay narrative.
+  The spell-to-stat-block mapping is engine data; `Monster.foundry_uuid` with
+  an `AssetLoader.get_monster_by_uuid` would move it into the dataset.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/conjuration.py::SUMMONS`)
+- **An uncommanded summon doesn't move (2026-09-26, C21b).** SRD 5.2 Summon
+  Dragon: "If you don't issue any, it takes the Dodge action and uses its
+  movement to avoid danger." The engine plays the Dodge and leaves the
+  creature where it stands.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_run_uncommanded_summon_turn`)
+- **Summons take no reactions (2026-09-26, C21b).** A summon is in neither
+  side set, so the opportunity-attack loops never make it a reactor: it
+  makes no opportunity attack, whoever leaves its reach.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_fire_pc_opportunity_attacks_on_move`)
+- **The Draconic Spirit's chosen damage type is not modelled (2026-09-26,
+  C21b).** SRD 5.2 Shared Resistances: "When you summon the spirit, choose one
+  of its Resistances. You have Resistance to the chosen damage type until the
+  spell ends." The caster gains no Resistance, and Breath Weapon's "2d6 damage
+  of a type this spirit has Resistance to (your choice when you cast the
+  spell)" has no choice to read. The spell's `match.saves` (Breath Weapon's
+  "DC equals your spell save DC") is not carried either; it lands with the
+  first commandable save action (see "Only attack-roll actions of a stat
+  block can be commanded").
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_seat_summon`)
+- **Summons end with the combat (2026-09-26, C21b).** Summon Dragon lasts up
+  to an hour, but `EndCombatResult` and `CombatOutcome` report no summon, and
+  `start_combat` has no input for one: a concentration anchor seeded through
+  `start_combat(active_effects=...)` concentrates with no creature.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_project_outcome`)
+- **A departed creature can still be named (2026-09-26, C21b).** Another
+  caster's concentration on a creature that left keeps running (SRD 5.2 is
+  silent on a spell whose target vanishes), so its later `EffectExpired` or
+  `ConditionRemoved` names the departed id. The rest of the resolution that
+  drops a summon — a multiattack's later swing, an on-hit rider's save or
+  condition, a weapon-mastery mark — still names it after its `CombatantLeft`
+  and may leave a stale entry keyed by its id, read by nothing that walks the
+  roster.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_purge_entity_state`)
 
 ## Rest & recovery
 
@@ -1109,7 +1186,11 @@ now calls the engine rather than standing in for it. Residual gaps:
 Hiding vs passive
 Perception, falling, suffocation/drowning, underwater, extreme weather,
 hazards/traps, objects as targets, mounted combat, elevation, multi-tile
-footprints. Exploration-tier; revisit only if a host asks.
+footprints. Exploration-tier; revisit only if a host asks. Mounted combat
+covers the steeds Find Steed and Phantom Steed summon (SRD 5.2 Find Steed:
+the steed "functions as a controlled mount while you ride it"), so both
+spells stay narrative (2026-09-26, C21b;
+`packages/dnd5e-engine/src/dnd5e_engine/activities/conjuration.py::SUMMONS`).
 
 ## Documentation drift
 
@@ -1335,7 +1416,7 @@ layer over the engine — see `docs/bridge.md`. Gaps found while shipping it:
   `max(str_mod, dex_mod)` for finesse or `dex_mod` for ranged
   (`packages/nat20-bridge/src/nat20_bridge/sheet.py`).
 - **The combat intent carries no class-feature or form field (2026-09-24, C20
-  scope cut; amended 2026-09-25, C21a).** `_IntentRequest` forwards only
+  scope cut; amended 2026-09-25, C21a, and 2026-09-26, C21b).** `_IntentRequest` forwards only
   `intent_type`, `spell_id`, `target_id`, `item_id`, `weapon_id`,
   `feature_id` and `target_zone_id`, so a bridge client can't pick an
   `activity_id` (Flurry of Blows, Lay on Hands, Channel Divinity), set
@@ -1343,10 +1424,18 @@ layer over the engine — see `docs/bridge.md`. Gaps found while shipping it:
   `two_handed`, draw `pool_points`, redeem a Bardic die
   (`redeem_granted_die`), name a Wild Shape or Polymorph form (`form_id`:
   both are refused with `invalid_form`) or command a stat-block attack
-  (`stat_block_action_id`). `_view_route` doesn't expose `LiveCombatView.turn`,
-  `constructs` or `transformations` either, so `extra_actions_remaining`, a
-  Spiritual Weapon force and a creature's form aren't visible over HTTP.
+  (`stat_block_action_id`), a summoned Draconic Spirit's Rend included.
+  `_view_route` doesn't expose `LiveCombatView.turn`, `constructs`,
+  `transformations` or `summons` either, so `extra_actions_remaining`, a
+  Spiritual Weapon force, a creature's form and a summon's caster aren't
+  visible over HTTP.
   (`packages/nat20-bridge/src/nat20_bridge/routes_combat.py::_IntentRequest`)
+- **The narration names a summon by its id (2026-09-26, C21b).** The bridge
+  builds its name map when `/v1/combat` starts, so a creature that joins later
+  narrates as `summon:<caster>:<stat block>:<n>` ("…'s turn begins"), and its
+  `combatant_joined` / `combatant_left` events fall back to generic lines;
+  the `name` a `CombatantJoined` carries never reaches the map.
+  (`packages/nat20-bridge/src/nat20_bridge/routes_combat.py::_intent_route`)
 
 ---
 
@@ -1478,7 +1567,8 @@ pool entries.
   Guardians*"; the engine follows the uuid. The SRD 5.2 caster is the Cultist
   Fanatic ("Spiritual Weapon (2/Day)", a Bonus Action), whose corpus entry
   carries no uses cap. Monster casts of Spiritual Weapon wait on this row (see
-  "No monster casts a construct spell" under Conjurations and shape-shifting).
+  "No monster casts a construct or summon spell" under Conjurations and
+  shape-shifting).
   (`packages/dnd5e-srd-data/tools/translators/foundry.py`)
 - **A monster attack's range inherited from its item is not resolved
   (2026-09-25, C21a).** An activity with `range.override: false` takes its

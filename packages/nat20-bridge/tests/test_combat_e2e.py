@@ -1,4 +1,9 @@
+from pathlib import Path
+
 from fastapi.testclient import TestClient
+
+from nat20_bridge.app import create_app
+from nat20_bridge.state import BridgeState
 
 PARTY = [
     {
@@ -136,3 +141,50 @@ def test_every_combatant_zone_is_inside_the_reported_grid(client: TestClient) ->
         col, rownum = (int(part) for part in row["zone"].split(","))
         assert 0 <= col < grid["width"], row
         assert 0 <= rownum < grid["height"], row
+
+
+def test_a_summon_joins_the_view_and_dodges_on_advance_monster(tmp_path: Path) -> None:
+    """A Wizard 9 casts Summon Dragon: the Draconic Spirit shows in the view's
+    order right after its caster (SRD 5.2: "it takes its turn immediately after
+    yours"), and ``/advance-monster`` on its turn plays the uncommanded Dodge.
+
+    The client is entered as a context manager so every request shares one
+    event loop: the event collector ``/v1/combat`` starts then delivers the
+    events of later requests, as it does for a real client. Seed 42 puts the
+    wizard first."""
+    wizard = {
+        "name": "Vex",
+        "build": {
+            "species_slug": "human",
+            "class_slug": "wizard",
+            "level": 9,
+            "ability_scores": {"str": 8, "dex": 14, "con": 14, "int": 18, "wis": 12, "cha": 10},
+        },
+        "spells_known": ["summon-dragon"],
+    }
+    with TestClient(create_app(BridgeState(homebrew_path=tmp_path / "homebrew.json"))) as client:
+        start = client.post(
+            "/v1/combat", json={"party": [wizard], "monsters": ["goblin-warrior"], "seed": 42}
+        )
+        assert start.status_code == 200, start.text
+        cid = start.json()["combat_id"]
+        assert client.get(f"/v1/combat/{cid}").json()["current_actor"].startswith("char:vex")
+
+        cast = client.post(
+            f"/v1/combat/{cid}/intent",
+            json={"actor_id": "char:vex", "intent_type": "cast_spell", "spell_id": "summon-dragon"},
+        )
+        assert cast.status_code == 200, cast.text
+        [joined] = [e for e in cast.json()["events"] if e["type"] == "combatant_joined"]
+        spirit = joined["entity_id"]
+        assert spirit.startswith("summon:char:vex:")
+
+        view = client.get(f"/v1/combat/{cid}").json()
+        order = [(row["entity_id"], row["name"]) for row in view["order"]]
+        assert order[:2] == [("char:vex", "Vex"), (spirit, "Draconic Spirit")]
+        assert view["current_actor"].startswith(spirit)
+
+        turn = client.post(f"/v1/combat/{cid}/advance-monster", json={})
+        assert turn.status_code == 200, turn.text
+        submitted = [e for e in turn.json()["events"] if e["type"] == "intent_submitted"]
+        assert [(e["actor_id"], e["intent_type"]) for e in submitted] == [(spirit, "dodge")]
