@@ -449,9 +449,11 @@ def build_activity_context(
         # governing-ability-mod + proficiency-bonus computation instead of a
         # pinned 0 override — no change needed at that call site, it already
         # treated ``None`` as "no override". A Monster's stat-block spell
-        # attack uses PB + its spellcasting modifier instead.
+        # attack uses PB + its spellcasting modifier instead. Under a
+        # stat-block carrier, a summon's flat to-hit is its summoner's spell
+        # attack (C21); a transform's ``None`` computes the form's own.
         attack_bonus_override=(
-            None
+            stat_block_magnitudes.attack_bonus
             if stat_block_magnitudes is not None
             else _attack_bonus_override(caster, spellcasting_ability)
         ),

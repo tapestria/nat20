@@ -1097,14 +1097,40 @@ def _apply_on_hit_damage(
 def _stat_block_damage_parts(
     activity: AttackActivity, ctx: ActivityResolutionContext, weapon: Weapon | None
 ) -> list[DamagePartBlock]:
-    """The damage parts a hit rolls.
+    """The damage parts a hit rolls: the stat block's implicit ``@mod``
+    (``_implicit_mod_damage_parts``), then a summoner's flat damage bonus
+    (``_with_attack_damage_bonus``). Every attack without a stat-block carrier
+    rolls its parts as shipped."""
+    magnitudes = ctx.stat_block_magnitudes
+    return _with_attack_damage_bonus(
+        _implicit_mod_damage_parts(activity, ctx, weapon),
+        magnitudes.attack_damage_bonus if magnitudes is not None else 0,
+    )
+
+
+def _with_attack_damage_bonus(parts: list[DamagePartBlock], bonus: int) -> list[DamagePartBlock]:
+    """``parts`` with ``bonus`` added to the first part's flat bonus. SRD 5.2
+    Draconic Spirit, Rend: "Hit: 1d6 + 4 + the spell's level Piercing damage"
+    (Foundry ``bonuses.attackDamage``). A flat bonus is never doubled on a
+    Critical Hit: only dice are. ``parts`` itself for a zero bonus or no part."""
+    if not bonus or not parts:
+        return parts
+    first = parts[0]
+    text = f"{first.bonus} + {bonus}" if first.bonus else str(bonus)
+    return [first.model_copy(update={"bonus": text}), *parts[1:]]
+
+
+def _implicit_mod_damage_parts(
+    activity: AttackActivity, ctx: ActivityResolutionContext, weapon: Weapon | None
+) -> list[DamagePartBlock]:
+    """The damage parts with a stat block's implicit ability modifier.
 
     Foundry adds the ability modifier to a weapon's base damage as it rolls it
     (``AttackActivityData._processDamagePart``: "Ensure `@mod` is present in
     damage unless it is positive and an off-hand attack or damage is a flat
     value"), and the dataset folds a stat-block attack's base damage into
     ``parts[0]`` without that ``@mod``. Under a stat-block carrier (C21: a
-    transformed creature's form) the modifier comes back — for an
+    transformed creature's form, a summon) the modifier comes back — for an
     ``include_base`` attack with no weapon, a first part that rolls dice, and
     no part already carrying ``@mod`` — so the Wolf's Bite is 1d6 + 2. Every
     other attack rolls its parts as shipped.

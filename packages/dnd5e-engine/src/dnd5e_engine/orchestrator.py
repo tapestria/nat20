@@ -7726,10 +7726,14 @@ def _attacks_per_action(live: _LiveCombat, current: Combatant) -> int:
     """The swings one Attack action gives ``current``: its form's count while
     it is transformed (C21 — the form's Multiattack, or for Wild Shape the
     higher of that and the creature's own Extra Attack, as ``_apply_transform``
-    fixed it), else its own (``_own_attacks_per_action``)."""
+    fixed it), a summon's Multiattack count at its spell's level (fixed when it
+    was seated), else its own (``_own_attacks_per_action``)."""
     transform = _transform_of(live, current.entity_id)
     if transform is not None:
         return transform.attacks_per_action
+    summon = live.summons.get(current.entity_id)
+    if summon is not None:
+        return summon.attacks_per_action
     return _own_attacks_per_action(current)
 
 
@@ -9625,6 +9629,21 @@ def _seat_summon(live: _LiveCombat, caster: Combatant, request: SummonRequest) -
     )
 
 
+def _run_uncommanded_summon_turn(live: _LiveCombat, current: Combatant) -> None:
+    """A summon's turn with no command. SRD 5.2 Summon Dragon: "It obeys your
+    verbal commands (no action required by you). If you don't issue any, it
+    takes the Dodge action and uses its movement to avoid danger." A summon
+    that cannot take the Action (Incapacitated, or its Action already spent on
+    a command) passes instead. It moves nowhere and draws nothing."""
+    actor_id = current.entity_id
+    if current.action_available and not conditions_block_actions(_condition_names(current)):
+        _emit(live, IntentSubmitted(actor_id=actor_id, intent_type="dodge"))
+        _set_dodging(live, actor_id)
+    else:
+        _emit(live, IntentSubmitted(actor_id=actor_id, intent_type="pass"))
+    _end_turn_and_advance(live, actor_id)
+
+
 def _apply_summon_requests(
     live: _LiveCombat, caster: Combatant, actx: ActivityResolutionContext | None
 ) -> None:
@@ -9995,11 +10014,13 @@ def _end_polymorph_on_depletion(live: _LiveCombat, target_id: str) -> None:
 def _stat_block_magnitudes_of(live: _LiveCombat, current: Combatant) -> StatBlockMagnitudes | None:
     """A transformed actor's stat-block numbers: its current six scores (the
     form's physical ones; Wild Shape keeps its own INT / WIS / CHA) and the
-    form's Proficiency Bonus, which its stat-block attacks use. ``None`` for a
-    creature in its own form."""
+    form's Proficiency Bonus, which its stat-block attacks use. A summon's are
+    the ones fixed when it was seated, its summoner's to-hit and damage bonus
+    included. ``None`` for any other creature."""
     transform = live.transforms.get(current.entity_id)
     if transform is None:
-        return None
+        summon = live.summons.get(current.entity_id)
+        return summon.magnitudes if summon is not None else None
     return StatBlockMagnitudes(
         ability_scores={
             "str": current.strength,
@@ -12791,6 +12812,15 @@ async def advance_monster_turn(
     # incapacitated gate below (SRD ties these to turn start, not to
     # whether the monster acts); a dead monster has no turn start at all.
     _run_monster_turn_start(live, current)
+
+    # SRD 5.2 Summon Dragon: "It obeys your verbal commands (no action
+    # required by you). If you don't issue any, it takes the Dodge action
+    # and uses its movement to avoid danger." A summon never reaches the
+    # monster AI below: its own turn is either a command already resolved
+    # through ``submit_player_intent`` or this uncommanded Dodge/pass.
+    if current.entity_id in live.summons:
+        _run_uncommanded_summon_turn(live, current)
+        return
 
     # Dead / unconscious monsters skip with a no-op record. The legacy
     # behavior-based flee gate (monster_ai.select_monster_action) is reapplied

@@ -31,7 +31,7 @@ from dnd5e_engine.orchestrator import (
     submit_player_intent,
 )
 from dnd5e_engine.specs import EncounterMemberSpec, GridScene, PartyMemberSpec
-from tests.e2e.harness import cell, events_of, run_async, xfail_cluster
+from tests.e2e.harness import cell, events_of, run_async
 
 
 def test_c21_s01_summon_dragon_casts_with_zero_roster_growth():
@@ -94,7 +94,6 @@ def test_c21_s01_summon_dragon_casts_with_zero_roster_growth():
     assert any(c.entity_id.startswith("summon:") for c in live.initiative)
 
 
-@xfail_cluster(21, "summons, transform, enchant")
 def test_c21_s02_losing_concentration_dismisses_the_summoned_dragon():
     """C21-S02: SRD 5.2 §Spell Descriptions (Summon Dragon) — "The
     creature disappears when it drops to 0 Hit Points or when the spell
