@@ -2073,28 +2073,31 @@ def _walk_zone_path(live: _LiveCombat, mover_id: str, path: Sequence[str]) -> No
 
 
 def _execute_flee_retreat(
-    live: _LiveCombat, monster: Combatant, alive_pcs: Sequence[Combatant]
+    live: _LiveCombat, monster: Combatant, enemies: Sequence[Combatant]
 ) -> None:
     """A fleeing monster spends movement increasing distance from its threat.
 
     Monster-AI plumbing (DM-adjudicated, not codified SRD text): the flee gate
     ``_monster_is_fleeing`` decides the monster *wants* to disengage; this gives
-    that decision teeth. The threat is the nearest alive PC by topology distance;
-    the destination is ``_plan_flee_destination``'s farthest-reachable zone. When
-    no such zone exists (already cornered, no budget, or grid backend) the monster
-    simply holds — the same no-move it did before, now via a real evaluation.
+    that decision teeth. The threat is the nearest living enemy (a summon
+    included) by topology distance; the destination is
+    ``_plan_flee_destination``'s farthest-reachable zone. When no such zone
+    exists (already cornered, no budget, or grid backend) the monster simply
+    holds — the same no-move it did before, now via a real evaluation.
     """
     start_zone = live.actor_zone.get(monster.entity_id)
-    if start_zone is None or not alive_pcs:
+    if start_zone is None or not enemies:
         return
     threats: list[tuple[int, str, str]] = []
-    for pc in alive_pcs:
-        pc_zone = live.actor_zone.get(pc.entity_id)
-        if pc_zone is None:
+    for enemy in enemies:
+        enemy_zone = live.actor_zone.get(enemy.entity_id)
+        if enemy_zone is None:
             continue
-        dist = _path_total_distance(live.topology, live.topology.shortest_path(start_zone, pc_zone))
+        dist = _path_total_distance(
+            live.topology, live.topology.shortest_path(start_zone, enemy_zone)
+        )
         if dist is not None:
-            threats.append((dist, pc.entity_id, pc_zone))
+            threats.append((dist, enemy.entity_id, enemy_zone))
     if not threats:
         return
     threats.sort(key=lambda t: (t[0], t[1]))
@@ -2108,7 +2111,7 @@ def _execute_flee_retreat(
 
 
 def _apply_monster_flee_stance(
-    live: _LiveCombat, current: Combatant, alive_pcs: Sequence[Combatant]
+    live: _LiveCombat, current: Combatant, enemies: Sequence[Combatant]
 ) -> Combatant:
     """Persist ``Combatant.has_fled`` across turns (C18 Task 9, R9).
 
@@ -2131,7 +2134,7 @@ def _apply_monster_flee_stance(
         return current
     fleeing = _monster_is_fleeing(current)
     if fleeing:
-        _execute_flee_retreat(live, current, alive_pcs)
+        _execute_flee_retreat(live, current, enemies)
         current = next(c for c in live.initiative if c.entity_id == current.entity_id)
     for idx, c in enumerate(live.initiative):
         if c.entity_id == current.entity_id:
@@ -2462,21 +2465,21 @@ def _select_monster_targets(live: _LiveCombat, current: Combatant) -> list[Comba
     from the main-turn targeting block so a legendary action can share it
     byte-for-byte.
     """
-    alive_pcs = [
+    enemies = [
         c
         for c in live.initiative
         if _is_enemy(live, current.entity_id, c.entity_id) and c.is_alive and c.hp_current > 0
     ]
     charmer_id = _condition_source_entity(live, current, "charmed")
     if charmer_id is not None:
-        alive_pcs = [c for c in alive_pcs if c.entity_id != charmer_id]
-    return alive_pcs
+        enemies = [c for c in enemies if c.entity_id != charmer_id]
+    return enemies
 
 
-def _lowest_hp_target(pcs: list[Combatant]) -> Combatant | None:
-    """SRD 5.2 monster gambit targeting — lowest current HP among ``pcs``,
+def _lowest_hp_target(enemies: list[Combatant]) -> Combatant | None:
+    """SRD 5.2 monster gambit targeting — lowest current HP among ``enemies``,
     or ``None`` when the list is empty."""
-    return min(pcs, key=lambda c: c.hp_current) if pcs else None
+    return min(enemies, key=lambda c: c.hp_current) if enemies else None
 
 
 def _resolve_monster_activities(
@@ -12888,9 +12891,11 @@ async def advance_monster_turn(
     Selection: ``select_typed_monster_action``
     picks an action from the typed ``Monster.actions`` (fetched from the lib
     loader by ``monster_template_slug``); ``expand_action_to_activities`` fans
-    multiattack out into its sub-attacks. Targeting: lowest-HP alive PC in
-    initiative order (the legacy gambit's ``target_priority="lowest_hp"``
-    semantics). Resolution: each returned ``Activity`` runs through
+    multiattack out into its sub-attacks. Targeting: the lowest-HP living
+    enemy, first in initiative order on a tie (the legacy gambit's
+    ``target_priority="lowest_hp"`` semantics) — the party's members and the
+    summons they own, a charmer excepted (``_select_monster_targets``).
+    Resolution: each returned ``Activity`` runs through
     ``resolve_activity`` against a context
     built by ``build_activity_context`` — the same typed path as the PC
     turn /6 of the Foundry cutover).
@@ -12903,10 +12908,15 @@ async def advance_monster_turn(
     ``legendary=True`` (C18 §Monster action economy) takes a SEPARATE path:
     a host calls this ANY time another creature's turn has just ended
     (including a PC's) to let one eligible encounter member spend a
-    legendary action. It never touches ``current_turn_index``, never emits
-    ``TurnStarted``/``TurnEnded``/``TurnPhase``, spends no action economy,
-    and runs no turn-lifecycle hooks — see ``_eligible_legendary_actor`` and
-    ``_take_legendary_action``. ``actor_id`` picks a specific encounter
+    legendary action. It spends no action economy and ends no turn — see
+    ``_eligible_legendary_actor`` and ``_take_legendary_action``. It changes
+    the turn order only through a departure (C21): a summon it drops leaves
+    the initiative order, shifting ``current_turn_index`` when it sat before
+    the pointer, and when that summon was the current actor (its turn begun,
+    nothing done yet) the next creature's turn opens once the legendary
+    action has resolved — ``TurnStarted``, ``TurnPhase``, its turn-start
+    hooks and death save, but no ``TurnEnded`` and no new window
+    (``_hand_off_departed_turn``). ``actor_id`` picks a specific encounter
     member (else the first eligible one in initiative order); both raise
     ``IntentRejectedError("no_legendary_action", ...)`` when nothing
     qualifies right now.
@@ -12956,21 +12966,22 @@ async def advance_monster_turn(
         or conditions_block_actions(_condition_names(current))
     )
 
-    # Build alive-PC target list (lowest_hp priority — the legacy
-    # gambit's target rule). Empty targets degrades to pass. SRD 5.2
+    # Build the target list: every living enemy, a summon included
+    # (lowest_hp priority — the legacy gambit's target rule). Empty targets
+    # degrades to pass. SRD 5.2
     # Charmed — "You can't attack the charmer or target the charmer with
     # damaging abilities or magical effects" — is folded into
     # ``_select_monster_targets``. Knock-on, accepted deliberately:
-    # ``alive_pcs`` is also the threat list ``_execute_flee_retreat``
+    # ``enemies`` is also the threat list ``_execute_flee_retreat``
     # measures distance against, so a charmed FLEEING monster no longer
     # counts its charmer as someone to run from. Flavour-defensible (you do
     # not flee the creature that has charmed you) and SRD-silent, but it is
     # a second consequence of this one filter.
-    alive_pcs = _select_monster_targets(live, current)
-    if not alive_pcs:
+    enemies = _select_monster_targets(live, current)
+    if not enemies:
         skip_to_record_pass = True
 
-    chosen_target: Combatant | None = _lowest_hp_target(alive_pcs)
+    chosen_target: Combatant | None = _lowest_hp_target(enemies)
 
     # ── Fleeing retreat ──────────────────────────────────────────
     # A live monster over the flee threshold spends its movement putting
@@ -12980,7 +12991,7 @@ async def advance_monster_turn(
     # ``IntentSubmitted(intent_type="pass")`` — but now with real
     # ``ActorMoved`` events preceding it (reusing ``"pass"`` per the catalog;
     # no new IntentType is minted). Dead/unconscious monsters never retreat.
-    current = _apply_monster_flee_stance(live, current, alive_pcs)
+    current = _apply_monster_flee_stance(live, current, enemies)
 
     # ── Typed-Activity monster resolution (Foundry cutover, ─────────
     #

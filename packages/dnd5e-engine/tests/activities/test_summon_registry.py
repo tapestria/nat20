@@ -131,6 +131,7 @@ def test_summon_formulas_evaluate_at_the_roll_data(
         "max(1, 2)",  # only floor() is a function
         "__import__('os')",
         "1d6",  # dice are not a summon formula
+        "1 / (@item.level - 5)",  # a zero divisor at level 5
     ],
 )
 def test_anything_else_fails_loudly(expr: str) -> None:

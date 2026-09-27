@@ -338,8 +338,8 @@ def evaluate_summon_formula(expr: str, roll_data: SummonRollData) -> int:
     read the slot level, ``@flags.dnd5e.summon.mod`` the caster's modifier;
     then the arithmetic folds over the parsed tree (never ``eval``): integer
     literals, unary minus, ``+ - * /`` with exact division, parentheses and
-    ``floor(x)``. Any other token or construct, or a fractional result, raises
-    ``ValueError`` before anything is seated.
+    ``floor(x)``. Any other token or construct, a zero divisor, or a
+    fractional result raises ``ValueError`` before anything is seated.
     """
     if not expr.strip():
         return 0
@@ -371,8 +371,10 @@ def _fold_summon_node(node: ast.expr, expr: str) -> Fraction:
     if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.USub):
         return -_fold_summon_node(node.operand, expr)
     if isinstance(node, ast.BinOp) and type(node.op) in _SUMMON_OPERATORS:
-        fold = _SUMMON_OPERATORS[type(node.op)]
-        return fold(_fold_summon_node(node.left, expr), _fold_summon_node(node.right, expr))
+        left, right = _fold_summon_node(node.left, expr), _fold_summon_node(node.right, expr)
+        if isinstance(node.op, ast.Div) and right == 0:
+            raise ValueError(f"Zero divisor in summon formula {expr!r}")
+        return _SUMMON_OPERATORS[type(node.op)](left, right)
     if (
         isinstance(node, ast.Call)
         and isinstance(node.func, ast.Name)
