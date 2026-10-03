@@ -130,3 +130,9 @@ at `http://127.0.0.1:8020`.
   concurrent multi-client load. See `BACKLOG.md` for open gaps (global-RNG
   seeding under concurrent requests, combat state not being garbage
   collected for sessions that are never explicitly ended via `/end`).
+- `POST /v1/combat` seats every character in column 0 and every foe in
+  column 1, so a character's first move away from the foe beside it draws that
+  foe's opportunity attack, and a foe's walk away draws the character's. A
+  character strikes with the first melee weapon in its build's `equipment`,
+  else an Unarmed Strike; the bridge doesn't expose
+  `opportunity_attack_weapon_id` yet.

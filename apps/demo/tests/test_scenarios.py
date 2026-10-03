@@ -74,7 +74,8 @@ SHOWCASE_SCRIPTS: dict[str, list[Command]] = {
     # flagged). Since engine C12 the Paralyzed captain can no longer act, so
     # its turn is a no-op and the pressure on Mira's concentration comes from
     # the two bandits instead — which takes a second round to land, hence the
-    # extra pass/monster-turn block below.
+    # extra pass/monster-turn block below. Doran's advance past the two bandits
+    # draws both their opportunity attacks on the way (engine C24).
     "hold-the-line": [
         _move("char:doran", cell_id(3, 3)),
         _move("char:doran", cell_id(4, 3)),
