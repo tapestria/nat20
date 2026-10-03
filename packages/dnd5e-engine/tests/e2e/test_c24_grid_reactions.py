@@ -36,10 +36,7 @@ from tests.e2e.harness import (
     events_of,
     grid_scene,
     run_async,
-    xfail_cluster,
 )
-
-CLUSTER = xfail_cluster(24, "grid movement & reactions")
 
 
 def _hero(**fields: Any) -> PartyMemberSpec:
@@ -399,7 +396,6 @@ def test_c24_s13_a_stunned_monster_below_its_flee_threshold_takes_no_flee_stance
     ] == ["pass"]
 
 
-@CLUSTER
 def test_c24_s14_a_great_weapon_fighting_greatsword_attack_through_half_cover() -> None:
     def run(seed: int):
         handle, live = _start(
@@ -442,7 +438,6 @@ def test_c24_s14_a_great_weapon_fighting_greatsword_attack_through_half_cover() 
     assert damage.amount >= 2 * 3 + 3
 
 
-@CLUSTER
 def test_c24_s15_a_goblins_scimitar_meets_the_movers_readied_shield() -> None:
     def run(seed: int):
         handle, live = _start(

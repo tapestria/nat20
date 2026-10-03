@@ -204,8 +204,7 @@ class _NatTwentyRng(random.Random):
 def test_opportunity_attack_nat_20_damage_is_attributed_and_flagged_crit():
     """F2 — a forced natural-20 opportunity attack's ``DamageApplied``
     threads ``is_crit`` and ``source_id``. The hero carries no weapon, so its
-    opportunity attack rolls the legacy ``attack_bonus`` / ``damage_dice``
-    swing and is attributed that path's synthesized id."""
+    opportunity attack is an Unarmed Strike (C24), attributed to it."""
 
     async def _run():
         start = await _start("t9-e-crit-oa-attribution", hero_attack_bonus=0)
@@ -222,4 +221,4 @@ def test_opportunity_attack_nat_20_damage_is_attributed_and_flagged_crit():
     assert rolled.is_crit is True
     damaged = next(e for e in events_of(live, DamageApplied) if e.target_id == "mon:goblin")
     assert damaged.is_crit is True
-    assert damaged.source_id == "synth:legacy-swing"
+    assert damaged.source_id == "unarmed-strike"

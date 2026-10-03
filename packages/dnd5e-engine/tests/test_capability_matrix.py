@@ -199,31 +199,17 @@ _PROBES: dict[str, tuple[Any, str]] = {
         lambda: 'mode: AdvantageMode = "normal"' not in _src("activities/attack.py"),
         "Advantage/disadvantage is rolled on",
     ),
-    # C16b: opportunity attacks now honour the ``unseen`` advantage source
-    # and the Invisible carve-out via the shared per-side advantage-source
-    # helper both AoO directions call.
-    "Invisible-carve-out sources (C16b composite": (
-        lambda: (
-            "_opportunity_attack_advantage_sources(" in _src("orchestrator.py")
-            and "_pierces_invisibility(live, mover, reactor)" in _src("orchestrator.py")
-        ),
-        "Invisible-carve-out sources (C16b composite",
-    ),
     # C14 Task 3: Dodge sets a live ``dodging`` flag consumed by the attack
     # and save resolvers; the intent branch owns this exact literal.
     "Dodge": (
         lambda: 'if intent.intent_type == "dodge":' in _src("orchestrator.py"),
         "✅",
     ),
-    # C16b: Dodge's "if you can see the attacker" conjunct is applied both at
-    # the regular-attack context build sites (``_combatant_can_see(live, t,
-    # current)``) and on the AoO path (``_combatant_can_see(live, mover,
-    # reactor)``).
+    # C16b: Dodge's "if you can see the attacker" conjunct is applied at every
+    # attack context build site (``_combatant_can_see(live, t, current)``);
+    # since C24 an opportunity attack resolves through those sites too.
     'if you can see the attacker" is now enforced (C16b': (
-        lambda: (
-            "_combatant_can_see(live, t, current)" in _src("orchestrator.py")
-            and "_combatant_can_see(live, mover, reactor)" in _src("orchestrator.py")
-        ),
+        lambda: "_combatant_can_see(live, t, current)" in _src("orchestrator.py"),
         'if you can see the attacker" is now enforced (C16b',
     ),
     # C14 Task 4: Help (assist-an-attack-roll flavor) has a live handler —
@@ -395,18 +381,11 @@ _PROBES: dict[str, tuple[Any, str]] = {
         lambda: "seeded_incapacitated" in _src("orchestrator.py"),
         "closed via C14 Task 8",
     ),
-    # C14 Task 9 / C16b: opportunity attacks roll through the same d20-test
-    # primitive as every other attack, picking up condition/Exhaustion
-    # sources and now the visibility gate too — only cover is still missing.
+    # C24: an opportunity attack resolves through the activity context,
+    # flagged on its context.
     "| Opportunity attacks |": (
-        lambda: "roll_d20_test" in _src("orchestrator.py"),
+        lambda: "is_opportunity_attack=True" in _src("orchestrator.py"),
         "✅",
-    ),
-    # C16b: the AoO's remaining gap is cover only — visibility now reaches
-    # the roll via ``_combatant_can_see``.
-    "cover on the AoO roll itself remains unmodelled": (
-        lambda: "_combatant_can_see(live, reactor, mover)" in _src("orchestrator.py"),
-        "cover on the AoO roll itself remains unmodelled",
     ),
     # C15 Tasks 2/3: the long-range disadvantage tier and the Ranged
     # Attacks in Close Combat gate both append their own AdvantageSource

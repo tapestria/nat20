@@ -167,6 +167,12 @@ class PartyMemberSpec(BaseModel):
     # for a Medium creature's unarmed/short-weapon reach). Projected onto
     # ``Combatant.melee_reach_ft`` at start_combat by ``_build_pc_combatants``.
     reach_ft: int = 5
+    # SRD 5.2 Opportunity Attacks: "take a Reaction to make one melee attack
+    # with a weapon or an Unarmed Strike". The weapon slug this PC makes its
+    # opportunity attacks with. ``None`` (the default) picks the first melee
+    # weapon in ``equipment``, else an Unarmed Strike; ``start_combat`` raises
+    # ``ValueError`` for a slug that names no melee weapon.
+    opportunity_attack_weapon_id: str | None = None
     # SRD §Proficiency Bonus / §Saving Throws / §Skills — the PC's proficient
     # save abilities, proficient skills, skills with expertise (double
     # proficiency), and proficient weapon categories/slugs. Threaded onto the
