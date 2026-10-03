@@ -12748,10 +12748,10 @@ def _opportunity_attack_of(live: _LiveCombat, creature: Combatant) -> _Opportuni
       (``_stat_block_opportunity_attack``).
     * A character swings ``live.opportunity_attack_weapons``' weapon at the
       weapon's reach, or makes an Unarmed Strike at its ``melee_reach_ft``.
-    * Anyone else — a template-less foe, or a character whose weapon the
-      asset loader doesn't carry — swings its legacy ``attack_bonus`` /
-      ``damage_dice`` (``_synthesize_attack_from_legacy_fields``) at its
-      ``melee_reach_ft``.
+    * Anyone else — a template-less foe, or a character when the asset
+      loader carries neither its weapon nor ``unarmed-strike`` — swings its
+      legacy ``attack_bonus`` / ``damage_dice``
+      (``_synthesize_attack_from_legacy_fields``) at its ``melee_reach_ft``.
     """
     slug = _current_stat_block_slug(live, creature.entity_id)
     if slug is not None:

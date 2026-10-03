@@ -140,7 +140,7 @@ def test_c24_s01_leaving_reach_mid_move_draws_one_opportunity_attack() -> None:
 
     [aoo] = _aoos(live)
     assert (aoo.attacker_id, aoo.target_id, aoo.natural) == ("mon:goblin", "char:hero", 5)
-    # D24.1: the move splits at the provoking step, the attack between.
+    # The move splits at the provoking step, the attack between.
     assert _moves(live, "char:hero") == [
         (cell(0, 0), cell(0, 1), 5),
         (cell(0, 1), cell(0, 3), 10),

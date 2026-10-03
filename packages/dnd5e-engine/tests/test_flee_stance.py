@@ -1,5 +1,5 @@
 """C24 — the flee stance on a grid (``_apply_monster_flee_stance``): an
-Incapacitated monster takes none (D24.6), and a fleeing monster an
+Incapacitated monster takes none, and a fleeing monster an
 opportunity attack kills stops where it stood. Monster flee is
 DM-adjudicated AI, not SRD text; SRD 5.2 Incapacitated: "You can't take any
 action, Bonus Action, or Reaction."

@@ -202,6 +202,13 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   own gate for a Versatile (as opposed to strictly Two-Handed) weapon reads
   the same never-set `use_versatile_damage` flag.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_resolve_opportunity_attack`)
+- **A character's `reach_ft` reaches only its opportunity attacks (2026-10-03,
+  C24).** An Unarmed Strike opportunity attack threatens
+  `PartyMemberSpec.reach_ft`, but the character's own on-turn Unarmed Strike
+  is range-gated at the Unarmed Strike's 5 ft (SRD 5.2 Unarmed Strike: "a
+  target within 5 feet of you"), so a host that sets `reach_ft=10` sees a
+  10-ft opportunity attack its on-turn attack can't match.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_pc_attack_out_of_range`)
 - **An `attack` that names no weapon resolves nothing but spends the Action
   (2026-09-27, C23).** A character's `attack` with neither `weapon_id` nor
   `stat_block_action_id` emits only `IntentSubmitted` and ends the turn: no
@@ -243,6 +250,18 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   decision per spec §5 C17.
   (`packages/dnd5e-engine/src/dnd5e_engine/spellcasting.py`,
   `packages/dnd5e-engine/src/dnd5e_engine/events.py::SpellCast`)
+- **Rules that suppress or alter an opportunity attack are not modelled
+  (2026-10-03, C24).** The trigger knows only Disengage, sight, Charmed and
+  Incapacitated. Unmodelled: the Agile trait (Deer, Rat: "doesn't provoke an
+  Opportunity Attack when it moves out of an enemy's reach"); "can't make
+  Opportunity Attacks" riders (Shocking Grasp, Open Hand Technique's Addle,
+  Improved Brutal Strike's Staggering Blow, Mace of Terror); moves "without
+  provoking Opportunity Attacks" (Tactical Shift, Cunning Strike's Withdraw,
+  Brutal Strike's Forceful Blow, Remarkable Athlete); Disadvantage on
+  opportunity attacks against a creature (Hunter's Escape the Horde, Boots of
+  Speed). Flyby and Nimble Escape are recorded under "Typed traits are
+  hydrated".
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_opportunity_attackers`)
 - **The Cleave chain's damage routes through `_apply_on_hit_damage`, which
   folds Sneak Attack BEFORE the orchestrator writes the once-per-turn cap
   — the chained hit is structurally unguarded against a second Sneak

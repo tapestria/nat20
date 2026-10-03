@@ -1,9 +1,9 @@
 """C24 — opportunity attacks through the activity context. SRD 5.2
 Opportunity Attacks: "take a Reaction to make one melee attack with a weapon
 or an Unarmed Strike against the provoking creature." Which attack a creature
-makes (D24.8, R1), the reach it threatens (D24.3, D24.9, R2), and the
-once-per-turn Sneak Attack it can deal on another creature's turn (D24.10).
-All on a 10x10 grid at seed 1 (first d20: a natural 5).
+makes, the reach it threatens, and the once-per-turn Sneak Attack it can deal
+on another creature's turn. All on a 10x10 grid at seed 1 (first d20: a
+natural 5).
 """
 
 from __future__ import annotations
@@ -14,7 +14,13 @@ from typing import Any
 import pytest
 
 from dnd5e_engine import PlayerIntent
-from dnd5e_engine.events import ActorMoved, AttackRolled, CombatantMoved, DamageApplied
+from dnd5e_engine.events import (
+    ActorMoved,
+    AttackRolled,
+    CombatantMoved,
+    ConditionRemoved,
+    DamageApplied,
+)
 from dnd5e_engine.orchestrator import (
     _find_combatant,
     _get_live,
@@ -26,6 +32,7 @@ from dnd5e_engine.orchestrator import (
 )
 from dnd5e_engine.spatial import cell_id
 from dnd5e_engine.specs import EncounterMemberSpec, GridScene, PartyMemberSpec
+from dnd5e_engine.types.conditions import ActiveCondition
 
 
 def _hero(**fields: Any) -> PartyMemberSpec:
@@ -230,3 +237,70 @@ def test_an_unarmed_strike_at_ten_feet_rolls_no_long_range_disadvantage() -> Non
     [aoo] = [e for e in live.event_log if isinstance(e, AttackRolled) and e.is_opportunity_attack]
     assert aoo.advantage == "normal"
     assert "range:long" not in aoo.sources
+
+
+def test_a_template_monsters_opportunity_attack_reports_no_source_id() -> None:
+    # The on-turn convention for a stat-block attack's damage: source_id is
+    # the attack's own typed slug, never surfaced here, so DamageApplied
+    # reports None (mirrors the on-turn monster-attack path).
+    handle, live = _start(
+        [_hero(initiative=20)],
+        [_monster(monster_template_slug="goblin-warrior", initiative=1, attack_bonus=20)],
+    )
+    _act(handle, "char:hero", intent_type="move", target_zone_id=cell_id(0, 3))
+    [damage] = [e for e in live.event_log if isinstance(e, DamageApplied)]
+    assert damage.source_id is None
+    assert damage.damage_type == "slashing"
+
+
+def test_a_foe_whose_template_does_not_resolve_makes_no_opportunity_attack() -> None:
+    # Matches the on-turn behaviour: an unresolvable monster_template_slug
+    # makes the foe unable to act at all, not a legacy-swing fallback.
+    handle, live = _start(
+        [_hero(initiative=20)],
+        [_monster(monster_template_slug="no-such-monster", initiative=1, attack_bonus=20)],
+    )
+    _act(handle, "char:hero", intent_type="move", target_zone_id=cell_id(0, 3))
+    assert [e for e in live.event_log if isinstance(e, AttackRolled)] == []
+    foe = next(c for c in live.initiative if c.entity_id == "mon:foe")
+    assert foe.reaction_available is True
+
+
+def test_a_hidden_reactor_stops_being_hidden_when_it_strikes() -> None:
+    # SRD 5.2 Hide: the Invisible condition "ends on you immediately after
+    # ... you make an attack roll" — including one made as a reaction.
+    handle, live = _start([_hero(initiative=20)], [_monster(attack_bonus=0, initiative=1)])
+    foe = next(c for c in live.initiative if c.entity_id == "mon:foe")
+    foe.conditions.append(
+        ActiveCondition(condition="invisible", source_entity_id="implied:hide", scope="combat")
+    )
+    live.hidden_entities.add("mon:foe")
+    live.active_conditions.setdefault("mon:foe", set()).add("invisible")
+    _act(handle, "char:hero", intent_type="move", target_zone_id=cell_id(0, 3))
+    [aoo] = [e for e in live.event_log if isinstance(e, AttackRolled) and e.is_opportunity_attack]
+    assert aoo.advantage == "advantage"
+    aoo_index = live.event_log.index(aoo)
+    removed = next(
+        e
+        for e in live.event_log[aoo_index:]
+        if isinstance(e, ConditionRemoved) and e.target_id == "mon:foe"
+    )
+    assert removed.condition == "invisible"
+    assert "mon:foe" not in live.hidden_entities
+
+
+def test_a_slowing_opportunity_attack_cuts_the_walk_short() -> None:
+    # SRD 5.2 Weapon Mastery — Slow: a mid-walk proc clamps the budget, so
+    # the walk can't finish the move it already committed to.
+    handle, live = _start([_hero(strength=16, equipment=("club",))], [_monster()])
+    _act(handle, "mon:foe", intent_type="move", target_zone_id=cell_id(6, 0))
+    assert live.actor_zone["mon:foe"] == cell_id(5, 0)
+    foe = _find_combatant(live, "mon:foe")
+    assert foe is not None
+    assert foe.movement_remaining == 0
+    moves = [
+        (e.from_zone, e.to_zone, e.distance_ft)
+        for e in live.event_log
+        if isinstance(e, ActorMoved) and e.actor_id == "mon:foe"
+    ]
+    assert moves == [(cell_id(1, 0), cell_id(5, 0), 20)]

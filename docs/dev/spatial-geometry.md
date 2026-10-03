@@ -240,9 +240,10 @@ line):** `shortest_path` remains uniform-cost BFS (fewest CELLS) — it does
 NOT become a cost-aware search (e.g. Dijkstra weighted by `edge_distance`).
 Threat-aware routing (avoiding opportunity-attack reach) and multi-tile
 creature footprints are unaddressed and remain BACKLOG'd; only the terrain
-COST primitive (`edge_distance`) is closed here, consumed today by
-`_handle_move`'s single-step budget check, not by any multi-step path
-planner.
+COST primitive (`edge_distance`) is closed here. `_handle_move` charges it
+step by step, and since C24 `GridTopology.reachable_cells` (a budget-bounded
+Dijkstra over it) feeds the monster flee planner; `shortest_path` itself
+stays fewest-cells BFS.
 
 ## Zone-backend decision
 

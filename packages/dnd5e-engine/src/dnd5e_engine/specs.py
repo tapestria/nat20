@@ -161,13 +161,13 @@ class PartyMemberSpec(BaseModel):
     feats: tuple[str, ...] = ()
     # One Fighting Style feat for a hand-built spec; merged with any in ``feats``.
     fighting_style: FightingStyle | None = None
-    # The PC's reach for an Unarmed Strike, or any attack the legacy swing
-    # (``_synthesize_attack_from_legacy_fields``) synthesizes — NOT a weapon's
-    # reach: under D24.9 a resolved weapon's own reach wins instead (e.g. a
-    # Glaive's Reach property, adding 5 ft to the SRD baseline). Defaults to 5
-    # (mirrors ``Combatant.melee_reach_ft``'s own default — the SRD baseline
-    # for a Medium creature's unarmed/short-weapon reach). Projected onto
-    # ``Combatant.melee_reach_ft`` at start_combat by ``_build_pc_combatants``.
+    # The reach this PC's opportunity attack threatens when it makes an Unarmed
+    # Strike, or the legacy swing (``_synthesize_attack_from_legacy_fields``); an
+    # opportunity attack with a weapon uses the weapon's own reach (10 ft with the
+    # Reach property), and an on-turn Unarmed Strike reaches 5 ft whatever this
+    # says. Defaults to 5 (mirrors ``Combatant.melee_reach_ft``'s own default — the
+    # SRD baseline). Projected onto ``Combatant.melee_reach_ft`` at start_combat by
+    # ``_build_pc_combatants``.
     reach_ft: int = 5
     # SRD 5.2 Opportunity Attacks: "take a Reaction to make one melee attack
     # with a weapon or an Unarmed Strike". The weapon slug this PC makes its
