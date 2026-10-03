@@ -561,6 +561,11 @@ class ActivityResolutionContext:
     # onto ``caster_abilities`` / ``caster_proficiency_bonus``; ``None`` keeps
     # the entity-type model.
     stat_block_magnitudes: StatBlockMagnitudes | None = None
+    # SRD 5.2 Opportunity Attacks: "take a Reaction to make one melee attack
+    # with a weapon or an Unarmed Strike against the provoking creature". True
+    # only for the resolution an opportunity attack runs; ``attack.py`` stamps
+    # it on every ``AttackRolled`` that resolution emits.
+    is_opportunity_attack: bool = False
 
     def ability_mod(self, ability: str) -> int:
         return (self.caster_abilities.get(ability, 10) - 10) // 2
