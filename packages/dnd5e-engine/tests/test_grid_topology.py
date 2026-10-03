@@ -285,3 +285,78 @@ def test_has_line_of_sight_blocked_when_wall_endpoint_grazes_the_sightline():
     scene = GridScene(width=10, height=10, wall_segments=[WallSegment(x1=1, y1=1, x2=1, y2=0)])
     g = GridTopology(scene)
     assert g.has_line_of_sight("0,0", "2,2") is False
+
+
+# ── reachable_cells (C24: the grid flee planner's reachability) ──────────
+
+
+def _route(reached: dict[str, tuple[int, str | None]], cell: str) -> list[str]:
+    """Follow ``previous_cell`` from ``cell`` back to the start."""
+    route = [cell]
+    while (prev := reached[route[-1]][1]) is not None:
+        route.append(prev)
+    return route[::-1]
+
+
+def test_reachable_cells_maps_each_cell_within_budget_to_its_cost():
+    grid = GridTopology(GridScene(width=10, height=10))
+    reached = grid.reachable_cells(cell_id(0, 0), 10)
+    assert reached[cell_id(0, 0)] == (0, None)
+    assert {c for c, (cost, _) in reached.items() if cost == 5} == {
+        cell_id(1, 0),
+        cell_id(0, 1),
+        cell_id(1, 1),
+    }
+    # Two steps reach every cell within Chebyshev distance 2, and no further.
+    assert set(reached) == {cell_id(c, r) for c in range(3) for r in range(3)}
+    assert reached[cell_id(2, 2)][0] == 10
+
+
+def test_reachable_cells_charges_difficult_terrain_double():
+    grid = GridTopology(GridScene(width=10, height=1, difficult_terrain_cells=[cell_id(1, 0)]))
+    reached = grid.reachable_cells(cell_id(0, 0), 15)
+    assert reached[cell_id(1, 0)][0] == 10
+    assert reached[cell_id(2, 0)][0] == 15
+    assert cell_id(3, 0) not in reached
+
+
+def test_reachable_cells_never_enters_an_avoided_cell_and_routes_around_it():
+    grid = GridTopology(GridScene(width=10, height=10))
+    reached = grid.reachable_cells(cell_id(0, 0), 10, avoid=[cell_id(1, 0)])
+    assert cell_id(1, 0) not in reached
+    route = _route(reached, cell_id(2, 0))
+    assert route == [cell_id(0, 0), cell_id(1, 1), cell_id(2, 0)]
+    assert cell_id(1, 0) not in route
+
+
+def test_reachable_cells_respects_walls_and_blocked_cells():
+    # A wall along the boundary between column 0 and column 1, and a blocked
+    # cell at 1,1: the start pocket is column 0 alone.
+    grid = GridTopology(
+        GridScene(
+            width=3,
+            height=3,
+            wall_segments=[WallSegment(x1=1, y1=0, x2=1, y2=3)],
+            blocked_cells=[cell_id(1, 1)],
+        )
+    )
+    reached = grid.reachable_cells(cell_id(0, 0), 30)
+    assert set(reached) == {cell_id(0, 0), cell_id(0, 1), cell_id(0, 2)}
+
+
+def test_reachable_cells_ties_keep_the_first_route_in_column_row_order():
+    grid = GridTopology(GridScene(width=10, height=10))
+    reached = grid.reachable_cells(cell_id(3, 0), 30)
+    # Six equal-cost routes reach 9,0; the one along row 0 is found first.
+    assert _route(reached, cell_id(9, 0)) == [cell_id(c, 0) for c in range(3, 10)]
+
+
+def test_reachable_cells_is_empty_for_an_out_of_bounds_start():
+    grid = GridTopology(GridScene(width=3, height=3))
+    assert grid.reachable_cells(cell_id(5, 5), 30) == {}
+
+
+def test_reachable_cells_stays_inside_its_budget_on_a_huge_grid():
+    grid = GridTopology(GridScene(width=1000, height=1000))
+    reached = grid.reachable_cells(cell_id(500, 500), 30)
+    assert len(reached) == (2 * 30 // 5 + 1) ** 2

@@ -9,6 +9,7 @@ the zone graph (``_ZoneGraph`` in ``orchestrator.py``) and the grid
 
 from __future__ import annotations
 
+import heapq
 from collections import deque
 from collections.abc import Collection
 from typing import Literal, Protocol, runtime_checkable
@@ -626,6 +627,45 @@ class GridTopology:
                     prev[nb] = node
                     queue.append(nb)
         return []
+
+    def reachable_cells(
+        self, start: str, budget_ft: int, *, avoid: Collection[str] = ()
+    ) -> dict[str, tuple[int, str | None]]:
+        """Every cell a creature standing on ``start`` can walk to for at most
+        ``budget_ft`` of movement, mapped to ``(cost_ft, previous_cell)``:
+        the cheapest route's price (SRD 5.2 §Difficult Terrain: entering a
+        difficult cell costs double) and the cell that route enters it from
+        (``None`` for ``start``, cost 0). Follow ``previous_cell`` back to
+        ``start`` for the route itself.
+
+        Dijkstra over the same legal steps as ``shortest_path`` (walls, blocked
+        cells, cut corners); ``avoid`` cells are never entered (an enemy's
+        space, SRD 5.2 §Moving Around Other Creatures). Ties keep the route
+        found first, popping equal costs in ``(column, row)`` order, so the
+        result is deterministic. Bounded by the budget: at most
+        ``(2 * budget_ft // cell_size_ft + 1) ** 2`` cells, whatever the grid
+        size. ``{}`` for an out-of-bounds ``start``. Grid-only; not part of
+        ``SpatialTopology``."""
+        if not self._in_bounds(start):
+            return {}
+        avoid_set = set(avoid)
+        reached: dict[str, tuple[int, str | None]] = {start: (0, None)}
+        col, row = parse_cell(start)
+        frontier: list[tuple[int, int, int, str]] = [(0, col, row, start)]
+        while frontier:
+            cost, _, _, cid = heapq.heappop(frontier)
+            if cost > reached[cid][0]:
+                continue
+            for nb in self._neighbors(cid):
+                step = self.edge_distance(cid, nb)
+                if nb in avoid_set or step is None or cost + step > budget_ft:
+                    continue
+                known = reached.get(nb)
+                if known is None or cost + step < known[0]:
+                    reached[nb] = (cost + step, cid)
+                    nb_col, nb_row = parse_cell(nb)
+                    heapq.heappush(frontier, (cost + step, nb_col, nb_row, nb))
+        return reached
 
 
 __all__ = [
