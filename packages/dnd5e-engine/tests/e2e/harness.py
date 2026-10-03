@@ -48,3 +48,13 @@ def xfail_cluster(number: int, name: str) -> pytest.MarkDecorator:
         strict=True,
         reason=f"backlog cluster {number} ({name}) not yet implemented",
     )
+
+
+def adjacent_cells(n: int, *, at: tuple[int, int] = (0, 0)) -> list[str]:
+    """1-4 mutually adjacent cell ids: the 2x2 block at ``at``, ordered (c,r),
+    (c,r+1), (c+1,r), (c+1,r+1). The grid stand-in for one shared zone: every
+    pair is 5 ft apart and no creature stands between two others."""
+    if not 1 <= n <= 4:
+        raise ValueError(f"adjacent_cells takes 1-4 cells, got {n}")
+    col, row = at
+    return [cell(col, row), cell(col, row + 1), cell(col + 1, row), cell(col + 1, row + 1)][:n]
