@@ -364,23 +364,13 @@ lands, where it previously always triggered the buff for free.
 ### Why AoO is not a queued reaction
 
 An opportunity attack is not "readied" via an on-turn intent — SRD
-Opportunity Attacks are always-available, gated only on
-`reaction_available`, exactly like the shipped PC-reactor direction
-(`_fire_pc_opportunity_attacks_on_move`, unmodified by this cluster). This
-scenario needs only the "any combatant, either direction" generalization of
-that existing scan, not the `pending_reactions` queue machinery the rest of
-this cluster builds.
-
-`_fire_monster_opportunity_attacks_on_move(live, *, mover_id, from_zone,
-to_zone)` mirrors `_fire_pc_opportunity_attacks_on_move` with reactor/mover
-roles swapped (`live.encounter_ids` instead of `live.party_ids`) and one
-additional guard the shipped direction does not need: skip entirely when
-`mover.disengaging_this_turn` is set. It inherits the same same-zone-only
-reach approximation the shipped direction carries (`melee_reach_ft` is not
-yet consulted for cross-zone reach on either direction — out of scope here,
-tracked already under "Richer pathfinding" / the reach BACKLOG history).
-Called from `_handle_move` (the PC move handler) **before** `ActorMoved` is
-emitted — "the attack occurs right before it leaves your reach."
+Opportunity Attacks are always available, gated only on `reaction_available`.
+Since C24 one trigger serves every walk: `_opportunity_attackers(live, *,
+mover_id, from_cell, to_cell)` lists who a step provokes (an enemy whose reach
+the step leaves, that can see the mover), and `_fire_opportunity_attacks_on_step`
+makes those attacks before the step — "the attack occurs right before it
+leaves your reach" — through the activity context, and tells the walk whether to
+stop. `_handle_move`, the closing walk and the flee walk all call it per step.
 
 ### Disengage (real handler; closes the discovered turn-ending fall-through)
 
@@ -404,8 +394,6 @@ movement doesn't provoke... for the rest of the turn," not permanently.
 - **Interactive prompts.** A host asking "do you want to Counterspell
   this?" mid-resolution is a host concern; this engine only supports
   pre-armed auto-fire, by hard constraint.
-- **PC-reactor AoO changes.** `_fire_pc_opportunity_attacks_on_move` is
-  unmodified — it already shipped in an earlier cluster.
 - **Monster spellcasting.** `select_typed_monster_action` still never picks
   a `CastActivity`-only action (Spellcasting/Protective Magic), so a monster
   cannot cast Counterspell/Shield on its own turn through the public API;
@@ -414,10 +402,6 @@ movement doesn't provoke... for the rest of the turn," not permanently.
   "Constructibility finding").
 - **A general force-immunity / resistance mechanic.** Deliberately not
   built — see the Magic Missile carve-out above.
-- **Richer opportunity-attack reach** (`melee_reach_ft` consulted for
-  cross-zone reach on either AoO direction) — unchanged pre-existing gap,
-  inherited by the new monster-reactor direction identically to the
-  shipped PC-reactor direction.
 - **Multi-round reaction-applied buffs.** The off-turn expiry mechanism
   fires at the owner's very next `TurnStarted` regardless of the effect's
   `duration.rounds` value — correct for every reaction buff this cluster's

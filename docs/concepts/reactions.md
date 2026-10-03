@@ -45,9 +45,12 @@ before their turn ends and arm accordingly. You cannot ask them mid-resolution.
 | `"cast_spell"` | Another creature casts a spell (Counterspell) |
 | `"targeted_by_magic_missile"` | The reactor is targeted by Magic Missile |
 
-Opportunity attacks are separate: they need no arming and fire automatically in
-both directions when a creature leaves an enemy's reach, unless the mover took
-the Disengage action.
+Opportunity attacks are separate: they need no arming. Every walk that leaves
+an enemy's reach draws one, on either side, unless the mover took the Disengage
+action; a summon makes none. A character strikes with
+`PartyMemberSpec.opportunity_attack_weapon_id`, else the first melee weapon in
+its `equipment`, else an Unarmed Strike; a monster with the first non-ranged
+attack on its stat block.
 
 !!! note "This set is not data-driven"
 

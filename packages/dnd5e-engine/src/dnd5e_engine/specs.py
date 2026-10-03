@@ -161,9 +161,11 @@ class PartyMemberSpec(BaseModel):
     feats: tuple[str, ...] = ()
     # One Fighting Style feat for a hand-built spec; merged with any in ``feats``.
     fighting_style: FightingStyle | None = None
-    # SRD Weapons table, Reach property — melee reach in feet (e.g. a Glaive's
-    # Reach property adds 5 ft to the SRD baseline, landing at 10). Defaults to
-    # 5 (mirrors ``Combatant.melee_reach_ft``'s own default — the SRD baseline
+    # The PC's reach for an Unarmed Strike, or any attack the legacy swing
+    # (``_synthesize_attack_from_legacy_fields``) synthesizes — NOT a weapon's
+    # reach: under D24.9 a resolved weapon's own reach wins instead (e.g. a
+    # Glaive's Reach property, adding 5 ft to the SRD baseline). Defaults to 5
+    # (mirrors ``Combatant.melee_reach_ft``'s own default — the SRD baseline
     # for a Medium creature's unarmed/short-weapon reach). Projected onto
     # ``Combatant.melee_reach_ft`` at start_combat by ``_build_pc_combatants``.
     reach_ft: int = 5

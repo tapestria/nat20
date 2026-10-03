@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`PartyMemberSpec.opportunity_attack_weapon_id`** — the weapon a character
+  makes its opportunity attacks with; `start_combat` raises `ValueError` for a
+  slug that names no melee weapon (C24).
+- **`GridTopology.reachable_cells(start, budget_ft, *, avoid=())`** — every cell
+  reachable within a movement budget, with its cost and the cell its cheapest
+  route enters it from (C24).
+
+### Changed
+
+- **Opportunity attacks fire on the grid, for every walk** (C24): a
+  character's or host-driven foe's `move`, the monster AI's closing walk and
+  its flee. Reach-based (Chebyshev) from both sides; Disengage suppresses them
+  from either side; the Charmed reactor spares its charmer; the walk stops at
+  0 HP or Speed 0.
+- **`ActorMoved` splits at a provoking step** of a `move` intent, so the
+  opportunity attack lands between the run before it and the rest (C24).
+- **Opportunity attacks resolve through the activity context** (C24): the
+  character's weapon (the new field, else its first melee weapon, else an
+  Unarmed Strike) or the creature's stat-block attack, with cover, Fighting
+  Styles, Martial Arts, proficiency, enchantments, weapon mastery, Sneak Attack
+  and the target's readied Shield. `AttackRolled` and `DamageApplied` values
+  change accordingly.
+- **Sneak Attack's once-per-turn flag clears at every turn start** (C24).
+- **Monsters flee on the grid** to the reachable, unoccupied cell farthest from
+  their nearest enemy; an Incapacitated monster takes no flee stance (C24).
+
+### Fixed
+
+- An opportunity attack on a Prone creature beyond 5 ft now has Disadvantage
+  (C24).
+
 ## [0.6.0]
 
 Lockstep release with `dnd5e-srd-data` 0.6.0 and `nat20-bridge` 0.6.0. The

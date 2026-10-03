@@ -41,7 +41,8 @@ with `GridTopology.shortest_path` and prices the *whole* route up front — each
 leg's `edge_distance`, with a `difficult_terrain_cells` cell costing double — so
 a route the budget cannot pay for is rejected atomically without moving. A route
 it can pay for is walked, decrementing the budget cell by cell, and produces
-exactly **one** `ActorMoved` carrying the total distance.
+one `ActorMoved` carrying the total distance — two or more when a step on the
+way provokes an opportunity attack, which then lands between them.
 
 A step is legal when it stays on the map, does not enter a `blocked_cells`
 square, does not cross a `wall_segments` entry, and — for a diagonal — does not
@@ -53,9 +54,11 @@ Multi-cell routing and occupancy are both **grid-only**: on the legacy zone
 graph a `"move"` intent is still a single step to an *adjacent* zone, and a
 non-adjacent destination is still `MoveFailed(reason="not_adjacent")`.
 
-Opportunity attacks fire before the mover leaves each cell's reach; a mover
-dropped to 0 HP stops where the drop happened, and the `ActorMoved` reports the
-partial walk.
+A step that takes the mover out of an enemy's reach draws that enemy's
+opportunity attack first, whoever drives the mover: a `move` intent, the
+monster AI's closing walk, or its flee. Reach is measured in Chebyshev cells, so
+moving around inside it never provokes. A mover the attack drops to 0 HP, or to
+Speed 0, stops on the cell it was leaving. Forced movement provokes nothing.
 
 A rejected move emits `MoveFailed` with one of:
 

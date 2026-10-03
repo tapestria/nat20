@@ -162,14 +162,6 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   spell attack roll is exactly the kind of "attack roll" Shield's SRD 5.2
   text protects against.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
-- **Flee stance ignores Incapacitated** (2026-09-03; pre-existing, sharpened
-  by C18 Task 9's new `has_fled` persistence). `_apply_monster_flee_stance`
-  gates only on `current.is_alive and current.hp_current > 0` — an
-  Incapacitated monster under its behavior profile's flee threshold still
-  "retreats" and is marked `has_fled=True`, even though SRD 5.2's
-  Incapacitated condition ("can't take any Action or Bonus Action") should
-  block it from taking the Disengage-equivalent retreat action at all.
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_apply_monster_flee_stance`)
 - **Undead Fortitude's trigger ignores temporary HP on the live combat
   path** (2026-09-23). `activities/apply.py::apply_damage` gates the trait's
   CON save on `final_amount >= target.hp_current` — the pure resolver's
@@ -200,13 +192,16 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
 
 ## Core combat rules not modelled (2026-08-22)
 
-- **A host-driven foe's move provokes no opportunity attack
-  (2026-09-27, C23).** `_handle_move` fires only the monster-reactor direction, which
-  takes only the mover's foes, so a foe moved through `submit_player_intent`
-  leaves a character's reach freely; the character-reactor direction runs
-  only on the monster AI's own walk. (C23 stopped such a move from drawing
-  attacks from the foe itself and its allies.)
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_handle_move`)
+- **An opportunity attack never Cleaves, takes a versatile weapon in two hands,
+  or redeems a Bardic Inspiration die (2026-10-03, C24).** SRD 5.2 Cleave
+  follows any melee hit with the weapon and Bardic Inspiration any failed D20
+  Test, but each is a choice the engine can only take from an intent, and an
+  opportunity attack has none (the engine never pauses mid-resolution); a
+  Versatile weapon rolls its one-handed die for the same reason — never the
+  Versatile die, and never Great Weapon Fighting either, since that style's
+  own gate for a Versatile (as opposed to strictly Two-Handed) weapon reads
+  the same never-set `use_versatile_damage` flag.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_resolve_opportunity_attack`)
 - **An `attack` that names no weapon resolves nothing but spends the Action
   (2026-09-27, C23).** A character's `attack` with neither `weapon_id` nor
   `stat_block_action_id` emits only `IntentSubmitted` and ends the turn: no
@@ -487,14 +482,14 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   a typed push field on the save activity + a translator rule, then delete the
   registry.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/forced_movement.py`)
-- **Monster walks ignore occupancy; line width is not modelled** (2026-08-27).
-  `_walk_zone_path`, `_execute_flee_retreat` and the closing walk in
-  `advance_monster_turn` all call `shortest_path` without `avoid=`, so a monster
-  may path straight through a PC where a PC `"move"` intent may not — a
-  deliberate, documented asymmetry, not an oversight;
-  `cells_in_template("line")` is one cell wide, so a 5-ft-wide Lightning Bolt is
-  treated as a 1-cell ray and a wider `template.width` is ignored.
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_walk_zone_path`,
+- **The monster AI's closing walk ignores occupancy; line width is not modelled** (2026-08-27,
+  amended 2026-10-03, C24). The closing walk in `advance_monster_turn` calls
+  `shortest_path` without `avoid=`, so a monster may path straight through a PC
+  where a PC `"move"` intent may not; the flee walk avoids enemy spaces and never
+  ends on a creature (C24). `cells_in_template("line")` is one cell wide, so a
+  5-ft-wide Lightning Bolt is treated as a 1-cell ray and a wider
+  `template.width` is ignored.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::advance_monster_turn`,
   `packages/dnd5e-engine/src/dnd5e_engine/spatial.py::cells_in_template`)
 - **A spaced cell id is stored as written (2026-09-27, C21b).**
   `GridTopology.is_valid_cell` parses with `int()`, which also reads `"1, 1"`
@@ -532,24 +527,6 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   player-intent cast path calls `activities/forced_movement.py`, so a monster
   casting Thunderwave deals damage but pushes nobody.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::advance_monster_turn`)
-- **Opportunity attacks bypass the activity context — cover, Fighting Styles,
-  Martial Arts, enchantments and forms** (2026-08-27, condition gap closed
-  2026-09-01 C14 Task 9, visibility gap closed 2026-09-02 C16b, amended
-  2026-09-24 C20 and 2026-09-25, C21a). The AoO path
-  never calls `build_activity_context`, so an opportunity attack still sees no
-  cover — despite SRD 5.2's cover rules applying to any attack roll — and,
-  rolling from the legacy `attack_bonus` / `damage_dice` fields with no weapon,
-  gets neither a Fighting Style (Archery, Great Weapon Fighting) nor Martial
-  Arts (its die, Dexterous Attacks). Condition-derived advantage/disadvantage,
-  Exhaustion's D20 Test penalty, Dodge, the "a creature that you can see"
-  trigger (`_combatant_can_see` — no Reaction spent on failure), the `unseen`
-  advantage source, and the Invisible/Frightened carve-outs all now reach the
-  roll.
-  A Magic Weapon enchantment doesn't reach an opportunity attack, which names
-  no weapon, and a transformed creature's opportunity attack rolls those
-  legacy fields, not its form's attack.
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_fire_pc_opportunity_attacks_on_move`)
-
 ## Effect-change sidecars (2026-07-02)
 
 - **Two effect-key namespaces for check/save bonuses (2026-08-26).** The public
@@ -811,11 +788,16 @@ zone + apply logic:
   first commandable save action.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_stat_block_attack_failure`)
 - **A form's melee reach is 5 feet (2026-09-25, C21a; amended 2026-09-26,
-  C21b).** The corpus carries no melee reach for a monster, so a transformed
-  creature swings at 5 feet whatever its form. A summoned Draconic Spirit's
-  `melee_reach_ft` is 5 too, though its Rend reaches 10 feet; a commanded
-  Rend reads the action's own range, so only a reader of the field sees 5.
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_physical_stat_fields`)
+  C21b; amended 2026-10-03, C24).** The corpus carries no melee reach for a
+  monster, so a transformed creature swings at 5 feet whatever its form — its
+  opportunity attack too, now that one resolves through the stat block
+  (`_stat_block_opportunity_attack` falls back to the same
+  `Combatant.melee_reach_ft` the on-turn path does). A summoned Draconic
+  Spirit's `melee_reach_ft` is 5 too, though its Rend reaches 10 feet; a
+  commanded Rend reads the action's own range, so only a reader of the field
+  sees 5.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_physical_stat_fields`,
+  `::_stat_block_opportunity_attack`)
 - **A shape-shifted creature keeps its items and class features
   (2026-09-25, C21a).** Casting, readying a spell and weapon attacks are
   refused, but `use_item` is not — SRD 5.2 Wild Shape: "Your ability to
@@ -855,25 +837,21 @@ zone + apply logic:
   conjuration carrier (`_resolve_monster_cast` builds none, so the cast would
   stay narrative), and a foe the host drives can't cast it either: an
   `EncounterMemberSpec` carries no spell slots. A summon's allegiance already
-  resolves through its caster, on either side, but
-  `_fire_pc_opportunity_attacks_on_move` is safe only while every summon is
-  party-side: it writes reactors back by slot index, and a monster mover that
-  owns a summon could lose its concentration to a PC's opportunity attack and
-  dismiss the summon mid-loop. It then needs the departure-safe loop that
-  `_fire_monster_opportunity_attacks_on_move` has.
+  resolves through its caster, on either side.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_monster_cast_candidate`)
 - **Spiritual Weapon's force moves through walls (2026-09-25, C21a).** Its
   Bonus-Action move is checked as a distance (the force floats), with no
   pathing, so it can cross a wall to a cell 20 feet away.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_construct_attack_failure`)
 - **A monster-turn attacker's ally-enchanted weapon grants no Magic Weapon
-  bonus (2026-09-25, C21a).** Magic Weapon's `enchanted_weapon` flag and
-  `weapon_enchantment_to_hit` reach only the on-turn `submit_player_intent`
-  attack path; `advance_monster_turn`'s own attack-context build
-  (`_monster_context_kwargs`) never threads either one, and a monster attack
-  carries no `Weapon` object to enchant in the first place, so an ally's
-  Magic Weapon on a monster combatant's weapon gives no bonus to hit or
-  damage on that monster's own driven turn.
+  bonus (2026-09-25, C21a; amended 2026-10-03, C24).** Magic Weapon's
+  `enchanted_weapon` flag and `weapon_enchantment_to_hit` reach only the
+  on-turn `submit_player_intent` attack path; `_monster_context_kwargs` never
+  threads either one, and a monster attack carries no `Weapon` object to
+  enchant in the first place, so an ally's Magic Weapon on a monster
+  combatant's weapon gives no bonus to hit or damage on that monster's own
+  driven turn, its legendary action, or (since C24) its opportunity attack —
+  all three share `_resolve_monster_attack_activities`.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_monster_context_kwargs`)
 - **A Multiattack that "uses" an action counts it as a swing (2026-09-26,
   C21a).** SRD 5.2 Giant Constrictor Snake: "The snake makes one Bite attack
@@ -933,9 +911,9 @@ zone + apply logic:
   creature where it stands.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_run_uncommanded_summon_turn`)
 - **Summons take no reactions (2026-09-26, C21b).** A summon is in neither
-  side set, so the opportunity-attack loops never make it a reactor: it
-  makes no opportunity attack, whoever leaves its reach.
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_fire_pc_opportunity_attacks_on_move`)
+  side set, and the opportunity-attack trigger takes reactors only from
+  those, so it makes no opportunity attack, whoever leaves its reach.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_opportunity_attackers`)
 - **The Draconic Spirit's chosen damage type is not modelled (2026-09-26,
   C21b).** SRD 5.2 Shared Resistances: "When you summon the spirit, choose one
   of its Resistances. You have Resistance to the chosen damage type until the
@@ -1269,11 +1247,8 @@ now calls the engine rather than standing in for it. Residual gaps:
   `_combatant_can_see` or a Frightened monster's own line-of-sight/
   no-approach rule when choosing a target or walking; confirmed still open
   after C18 (2026-09-03) — a rule card scoped it out as not an SRD rule, so
-  this stands as a deliberate scope cut, not an oversight. Same status for
-  flee planning, which returns `None` on a grid (C18 S08 needs only the
-  `has_fled` flag, not movement) so a fleeing monster holds still.
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_select_monster_targets`,
-  `packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_plan_flee_destination`)
+  this stands as a deliberate scope cut, not an oversight.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_select_monster_targets`)
 - **`PartyMemberSpec` has no `physical_resistances_nonmagical_only`
   counterpart** (2026-08-30). PCs are pinned to the nonmagical-only reading of
   host-authored B/P/S resistances; a PC whose resistance should be

@@ -10,8 +10,8 @@ Two things worth noticing:
   byte-identical output.
 * ``narration_events`` is consumed concurrently — it streams until
   ``end_combat`` closes it.
-* A ``"move"`` intent steps to an **adjacent** cell only — the engine does not
-  path-find, so closing two cells takes two intents.
+* A ``"move"`` intent walks the shortest legal route to its cell; a step that
+  leaves an enemy's reach on the way draws its opportunity attack.
 """
 
 from __future__ import annotations

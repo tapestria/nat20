@@ -384,7 +384,7 @@ _PROBES: dict[str, tuple[Any, str]] = {
     # C24: an opportunity attack resolves through the activity context,
     # flagged on its context.
     "| Opportunity attacks |": (
-        lambda: "is_opportunity_attack=True" in _src("orchestrator.py"),
+        lambda: "def _opportunity_attack_of(" in _src("orchestrator.py"),
         "✅",
     ),
     # C15 Tasks 2/3: the long-range disadvantage tier and the Ranged
