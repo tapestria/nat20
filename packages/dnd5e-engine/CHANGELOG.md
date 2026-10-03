@@ -22,7 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   character's or host-driven foe's `move`, the monster AI's closing walk and
   its flee. Reach-based (Chebyshev) from both sides; Disengage suppresses them
   from either side; the Charmed reactor spares its charmer; the walk stops at
-  0 HP or Speed 0.
+  0 HP or Speed 0, or where a Push mastery hit carries the mover off, keeping
+  its unspent movement.
 - **`ActorMoved` splits at a provoking step** of a `move` intent, so the
   opportunity attack lands between the run before it and the rest (C24).
 - **Opportunity attacks resolve through the activity context** (C24): the

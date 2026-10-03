@@ -58,7 +58,9 @@ A step that takes the mover out of an enemy's reach draws that enemy's
 opportunity attack first, whoever drives the mover: a `move` intent, the
 monster AI's closing walk, or its flee. Reach is measured in Chebyshev cells, so
 moving around inside it never provokes. A mover the attack drops to 0 HP, or to
-Speed 0, stops on the cell it was leaving. Forced movement provokes nothing.
+Speed 0, stops on the cell it was leaving; a mover the attack pushes stops
+where the push leaves it, keeping its unspent movement. Forced movement
+provokes nothing.
 
 A rejected move emits `MoveFailed` with one of:
 

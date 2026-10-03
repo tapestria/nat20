@@ -1392,9 +1392,10 @@ def _fold_mastery_procs(
     appended to ``ctx.mastery_procs`` this resolution into live combat
     state:
 
-    * ``"vex"`` -> ``live.vex_grants[attacker_id][target_id] = 2`` ("before
-      the end of your NEXT turn" — decremented at the attacker's own turn
-      end, see ``_end_turn_and_advance``).
+    * ``"vex"`` -> ``live.vex_grants[attacker_id][target_id] = 2, or 1 for a
+      proc on another creature's turn`` ("before the end of your NEXT turn"
+      — decremented at the attacker's own turn end, see
+      ``_end_turn_and_advance``).
     * ``"sap"`` -> ``live.sap_marks[target_id] = attacker_id`` ("before the
       start of your next turn" — cleared at the attacker's own next
       ``TurnStarted``, see ``_emit_apply_turn_started``).
@@ -1416,7 +1417,12 @@ def _fold_mastery_procs(
     attacker_cell = live.actor_zone.get(attacker_id)
     for mastery_slug, target_id in ctx.mastery_procs:
         if mastery_slug == "vex":
-            live.vex_grants.setdefault(attacker_id, {})[target_id] = 2
+            # "before the end of your next turn": on the attacker's own turn
+            # that is two of its turn ends; on another creature's turn (an
+            # opportunity attack) only its next one.
+            live.vex_grants.setdefault(attacker_id, {})[target_id] = (
+                2 if live.current_actor_id == attacker_id else 1
+            )
         elif mastery_slug == "sap":
             live.sap_marks[target_id] = attacker_id
         elif mastery_slug == "slow":
@@ -3168,10 +3174,12 @@ class _LiveCombat:
     # with this weapon and deal damage to the creature, you have Advantage
     # on your next attack roll against that creature before the end of your
     # next turn."* Keyed ATTACKER entity_id -> {TARGET entity_id ->
-    # rounds-remaining}. A fresh proc sets rounds-remaining to 2 ("before
-    # the end of your NEXT turn" spans this turn's remainder plus the
-    # attacker's whole next turn); re-procing the SAME attacker/target pair
-    # REFRESHES to 2 rather than stacking (controller ruling R5 — riders are
+    # rounds-remaining}. A fresh proc sets rounds-remaining to 2, or 1 for a
+    # proc on another creature's turn ("before the end of your NEXT turn"
+    # spans this turn's remainder plus the attacker's whole next turn, but an
+    # off-turn proc has no remainder of the attacker's own turn left to
+    # span); re-procing the SAME attacker/target pair REFRESHES to that same
+    # value rather than stacking (controller ruling R5 — riders are
     # non-stacking). Decremented for the ENDING actor's own grants at
     # ``_end_turn_and_advance`` (dropping entries that reach 0); the
     # one-use consumption pop (after that attacker's next attack roll vs
@@ -8967,7 +8975,8 @@ def _handle_move(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
     the mover leaves its cell (``_fire_opportunity_attacks_on_step``). A step
     that provokes closes the ``ActorMoved`` run walked so far, so the attack
     lands between two events. A mover an attack stops (0 HP, Speed 0, gone)
-    stays on the cell it was leaving.
+    stays on the cell it was leaving; a mover an attack pushes stops where
+    the push leaves it, keeping its unspent movement.
     """
     actor_id = current.entity_id
     # SRD 5.2 "Speed 0. Your Speed is 0 and can't increase." (Grappled /
@@ -12643,9 +12652,9 @@ def _fire_opportunity_attacks_on_step(
     calls this before each step (``_handle_move``, the closing walk, the flee
     walk); forced movement never does (``push_combatant``).
 
-    Returns ``True`` when the walk must stop here (``_walk_must_stop``). The
-    reactors after that one attack nothing: the mover never leaves their
-    reach.
+    Returns ``True`` when the walk must stop here (``_walk_must_stop``) or an
+    attack pushed the mover off ``from_cell``. The reactors after that one
+    attack nothing: the mover never leaves their reach.
     """
     for reactor_id in _opportunity_attackers(
         live, mover_id=mover_id, from_cell=from_cell, to_cell=to_cell
@@ -12662,7 +12671,10 @@ def _fire_opportunity_attacks_on_step(
         )
         _update_combatant(live, reactor_id, reaction_available=False)
         _resolve_opportunity_attack(live, reactor, mover)
-        if _walk_must_stop(live, mover_id):
+        # An attack's forced movement (the Push mastery) carried the mover
+        # off from_cell: the walk ends where it landed, and later reactors
+        # no longer see it leave their reach.
+        if _walk_must_stop(live, mover_id) or live.actor_zone.get(mover_id) != from_cell:
             return True
     return False
 
@@ -12797,6 +12809,13 @@ def _resolve_opportunity_attack(live: _LiveCombat, reactor: Combatant, mover: Co
     )
     payload = _build_hydration_payload(live, caster=reactor)
     pre_event_count = len(live.event_log)
+    kwargs = _pc_attack_context_kwargs(
+        live, reactor, targets, base_weapon=attack.weapon, weapon=weapon, payload=payload
+    )
+    # A melee attack on a creature still inside its reach (``_opportunity_attackers``
+    # checked it) is never beyond a normal range, even an Unarmed Strike reaching
+    # ``reach_ft``.
+    kwargs["target_beyond_normal_range"] = {}
     actx = build_activity_context(
         reactor,
         targets,
@@ -12809,9 +12828,7 @@ def _resolve_opportunity_attack(live: _LiveCombat, reactor: Combatant, mover: Co
         source_passive_effects=[],
         spell_book={},
         is_opportunity_attack=True,
-        **_pc_attack_context_kwargs(
-            live, reactor, targets, base_weapon=attack.weapon, weapon=weapon, payload=payload
-        ),
+        **kwargs,
     )
     for activity in attack.activities:
         resolve_activity(activity, actx, weapon=weapon)
