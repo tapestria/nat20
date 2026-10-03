@@ -722,12 +722,14 @@ _PROBES: dict[str, tuple[Any, str]] = {
         lambda: "def _resolve_monster_cast(" in _src("orchestrator.py"),
         "✅",
     ),
+    # C24: the grid flee planner ranks the cells ``reachable_cells`` finds.
     "Flee / retreat behaviour": (
         lambda: (
-            "def _plan_flee_destination(" in _src("orchestrator.py")
+            "def _plan_flee_route(" in _src("orchestrator.py")
+            and "def reachable_cells(" in _src("spatial.py")
             and "has_fled" in _src("types/combat.py")
         ),
-        "⚠️ Partial",
+        "✅",
     ),
     "**Legendary actions**": (
         lambda: "LegendaryActionUsed(" in _src("orchestrator.py"),

@@ -2014,50 +2014,47 @@ def _monster_dash_movement_budget(
     return dashed_budget
 
 
-def _plan_flee_destination(
-    topology: SpatialTopology,
-    start_zone: str,
-    threat_zone: str,
-    movement_remaining: int,
-) -> str | None:
-    """Pick the reachable zone that MAXIMIZES topology distance from a threat.
+def _plan_flee_route(
+    grid: GridTopology,
+    start: str,
+    threat_cells: Collection[str],
+    budget_ft: int,
+    *,
+    enemy_cells: Collection[str],
+    occupied_cells: Collection[str],
+) -> list[str] | None:
+    """The route a fleeing monster standing on ``start`` walks to get as far
+    from its threats as ``budget_ft`` allows (``route[0]`` is ``start``), or
+    ``None`` when it holds: cornered, out of movement, or nowhere farther.
+    Monster AI, DM-adjudicated rather than SRD text; it draws no dice.
 
-    The inverse of ``advance_monster_turn``'s greedy CLOSING walk: rather than
-    stepping along ``shortest_path`` *toward* the target, enumerate every zone
-    reachable within ``movement_remaining`` and choose the one whose distance to
-    ``threat_zone`` is greatest (ties broken toward the cheapest to reach, then
-    zone id for determinism). Returns ``None`` when no reachable zone strictly
-    increases the distance to the threat — the monster then holds its ground.
-
-    Zone-graph only: a grid backend exposes no finite named-zone set to rank, so
-    a fleeing monster on a grid stays put (not a pinned behaviour — grid retreat
-    pathing is a surviving BACKLOG item). Composed entirely from the existing
-    ``shortest_path`` / ``edge_distance`` primitives (via ``_path_total_distance``);
-    no new ``SpatialTopology`` capability is introduced.
+    The candidates are the cells ``GridTopology.reachable_cells`` reaches
+    without entering an enemy's space, except ``start`` and any cell a
+    creature stands on (SRD 5.2: "You can't willingly end a move in a space
+    occupied by another creature"). A candidate scores its Chebyshev distance
+    to the NEAREST threat, the same measure as reach, and only a cell that
+    scores above ``start`` qualifies. The best has the highest score, then
+    the cheapest route, then the lowest ``(column, row)`` compared as
+    integers (the string ``"10,0"`` sorts before ``"2,0"``).
     """
-    if not isinstance(topology, _ZoneGraph):
-        return None
-    baseline = _path_total_distance(topology, topology.shortest_path(start_zone, threat_zone))
-    if baseline is None:
-        return None
-    # (dist_to_threat, cost_to_reach, zone) for each zone that (a) is reachable
-    # within budget and (b) strictly increases distance from the threat.
-    candidates: list[tuple[int, int, str]] = []
-    for zone in sorted(topology._zones):
-        if zone == start_zone:
-            continue
-        cost = _path_total_distance(topology, topology.shortest_path(start_zone, zone))
-        if cost is None or cost > movement_remaining:
-            continue
-        dist = _path_total_distance(topology, topology.shortest_path(zone, threat_zone))
-        if dist is None or dist <= baseline:
-            continue
-        candidates.append((dist, cost, zone))
+
+    def nearest_threat_ft(cell: str) -> int:
+        return min(grid.distance_ft(cell, threat) or 0 for threat in threat_cells)
+
+    reached = grid.reachable_cells(start, budget_ft, avoid=enemy_cells)
+    occupied = set(occupied_cells)
+    baseline = nearest_threat_ft(start)
+    candidates = [
+        (-score, cost, parse_cell(cell), cell)
+        for cell, (cost, _previous) in reached.items()
+        if cell != start and cell not in occupied and (score := nearest_threat_ft(cell)) > baseline
+    ]
     if not candidates:
         return None
-    # Farthest from the threat wins; ties → cheapest to reach → stable zone id.
-    candidates.sort(key=lambda c: (-c[0], c[1], c[2]))
-    return candidates[0][2]
+    route = [min(candidates)[3]]
+    while (previous := reached[route[-1]][1]) is not None:
+        route.append(previous)
+    return route[::-1]
 
 
 def _take_walk_step(live: _LiveCombat, mover_id: str, next_cell: str) -> bool:
@@ -2107,39 +2104,32 @@ def _walk_path(live: _LiveCombat, mover_id: str, path: Sequence[str]) -> None:
 def _execute_flee_retreat(
     live: _LiveCombat, monster: Combatant, enemies: Sequence[Combatant]
 ) -> None:
-    """A fleeing monster spends movement increasing distance from its threat.
-
-    Monster-AI plumbing (DM-adjudicated, not codified SRD text): the flee gate
-    ``_monster_is_fleeing`` decides the monster *wants* to disengage; this gives
-    that decision teeth. The threat is the nearest living enemy (a summon
-    included) by topology distance; the destination is
-    ``_plan_flee_destination``'s farthest-reachable zone. When no such zone
-    exists (already cornered, no budget, or grid backend) the monster simply
-    holds — the same no-move it did before, now via a real evaluation.
+    """A fleeing monster spends its movement getting away from ``enemies``,
+    every living enemy it would otherwise attack (a charmer excluded): the
+    route ``_plan_flee_route`` picks, walked by ``_walk_path``. Fleeing takes
+    no Disengage or Dash, so each step out of an enemy's reach provokes its
+    opportunity attack. Monster-AI plumbing (DM-adjudicated, not SRD text):
+    ``_monster_is_fleeing`` decides the monster wants to get away; this gives
+    that decision teeth. A monster with nowhere farther to go holds.
     """
-    start_zone = live.actor_zone.get(monster.entity_id)
-    if start_zone is None or not enemies:
+    start = live.actor_zone.get(monster.entity_id)
+    threat_cells = [
+        cell for enemy in enemies if (cell := live.actor_zone.get(enemy.entity_id)) is not None
+    ]
+    # zone graph: legacy behaviour until removal in 0.7 — it has no cells to
+    # rank, so a fleeing monster holds there.
+    if start is None or not threat_cells or not isinstance(live.topology, GridTopology):
         return
-    threats: list[tuple[int, str, str]] = []
-    for enemy in enemies:
-        enemy_zone = live.actor_zone.get(enemy.entity_id)
-        if enemy_zone is None:
-            continue
-        dist = _path_total_distance(
-            live.topology, live.topology.shortest_path(start_zone, enemy_zone)
-        )
-        if dist is not None:
-            threats.append((dist, enemy.entity_id, enemy_zone))
-    if not threats:
-        return
-    threats.sort(key=lambda t: (t[0], t[1]))
-    _, _, threat_zone = threats[0]
-    destination = _plan_flee_destination(
-        live.topology, start_zone, threat_zone, monster.movement_remaining
+    route = _plan_flee_route(
+        live.topology,
+        start,
+        threat_cells,
+        monster.movement_remaining,
+        enemy_cells=_occupied_cells(live, exclude=_allied_ids(live, monster.entity_id)),
+        occupied_cells=_occupied_cells(live, exclude=(monster.entity_id,)),
     )
-    if destination is None:
-        return
-    _walk_path(live, monster.entity_id, live.topology.shortest_path(start_zone, destination))
+    if route is not None:
+        _walk_path(live, monster.entity_id, route)
 
 
 def _apply_monster_flee_stance(
@@ -2148,7 +2138,9 @@ def _apply_monster_flee_stance(
     """Persist ``Combatant.has_fled`` across turns (C18 Task 9, R9).
 
     A live, conscious monster over the flee threshold (``_monster_is_fleeing``)
-    spends its movement retreating (``_execute_flee_retreat``) and is marked
+    that is not Incapacitated (SRD 5.2: "You can't take any action, Bonus
+    Action, or Reaction"; an Incapacitated monster takes no flee stance at
+    all) spends its movement retreating (``_execute_flee_retreat``) and is marked
     ``has_fled=True`` regardless of whether that retreat actually moved it
     (already cornered, no movement budget left, or a backend with no
     reachable destination) — the flag records the monster's STANCE this
@@ -2164,7 +2156,9 @@ def _apply_monster_flee_stance(
     """
     if not (current.is_alive and current.hp_current > 0):
         return current
-    fleeing = _monster_is_fleeing(current)
+    fleeing = _monster_is_fleeing(current) and not conditions_block_actions(
+        _condition_names(current)
+    )
     if fleeing:
         _execute_flee_retreat(live, current, enemies)
         current = next(c for c in live.initiative if c.entity_id == current.entity_id)

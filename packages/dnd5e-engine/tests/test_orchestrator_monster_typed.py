@@ -64,8 +64,10 @@ from dnd5e_engine.orchestrator import (
     advance_monster_turn,
     start_combat,
 )
+from dnd5e_engine.spatial import cell_id
 from dnd5e_engine.specs import (
     EncounterMemberSpec,
+    GridScene,
     PartyMemberSpec,
     SceneTopology,
     ZoneEdge,
@@ -485,11 +487,11 @@ def test_wounded_aggressive_monster_below_flee_threshold_passes():
     behavior-based HP threshold (``hp_ratio < 0.10`` for AGGRESSIVE). The typed
     selector lost that gate; the fix reapplies it in ``advance_monster_turn``
     against the live ``Combatant``. At 4/50 HP (8%) the monster takes no attack
-    action. Post-C10-S01 the fleeing branch also RETREATS: sharing ``zone:start``
-    with the hero, the monster steps to ``zone:mid`` (5 ft) to increase distance,
-    which provokes the hero's opportunity attack (SRD §Opportunity Attacks — the
-    monster leaves the hero's reach) — so the only ``AttackRolled`` this turn is
-    the hero's AoO, never the monster's own. The turn still records ``pass``.
+    action. The fleeing branch also RETREATS: from 1,0, beside the hero on 0,0,
+    its first step away leaves the hero's reach and provokes the hero's
+    opportunity attack (SRD §Opportunity Attacks) — so the only ``AttackRolled``
+    this turn is the hero's AoO, never the monster's own. The turn still
+    records ``pass``.
     """
     monster = _monster("wounded", [_melee_attack("Bite")])
     set_lib_loader_for_tests(MemoryAssetLoader(monsters=[monster]))
@@ -497,15 +499,15 @@ def test_wounded_aggressive_monster_below_flee_threshold_passes():
     async def _run():
         start = await start_combat(
             session_id="sess-flee-wounded",
-            party=_party(pc_zone="zone:start"),
+            party=_party(pc_zone=cell_id(0, 0)),
             encounter=_encounter(
                 "wounded",
-                foe_zone="zone:start",  # in reach — only the flee gate can suppress
+                foe_zone=cell_id(1, 0),  # in reach — only the flee gate can suppress
                 hp_current=4,  # 4/50 = 8% < 10% AGGRESSIVE threshold
                 hp_max=50,
                 behavior_profile="AGGRESSIVE",
             ),
-            scene_zones=_topology(),
+            grid_scene=GridScene(width=10, height=10),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -520,7 +522,11 @@ def test_wounded_aggressive_monster_below_flee_threshold_passes():
     intents = [
         e for e in live.event_log if isinstance(e, IntentSubmitted) and e.actor_id == "mon:foe"
     ]
+    hero_aoo = [
+        e for e in live.event_log if isinstance(e, AttackRolled) and e.attacker_id == "char:hero"
+    ]
     assert not monster_attacks, "wounded monster below flee threshold should not attack"
-    assert moves, "the fleeing monster should retreat away from the co-located hero"
+    assert moves, "the fleeing monster should retreat away from the adjacent hero"
+    assert [e.is_opportunity_attack for e in hero_aoo] == [True]
     assert intents, "the monster's turn should still record an IntentSubmitted"
     assert intents[-1].intent_type == "pass", "fleeing monster records a pass"

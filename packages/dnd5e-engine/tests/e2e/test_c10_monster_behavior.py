@@ -8,13 +8,14 @@ from __future__ import annotations
 from dnd5e_engine.events import ActorMoved, AttackRolled
 from dnd5e_engine.orchestrator import _get_live, advance_monster_turn, start_combat
 from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec, SceneTopology, ZoneEdge
-from tests.e2e.harness import events_of, run_async
+from tests.e2e.harness import cell, events_of, grid_scene, run_async
 
 
 def test_c10_s01_fleeing_monster_never_actually_retreats():
     """C10-S01: A low-HP AGGRESSIVE monster stops attacking below the SRD
-    flee threshold but never actually retreats — zero movement, it simply
-    stands still.
+    flee threshold and retreats (the catalog's original title described the
+    gap this scenario closed). On a 10x10 grid the goblin on 3,0 runs 30 ft
+    from the hero on 0,0, to 9,0.
 
     Monster AI is DM-adjudicated behavior, not codified SRD rules text —
     this is engine/Foundry-parity plumbing (the legacy `monster_ai` gambit
@@ -45,7 +46,7 @@ def test_c10_s01_fleeing_monster_never_actually_retreats():
                     hp_max=30,
                     ac=15,
                     attack_bonus=5,
-                    zone_id="zone:pc",
+                    zone_id=cell(0, 0),
                 )
             ],
             encounter=[
@@ -57,19 +58,13 @@ def test_c10_s01_fleeing_monster_never_actually_retreats():
                     hp_current=1,
                     hp_max=20,
                     ac=13,
-                    zone_id="zone:foe",
+                    zone_id=cell(3, 0),
                     monster_template_slug="goblin-warrior",
                     base_speed=30,
                     behavior_profile="AGGRESSIVE",
                 )
             ],
-            scene_zones=SceneTopology(
-                zones=["zone:retreat", "zone:foe", "zone:pc"],
-                edges=[
-                    ZoneEdge(a="zone:retreat", b="zone:foe", distance_ft=15),
-                    ZoneEdge(a="zone:foe", b="zone:pc", distance_ft=15),
-                ],
-            ),
+            grid_scene=grid_scene(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -81,7 +76,7 @@ def test_c10_s01_fleeing_monster_never_actually_retreats():
     assert moves, "a fleeing monster with a movement budget should retreat"
     total_distance = sum(e.distance_ft for e in moves)
     assert 0 < total_distance <= 30
-    assert live.actor_zone["mon:goblin"] == "zone:retreat"
+    assert live.actor_zone["mon:goblin"] == cell(9, 0)
 
 
 def test_c10_s02_ranged_profile_multiattack_fallback_ignores_own_longbow():

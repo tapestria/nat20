@@ -314,7 +314,6 @@ def test_c24_s09_a_pc_dropped_to_0_hp_stops_where_it_stood() -> None:
     assert _moves(live, "char:hero") == [(cell(0, 0), cell(0, 1), 5)]
 
 
-@CLUSTER
 def test_c24_s10_a_fleeing_monster_runs_30_feet_and_records_pass() -> None:
     handle, live = _start(
         [_hero(initiative=1)],
@@ -332,7 +331,6 @@ def test_c24_s10_a_fleeing_monster_runs_30_feet_and_records_pass() -> None:
     assert _combatant(live, "mon:goblin").has_fled is True
 
 
-@CLUSTER
 def test_c24_s11_a_monster_fleeing_from_beside_the_hero_draws_its_attack() -> None:
     handle, live = _start(
         [_hero(initiative=1)], [_goblin(hp_current=1, initiative=20)], session="e2e-c24-s11"
@@ -347,7 +345,6 @@ def test_c24_s11_a_monster_fleeing_from_beside_the_hero_draws_its_attack() -> No
     assert _combatant(live, "mon:goblin").has_fled is True
 
 
-@CLUSTER
 def test_c24_s12_a_fleeing_monster_never_ends_on_a_creature_or_walks_through_an_enemy() -> None:
     # An ally holds the farthest cell: the goblin ends beside it, not on it.
     handle, live = _start(
@@ -386,7 +383,6 @@ def test_c24_s12_a_fleeing_monster_never_ends_on_a_creature_or_walks_through_an_
     assert _moves(live, "mon:goblin") == []
 
 
-@CLUSTER
 def test_c24_s13_a_stunned_monster_below_its_flee_threshold_takes_no_flee_stance() -> None:
     handle, live = _start(
         [_hero(initiative=1)],
