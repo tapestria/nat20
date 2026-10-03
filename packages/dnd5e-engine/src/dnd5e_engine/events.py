@@ -468,8 +468,12 @@ class ZoneTransit(BaseModel):
 
 
 class ActorMoved(BaseModel):
-    """Emitted when a MOVE intent successfully shifts an actor to the requested
-    cell/zone (one event per intent, ``distance_ft`` = total feet spent).
+    """Emitted when a walk moves an actor: a MOVE intent, or the monster AI's
+    closing walk or flee. A MOVE intent emits one event per uninterrupted run
+    of steps (``distance_ft`` = the run's feet): one for the whole move unless
+    a step provokes an opportunity attack, which then lands between the run
+    before it and the rest (SRD 5.2: "The attack occurs right before the
+    creature leaves your reach"). The monster AI's walks emit one per step.
 
     Distinct from ``ZoneTransit`` (an evaluator-internal "I moved this many
     feet" notification for AOE/ranged geometry handlers): ``ActorMoved`` is

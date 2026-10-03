@@ -137,7 +137,6 @@ def test_adjacent_cells_is_a_block_of_mutually_adjacent_cells() -> None:
     assert adjacent_cells(2) == [cell(0, 0), cell(0, 1)]
 
 
-@CLUSTER
 def test_c24_s01_leaving_reach_mid_move_draws_one_opportunity_attack() -> None:
     handle, live = _start([_hero()], [_goblin()], session="e2e-c24-s01")
     _act(handle, "char:hero", intent_type="move", target_zone_id=cell(0, 3))
@@ -156,7 +155,6 @@ def test_c24_s01_leaving_reach_mid_move_draws_one_opportunity_attack() -> None:
     assert live.actor_zone["char:hero"] == cell(0, 3)
 
 
-@CLUSTER
 def test_c24_s02_moving_around_inside_reach_never_provokes() -> None:
     handle, live = _start([_hero()], [_goblin(zone_id=cell(1, 1))], session="e2e-c24-s02")
     _act(handle, "char:hero", intent_type="move", target_zone_id=cell(2, 0))
@@ -168,7 +166,6 @@ def test_c24_s02_moving_around_inside_reach_never_provokes() -> None:
     assert _moves(live, "char:hero")[-1] == (cell(2, 0), cell(3, 0), 5)
 
 
-@CLUSTER
 def test_c24_s03_disengage_suppresses_opportunity_attacks_from_either_side() -> None:
     # Control: the same walk without Disengage provokes.
     handle, live = _start([_hero()], [_goblin()], session="e2e-c24-s03-control")
@@ -194,7 +191,6 @@ def test_c24_s03_disengage_suppresses_opportunity_attacks_from_either_side() -> 
     assert live.actor_zone["mon:goblin"] == cell(3, 0)
 
 
-@CLUSTER
 def test_c24_s04_a_host_driven_foe_draws_the_heros_attack_not_its_allys() -> None:
     handle, live = _start(
         [_hero(initiative=1)],
@@ -209,7 +205,6 @@ def test_c24_s04_a_host_driven_foe_draws_the_heros_attack_not_its_allys() -> Non
     assert _moves(live, "mon:goblin") == [(cell(1, 0), cell(4, 0), 15)]
 
 
-@CLUSTER
 def test_c24_s05_an_ai_closing_walk_draws_the_attack_of_the_pc_it_leaves() -> None:
     handle, live = _start(
         [
@@ -234,7 +229,6 @@ def test_c24_s05_an_ai_closing_walk_draws_the_attack_of_the_pc_it_leaves() -> No
     assert live.event_log.index(aoo) < live.event_log.index(first_step)
 
 
-@CLUSTER
 def test_c24_s06_a_ten_foot_reach_threatens_ten_feet() -> None:
     # 10 ft -> 15 ft leaves a 10-ft reach.
     handle, live = _start(
@@ -254,7 +248,6 @@ def test_c24_s06_a_ten_foot_reach_threatens_ten_feet() -> None:
     assert _combatant(live, "char:hero").reaction_available is True
 
 
-@CLUSTER
 def test_c24_s07_forced_movement_provokes_nothing() -> None:
     handle, live = _start(
         [_hero(entity_id="char:brute", name="Brute", strength=18, character_level=5)],
@@ -293,7 +286,6 @@ def test_c24_s07_forced_movement_provokes_nothing() -> None:
     assert [(e.attacker_id, e.target_id) for e in _aoos(live)] == [("char:brute", "mon:target")]
 
 
-@CLUSTER
 def test_c24_s08_a_blinded_reactor_or_an_invisible_mover_draws_nothing() -> None:
     def walk_away(session: str, effects: list[ActiveEffect]):
         handle, live = _start([_hero()], [_goblin()], session=session, active_effects=effects)
@@ -309,7 +301,6 @@ def test_c24_s08_a_blinded_reactor_or_an_invisible_mover_draws_nothing() -> None
         assert live.actor_zone["char:hero"] == cell(0, 2), status
 
 
-@CLUSTER
 def test_c24_s09_a_pc_dropped_to_0_hp_stops_where_it_stood() -> None:
     handle, live = _start([_hero(hp_current=1)], [_goblin(attack_bonus=20)], session="e2e-c24-s09")
     _act(handle, "char:hero", intent_type="move", target_zone_id=cell(0, 3))

@@ -691,9 +691,10 @@ _PROBES: dict[str, tuple[Any, str]] = {
         lambda: not re.search(r"^    size\b", _src("types/combat.py"), re.MULTILINE),
         "❌",
     ),
-    # A cheapest-route search needs a priority queue; the route is BFS.
+    # Every move's route is a fewest-squares BFS (``shortest_path``); only
+    # the flee planner's reachability search prices routes by cost.
     "Threat-aware or cost-aware pathfinding": (
-        lambda: "heapq" not in _src("spatial.py"),
+        lambda: "deque([a])" in _src("spatial.py"),
         "❌",
     ),
     "Spell attack rolls & save DCs": (
@@ -766,17 +767,13 @@ _PROBES: dict[str, tuple[Any, str]] = {
         ),
         "✅",
     ),
-    # M2 (2026-09-27, C23 final review): both directions only when each side
-    # moves through its own path; ``_handle_move`` fires only the
-    # monster-reactor direction (the comment below), so a host-driven foe's
-    # move draws no character-reactor AoO (BACKLOG.md).
+    # C24: one step trigger serves every walk, whoever drives the mover.
     "| Opportunity attack |": (
         lambda: (
-            "def _fire_pc_opportunity_attacks_on_move(" in _src("orchestrator.py")
-            and "def _fire_monster_opportunity_attacks_on_move(" in _src("orchestrator.py")
-            and "monster-reactor / PC-mover direction" in _src("orchestrator.py")
+            "def _fire_opportunity_attacks_on_step(" in _src("orchestrator.py")
+            and "def _opportunity_attackers(" in _src("orchestrator.py")
         ),
-        "⚠️ Partial",
+        "✅",
     ),
     "Shield (incl. vs. Magic Missile)": (
         lambda: "def _apply_magic_missile_shield_carveout(" in _src("orchestrator.py"),

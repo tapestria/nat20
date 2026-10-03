@@ -1,21 +1,15 @@
-"""C14 Task 9 — opportunity attacks route through the shared d20 primitive.
+"""Opportunity attacks roll through the shared d20 primitive.
 
-Prior to this change, ``orchestrator.py``'s two opportunity-attack fire
-sites (``_fire_pc_opportunity_attacks_on_move`` /
-``_fire_monster_opportunity_attacks_on_move``) rolled a raw
-``live.rng.randint(1, 20)`` and hard-coded ``advantage="normal"`` on the
-emitted ``AttackRolled`` — bypassing ``activities/d20.py::roll_d20_test``
-entirely. That meant SRD 5.2 Exhaustion's flat D20 Test penalty
-(``rules/conditions.py::d20_test_penalty``), Prone/Grappled condition rows
-(``conditions_grant_advantage_on_attack``), and the Dodge action's
-disadvantage (``_dodge_benefit_active``) never reached an opportunity
-attack roll — only the regular Attack activity path saw them.
+``_fire_opportunity_attacks_on_step`` rolls every opportunity attack through
+``activities/d20.py::roll_d20_test``, so SRD 5.2 Exhaustion's flat D20 Test
+penalty (``rules/conditions.py::d20_test_penalty``), the Prone/Grappled
+condition rows (``conditions_grant_advantage_on_attack``) and the Dodge
+action's disadvantage (``_dodge_benefit_active``) all reach it, while a
+condition-free attack still draws exactly ONE d20 (the documented "normal
+mode is one draw" invariant).
 
-These tests pin the fixed behavior: both fire sites now assemble the same
-typed ``AdvantageSources`` the regular attack path uses and roll through
-``roll_d20_test``, while a condition-free AoO at a fixed seed still draws
-exactly ONE d20 (the documented "normal mode is one draw" invariant), so
-every pre-existing seeded AoO scenario is untouched.
+Layout: the hero at 1,0 and the goblin at 2,0, 5 ft apart on a 10x10 grid.
+A step to 0,0 (the hero's) or 3,0 (the goblin's) leaves the other's reach.
 """
 
 from __future__ import annotations
@@ -25,15 +19,17 @@ import random
 from dnd5e_engine import PlayerIntent
 from dnd5e_engine.events import AttackRolled, DamageApplied
 from dnd5e_engine.orchestrator import (
-    _fire_monster_opportunity_attacks_on_move,
-    _fire_pc_opportunity_attacks_on_move,
+    _fire_opportunity_attacks_on_step,
     _get_live,
     start_combat,
     submit_player_intent,
 )
-from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec, SceneTopology, ZoneEdge
+from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
 from dnd5e_engine.types.conditions import ActiveCondition
-from tests.e2e.harness import events_of, run_async
+from tests.e2e.harness import cell, events_of, grid_scene, run_async
+
+HERO_CELL = cell(1, 0)
+GOBLIN_CELL = cell(2, 0)
 
 
 def _set_condition(live, entity_id: str, condition: str, **kwargs: object) -> None:
@@ -66,10 +62,10 @@ def _set_dodging(live, entity_id: str) -> None:
     raise AssertionError(f"{entity_id} not found in initiative")
 
 
-async def _start_pc_reactor_combat(session_id: str, *, rng_seed: int = 1):
-    """A PC reactor (``char:hero``) and a monster mover (``mon:goblin``),
-    both starting in ``zone:a`` with an edge to ``zone:b`` — the setup the
-    shipped PC-reactor AoO fire site expects."""
+async def _start(session_id: str, *, rng_seed: int = 1, hero_attack_bonus: int | None = None):
+    """The hero (``char:hero``, initiative 20) beside a goblin warrior
+    (``mon:goblin``). ``hero_attack_bonus`` pins the hero's to-hit."""
+    pinned = {} if hero_attack_bonus is None else {"attack_bonus": hero_attack_bonus}
     return await start_combat(
         session_id=session_id,
         party=[
@@ -80,9 +76,9 @@ async def _start_pc_reactor_combat(session_id: str, *, rng_seed: int = 1):
                 hp_current=20,
                 hp_max=20,
                 ac=10,
-                attack_bonus=0,
                 base_speed=30,
-                zone_id="zone:a",
+                zone_id=HERO_CELL,
+                **pinned,
             )
         ],
         encounter=[
@@ -95,66 +91,25 @@ async def _start_pc_reactor_combat(session_id: str, *, rng_seed: int = 1):
                 hp_max=7,
                 ac=13,
                 monster_template_slug="goblin-warrior",
-                zone_id="zone:a",
+                zone_id=GOBLIN_CELL,
             )
         ],
-        scene_zones=SceneTopology(
-            zones=["zone:a", "zone:b"],
-            edges=[ZoneEdge(a="zone:a", b="zone:b", distance_ft=10)],
-        ),
-        rng_seed=rng_seed,
-    )
-
-
-async def _start_monster_reactor_combat(session_id: str, *, rng_seed: int = 1):
-    """Mirror of ``_start_pc_reactor_combat`` for the monster-reactor /
-    PC-mover direction — the exact C06-S05 shape."""
-    return await start_combat(
-        session_id=session_id,
-        party=[
-            PartyMemberSpec(
-                entity_id="char:hero",
-                name="Hero",
-                initiative=20,
-                hp_current=20,
-                hp_max=20,
-                ac=10,
-                base_speed=30,
-                zone_id="zone:a",
-            )
-        ],
-        encounter=[
-            EncounterMemberSpec(
-                entity_id="mon:goblin",
-                entity_type="Monster",
-                name="Goblin",
-                initiative=1,
-                hp_current=7,
-                hp_max=7,
-                ac=13,
-                monster_template_slug="goblin-warrior",
-                zone_id="zone:a",
-            )
-        ],
-        scene_zones=SceneTopology(
-            zones=["zone:a", "zone:b"],
-            edges=[ZoneEdge(a="zone:a", b="zone:b", distance_ft=10)],
-        ),
+        grid_scene=grid_scene(),
         rng_seed=rng_seed,
     )
 
 
 def test_prone_reactor_aoo_rolls_disadvantage_with_condition_attacker_source():
     """(a) SRD 5.2 Prone: "You have Disadvantage on attack rolls." A PRONE
-    PC reactor's AoO against a fleeing monster mover rolls with
-    disadvantage and names ``condition:attacker`` among the sources."""
+    PC reactor's AoO against a monster mover rolls with disadvantage and
+    names ``condition:attacker`` among the sources."""
 
     async def _run():
-        start = await _start_pc_reactor_combat("t9-a-prone-reactor")
+        start = await _start("t9-a-prone-reactor", hero_attack_bonus=0)
         live = _get_live(start.handle)
         _set_condition(live, "char:hero", "prone")
-        _fire_pc_opportunity_attacks_on_move(
-            live, mover_id="mon:goblin", from_zone="zone:a", to_zone="zone:b"
+        _fire_opportunity_attacks_on_step(
+            live, mover_id="mon:goblin", from_cell=GOBLIN_CELL, to_cell=cell(3, 0)
         )
         return live
 
@@ -170,11 +125,11 @@ def test_dodging_mover_imposes_disadvantage_on_the_aoo_against_it():
     monster-reactor AoO fired against it, sourced ``"dodge"``."""
 
     async def _run():
-        start = await _start_monster_reactor_combat("t9-b-dodging-mover")
+        start = await _start("t9-b-dodging-mover")
         live = _get_live(start.handle)
         _set_dodging(live, "char:hero")
-        _fire_monster_opportunity_attacks_on_move(
-            live, mover_id="char:hero", from_zone="zone:a", to_zone="zone:b"
+        _fire_opportunity_attacks_on_step(
+            live, mover_id="char:hero", from_cell=HERO_CELL, to_cell=cell(0, 0)
         )
         return live
 
@@ -190,11 +145,11 @@ def test_exhausted_reactor_d20_test_penalty_reaches_the_aoo_total():
     Exhaustion-1 PC reactor's AoO modifier reflects the -2 penalty."""
 
     async def _run():
-        start = await _start_pc_reactor_combat("t9-c-exhausted-reactor")
+        start = await _start("t9-c-exhausted-reactor", hero_attack_bonus=0)
         live = _get_live(start.handle)
         _set_condition(live, "char:hero", "exhaustion", exhaustion_level=1)
-        _fire_pc_opportunity_attacks_on_move(
-            live, mover_id="mon:goblin", from_zone="zone:a", to_zone="zone:b"
+        _fire_opportunity_attacks_on_step(
+            live, mover_id="mon:goblin", from_cell=GOBLIN_CELL, to_cell=cell(3, 0)
         )
         return live
 
@@ -206,22 +161,17 @@ def test_exhausted_reactor_d20_test_penalty_reaches_the_aoo_total():
 
 def test_condition_free_aoo_determinism_pin_matches_pre_change_natural():
     """(d) Determinism pin: a condition-free AoO at ``rng_seed=1`` still
-    draws exactly ONE d20 in normal mode, so the KEPT die is unchanged
-    from the pre-``roll_d20_test`` behavior.
-
-    Expectation captured by running this exact scenario (identical to
-    ``tests/e2e/test_c06_reactions.py::test_c06_s05_...``) against the
-    orchestrator at HEAD (``dc3948f``, before this task's change): the raw
-    ``live.rng.randint(1, 20)`` draw at that point in the seeded stream was
-    ``5`` (goblin ``attack_bonus == 0``, so ``roll_total`` was also ``5``).
-    """
+    draws exactly ONE d20 in normal mode: the first draw of the seeded
+    stream, a natural 5 (the goblin's ``attack_bonus`` is 0, so the total is
+    5 too). The hero's move from 1,0 to 0,0 leaves the goblin's reach on
+    its only step."""
 
     async def _run():
-        start = await _start_monster_reactor_combat("t9-d-determinism-pin", rng_seed=1)
+        start = await _start("t9-d-determinism-pin", rng_seed=1)
         await submit_player_intent(
             start.handle,
             actor_id="char:hero",
-            intent=PlayerIntent(intent_type="move", target_zone_id="zone:b"),
+            intent=PlayerIntent(intent_type="move", target_zone_id=cell(0, 0)),
         )
         return _get_live(start.handle)
 
@@ -252,21 +202,17 @@ class _NatTwentyRng(random.Random):
 
 
 def test_opportunity_attack_nat_20_damage_is_attributed_and_flagged_crit():
-    """F2 — a forced natural-20 opportunity attack's ``DamageApplied`` now
-    threads ``is_crit`` and ``source_id`` (previously both silently
-    defaulted, so a crit OA looked identical to a normal-hit OA on the
-    damage event and the damage was unattributed). An OA always resolves
-    through the reactor's legacy ``attack_bonus``/``damage_dice`` fields
-    (never a typed weapon/activity — see
-    ``orchestrator._synthesize_attack_from_legacy_fields``), so it is
-    attributed the same synthesized id that path uses."""
+    """F2 — a forced natural-20 opportunity attack's ``DamageApplied``
+    threads ``is_crit`` and ``source_id``. The hero carries no weapon, so its
+    opportunity attack rolls the legacy ``attack_bonus`` / ``damage_dice``
+    swing and is attributed that path's synthesized id."""
 
     async def _run():
-        start = await _start_pc_reactor_combat("t9-e-crit-oa-attribution")
+        start = await _start("t9-e-crit-oa-attribution", hero_attack_bonus=0)
         live = _get_live(start.handle)
         live.rng = _NatTwentyRng()
-        _fire_pc_opportunity_attacks_on_move(
-            live, mover_id="mon:goblin", from_zone="zone:a", to_zone="zone:b"
+        _fire_opportunity_attacks_on_step(
+            live, mover_id="mon:goblin", from_cell=GOBLIN_CELL, to_cell=cell(3, 0)
         )
         return live
 

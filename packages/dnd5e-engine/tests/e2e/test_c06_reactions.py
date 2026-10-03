@@ -53,7 +53,7 @@ from dnd5e_engine.orchestrator import (
     submit_player_intent,
 )
 from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec, SceneTopology, ZoneEdge
-from tests.e2e.harness import events_of, run_async
+from tests.e2e.harness import cell, events_of, grid_scene, run_async
 
 
 def test_c06_s01_prearmed_counterspell_forces_con_save_two_seeds():
@@ -595,13 +595,9 @@ def test_c06_s05_monster_reactor_opportunity_attack_on_pc_move():
     Opportunity Attack when a creature that you can see leaves your reach.
     To make the attack, take a Reaction to make one melee attack with a
     weapon or an Unarmed Strike against that creature. The attack occurs
-    right before it leaves your reach."); engine: the ONLY shipped AoO path
-    is orchestrator.py::_fire_pc_opportunity_attacks_on_move, called only
-    from advance_monster_turn's movement loop — the PC move handler,
-    _handle_move, has zero opportunity-attack logic of any kind. The
-    goblin's reaction_available defaults True — no arming/readying needed,
-    mirroring the shipped PC-reactor path's own "always-on if
-    reaction_available" shape.
+    right before it leaves your reach."). On a 10x10 grid the hero (2,0)
+    walks to 0,0; its first step leaves the goblin's (3,0) reach. The
+    goblin's reaction_available defaults True — no arming/readying needed.
     """
 
     async def _run():
@@ -616,7 +612,7 @@ def test_c06_s05_monster_reactor_opportunity_attack_on_pc_move():
                     hp_max=20,
                     ac=10,
                     base_speed=30,
-                    zone_id="zone:a",
+                    zone_id=cell(2, 0),
                 )
             ],
             encounter=[
@@ -629,20 +625,17 @@ def test_c06_s05_monster_reactor_opportunity_attack_on_pc_move():
                     hp_max=7,
                     ac=13,
                     monster_template_slug="goblin-warrior",
-                    zone_id="zone:a",
+                    zone_id=cell(3, 0),
                 )
             ],
-            scene_zones=SceneTopology(
-                zones=["zone:a", "zone:b"],
-                edges=[ZoneEdge(a="zone:a", b="zone:b", distance_ft=10)],
-            ),
+            grid_scene=grid_scene(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
         await submit_player_intent(
             start.handle,
             actor_id="char:hero",
-            intent=PlayerIntent(intent_type="move", target_zone_id="zone:b"),
+            intent=PlayerIntent(intent_type="move", target_zone_id=cell(0, 0)),
         )
         return live
 
@@ -666,8 +659,8 @@ def test_c06_s05_monster_reactor_opportunity_attack_on_pc_move():
 
     moved = [e for e in events_of(live, ActorMoved) if e.actor_id == "char:hero"]
     assert moved
-    assert moved[-1].from_zone == "zone:a"
-    assert moved[-1].to_zone == "zone:b"
+    assert moved[-1].from_zone == cell(2, 0)
+    assert moved[-1].to_zone == cell(0, 0)
     assert moved[-1].distance_ft == 10
 
     # "The attack occurs right before it leaves your reach" — the AoO
@@ -720,7 +713,7 @@ def test_c06_s06_disengage_suppresses_opportunity_attack():
                 hp_max=20,
                 ac=10,
                 base_speed=30,
-                zone_id="zone:a",
+                zone_id=cell(2, 0),
             )
         ]
 
@@ -735,15 +728,9 @@ def test_c06_s06_disengage_suppresses_opportunity_attack():
                 hp_max=7,
                 ac=13,
                 monster_template_slug="goblin-warrior",
-                zone_id="zone:a",
+                zone_id=cell(3, 0),
             )
         ]
-
-    def _scene():
-        return SceneTopology(
-            zones=["zone:a", "zone:b"],
-            edges=[ZoneEdge(a="zone:a", b="zone:b", distance_ft=10)],
-        )
 
     async def _run_a():
         # Run A: no Disengage — C06-S05's own script, reused as the baseline.
@@ -751,14 +738,14 @@ def test_c06_s06_disengage_suppresses_opportunity_attack():
             session_id="e2e-c06-s06-a",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_scene(),
+            grid_scene=grid_scene(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
         await submit_player_intent(
             start.handle,
             actor_id="char:hero",
-            intent=PlayerIntent(intent_type="move", target_zone_id="zone:b"),
+            intent=PlayerIntent(intent_type="move", target_zone_id=cell(0, 0)),
         )
         return live
 
@@ -768,7 +755,7 @@ def test_c06_s06_disengage_suppresses_opportunity_attack():
             session_id="e2e-c06-s06-b",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_scene(),
+            grid_scene=grid_scene(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -780,7 +767,7 @@ def test_c06_s06_disengage_suppresses_opportunity_attack():
         await submit_player_intent(
             start.handle,
             actor_id="char:hero",
-            intent=PlayerIntent(intent_type="move", target_zone_id="zone:b"),
+            intent=PlayerIntent(intent_type="move", target_zone_id=cell(0, 0)),
         )
         return live
 
@@ -805,8 +792,8 @@ def test_c06_s06_disengage_suppresses_opportunity_attack():
 
     moved_b = [e for e in events_of(live_b, ActorMoved) if e.actor_id == "char:hero"]
     assert moved_b
-    assert moved_b[-1].from_zone == "zone:a"
-    assert moved_b[-1].to_zone == "zone:b"
+    assert moved_b[-1].from_zone == cell(2, 0)
+    assert moved_b[-1].to_zone == cell(0, 0)
     assert moved_b[-1].distance_ft == 10
 
     assert not [e for e in events_of(live_b, AttackRolled) if e.is_opportunity_attack]

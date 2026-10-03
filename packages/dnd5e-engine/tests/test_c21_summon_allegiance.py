@@ -62,8 +62,6 @@ from dnd5e_engine.specs import (
     EncounterMemberSpec,
     GridScene,
     PartyMemberSpec,
-    SceneTopology,
-    ZoneEdge,
 )
 from dnd5e_engine.views import SummonView
 from tests.c21_support import (
@@ -84,9 +82,6 @@ from tests.c21_support import (
 OWNER = "char:summoner"
 SPIRIT = f"summon:{OWNER}:draconic-spirit:1"
 ANCHOR = _anchor_identity("summon-dragon", OWNER)
-ZONES = SceneTopology(
-    zones=["zone:a", "zone:b"], edges=[ZoneEdge(a="zone:a", b="zone:b", distance_ft=10)]
-)
 
 
 def _summoned(
@@ -109,7 +104,7 @@ def _begin(
     seed: int = 1,
     **scene: Any,
 ) -> tuple[CombatHandle, _LiveCombat]:
-    """Start on ``scene`` (``grid_scene=`` or ``scene_zones=``) with the
+    """Start on ``scene`` (``grid_scene=``) with the
     summoner's Summon Dragon anchor seeded."""
     result = asyncio.run(
         start_combat(
@@ -403,17 +398,18 @@ def test_a_new_concentration_spell_dismisses_the_summon() -> None:
 
 def test_a_summon_dropped_on_its_own_move_hands_the_turn_on() -> None:
     # SRD 5.2 Opportunity Attacks: the foe beside the spirit strikes as it
-    # leaves; at 0 Hit Points the spirit disappears mid-move.
+    # leaves; at 0 Hit Points the spirit disappears mid-move. The spirit's
+    # first step (1,0 -> 0,1) leaves the foe's (2,0) reach.
     handle, live = _begin(
-        party=[summoner(zone_id="zone:b")],
-        encounter=[foe(zone_id="zone:a", attack_bonus=20, damage_dice="2d6")],
-        scene_zones=ZONES,
+        party=[summoner(zone_id=cell_id(0, 5))],
+        encounter=[foe(zone_id=cell_id(2, 0), attack_bonus=20, damage_dice="2d6")],
+        grid_scene=GridScene(width=10, height=10),
     )
-    seat_summon(live, OWNER, zone_id="zone:a", hp=1)
+    seat_summon(live, OWNER, zone_id=cell_id(1, 0), hp=1)
     act(handle, OWNER, intent_type="pass")
     assert _current_actor(live).entity_id == SPIRIT
     logged = len(live.event_log)
-    act(handle, SPIRIT, intent_type="move", target_zone_id="zone:b")
+    act(handle, SPIRIT, intent_type="move", target_zone_id=cell_id(0, 2))
     tail = live.event_log[logged:]
     left = tail.index(CombatantLeft(entity_id=SPIRIT, reason="zero_hp"))
     assert tail[left + 1 : left + 4] == [
@@ -469,17 +465,30 @@ def test_a_legendary_action_that_drops_the_current_summon_opens_no_window() -> N
 def test_every_reactor_still_reacts_after_a_summon_leaves_mid_loop() -> None:
     # The summoner walks away from two foes; the first opportunity attack
     # breaks its concentration and the spirit leaves mid-loop. The second
-    # foe still strikes, and each spends its own Reaction.
+    # foe still strikes, and each spends its own Reaction. The summoner's one
+    # step (1,1 -> 0,1) leaves both foes' (2,0 and 2,2) reach.
     handle, live = _begin(
-        party=[summoner(zone_id="zone:a")],
+        party=[summoner(zone_id=cell_id(1, 1))],
         encounter=[
-            foe(entity_id="mon:one", name="One", initiative=15, zone_id="zone:a", attack_bonus=20),
-            foe(entity_id="mon:two", name="Two", initiative=10, zone_id="zone:a", attack_bonus=20),
+            foe(
+                entity_id="mon:one",
+                name="One",
+                initiative=15,
+                zone_id=cell_id(2, 0),
+                attack_bonus=20,
+            ),
+            foe(
+                entity_id="mon:two",
+                name="Two",
+                initiative=10,
+                zone_id=cell_id(2, 2),
+                attack_bonus=20,
+            ),
         ],
-        scene_zones=ZONES,
+        grid_scene=GridScene(width=10, height=10),
     )
-    seat_summon(live, OWNER, zone_id="zone:b")
-    act(handle, OWNER, intent_type="move", target_zone_id="zone:b")
+    seat_summon(live, OWNER, zone_id=cell_id(0, 5))
+    act(handle, OWNER, intent_type="move", target_zone_id=cell_id(0, 1))
     reactions = [e.attacker_id for e in events(live, AttackRolled) if e.is_opportunity_attack]
     assert reactions == ["mon:one", "mon:two"]
     assert events(live, CombatantLeft) == [
@@ -487,7 +496,7 @@ def test_every_reactor_still_reacts_after_a_summon_leaves_mid_loop() -> None:
     ]
     assert not combatant(live, "mon:one").reaction_available
     assert not combatant(live, "mon:two").reaction_available
-    assert live.actor_zone[OWNER] == "zone:b"
+    assert live.actor_zone[OWNER] == cell_id(0, 1)
     assert events(live, ConcentrationDropped)[0].target_id == OWNER
 
 

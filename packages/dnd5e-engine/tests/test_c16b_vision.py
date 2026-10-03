@@ -13,8 +13,7 @@ from dnd5e_engine.events import ActorMoved, AttackRolled, CheckRolled, MoveFaile
 from dnd5e_engine.orchestrator import (
     IntentRejectedError,
     _combatant_can_see,
-    _fire_monster_opportunity_attacks_on_move,
-    _fire_pc_opportunity_attacks_on_move,
+    _fire_opportunity_attacks_on_step,
     _get_live,
     _pierces_invisibility,
     start_combat,
@@ -24,8 +23,6 @@ from dnd5e_engine.specs import (
     EncounterMemberSpec,
     GridScene,
     PartyMemberSpec,
-    SceneTopology,
-    ZoneEdge,
 )
 from dnd5e_engine.types.conditions import ActiveCondition
 from tests.e2e.harness import cell, events_of, run_async
@@ -248,10 +245,10 @@ def test_opportunity_attack_not_triggered_when_reactor_cannot_see_mover():
     Blinded reactor makes no opportunity attack and keeps its Reaction."""
 
     grid = GridScene(width=10, height=10)
-    _handle, live = _start([_hero()], [_foe(zone_id=cell(0, 0))], grid)
+    _handle, live = _start([_hero()], [_foe()], grid)
     _give_condition(live, "char:hero", "blinded")
-    _fire_pc_opportunity_attacks_on_move(
-        live, mover_id="mon:foe", from_zone=cell(0, 0), to_zone=cell(5, 5)
+    _fire_opportunity_attacks_on_step(
+        live, mover_id="mon:foe", from_cell=cell(1, 0), to_cell=cell(2, 0)
     )
     assert _attacks(live, "char:hero") == []
     assert _combatant(live, "char:hero").reaction_available is True
@@ -263,19 +260,17 @@ def test_opportunity_attack_has_advantage_when_mover_cannot_see_reactor():
     as ``_target_visibility_maps``), NOT the ``_combatant_can_see`` composite,
     so it must fire from the reactor standing in a dark cell that the mover
     (no darkvision) genuinely cannot see into, not merely from the mover
-    being Blinded. The AoO reach model fires only for a same-zone reactor, so
-    mover and reactor share the one dark cell here — the reactor is given
-    Darkvision so the TRIGGER (reactor sees mover) still passes; the mover is
-    left without it so the directional "unseen" row still fires. The mover is
-    ALSO given Blinded here (unrelated to scene vision) to keep the
-    "condition:target" advantage row covered in the same scenario."""
+    being Blinded. The reactor stands in the dark 0,0 and the mover in the
+    lit 1,0, so the TRIGGER (reactor sees mover) still passes while the
+    directional "unseen" row fires. The mover is ALSO given Blinded here
+    (unrelated to scene vision) to keep the "condition:target" advantage row
+    covered in the same scenario."""
 
     grid = GridScene(width=10, height=10, lighting={cell(0, 0): "dark"})
-    _handle, live = _start([_hero()], [_foe(zone_id=cell(0, 0))], grid)
-    _give_senses(live, "char:hero", darkvision=60)
+    _handle, live = _start([_hero()], [_foe()], grid)
     _give_condition(live, "mon:foe", "blinded")
-    _fire_pc_opportunity_attacks_on_move(
-        live, mover_id="mon:foe", from_zone=cell(0, 0), to_zone=cell(5, 5)
+    _fire_opportunity_attacks_on_step(
+        live, mover_id="mon:foe", from_cell=cell(1, 0), to_cell=cell(2, 0)
     )
     rolled = _attacks(live, "char:hero")[0]
     assert "unseen" in rolled.sources
@@ -289,10 +284,10 @@ def test_opportunity_attack_not_triggered_when_monster_reactor_cannot_see_mover(
     Reaction."""
 
     grid = GridScene(width=10, height=10)
-    _handle, live = _start([_hero()], [_foe(zone_id=cell(0, 0))], grid)
+    _handle, live = _start([_hero(zone_id=cell(1, 0))], [_foe(zone_id=cell(2, 0))], grid)
     _give_condition(live, "mon:foe", "blinded")
-    _fire_monster_opportunity_attacks_on_move(
-        live, mover_id="char:hero", from_zone=cell(0, 0), to_zone=cell(5, 5)
+    _fire_opportunity_attacks_on_step(
+        live, mover_id="char:hero", from_cell=cell(1, 0), to_cell=cell(0, 0)
     )
     assert _attacks(live, "mon:foe") == []
     assert _combatant(live, "mon:foe").reaction_available is True
@@ -303,19 +298,17 @@ def test_opportunity_attack_has_advantage_when_pc_mover_cannot_see_monster_react
     ruling R4 — mirrors the PC-reactor test above, so the "unseen" row must
     come from the reactor standing in a dark cell the mover (no darkvision)
     genuinely cannot see into, not merely from the mover being Blinded. The
-    AoO reach model fires only for a same-zone reactor, so mover and reactor
-    share the one dark cell here — the reactor is given Darkvision so the
-    TRIGGER (reactor sees mover) still passes; the mover is left without it
-    so the directional "unseen" row still fires. The mover is ALSO given
-    Blinded here (unrelated to scene vision) to keep the "condition:target"
-    advantage row covered in the same scenario."""
+    reactor stands in the dark 0,0 and the mover in the lit 1,0, so the
+    TRIGGER (reactor sees mover) still passes while the directional "unseen"
+    row fires. The mover is ALSO given Blinded here (unrelated to scene
+    vision) to keep the "condition:target" advantage row covered in the same
+    scenario."""
 
     grid = GridScene(width=10, height=10, lighting={cell(0, 0): "dark"})
-    _handle, live = _start([_hero()], [_foe(zone_id=cell(0, 0))], grid)
-    _give_senses(live, "mon:foe", darkvision=60)
+    _handle, live = _start([_hero(zone_id=cell(1, 0))], [_foe(zone_id=cell(0, 0))], grid)
     _give_condition(live, "char:hero", "blinded")
-    _fire_monster_opportunity_attacks_on_move(
-        live, mover_id="char:hero", from_zone=cell(0, 0), to_zone=cell(5, 5)
+    _fire_opportunity_attacks_on_step(
+        live, mover_id="char:hero", from_cell=cell(1, 0), to_cell=cell(2, 0)
     )
     rolled = _attacks(live, "mon:foe")[0]
     assert "unseen" in rolled.sources
@@ -407,14 +400,12 @@ def test_opportunity_attack_against_invisible_mover_seen_by_blindsight_is_normal
 
     def run(has_blindsight: bool):
         grid = GridScene(width=10, height=10)
-        _handle, live = _start(
-            [_hero()], [_foe(zone_id=cell(0, 0))], grid, session=f"c16b-t3-aoo-{has_blindsight}"
-        )
+        _handle, live = _start([_hero()], [_foe()], grid, session=f"c16b-t3-aoo-{has_blindsight}")
         _give_condition(live, "mon:foe", "invisible")
         if has_blindsight:
             _give_senses(live, "char:hero", blindsight=30)
-        _fire_pc_opportunity_attacks_on_move(
-            live, mover_id="mon:foe", from_zone=cell(0, 0), to_zone=cell(5, 5)
+        _fire_opportunity_attacks_on_step(
+            live, mover_id="mon:foe", from_cell=cell(1, 0), to_cell=cell(2, 0)
         )
         return _attacks(live, "char:hero")
 
@@ -637,16 +628,15 @@ def test_opportunity_attack_populates_split_source_lists():
     (Task 2 fixture): the reactor stands in a dark cell the mover (mon:foe,
     no darkvision) can't see into, so the reactor's AoO carries "unseen"
     (plan ruling R4 — raw scene vision, not the Blinded condition); the
-    reactor is given Darkvision so the AoO TRIGGER still passes. The mover
+    mover stands in the lit 1,0, so the AoO TRIGGER still passes. The mover
     is ALSO Blinded (unrelated to scene vision) so "condition:target"
     (Blinded target) is covered too — both as ADVANTAGE sources only, no
     disadvantage applies."""
     grid = GridScene(width=10, height=10, lighting={cell(0, 0): "dark"})
-    _handle, live = _start([_hero()], [_foe(zone_id=cell(0, 0))], grid)
-    _give_senses(live, "char:hero", darkvision=60)
+    _handle, live = _start([_hero()], [_foe()], grid)
     _give_condition(live, "mon:foe", "blinded")
-    _fire_pc_opportunity_attacks_on_move(
-        live, mover_id="mon:foe", from_zone=cell(0, 0), to_zone=cell(5, 5)
+    _fire_opportunity_attacks_on_step(
+        live, mover_id="mon:foe", from_cell=cell(1, 0), to_cell=cell(2, 0)
     )
     rolled = _attacks(live, "char:hero")[0]
     assert rolled.disadvantage_sources == []
@@ -685,12 +675,13 @@ def test_pierces_invisibility_requires_blindsight_when_viewer_is_blinded():
 def test_a_host_driven_foe_draws_no_opportunity_attack_from_its_own_side():
     """SRD 5.2 Opportunity Attacks: "when a creature that you can see leaves
     your reach". A foe moved through ``submit_player_intent`` can't leave its
-    own reach, and its ally doesn't strike it on the way out."""
-    scene = SceneTopology(zones=["near", "far"], edges=[ZoneEdge(a="near", b="far", distance_ft=5)])
-    party = [_hero(zone_id="far", initiative=1)]
+    own reach, and its ally doesn't strike it on the way out. The foe walks
+    from 0,0 toward the hero at 4,0 and leaves its ally's (0,1) reach on the
+    way; it never stood in the hero's reach, so no one may strike it."""
+    party = [_hero(zone_id=cell(4, 0), initiative=1)]
     foes = [
-        _foe(zone_id="near", initiative=20, attack_bonus=5),
-        _foe(entity_id="mon:ally", name="Ally", zone_id="near", initiative=10, attack_bonus=5),
+        _foe(zone_id=cell(0, 0), initiative=20, attack_bonus=5),
+        _foe(entity_id="mon:ally", name="Ally", zone_id=cell(0, 1), initiative=10, attack_bonus=5),
     ]
 
     async def _inner():
@@ -698,17 +689,16 @@ def test_a_host_driven_foe_draws_no_opportunity_attack_from_its_own_side():
             session_id="c16b-own-side",
             party=party,
             encounter=foes,
-            scene_zones=scene,
-            grid_scene=None,
+            grid_scene=GridScene(width=10, height=10),
             rng_seed=1,
         )
         await submit_player_intent(
             start.handle,
             actor_id="mon:foe",
-            intent=PlayerIntent(intent_type="move", target_zone_id="far"),
+            intent=PlayerIntent(intent_type="move", target_zone_id=cell(2, 0)),
         )
         return _get_live(start.handle)
 
     live = _run(_inner())
     assert [e for e in events_of(live, AttackRolled) if e.is_opportunity_attack] == []
-    assert live.actor_zone["mon:foe"] == "far"
+    assert live.actor_zone["mon:foe"] == cell(2, 0)
