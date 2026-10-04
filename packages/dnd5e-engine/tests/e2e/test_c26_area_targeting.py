@@ -268,6 +268,8 @@ def test_c26_s05_sleep_spares_its_caster() -> None:
     assert (area.affected_ids, area.excluded_ids) == (["mon:g1", "mon:g2"], ["char:wiz"])
 
     opted_in = cast("e2e-c26-s05-opt-in", excluded_target_ids=())
+    # [:3]: the caster, caught by its own Sleep, repeats this save again at
+    # the end of the same turn rather than "the end of its next turn".
     assert _saved(opted_in)[:3] == ["char:wiz", "mon:g1", "mon:g2"]
     [area] = _areas(opted_in)
     assert (area.affected_ids, area.excluded_ids) == (["char:wiz", "mon:g1", "mon:g2"], [])

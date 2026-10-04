@@ -14,7 +14,14 @@ import pytest
 from pydantic import ValidationError
 
 from dnd5e_engine import PlayerIntent
-from dnd5e_engine.events import AttackFailed, AttackRolled, CastFailed, IntentSubmitted, SaveRolled
+from dnd5e_engine.events import (
+    AttackFailed,
+    AttackRolled,
+    CastFailed,
+    HealingApplied,
+    IntentSubmitted,
+    SaveRolled,
+)
 from dnd5e_engine.spatial import cell_id
 from tests.c20_support import act, combatant, events, foe, pc, start, wizard
 
@@ -270,7 +277,9 @@ def test_an_unaimed_breath_weapon_is_refused_before_its_use_is_spent() -> None:
 
 
 def test_a_wall_template_affects_only_its_named_target(caplog: pytest.LogCaptureFixture) -> None:
-    caster = wizard(spells_known=["confusion"], spell_slots={4: 1}, character_level=7)
+    """Wall of Fire's ``wall`` template is one the engine can't place, so the
+    cast falls back to its named target — never its neighbour."""
+    caster = wizard(spells_known=["wall-of-fire"], spell_slots={4: 1}, character_level=7)
     handle, live = start(
         [caster], seed=1, encounter=[_goblin("mon:a", 4, 0), _goblin("mon:b", 4, 1)]
     )
@@ -279,10 +288,65 @@ def test_a_wall_template_affects_only_its_named_target(caplog: pytest.LogCapture
             handle,
             "char:wiz",
             intent_type="cast_spell",
-            spell_id="confusion",
+            spell_id="wall-of-fire",
             target_id="mon:a",
             slot_level=4,
         )
-    assert _saved(live) == ["mon:a"]
+    # Both of its save activities resolve on the named target.
+    assert set(_saved(live)) == {"mon:a"}
     assert _areas(live) == []
     assert "falling back to the named target" in caplog.text
+
+
+def test_mass_cure_wounds_heals_the_casters_side_by_default() -> None:
+    """SRD 5.2 Mass Cure Wounds: "Choose up to six creatures in a 30-foot-
+    radius Sphere." Healing an area is help, not harm, so the default by
+    harm is the caster's own side — never the goblin standing in range."""
+    caster = wizard(
+        "char:wiz",
+        class_slug="cleric",
+        wisdom=18,
+        spells_known=["mass-cure-wounds"],
+        spell_slots={5: 1},
+        zone_id=cell_id(5, 5),
+        hp_current=10,
+    )
+    ally = pc("char:ally", zone_id=cell_id(6, 6), initiative=10, hp_current=5)
+    handle, live = start([caster, ally], seed=1, encounter=[_goblin("mon:g1", 5, 7)])
+    act(
+        handle,
+        "char:wiz",
+        intent_type="cast_spell",
+        spell_id="mass-cure-wounds",
+        target_id="char:ally",
+        slot_level=5,
+    )
+    [area] = _areas(live)
+    assert area.affected_ids == ["char:wiz", "char:ally"]
+    assert area.excluded_ids == ["mon:g1"]
+    assert {e.target_id for e in events(live, HealingApplied)} == {"char:wiz", "char:ally"}
+    order = [e.type for e in live.event_log if e.type in ("area_targeted", "healing_applied")]
+    assert order.index("area_targeted") < order.index("healing_applied")
+
+
+def test_a_refused_item_area_keeps_its_charge() -> None:
+    """An exclusion naming a creature not in the combat is refused by
+    ``_area_target_failure`` before anything is spent — the Pipes' charge
+    included."""
+    handle, live = start(
+        [pc("char:bard", equipment=("pipes-of-haunting",), zone_id=cell_id(5, 5))],
+        seed=1,
+        encounter=[_goblin("mon:g1", 5, 7)],
+    )
+    act(
+        handle,
+        "char:bard",
+        intent_type="use_item",
+        item_id="pipes-of-haunting",
+        target_id="mon:g1",
+        excluded_target_ids=("char:nobody",),
+    )
+    assert [e.reason for e in events(live, CastFailed)] == ["target_invalid"]
+    assert live.custom_counters_by_entity.get("char:bard", {}) == {}
+    assert events(live, IntentSubmitted) == []
+    assert combatant(live, "char:bard").action_available is True
