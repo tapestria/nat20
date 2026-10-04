@@ -173,7 +173,7 @@
       "sort": 0,
       "target": {
         "affects": {
-          "choice": false,
+          "choice": true,
           "count": "",
           "special": "",
           "type": "creature"

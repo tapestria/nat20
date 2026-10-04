@@ -342,7 +342,7 @@
               "contiguous": false,
               "count": "",
               "height": "",
-              "size": "20",
+              "size": "60",
               "stationary": false,
               "type": "line",
               "units": "ft",
@@ -371,7 +371,7 @@
       "legendary_cost": null,
       "mechanic": null,
       "name": "Acid Breath",
-      "recharge": null,
+      "recharge": "5-6",
       "slug": "acid-breath",
       "uses_per_day": null
     },

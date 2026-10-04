@@ -39,7 +39,6 @@ from dnd5e_engine.specs import EncounterMemberSpec, GridScene, PartyMemberSpec
 from tests.e2e.harness import cell, events_of, grid_scene, run_async, xfail_cluster
 
 _MONSTER_AIMING = xfail_cluster(26, "area targeting: monster aiming")
-_CORPUS = xfail_cluster(26, "area targeting: the corrected corpus")
 _ACTOR_SIDE = xfail_cluster(26, "area targeting: the actor's side")
 
 
@@ -378,7 +377,6 @@ def _area_target(monster: str, action: str):
     return activity.target
 
 
-@_CORPUS
 def test_c26_s10_every_dragon_breath_recharges_and_the_dragon_breathes_first() -> None:
     for monster, action in [
         ("adult-blue-dragon", "lightning-breath"),
@@ -401,7 +399,6 @@ def test_c26_s10_every_dragon_breath_recharges_and_the_dragon_breathes_first() -
     assert [e.action_slug for e in events_of(live, RechargeRolled)] == ["fire-breath"]
 
 
-@_CORPUS
 def test_c26_s11_breath_shapes_and_sizes_follow_the_srd() -> None:
     for monster, action, shape, size in [
         ("adult-copper-dragon", "acid-breath", "line", "60"),
@@ -415,7 +412,6 @@ def test_c26_s11_breath_shapes_and_sizes_follow_the_srd() -> None:
         assert (template.type, template.size) == (shape, size), (monster, action)
 
 
-@_CORPUS
 def test_c26_s12_each_creature_breaths_are_not_typed_enemy() -> None:
     for monster in [
         "adult-green-dragon",
@@ -429,7 +425,6 @@ def test_c26_s12_each_creature_breaths_are_not_typed_enemy() -> None:
     assert _area_target("planetar", "holy-burst").affects.type == "enemy"
 
 
-@_CORPUS
 def test_c26_s13_of_your_choice_and_up_to_six_are_in_the_data() -> None:
     loader = BundledAssetLoader()
 

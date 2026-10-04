@@ -342,11 +342,11 @@
               "contiguous": false,
               "count": "",
               "height": "",
-              "size": "15",
+              "size": "60",
               "stationary": false,
-              "type": "line",
+              "type": "cone",
               "units": "ft",
-              "width": "5"
+              "width": ""
             }
           },
           "uses": {

@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Who an area affects follows the SRD 5.2 text** (C26a). Sleep, Slow, Mass
+  Cure Wounds and the Mace of Terror's Wave of Terror carry
+  `target.affects.choice: true` ("each creature of your choice", "up to six
+  creatures of your choice", "Choose up to six creatures"), and Slow and Mass
+  Cure Wounds `target.affects.count: "6"`.
+- **Monster area actions follow their SRD 5.2 stat blocks** (C26a):
+  - "Recharge 5–6" on the adult blue, adult copper, ancient copper, ancient
+    gold, ancient green and young red dragons' breaths and the Centaur
+    Trooper's Trampling Charge (they had no recharge, so a dragon never
+    breathed) and on the Tarrasque's Thunderous Bellow (it had 6);
+  - the adult gold, ancient gold and gold wyrmling Fire Breath and the magma
+    mephit's are Cones, not Lines; the adult copper's Acid Breath is a 60-foot
+    Line (was 20); the adult gold's Cone is 60 feet, the ancient gold's and the
+    ancient green's 90 feet (were 15);
+  - the four green dragons' and the iron golem's Poison Breath affect each
+    creature (`affects.type: "creature"`), not only enemies.
+- **A recharge with no formula recharges on a 6**, Foundry's own default; it
+  used to translate as no recharge at all.
+
 ## [0.6.0]
 
 Lockstep release with `dnd5e-engine` 0.6.0 and `nat20-bridge` 0.6.0.

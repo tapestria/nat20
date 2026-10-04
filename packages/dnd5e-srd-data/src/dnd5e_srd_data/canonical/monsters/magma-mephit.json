@@ -250,9 +250,9 @@
               "height": "",
               "size": "15",
               "stationary": false,
-              "type": "line",
+              "type": "cone",
               "units": "ft",
-              "width": "5"
+              "width": ""
             }
           },
           "uses": {

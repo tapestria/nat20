@@ -59,8 +59,8 @@
       "sort": 0,
       "target": {
         "affects": {
-          "choice": false,
-          "count": "",
+          "choice": true,
+          "count": "6",
           "special": "",
           "type": ""
         },

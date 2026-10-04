@@ -721,7 +721,7 @@
       "legendary_cost": null,
       "mechanic": null,
       "name": "Thunderous Bellow",
-      "recharge": "6",
+      "recharge": "5-6",
       "slug": "thunderous-bellow",
       "uses_per_day": null
     },

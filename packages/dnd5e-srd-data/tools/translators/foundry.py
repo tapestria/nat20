@@ -8,6 +8,7 @@ import math
 import re
 import sys
 from collections.abc import Iterable, Mapping, Sequence
+from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 from typing import Any, Literal, TypeVar
@@ -967,7 +968,7 @@ def translate_weapon_yaml(
         magical=magical,
         mastery=mastery,
         uses=_item_uses(system),
-        activities=_translate_activities(system),
+        activities=_apply_affects_corrections(slug_str, _translate_activities(system)),
         passive_effects=_passive_effects(doc),
         provenance=_provenance(yaml_path, ingest_date, ingest_version),
         review=ReviewState(),
@@ -1423,7 +1424,10 @@ def _recharge_formula(uses: dict[str, Any]) -> str | None:
             continue
         if entry.get("period") != "recharge":
             continue
-        formula = str(entry.get("formula") or "").strip()
+        # Foundry's ``UsesField.prepareData``: ``recovery.formula ??= "6"`` —
+        # a recharge entry with no formula recharges on a 6.
+        raw_formula = entry.get("formula")
+        formula = "6" if raw_formula is None else str(raw_formula).strip()
         if not formula:
             continue
         try:
@@ -1609,6 +1613,103 @@ def _build_monster_action(
         mechanic=mechanic,
     )
     return action, kind
+
+
+@dataclass(frozen=True)
+class _ActionCorrection:
+    """The SRD 5.2 values a monster action's pinned Foundry data gets wrong:
+    its recharge, and its area activity's template and affected creatures."""
+
+    recharge: str | None = None
+    template_type: str | None = None
+    template_size: str | None = None
+    affects_type: str | None = None
+
+
+# SRD 5.2 corrections for monster area actions whose pinned Foundry data
+# disagrees with the SRD 5.2 stat block (quoted per row from the SRD 5.2
+# creature text). Keyed by ``(monster slug, action slug)``; the pins live in
+# ``tests/test_area_targeting_corrections.py``.
+_MONSTER_ACTION_CORRECTIONS: dict[tuple[str, str], _ActionCorrection] = {
+    # "Lightning Breath (Recharge 5–6). ... each creature in a 90-foot-long,
+    # 5-foot-wide Line."
+    ("adult-blue-dragon", "lightning-breath"): _ActionCorrection(recharge="5-6"),
+    # "Acid Breath (Recharge 5–6). ... each creature in an 60-foot-long,
+    # 5-foot-wide Line."
+    ("adult-copper-dragon", "acid-breath"): _ActionCorrection(recharge="5-6", template_size="60"),
+    # "Acid Breath (Recharge 5–6). ... each creature in an 90-foot-long,
+    # 10-foot-wide Line."
+    ("ancient-copper-dragon", "acid-breath"): _ActionCorrection(recharge="5-6"),
+    # "Fire Breath (Recharge 5–6). ... each creature in a 90-foot Cone."
+    ("ancient-gold-dragon", "fire-breath"): _ActionCorrection(
+        recharge="5-6", template_type="cone", template_size="90"
+    ),
+    # "Poison Breath (Recharge 5–6). ... each creature in a 90-foot Cone."
+    ("ancient-green-dragon", "poison-breath"): _ActionCorrection(
+        recharge="5-6", template_size="90", affects_type="creature"
+    ),
+    # "Fire Breath (Recharge 5–6). ... each creature in a 30-foot Cone."
+    ("young-red-dragon", "fire-breath"): _ActionCorrection(recharge="5-6"),
+    # "Fire Breath (Recharge 5–6). ... each creature in a 60-foot Cone."
+    ("adult-gold-dragon", "fire-breath"): _ActionCorrection(
+        template_type="cone", template_size="60"
+    ),
+    # "Fire Breath (Recharge 5–6). ... each creature in a 15-foot Cone."
+    ("gold-dragon-wyrmling", "fire-breath"): _ActionCorrection(template_type="cone"),
+    # "Fire Breath (Recharge 6). ... each creature in a 15-foot Cone."
+    ("magma-mephit", "fire-breath"): _ActionCorrection(template_type="cone"),
+    # "Poison Breath (Recharge 5–6). ... each creature in a 60-foot Cone."
+    ("adult-green-dragon", "poison-breath"): _ActionCorrection(affects_type="creature"),
+    # "Poison Breath (Recharge 5–6). ... each creature in a 15-foot Cone."
+    ("green-dragon-wyrmling", "poison-breath"): _ActionCorrection(affects_type="creature"),
+    # "Poison Breath (Recharge 5–6). ... each creature in a 30-foot Cone."
+    ("young-green-dragon", "poison-breath"): _ActionCorrection(affects_type="creature"),
+    # "Poison Breath (Recharge 6). ... each creature in a 60-foot Cone."
+    ("iron-golem", "poison-breath"): _ActionCorrection(affects_type="creature"),
+    # "Trampling Charge (Recharge 5–6)." Foundry's recharge carries no formula,
+    # which its default reads as a 6.
+    ("centaur-trooper", "trampling-charge"): _ActionCorrection(recharge="5-6"),
+    # "Thunderous Bellow (Recharge 5–6). ... each creature and each object
+    # that isn't being worn or carried in a 150-foot Cone."
+    ("tarrasque", "thunderous-bellow"): _ActionCorrection(recharge="5-6"),
+}
+
+
+def _apply_monster_action_corrections(
+    monster_slug: str, actions: list[MonsterAction]
+) -> list[MonsterAction]:
+    """Apply ``_MONSTER_ACTION_CORRECTIONS``: the recharge on the action, the
+    template and affected creatures on its templated activities. Copy-on-write."""
+    out: list[MonsterAction] = []
+    for action in actions:
+        fix = _MONSTER_ACTION_CORRECTIONS.get((monster_slug, action.slug))
+        if fix is None:
+            out.append(action)
+            continue
+        template_update = {
+            k: v for k, v in (("type", fix.template_type), ("size", fix.template_size)) if v
+        }
+        if fix.template_type == "cone":
+            # A Cone has no width; the Line it replaces did.
+            template_update["width"] = ""
+        activities: list[Activity] = []
+        for act in action.activities:
+            if act.target.template.type:
+                target = act.target.model_copy(
+                    update={
+                        "template": act.target.template.model_copy(update=template_update),
+                        "affects": act.target.affects.model_copy(
+                            update={"type": fix.affects_type} if fix.affects_type else {}
+                        ),
+                    }
+                )
+                act = act.model_copy(update={"target": target})
+            activities.append(act)
+        update: dict[str, Any] = {"activities": activities}
+        if fix.recharge:
+            update["recharge"] = fix.recharge
+        out.append(action.model_copy(update=update))
+    return out
 
 
 def _monster_actions(
@@ -1801,9 +1902,11 @@ def translate_monster_yaml(
     hp_doc = attrs.get("hp", {}) or {}
 
     actions, legendary_actions, lair_actions, special_abilities = _monster_actions(doc)
+    slug = _slug(doc, yaml_path)
+    actions = _apply_monster_action_corrections(slug, actions)
 
     return Monster(
-        slug=_slug(doc, yaml_path),
+        slug=slug,
         name=doc["name"],
         description=_description(doc),
         creature_type=creature_type,
@@ -2110,6 +2213,42 @@ def _apply_spell_damage_type_corrections(slug: str, activities: list[Activity]) 
     return out
 
 
+# SRD 5.2 "of your choice" / "up to six creatures" corrections. The pinned
+# Foundry sources leave ``target.affects.choice`` false and ``count`` blank on
+# these activities, although each entry's own SRD 5.2 text chooses its
+# creatures. Keyed by ``(entry slug, activity _id)`` → the ``affects`` fields
+# the text gives; the pins live in ``tests/test_area_targeting_corrections.py``.
+_AFFECTS_CORRECTIONS: dict[tuple[str, str], dict[str, bool | str]] = {
+    # "Each creature of your choice in a 5-foot-radius Sphere centered on a
+    # point within range must succeed on a Wisdom saving throw"
+    ("sleep", "dnd5eactivity000"): {"choice": True},
+    # "You alter time around up to six creatures of your choice in a 40-foot
+    # Cube within range."
+    ("slow", "dnd5eactivity000"): {"choice": True, "count": "6"},
+    # "Choose up to six creatures in a 30-foot-radius Sphere centered on that
+    # point."
+    ("mass-cure-wounds", "dnd5eactivity000"): {"choice": True, "count": "6"},
+    # "Each creature of your choice within 30 feet of you must succeed on a DC
+    # 15 Wisdom saving throw"
+    ("mace-of-terror", "owojSA2KZWmv61Nj"): {"choice": True},
+}
+
+
+def _apply_affects_corrections(slug: str, activities: list[Activity]) -> list[Activity]:
+    """Set the ``target.affects`` fields ``_AFFECTS_CORRECTIONS`` maps.
+    Copy-on-write like ``_apply_spell_damage_type_corrections``."""
+    out: list[Activity] = []
+    for act in activities:
+        fields = _AFFECTS_CORRECTIONS.get((slug, act.id))
+        if fields is not None:
+            target = act.target.model_copy(
+                update={"affects": act.target.affects.model_copy(update=fields)}
+            )
+            act = act.model_copy(update={"target": target})
+        out.append(act)
+    return out
+
+
 #: Spell slug → the SRD 5.2 sentence that removes cover from the save. Foundry
 #: has no field for this; the sentence is the only source. Re-verify with
 #: ``grep -rl "benefit from" packs/_source/spells24`` when refreshing upstream.
@@ -2170,8 +2309,11 @@ def translate_spell_yaml(
         duration=_spell_duration(system.get("duration") or {}),
         materials=_spell_materials(system.get("materials") or {}),
         preparation=_spell_preparation(system.get("preparation") or {}),
-        activities=_apply_spell_save_cover_overrides(
-            slug, _apply_spell_damage_type_corrections(slug, _translate_activities(system))
+        activities=_apply_affects_corrections(
+            slug,
+            _apply_spell_save_cover_overrides(
+                slug, _apply_spell_damage_type_corrections(slug, _translate_activities(system))
+            ),
         ),
         passive_effects=_passive_effects(doc),
         provenance=_provenance(yaml_path, ingest_date, ingest_version),

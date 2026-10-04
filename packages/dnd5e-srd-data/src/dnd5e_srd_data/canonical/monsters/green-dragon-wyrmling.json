@@ -334,7 +334,7 @@
               "choice": false,
               "count": "",
               "special": "",
-              "type": "enemy"
+              "type": "creature"
             },
             "override": false,
             "prompt": true,
