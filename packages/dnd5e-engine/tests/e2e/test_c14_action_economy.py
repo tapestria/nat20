@@ -2,7 +2,7 @@
 
 Transcribed from specs/e2e-scenario-catalog.md, Cluster 14
 (specs/catalog-v2/c14.md). Grid-only per D8 — every setup uses
-``GridScene`` + ``"col,row"`` cell ids, never ``SceneTopology`` zones.
+``GridScene`` + ``"col,row"`` cell ids.
 """
 
 from __future__ import annotations
@@ -59,7 +59,6 @@ def test_c14_s01_dodge_disadvantages_attackers_until_next_turn():
                         zone_id=cell(1, 0),
                     )
                 ],
-                scene_zones=None,
                 grid_scene=grid_scene(),
                 rng_seed=7,
             )
@@ -133,7 +132,6 @@ def test_c14_s02_hide_grants_advantage_on_next_attack():
             session_id="e2e-c14-s02-a",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=None,
             grid_scene=_grid(),
             rng_seed=9,
         )
@@ -150,7 +148,6 @@ def test_c14_s02_hide_grants_advantage_on_next_attack():
             session_id="e2e-c14-s02-b",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=None,
             grid_scene=_grid(),
             rng_seed=9,
         )
@@ -226,7 +223,6 @@ def test_c14_s03_help_grants_advantage_to_next_ally_attack():
                         zone_id=cell(1, 1),
                     )
                 ],
-                scene_zones=None,
                 grid_scene=grid_scene(),
                 rng_seed=13,
             )
@@ -303,7 +299,6 @@ def test_c14_s04_grapple_shove_and_stand_up():
                     zone_id=cell(1, 0),
                 )
             ],
-            scene_zones=None,
             grid_scene=grid_scene(),
             # Setup repair 2026-09-01: seed 5 rolled a natural-20 grapple save;
             # assertions unchanged (catalog repair protocol).
@@ -419,7 +414,6 @@ def test_c14_s05_extra_attack_grants_exactly_two_swings():
                     zone_id=cell(1, 0),
                 )
             ],
-            scene_zones=None,
             grid_scene=grid_scene(),
             rng_seed=21,
         )
@@ -511,7 +505,6 @@ def test_c14_s06_light_weapon_bonus_action_offhand_omits_positive_ability_mod():
                     zone_id=cell(1, 0),
                 )
             ],
-            scene_zones=None,
             grid_scene=grid_scene(),
             # Setup repair 2026-09-01: seed 23 rolled a natural-1 off-hand fumble; assertions unchanged (catalog repair protocol).
             rng_seed=24,
@@ -603,7 +596,6 @@ def test_c14_s07_engine_rolls_initiative_and_surprise_applies_disadvantage():
                         zone_id=cell(2, 0),
                     )
                 ],
-                scene_zones=None,
                 grid_scene=grid_scene(),
                 rng_seed=29,
             )

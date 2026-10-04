@@ -95,7 +95,6 @@ def _attack_at(weapon_id: str, col: int, session_id: str, *, hero: PartyMemberSp
             session_id=session_id,
             party=[hero or _hero()],
             encounter=[_foe(col)],
-            scene_zones=None,
             grid_scene=GridScene(width=200, height=10),
             rng_seed=1,
         )
@@ -248,7 +247,6 @@ def _weapon_attack(
             session_id=session_id,
             party=[hero or _hero()],
             encounter=encounter,
-            scene_zones=None,
             grid_scene=grid_scene or GridScene(width=200, height=10),
             active_effects=list(active_effects),
             rng_seed=1,
@@ -328,7 +326,6 @@ def test_hostile_adjacent_helper_excludes_a_hostile_that_cannot_see_the_attacker
             session_id="c15-t3-blind-adjacent",
             party=[_hero()],
             encounter=[near],
-            scene_zones=None,
             # Darkness on the ATTACKER's own cell — the adjacent monster has
             # no darkvision by default (EncounterMemberSpec carries no
             # ``senses`` override), so it cannot see into it.
@@ -350,7 +347,6 @@ def test_hostile_adjacent_helper_true_for_a_seeing_adjacent_hostile():
             session_id="c15-t3-seeing-adjacent",
             party=[_hero()],
             encounter=[near],
-            scene_zones=None,
             grid_scene=GridScene(width=200, height=10),
             rng_seed=1,
         )

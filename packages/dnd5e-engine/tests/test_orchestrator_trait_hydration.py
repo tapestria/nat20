@@ -37,7 +37,6 @@ def _start(slug: str | None):
                     monster_template_slug=slug,
                 )
             ],
-            scene_zones=None,
             grid_scene=GridScene(width=5, height=5),
             rng_seed=1,
         )

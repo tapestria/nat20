@@ -32,10 +32,8 @@ TOP_LEVEL = {
     "RecoveryPeriod",
     "RestOutcome",
     "RitualCast",
-    "SceneTopology",
     "StartCombatResult",
     "WallSegment",
-    "ZoneEdge",
     "advance_monster_turn",
     "build_party_member",
     "cell_id",
@@ -105,3 +103,25 @@ def test_all_names_are_importable():
             mod = importlib.import_module(m)
             for name in mod.__all__:
                 assert hasattr(mod, name), f"{m}.{name} missing"
+
+
+# Removed in 0.7.0 with the zone graph; ``GridScene`` replaces them.
+_ZONE_GRAPH_NAMES = {"SceneTopology", "ZoneEdge", "ZoneGraph"}
+
+
+def test_no_public_module_exports_a_zone_graph_name():
+    modules = [*PUBLIC_MODULES, "dnd5e_engine.orchestrator"]
+    leaked = {
+        m: sorted(set(importlib.import_module(m).__all__) & _ZONE_GRAPH_NAMES) for m in modules
+    }
+    assert {m: names for m, names in leaked.items() if names} == {}
+
+
+def test_orchestrator_star_import_carries_what_start_combat_needs():
+    """A host that star-imports ``dnd5e_engine.orchestrator`` gets the spec
+    types a ``start_combat`` call takes, ``GridScene`` included."""
+    import dnd5e_engine.orchestrator as orchestrator
+
+    assert {"EncounterMemberSpec", "GridScene", "PartyMemberSpec", "start_combat"} <= set(
+        orchestrator.__all__
+    )

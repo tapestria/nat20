@@ -111,7 +111,6 @@ async def start_combat_with(session_id: str, party: list[PartyMemberSpec], *, rn
         session_id=session_id,
         party=party,
         encounter=_foe_encounter(),
-        scene_zones=None,
         grid_scene=grid_scene(),
         rng_seed=rng_seed,
     )

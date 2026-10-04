@@ -82,7 +82,6 @@ def test_c13_s01_second_concentration_spell_ends_the_first():
                     zone_id=cell(9, 9),
                 )
             ],
-            scene_zones=None,
             grid_scene=grid_scene(),
             rng_seed=7,
         )
@@ -178,7 +177,6 @@ def test_c13_s02_damage_triggers_concentration_check_with_con_modifier():
                 session_id="e2e-c13-s02",
                 party=[PartyMemberSpec(**_cleric_kwargs(constitution, proficient))],
                 encounter=[_foe()],
-                scene_zones=None,
                 grid_scene=grid_scene(),
                 rng_seed=42,
             )
@@ -258,7 +256,6 @@ def test_c13_s03_caster_reduced_to_zero_hp_ends_concentration():
                     zone_id=cell(1, 0),
                 )
             ],
-            scene_zones=None,
             grid_scene=grid_scene(),
             rng_seed=5,
         )
@@ -335,7 +332,6 @@ def test_c13_s04_voluntary_drop_costs_no_action():
                     zone_id=cell(4, 0),
                 )
             ],
-            scene_zones=None,
             grid_scene=grid_scene(),
             rng_seed=9,
         )
@@ -417,7 +413,6 @@ def test_c13_s05_concentration_dc_caps_at_30():
                         zone_id=cell(1, 0),
                     )
                 ],
-                scene_zones=None,
                 grid_scene=grid_scene(),
                 rng_seed=13,
             )

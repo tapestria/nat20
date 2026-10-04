@@ -313,11 +313,6 @@ _PROBES: dict[str, tuple[Any, str]] = {
         lambda: "def _combatant_can_see(" in _src("orchestrator.py"),
         "composite `_combatant_can_see` predicate",
     ),
-    # D8: the zone graph is deprecated (warning raised in _resolve_topology).
-    "Zone-graph topology": (
-        lambda: "DeprecationWarning" in _src("orchestrator.py"),
-        "Deprecated",
-    ),
     # C22: Magic Resistance is read from the hydrated trait list.
     "`special_abilities`": (
         lambda: (

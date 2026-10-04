@@ -77,9 +77,7 @@ from dnd5e_engine.specs import (
     EncounterMemberSpec,
     GridScene,
     PartyMemberSpec,
-    SceneTopology,
     WallSegment,
-    ZoneEdge,
 )
 from dnd5e_engine.spellcasting import RitualCast, derive_pact_slots, resolve_ritual_cast
 from dnd5e_engine.types.effects import (
@@ -117,10 +115,8 @@ __all__ = [
     "RecoveryPeriod",
     "RestOutcome",
     "RitualCast",
-    "SceneTopology",
     "StartCombatResult",
     "WallSegment",
-    "ZoneEdge",
     "advance_monster_turn",
     "build_party_member",
     "cell_id",

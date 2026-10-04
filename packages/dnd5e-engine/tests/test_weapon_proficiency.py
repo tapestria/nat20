@@ -121,7 +121,6 @@ def _start_and_attack(party: list[PartyMemberSpec], session_id: str):
             session_id=session_id,
             party=party,
             encounter=[_foe()],
-            scene_zones=None,
             grid_scene=grid_scene(),
             rng_seed=1,
         )
@@ -165,7 +164,6 @@ def _attack_total(party: list[PartyMemberSpec], session_id: str) -> int:
             session_id=session_id,
             party=party,
             encounter=[_foe()],
-            scene_zones=None,
             grid_scene=grid_scene(),
             rng_seed=1,
         )
@@ -232,7 +230,6 @@ def test_monster_combatant_weapon_proficiencies_stays_none():
             session_id="c15-t1-monster-pin",
             party=_party_of_one(),
             encounter=[_foe()],
-            scene_zones=None,
             grid_scene=grid_scene(),
             rng_seed=1,
         )
@@ -270,7 +267,6 @@ def test_monster_attack_unaffected_by_proficiency_gate():
                     zone_id=cell(0, 1),
                 )
             ],
-            scene_zones=None,
             grid_scene=grid_scene(),
             rng_seed=1,
         )

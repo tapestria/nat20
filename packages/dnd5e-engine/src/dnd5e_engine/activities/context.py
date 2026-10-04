@@ -181,7 +181,7 @@ class ActivityResolutionContext:
     # Per-TARGET SRD 5.2 §Cover degree ("none"/"half"/"three_quarters"/
     # "total"), keyed entity_id -> degree. Computed once per activity
     # resolution by the orchestrator (``_target_cover_map``) from the
-    # caster's and target's live zone via ``SpatialTopology.cover_between``.
+    # caster's and target's cells via ``SpatialTopology.cover_between``.
     # Consumed in ``attack.py`` (folds +2/+5 onto the target's AC before the
     # hit comparison) and ``save.py``/``save_primitive.py`` (folds the SAME
     # +2/+5 onto a DEXTERITY save's total only — SRD: cover grants "a bonus

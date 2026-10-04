@@ -91,7 +91,6 @@ def test_c16_s01_fireball_sphere_hits_every_creature_within_radius():
                     zone_id=cell(15, 15),
                 ),
             ],
-            scene_zones=None,
             grid_scene=grid_scene(width=21, height=21, cell_size_ft=5),
             rng_seed=3,
         )
@@ -179,7 +178,6 @@ def test_c16_s02_burning_hands_cone_fires_from_casters_own_cell():
                     zone_id=cell(3, 5),
                 ),
             ],
-            scene_zones=None,
             grid_scene=grid_scene(width=11, height=11),
             rng_seed=3,
         )
@@ -270,7 +268,6 @@ def test_c16_s03_lightning_bolt_line_hits_every_cell_along_its_length():
                     zone_id=cell(5, 4),
                 ),
             ],
-            scene_zones=None,
             grid_scene=grid_scene(width=25, height=5, cell_size_ft=5),
             rng_seed=3,
         )
@@ -346,7 +343,6 @@ def test_c16_s04_creature_standing_between_attacker_and_target_grants_half_cover
             session_id="e2e-c16-s04",
             party=_party(),
             encounter=encounter,
-            scene_zones=None,
             grid_scene=grid_scene(),
             rng_seed=1,
         )
@@ -426,7 +422,6 @@ def test_c16_s05_blocked_cell_blocks_los_and_wall_blocks_corner_cutting():
                     zone_id=cell(4, 0),
                 )
             ],
-            scene_zones=None,
             grid_scene=GridScene(width=10, height=10, blocked_cells=[cell(2, 0)]),
             rng_seed=1,
         )
@@ -471,7 +466,6 @@ def test_c16_s05_blocked_cell_blocks_los_and_wall_blocks_corner_cutting():
                     zone_id=cell(4, 4),
                 )
             ],
-            scene_zones=None,
             grid_scene=GridScene(
                 width=5,
                 height=5,
@@ -542,7 +536,6 @@ def test_c16_s06_multicell_move_succeeds_with_terrain_cost_or_fails_unreachable_
             session_id="e2e-c16-s06",
             party=[_hero()],
             encounter=encounter,
-            scene_zones=None,
             grid_scene=grid_scene_obj,
             rng_seed=1,
         )
@@ -642,7 +635,6 @@ def test_c16_s07_thunderwave_pushes_failed_save_target_10ft_away():
                     zone_id=cell(1, 0),
                 )
             ],
-            scene_zones=None,
             grid_scene=grid_scene(),
             rng_seed=1,
         )
@@ -732,7 +724,6 @@ def test_c16_s08_target_in_darkness_without_darkvision_grants_attack_disadvantag
             session_id="e2e-c16-s08",
             party=[PartyMemberSpec(**_hero_kwargs())],
             encounter=[_foe()],
-            scene_zones=None,
             # API delta (C16b): GridScene.lighting is not a field today —
             # building the kwargs dict and unpacking it fails inside the
             # function body (extra="forbid"), not at collection time.

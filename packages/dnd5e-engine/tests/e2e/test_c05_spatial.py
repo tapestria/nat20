@@ -66,7 +66,6 @@ def test_c05_s01_wall_segment_blocks_line_of_sight_gating_ranged_attack():
                     zone_id=cell_id(4, 0),
                 )
             ],
-            scene_zones=None,
             grid_scene=GridScene(
                 width=10,
                 height=10,
@@ -145,7 +144,6 @@ def test_c05_s02_half_cover_adds_plus2_ac_flips_hit_to_miss_same_seed():
             session_id="e2e-c05-s02",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=None,
             grid_scene=grid_scene,
             rng_seed=1,
         )
@@ -213,7 +211,6 @@ def test_c05_s03_total_cover_makes_target_untargetable():
                     zone_id=cell_id(3, 0),
                 )
             ],
-            scene_zones=None,
             grid_scene=GridScene(
                 width=10,
                 height=10,
@@ -331,7 +328,6 @@ def test_c05_s05_difficult_terrain_doubles_movement_cost_refusing_move():
             session_id="e2e-c05-s05",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=None,
             grid_scene=grid_scene,
             rng_seed=1,
         )

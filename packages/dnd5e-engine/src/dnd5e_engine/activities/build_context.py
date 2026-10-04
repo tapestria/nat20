@@ -265,7 +265,7 @@ def build_activity_context(
     ``target_cover`` is the PRE-RESOLVED per-target SRD 5.2 §Cover degree
     (``"none"``/``"half"``/``"three_quarters"``/``"total"``), computed by the
     orchestrator (``_target_cover_map``, spatial-seam access there) from the
-    caster's and each target's live zone via ``topology.cover_between``. This
+    caster's and each target's cell via ``topology.cover_between``. This
     pure builder never touches the spatial seam; absent (``None``) → empty,
     leaving the golden corpus identical (no cover geometry ⇒ no bonus).
 

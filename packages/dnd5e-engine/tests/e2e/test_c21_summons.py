@@ -71,7 +71,6 @@ def test_c21_s01_summon_dragon_casts_with_zero_roster_growth():
                     zone_id=cell(2, 0),
                 )
             ],
-            scene_zones=None,
             grid_scene=GridScene(width=10, height=10, wall_segments=[]),
             rng_seed=7,
         )
@@ -151,7 +150,6 @@ def test_c21_s02_losing_concentration_dismisses_the_summoned_dragon():
                     zone_id=cell(1, 0),
                 ),
             ],
-            scene_zones=None,
             grid_scene=GridScene(width=10, height=10, wall_segments=[]),
             rng_seed=4,
         )
@@ -224,7 +222,6 @@ def test_c21_s03_spiritual_weapon_casts_with_no_attack_roll():
                     zone_id=cell(0, 1),
                 )
             ],
-            scene_zones=None,
             grid_scene=GridScene(width=5, height=5, wall_segments=[]),
             rng_seed=9,
         )
@@ -291,7 +288,6 @@ def test_c21_s04_magic_weapon_enchant_grants_plus1_to_hit_and_damage():
                         zone_id=cell(0, 0),
                     )
                 ],
-                scene_zones=None,
                 grid_scene=GridScene(width=5, height=5, wall_segments=[]),
                 rng_seed=11,
             )
@@ -379,7 +375,6 @@ def test_c21_s05_wild_shape_does_not_swap_stat_block_today():
                     zone_id=cell(0, 1),
                 )
             ],
-            scene_zones=None,
             grid_scene=GridScene(width=5, height=5, wall_segments=[]),
             rng_seed=13,
         )
@@ -459,7 +454,6 @@ def test_c21_s06_polymorph_save_kind_resolves_save_but_no_transform_effect():
                     zone_id=cell(1, 0),
                 )
             ],
-            scene_zones=None,
             grid_scene=GridScene(width=5, height=5, wall_segments=[]),
             rng_seed=1,
         )

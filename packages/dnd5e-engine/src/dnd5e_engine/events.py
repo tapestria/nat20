@@ -394,12 +394,9 @@ class ConcentrationCheck(BaseModel):
     """SRD 5.2 §Concentration — the Constitution save a concentrating
     creature makes when it takes damage (``DC = 10 or half the damage
     taken, whichever is higher``). Emitted by the orchestrator's
-    concentration-on-damage block since F2c.
-
-    TRANSITIONAL: emitted alongside ``SaveRolled(ability='con')`` until
-    v0.7. The generic ``SaveRolled`` is the shape hosts consumed before
-    this event was wired, so both are emitted for one release; hosts that
-    count saves must filter one of them out.
+    concentration-on-damage block; it is the roll's only event (no
+    ``SaveRolled`` accompanies it), so a host counting saves counts both
+    types.
     """
 
     type: Literal["concentration_check"] = "concentration_check"
@@ -409,9 +406,7 @@ class ConcentrationCheck(BaseModel):
     succeeded: bool
     # F2 — the resolved D20 Test mode, matching ``AttackRolled.advantage``.
     advantage: AdvantageMode = "normal"
-    # F2 — optional D20 Test provenance; see ``AttackRolled``. Carried here as
-    # well as on the twin ``SaveRolled`` so the breakdown survives the v0.7
-    # removal of that duplicate.
+    # F2 — optional D20 Test provenance; see ``AttackRolled``.
     natural: int | None = None
     modifier: int | None = None
     sources: list[AdvantageSource] = Field(default_factory=list)
@@ -460,6 +455,9 @@ class Death(BaseModel):
 
 
 class ZoneTransit(BaseModel):
+    """Never emitted. Kept in the ``CombatEvent`` union so a host that still
+    imports it keeps working; a later breaking release removes it."""
+
     type: Literal["zone_transit"] = "zone_transit"
     actor_id: str
     from_zone: str
@@ -475,11 +473,8 @@ class ActorMoved(BaseModel):
     before it and the rest (SRD 5.2: "The attack occurs right before the
     creature leaves your reach"). The monster AI's walks emit one per step.
 
-    Distinct from ``ZoneTransit`` (an evaluator-internal "I moved this many
-    feet" notification for AOE/ranged geometry handlers): ``ActorMoved`` is
-    the orchestrator-emitted, intent-driven event the WS projection and
-    narrator consume. Movement does NOT end the turn — the actor may still
-    take Action / Bonus Action / etc.
+    Movement does NOT end the turn — the actor may still take Action / Bonus
+    Action / etc.
     """
 
     type: Literal["actor_moved"] = "actor_moved"
@@ -559,9 +554,9 @@ class AttackFailed(BaseModel):
 
     Mirrors ``CastFailed`` for weapon attacks: the actor keeps the turn,
     no action budget is consumed, and the failure surfaces a typed
-    reason. ``out_of_range`` fires when the target's zone is farther
-    than the weapon's reach (melee) or normal range (ranged) along the
-    zone graph; ``target_invalid`` covers missing-target / non-combatant
+    reason. ``out_of_range`` fires when the target is beyond the weapon's
+    reach (melee) or long range (ranged), out of line of sight, or behind
+    total cover; ``target_invalid`` covers missing-target / non-combatant
     target cases; ``no_action_economy`` mirrors the spell path's gate
     for parity.
     """
@@ -712,10 +707,10 @@ class LegendaryActionUsed(BaseModel):
 class LegendaryResistanceUsed(BaseModel):
     """A monster spent one of its per-day Legendary Resistance uses to
     convert a saving throw it had just failed into a success. Emitted AFTER
-    the ``SaveRolled`` it converts (which already carries ``succeeded=True``)
-    — and, on a concentration check, after the paired ``ConcentrationCheck``
-    too — so a host sees the roll before the narration of the resistance
-    spend. The per-day pool is NOT reset at turn start.
+    the roll it converts — a ``SaveRolled``, or a concentration check's
+    ``ConcentrationCheck`` — which already carries ``succeeded=True``, so a
+    host sees the roll before the narration of the resistance spend. The
+    per-day pool is NOT reset at turn start.
     """
 
     type: Literal["legendary_resistance_used"] = "legendary_resistance_used"

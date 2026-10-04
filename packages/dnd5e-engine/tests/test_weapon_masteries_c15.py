@@ -276,7 +276,6 @@ async def _start_two_monster_combat(session_id: str):
                 zone_id=cell(0, 2),
             ),
         ],
-        scene_zones=None,
         grid_scene=grid_scene(),
         rng_seed=1,
     )
@@ -401,7 +400,6 @@ def test_d_sap_mark_gives_the_target_disadvantage_on_its_next_attack() -> None:
                     zone_id=cell(0, 2),
                 )
             ],
-            scene_zones=None,
             grid_scene=grid_scene(),
             rng_seed=2,
         )
@@ -471,7 +469,6 @@ def test_d_sap_mark_expires_at_the_sappers_own_next_turn_start_if_unused() -> No
                     zone_id=cell(0, 2),
                 )
             ],
-            scene_zones=None,
             grid_scene=grid_scene(),
             rng_seed=3,
         )
@@ -569,7 +566,6 @@ async def _start(session_id: str, party, encounter, *, seed: int = 1):
         session_id=session_id,
         party=party,
         encounter=encounter,
-        scene_zones=None,
         grid_scene=grid_scene(),
         rng_seed=seed,
     )
@@ -1050,7 +1046,6 @@ def test_c_cleave_chain_honors_three_quarters_cover_on_the_candidate() -> None:
                 _mon("mon:a", "A", cell(0, 1)),
                 _mon("mon:b", "B", cell(1, 1), initiative=9, ac=14),
             ],
-            scene_zones=None,
             grid_scene=grid_scene(cover_cells={cell(1, 1): "three_quarters"} if covered else {}),
             rng_seed=1,
         )

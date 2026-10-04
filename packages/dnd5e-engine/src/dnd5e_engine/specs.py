@@ -282,38 +282,6 @@ class EncounterMemberSpec(BaseModel):
     base_speed: int = 30
 
 
-class ZoneEdge(BaseModel):
-    """One undirected connection between two zones in a ``SceneTopology``.
-
-    ``a`` and ``b`` are zone ids; ``distance_ft`` is the cost of traversing
-    between them, used for range, reach and movement-budget checks. Edges are
-    undirected — declare each connection once.
-    """
-
-    model_config = ConfigDict(extra="forbid")
-
-    a: str
-    b: str
-    distance_ft: int = Field(ge=0)
-
-
-class SceneTopology(BaseModel):
-    """Wire-level shape for the zone graph the engine resolves over.
-
-    The orchestrator converts this to a concrete ``ZoneTopology`` (the
-    Protocol the scaffold's ``RuntimeContext`` requires) at
-    ``start_combat`` time. Per
-    the original scaffold
-    keeps ``ZoneTopology`` as a structural Protocol; concrete graph
-    implementations belong here at the seam.
-    """
-
-    model_config = ConfigDict(extra="forbid")
-
-    zones: list[str]
-    edges: list[ZoneEdge] = Field(default_factory=list)
-
-
 class WallSegment(BaseModel):
     """One wall edge, grid-CORNER endpoints (mirrors Foundry's ``Wall.c``
     four-coordinate convention).
@@ -401,7 +369,5 @@ __all__ = [
     "LightLevel",
     "Obscurement",
     "PartyMemberSpec",
-    "SceneTopology",
     "WallSegment",
-    "ZoneEdge",
 ]

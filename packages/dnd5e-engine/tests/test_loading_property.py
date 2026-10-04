@@ -59,7 +59,6 @@ def _start(party, encounter, session_id: str):
         session_id=session_id,
         party=party,
         encounter=encounter,
-        scene_zones=None,
         grid_scene=grid_scene(),
         rng_seed=1,
     )

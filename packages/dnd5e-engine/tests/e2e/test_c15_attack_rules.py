@@ -64,7 +64,6 @@ def test_c15_s01_nonproficient_attacker_still_adds_proficiency_bonus():
                         zone_id=cell(0, 1),
                     )
                 ],
-                scene_zones=None,
                 grid_scene=grid_scene(),
                 rng_seed=1,
             )
@@ -146,7 +145,6 @@ def test_c15_s02_ranged_attack_disadvantaged_by_adjacent_hostile():
             session_id="e2e-c15-s02-a",
             party=_party(),
             encounter=[_far_foe()],
-            scene_zones=None,
             grid_scene=grid_scene(),
             rng_seed=1,
         )
@@ -163,7 +161,6 @@ def test_c15_s02_ranged_attack_disadvantaged_by_adjacent_hostile():
             session_id="e2e-c15-s02-b",
             party=_party(),
             encounter=[_far_foe(), _near_foe()],
-            scene_zones=None,
             grid_scene=grid_scene(),
             rng_seed=1,
         )
@@ -225,7 +222,6 @@ def test_c15_s03_disadvantage_tier_between_normal_and_long_range():
                         zone_id=cell(col, 0),
                     )
                 ],
-                scene_zones=None,
                 grid_scene=GridScene(width=200, height=10),
                 rng_seed=1,
             )
@@ -293,7 +289,6 @@ def test_c15_s04_versatile_grip_and_damage_source_attribution():
                     zone_id=cell(0, 1),
                 )
             ],
-            scene_zones=None,
             grid_scene=grid_scene(),
             rng_seed=1,
         )
@@ -367,7 +362,6 @@ def test_c15_s05_loading_weapon_second_shot_rejected_for_the_right_reason():
                     zone_id=cell(1, 0),
                 )
             ],
-            scene_zones=None,
             grid_scene=grid_scene(),
             rng_seed=1,
         )
@@ -446,7 +440,6 @@ def test_c15_s06_massive_damage_triggers_instant_death_for_a_character():
                     zone_id=cell(5, 5),
                 )
             ],
-            scene_zones=None,
             grid_scene=grid_scene(),
             rng_seed=1,
         )
@@ -505,7 +498,6 @@ def test_c15_s07_vex_mastery_grants_advantage_on_next_attack():
                     zone_id=cell(0, 1),
                 )
             ],
-            scene_zones=None,
             grid_scene=grid_scene(),
             rng_seed=1,
         )

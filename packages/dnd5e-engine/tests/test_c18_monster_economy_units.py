@@ -122,7 +122,6 @@ async def _start(party, encounter, *, seed=1, width=10, session="c18-units", sun
         session_id=session,
         party=party,
         encounter=encounter,
-        scene_zones=None,
         grid_scene=GridScene(width=width, height=10, cell_size_ft=5, sunlight=sunlight),
         rng_seed=seed,
     )

@@ -103,7 +103,6 @@ async def _cast(
         session_id="c16-aoe",
         party=party,
         encounter=encounter,
-        scene_zones=None,
         grid_scene=scene,
         rng_seed=seed,
     )
@@ -343,7 +342,6 @@ async def _shoot(
         session_id="c16-cover",
         party=party or [_hero(cell(0, 0))],
         encounter=encounter,
-        scene_zones=None,
         grid_scene=scene,
         rng_seed=seed,
     )
@@ -427,7 +425,6 @@ async def _move(
         session_id="c16-move",
         party=party,
         encounter=encounter,
-        scene_zones=None,
         grid_scene=scene,
         rng_seed=1,
     )
@@ -880,7 +877,6 @@ def test_monster_attack_against_unseen_pc_has_advantage() -> None:
                 )
             ],
             encounter=[_foe("mon:foe", cell(1, 0), initiative=20, monster_template_slug="biter")],
-            scene_zones=None,
             grid_scene=GridScene(width=10, height=10, lighting={cell(1, 0): "dark"}),
             rng_seed=1,
         )
@@ -932,7 +928,6 @@ def test_condition_advantage_and_unseen_disadvantage_compose(
             session_id=f"c12x16-{restrained}-{dark}",
             party=[_hero(cell(0, 0))],
             encounter=[_foe("mon:foe", cell(4, 0))],
-            scene_zones=None,
             grid_scene=GridScene(
                 width=10, height=10, lighting={cell(4, 0): "dark"} if dark else {}
             ),

@@ -19,11 +19,9 @@ from dnd5e_engine.orchestrator import (
     _build_hydration_payload,
     _emit,
     _reset_registry_for_tests,
-    _ZoneGraph,
 )
 
 __all__ = [
-    "ZoneGraph",
     "build_hydration_payload",
     "emit",
     "registry",
@@ -38,6 +36,3 @@ reset_registry = _reset_registry_for_tests
 # and scenario tests to drive the same code paths the per-effect handlers take.
 emit = _emit
 build_hydration_payload = _build_hydration_payload
-
-# Test-support: zone-distance graph for within-range unit tests.
-ZoneGraph = _ZoneGraph

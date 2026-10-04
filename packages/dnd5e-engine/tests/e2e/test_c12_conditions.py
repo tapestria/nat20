@@ -2,9 +2,8 @@
 
 Transcribed from specs/e2e-scenario-catalog.md, Cluster 12
 (specs/catalog-v2/c12.md). All setups use ``GridScene`` + cell-id
-positions (``dnd5e_engine.spatial.cell_id``), never ``SceneTopology``/
-zones, seeding conditions via ``ActiveEffect(statuses={...})`` at
-``start_combat`` time.
+positions (``dnd5e_engine.spatial.cell_id``), seeding conditions via
+``ActiveEffect(statuses={...})`` at ``start_combat`` time.
 """
 
 from __future__ import annotations
@@ -61,7 +60,6 @@ def test_c12_s01_incapacitated_blocks_attack_intent():
                     zone_id=cell(1, 0),
                 )
             ],
-            scene_zones=None,
             grid_scene=grid_scene(),
             active_effects=[
                 ActiveEffect(
@@ -134,7 +132,6 @@ def test_c12_s02_paralyzed_target_grants_advantage_and_auto_crit_within_5ft():
                 session_id="e2e-c12-s02",
                 party=party,
                 encounter=[foe],
-                scene_zones=None,
                 grid_scene=grid_scene(),
                 active_effects=active_effects,
                 rng_seed=1,
@@ -221,7 +218,6 @@ def test_c12_s03_prone_target_melee_advantage_ranged_disadvantage():
                 session_id="e2e-c12-s03-melee",
                 party=party,
                 encounter=[melee],
-                scene_zones=None,
                 grid_scene=grid_scene(),
                 active_effects=_effects("mon:melee"),
                 rng_seed=1,
@@ -241,7 +237,6 @@ def test_c12_s03_prone_target_melee_advantage_ranged_disadvantage():
                 session_id="e2e-c12-s03-ranged",
                 party=party,
                 encounter=[ranged],
-                scene_zones=None,
                 grid_scene=grid_scene(),
                 active_effects=_effects("mon:ranged"),
                 rng_seed=1,
@@ -308,7 +303,6 @@ def test_c12_s04_grappled_actor_has_speed_zero():
                     zone_id=cell(5, 5),
                 )
             ],
-            scene_zones=None,
             grid_scene=grid_scene(),
             active_effects=[
                 ActiveEffect(
@@ -386,7 +380,6 @@ def test_c12_s05_exhaustion_applies_d20_and_speed_penalties():
                         zone_id=cell(1, 0),
                     )
                 ],
-                scene_zones=None,
                 grid_scene=grid_scene(),
                 active_effects=active_effects,
                 rng_seed=1,
@@ -458,7 +451,6 @@ def test_c12_s06_dropping_to_zero_hp_applies_unconscious():
                     zone_id=cell(5, 5),
                 )
             ],
-            scene_zones=None,
             grid_scene=grid_scene(),
             rng_seed=1,
         )

@@ -4,7 +4,7 @@ flag, armor requirements, multiattack names, reaction triggers).
 Transcribed from specs/e2e-scenario-catalog.md, Cluster 22
 (specs/catalog-v2/c22.md). Every combat-bearing setup is grid-only per
 spec §6 D8 — ``GridScene`` + ``"col,row"`` cell ids
-(``dnd5e_engine.spatial.cell_id``), never ``SceneTopology``/zones. Data
+(``dnd5e_engine.spatial.cell_id``). Data
 assertions run against the bundled corpus via ``BundledAssetLoader``;
 compound scenarios (S01-S03) each pair a dataset-leg schema assertion
 with the grid-combat engine leg the catalog's own "Expected" block
@@ -86,7 +86,6 @@ def test_c22_s01_prone_condition_dataset_entry_and_engine_leg():
                     zone_id=cell(1, 0),
                 )
             ],
-            scene_zones=None,
             grid_scene=grid_scene(),
             active_effects=[
                 ActiveEffect(
@@ -171,7 +170,6 @@ def test_c22_s02_magic_resistance_trait_is_typed_not_prose_only():
                     monster_template_slug=slug,
                 )
             ],
-            scene_zones=None,
             grid_scene=grid_scene(),
             rng_seed=9,
         )
@@ -243,7 +241,6 @@ def test_c22_s03_sacred_flame_save_ignores_cover():
                         zone_id=cell(5, 0),
                     )
                 ],
-                scene_zones=None,
                 grid_scene=GridScene(width=10, height=10, cover_cells={cell(5, 0): "half"}),
                 rng_seed=13,
             )
@@ -322,7 +319,6 @@ def test_c22_s04_magic_weapon_flag_bypasses_nonmagical_bps_resistance():
                         zone_id=cell(1, 0),
                     )
                 ],
-                scene_zones=None,
                 grid_scene=grid_scene(),
                 rng_seed=5,
             )
@@ -407,7 +403,6 @@ def test_c22_s06_bandit_captain_multiattack_resolves_scimitar_and_pistol():
                     monster_template_slug="bandit-captain",
                 )
             ],
-            scene_zones=None,
             grid_scene=grid_scene(),
             rng_seed=17,
         )
@@ -483,7 +478,6 @@ def test_c22_s07_shield_reaction_trigger_is_typed_not_free_text():
                     zone_id=cell(1, 0),
                 )
             ],
-            scene_zones=None,
             grid_scene=grid_scene(),
             rng_seed=21,
         )

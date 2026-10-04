@@ -66,7 +66,6 @@ def test_c18_s01_recharge_gates_a_breath_weapon_ai_cannot_select_it():
                     base_speed=30,
                 )
             ],
-            scene_zones=None,
             grid_scene=grid_scene(),
             rng_seed=7,
         )
@@ -140,7 +139,6 @@ def test_c18_s02_legendary_actions_spent_after_pc_turn_pool_resets_on_own_turn()
                     base_speed=40,
                 )
             ],
-            scene_zones=None,
             grid_scene=grid_scene(width=12, height=12),
             rng_seed=4,
         )
@@ -228,7 +226,6 @@ def test_c18_s03_legendary_resistance_converts_failed_save_and_saves_ignore_prof
                         monster_template_slug=slug,
                     )
                 ],
-                scene_zones=None,
                 grid_scene=grid_scene(),
                 rng_seed=seed,
             )
@@ -338,7 +335,6 @@ def test_c18_s04_troll_regeneration_heals_at_start_of_turn_above_zero_hp():
                     monster_template_slug="troll",
                 )
             ],
-            scene_zones=None,
             grid_scene=grid_scene(),
             rng_seed=2,
         )
@@ -416,7 +412,6 @@ def test_c18_s05_magic_resistance_grants_advantage_on_saves_vs_spells():
                     monster_template_slug=slug,
                 )
             ],
-            scene_zones=None,
             grid_scene=grid_scene(),
             rng_seed=6,
         )
@@ -479,7 +474,6 @@ def test_c18_s06_pack_tactics_grants_attack_advantage_with_adjacent_ally():
             session_id="e2e-c18-s06",
             party=[_hero()],
             encounter=encounter,
-            scene_zones=None,
             grid_scene=grid_scene(cell_size_ft=5),
             rng_seed=3,
         )
@@ -552,7 +546,6 @@ def test_c18_s07_stat_block_spellcaster_monster_actually_casts():
                     monster_template_slug="mage",
                 )
             ],
-            scene_zones=None,
             grid_scene=grid_scene(),
             rng_seed=5,
         )
@@ -611,7 +604,6 @@ def test_c18_s08_combat_ends_flee_when_every_foe_has_fled():
                     behavior_profile="AGGRESSIVE",
                 )
             ],
-            scene_zones=None,
             grid_scene=grid_scene(),
             rng_seed=1,
         )

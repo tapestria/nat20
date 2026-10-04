@@ -88,7 +88,6 @@ def test_start_combat_on_grid_seeds_cell_positions():
             session_id="sess-grid-start",
             party=_party(cell_id(0, 0)),
             encounter=_encounter(cell_id(3, 0)),
-            scene_zones=None,
             grid_scene=GridScene(width=10, height=10),
             rng_seed=1,
         )
@@ -110,7 +109,6 @@ def test_start_combat_rejects_out_of_bounds_or_blocked_start_cell():
             session_id="sess-grid-badstart",
             party=_party(cell_id(0, 0)),
             encounter=_encounter(cell_id(99, 99)),  # out of bounds on a 10x10
-            scene_zones=None,
             grid_scene=GridScene(width=10, height=10),
             rng_seed=2,
         )
@@ -132,7 +130,6 @@ def test_attack_in_range_with_los_resolves():
             session_id="sess-grid-atk",
             party=_party(cell_id(0, 0)),
             encounter=_encounter(cell_id(1, 0)),  # adjacent
-            scene_zones=None,
             grid_scene=GridScene(width=10, height=10),
             rng_seed=7,
         )
@@ -161,7 +158,6 @@ def test_false_line_of_sight_gates_pc_attack():
             session_id="sess-grid-nolos",
             party=_party(cell_id(0, 0)),
             encounter=_encounter(cell_id(1, 0)),  # adjacent → in feet range
-            scene_zones=None,
             grid_scene=GridScene(width=10, height=10),
             rng_seed=9,
         )
@@ -191,7 +187,6 @@ def test_start_combat_rejects_start_on_blocked_cell():
             session_id="sess-grid-blockedstart",
             party=_party(cell_id(1, 1)),
             encounter=_encounter(cell_id(3, 0)),
-            scene_zones=None,
             grid_scene=GridScene(width=10, height=10, blocked_cells=["1,1"]),
             rng_seed=2,
         )
@@ -210,7 +205,6 @@ def test_pc_single_cell_move_decrements_budget_and_updates_position():
             session_id="sess-grid-move",
             party=_party(cell_id(0, 0)),
             encounter=_encounter(cell_id(9, 9)),
-            scene_zones=None,
             grid_scene=GridScene(width=10, height=10),
             rng_seed=3,
         )
@@ -245,7 +239,6 @@ def test_pc_move_to_non_adjacent_cell_walks_the_path_in_one_intent():
             session_id="sess-grid-multimove",
             party=_party(cell_id(0, 0)),
             encounter=_encounter(cell_id(9, 9)),
-            scene_zones=None,
             grid_scene=GridScene(width=10, height=10),
             rng_seed=4,
         )
@@ -281,7 +274,6 @@ def test_pc_move_across_a_wall_between_adjacent_cells_is_rejected():
             session_id="sess-grid-wallmove",
             party=_party(cell_id(0, 0)),
             encounter=_encounter(cell_id(9, 9)),
-            scene_zones=None,
             grid_scene=GridScene(
                 width=10,
                 height=10,
@@ -318,7 +310,6 @@ def test_ranged_attack_out_of_range_is_gated_on_grid():
             session_id="sess-grid-oor",
             party=_party(cell_id(0, 0)),
             encounter=_encounter(cell_id(5, 0)),  # 25ft away, melee reach 5ft
-            scene_zones=None,
             grid_scene=GridScene(width=10, height=10),
             rng_seed=5,
         )
@@ -351,7 +342,6 @@ def test_monster_approaches_across_grid_then_attacks():
             session_id="sess-grid-approach",
             party=_grid_party(cell_id(0, 0)),
             encounter=_templated_encounter(cell_id(3, 0)),
-            scene_zones=None,
             grid_scene=GridScene(width=10, height=10),
             rng_seed=11,
         )
@@ -386,7 +376,6 @@ def test_monster_approach_routes_around_blocked_cells():
             session_id="sess-grid-detour",
             party=_grid_party(cell_id(0, 0)),
             encounter=_templated_encounter(cell_id(0, 3)),
-            scene_zones=None,
             grid_scene=GridScene(width=10, height=10, blocked_cells=blocked),
             rng_seed=13,
         )
@@ -418,7 +407,6 @@ def test_false_line_of_sight_skips_monster_attack():
             session_id="sess-grid-monnolos",
             party=_grid_party(cell_id(0, 0)),
             encounter=_templated_encounter(cell_id(1, 0)),  # adjacent
-            scene_zones=None,
             grid_scene=GridScene(width=10, height=10),
             rng_seed=17,
         )
@@ -452,7 +440,6 @@ def test_baseline_monster_attack_lands_with_los_true():
             session_id="sess-grid-monlos",
             party=_grid_party(cell_id(0, 0)),
             encounter=_templated_encounter(cell_id(1, 0)),  # adjacent
-            scene_zones=None,
             grid_scene=GridScene(width=10, height=10),
             rng_seed=17,
         )

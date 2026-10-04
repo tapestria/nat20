@@ -71,7 +71,6 @@ def test_c20_s01_fighting_style_defense_grants_plus1_ac_while_armored():
                         zone_id=cell(1, 0),
                     )
                 ],
-                scene_zones=None,
                 grid_scene=grid_scene(width=5, height=5),
                 rng_seed=1,
             )
@@ -125,7 +124,6 @@ def test_c20_s02_fighting_style_archery_adds_plus2_ranged_attack():
                         zone_id=cell(6, 0),
                     )
                 ],
-                scene_zones=None,
                 grid_scene=grid_scene(),
                 rng_seed=7,
             )
@@ -194,7 +192,6 @@ def test_c20_s03_fighting_style_great_weapon_fighting_floors_1_2_damage_dice_at_
                         zone_id=cell(0, 0),
                     )
                 ],
-                scene_zones=None,
                 grid_scene=grid_scene(width=5, height=5),
                 rng_seed=22,
             )
@@ -268,7 +265,6 @@ def test_c20_s04_fighting_style_two_weapon_fighting_adds_ability_mod_to_offhand(
                         zone_id=cell(0, 0),
                     )
                 ],
-                scene_zones=None,
                 grid_scene=grid_scene(width=5, height=5),
                 rng_seed=9,
             )
@@ -341,7 +337,6 @@ def test_c20_s05_martial_arts_unarmed_strike_uses_scaling_die_and_dex():
                         zone_id=cell(0, 0),
                     )
                 ],
-                scene_zones=None,
                 grid_scene=grid_scene(width=5, height=5),
                 rng_seed=2,
             )
@@ -405,7 +400,6 @@ def test_c20_s06_flurry_of_blows_spends_focus_for_two_bonus_action_strikes():
                     zone_id=cell(0, 0),
                 )
             ],
-            scene_zones=None,
             grid_scene=grid_scene(width=5, height=5),
             rng_seed=4,
         )
@@ -479,7 +473,6 @@ def test_c20_s07_action_surge_grants_a_second_action_same_turn():
                     zone_id=cell(0, 0),
                 )
             ],
-            scene_zones=None,
             grid_scene=grid_scene(width=5, height=5),
             rng_seed=6,
         )
@@ -556,7 +549,6 @@ def test_c20_s08_bardic_inspiration_die_consumed_on_later_ally_roll():
                         zone_id=cell(2, 0),
                     )
                 ],
-                scene_zones=None,
                 grid_scene=grid_scene(width=5, height=5),
                 rng_seed=8,
             )
@@ -636,7 +628,6 @@ def test_c20_s09_rage_ends_at_end_of_next_turn_when_not_extended():
                     zone_id=cell(9, 9),
                 )
             ],
-            scene_zones=None,
             grid_scene=grid_scene(),
             rng_seed=1,
         )
@@ -713,7 +704,6 @@ def test_c20_s10_lay_on_hands_pool_caps_at_5x_paladin_level_per_long_rest():
                     zone_id=cell(4, 4),
                 )
             ],
-            scene_zones=None,
             grid_scene=grid_scene(width=5, height=5),
             rng_seed=1,
         )
@@ -778,7 +768,6 @@ def test_c20_s11_cunning_action_dash_is_gated_by_feature_not_class_slug():
                         zone_id=cell(9, 9),
                     )
                 ],
-                scene_zones=None,
                 grid_scene=grid_scene(),
                 rng_seed=1,
             )

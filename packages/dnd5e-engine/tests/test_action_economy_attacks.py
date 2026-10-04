@@ -114,7 +114,6 @@ async def _start_fighter_combat(session_id: str, *, character_level: int = 5):
         session_id=session_id,
         party=_fighter_party(character_level=character_level),
         encounter=_dummy_encounter(),
-        scene_zones=None,
         grid_scene=grid_scene(),
         rng_seed=21,
     )
@@ -292,7 +291,6 @@ async def _start_duelist_combat(
             character_level=character_level,
         ),
         encounter=_dummy_encounter(),
-        scene_zones=None,
         grid_scene=grid_scene(),
         rng_seed=1,
     )

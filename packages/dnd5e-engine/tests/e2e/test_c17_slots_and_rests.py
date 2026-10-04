@@ -155,7 +155,6 @@ def test_c17_s05_magic_missile_upcast_at_slot_3_should_fire_5_darts():
                     zone_id=cell(6, 0),
                 )
             ],
-            scene_zones=None,
             grid_scene=grid_scene(),
             rng_seed=1,
         )
@@ -260,7 +259,6 @@ def test_c17_s06_counterspell_with_empty_slot_pool_or_out_of_range_still_fires_f
                         zone_id=cell(target_col, 0),
                     )
                 ],
-                scene_zones=None,
                 grid_scene=GridScene(width=30, height=10, cell_size_ft=5),
                 rng_seed=9,
             )

@@ -31,9 +31,9 @@ Scope and constraints worth knowing up front
 - **Determinism.** Every in-combat die is drawn from the ``random.Random``
   seeded by ``start_combat(rng_seed=...)``. Same seed + same intent sequence
   reproduces the same combat exactly, independent of global ``random`` state.
-- **Movement is one step per intent.** A ``"move"`` intent must name an
-  *adjacent* cell/zone; it does not path-find. Cross a room by submitting
-  several moves.
+- **Movement is one route per intent.** A ``"move"`` intent names any cell;
+  the engine walks the fewest-cells legal route there and prices the whole
+  route up front.
 - **Reactions are pre-armed.** The engine never pauses mid-resolution to ask a
   host "do you want to react?". A reactor arms a reaction on its own turn with
   a ``"ready"`` intent, and the engine fires it automatically when the trigger
@@ -53,7 +53,6 @@ import itertools
 import logging
 import random
 import re
-import warnings
 from collections import deque
 from collections.abc import AsyncIterator, Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass, field, replace
@@ -205,10 +204,7 @@ from dnd5e_engine.spatial import GridTopology, SpatialTopology, cell_id, parse_c
 from dnd5e_engine.specs import (
     EncounterMemberSpec,
     GridScene,
-    LightLevel,
     PartyMemberSpec,
-    SceneTopology,
-    ZoneEdge,
 )
 from dnd5e_engine.spellcasting import (
     count_scales_with_cast_level,
@@ -231,7 +227,7 @@ _LOGGER = logging.getLogger(__name__)
 
 # ── Typed boundary-input models ─────────────────────────────────────────────
 #
-# PartyMemberSpec, EncounterMemberSpec, ZoneEdge, SceneTopology live in
+# PartyMemberSpec, EncounterMemberSpec, GridScene live in
 # ``dnd5e_engine.specs`` (imported above). They are pure value-typed payloads
 # the host passes into ``start_combat`` and have no app.* dependencies.
 
@@ -304,10 +300,9 @@ class PlayerIntent(BaseModel):
     # ``_pop_pending_reaction`` / ``_drain_targeted_reactions`` when a
     # matching triggering intent is later submitted by any combatant.
     reaction_trigger: ReactionTrigger | None = None
-    # SRD §Movement — destination zone id for ``intent_type == "move"``.
-    # Resolved by the parser from player free-text ("move to the back of
-    # the room") and projected through ``parsed_intent_to_player_intent``
-    # from ``ParsedIntent.target_zone_id``.
+    # SRD §Movement — the destination cell id (``cell_id(col, row)``) of a
+    # ``"move"``; also the space a conjuration names (Spiritual Weapon's force,
+    # Summon Dragon's spirit).
     target_zone_id: str | None = None
     # C16 — SRD 5.2 §Areas of Effect: a Cone / Line / Cube "extends … in a
     # direction its creator chooses". Grid offset vector ``(dcol, drow)``; only
@@ -434,167 +429,6 @@ class IntentRejectedError(CombatSeamError):
         self.detail = detail
 
 
-# ── Internal scene topology (concretizes the scaffold's Protocol) ───────────
-
-
-class _ZoneGraph:
-    """Shortest-path ``within_range`` over an undirected zone graph.
-
-    Satisfies the scaffold's ``ZoneTopology`` Protocol (``runtime.py``)
-    via a structural ``within_range`` method. Implementation is a
-    Dijkstra-style BFS bounded by ``range_ft`` — handler call sites
-    that need positional reasoning hit this through the Protocol.
-    """
-
-    def __init__(self, topology: SceneTopology) -> None:
-        self._zones: set[str] = set(topology.zones)
-        self._adj: dict[str, list[tuple[str, int]]] = {z: [] for z in topology.zones}
-        for edge in topology.edges:
-            if edge.a not in self._zones or edge.b not in self._zones:
-                raise ValueError(f"ZoneEdge references unknown zone: {edge.a!r}, {edge.b!r}")
-            self._adj[edge.a].append((edge.b, edge.distance_ft))
-            self._adj[edge.b].append((edge.a, edge.distance_ft))
-
-    def is_adjacent(self, a: str, b: str) -> bool:
-        """Return True iff ``a`` and ``b`` are directly connected by an edge.
-
-        Adjacency is the gating predicate for phase-2 movement: a MOVE
-        intent traverses exactly one edge per submission. Multi-edge
-        pathing belongs to a future Dash/path-planning piece.
-        """
-        if a == b or a not in self._zones or b not in self._zones:
-            return False
-        return any(neighbour == b for neighbour, _ in self._adj[a])
-
-    def edge_distance(self, a: str, b: str) -> int | None:
-        """Return the distance_ft of the direct edge between ``a`` and ``b``, or None.
-
-        ``None`` signals the zones are not adjacent (caller should reject
-        the move). Multi-edge paths are not summed here — single-edge
-        distance is what the per-turn movement budget consumes.
-        """
-        if a == b or a not in self._zones or b not in self._zones:
-            return None
-        for neighbour, distance in self._adj[a]:
-            if neighbour == b:
-                return distance
-        return None
-
-    def within_range(self, caster_zone: str, target_zone: str, range_ft: int) -> bool:
-        if caster_zone == target_zone:
-            return True
-        if caster_zone not in self._zones or target_zone not in self._zones:
-            return False
-        # Dijkstra with early termination once we've passed range_ft.
-        best: dict[str, int] = {caster_zone: 0}
-        frontier: list[tuple[int, str]] = [(0, caster_zone)]
-        while frontier:
-            frontier.sort()
-            dist, node = frontier.pop(0)
-            if dist > range_ft:
-                return False
-            if node == target_zone:
-                return True
-            for neighbour, edge_w in self._adj[node]:
-                new_dist = dist + edge_w
-                if new_dist > range_ft:
-                    continue
-                if new_dist < best.get(neighbour, range_ft + 1):
-                    best[neighbour] = new_dist
-                    frontier.append((new_dist, neighbour))
-        return False
-
-    def distance_ft(self, a: str, b: str) -> int | None:
-        """Shortest-path distance in feet over the zone graph; ``None`` when
-        unreachable or unknown. (Zone graph is deprecated in 0.6 — parity only.)"""
-        if a == b and a in self._zones:
-            return 0
-        path = self.shortest_path(a, b)
-        if not path:
-            return None
-        return _path_total_distance(self, path)
-
-    def shortest_path(self, a: str, b: str, *, avoid: Collection[str] = ()) -> list[str]:
-        """Return the sequence of zones from ``a`` to ``b`` (inclusive), or ``[]``.
-
-        Dijkstra over the undirected weighted zone graph. Returned list
-        starts with ``a`` and ends with ``b`` when a path exists; the
-        intermediate elements are the zones to traverse in order. Returns
-        ``[]`` when either endpoint is unknown or no path connects them.
-        For ``a == b`` returns ``[a]`` (degenerate "you're already there").
-
-        Phase-5 monster gambits use this to plan "MOVE toward the target"
-        — they walk the returned path step-by-step, paying each edge's
-        distance_ft out of the per-turn movement budget.
-
-        ``avoid``: zone graph — occupancy is not modelled; parameter accepted
-        for Protocol parity, removed with the backend in 0.7.
-        """
-        if a not in self._zones or b not in self._zones:
-            return []
-        if a == b:
-            return [a]
-        # Standard Dijkstra with predecessor map.
-        dist: dict[str, int] = {a: 0}
-        prev: dict[str, str] = {}
-        frontier: list[tuple[int, str]] = [(0, a)]
-        while frontier:
-            frontier.sort()
-            d, node = frontier.pop(0)
-            if node == b:
-                # Reconstruct path.
-                path = [b]
-                while path[-1] != a:
-                    path.append(prev[path[-1]])
-                path.reverse()
-                return path
-            if d > dist.get(node, d):
-                continue
-            for neighbour, edge_w in self._adj[node]:
-                new_dist = d + edge_w
-                if new_dist < dist.get(neighbour, new_dist + 1):
-                    dist[neighbour] = new_dist
-                    prev[neighbour] = node
-                    frontier.append((new_dist, neighbour))
-        return []
-
-    def has_line_of_sight(self, a: str, b: str) -> bool:
-        # Zone graph has no occultation model; sight follows reachability of
-        # the graph itself. Both endpoints known ⇒ line of sight. (Wall
-        # geometry is a grid-only capability — see docs/dev/spatial-geometry.md.)
-        return a in self._zones and b in self._zones
-
-    def cover_between(
-        self, a: str, b: str, occupied_cells: Collection[str] = ()
-    ) -> Literal["none", "half", "three_quarters", "total"]:
-        # Zone graph has no positional cover model — an abstract graph of
-        # named locations has no coordinate system to hang obstruction
-        # geometry off of. Always "none" preserves current zone-combat
-        # behavior; documented, permanent backend split (not a gap) — see
-        # docs/dev/spatial-geometry.md "Zone-backend decision".
-        return "none"
-
-    def cover_on_cell(self, cell: str) -> Literal["none", "half", "three_quarters", "total"]:
-        # Same permanent no-cover-model split as ``cover_between`` above.
-        return "none"
-
-    def obscurement_on_cell(self, cell: str) -> Literal["none", "light", "heavy"]:
-        # Same permanent no-positional-model split as ``cover_on_cell`` above
-        # — the zone graph has no obscurement geometry to hang a tag off of.
-        return "none"
-
-    def light_on_cell(self, cell: str) -> LightLevel:
-        # Same permanent no-lighting-model split as ``obscurement_on_cell``
-        # above — the zone graph has no lighting geometry to hang a tag off
-        # of; every zone is treated as fully lit.
-        return "bright"
-
-    def can_see(self, a: str, b: str, senses: CombatantSenses | None = None) -> bool:
-        # Zone graph has no lighting model — everything in a known zone is
-        # visible. Legacy backend, removed in 0.7.
-        return a in self._zones and b in self._zones
-
-
 def _weapon_attack_range_ft(weapon: Weapon | None) -> tuple[int, int] | None:
     """Resolve the effective attack range BANDS for a typed weapon, in feet.
 
@@ -670,8 +504,8 @@ def _versatile_grip_applies(weapon: Weapon | None, distance_ft: int | None) -> b
     the reach-band classification from ``_weapon_attack_range_ft``: beyond
     melee reach (5ft, or 10ft with Reach) the swing is a thrown attack, and
     a two-handed grip declared for it is ignored (SRD "to make a melee
-    attack"). ``distance_ft is None`` (no spatial model wired, or a
-    same-cell/zone attack) is treated as within reach.
+    attack"). ``distance_ft is None`` (an untracked position) is treated as
+    within reach.
     """
     if weapon is None or WeaponProperty.VERSATILE not in weapon.properties:
         return False
@@ -892,9 +726,10 @@ def _consume_armed_legendary_resistance(live: _LiveCombat, target: Combatant) ->
     a hit, decrements both AUTHORITATIVE stores directly (no disposable
     hydration copy is in play on these paths) and returns the NEW remaining
     count. It emits nothing: the caller flips its own ``succeeded`` flag,
-    emits its ``SaveRolled`` (and ``ConcentrationCheck``) with the converted
-    outcome, THEN calls ``_emit_legendary_resistance_used`` — the event's
-    documented "after the ``SaveRolled`` it converts" order. Draws no dice.
+    emits its roll (a ``SaveRolled``, or the concentration check's
+    ``ConcentrationCheck``) with the converted outcome, THEN calls
+    ``_emit_legendary_resistance_used`` — the event's documented "after the
+    roll it converts" order. Draws no dice.
     """
     armed = live.legendary_resistance_armed.get(target.entity_id, 0)
     if armed <= 0 or target.legendary_resistances_remaining <= 0:
@@ -1064,7 +899,7 @@ def _in_range_with_los(topology: SpatialTopology, a: str, b: str, range_ft: int)
 
 
 def _occupied_cells(live: _LiveCombat, *, exclude: Collection[str]) -> set[str]:
-    """Cells/zones currently occupied by alive combatants other than ``exclude``
+    """Cells currently occupied by alive combatants other than ``exclude``
     (entity ids). SRD 5.2 §Cover — "another creature" is a half-cover source;
     §Moving Around Other Creatures — an enemy's space blocks movement."""
     excluded = set(exclude)
@@ -1117,10 +952,8 @@ def _target_cover_map(
     Threaded into ``ActivityResolutionContext.target_cover`` so
     ``activities/attack.py`` (AC) and ``activities/save_primitive.py``
     (Dexterity saves) can fold the SRD +2/+5 bonus without either resolver
-    importing the spatial seam directly. Absent zone tracking for the caster or
-    a target (e.g. a zone-graph combat with no positional data at all)
-    contributes ``"none"`` — mirrors ``_ZoneGraph.cover_between``'s permanent
-    no-cover behavior.
+    importing the spatial seam directly. A caster or target with no tracked
+    cell contributes no entry (no cover).
     """
     origin = origin_cell if origin_cell is not None else live.actor_zone.get(caster_id)
     if origin is None:
@@ -1149,8 +982,7 @@ def _target_visibility_maps(
     Threaded into ``ActivityResolutionContext.target_unseen`` /
     ``.attacker_unseen_by`` so ``activities/attack.py`` can add the ``"unseen"``
     disadvantage / advantage source without importing the spatial seam. A
-    zone-graph combat (``_ZoneGraph.can_see`` ⇒ True for any two known zones)
-    and a scene with no lighting data both yield all-False maps ⇒ ``normal``.
+    scene with no lighting data yields all-False maps ⇒ ``normal``.
     """
     caster_zone = live.actor_zone.get(caster.entity_id)
     target_unseen: dict[str, bool] = {}
@@ -1406,7 +1238,7 @@ def _fold_mastery_procs(
     * ``"push"`` (Task 7) -> ``push_combatant(live, target_id, <attacker's
       cell>, 10)`` — the full 10 ft straight away from the attacker
       (controller ruling R5), a no-op when the attacker has no tracked
-      cell, the target is boxed in, or the backend is the zone graph.
+      cell or the target is boxed in.
     * ``"cleave"`` (Task 7) -> the chain FIRED marker: flip the attacker's
       ``cleave_spent_this_turn`` ("only once per turn"). Not a target
       effect — ``attack.py`` already resolved the chained roll.
@@ -1555,7 +1387,7 @@ def _sneak_ally_adjacent_map(
     Incapacitated read uses the SRD condition-implication chain (Paralyzed /
     Stunned / Petrified / Unconscious all imply Incapacitated). Threaded into
     ``ActivityResolutionContext.sneak_attack_ally_adjacent`` so the pure
-    resolver never touches the spatial seam. Absent zone data for the caster's
+    resolver never touches the spatial seam. Absent cell data for the caster's
     side, a target, or every ally contributes no entry (⇒ no adjacent ally).
     """
     side = _allied_ids(live, caster.entity_id)
@@ -1598,10 +1430,9 @@ def _pack_tactics_map(
     ``conditions_block_actions`` (the Incapacitated helper shared with the
     rest of the engine, rather than the raw ``is_condition_active`` call),
     and the reach test is ``distance_ft(...) <= 5`` against the TARGET
-    (zero on a zone graph when ally and target share a zone) rather than
-    ``within_range``. Threaded into
+    rather than ``within_range``. Threaded into
     ``ActivityResolutionContext.pack_tactics_ally_adjacent`` so the pure
-    resolver never touches the spatial seam. Absent zone data for the
+    resolver never touches the spatial seam. Absent cell data for the
     attacker's side, a target, or every ally contributes no entry (⇒ no
     qualifying ally).
     """
@@ -1834,7 +1665,7 @@ def _hostile_adjacent_to_attacker(live: _LiveCombat, caster: Combatant) -> bool:
 
     Scans ``live.initiative`` for a LIVING hostile (any combatant outside
     ``_allied_ids(caster)``, so an allied summon never counts) within 5 ft of
-    the ATTACKER's own zone. The attack's TARGET is never special-cased — if it
+    the ATTACKER's own cell. The attack's TARGET is never special-cased — if it
     happens to be adjacent it's simply one more entry in ``live.initiative``
     and counts like any other hostile (SRD: "an enemy", not "an enemy other
     than your target"). Excludes an Incapacitated hostile
@@ -1877,15 +1708,13 @@ def push_combatant(live: _LiveCombat, target_id: str, origin_cell: str, distance
     """Forced movement primitive — move ``target_id`` up to ``distance_ft``
     straight away from ``origin_cell`` and emit ``CombatantMoved(forced=True)``
     for the distance actually covered. Consumes no movement budget and
-    provokes no opportunity attack (SRD 5.2 §Opportunity Attacks). Grid-only:
-    the zone graph has no direction to push along (legacy backend, removed in
-    0.7) — a no-op there. A dead or untracked target is never moved, and a
-    target sharing ``origin_cell`` with the pusher has no direction to be
-    pushed along: no move and no event."""
+    provokes no opportunity attack (SRD 5.2 §Opportunity Attacks). A dead or
+    untracked target is never moved, and a target sharing ``origin_cell`` with
+    the pusher has no direction to be pushed along: no move and no event."""
     topology = live.topology
     target_cell = live.actor_zone.get(target_id)
-    if not isinstance(topology, GridTopology) or target_cell is None or target_id in live.dead_ids:
-        return  # zone graph: legacy behaviour until removal in 0.7
+    if target_cell is None or target_id in live.dead_ids:
+        return
     occupied = _occupied_cells(live, exclude=(target_id,))
     path = topology.push_path(origin_cell, target_cell, distance_ft, occupied_cells=occupied)
     if not path:
@@ -1910,12 +1739,11 @@ def _apply_forced_movement_riders(
     every target whose save against the SPELL failed (trigger ``failed_save``).
 
     Only the FIRST ``SaveRolled`` per target in this resolution's event slice
-    is the spell's own save: damage application emits a second, transitional
-    ``SaveRolled(ability="con")`` alongside every ``ConcentrationCheck``
-    (removed in v0.7), and a concentrating creature that SAVED against the
-    spell must not be shoved because it later dropped concentration. The save
-    resolver always emits before ``DamageApplied``, so "first per target" is
-    well defined; keying on it also caps each target at one push.
+    is the spell's own save: the damage can trigger a later one (Undead
+    Fortitude's Constitution save), and a target that SAVED against the spell
+    must not be shoved because of it. The save resolver always emits before
+    ``DamageApplied``, so "first per target" is well defined; keying on it also
+    caps each target at one push.
 
     Pushes happen after all saves/damage so the rider never perturbs the
     seeded roll order."""
@@ -1986,7 +1814,7 @@ def _record_sneak_attack_spent(
 def _path_total_distance(topology: SpatialTopology, path: Sequence[str]) -> int | None:
     """Sum a shortest-path's edge distances; ``None`` if any step is missing.
 
-    ``path`` is the zone/cell sequence ``shortest_path`` returns (``path[0]``
+    ``path`` is the cell sequence ``shortest_path`` returns (``path[0]``
     is the start). A one-element or empty path costs ``0``.
     """
     if len(path) < 2:
@@ -2126,9 +1954,7 @@ def _execute_flee_retreat(
     threat_cells = [
         cell for enemy in enemies if (cell := live.actor_zone.get(enemy.entity_id)) is not None
     ]
-    # zone graph: legacy behaviour until removal in 0.7 — it has no cells to
-    # rank, so a fleeing monster holds there.
-    if start is None or not threat_cells or not isinstance(live.topology, GridTopology):
+    if start is None or not threat_cells:
         return
     route = _plan_flee_route(
         live.topology,
@@ -2152,8 +1978,7 @@ def _apply_monster_flee_stance(
     Action, or Reaction"; an Incapacitated monster takes no flee stance at
     all) spends its movement retreating (``_execute_flee_retreat``) and is marked
     ``has_fled=True`` regardless of whether that retreat actually moved it
-    (already cornered, no movement budget left, or a backend with no
-    reachable destination) — the flag records the monster's STANCE this
+    (already cornered, or no movement budget left) — the flag records the monster's STANCE this
     turn, not whether it displaced. A live, conscious monster that is NOT
     fleeing this turn — including one healed back above the threshold after
     an earlier flee — is marked ``has_fled=False``, so ``_derive_ended_reason``'s
@@ -2182,12 +2007,12 @@ def _apply_monster_flee_stance(
 def _monster_target_distance_ft(
     live: _LiveCombat, monster_id: str, target: Combatant | None
 ) -> int | None:
-    """Zone-path distance (ft) from a monster to its chosen target, or ``None``.
+    """Path distance (ft) from a monster to its chosen target, or ``None``.
 
     The same shortest-path cost the movement gate reads — handed to
     ``expand_action_to_activities`` so its range-aware multiattack fallback and
-    the gate agree on the live distance . ``None`` when either actor
-    has no known zone or no path connects them.
+    the gate agree on the live distance. ``None`` when either actor
+    has no tracked cell or no path connects them.
     """
     if target is None:
         return None
@@ -2203,7 +2028,7 @@ def _pc_attack_out_of_range(live: _LiveCombat, actor_id: str, intent: PlayerInte
     """True iff the PC attack would be rejected by the weapon-reach gate.
 
     Returns ``False`` when the gate doesn't apply (no target, no weapon
-    id, unknown weapon, no extractable reach/range, or zone not tracked
+    id, unknown weapon, no extractable reach/range, or no tracked cell
     for one of the participants) — those cases fall through to the
     resolver, which then either synthesizes IR or returns empty.
     """
@@ -2575,7 +2400,7 @@ def _resolve_monster_activities(
                     # hand the labelless-multiattack fallback the live
                     # distance + profile so it can prefer a sibling whose own range
                     # already covers the target (scout → longbow at 100 ft) instead
-                    # of the first-listed melee weapon. Distance is the same zone-path
+                    # of the first-listed melee weapon. Distance is the same path
                     # cost the movement gate below reads, so the two agree.
                     monster_activities = expand_action_to_activities(
                         monster,
@@ -3008,21 +2833,20 @@ class _LiveCombat:
     initiative: list[Combatant]
     party_ids: set[str]
     encounter_ids: set[str]
-    topology: SpatialTopology
+    topology: GridTopology
     rng: random.Random
     event_queue: asyncio.Queue[CombatEvent | None]
     scene_location_id: str
     # C18 §Monster action economy — SRD 5.2 stat-block trait "Sunlight
     # Sensitivity": whole-scene sunlight flag, projected from
-    # ``GridScene.sunlight`` at ``start_combat`` (``False`` for a zone-graph
-    # scene, which carries no ``GridScene``). Read by ``_monster_context_
+    # ``GridScene.sunlight`` at ``start_combat``. Read by ``_monster_context_
     # kwargs`` into ``ActivityResolutionContext.attacker_in_sunlight``.
     scene_sunlight: bool = False
     current_turn_index: int = 0
     round_number: int = 1
     ended: bool = False
     final_outcome: CombatOutcome | None = None
-    # zone occupancy, per entity_id (read by handlers via the ZoneTopology)
+    # each combatant's cell, per entity_id (read through ``topology``)
     actor_zone: dict[str, str] = field(default_factory=dict)
     # SRD 5.2 Opportunity Attacks: the weapon slug each character makes its
     # opportunity attacks with (``_opportunity_attack_weapon_slug``); a
@@ -4635,8 +4459,8 @@ async def _handle_move_mark(live: _LiveCombat, caster: Combatant, intent: Player
         return
 
     # SRD §Hunter's Mark range 90ft — same gate as the original cast. The
-    # typed ``Spell.range`` carries the band; only feet-valued ranges gate over
-    # the zone graph (self/touch/special are not a metric distance). A missing
+    # typed ``Spell.range`` carries the band; only feet-valued ranges gate
+    # (self/touch/special are not a metric distance). A missing
     # spell or non-feet range disables the gate exactly as the old
     # ``.get("range_ft")`` None did. Mirrors the casting-time/range gating
     # pattern in submit_player_intent.
@@ -5011,10 +4835,9 @@ def _emit_apply_damage(live: _LiveCombat, event: DamageApplied) -> None:
         succeeded = roll_total >= dc
         # C18 §Monster action economy — Legendary Resistance: the
         # concentration check bypasses ``activities/save_primitive.roll_save``
-        # (it rolls its own d20 above) and emits TWO events sharing this one
-        # ``succeeded`` flag (``SaveRolled`` + ``ConcentrationCheck``, below),
-        # so the conversion is decided before either and
-        # ``LegendaryResistanceUsed`` is emitted after both — via the same
+        # (it rolls its own d20 above), so the conversion is decided before
+        # its ``ConcentrationCheck`` carries ``succeeded`` and
+        # ``LegendaryResistanceUsed`` is emitted after it — via the same
         # shared helpers the repeat save uses.
         lr_remaining = (
             _consume_armed_legendary_resistance(live, concentrator)
@@ -5023,24 +4846,6 @@ def _emit_apply_damage(live: _LiveCombat, event: DamageApplied) -> None:
         )
         if lr_remaining is not None:
             succeeded = True
-        # TRANSITIONAL (F2c): the concentration check emits BOTH the
-        # generic ``SaveRolled(ability="con")`` it has always emitted and
-        # the specific ``ConcentrationCheck``. Hosts should migrate to the
-        # latter; the duplicate ``SaveRolled`` is removed in v0.7.
-        _emit(
-            live,
-            SaveRolled(
-                target_id=event.target_id,
-                ability="con",
-                dc=dc,
-                roll_total=roll_total,
-                succeeded=succeeded,
-                advantage=roll.mode,
-                natural=roll.kept,
-                modifier=roll.modifier,
-                sources=list(roll.sources),
-            ),
-        )
         _emit(
             live,
             ConcentrationCheck(
@@ -6009,12 +5814,9 @@ def _build_hydration_payload(live: _LiveCombat, caster: Combatant | None = None)
 
 # ── AoE target-list expansion ───────────────────────────────────────────────
 
-# SRD §Areas of Effect — spells with an explicit AoE radius/size project a
-# multi-target candidate list (every creature in the targeted zone). The
-# in-house orchestrator stores zone occupancy by entity_id (no positional
-# coordinates), so the projection rule is: every alive combatant whose zone
-# matches the named target's zone (or the caster's zone when no target is
-# named) is in the candidate list.
+# SRD §Areas of Effect — a spell whose creature-targeting activity carries a
+# measured template affects every creature standing in the template's cells
+# (``_expand_aoe_target_list``).
 #
 # Selection signal: the TYPED activity's ``target.template`` measured-template
 # block. Foundry tags every area spell with a measured template
@@ -6045,7 +5847,7 @@ def _activity_has_measured_template(activity: Any) -> bool:
 
 
 def _typed_spell_broadcasts(activities: Sequence[Any]) -> bool:
-    """Return True if the TYPED activities broadcast to every creature in zone.
+    """Return True if the TYPED activities broadcast to every creature in an area.
 
     The authoritative single-vs-area signal is a measured ``target.template``
     on the activity that resolves against creatures (see
@@ -6107,8 +5909,7 @@ def _aoe_template(activities: Sequence[Any]) -> _AoeTemplate | None:
             size_ft = 0
         if mapped is None or size_ft <= 0:
             _LOGGER.warning(
-                "aoe_template_unsupported type=%s size=%r — "
-                "falling back to zone-equality targeting",
+                "aoe_template_unsupported type=%s size=%r — falling back to anchor-cell targeting",
                 template.type,
                 template.size,
             )
@@ -6152,12 +5953,9 @@ def _directional_aoe_lacks_direction(
     Reads the ``Spell`` already fetched for casting-time classification, so the
     gate costs no extra loader hit, and shares ``_aoe_template`` /
     ``_aoe_direction`` with ``_expand_aoe_target_list`` — one implementation,
-    two call sites. Zone-graph combats never need a direction (the legacy
-    zone-equality body ignores geometry), hence the backend guard.
+    two call sites.
     """
     if intent.intent_type != "cast_spell" or cast_spell is None:
-        return False
-    if not isinstance(live.topology, GridTopology):
         return False
     template = _aoe_template(cast_spell.activities)
     if template is None or template.shape not in _DIRECTIONAL_AOE_SHAPES:
@@ -6205,7 +6003,7 @@ def _spell_is_self_or_targetless(cast_spell: Spell | None, named_target_id: str 
 
     Two shapes qualify: a spell whose typed ``range.units`` is ``self``/``touch``
     (Shield, Mirror Image, Disguise Self), OR any cast that named no target and
-    is not an AoE (the AoE branch sets its own target list by zone expansion).
+    is not an AoE (the AoE branch sets its own target list from the template).
     """
     if cast_spell is not None and cast_spell.range.units in (
         SpellRangeUnits.SELF,
@@ -6222,8 +6020,8 @@ def _aoe_cover_origin(
     activities: Sequence[Any],
 ) -> str | None:
     """The cell an AoE's template is centred on — its SRD 5.2 point of origin —
-    or ``None`` when this cast is not a grid AoE (no grid backend, no mappable
-    template, or no tracked caster cell).
+    or ``None`` when this cast is not a grid AoE (no mappable template, or no
+    tracked caster cell).
 
     Single source of truth for two consumers that must agree: the template walk
     in ``_expand_aoe_target_list`` (which cells are in the area, and which have
@@ -6233,8 +6031,6 @@ def _aoe_cover_origin(
     target's cell; a ``caster``-origin one (Burning Hands, Thunderwave) on the
     caster's.
     """
-    if not isinstance(live.topology, GridTopology):
-        return None
     caster_cell = live.actor_zone.get(caster_id)
     if caster_cell is None:
         return None
@@ -6254,24 +6050,21 @@ def _expand_aoe_target_list(
 ) -> list[Combatant]:
     """Build the AoE candidate list (SRD 5.2 §Areas of Effect).
 
-    Grid backend: resolve the typed template (``_aoe_template``), place its
-    point of origin, aim it, enumerate ``cells_in_template``, drop every cell
-    without line of effect from the origin, and return every alive combatant
-    standing in a surviving cell (allies and the caster included when the
-    geometry says so — Fireball hits the caster in its own radius).
+    Resolve the typed template (``_aoe_template``), place its point of
+    origin, aim it, enumerate ``cells_in_template``, drop every cell without
+    line of effect from the origin, and return every alive combatant standing
+    in a surviving cell (allies and the caster included when the geometry
+    says so — Fireball hits the caster in its own radius).
 
-    Zone graph (legacy, removed with the backend in 0.7): every alive
-    combatant whose zone equals the anchor zone (the named target's, else the
-    caster's).
+    Anchor-cell targeting: a template ``_aoe_template`` cannot map (a ``wall``,
+    or a size that is a formula) affects every alive combatant standing on
+    the anchor cell — the named target's, else the caster's.
     """
     named_target_id = intent.target_id
     alive = [c for c in live.initiative if c.is_alive and c.entity_id not in live.dead_ids]
     topology = live.topology
     caster_cell = live.actor_zone.get(caster.entity_id)
-    # ``_aoe_template`` is only consulted on the grid: it logs
-    # ``aoe_template_unsupported`` for a template it cannot map, and the zone
-    # graph never reads geometry, so calling it there would warn for nothing.
-    if isinstance(topology, GridTopology) and caster_cell is not None:
+    if caster_cell is not None:
         template = _aoe_template(activities)
         if template is not None:
             origin = _aoe_cover_origin(live, caster.entity_id, intent, activities) or caster_cell
@@ -6294,16 +6087,15 @@ def _expand_aoe_target_list(
             if not template.include_origin:
                 area.discard(origin)
             return [c for c in alive if live.actor_zone.get(c.entity_id) in area]
-    # zone graph: legacy behaviour until removal in 0.7
-    anchor_zone: str | None = None
+    anchor_cell: str | None = None
     if named_target_id:
-        anchor_zone = live.actor_zone.get(named_target_id)
-    if anchor_zone is None:
-        anchor_zone = caster_cell
-    if anchor_zone is None:
-        # No zone info — fall back to caster + named target only.
+        anchor_cell = live.actor_zone.get(named_target_id)
+    if anchor_cell is None:
+        anchor_cell = caster_cell
+    if anchor_cell is None:
+        # No tracked cell — fall back to caster + named target only.
         return [c for c in live.initiative if c.entity_id in {caster.entity_id, named_target_id}]
-    return [c for c in alive if live.actor_zone.get(c.entity_id) == anchor_zone]
+    return [c for c in alive if live.actor_zone.get(c.entity_id) == anchor_cell]
 
 
 # ── Concentration writeback ─────────────────────────────────────────────────
@@ -6686,7 +6478,8 @@ def _extends_rage(live: _LiveCombat, actor_id: str, event: CombatEvent) -> bool:
     """One of SRD 5.2 Rage's roll extensions: "Make an attack roll against an
     enemy. Force an enemy to make a saving throw." ``SaveRolled`` names no
     source, so an enemy's save rolled during the barbarian's own turn counts as
-    one it forced."""
+    one it forced. An enemy's ``ConcentrationCheck`` does not: the attack or
+    save that dealt the damage already extends Rage."""
     if isinstance(event, AttackRolled):
         return event.attacker_id == actor_id and _is_enemy(live, actor_id, event.target_id)
     return isinstance(event, SaveRolled) and _is_enemy(live, actor_id, event.target_id)
@@ -7444,41 +7237,26 @@ def _build_foe_combatants(
 def _resolve_topology(
     party: list[PartyMemberSpec],
     encounter: list[EncounterMemberSpec],
-    scene_zones: SceneTopology | None,
-    grid_scene: GridScene | None,
-) -> SpatialTopology:
-    """Select the combat's ``SpatialTopology`` (grid vs. zone graph),
-    validating grid start-cells. Raises ``ValueError`` on ambiguous/absent
-    topology or an out-of-bounds/blocked grid start cell.
+    grid_scene: GridScene,
+) -> GridTopology:
+    """The combat's ``GridTopology``, after validating every start cell. Raises
+    ``ValueError`` when ``grid_scene`` is missing or a start cell is out of
+    bounds or blocked.
     """
-    topology: SpatialTopology
-    if grid_scene is not None and scene_zones is not None:
-        raise ValueError("start_combat: pass exactly one of scene_zones or grid_scene")
-    if grid_scene is not None:
-        grid = GridTopology(grid_scene)
-        # Reject combatants whose start cell is out of bounds or impassable —
-        # an illegal start position would silently disable the range/move gates
-        # for that actor (they read actor_zone, which would hold a bad cell).
-        members: list[PartyMemberSpec | EncounterMemberSpec] = [*party, *encounter]
-        for spec in members:
-            if not grid.is_valid_cell(spec.zone_id):
-                raise ValueError(
-                    f"start_combat: {spec.entity_id} start cell {spec.zone_id!r} "
-                    f"is out of bounds or blocked"
-                )
-        topology = grid
-    elif scene_zones is not None:
-        warnings.warn(
-            "start_combat(scene_zones=...) is deprecated since 0.6.0 and will be "
-            "removed in 0.7.0; pass grid_scene=GridScene(...) instead "
-            "(docs/migration/v0.5-to-v0.6.md, 'Zone graph deprecated').",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        topology = _ZoneGraph(scene_zones)
-    else:
-        raise ValueError("start_combat: one of scene_zones or grid_scene is required")
-    return topology
+    if grid_scene is None:
+        raise ValueError("start_combat: grid_scene is required")
+    grid = GridTopology(grid_scene)
+    # Reject combatants whose start cell is out of bounds or impassable —
+    # an illegal start position would silently disable the range/move gates
+    # for that actor (they read actor_zone, which would hold a bad cell).
+    members: list[PartyMemberSpec | EncounterMemberSpec] = [*party, *encounter]
+    for spec in members:
+        if not grid.is_valid_cell(spec.zone_id):
+            raise ValueError(
+                f"start_combat: {spec.entity_id} start cell {spec.zone_id!r} "
+                f"is out of bounds or blocked"
+            )
+    return grid
 
 
 def _seed_active_effects(live: _LiveCombat, active_effects: Sequence[ActiveEffect]) -> None:
@@ -7636,8 +7414,7 @@ async def start_combat(
     session_id: str,
     party: list[PartyMemberSpec],
     encounter: list[EncounterMemberSpec],
-    scene_zones: SceneTopology | None = None,
-    grid_scene: GridScene | None = None,
+    grid_scene: GridScene,
     rng_seed: int,
     scene_location_id: str = "loc:unknown",
     active_effects: Sequence[ActiveEffect] = (),
@@ -7648,8 +7425,8 @@ async def start_combat(
     the caller threads through subsequent seam calls and the events emitted
     during open (round-start + first turn-start).
 
-    ``scene_zones`` is deprecated (0.6.0) and removed in 0.7.0 — use
-    ``grid_scene``.
+    ``grid_scene`` is the battlefield: every ``zone_id`` on ``party`` and
+    ``encounter`` must name one of its in-bounds, unblocked cells.
     """
     if not party:
         raise ValueError("start_combat: party must be non-empty")
@@ -7711,7 +7488,7 @@ async def start_combat(
         key=lambda c: (-c.initiative, -c.dexterity, c.entity_id),
     )
 
-    topology = _resolve_topology(party, encounter, scene_zones, grid_scene)
+    topology = _resolve_topology(party, encounter, grid_scene)
 
     handle_id = f"combat:{session_id}:{rng_seed:08x}"
     live = _LiveCombat(
@@ -7724,7 +7501,7 @@ async def start_combat(
         rng=rng,
         event_queue=asyncio.Queue(),
         scene_location_id=scene_location_id,
-        scene_sunlight=grid_scene.sunlight if grid_scene is not None else False,
+        scene_sunlight=grid_scene.sunlight,
         actor_zone=actor_zone,
         monster_slug_by_entity=monster_slug_by_entity,
         xp_value_by_entity=xp_value_by_entity,
@@ -8951,8 +8728,7 @@ def _handle_move(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
 
     Rejections (``MoveFailed``, nothing mutated): ``not_adjacent`` — no
     destination / untracked position / destination is the current cell (the
-    legacy reason is retained for hosts), or, on the zone backend, a
-    destination that is not an adjacent zone; ``occupied`` — "You can't willingly
+    legacy reason is retained for hosts); ``occupied`` — "You can't willingly
     end a move in a space occupied by another creature"; ``blocked_path`` —
     the destination is adjacent but the step crosses a wall or cuts a blocked
     corner; ``unreachable`` — no legal route (enemy-occupied cells are
@@ -8962,14 +8738,6 @@ def _handle_move(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
     the source of fear" (C16b) — the mover is Frightened of a known, living,
     tracked, currently-visible source and some step of the route would
     reduce distance to it (``_frightened_approach_blocked``).
-
-    Multi-hop routing, ``occupied`` and the enemy-impassability rule are all
-    GRID-only: a zone is an area rather than a 5-ft square and ``_ZoneGraph``
-    does not model occupancy, so the zone backend keeps its pre-C16 behaviour
-    byte-for-byte — a single step to an ADJACENT zone (a non-adjacent
-    destination is rejected ``not_adjacent``, never routed through
-    intermediate zones), and a PC may still move into a zone an enemy holds to
-    engage it in melee.
 
     Every opportunity attack a step provokes, from either side, fires before
     the mover leaves its cell (``_fire_opportunity_attacks_on_step``). A step
@@ -8991,16 +8759,12 @@ def _handle_move(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
     if destination is None or start_zone is None or destination == start_zone:
         _emit(live, MoveFailed(actor_id=actor_id, reason="not_adjacent"))
         return
-    # Occupancy is a GRID rule: a zone is an area, not a 5-ft square, so the
-    # zone graph keeps its pre-C16 behaviour.
-    # zone graph: legacy behaviour until removal in 0.7
-    on_grid = isinstance(live.topology, GridTopology)
     # SRD §Moving Around Other Creatures — a move may not END in another
     # creature's space, ally or enemy alike.
-    if on_grid and destination in _occupied_cells(live, exclude=(actor_id,)):
+    if destination in _occupied_cells(live, exclude=(actor_id,)):
         _emit(live, MoveFailed(actor_id=actor_id, reason="occupied"))
         return
-    # Grid backend: adjacency alone doesn't guarantee a legal step — a wall
+    # Adjacency alone doesn't guarantee a legal step — a wall
     # crossing the segment or a diagonal cutting a blocked corner yields None
     # from edge_distance (SRD 5.2 "Corners").
     if (
@@ -9009,23 +8773,13 @@ def _handle_move(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
     ):
         _emit(live, MoveFailed(actor_id=actor_id, reason="blocked_path"))
         return
-    if on_grid:
-        # Enemy spaces are impassable on the grid only, for the same reason;
-        # an ally's space, a summon's included, may be passed through.
-        enemy_cells: Collection[str] = _occupied_cells(live, exclude=_allied_ids(live, actor_id))
-        path = live.topology.shortest_path(start_zone, destination, avoid=enemy_cells)
-        if not path:
-            _emit(live, MoveFailed(actor_id=actor_id, reason="unreachable"))
-            return
-    else:
-        # zone graph: legacy behaviour until removal in 0.7 — multi-hop
-        # routing is GRID-only. A zone is an area, not a 5-ft square, so a
-        # zone MOVE stays the pre-C16 single-hop step to an ADJACENT zone and
-        # a non-adjacent destination keeps its ``not_adjacent`` rejection.
-        if not live.topology.is_adjacent(start_zone, destination):
-            _emit(live, MoveFailed(actor_id=actor_id, reason="not_adjacent"))
-            return
-        path = [start_zone, destination]
+    # Enemy spaces are impassable; an ally's space, a summon's included, may
+    # be passed through.
+    enemy_cells = _occupied_cells(live, exclude=_allied_ids(live, actor_id))
+    path = live.topology.shortest_path(start_zone, destination, avoid=enemy_cells)
+    if not path:
+        _emit(live, MoveFailed(actor_id=actor_id, reason="unreachable"))
+        return
     # "To enter a square, you must have enough movement left to pay for
     # entering" — the whole route is priced up front so a rejection is atomic.
     total_cost = _path_total_distance(live.topology, path)
@@ -9612,14 +9366,13 @@ def _summon_placement(
     see within range". A space is legal when the caster can measure it, it is
     within the spell's range with line of sight and not behind total cover,
     the caster is not Blinded (SRD 5.2: "You can't see") unless its Blindsight
-    reaches the space (``_blindsight_reaches_zone``), and — on a grid, where spaces are
-    exclusive — it is one of the grid's own cell ids (``col,row``) that no
-    living creature occupies. An explicit ``target_zone_id`` must be legal: an
-    invalid, non-canonical or occupied cell is ``"target_invalid"``, one
-    beyond range or out of sight ``"out_of_range"``. Without one, the first
-    legal cell of the fixed scan outward from the caster (on a zone graph, the
-    caster's own zone). A creature ``target_id`` plays no part: the spell
-    targets a space.
+    reaches the space (``_blindsight_reaches_zone``), and it is one of the
+    grid's own cell ids (``col,row``) that no living creature occupies. An
+    explicit ``target_zone_id`` must be legal: an invalid, non-canonical or
+    occupied cell is ``"target_invalid"``, one beyond range or out of sight
+    ``"out_of_range"``. Without one, the first legal cell of the fixed scan
+    outward from the caster. A creature ``target_id`` plays no part: the
+    spell targets a space.
     """
     caster_cell = live.actor_zone.get(current.entity_id)
     spell = get_lib_loader().get_spell(intent.spell_id or "")
@@ -9630,14 +9383,14 @@ def _summon_placement(
     )
     if caster_cell is None or range_ft is None:
         return None, "out_of_range"
-    grid = live.topology if isinstance(live.topology, GridTopology) else None
-    occupied = _occupied_cells(live, exclude=()) if grid is not None else set()
+    grid = live.topology
+    occupied = _occupied_cells(live, exclude=())
     blinded = is_condition_active(Condition.BLINDED, _condition_names(current))
 
     def _free(cell: str) -> bool:
         # ``is_valid_cell`` parses with ``int()``, which also reads "1, 1": a
         # creature seated there would match no other position check.
-        return grid is None or (
+        return (
             grid.is_valid_cell(cell) and cell == cell_id(*parse_cell(cell)) and cell not in occupied
         )
 
@@ -9657,8 +9410,6 @@ def _summon_placement(
         if not _in_sight(intent.target_zone_id):
             return None, "out_of_range"
         return intent.target_zone_id, None
-    if grid is None:
-        return (caster_cell, None) if _seen(caster_cell) else (None, "out_of_range")
     cell = next(
         (
             c
@@ -10176,7 +9927,7 @@ def _apply_transform_riders(
     throw or shape-shift into a Beast form for the duration" and "gains a
     number of Temporary Hit Points equal to the Hit Points of the Beast form".
     A target's FIRST ``SaveRolled`` in the resolution is the spell's own; a
-    later one is a Concentration save from damage (the
+    later one is a roll the damage triggered (the
     ``_apply_forced_movement_riders`` rule). The form rides the spell's
     concentration effect (id and origin by the spell-effect convention), so
     C13 governs it; a successful save applies nothing and the concentration
@@ -11365,13 +11116,13 @@ def _resolve_targets(
     cast_spell: Spell | None,
 ) -> list[Combatant]:
     """SRD §Areas of Effect / §Range: Self — resolve the target list. An AoE
-    cast expands through ``_expand_aoe_target_list`` (on the grid: every
-    creature standing in a cell of the measured template that has line of
-    effect from the point of origin; on the legacy zone graph: every creature
-    in the anchor zone). Otherwise the named target is used, defaulting to the
-    caster for an effect-bearing self/targetless buff or a self-targeting
-    feature. A count-bearing activity (R5 — Magic Missile darts) expands via
-    ``_count_scaled_targets`` in place of the plain ``target_id`` lookup."""
+    cast expands through ``_expand_aoe_target_list`` (every creature standing
+    in a cell of the measured template that has line of effect from the point
+    of origin; anchor-cell targeting for a template it cannot map). Otherwise
+    the named target is used, defaulting to the caster for an effect-bearing
+    self/targetless buff or a self-targeting feature. A count-bearing activity
+    (R5 — Magic Missile darts) expands via ``_count_scaled_targets`` in place
+    of the plain ``target_id`` lookup."""
     targets: list[Combatant]
     if intent.intent_type == "cast_spell" and _typed_spell_broadcasts(activities):
         targets = _expand_aoe_target_list(live, current, intent, activities)
@@ -11851,9 +11602,9 @@ async def _dispatch_turn_nonending_intent(
       Points before this spell ends, you can take a Bonus Action to move
       the mark to a new creature you can see within range."* A narrow seam:
       no IR evaluation, no slot consumption, no concentration re-check.
-    * ``move`` — SRD §Movement: step to an adjacent zone, paying the edge's
-      ``distance_ft`` from the per-turn movement budget (movement is
-      interleaved with Actions / Bonus Actions). Rejections emit
+    * ``move`` — SRD §Movement: walk the fewest-cells legal route to
+      ``target_zone_id``, paying each step from the per-turn movement budget
+      (movement is interleaved with Actions / Bonus Actions). Rejections emit
       ``MoveFailed`` without mutating budget or position.
     * ``dash`` — SRD §Dash: spend the Action (or, with Cunning Action, the
       Bonus Action) to add ``base_speed`` to the movement
@@ -12295,11 +12046,11 @@ async def submit_player_intent(
     feature_passive_effects = resolved.feature_passive_effects
 
     # SRD §Areas of Effect — fireball / burning-hands hit every creature in
-    # the targeted zone. The AoE discriminator is the typed activity's measured
+    # the template's area. The AoE discriminator is the typed activity's measured
     # ``target.template`` -A): the lib's converter now surfaces Foundry's
     # measured-template block onto each creature-targeting activity, so a spell
     # whose resolving activity carries a template shape (Fireball sphere/20,
-    # Burning Hands cone/15) broadcasts to the zone, while a template-less spell
+    # Burning Hands cone/15) broadcasts to the area, while a template-less spell
     # (Sacred Flame, Cure Wounds, Magic Missile, Detect Thoughts' single save)
     # stays single-target. No the legacy evaluator-wrapper read.
     targets = _resolve_targets(live, current, intent, activities, cast_spell)
@@ -12968,9 +12719,9 @@ async def advance_monster_turn(
     )
     has_action = bool(monster_activities) or cast_selection is not None
 
-    # Phase-5: monster gambit zone awareness. When the chosen attack is
+    # Monster gambit range awareness. When the chosen attack is
     # out of range, the monster MOVEs toward the target along the
-    # shortest path, paying each edge's distance_ft out of its per-turn
+    # shortest path, paying each step's cost out of its per-turn
     # movement budget. If the move brings it within range, the attack
     # then proceeds; otherwise the attack is skipped this turn (no
     # ``AttackFailed`` — the monster simply spent its movement closing
@@ -13298,14 +13049,13 @@ __all__ = [
     "CombatSeamError",
     "EncounterMemberSpec",
     "EndCombatResult",
+    "GridScene",
     "IntentRejectedError",
     "LiveCombatView",
     "PartyMemberSpec",
     "PlayerIntent",
-    "SceneTopology",
     "StartCombatResult",
     "UnknownHandleError",
-    "ZoneEdge",
     "advance_monster_turn",
     "drain_pending_events",
     "end_combat",

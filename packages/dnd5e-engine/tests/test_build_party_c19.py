@@ -154,7 +154,6 @@ def test_live_combat_reads_the_derived_sheet() -> None:
             session_id="c19-live",
             party=[member],
             encounter=[foe],
-            scene_zones=None,
             grid_scene=GridScene(width=5, height=5),
             rng_seed=1,
         )

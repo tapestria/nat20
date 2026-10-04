@@ -64,7 +64,6 @@ def _cast_and_get_save(spell_slug: str) -> SaveRolled:
                     zone_id=cell(5, 0),
                 )
             ],
-            scene_zones=None,
             grid_scene=GridScene(width=10, height=10, cover_cells={cell(5, 0): "half"}),
             rng_seed=13,
         )
@@ -136,7 +135,6 @@ def test_fireball_resolving_to_one_target_ignores_a_caster_line_cover_tag():
                     zone_id=cell(10, 10),
                 )
             ],
-            scene_zones=None,
             # Tagged cell (5,10) sits on the caster(0,10)->target(10,10) line
             # but is NOT the burst point (the target's own cell, (10,10)).
             grid_scene=GridScene(width=21, height=21, cover_cells={cell(5, 10): "half"}),

@@ -14,18 +14,11 @@ from typing import Any
 import pytest
 
 from dnd5e_engine.spatial import cell_id
-from dnd5e_engine.specs import GridScene, SceneTopology, ZoneEdge
+from dnd5e_engine.specs import GridScene
 
 
 def run_async(coro: Any) -> Any:
     return asyncio.run(coro)
-
-
-def single_zone() -> SceneTopology:
-    return SceneTopology(
-        zones=["zone:start"],
-        edges=[ZoneEdge(a="zone:start", b="zone:start", distance_ft=0)],
-    )
 
 
 def grid_scene(width: int = 10, height: int = 10, **kw: Any) -> GridScene:

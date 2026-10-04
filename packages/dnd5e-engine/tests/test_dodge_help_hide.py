@@ -73,7 +73,6 @@ async def _start_dodge_combat(session_id: str, **party_overrides: object):
         session_id=session_id,
         party=_dodge_party(**party_overrides),
         encounter=_foe_encounter(),
-        scene_zones=None,
         grid_scene=grid_scene(),
         rng_seed=7,
     )
@@ -238,7 +237,6 @@ class TestDodgeDexSaveAdvantage:
                         zone_id=cell(1, 0),
                     )
                 ],
-                scene_zones=None,
                 grid_scene=grid_scene(),
                 rng_seed=13,
             )
@@ -319,7 +317,6 @@ async def _start_help_combat(
                 zone_id=foe_zone,
             )
         ],
-        scene_zones=None,
         grid_scene=grid_scene(),
         rng_seed=13,
     )
@@ -562,7 +559,6 @@ async def _start_hide_combat(
                 zone_id=foe_zone,
             )
         ],
-        scene_zones=None,
         grid_scene=grid_scene(**(grid_kw or {})),
         rng_seed=7,
     )

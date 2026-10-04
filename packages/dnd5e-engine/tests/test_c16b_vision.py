@@ -65,7 +65,6 @@ def _start(party, encounter, grid, seed=1, session="c16b"):
             session_id=session,
             party=party,
             encounter=encounter,
-            scene_zones=None,
             grid_scene=grid,
             rng_seed=seed,
         )
@@ -171,7 +170,6 @@ def test_ranged_in_melee_disadvantage_dropped_when_adjacent_hostile_is_blinded()
             session_id=f"c16b-ranged-in-melee-{blind_near}",
             party=_party(),
             encounter=[_far_foe(), _near_foe()],
-            scene_zones=None,
             grid_scene=GridScene(width=10, height=10),
             rng_seed=1,
         )
@@ -209,7 +207,6 @@ def test_dodge_disadvantage_dropped_when_dodger_cannot_see_attacker():
             session_id=f"c16b-dodge-{dark}",
             party=[_hero(initiative=1)],
             encounter=[_foe(initiative=20)],
-            scene_zones=None,
             grid_scene=grid,
             rng_seed=1,
         )
@@ -329,7 +326,6 @@ def test_attack_on_invisible_target_normal_when_attacker_has_blindsight():
             session_id=f"c16b-t3-target-invis-{has_blindsight}",
             party=[_hero()],
             encounter=[_foe()],
-            scene_zones=None,
             grid_scene=grid,
             rng_seed=1,
         )
@@ -364,7 +360,6 @@ def test_invisible_attacker_loses_advantage_against_truesight_target():
             session_id=f"c16b-t3-attacker-invis-{foe_truesight}",
             party=[_hero()],
             encounter=[_foe()],
-            scene_zones=None,
             grid_scene=grid,
             rng_seed=1,
         )
@@ -495,7 +490,6 @@ def test_frightened_attack_disadvantage_dropped_when_source_out_of_sight():
             session_id=f"c16b-frightened-attack-{dark}",
             party=[_hero()],
             encounter=[_foe(entity_id="mon:0123456789ab")],
-            scene_zones=None,
             grid_scene=grid,
             rng_seed=1,
         )

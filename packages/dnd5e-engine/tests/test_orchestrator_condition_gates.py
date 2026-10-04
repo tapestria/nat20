@@ -98,7 +98,6 @@ def _start(
             session_id=session,
             party=party,
             encounter=encounter,
-            scene_zones=None,
             grid_scene=grid_scene(),
             active_effects=list(effects),
             rng_seed=1,

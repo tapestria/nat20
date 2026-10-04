@@ -2,9 +2,8 @@
 
 The engine resolves all positional reasoning through the ``SpatialTopology``
 Protocol — a combatant's position is an opaque string handle, and the backend
-answers adjacency / distance / range / pathing over it. Two backends exist:
-the zone graph (``_ZoneGraph`` in ``orchestrator.py``) and the grid
-(``GridTopology`` here). Call sites never branch on which backend is live.
+answers adjacency / distance / range / pathing over it. ``GridTopology`` is
+the backend: a ``GridScene`` of ``"col,row"`` cells under Chebyshev distance.
 """
 
 from __future__ import annotations
@@ -132,8 +131,8 @@ def _bresenham_cells(x0: int, y0: int, x1: int, y1: int) -> list[str]:
 class SpatialTopology(Protocol):
     """The positional seam every combat resolves over.
 
-    Position handles are opaque strings (zone ids for the graph backend,
-    ``"col,row"`` cell ids for the grid backend).
+    Position handles are opaque strings; ``GridTopology`` uses ``"col,row"``
+    cell ids.
     """
 
     def is_adjacent(self, a: str, b: str) -> bool: ...
@@ -451,8 +450,7 @@ class GridTopology:
           in-engine caller, ``orchestrator._expand_aoe_target_list``, does
           exactly that via the typed ``_AoeTemplate.include_origin``, so no
           shipped behaviour is off-SRD; a host calling this directly must
-          discard ``origin`` itself. Behaviour is pinned by tests and is not
-          changing before the 0.7 template rework.
+          discard ``origin`` itself. Behaviour is pinned by tests.
         * ``"cone"``: requires ``direction``; a cell at offset ``(dx, dy)``
           from the origin is included iff its projection onto the direction
           (``forward``) is in ``[0, radius_cells]`` and its perpendicular
@@ -468,8 +466,7 @@ class GridTopology:
           See ``docs/dev/spatial-geometry.md`` for the placement convention.
 
         See ``docs/dev/spatial-geometry.md``. Not part of the
-        ``SpatialTopology`` Protocol — grid-only (the zone-graph backend has
-        no cell coordinates to enumerate a template over).
+        ``SpatialTopology`` Protocol.
         """
         if not self._in_bounds(origin):
             return []
