@@ -272,9 +272,11 @@ class PlayerIntent(BaseModel):
     spell_id: str | None = None
     target_id: str | None = None
     # C17 — SRD 5.2 "one creature or several": per-instance targets for a spell
-    # whose activity carries ``target.affects.count`` (Magic Missile darts, Hold
-    # Person's extra Humanoids). Duplicates = several darts on one creature.
-    # Ignored (with ``target_id`` used) for activities without a count.
+    # whose activity carries a ``target.affects.count`` formula (Magic Missile
+    # darts, Hold Person's extra Humanoids; duplicates = several darts on one
+    # creature), or the creatures an area of "up to N creatures" affects (Slow,
+    # Mass Cure Wounds: at most N, no repeats). Ignored (with ``target_id`` used)
+    # for activities without a count.
     target_ids: tuple[str, ...] | None = None
     item_id: str | None = None
     weapon_id: str | None = None
@@ -5847,7 +5849,8 @@ def _build_hydration_payload(live: _LiveCombat, caster: Combatant | None = None)
 # Haunting). ``dnd5e_engine.areas`` holds the pure geometry and selection; this
 # section places the area, applies it and reports it (``AreaTargeted``).
 
-# The intents that resolve activities, so the only ones an area can come from.
+# The intents that resolve activities: the ones whose area, or whose
+# excluded_target_ids, the gate checks. An attack never places an area (_area_plan).
 _AREA_INTENTS: Final[frozenset[IntentType]] = frozenset(
     {"attack", "cast_spell", "use_item", "use_feature"}
 )
@@ -5882,20 +5885,17 @@ def _area_plan(intent: PlayerIntent, activities: Sequence[Any]) -> _AreaPlan | N
     ever area-expands — an ``attack`` intent itself, or a multi-function item
     or feature (the Rod of Lordly Might's buttons, Javelin of Lightning's
     thrown attack alongside its Lightning Bolt) that bundles one with a
-    templated save, damage or heal. A ``use_item`` / ``use_feature`` that
-    resolves more than one activity because no ``activity_id`` picked a
-    single one is itself ambiguous and never area-expands either (Horn of
-    Blasting's Blow Horn alongside its other functions): an item or feature
-    with one unambiguous area activity, or whose area activity is chosen via
-    ``activity_id`` or is the charged one, still gets its area.
+    templated save, damage or heal. A ``use_item`` that resolves more than
+    one activity because no ``activity_id`` picked one and none is charged
+    is itself ambiguous and never area-expands either (Horn of Blasting's
+    Blow Horn alongside its other functions); an item whose area activity is
+    chosen via ``activity_id`` or is the charged one still gets its area. A
+    feature with several activities never gets here without ``activity_id``
+    (``_resolve_feature_invocation``).
     """
     if intent.intent_type == "attack" or any(a.kind == "attack" for a in activities):
         return None
-    if (
-        intent.intent_type in ("use_item", "use_feature")
-        and not intent.activity_id
-        and len(activities) > 1
-    ):
+    if intent.intent_type == "use_item" and not intent.activity_id and len(activities) > 1:
         return None
     activity = area_activity(activities)
     if activity is None:
@@ -5971,6 +5971,10 @@ def _area_target_failure(
     """
     if intent.intent_type not in _AREA_INTENTS:
         return None
+    if intent.intent_type == "attack":
+        if intent.excluded_target_ids is None:
+            return None
+        return AttackFailed(actor_id=actor_id, target_id=intent.target_id, reason="target_invalid")
     activities = _resolve_intent_activities(
         intent,
         feature_invocation,
@@ -6007,8 +6011,6 @@ def _area_target_failure(
     )
     if not invalid:
         return None
-    if intent.intent_type == "attack":
-        return AttackFailed(actor_id=actor_id, target_id=intent.target_id, reason="target_invalid")
     return CastFailed(actor_id=actor_id, spell_id=intent.spell_id or "", reason="target_invalid")
 
 
@@ -6084,6 +6086,7 @@ def _area_targets(
     direction = _aoe_direction(live, actor.entity_id, intent) if template.directional else None
     cells = area_cells(live.topology, template, origin, direction)
     in_area = [c.entity_id for c in alive if live.actor_zone.get(c.entity_id) in cells]
+    allies = _allied_ids(live, actor.entity_id)
     selection = select_affected(
         in_area,
         affects_type=plan.activity.target.affects.type,
@@ -6092,7 +6095,7 @@ def _area_targets(
         harmful=is_harmful([plan.activity]),
         excluded_ids=intent.excluded_target_ids,
         is_enemy=lambda other: _is_enemy(live, actor.entity_id, other),
-        is_ally=lambda other: other in _allied_ids(live, actor.entity_id),
+        is_ally=allies.__contains__,
     )
     _emit(
         live,
@@ -6111,16 +6114,14 @@ def _area_targets(
 
 
 def _area_source_id(intent: PlayerIntent) -> str:
-    """The slug of what makes the area: the spell, item, feature or stat-block
-    action the intent names."""
-    return (
-        intent.spell_id
-        or intent.item_id
-        or intent.feature_id
-        or intent.stat_block_action_id
-        or intent.weapon_id
-        or ""
-    )
+    """The slug of what makes the area: the spell, item or feature the intent
+    names."""
+    source = {
+        "cast_spell": intent.spell_id,
+        "use_item": intent.item_id,
+        "use_feature": intent.feature_id,
+    }
+    return source.get(intent.intent_type) or ""
 
 
 # ── Concentration writeback ─────────────────────────────────────────────────
@@ -10200,34 +10201,16 @@ def _hellish_rebuke_target_invalid(current: Combatant, intent: PlayerIntent) -> 
     )
 
 
-def _cast_target_invalid(
-    live: _LiveCombat,
-    caster: Combatant,
-    actor_id: str,
-    intent: PlayerIntent,
-    cast_spell: Spell | None,
-) -> bool:
-    """Every pre-slot ``target_invalid`` reason for a cast, in one predicate.
-
-    One today: Hellish Rebuke's "the creature that damaged you" trigger
-    target. An area's own refusals (an unaimed Cone/Line/Cube, exclusions) are
-    ``_area_target_failure``'s, which covers every intent kind.
-    """
-    return _hellish_rebuke_target_invalid(caster, intent)
-
-
 def _cast_target_invalid_failure(
-    live: _LiveCombat,
-    current: Combatant,
-    actor_id: str,
-    intent: PlayerIntent,
-    cast_spell: Spell | None,
+    current: Combatant, actor_id: str, intent: PlayerIntent
 ) -> CombatEvent | None:
     """``CastFailed(reason="target_invalid")`` for every pre-slot illegal
-    cast target (Hellish Rebuke's fixed target) — see ``_cast_target_invalid``;
-    ``None`` otherwise. One of the ``pre_resolution_gates`` failure-builders
-    consumed by ``submit_player_intent``."""
-    if not _cast_target_invalid(live, current, actor_id, intent, cast_spell):
+    cast target (Hellish Rebuke's fixed target); ``None`` otherwise. An
+    area's own refusals (an unaimed Cone/Line/Cube, exclusions) are
+    ``_area_target_failure``'s, which covers every intent kind. One of the
+    ``pre_resolution_gates`` failure-builders consumed by
+    ``submit_player_intent``."""
+    if not _hellish_rebuke_target_invalid(current, intent):
         return None
     return CastFailed(actor_id=actor_id, spell_id=intent.spell_id or "", reason="target_invalid")
 
@@ -11907,9 +11890,7 @@ async def submit_player_intent(
         lambda: _attack_out_of_range_failure(live, actor_id, intent),
         lambda: _loading_weapon_already_fired_failure(current, actor_id, intent, attack_weapon),
         lambda: _charmed_target_failure(live, actor_id, current, intent),
-        lambda: _cast_target_invalid_failure(
-            live, current, actor_id, intent, cast_spell_for_timing
-        ),
+        lambda: _cast_target_invalid_failure(current, actor_id, intent),
         lambda: _area_target_failure(live, current, actor_id, intent, feature_invocation),
         lambda: _action_surge_failure(current, intent),
         lambda: _bardic_inspiration_target_failure(live, actor_id, intent),
@@ -12070,14 +12051,9 @@ async def submit_player_intent(
     spellcasting_ability = resolved.spellcasting_ability
     feature_passive_effects = resolved.feature_passive_effects
 
-    # SRD §Areas of Effect — fireball / burning-hands hit every creature in
-    # the template's area. The AoE discriminator is the typed activity's measured
-    # ``target.template`` -A): the lib's converter now surfaces Foundry's
-    # measured-template block onto each creature-targeting activity, so a spell
-    # whose resolving activity carries a template shape (Fireball sphere/20,
-    # Burning Hands cone/15) broadcasts to the area, while a template-less spell
-    # (Sacred Flame, Cure Wounds, Magic Missile, Detect Thoughts' single save)
-    # stays single-target. No the legacy evaluator-wrapper read.
+    # SRD 5.2 §Areas of Effect — an intent whose save, damage or heal activity
+    # carries a template resolves against the creatures that area affects
+    # (``_area_targets``); any other intent resolves against its named target.
     targets = _resolve_targets(live, current, intent, activities, cast_spell)
 
     # SRD §Reactions — drain any pending target-owned reactions (Shield)
