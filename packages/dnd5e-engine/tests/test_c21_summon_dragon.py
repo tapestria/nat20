@@ -38,9 +38,7 @@ from dnd5e_engine.specs import (
     EncounterMemberSpec,
     GridScene,
     PartyMemberSpec,
-    SceneTopology,
     WallSegment,
-    ZoneEdge,
 )
 from dnd5e_engine.views import SummonView
 from tests.c21_support import (
@@ -81,7 +79,7 @@ def _start_on(
     seed: int = 1,
     **topology: Any,
 ) -> tuple[CombatHandle, _LiveCombat]:
-    """``start`` on a topology of the test's own (``grid_scene=`` / ``scene_zones=``)."""
+    """``start`` on a ``grid_scene=`` of the test's own."""
     result = asyncio.run(
         start_combat(
             session_id=f"c21b-{seed}", party=party, encounter=encounter, rng_seed=seed, **topology
@@ -281,18 +279,6 @@ def test_no_legal_space_refuses_the_cast_before_anything_is_spent(
     assert live.concentration_chain.get(SUMMONER, []) == []
 
 
-@pytest.mark.parametrize(("target_zone_id", "zone"), [(None, "near"), ("far", "far")])
-def test_a_zone_graph_seats_the_summon_in_a_zone(target_zone_id: str | None, zone: str) -> None:
-    """Zones are not exclusive: with no ``target_zone_id`` the creature
-    manifests in the caster's own zone; a named zone within range is used."""
-    scene = SceneTopology(
-        zones=["near", "far"], edges=[ZoneEdge(a="near", b="far", distance_ft=30)]
-    )
-    handle, live = _start_on([summoner(zone_id="near")], [foe(zone_id="far")], scene_zones=scene)
-    _cast(handle, target_zone_id=target_zone_id)
-    assert [e.zone_id for e in joined(live, SUMMONER)] == [zone]
-
-
 def test_ready_summon_dragon_is_refused() -> None:
     """A readied cast resolves from the reaction queue, which carries no space."""
     handle, live = start([summoner()], seed=1)
@@ -324,21 +310,6 @@ def test_a_blinded_caster_sees_no_space(target_zone_id: str | None) -> None:
     assert not events(live, CombatantJoined)
     assert live.spell_slots_by_entity[SUMMONER] == {1: 1, 5: 2}
     assert combatant(live, SUMMONER).action_available
-
-
-def test_a_blinded_caster_sees_no_zone_either() -> None:
-    """On a zone graph the default space is the caster's own zone, which a
-    Blinded caster can't see either."""
-    scene = SceneTopology(
-        zones=["near", "far"], edges=[ZoneEdge(a="near", b="far", distance_ft=30)]
-    )
-    handle, live = _start_on([summoner(zone_id="near")], [foe(zone_id="far")], scene_zones=scene)
-    _emit(live, ConditionApplied(target_id=SUMMONER, condition="blinded"))
-    _cast(handle)
-    assert events(live, CastFailed) == [
-        CastFailed(actor_id=SUMMONER, spell_id=SD, reason="out_of_range")
-    ]
-    assert not events(live, CombatantJoined)
 
 
 @pytest.mark.parametrize(

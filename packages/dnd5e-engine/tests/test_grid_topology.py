@@ -209,14 +209,6 @@ def test_cells_in_template_out_of_bounds_origin_returns_empty():
     assert g.cells_in_template(origin="99,99", shape="sphere", size_ft=5) == []
 
 
-def test_zone_graph_cover_between_always_none():
-    from dnd5e_engine.orchestrator import _ZoneGraph
-    from dnd5e_engine.specs import SceneTopology
-
-    zg = _ZoneGraph(SceneTopology(zones=["a", "b"], edges=[]))
-    assert zg.cover_between("a", "b") == "none"
-
-
 def test_is_valid_cell():
     g = _grid(blocked=["2,2"])
     assert g.is_valid_cell("0,0") is True
@@ -251,15 +243,6 @@ def test_shortest_path_routes_around_blocked():
         assert c not in {"1,0", "1,1", "1,2"}
     for x, y in pairwise(path):
         assert g.is_adjacent(x, y)
-
-
-def test_zone_graph_satisfies_spatial_topology():
-    from dnd5e_engine.orchestrator import _ZoneGraph
-    from dnd5e_engine.spatial import SpatialTopology
-    from dnd5e_engine.specs import SceneTopology
-
-    zg = _ZoneGraph(SceneTopology(zones=["a", "b"], edges=[]))
-    assert isinstance(zg, SpatialTopology)  # runtime_checkable structural check
 
 
 def test_grid_topology_satisfies_spatial_topology():
