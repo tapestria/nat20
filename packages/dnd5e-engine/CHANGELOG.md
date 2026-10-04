@@ -15,6 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`GridTopology.reachable_cells(start, budget_ft, *, avoid=())`** — every cell
   reachable within a movement budget, with its cost and the cell its cheapest
   route enters it from (C24).
+- **`PlayerIntent.excluded_target_ids`** — the creatures an area "of your
+  choice" spares; `()` spares nobody. Refused with `target_invalid` where the
+  intent resolves no area of your choice, or for an id not in the combat
+  (C26a).
+- **`AreaTargeted`** and **`AreaShape`** (`dnd5e_engine.events`) — each placed
+  area of effect: its shape, size, origin and aim, and the creatures it
+  affects and spares (C26a).
 
 ### Changed
 
@@ -43,6 +50,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the barbarian forced (C25).
 - **nat20-bridge**: a concentration save narrates as its own
   `concentration_check` line (C25).
+- **Areas of effect resolve for every intent kind** (C26a): a feature's or an
+  item's area (a Breath Weapon, the Pipes of Haunting) catches the creatures
+  in it, not only the named target. "Each enemy" or "each ally" keeps that
+  side; an area "of your choice" spares the actor's side when it harms and
+  the other side when it heals; "up to N creatures" takes the creatures named,
+  else the first N; Phantasmal Force affects the one creature it names. An
+  unaimed cone, cube or line from a feature or item is refused before its use
+  is spent. An attack roll is never an area.
+- **A template the engine can't map affects its named target only** (C26a),
+  where it used to fall back to the creatures on one cell.
+- **nat20-bridge**: an area narrates as one line naming whom it catches and
+  spares (C26a).
 
 ### Deprecated
 

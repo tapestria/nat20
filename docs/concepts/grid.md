@@ -100,19 +100,48 @@ returns the cell set for a `"sphere"`, `"cone"`, `"line"`, `"cube"` or
 `"cylinder"` area of effect; `"cone"`, `"line"` and `"cube"` require a
 `direction` vector.
 
-AoE **spells** use this automatically: the spell's typed template is placed at
-its SRD point of origin, expanded, and trimmed to the cells with line of effect
-from that origin ("To block a line, an obstruction must provide Total Cover").
-Every alive creature in a surviving cell is a target — including the caster and
-their allies. Aim a directional template with `PlayerIntent.direction`; omit it
-and the engine aims caster → named target. A self-origin cone/line/cube with
-neither is rejected before the slot is spent, with
-`CastFailed(reason="target_invalid")`.
+### Areas of effect
 
-A template the engine can't map onto the grid (the five `wall` spells: Blade
+Every cast, item use and feature use whose save, damage or heal activity
+carries a measured template resolves as an area: a Fireball or a Sleep, a
+Dragonborn's Breath Weapon, the Pipes of Haunting. (An attack roll is never an
+area: it targets one creature.) The engine places the template at its SRD 5.2
+point of origin — the named target's cell for a Sphere or Cylinder, else the
+actor's; the actor's own cell for an Emanation, Cone, Cube or Line, whose
+origin is not part of the area — expands it, and keeps the cells with line of
+effect from that origin ("To block a line, an obstruction must provide Total
+Cover"). Aim a Cone, Cube or Line with `PlayerIntent.direction`; omit it and
+the engine aims actor → named target. An area with neither is refused before
+anything is spent, with `target_invalid`.
+
+Who in the area is affected follows the activity's `target.affects`:
+
+| The activity says | It affects |
+|---|---|
+| nothing more ("each creature in a 20-foot-radius Sphere") | every living creature in the area, the actor and its allies included (a Fireball still catches its caster) |
+| "each enemy" / "each ally" (`affects.type`) | only that side, relative to the actor |
+| "of your choice" (`affects.choice`) | the actor's enemies when the area harms (a save or damage), the actor and its allies when it heals — unless `PlayerIntent.excluded_target_ids` says otherwise |
+| "up to N creatures" (a whole-number `affects.count`) | the creatures `target_ids` names (a lone `target_id` when N is 1), else the first N the default keeps, in initiative order |
+
+`excluded_target_ids` lists the creatures an area of your choice spares, and
+replaces the default: `("char:ally",)` spares that ally and nobody else, and
+`()` spares nobody, so a caster standing in its own Sleep opts itself in. Sent
+with an intent that resolves no area of your choice — a Fireball, a sword
+swing — or naming a creature not in the combat, it refuses the intent with
+`target_invalid` before anything is spent.
+
+Each placed area emits `AreaTargeted` before anything in it rolls: the actor,
+the source slug, the shape (`sphere`, `cylinder`, `emanation`, `cube`, `cone`
+or `line`), its size, its origin cell and aim, the creatures it affects
+(`affected_ids`) and the creatures standing in it that it spares
+(`excluded_ids`), both in initiative order.
+
+A template the engine can't place on the grid (the five `wall` spells: Blade
 Barrier, Tsunami, Wall of Fire, Wall of Thorns and Wind Wall; and Confusion,
-whose size is a formula) affects only the creatures standing on its anchor
-cell: the named target's, else the caster's. `BACKLOG.md` tracks it.
+whose size is a formula) affects its named target only, and so does a counted
+area whose creatures the intent names; neither emits `AreaTargeted`. A
+monster's own area action still resolves against one target. `BACKLOG.md`
+tracks all three.
 
 ## Vision and light
 

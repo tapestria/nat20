@@ -74,9 +74,10 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   precisely; doppelganger and chain-devil now ALSO count their conditional
   feat use ("uses Unsettling Visage if…") as one fixed use per turn. The
   "if …" clause needs a carve-out in `_parse_item_counts`. (Recharge gating
-  for the joined action itself — e.g. doppelganger's Recharge-6 Unsettling
-  Visage — closed 2026-09-03, C18, via `rank_monster_actions` and the
-  turn-start recharge roll. Limited-use gating is only partial: see "Typed
+  for a recharge action chosen on its own closed 2026-09-03, C18, via
+  `rank_monster_actions` and the turn-start recharge roll; joined into a
+  Multiattack it is still ungated — see `_mark_monster_action_used` below.
+  Limited-use gating is only partial: see "Typed
   `MonsterAction.uses_per_day` is never consulted" below.)
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/monster_actions.py`)
 - **Typed `MonsterAction.uses_per_day` is never consulted, and a non-cast
@@ -96,9 +97,11 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   (2026-09-23). When the chosen action is a Multiattack whose join
   substitutes a recharge sibling (a "uses X" clause resolving to a Recharge
   action), only `ranked[0]` — the Multiattack — is marked; the substituted
-  recharge sibling is never marked spent, so it would fire every turn. No
-  bundled Multiattack joins a recharge sibling today, so the corpus is
-  unaffected; a corpus change that adds one would silently un-gate it.
+  recharge sibling is never marked spent, so it would fire every turn, and
+  the join never asks whether the sibling is available either. The
+  Doppelganger's does join one ("…and uses Unsettling Visage if available"):
+  once its Recharge 6 visage is spent, every later Multiattack still rolls the
+  visage's Wisdom save (amended 2026-10-04, C26a).
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_mark_monster_action_used`)
 - **A monster's own AoE (cone/sphere/etc.) still resolves against a single
   chosen target, not the template** (2026-09-03, C18). Grid AoE template
@@ -112,6 +115,18 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   Multiattack's own reach) before the monster acts, unlike the PC-facing
   `PlayerIntent.direction` aiming a host controls by hand.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
+- **A readied Shield fires on a monster's save action (2026-10-04, C26a).**
+  `_resolve_monster_attack_activities` drains its targets' `hit_by_attack`
+  reactions before any monster action resolves, so a Fire Breath pops a
+  wizard's readied Shield (`ReactionTriggered`, then `SpellCast(shield)`),
+  spending its Reaction and slot, though SRD 5.2 Shield answers "being hit by
+  an attack roll".
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_resolve_monster_attack_activities`)
+- **The Djinni's Multiattack resolves Create Whirlwind three times
+  (2026-10-04, C26a).** "The djinni makes three attacks, using Storm Blade or
+  Storm Bolt in any combination": `_parse_item_counts` returns `None` on the
+  "or", and the fallback takes the first sibling, Create Whirlwind.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/monster_actions.py::_parse_item_counts`)
 - **Utility-only and cost > 1 legendary actions are never selected by the
   built-in AI** (2026-09-03, C18). `_take_legendary_action` only considers
   entries whose `legendary_cost` is unset or `1` and that carry an
@@ -214,6 +229,19 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   `stat_block_action_id` emits only `IntentSubmitted` and ends the turn: no
   attack roll, the Action gone. It should be refused before anything is spent.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::submit_player_intent`)
+- **An `attack` or an unchosen `use_item`/`use_feature` resolves every
+  activity on its weapon, item or feature, not the one it means to fire
+  (2026-10-04, C26a).** A weapon's own non-attack activity (the Mace of
+  Terror's Wave of Terror save) and an item's or a feature's alternative
+  modes (Javelin of Lightning, Rod of Lordly Might, the Staff of Power, the
+  Staff of the Magi, the Staff of Thunder and Lightning, Thunderous
+  Greatclub, Horn of Blasting) all resolve together against the intent's
+  single target whenever nothing names which one to fire. C26a's area
+  resolver guards the one visible symptom — none of these intents ever
+  area-expands — but the ambiguous resolution itself stands: the proper fix
+  resolves only the chosen activity, requiring `activity_id` when an item or
+  feature carries alternatives.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_resolve_intent_activities`)
 - **A seeded Incapacitated effect ends nothing (2026-09-27, C23).** SRD 5.2
   Incapacitated: "Your Concentration is broken." `_seed_active_effects` writes
   a seeded effect's statuses onto the combatant without
@@ -324,24 +352,16 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   anchor sits on the caster), one it fails is not (the effect sits on the
   monster), and a Polymorph on a PC ally charges the ally.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_emit_apply_effect_applied`)
-- **An AoE spell with "creature of your choice" targeting language still
-  affects everyone standing in its area, the caster included, with no way to
-  exclude anyone (2026-09-27).** SRD 5.2 Sleep: "Each creature of your choice
-  in a 5-foot-radius Sphere centered on a point within range must succeed on
-  a Wisdom saving throw..." `_expand_aoe_target_list` gathers every alive
-  combatant standing in the measured template's area with no exclusion
-  mechanism — correct for a spell that carries no such qualifier (its own
-  docstring: "allies and the caster included when the geometry says so —
-  Fireball hits the caster in its own radius") — but the same list feeds
-  Sleep's save resolution too, so a caster standing in its own Sleep sphere
-  rolls the Wisdom save alongside its targets and can fall Sleeping itself.
-  Confirmed on `GridTopology`. The
-  dataset schema carries a `target.affects.choice` flag for exactly this
-  Foundry semantic (set on Spirit Guardians, Holy Aura, Weird and others),
-  but no resolver code reads it — "of your choice" area targeting is
-  unmodelled generally; Sleep is the observed case.
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_expand_aoe_target_list`,
-  `packages/dnd5e-srd-data/src/dnd5e_srd_data/schema/common.py::TargetAffectsBlock`)
+- **"Of your choice" targeting is unmodelled on a `utility` activity or a
+  templateless save (2026-10-04, C26a).** Spirit Guardians, Holy Aura and
+  Nature's Sanctuary carry their `affects.choice` flag on a `utility`
+  activity, and Rod of Rulership's choice save carries no measured template;
+  none of the four resolves an area, so `PlayerIntent.excluded_target_ids`
+  sent with any of them is refused with `target_invalid`. Spirit Guardians'
+  "designate creatures to be unaffected" stays unexpressed until a persistent
+  emanation is modelled (see "No ongoing-damage producer").
+  (`packages/dnd5e-engine/src/dnd5e_engine/areas.py::is_choice`,
+  `packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_area_target_failure`)
 
 ## Movement (2026-08-22)
 
@@ -558,12 +578,35 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   `orchestrator.py::_pierces_invisibility`; an effect-vocabulary carve-out is
   a future cluster's seam.
   (`packages/dnd5e-engine/src/dnd5e_engine/spatial.py::GridTopology.can_see`)
-- **An area the engine can't map onto the grid hits one cell (2026-10-03,
-  C25).** A `wall` template (Blade Barrier, Tsunami, Wall of Fire, Wall of
-  Thorns, Wind Wall) or a size written as a formula (Confusion) falls back to
-  anchor-cell targeting: every creature on the named target's cell, else on the
-  caster's.
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_expand_aoe_target_list`)
+- **An area the engine can't map onto the grid affects only its named target
+  (2026-10-03, C25; amended 2026-10-04, C26a).** A `wall` template (Blade
+  Barrier, Tsunami, Wall of Fire, Wall of Thorns, Wind Wall) or a size written
+  as a formula (Confusion's `@item.level`) has no grid geometry, so the engine
+  logs `aoe_template_unsupported` and resolves it against the named target
+  alone (nobody, if the intent names none), with no `AreaTargeted`.
+  (`packages/dnd5e-engine/src/dnd5e_engine/areas.py::area_template`,
+  `packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_area_targets`)
+- **A counted area's named creatures aren't checked against its template
+  (2026-10-04, C26a).** For "up to N creatures" (Slow's six, Mass Cure Wounds'
+  six, Phantasmal Force's one) the engine takes the creatures
+  `PlayerIntent.target_ids` names — or a lone `target_id` when N is 1 —
+  wherever they stand: it anchors a Cube, Cone or Line at the caster and can't
+  place Slow's 40-foot Cube "within range", and Phantasmal Force's Cube is the
+  illusion's size, not its target area. Only too many names, a repeated name
+  and a name not in the combat are refused.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_area_plan`)
+- **An area's point of origin is a creature's cell, never an empty one
+  (2026-10-04, C26a).** A Sphere or Cylinder centres on the named target's cell
+  (else the caster's), and a Cone, Cube, Line or Emanation starts at the
+  caster's; SRD 5.2's "a point you choose within range" on an empty cell
+  (`target_zone_id`) is not accepted for an area.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_area_origin`)
+- **A delegated cast resolves against its named target only (2026-10-04,
+  C26a).** An item whose activity casts a spell (the Wand of Fireballs, a Spell
+  Scroll) resolves the spell's activities against the item intent's target
+  list, which a `cast` activity never expands: a Wand of Fireballs hits one
+  creature.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/cast.py`)
 - **Monster-cast AoE applies no forced-movement rider** (2026-08-27). Only the
   player-intent cast path calls `activities/forced_movement.py`, so a monster
   casting Thunderwave deals damage but pushes nobody.
@@ -783,6 +826,15 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   `packages/dnd5e-engine/src/dnd5e_engine/activities/formula.py`,
   `packages/dnd5e-engine/src/dnd5e_engine/activities/dice.py`,
   `packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_resolve_intent_activities`)
+- **Preserve Life's "divide those Hit Points among them" is not modelled
+  (2026-10-04, C26a).** Its heal is an area of your choice (a 30-foot
+  Emanation), and an area heal gives every creature it affects the whole
+  amount, so once its `5 * @classes.cleric.levels` formula parses (see the
+  half-paid row above) each ally in range would regain the whole pool rather
+  than a share. The cleric's own space is outside its Emanation, so it can't
+  heal itself ("which can include you"), and the "no more than half its Hit
+  Point maximum" cap is not applied.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_area_targets`)
 
 ### Passive-stat projection (`activities/passive_stats.py`)
 
@@ -826,7 +878,13 @@ zone + apply logic:
   can be two Bites. A summoned Draconic Spirit's Breath Weapon is refused too,
   so its Multiattack ("…and it uses Breath Weapon") gives only the Rends;
   Summon Dragon's `match.saves` (the caster's spell save DC) lands with the
-  first commandable save action.
+  first commandable save action. Commanding a save action (deferred,
+  2026-10-04, C26a) needs: `_stat_block_attack_failure` to accept one; the
+  whole Action as its cost, not one Multiattack swing; aim from `direction` or
+  `target_id` through the area resolver; `action_unavailable` when it is spent
+  or used up and `out_of_range` when its origin is beyond its range;
+  `_mark_monster_action_used` when it commits; and, for a summon, the caster's
+  save DC and the Draconic Spirit's damage-type choice.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_stat_block_attack_failure`)
 - **A form's melee reach is 5 feet (2026-09-25, C21a; amended 2026-09-26,
   C21b; amended 2026-10-03, C24).** The corpus carries no melee reach for a
@@ -1128,6 +1186,17 @@ zone + apply logic:
 
 ## Audit 2026-08-26 — spellcasting & concentration
 
+- **A spell's turn-boundary activities resolve at cast time (2026-10-04,
+  C26a).** Every activity a spell carries resolves when it is cast, including
+  the ones Foundry fires on a later turn: Weird's "End of Turn Save" makes
+  every creature in the sphere save twice at once, taking the damage twice.
+  Vitriolic Sphere's "End of Turn Damage", Incendiary Cloud's "Per Turn Save",
+  Storm of Vengeance's turn-2-to-5 activities, Earthquake's "End of Turn
+  Fissures", Delayed Blast Fireball's bead activities and the start-of-turn
+  activities of Ensnaring Strike, Searing Smite, Stinking Cloud and Tsunami
+  have the same shape. Needs a per-activity timing signal and a turn-boundary
+  producer (see "No ongoing-damage producer").
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::submit_player_intent`)
 - **Empty `scaling.mode` is treated as whole-mode dice scaling on upcast
   (2026-09-03, C17).** `activities/dice.py::_scaling_steps` scales dice for
   any leveled spell whose damage part carries the corpus-default
@@ -1519,7 +1588,8 @@ layer over the engine — see `docs/bridge.md`. Gaps found while shipping it:
 - **The combat intent carries no class-feature or form field (2026-09-24, C20
   scope cut; amended 2026-09-25, C21a, and 2026-09-26, C21b).** `_IntentRequest` forwards only
   `intent_type`, `spell_id`, `target_id`, `item_id`, `weapon_id`,
-  `feature_id` and `target_zone_id`, so a bridge client can't pick an
+  `feature_id` and `target_zone_id`, so a bridge client can't aim or shape an
+  area (`direction`, `target_ids`, `excluded_target_ids`), pick an
   `activity_id` (Flurry of Blows, Lay on Hands, Channel Divinity), set
   `use_bonus_action` (Cunning Action, the Bonus Unarmed Strike) or
   `two_handed`, draw `pool_points`, redeem a Bardic die
@@ -1689,6 +1759,13 @@ pool entries.
   through the translator, so the fix is a correction there or a recorded
   divergence per monster.
   (`packages/dnd5e-srd-data/tools/translators/foundry.py`)
+- **Three monster recharges disagree between the pinned Foundry pack and the
+  SRD 5.2 creature text (2026-10-04, C26a).** The Ghost's Possession ships no
+  recharge (open5e's SRD 5.2 text: Recharge 6), the Minotaur of Baphomet's Gore
+  recharges on a 6 (5–6), and the Succubus's Charm on 5–6 (no recharge). None
+  is an area action, so C26a's correction table left them; each needs checking
+  against the SRD 5.2 document before it gets a correction row.
+  (`packages/dnd5e-srd-data/tools/translators/foundry.py::_MONSTER_ACTION_CORRECTIONS`)
 
 ---
 

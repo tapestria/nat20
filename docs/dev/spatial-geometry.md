@@ -119,8 +119,8 @@ relitigated): `radius_cells = size_ft // cell_size_ft`.
 
 **Line of effect.** `cells_in_template` itself is pure geometry and does no
 obstruction filtering — trimming happens one level up, in
-`orchestrator._expand_aoe_target_list`, which drops every produced cell for
-which `_has_line_of_effect(topology, origin, cell)` is false. Per SRD 5.2
+`areas.area_cells`, which drops every produced cell for which
+`areas.has_line_of_effect(topology, origin, cell)` is false. Per SRD 5.2
 §Areas of Effect, "If all straight lines extending from the point of origin to a
 location ... are blocked, that location isn't included ... To block a line, an
 obstruction must provide **Total Cover**" — so the test is precisely
