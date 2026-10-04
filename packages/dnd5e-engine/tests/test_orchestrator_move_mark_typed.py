@@ -28,11 +28,11 @@ from dnd5e_engine.orchestrator import (
     start_combat,
     submit_player_intent,
 )
+from dnd5e_engine.spatial import cell_id
 from dnd5e_engine.specs import (
     EncounterMemberSpec,
+    GridScene,
     PartyMemberSpec,
-    SceneTopology,
-    ZoneEdge,
 )
 
 _RANGER = "char:rrrrrrrrrrrr"
@@ -41,12 +41,10 @@ _NEW_TARGET = "mon:bbbbbbbbbbbb"
 _HM_ORIGIN = "spell:hunters-mark"
 
 
-def _topology() -> SceneTopology:
-    # Two zones 120 ft apart — beyond Hunter's-Mark's 90-ft range.
-    return SceneTopology(
-        zones=["zone:near", "zone:far"],
-        edges=[ZoneEdge(a="zone:near", b="zone:far", distance_ft=120)],
-    )
+def _topology() -> GridScene:
+    # Ranger and the old target share 0,0 / 0,1; the new target sits on
+    # 24,0 — 120 ft away, beyond Hunter's-Mark's 90-ft range.
+    return GridScene(width=25, height=2)
 
 
 def _party() -> list[PartyMemberSpec]:
@@ -58,7 +56,7 @@ def _party() -> list[PartyMemberSpec]:
             hp_current=30,
             hp_max=30,
             attack_bonus=5,
-            zone_id="zone:near",
+            zone_id=cell_id(0, 0),
             spell_slots={1: 1},
             spells_known=["hunters-mark"],
         )
@@ -67,7 +65,7 @@ def _party() -> list[PartyMemberSpec]:
 
 def _encounter() -> list[EncounterMemberSpec]:
     return [
-        # Old marked target — co-located with the caster; killed below.
+        # Old marked target — adjacent to the caster; killed below.
         EncounterMemberSpec(
             entity_id=_OLD_TARGET,
             entity_type="Monster",
@@ -75,9 +73,9 @@ def _encounter() -> list[EncounterMemberSpec]:
             initiative=10,
             hp_current=7,
             hp_max=7,
-            zone_id="zone:near",
+            zone_id=cell_id(0, 1),
         ),
-        # New target — in the far zone, 120 ft away (out of 90-ft range).
+        # New target — 120 ft away (out of 90-ft range).
         EncounterMemberSpec(
             entity_id=_NEW_TARGET,
             entity_type="Monster",
@@ -85,7 +83,7 @@ def _encounter() -> list[EncounterMemberSpec]:
             initiative=5,
             hp_current=7,
             hp_max=7,
-            zone_id="zone:far",
+            zone_id=cell_id(24, 0),
         ),
     ]
 
@@ -108,14 +106,14 @@ def test_move_mark_range_gate_uses_typed_spell_range() -> None:
             session_id="sess-move-mark-typed",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
 
         # Establish a live Hunter's-Mark concentration chain from the ranger
         # onto the old target, then kill the old target so the retarget is
-        # legal. The new target sits in the far zone, out of 90-ft range.
+        # legal. The new target sits 120 ft away, out of 90-ft range.
         live.concentration_chain[_RANGER] = [(_OLD_TARGET, _MOVE_MARK_EFFECT_ID, _HM_ORIGIN)]
         for idx, c in enumerate(live.initiative):
             if c.entity_id == _OLD_TARGET:

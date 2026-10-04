@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from dnd5e_engine.events import ActorMoved, AttackRolled
 from dnd5e_engine.orchestrator import _get_live, advance_monster_turn, start_combat
-from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec, SceneTopology, ZoneEdge
+from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
 from tests.e2e.harness import cell, events_of, grid_scene, run_async
 
 
@@ -116,7 +116,7 @@ def test_c10_s02_ranged_profile_multiattack_fallback_ignores_own_longbow():
                     hp_max=30,
                     ac=15,
                     attack_bonus=5,
-                    zone_id="zone:pc",
+                    zone_id=cell(0, 0),
                 )
             ],
             encounter=[
@@ -128,16 +128,14 @@ def test_c10_s02_ranged_profile_multiattack_fallback_ignores_own_longbow():
                     hp_current=16,
                     hp_max=16,
                     ac=13,
-                    zone_id="zone:foe",
+                    # 100 ft from the PC — the same distance the zone edge pinned.
+                    zone_id=cell(20, 0),
                     monster_template_slug="scout",
                     base_speed=30,
                     behavior_profile="RANGED",
                 )
             ],
-            scene_zones=SceneTopology(
-                zones=["zone:foe", "zone:pc"],
-                edges=[ZoneEdge(a="zone:foe", b="zone:pc", distance_ft=100)],
-            ),
+            grid_scene=grid_scene(width=21),
             rng_seed=1,
         )
         live = _get_live(start.handle)

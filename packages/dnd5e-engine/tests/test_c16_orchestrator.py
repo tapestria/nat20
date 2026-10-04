@@ -1,5 +1,5 @@
 """C16 — orchestrator-level units: typed surface, AoE shape mapping, cover
-occupancy, multi-cell move, forced movement, zone-graph deprecation."""
+occupancy, multi-cell move, forced movement, grid-scene construction."""
 
 from __future__ import annotations
 
@@ -551,116 +551,6 @@ def test_move_to_own_cell_or_without_destination_keeps_not_adjacent() -> None:
     assert events_of(live, MoveFailed)[0].reason == "not_adjacent"
 
 
-def test_zone_graph_move_into_an_occupied_zone_still_succeeds() -> None:
-    """Regression: occupancy is a GRID rule. A zone is an area, not a 5-ft
-    square, and ``_ZoneGraph`` does not model occupancy — a PC must still be
-    able to move into the zone an enemy holds in order to engage it."""
-    from dnd5e_srd_data import MemoryAssetLoader
-
-    from dnd5e_engine.lib_loader import set_lib_loader_for_tests
-    from dnd5e_engine.specs import SceneTopology, ZoneEdge
-
-    async def _run() -> Any:
-        set_lib_loader_for_tests(MemoryAssetLoader())
-        start = await start_combat(
-            session_id="c16-zone-move",
-            party=[_mover("zone:a")],
-            encounter=[_foe("mon:foe", "zone:b")],
-            scene_zones=SceneTopology(
-                zones=["zone:a", "zone:b"],
-                edges=[ZoneEdge(a="zone:a", b="zone:b", distance_ft=30)],
-            ),
-            grid_scene=None,
-            rng_seed=1,
-        )
-        live = _get_live(start.handle)
-        await submit_player_intent(
-            start.handle,
-            actor_id="char:hero",
-            intent=PlayerIntent(intent_type="move", target_zone_id="zone:b"),
-        )
-        return live
-
-    live = run_async(_run())
-    assert not events_of(live, MoveFailed)
-    assert live.actor_zone["char:hero"] == "zone:b"
-    moved = events_of(live, events_module.ActorMoved)
-    assert len(moved) == 1
-    assert moved[0].to_zone == "zone:b"
-    assert moved[0].distance_ft == 30
-
-
-def _zone_move(zones: list[str], edges: Any, start_zone: str, to: str) -> Any:
-    """Run one MOVE intent on the ZONE backend (no grid scene)."""
-    from dnd5e_srd_data import MemoryAssetLoader
-
-    from dnd5e_engine.specs import SceneTopology
-
-    async def _run() -> Any:
-        set_lib_loader_for_tests(MemoryAssetLoader())
-        start = await start_combat(
-            session_id="c16-zone-move-hops",
-            party=[_mover(start_zone, speed=120)],
-            encounter=[_foe("mon:foe", zones[-1])],
-            scene_zones=SceneTopology(zones=zones, edges=edges),
-            grid_scene=None,
-            rng_seed=1,
-        )
-        live = _get_live(start.handle)
-        await submit_player_intent(
-            start.handle,
-            actor_id="char:hero",
-            intent=PlayerIntent(intent_type="move", target_zone_id=to),
-        )
-        return live
-
-    return run_async(_run())
-
-
-def _chain_edges() -> Any:
-    from dnd5e_engine.specs import ZoneEdge
-
-    return [
-        ZoneEdge(a="zone:a", b="zone:b", distance_ft=5),
-        ZoneEdge(a="zone:b", b="zone:c", distance_ft=5),
-        ZoneEdge(a="zone:c", b="zone:d", distance_ft=5),
-    ]
-
-
-def test_zone_graph_move_to_a_non_adjacent_zone_is_still_rejected() -> None:
-    """Regression (C16 final review): multi-hop pathing is GRID-only. On the
-    zone graph a MOVE to a non-adjacent zone must keep the pre-C16 contract —
-    ``MoveFailed(reason="not_adjacent")``, nothing mutated — even though
-    ``_ZoneGraph.shortest_path`` could route there in two hops."""
-    zones = ["zone:a", "zone:b", "zone:c", "zone:d"]
-    live = _zone_move(zones, _chain_edges(), "zone:a", "zone:c")
-    failed = events_of(live, MoveFailed)
-    assert failed
-    assert failed[0].reason == "not_adjacent"
-    assert not events_of(live, events_module.ActorMoved)
-    assert live.actor_zone["char:hero"] == "zone:a"
-    hero = next(c for c in live.initiative if c.entity_id == "char:hero")
-    assert hero.movement_remaining == 120
-
-
-def test_zone_graph_adjacent_move_keeps_the_pre_c16_event_shape() -> None:
-    """The other half of the same contract: a single-hop zone move still
-    succeeds with exactly one ``ActorMoved`` carrying the edge distance."""
-    zones = ["zone:a", "zone:b", "zone:c", "zone:d"]
-    live = _zone_move(zones, _chain_edges(), "zone:a", "zone:b")
-    assert not events_of(live, MoveFailed)
-    moved = events_of(live, events_module.ActorMoved)
-    assert len(moved) == 1
-    assert (moved[0].from_zone, moved[0].to_zone, moved[0].distance_ft) == (
-        "zone:a",
-        "zone:b",
-        5,
-    )
-    assert live.actor_zone["char:hero"] == "zone:b"
-    hero = next(c for c in live.initiative if c.entity_id == "char:hero")
-    assert hero.movement_remaining == 115
-
-
 # ── Task 9: forced movement ──────────────────────────────────────────────
 
 
@@ -731,10 +621,11 @@ def test_thunderwave_push_skips_a_creature_that_saved():
 
 
 def test_forced_movement_ignores_the_concentration_save_of_a_target_that_saved():
-    """SRD 5.2 Thunderwave — "On a failed save … is pushed". Damage
-    application emits a transitional second ``SaveRolled(ability="con")``
-    beside every ``ConcentrationCheck``; a concentrating target that SAVED
-    against the spell and then dropped concentration must not be shoved."""
+    """SRD 5.2 Thunderwave — "On a failed save … is pushed". The rule keys on
+    the target's FIRST ``SaveRolled`` in the slice — the spell's own save —
+    because the damage it deals can trigger a later ``SaveRolled`` (Undead
+    Fortitude's Constitution save); a target that SAVED against the spell
+    must not be shoved because of it."""
     from dnd5e_engine.orchestrator import _apply_forced_movement_riders
 
     live = run_async(
@@ -779,34 +670,7 @@ def test_forced_movement_ignores_the_concentration_save_of_a_target_that_saved()
     assert pushes[0].to_zone == cell(3, 0)
 
 
-# ── Task 10: zone-graph deprecation ──────────────────────────────────────
-
-
-def test_start_combat_with_scene_zones_warns_deprecation():
-    from dnd5e_srd_data import MemoryAssetLoader
-
-    from dnd5e_engine.specs import SceneTopology, ZoneEdge
-
-    set_lib_loader_for_tests(MemoryAssetLoader())
-    zones = SceneTopology(zones=["z"], edges=[ZoneEdge(a="z", b="z", distance_ft=0)])
-    party = [
-        PartyMemberSpec(
-            entity_id="char:hero", name="Hero", initiative=20, hp_current=20, hp_max=20, zone_id="z"
-        )
-    ]
-    encounter = [
-        _foe("mon:foe", "z", initiative=1),
-    ]
-    with pytest.warns(DeprecationWarning, match=r"scene_zones.*removed in 0\.7\.0"):
-        run_async(
-            start_combat(
-                session_id="c16-zones",
-                party=party,
-                encounter=encounter,
-                scene_zones=zones,
-                rng_seed=1,
-            )
-        )
+# ── Task 10: grid-scene construction ─────────────────────────────────────
 
 
 def test_start_combat_with_grid_scene_does_not_warn():

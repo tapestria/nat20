@@ -24,7 +24,8 @@ from dnd5e_engine.orchestrator import (
     start_combat,
     submit_player_intent,
 )
-from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec, SceneTopology, ZoneEdge
+from dnd5e_engine.spatial import cell_id
+from dnd5e_engine.specs import EncounterMemberSpec, GridScene, PartyMemberSpec
 
 
 def _start(session_id: str, rng_seed: int = 1):
@@ -45,7 +46,7 @@ def _start(session_id: str, rng_seed: int = 1):
                     character_level=5,
                     spells_known=["counterspell", "shield"],
                     spell_slots={1: 2, 3: 1},
-                    zone_id="zone:a",
+                    zone_id=cell_id(0, 0),
                 ),
                 PartyMemberSpec(
                     entity_id="char:beta",
@@ -58,7 +59,7 @@ def _start(session_id: str, rng_seed: int = 1):
                     character_level=5,
                     spells_known=["counterspell", "fireball"],
                     spell_slots={1: 2, 3: 2},
-                    zone_id="zone:a",
+                    zone_id=cell_id(0, 1),
                 ),
             ],
             encounter=[
@@ -70,13 +71,11 @@ def _start(session_id: str, rng_seed: int = 1):
                     hp_current=50,
                     hp_max=50,
                     ac=13,
-                    zone_id="zone:b",
+                    # 30 ft from both PCs — outside the Fireball's 20-ft sphere.
+                    zone_id=cell_id(6, 0),
                 )
             ],
-            scene_zones=SceneTopology(
-                zones=["zone:a", "zone:b"],
-                edges=[ZoneEdge(a="zone:a", b="zone:b", distance_ft=30)],
-            ),
+            grid_scene=GridScene(width=7, height=2),
             rng_seed=rng_seed,
         )
         return start.handle

@@ -43,12 +43,13 @@ from dnd5e_engine.orchestrator import (
     start_combat,
     submit_player_intent,
 )
+from dnd5e_engine.spatial import cell_id
 from dnd5e_engine.specs import (
     EncounterMemberSpec,
+    GridScene,
     PartyMemberSpec,
-    SceneTopology,
-    ZoneEdge,
 )
+from tests.e2e.harness import adjacent_cells
 
 
 def _provenance() -> Provenance:
@@ -115,18 +116,12 @@ def _spell(
     )
 
 
-def _topology() -> SceneTopology:
-    # near (zone:start) <-5ft-> mid <-100ft-> far
-    return SceneTopology(
-        zones=["zone:start", "zone:mid", "zone:far"],
-        edges=[
-            ZoneEdge(a="zone:start", b="zone:mid", distance_ft=5),
-            ZoneEdge(a="zone:mid", b="zone:far", distance_ft=100),
-        ],
-    )
+def _topology() -> GridScene:
+    # start (0,0) <-5ft-> mid (1,0) <-100ft-> far (21,0), on row 0.
+    return GridScene(width=22, height=2)
 
 
-def _party(pc_zone: str = "zone:start", **pc_overrides) -> list[PartyMemberSpec]:
+def _party(pc_zone: str = cell_id(0, 0), **pc_overrides) -> list[PartyMemberSpec]:
     base = dict(
         entity_id="char:hero",
         name="Hero",
@@ -140,7 +135,7 @@ def _party(pc_zone: str = "zone:start", **pc_overrides) -> list[PartyMemberSpec]
     return [PartyMemberSpec(**base)]
 
 
-def _encounter(foe_zone: str = "zone:start") -> list[EncounterMemberSpec]:
+def _encounter(foe_zone: str = adjacent_cells(2, at=(0, 0))[1]) -> list[EncounterMemberSpec]:
     return [
         EncounterMemberSpec(
             entity_id="mon:foe",
@@ -164,15 +159,15 @@ def _reset_lib_loader():
 
 
 def test_melee_attack_in_reach_is_not_gated():
-    """Adjacent melee target (same zone) → no AttackFailed(out_of_range)."""
+    """Adjacent melee target (adjacent cell) → no AttackFailed(out_of_range)."""
     set_lib_loader_for_tests(MemoryAssetLoader(items=[_melee_weapon()]))
 
     async def _run():
         start = await start_combat(
             session_id="sess-melee-in",
             party=_party(),
-            encounter=_encounter(foe_zone="zone:start"),
-            scene_zones=_topology(),
+            encounter=_encounter(foe_zone=cell_id(0, 1)),
+            grid_scene=_topology(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -197,9 +192,9 @@ def test_melee_attack_out_of_reach_is_gated():
     async def _run():
         start = await start_combat(
             session_id="sess-melee-out",
-            party=_party(pc_zone="zone:start"),
-            encounter=_encounter(foe_zone="zone:far"),
-            scene_zones=_topology(),
+            party=_party(pc_zone=cell_id(0, 0)),
+            encounter=_encounter(foe_zone=cell_id(21, 0)),
+            grid_scene=_topology(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -224,9 +219,9 @@ def test_ranged_attack_in_normal_range_not_gated():
     async def _run():
         start = await start_combat(
             session_id="sess-ranged-in",
-            party=_party(pc_zone="zone:start"),
-            encounter=_encounter(foe_zone="zone:mid"),  # 5ft away
-            scene_zones=_topology(),
+            party=_party(pc_zone=cell_id(0, 0)),
+            encounter=_encounter(foe_zone=cell_id(1, 0)),  # 5ft away
+            grid_scene=_topology(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -251,9 +246,9 @@ def test_attack_unknown_weapon_falls_through_gate():
     async def _run():
         start = await start_combat(
             session_id="sess-unknown-weapon",
-            party=_party(pc_zone="zone:start"),
-            encounter=_encounter(foe_zone="zone:far"),
-            scene_zones=_topology(),
+            party=_party(pc_zone=cell_id(0, 0)),
+            encounter=_encounter(foe_zone=cell_id(21, 0)),
+            grid_scene=_topology(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -285,7 +280,7 @@ def test_spell_slot_decrements_on_cast():
             session_id="sess-slot-dec",
             party=_party(spell_slots={1: 2}),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -314,7 +309,7 @@ def test_spell_no_slot_emits_cast_failed():
             session_id="sess-no-slot",
             party=_party(spell_slots={1: 0}),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -346,7 +341,7 @@ def test_cantrip_with_slot_request_is_rejected():
             session_id="sess-cantrip",
             party=_party(spell_slots={1: 2}),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -390,7 +385,7 @@ def test_bonus_action_spell_keeps_turn_live():
             session_id="sess-bonus",
             party=_party(spell_slots={1: 2}),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -427,7 +422,7 @@ def test_action_spell_ends_turn():
             session_id="sess-action",
             party=_party(spell_slots={1: 2}),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -457,9 +452,9 @@ def test_spell_out_of_range_emits_cast_failed():
     async def _run():
         start = await start_combat(
             session_id="sess-spell-oor",
-            party=_party(pc_zone="zone:start", spell_slots={1: 2}),
-            encounter=_encounter(foe_zone="zone:far"),  # 105ft away
-            scene_zones=_topology(),
+            party=_party(pc_zone=cell_id(0, 0), spell_slots={1: 2}),
+            encounter=_encounter(foe_zone=cell_id(21, 0)),  # 105ft away
+            grid_scene=_topology(),
             rng_seed=1,
         )
         live = _get_live(start.handle)

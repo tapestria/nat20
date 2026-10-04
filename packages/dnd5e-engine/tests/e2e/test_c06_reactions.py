@@ -52,8 +52,8 @@ from dnd5e_engine.orchestrator import (
     start_combat,
     submit_player_intent,
 )
-from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec, SceneTopology, ZoneEdge
-from tests.e2e.harness import cell, events_of, grid_scene, run_async
+from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
+from tests.e2e.harness import adjacent_cells, cell, events_of, grid_scene, run_async
 
 
 def test_c06_s01_prearmed_counterspell_forces_con_save_two_seeds():
@@ -105,7 +105,7 @@ def test_c06_s01_prearmed_counterspell_forces_con_save_two_seeds():
                 character_level=5,
                 spells_known=["counterspell"],
                 spell_slots={3: 1},
-                zone_id="zone:a",
+                zone_id=adjacent_cells(2)[0],
             ),
             PartyMemberSpec(
                 entity_id="char:enemy_caster",
@@ -116,7 +116,7 @@ def test_c06_s01_prearmed_counterspell_forces_con_save_two_seeds():
                 constitution=10,
                 spells_known=["fireball"],
                 spell_slots={3: 1},
-                zone_id="zone:a",
+                zone_id=adjacent_cells(2)[1],
             ),
         ]
 
@@ -130,7 +130,8 @@ def test_c06_s01_prearmed_counterspell_forces_con_save_two_seeds():
                 hp_current=50,
                 hp_max=50,
                 ac=13,
-                zone_id="zone:b",
+                # 30 ft from the party — outside the 20-ft Fireball sphere.
+                zone_id=cell(6, 0),
             )
         ]
 
@@ -139,10 +140,7 @@ def test_c06_s01_prearmed_counterspell_forces_con_save_two_seeds():
             session_id=f"e2e-c06-s01-seed{rng_seed}",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=SceneTopology(
-                zones=["zone:a", "zone:b"],
-                edges=[ZoneEdge(a="zone:a", b="zone:b", distance_ft=30)],
-            ),
+            grid_scene=grid_scene(),
             rng_seed=rng_seed,
         )
         live = _get_live(start.handle)
@@ -252,7 +250,7 @@ def test_c06_s02_countered_cast_preserves_slot_and_wastes_action():
                     character_level=5,
                     spells_known=["counterspell"],
                     spell_slots={3: 1},
-                    zone_id="zone:a",
+                    zone_id=adjacent_cells(2)[0],
                 ),
                 PartyMemberSpec(
                     entity_id="char:enemy_caster",
@@ -263,7 +261,7 @@ def test_c06_s02_countered_cast_preserves_slot_and_wastes_action():
                     constitution=10,
                     spells_known=["fireball"],
                     spell_slots={3: 1},
-                    zone_id="zone:a",
+                    zone_id=adjacent_cells(2)[1],
                 ),
             ],
             encounter=[
@@ -275,13 +273,11 @@ def test_c06_s02_countered_cast_preserves_slot_and_wastes_action():
                     hp_current=50,
                     hp_max=50,
                     ac=13,
-                    zone_id="zone:b",
+                    # 30 ft from the party — outside the 20-ft Fireball sphere.
+                    zone_id=cell(6, 0),
                 )
             ],
-            scene_zones=SceneTopology(
-                zones=["zone:a", "zone:b"],
-                edges=[ZoneEdge(a="zone:a", b="zone:b", distance_ft=30)],
-            ),
+            grid_scene=grid_scene(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -375,7 +371,7 @@ def test_c06_s03_prearmed_shield_raises_ac_by_5_expires_next_turn():
                 class_slug="wizard",
                 spells_known=["shield"],
                 spell_slots={1: 2},
-                zone_id="zone:a",
+                zone_id=adjacent_cells(2)[0],
             )
         ]
 
@@ -390,7 +386,7 @@ def test_c06_s03_prearmed_shield_raises_ac_by_5_expires_next_turn():
                 hp_max=7,
                 ac=13,
                 monster_template_slug="goblin-warrior",
-                zone_id="zone:a",
+                zone_id=adjacent_cells(2)[1],
             )
         ]
 
@@ -399,7 +395,7 @@ def test_c06_s03_prearmed_shield_raises_ac_by_5_expires_next_turn():
             session_id="e2e-c06-s03",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=SceneTopology(zones=["zone:a"], edges=[]),
+            grid_scene=grid_scene(),
             rng_seed=7,
         )
         live = _get_live(start.handle)
@@ -490,7 +486,7 @@ def test_c06_s04_shield_vs_magic_missile_zero_force_damage():
                 class_slug="wizard",
                 spells_known=["shield"],
                 spell_slots={1: 2},
-                zone_id="zone:a",
+                zone_id=adjacent_cells(2)[0],
             ),
             PartyMemberSpec(
                 entity_id="char:caster",
@@ -500,7 +496,7 @@ def test_c06_s04_shield_vs_magic_missile_zero_force_damage():
                 hp_max=20,
                 spells_known=["magic-missile"],
                 spell_slots={1: 2},
-                zone_id="zone:a",
+                zone_id=adjacent_cells(2)[1],
             ),
         ]
 
@@ -514,7 +510,9 @@ def test_c06_s04_shield_vs_magic_missile_zero_force_damage():
                 hp_current=200,
                 hp_max=200,
                 ac=99,
-                zone_id="zone:b",
+                # Never targeted this turn: parked far from the party, with
+                # no bearing on the Shield-vs-Magic-Missile interaction.
+                zone_id=cell(9, 9),
             )
         ]
 
@@ -523,7 +521,7 @@ def test_c06_s04_shield_vs_magic_missile_zero_force_damage():
             session_id="e2e-c06-s04",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=SceneTopology(zones=["zone:a", "zone:b"], edges=[]),
+            grid_scene=grid_scene(),
             rng_seed=3,
         )
         live = _get_live(start.handle)

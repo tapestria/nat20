@@ -69,9 +69,8 @@ from dnd5e_engine.specs import (
     EncounterMemberSpec,
     GridScene,
     PartyMemberSpec,
-    SceneTopology,
-    ZoneEdge,
 )
+from tests.e2e.harness import adjacent_cells
 
 
 def _provenance() -> Provenance:
@@ -222,30 +221,19 @@ def _monster(slug: str, actions: list[MonsterAction]) -> Monster:
     )
 
 
-def _topology() -> SceneTopology:
-    # near (zone:start) <-5ft-> mid <-100ft-> far
-    return SceneTopology(
-        zones=["zone:start", "zone:mid", "zone:far"],
-        edges=[
-            ZoneEdge(a="zone:start", b="zone:mid", distance_ft=5),
-            ZoneEdge(a="zone:mid", b="zone:far", distance_ft=100),
-        ],
-    )
+def _topology() -> GridScene:
+    # start (0,0) <-5ft-> mid (1,0) <-100ft-> far (21,0), on row 0.
+    return GridScene(width=22, height=2)
 
 
-def _close_topology() -> SceneTopology:
-    # start <-10ft-> mid <-100ft-> far. A 5ft-reach melee monster at ``mid``
-    # is out of reach (10 > 5) and must walk the 10ft edge to ``start``.
-    return SceneTopology(
-        zones=["zone:start", "zone:mid", "zone:far"],
-        edges=[
-            ZoneEdge(a="zone:start", b="zone:mid", distance_ft=10),
-            ZoneEdge(a="zone:mid", b="zone:far", distance_ft=100),
-        ],
-    )
+def _close_topology() -> GridScene:
+    # start (0,0) <-10ft-> mid (2,0) <-100ft-> far (22,0), on row 0. A
+    # 5ft-reach melee monster at mid is out of reach (10 > 5) and must walk
+    # onto the first cell within its reach of start.
+    return GridScene(width=23, height=2)
 
 
-def _party(pc_zone: str = "zone:start") -> list[PartyMemberSpec]:
+def _party(pc_zone: str = cell_id(0, 0)) -> list[PartyMemberSpec]:
     return [
         PartyMemberSpec(
             entity_id="char:hero",
@@ -263,7 +251,7 @@ def _party(pc_zone: str = "zone:start") -> list[PartyMemberSpec]:
 def _encounter(
     slug: str,
     *,
-    foe_zone: str = "zone:start",
+    foe_zone: str = adjacent_cells(2, at=(0, 0))[1],
     base_speed: int = 30,
     hp_current: int = 50,
     hp_max: int = 50,
@@ -305,8 +293,8 @@ def test_owlbear_multiattack_emits_two_attacks_at_pc():
         start = await start_combat(
             session_id="sess-owlbear-multi",
             party=_party(),
-            encounter=_encounter("owlbear", foe_zone="zone:start"),
-            scene_zones=_topology(),
+            encounter=_encounter("owlbear", foe_zone=cell_id(0, 1)),
+            grid_scene=_topology(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -336,9 +324,9 @@ def test_out_of_range_melee_monster_moves_into_reach():
     async def _run():
         start = await start_combat(
             session_id="sess-melee-close",
-            party=_party(pc_zone="zone:start"),
-            encounter=_encounter("biter", foe_zone="zone:mid"),  # 10ft from the PC
-            scene_zones=_close_topology(),
+            party=_party(pc_zone=cell_id(0, 0)),
+            encounter=_encounter("biter", foe_zone=cell_id(2, 0)),  # 10ft from the PC
+            grid_scene=_close_topology(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -348,9 +336,10 @@ def test_out_of_range_melee_monster_moves_into_reach():
     live = asyncio.run(_run())
     moves = [e for e in live.event_log if isinstance(e, ActorMoved) and e.actor_id == "mon:foe"]
     attacks = [e for e in live.event_log if isinstance(e, AttackRolled)]
-    # It closed the 5ft gap and then attacked from reach.
+    # It closed the gap and attacked from reach: it stops on the first cell
+    # within its 5-ft reach of the PC on 0,0.
     assert moves, "monster should have moved into reach"
-    assert live.actor_zone["mon:foe"] == "zone:start"
+    assert live.actor_zone["mon:foe"] == cell_id(1, 0)
     assert attacks
     assert all(e.target_id == "char:hero" for e in attacks)
 
@@ -368,9 +357,9 @@ def test_out_of_range_melee_monster_skips_when_cannot_reach():
     async def _run():
         start = await start_combat(
             session_id="sess-melee-skip",
-            party=_party(pc_zone="zone:start"),
-            encounter=_encounter("crawler", foe_zone="zone:far", base_speed=5),
-            scene_zones=_topology(),
+            party=_party(pc_zone=cell_id(0, 0)),
+            encounter=_encounter("crawler", foe_zone=cell_id(21, 0), base_speed=5),
+            grid_scene=_topology(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -395,9 +384,9 @@ def test_ranged_monster_in_band_attacks_without_moving():
     async def _run():
         start = await start_combat(
             session_id="sess-ranged-band",
-            party=_party(pc_zone="zone:start"),
-            encounter=_encounter("archer", foe_zone="zone:mid"),  # 5ft away
-            scene_zones=_topology(),
+            party=_party(pc_zone=cell_id(0, 0)),
+            encounter=_encounter("archer", foe_zone=cell_id(1, 0)),  # 5ft away
+            grid_scene=_topology(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -427,12 +416,13 @@ def test_self_centered_breath_weapon_does_not_force_close_resolves_from_position
 
     async def _run():
         # PC is 105ft away (5 + 100). A melee-reach reading would force a
-        # multi-zone close; the self-centered breath must NOT trigger that.
+        # long walk across the grid; the self-centered breath must NOT
+        # trigger that.
         start = await start_combat(
             session_id="sess-breath-self",
-            party=_party(pc_zone="zone:far"),
-            encounter=_encounter("breather", foe_zone="zone:start"),
-            scene_zones=_topology(),
+            party=_party(pc_zone=cell_id(21, 0)),
+            encounter=_encounter("breather", foe_zone=cell_id(0, 0)),
+            grid_scene=_topology(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -443,7 +433,7 @@ def test_self_centered_breath_weapon_does_not_force_close_resolves_from_position
     moves = [e for e in live.event_log if isinstance(e, ActorMoved) and e.actor_id == "mon:foe"]
     saves = [e for e in live.event_log if isinstance(e, SaveRolled)]
     assert not moves, "self-centered breath weapon must not force the monster to close"
-    assert live.actor_zone["mon:foe"] == "zone:start", "monster should not have moved"
+    assert live.actor_zone["mon:foe"] == cell_id(0, 0), "monster should not have moved"
     assert saves, "the breath weapon save should have resolved from position"
 
 
@@ -465,9 +455,9 @@ def test_ranged_save_monster_out_of_range_closes_distance():
     async def _run():
         start = await start_combat(
             session_id="sess-web-gate",
-            party=_party(pc_zone="zone:far"),  # 105ft from zone:start
-            encounter=_encounter("webber", foe_zone="zone:start"),
-            scene_zones=_topology(),
+            party=_party(pc_zone=cell_id(21, 0)),  # 105ft from the monster's start cell
+            encounter=_encounter("webber", foe_zone=cell_id(0, 0)),
+            grid_scene=_topology(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -477,7 +467,7 @@ def test_ranged_save_monster_out_of_range_closes_distance():
     live = asyncio.run(_run())
     moves = [e for e in live.event_log if isinstance(e, ActorMoved) and e.actor_id == "mon:foe"]
     assert moves, "out-of-range ranged-save monster must close the distance (gate applies)"
-    assert live.actor_zone["mon:foe"] != "zone:start", "monster should have left its start zone"
+    assert live.actor_zone["mon:foe"] != cell_id(0, 0), "monster should have left its start zone"
 
 
 def test_wounded_aggressive_monster_below_flee_threshold_passes():
