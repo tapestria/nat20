@@ -315,8 +315,8 @@ def test_out_of_range_melee_monster_moves_into_reach():
 
     Pre-cutover this used the loader wrapper's ``range_ft``; post-cutover the
     reach is read from the selected ``AttackActivity.range`` (melee ⇒ falls
-    back to ``Combatant.melee_reach_ft`` = 5). Behavior is unchanged: the
-    monster spends 10ft of movement to close, then swings.
+    back to ``Combatant.melee_reach_ft`` = 5). On the grid the monster closes
+    5 ft (one cell) into reach, stopping short of the PC's cell, then swings.
     """
     monster = _monster("biter", [_melee_attack("Bite")])
     set_lib_loader_for_tests(MemoryAssetLoader(monsters=[monster]))
