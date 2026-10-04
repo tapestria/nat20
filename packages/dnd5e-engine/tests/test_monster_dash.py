@@ -8,10 +8,9 @@ one un-doubled move (but within a doubled Dash move) simply gave up and
 recorded ``IntentSubmitted(intent_type="pass")`` with zero movement.
 
 Focused unit tests on the two new pure decision helpers
-(``_path_total_distance`` / ``_monster_dash_movement_budget``) — backend-
-agnostic, per the ``SpatialTopology`` Protocol, so exercised here against
-the simpler ``GridTopology`` backend. The full start_combat ->
-advance_monster_turn path (grid backend) is covered end to end by
+(``_path_total_distance`` / ``_monster_dash_movement_budget``), exercised
+against a bare ``GridTopology``. The full start_combat ->
+advance_monster_turn path is covered end to end by
 ``tests/e2e/test_c02_small_mechanics.py::test_c02_s04_...``.
 """
 

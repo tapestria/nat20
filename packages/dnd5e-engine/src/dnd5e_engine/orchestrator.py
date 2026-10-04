@@ -5873,7 +5873,8 @@ def _typed_spell_broadcasts(activities: Sequence[Any]) -> bool:
 # SRD 5.2 §Areas of Effect (Sphere/Cylinder include it; Cone/Cube/Line and an
 # Emanation — Foundry ``radius`` — do not "unless its creator decides
 # otherwise", and the engine does not). ``wall`` (Wall of Fire's line of
-# panels) has no single-origin geometry and falls back to the legacy list.
+# panels) has no single-origin geometry and falls back to anchor-cell
+# targeting (``_expand_aoe_target_list``).
 _AoeShape = Literal["sphere", "cone", "line", "cube", "cylinder"]
 _AOE_TEMPLATE_TYPES: dict[str, tuple[_AoeShape, Literal["target", "caster"], bool]] = {
     "sphere": ("sphere", "target", True),

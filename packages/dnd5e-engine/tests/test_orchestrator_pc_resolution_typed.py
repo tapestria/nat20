@@ -432,7 +432,7 @@ def test_fireball_expands_to_every_creature_in_its_sphere():
     foes), not just the named target."""
     live = _run_aoe_cast("fireball")
     saved = {e.target_id for e in _events_of(live, SaveRolled)}
-    # The sphere catches every creature in its 20-ft-radius sphere (SRD:
+    # It catches every creature in its 20-ft-radius sphere (SRD:
     # allies and the caster too) — the load-bearing contract is that the
     # NON-named foe is swept in, i.e. selection went beyond the single named
     # target.

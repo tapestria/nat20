@@ -620,7 +620,7 @@ def test_thunderwave_push_skips_a_creature_that_saved():
     assert live.actor_zone["mon:foe"] == cell(1, 0)
 
 
-def test_forced_movement_ignores_the_concentration_save_of_a_target_that_saved():
+def test_forced_movement_ignores_a_later_save_of_a_target_that_saved():
     """SRD 5.2 Thunderwave — "On a failed save … is pushed". The rule keys on
     the target's FIRST ``SaveRolled`` in the slice — the spell's own save —
     because the damage it deals can trigger a later ``SaveRolled`` (Undead
@@ -652,7 +652,7 @@ def test_forced_movement_ignores_the_concentration_save_of_a_target_that_saved()
             sources=[],
         )
 
-    # Spell save SUCCEEDED, then the concentration save FAILED.
+    # Spell save SUCCEEDED, then a later save (Undead Fortitude's) FAILED.
     live.event_log.append(_save(True))
     live.event_log.append(_save(False))
     intent = PlayerIntent(intent_type="cast_spell", spell_id="thunderwave", target_id="mon:foe")

@@ -311,7 +311,7 @@ def test_owlbear_multiattack_emits_two_attacks_at_pc():
 
 
 def test_out_of_range_melee_monster_moves_into_reach():
-    """Melee monster (reach=5ft) a 10ft edge away → it MOVEs into reach, then attacks.
+    """Melee monster (reach=5ft) 10 ft (two cells) away → it MOVEs into reach, then attacks.
 
     Pre-cutover this used the loader wrapper's ``range_ft``; post-cutover the
     reach is read from the selected ``AttackActivity.range`` (melee ⇒ falls
@@ -347,8 +347,8 @@ def test_out_of_range_melee_monster_moves_into_reach():
 def test_out_of_range_melee_monster_skips_when_cannot_reach():
     """Melee monster too slow to close the full distance → no attack this turn.
 
-    The monster has only 5ft of speed but the target is 105ft away (5 + 100).
-    It walks the first 5ft edge, still can't reach, and the attack is skipped —
+    The monster has only 5ft of speed but the target is 105ft (21 cells) away.
+    It walks one 5-ft cell, still can't reach, and the attack is skipped —
     the same move-then-skip the pre-cutover ``range_ft`` gate produced.
     """
     monster = _monster("crawler", [_melee_attack("Claw")])
@@ -407,7 +407,7 @@ def test_self_centered_breath_weapon_does_not_force_close_resolves_from_position
     The breath weapon is a ``SaveActivity`` with ``range.units='self'`` and a
     populated ``target.template`` (90ft line). Pre-cutover the loader wrapper
     carried ``range_ft: 0``, so the monster never moved — the save resolved
-    from its current zone. Post-fix ``_monster_attack_range_ft`` returns
+    from its current cell. Post-fix ``_monster_attack_range_ft`` returns
     ``None`` for self-centered / template / non-AttackActivity offensive
     activities, so the gate is skipped: no ``ActorMoved`` and the save fires.
     """
@@ -415,7 +415,7 @@ def test_self_centered_breath_weapon_does_not_force_close_resolves_from_position
     set_lib_loader_for_tests(MemoryAssetLoader(monsters=[dragon]))
 
     async def _run():
-        # PC is 105ft away (5 + 100). A melee-reach reading would force a
+        # PC is 105ft (21 cells) away. A melee-reach reading would force a
         # long walk across the grid; the self-centered breath must NOT
         # trigger that.
         start = await start_combat(
@@ -467,7 +467,7 @@ def test_ranged_save_monster_out_of_range_closes_distance():
     live = asyncio.run(_run())
     moves = [e for e in live.event_log if isinstance(e, ActorMoved) and e.actor_id == "mon:foe"]
     assert moves, "out-of-range ranged-save monster must close the distance (gate applies)"
-    assert live.actor_zone["mon:foe"] != cell_id(0, 0), "monster should have left its start zone"
+    assert live.actor_zone["mon:foe"] != cell_id(0, 0), "monster should have left its start cell"
 
 
 def test_wounded_aggressive_monster_below_flee_threshold_passes():

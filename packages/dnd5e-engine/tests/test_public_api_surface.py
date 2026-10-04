@@ -110,7 +110,7 @@ _ZONE_GRAPH_NAMES = {"SceneTopology", "ZoneEdge", "ZoneGraph"}
 
 
 def test_no_public_module_exports_a_zone_graph_name():
-    modules = [*PUBLIC_MODULES, "dnd5e_engine.orchestrator"]
+    modules = ["dnd5e_engine", *PUBLIC_MODULES, "dnd5e_engine.orchestrator"]
     leaked = {
         m: sorted(set(importlib.import_module(m).__all__) & _ZONE_GRAPH_NAMES) for m in modules
     }
