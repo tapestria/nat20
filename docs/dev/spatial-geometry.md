@@ -89,7 +89,7 @@ relitigated): `radius_cells = size_ft // cell_size_ft`.
 - **`"sphere"`** (a pinned scenario, e2e-pinned): every cell with
   `max(|dx|, |dy|) <= radius_cells` from the origin, origin included. 20 ft on
   a 5 ft grid → `radius_cells=4` → the full `9x9 = 81`-cell block.
-- **`"line"`** (unit-tested only — no e2e entry): a `direction` unit vector
+- **`"line"`**: a `direction` unit vector
   (any of the 8 grid directions) is required; the cells are the
   `radius_cells + 1` cells stepping from the origin along that direction
   (Bresenham-exact for cardinal/diagonal directions), origin included. Models
@@ -105,7 +105,7 @@ relitigated): `radius_cells = size_ft // cell_size_ft`.
   geometry: its footprint is exactly its `"sphere"` disc of the same radius,
   origin included. This is a deliberate collapse, not an omission; modelling it
   properly needs elevation, which is a separate recorded gap.
-- **`"cone"`** (unit-tested only — no e2e entry): a `direction` unit vector is
+- **`"cone"`**: a `direction` unit vector is
   required. A cell at grid offset `(dx, dy)` is in the cone iff its
   projection onto `direction` (`forward = dx*dir.x + dy*dir.y`) is within
   `[0, radius_cells]` AND its perpendicular offset (`lateral = |dx*dir.y -

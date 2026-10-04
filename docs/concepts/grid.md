@@ -105,8 +105,10 @@ returns the cell set for a `"sphere"`, `"cone"`, `"line"`, `"cube"` or
 Every cast, item use and feature use whose save, damage or heal activity
 carries a measured template resolves as an area: a Fireball or a Sleep, a
 Dragonborn's Breath Weapon, the Pipes of Haunting. (An attack roll is never an
-area: it targets one creature.) The engine places the template at its SRD 5.2
-point of origin — the named target's cell for a Sphere or Cylinder, else the
+area: it targets one creature.) Nor is a `use_item` that resolves several of
+an item's activities at once because no `activity_id` names one and none is
+charged. The engine places the template at its SRD 5.2 point of origin — the
+named target's cell for a Sphere or Cylinder, else the
 actor's; the actor's own cell for an Emanation, Cone, Cube or Line, whose
 origin is not part of the area — expands it, and keeps the cells with line of
 effect from that origin ("To block a line, an obstruction must provide Total
