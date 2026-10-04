@@ -187,16 +187,31 @@ def test_c26_s02_the_ai_breathes_away_from_its_ally() -> None:
 
 @_MONSTER_AIMING
 def test_c26_s03_no_enemy_in_reach_means_no_breath() -> None:
-    dragon = _foe("mon:dragon", cell(0, 5), "adult-red-dragon", initiative=20, hp_current=256)
-    party = [_sturdy("char:a", cell(25, 5), 10), _sturdy("char:b", cell(25, 6), 9)]
+    # The young red dragon's Fire Breath is a 30-foot Cone; it has no spell to
+    # fall back on. It aims from where it stands as its turn starts: 75 ft away,
+    # then 45 ft away after its first walk, so it breathes on neither turn.
+    dragon = _foe("mon:dragon", cell(0, 5), "young-red-dragon", initiative=20, hp_current=178)
+    party = [_sturdy("char:a", cell(15, 5), 10), _sturdy("char:b", cell(15, 6), 9)]
     handle, live = _start(party, [dragon], session="e2e-c26-s03", grid=grid_scene(30, 12))
     _monster_turn(handle)
     assert events_of(live, SaveRolled) == []
     assert [e for e in events_of(live, ActorMoved) if e.actor_id == "mon:dragon"]
     _act(handle, "char:a", intent_type="pass")
     _act(handle, "char:b", intent_type="pass")
+    turn_two = len(live.event_log)
     _monster_turn(handle)
     assert [e for e in events_of(live, RechargeRolled) if e.action_slug == "fire-breath"] == []
+    later = live.event_log[turn_two:]
+    assert [e for e in later if isinstance(e, (SaveRolled, DamageApplied))] == []
+    assert [e for e in later if isinstance(e, ActorMoved) and e.actor_id == "mon:dragon"]
+    # In reach at last, the dragon breathes on its third turn.
+    _act(handle, "char:a", intent_type="pass")
+    _act(handle, "char:b", intent_type="pass")
+    turn_three = len(live.event_log)
+    _monster_turn(handle)
+    third = live.event_log[turn_three:]
+    assert {e.target_id for e in third if isinstance(e, SaveRolled)} == {"char:a", "char:b"}
+    assert [e.source_id for e in third if e.type == "area_targeted"] == ["fire-breath"]
 
 
 @_MONSTER_AIMING
