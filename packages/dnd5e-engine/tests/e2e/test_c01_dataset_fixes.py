@@ -8,8 +8,8 @@ from __future__ import annotations
 from dnd5e_engine import PlayerIntent
 from dnd5e_engine.events import DamageApplied
 from dnd5e_engine.orchestrator import _get_live, start_combat, submit_player_intent
-from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec, SceneTopology, ZoneEdge
-from tests.e2e.harness import events_of, run_async
+from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
+from tests.e2e.harness import cell, events_of, grid_scene, run_async
 
 
 def test_c01_s01_call_lightning_repeat_bolt_applies_lightning_damage(caplog):
@@ -37,7 +37,7 @@ def test_c01_s01_call_lightning_repeat_bolt_applies_lightning_damage(caplog):
                     spells_known=["call-lightning"],
                     spell_slots={3: 1},
                     character_level=5,
-                    zone_id="zone:druid",
+                    zone_id=cell(0, 0),
                 )
             ],
             encounter=[
@@ -49,13 +49,12 @@ def test_c01_s01_call_lightning_repeat_bolt_applies_lightning_damage(caplog):
                     ac=1,
                     hp_current=200,
                     hp_max=200,
-                    zone_id="zone:foe",
+                    zone_id=cell(13, 0),
                 )
             ],
-            scene_zones=SceneTopology(
-                zones=["zone:druid", "zone:foe"],
-                edges=[ZoneEdge(a="zone:druid", b="zone:foe", distance_ft=30)],
-            ),
+            # 65 ft apart, not the mechanical 30 ft: the 60-ft area around the
+            # foe must not reach the caster.
+            grid_scene=grid_scene(width=14),
             rng_seed=3,
         )
         live = _get_live(start.handle)
@@ -107,7 +106,7 @@ def test_c01_s02_freezing_sphere_damage_parts_apply_cold_damage(caplog):
                     spells_known=["freezing-sphere"],
                     spell_slots={6: 1},
                     character_level=11,
-                    zone_id="zone:wiz",
+                    zone_id=cell(0, 0),
                 )
             ],
             encounter=[
@@ -119,13 +118,12 @@ def test_c01_s02_freezing_sphere_damage_parts_apply_cold_damage(caplog):
                     ac=1,
                     hp_current=200,
                     hp_max=200,
-                    zone_id="zone:foe",
+                    zone_id=cell(13, 0),
                 )
             ],
-            scene_zones=SceneTopology(
-                zones=["zone:wiz", "zone:foe"],
-                edges=[ZoneEdge(a="zone:wiz", b="zone:foe", distance_ft=30)],
-            ),
+            # 65 ft apart, not the mechanical 30 ft: the 60-ft area around the
+            # foe must not reach the caster.
+            grid_scene=grid_scene(width=14),
             rng_seed=3,
         )
         live = _get_live(start.handle)

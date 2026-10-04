@@ -43,7 +43,7 @@ from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
 from dnd5e_engine.types.combat import Combatant
 from dnd5e_engine.types.conditions import ActiveCondition
 from dnd5e_engine.types.effects import ActiveEffect, ActiveEffectChange, ActiveEffectDuration
-from tests.e2e.harness import run_async, single_zone
+from tests.e2e.harness import adjacent_cells, grid_scene, run_async
 
 ABILITIES = {"str": 10, "dex": 10, "con": 10, "int": 10, "wis": 10, "cha": 10}
 
@@ -382,7 +382,7 @@ def _f1d_party(**kw: Any) -> list[PartyMemberSpec]:
         "initiative": 10,
         "hp_current": 20,
         "hp_max": 20,
-        "zone_id": "zone:start",
+        "zone_id": adjacent_cells(2)[0],
     }
     base.update(kw)
     return [PartyMemberSpec(**base)]
@@ -397,7 +397,7 @@ def _f1d_foe() -> list[EncounterMemberSpec]:
             initiative=1,
             hp_current=7,
             hp_max=7,
-            zone_id="zone:start",
+            zone_id=adjacent_cells(2)[1],
         )
     ]
 
@@ -408,7 +408,7 @@ def _f1d_payload(*, party: list[PartyMemberSpec], effects: tuple[Any, ...] = ())
             session_id="f1d-check-mods",
             party=party,
             encounter=_f1d_foe(),
-            scene_zones=single_zone(),
+            grid_scene=grid_scene(),
             rng_seed=1,
             active_effects=effects,
         )
@@ -530,7 +530,7 @@ def test_condition_disadvantage_merges_with_the_projected_modifiers(
             session_id="f1d-check-dis",
             party=_f1d_party(wisdom=14),
             encounter=_f1d_foe(),
-            scene_zones=single_zone(),
+            grid_scene=grid_scene(),
             rng_seed=1,
         )
     )
@@ -714,7 +714,7 @@ def test_a_poisoned_pc_draws_two_dice_through_the_live_orchestrator() -> None:
             session_id="f2c-check-poisoned",
             party=_f1d_party(wisdom=14, character_level=5),
             encounter=_f1d_foe(),
-            scene_zones=single_zone(),
+            grid_scene=grid_scene(),
             rng_seed=1,
         )
     )

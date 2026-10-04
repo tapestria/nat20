@@ -11,9 +11,9 @@ from dnd5e_engine import PlayerIntent
 from dnd5e_engine.activities.scale import build_scale_values, resolve_scale_value
 from dnd5e_engine.events import DamageApplied, SaveRolled
 from dnd5e_engine.orchestrator import _get_live, start_combat, submit_player_intent
-from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec, SceneTopology
+from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
 from dnd5e_engine.types.effects import ActiveEffect, ActiveEffectChange
-from tests.e2e.harness import events_of, run_async
+from tests.e2e.harness import adjacent_cells, events_of, grid_scene, run_async
 
 
 def test_c04_s01_cleric_spell_save_dc_uses_real_wis_formula():
@@ -52,7 +52,7 @@ def test_c04_s01_cleric_spell_save_dc_uses_real_wis_formula():
                     attack_bonus=5,
                     wisdom=wisdom,
                     spells_known=["sacred-flame"],
-                    zone_id="zone:a",
+                    zone_id=adjacent_cells(2)[0],
                 )
             ],
             encounter=[
@@ -65,10 +65,10 @@ def test_c04_s01_cleric_spell_save_dc_uses_real_wis_formula():
                     ac=15,
                     hp_current=50,
                     hp_max=50,
-                    zone_id="zone:a",
+                    zone_id=adjacent_cells(2)[1],
                 )
             ],
-            scene_zones=SceneTopology(zones=["zone:a"], edges=[]),
+            grid_scene=grid_scene(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -163,7 +163,7 @@ def test_c04_s03_rwak_damage_bucket_reaches_ranged_swing_damage():
                 hp_max=20,
                 attack_bonus=5,
                 dexterity=18,
-                zone_id="zone:a",
+                zone_id=adjacent_cells(2)[0],
             )
         ]
 
@@ -177,7 +177,7 @@ def test_c04_s03_rwak_damage_bucket_reaches_ranged_swing_damage():
                 ac=1,
                 hp_current=500,
                 hp_max=500,
-                zone_id="zone:a",
+                zone_id=adjacent_cells(2)[1],
             )
         ]
 
@@ -186,7 +186,7 @@ def test_c04_s03_rwak_damage_bucket_reaches_ranged_swing_damage():
             session_id="e2e-c04-s03",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=SceneTopology(zones=["zone:a"], edges=[]),
+            grid_scene=grid_scene(),
             rng_seed=11,
             active_effects=active_effects,
         )

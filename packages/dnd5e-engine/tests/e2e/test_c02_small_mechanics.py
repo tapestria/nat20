@@ -14,9 +14,9 @@ from dnd5e_engine.orchestrator import (
     start_combat,
     submit_player_intent,
 )
-from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec, SceneTopology, ZoneEdge
+from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
 from dnd5e_engine.types.effects import ActiveEffect, ActiveEffectChange
-from tests.e2e.harness import events_of, run_async
+from tests.e2e.harness import adjacent_cells, cell, events_of, grid_scene, run_async
 
 
 def test_c02_s01_weapon_tagged_damage_bonus_reaches_swing_damage():
@@ -46,7 +46,7 @@ def test_c02_s01_weapon_tagged_damage_bonus_reaches_swing_damage():
                 hp_max=20,
                 attack_bonus=5,
                 strength=16,
-                zone_id="zone:a",
+                zone_id=adjacent_cells(2)[0],
             )
         ]
 
@@ -60,7 +60,7 @@ def test_c02_s01_weapon_tagged_damage_bonus_reaches_swing_damage():
                 ac=1,
                 hp_current=500,
                 hp_max=500,
-                zone_id="zone:a",
+                zone_id=adjacent_cells(2)[1],
             )
         ]
 
@@ -69,7 +69,7 @@ def test_c02_s01_weapon_tagged_damage_bonus_reaches_swing_damage():
             session_id="e2e-c02-s01",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=SceneTopology(zones=["zone:a"], edges=[]),
+            grid_scene=grid_scene(),
             rng_seed=11,
             active_effects=active_effects,
         )
@@ -167,7 +167,7 @@ def test_c02_s03_reach_ft_threads_onto_live_combatant():
                     hp_max=20,
                     equipment=("glaive",),
                     reach_ft=10,
-                    zone_id="zone:a",
+                    zone_id=adjacent_cells(2)[0],
                 )
             ],
             encounter=[
@@ -178,10 +178,10 @@ def test_c02_s03_reach_ft_threads_onto_live_combatant():
                     initiative=1,
                     hp_current=10,
                     hp_max=10,
-                    zone_id="zone:a",
+                    zone_id=adjacent_cells(2)[1],
                 )
             ],
-            scene_zones=SceneTopology(zones=["zone:a"], edges=[]),
+            grid_scene=grid_scene(),
             rng_seed=1,
         )
         return _get_live(start.handle)
@@ -214,7 +214,7 @@ def test_c02_s04_monster_can_dash_to_double_movement_budget():
                     ac=15,
                     hp_current=20,
                     hp_max=20,
-                    zone_id="zone:pc",
+                    zone_id=cell(0, 0),
                 )
             ],
             encounter=[
@@ -228,13 +228,12 @@ def test_c02_s04_monster_can_dash_to_double_movement_budget():
                     ac=13,
                     monster_template_slug="goblin-warrior",
                     base_speed=30,
-                    zone_id="zone:foe",
+                    zone_id=cell(8, 0),
                 )
             ],
-            scene_zones=SceneTopology(
-                zones=["zone:foe", "zone:pc"],
-                edges=[ZoneEdge(a="zone:foe", b="zone:pc", distance_ft=35)],
-            ),
+            # The goblin stops 5 ft short (its reach), so 8 cells away it must
+            # walk 35 ft: more than its 30-ft speed, which forces the Dash.
+            grid_scene=grid_scene(width=9),
             rng_seed=7,
         )
         live = _get_live(start.handle)

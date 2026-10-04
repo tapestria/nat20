@@ -15,8 +15,8 @@ from dnd5e_engine.orchestrator import (
     start_combat,
     submit_player_intent,
 )
-from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec, SceneTopology, ZoneEdge
-from tests.e2e.harness import events_of, run_async
+from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
+from tests.e2e.harness import adjacent_cells, cell, events_of, grid_scene, run_async
 
 
 def test_c08_s01_rage_resistance_never_halves_matching_damage_taken():
@@ -59,7 +59,7 @@ def test_c08_s01_rage_resistance_never_halves_matching_damage_taken():
                 character_level=5,
                 class_slug="barbarian",
                 ac=1,
-                zone_id="zone:a",
+                zone_id=adjacent_cells(2)[0],
             )
         ]
 
@@ -74,7 +74,7 @@ def test_c08_s01_rage_resistance_never_halves_matching_damage_taken():
                 hp_max=22,
                 ac=8,
                 attack_bonus=3,
-                zone_id="zone:a",
+                zone_id=adjacent_cells(2)[1],
                 monster_template_slug="zombie",
             )
         ]
@@ -84,9 +84,7 @@ def test_c08_s01_rage_resistance_never_halves_matching_damage_taken():
             session_id=f"e2e-c08-s01-{raged}",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=SceneTopology(
-                zones=["zone:a"], edges=[ZoneEdge(a="zone:a", b="zone:a", distance_ft=0)]
-            ),
+            grid_scene=grid_scene(),
             rng_seed=8,
         )
         live = _get_live(start.handle)
@@ -161,7 +159,7 @@ def test_c08_s02_natures_ward_condition_immunity_does_not_block_poisoned():
                     class_slug="wizard",
                     spells_known=["stinking-cloud"],
                     spell_slots={3: 1},
-                    zone_id="zone:a",
+                    zone_id=adjacent_cells(3)[0],
                 ),
                 PartyMemberSpec(
                     entity_id="char:druid",
@@ -174,7 +172,7 @@ def test_c08_s02_natures_ward_condition_immunity_does_not_block_poisoned():
                     character_level=10,
                     class_slug="druid",
                     subclass_slug="land",
-                    zone_id="zone:a",
+                    zone_id=adjacent_cells(3)[1],
                 ),
             ],
             encounter=[
@@ -186,12 +184,10 @@ def test_c08_s02_natures_ward_condition_immunity_does_not_block_poisoned():
                     ac=15,
                     hp_current=10,
                     hp_max=10,
-                    zone_id="zone:a",
+                    zone_id=adjacent_cells(3)[2],
                 )
             ],
-            scene_zones=SceneTopology(
-                zones=["zone:a"], edges=[ZoneEdge(a="zone:a", b="zone:a", distance_ft=0)]
-            ),
+            grid_scene=grid_scene(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -242,7 +238,7 @@ def test_c08_s03_damage_vulnerability_never_doubles_matching_hit():
                     hp_max=20,
                     attack_bonus=5,
                     strength=16,
-                    zone_id="zone:a",
+                    zone_id=adjacent_cells(2)[0],
                 )
             ],
             encounter=[
@@ -254,13 +250,11 @@ def test_c08_s03_damage_vulnerability_never_doubles_matching_hit():
                     hp_current=13,
                     hp_max=13,
                     ac=1,
-                    zone_id="zone:a",
+                    zone_id=adjacent_cells(2)[1],
                     monster_template_slug="skeleton",
                 )
             ],
-            scene_zones=SceneTopology(
-                zones=["zone:a"], edges=[ZoneEdge(a="zone:a", b="zone:a", distance_ft=0)]
-            ),
+            grid_scene=grid_scene(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -327,7 +321,7 @@ def test_c08_s04_granted_feature_movement_mode_never_lands_on_combatant():
         hp_max=50,
         ac=15,
         attack_bonus=6,
-        zone_id="zone:a",
+        zone_id=cell(0, 0),
     )
 
     spec = build_party_member(build_spec, instance, loader=loader)

@@ -14,10 +14,10 @@ from dnd5e_engine.activities.context import ActivityResolutionContext
 from dnd5e_engine.activities.resolver import resolve_activity
 from dnd5e_engine.events import AttackRolled, DamageApplied, HealingApplied
 from dnd5e_engine.orchestrator import _get_live, start_combat, submit_player_intent
-from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec, SceneTopology
+from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
 from dnd5e_engine.types.combat import Combatant
 from dnd5e_engine.types.effects import ActiveEffect, ActiveEffectChange
-from tests.e2e.harness import events_of, run_async
+from tests.e2e.harness import adjacent_cells, cell, events_of, grid_scene, run_async
 
 
 def test_c07_s01_sneak_attack_adds_bounded_extra_damage_on_advantage():
@@ -61,7 +61,7 @@ def test_c07_s01_sneak_attack_adds_bounded_extra_damage_on_advantage():
                 dexterity=18,
                 attack_bonus=7,
                 equipment=("dagger",),
-                zone_id="zone:a",
+                zone_id=adjacent_cells(2)[0],
             )
         ]
 
@@ -75,7 +75,7 @@ def test_c07_s01_sneak_attack_adds_bounded_extra_damage_on_advantage():
                 ac=1,
                 hp_current=500,
                 hp_max=500,
-                zone_id="zone:a",
+                zone_id=adjacent_cells(2)[1],
             )
         ]
 
@@ -84,7 +84,7 @@ def test_c07_s01_sneak_attack_adds_bounded_extra_damage_on_advantage():
             session_id="e2e-c07-s01",
             party=_party(class_slug),
             encounter=_encounter(),
-            scene_zones=SceneTopology(zones=["zone:a"], edges=[]),
+            grid_scene=grid_scene(),
             rng_seed=5,
             active_effects=active_effects,
         )
@@ -170,7 +170,7 @@ def test_c07_s02_sneak_attack_ally_adjacent_alternative_trigger():
                 dexterity=18,
                 attack_bonus=7,
                 equipment=("dagger",),
-                zone_id="zone:melee",
+                zone_id=adjacent_cells(2)[0],
             )
         ]
         if with_ally:
@@ -181,7 +181,7 @@ def test_c07_s02_sneak_attack_ally_adjacent_alternative_trigger():
                     initiative=15,
                     hp_current=10,
                     hp_max=10,
-                    zone_id="zone:melee",
+                    zone_id=adjacent_cells(3)[1],
                 )
             )
         start = await start_combat(
@@ -196,10 +196,14 @@ def test_c07_s02_sneak_attack_ally_adjacent_alternative_trigger():
                     ac=1,
                     hp_current=500,
                     hp_max=500,
-                    zone_id="zone:melee",
+                    # Fixed, not branched on with_ally: adjacent (Chebyshev)
+                    # to both the rogue at (0,0) and the ally at (0,1), so
+                    # Sneak Attack's ally-adjacent clause holds in the allied
+                    # run without the foe's position depending on the branch.
+                    zone_id=cell(1, 0),
                 )
             ],
-            scene_zones=SceneTopology(zones=["zone:melee"], edges=[]),
+            grid_scene=grid_scene(),
             rng_seed=5,
         )
         live = _get_live(start.handle)
@@ -269,7 +273,7 @@ def test_c07_s03_channel_divinity_repertoire_needs_activity_selection():
                     class_slug="cleric",
                     character_level=2,
                     wisdom=16,
-                    zone_id="zone:a",
+                    zone_id=adjacent_cells(2)[0],
                 )
             ],
             encounter=[
@@ -281,10 +285,10 @@ def test_c07_s03_channel_divinity_repertoire_needs_activity_selection():
                     ac=15,
                     hp_current=20,
                     hp_max=20,
-                    zone_id="zone:a",
+                    zone_id=adjacent_cells(2)[1],
                 )
             ],
-            scene_zones=SceneTopology(zones=["zone:a"], edges=[]),
+            grid_scene=grid_scene(),
             rng_seed=1,
         )
         live = _get_live(start.handle)

@@ -19,8 +19,8 @@ from dnd5e_engine.orchestrator import (
     start_combat,
     submit_player_intent,
 )
-from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec, SceneTopology, ZoneEdge
-from tests.e2e.harness import events_of, run_async
+from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
+from tests.e2e.harness import adjacent_cells, events_of, grid_scene, run_async
 
 
 def test_c09_s01_short_rest_hit_dice_healing():
@@ -120,7 +120,7 @@ def test_c09_s03_second_wind_has_no_per_rest_usage_cap():
                     constitution=14,
                     character_level=5,
                     class_slug="fighter",
-                    zone_id="zone:a",
+                    zone_id=adjacent_cells(2)[0],
                 )
             ],
             encounter=[
@@ -132,12 +132,10 @@ def test_c09_s03_second_wind_has_no_per_rest_usage_cap():
                     ac=30,
                     hp_current=500,
                     hp_max=500,
-                    zone_id="zone:a",
+                    zone_id=adjacent_cells(2)[1],
                 )
             ],
-            scene_zones=SceneTopology(
-                zones=["zone:a"], edges=[ZoneEdge(a="zone:a", b="zone:a", distance_ft=0)]
-            ),
+            grid_scene=grid_scene(),
             rng_seed=3,
         )
         live = _get_live(start.handle)

@@ -1,4 +1,4 @@
-"""C00 — harness sanity: a seeded zone combat runs end-to-end green."""
+"""C00 — harness sanity: a seeded combat runs end-to-end green."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from dnd5e_engine import PlayerIntent
 from dnd5e_engine.events import AttackRolled
 from dnd5e_engine.orchestrator import _get_live, start_combat, submit_player_intent
 from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
-from tests.e2e.harness import events_of, run_async, single_zone
+from tests.e2e.harness import adjacent_cells, events_of, grid_scene, run_async
 
 
 def test_c00_harness_sanity_seeded_attack():
@@ -22,7 +22,7 @@ def test_c00_harness_sanity_seeded_attack():
                     hp_max=20,
                     attack_bonus=5,
                     strength=16,
-                    zone_id="zone:start",
+                    zone_id=adjacent_cells(2)[0],
                 )
             ],
             encounter=[
@@ -34,10 +34,10 @@ def test_c00_harness_sanity_seeded_attack():
                     hp_current=50,
                     hp_max=50,
                     ac=1,
-                    zone_id="zone:start",
+                    zone_id=adjacent_cells(2)[1],
                 )
             ],
-            scene_zones=single_zone(),
+            grid_scene=grid_scene(),
             rng_seed=7,
         )
         live = _get_live(start.handle)

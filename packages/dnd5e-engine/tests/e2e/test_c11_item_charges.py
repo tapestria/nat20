@@ -38,7 +38,7 @@ from dnd5e_engine.orchestrator import (
 )
 from dnd5e_engine.rest import recover_item_uses
 from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
-from tests.e2e.harness import events_of, run_async, single_zone
+from tests.e2e.harness import adjacent_cells, events_of, grid_scene, run_async
 
 ITEM_SLUG = "pipes-of-haunting"
 COUNTER_KEY = f"item_use:{ITEM_SLUG}"
@@ -67,7 +67,7 @@ def test_c11_s01_pipes_of_haunting_charge_depletion_and_dawn_recharge():
                     initiative=20,
                     hp_current=20,
                     hp_max=20,
-                    zone_id="zone:start",
+                    zone_id=adjacent_cells(2)[0],
                 )
             ],
             encounter=[
@@ -79,10 +79,10 @@ def test_c11_s01_pipes_of_haunting_charge_depletion_and_dawn_recharge():
                     ac=30,
                     hp_current=500,
                     hp_max=500,
-                    zone_id="zone:start",
+                    zone_id=adjacent_cells(2)[1],
                 )
             ],
-            scene_zones=single_zone(),
+            grid_scene=grid_scene(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -178,7 +178,7 @@ def test_c11_s02_wand_of_lightning_bolts_full_story():
                     initiative=20,
                     hp_current=20,
                     hp_max=20,
-                    zone_id="zone:start",
+                    zone_id=adjacent_cells(2)[0],
                 )
             ],
             encounter=[
@@ -190,10 +190,10 @@ def test_c11_s02_wand_of_lightning_bolts_full_story():
                     ac=30,
                     hp_current=500,
                     hp_max=500,
-                    zone_id="zone:start",
+                    zone_id=adjacent_cells(2)[1],
                 )
             ],
-            scene_zones=single_zone(),
+            grid_scene=grid_scene(),
             rng_seed=1,
         )
         live = _get_live(start.handle)

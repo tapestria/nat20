@@ -9,7 +9,7 @@ host set it away from the ``10`` sentinel default.
 
 from dnd5e_engine.orchestrator import _get_live, start_combat
 from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
-from tests.e2e.harness import run_async, single_zone
+from tests.e2e.harness import adjacent_cells, grid_scene, run_async
 
 
 def _combatant(start, eid):
@@ -24,7 +24,7 @@ def _filler_foe(entity_id="mon:filler"):
         initiative=1,
         hp_current=7,
         hp_max=7,
-        zone_id="zone:start",
+        zone_id=adjacent_cells(2)[1],
     )
 
 
@@ -35,7 +35,7 @@ def _filler_pc(entity_id="char:filler"):
         initiative=1,
         hp_current=10,
         hp_max=10,
-        zone_id="zone:start",
+        zone_id=adjacent_cells(2)[0],
     )
 
 
@@ -46,7 +46,7 @@ def test_pc_spec_proficiencies_reach_combatant():
         initiative=10,
         hp_current=10,
         hp_max=10,
-        zone_id="zone:start",
+        zone_id=adjacent_cells(2)[0],
         save_proficiencies=("str", "con"),
         skill_proficiencies=("athletics",),
         skill_expertise=("athletics",),
@@ -56,7 +56,7 @@ def test_pc_spec_proficiencies_reach_combatant():
             session_id="t5-pc-prof",
             party=[pc],
             encounter=[_filler_foe()],
-            scene_zones=single_zone(),
+            grid_scene=grid_scene(),
             rng_seed=1,
         )
     )
@@ -73,7 +73,7 @@ def test_monster_template_hydrates_scores_and_proficiencies():
         initiative=1,
         hp_current=7,
         hp_max=7,
-        zone_id="zone:start",
+        zone_id=adjacent_cells(2)[1],
         monster_template_slug="goblin-warrior",
     )
     h = run_async(
@@ -81,7 +81,7 @@ def test_monster_template_hydrates_scores_and_proficiencies():
             session_id="t5-monster-hydrate",
             party=[_filler_pc()],
             encounter=[foe],
-            scene_zones=single_zone(),
+            grid_scene=grid_scene(),
             rng_seed=1,
         )
     )
@@ -102,7 +102,7 @@ def test_spec_dexterity_wins_over_template():
         initiative=1,
         hp_current=7,
         hp_max=7,
-        zone_id="zone:start",
+        zone_id=adjacent_cells(2)[1],
         dexterity=20,
         monster_template_slug="goblin-warrior",
     )
@@ -111,7 +111,7 @@ def test_spec_dexterity_wins_over_template():
             session_id="t5-dex-wins",
             party=[_filler_pc()],
             encounter=[foe],
-            scene_zones=single_zone(),
+            grid_scene=grid_scene(),
             rng_seed=1,
         )
     )
