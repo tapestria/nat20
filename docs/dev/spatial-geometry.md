@@ -3,11 +3,10 @@
 How the grid backend models space: wall geometry and real line-of-sight, the
 SRD 5.2 cover model, Chebyshev AoE templates, and difficult-terrain path costs.
 
-All additions are **additive** on `GridScene` / `GridTopology` — the
-`SpatialTopology` Protocol call sites (`orchestrator.py`, `activities/attack.py`,
-`activities/save.py`) never branch on which backend (zone graph vs grid) is
-live; an empty/default field on `GridScene` reproduces today's behavior
-byte-for-byte.
+All additions are **additive** on `GridScene` / `GridTopology` — the call
+sites (`orchestrator.py`, `activities/attack.py`, `activities/save.py`) read
+positions through the `SpatialTopology` Protocol, and an empty/default field
+on `GridScene` reproduces today's behavior byte-for-byte.
 
 ## Wall geometry + line of sight
 
@@ -43,11 +42,7 @@ degree it grants a creature standing behind it.
 is a new Protocol method. `GridTopology`'s implementation walks the cells a
 Bresenham line from `a`'s to `b`'s cell traverses (excluding the two
 endpoints) and returns the HIGHEST cover degree tagged on any intervening
-cell (`none < half < three_quarters < total`). The zone-graph backend
-(`_ZoneGraph`) has no positional cover model — its `cover_between` always
-returns `"none"`, preserving current (no-cover) zone-combat behavior; this is
-a deliberate, documented backend split, not a gap (see "Zone-backend
-decision" below).
+cell (`none < half < three_quarters < total`).
 
 Consumers:
 
@@ -69,7 +64,7 @@ Both bonuses are threaded through a new `ActivityResolutionContext.target_cover:
 dict[str, str]` sidecar, computed once per activity resolution by the
 orchestrator (`_target_cover_map`, mirroring the existing
 `passive_damage_modifiers`-style sidecar convention) from the caster's and
-each target's live zone via `topology.cover_between` — the two resolvers
+each target's cell via `topology.cover_between` — the two resolvers
 never import the spatial seam directly.
 
 **Per-activity "ignores cover for save" flag — shrunk, not built.** The
@@ -244,17 +239,3 @@ COST primitive (`edge_distance`) is closed here. `_handle_move` charges it
 step by step, and since C24 `GridTopology.reachable_cells` (a budget-bounded
 Dijkstra over it) feeds the monster flee planner; `shortest_path` itself
 stays fewest-cells BFS.
-
-## Zone-backend decision
-
-The zone-graph backend (`_ZoneGraph` in `orchestrator.py`) gains the two new
-Protocol methods (`cover_between`) needed to satisfy `SpatialTopology`
-structurally, both returning the behavior-preserving no-op: `cover_between`
-always `"none"`. `has_line_of_sight` was already `True`-for-any-known-pair on
-the zone backend before this change and is unmodified — zone combats have no
-coordinate system to hang wall/cover geometry off of, so this is the
-documented, permanent split, not a temporary gap. `cells_in_template` is
-**not** added to the `SpatialTopology` Protocol at all (grid-only — an
-abstract zone graph has no cell coordinates to enumerate a template over);
-callers reach it via `isinstance(topology, GridTopology)` / direct
-`GridTopology` construction, same as any other grid-only capability.

@@ -227,9 +227,9 @@ therefore gated by ITS OWN level and range, not Counterspell's — and checks
 two things: an unexpended slot at the readied level (`_slot_available`,
 checked against BOTH pools — see below) when the spell's `level > 0`, and,
 when the spell carries a `range.value`, `_in_range_with_los(topology,
-reactor_zone, caster_zone, range.value)`. Geometry-free setups (zone
-topology, or either zone untracked) skip the range check entirely — "no
-geometry ⇒ no penalty" is the engine-wide convention, unchanged. A
+reactor_zone, caster_zone, range.value)`. A reactor or caster with no
+tracked cell skips the range check entirely — "no geometry ⇒ no penalty" is
+the engine-wide convention, unchanged. A
 candidate that fails `eligible` is left in `live.pending_reactions` (still
 armed for a later trigger) and the scan continues to the next candidate in
 initiative order — the reactor's own Reaction and slot are both untouched.

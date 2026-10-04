@@ -8,7 +8,7 @@ it — the engine owns all runtime state in memory behind the handle.
 
 `start_combat(...)` takes a `session_id`, a `party` (list of
 `PartyMemberSpec`), an `encounter` (list of `EncounterMemberSpec`), an
-`rng_seed`, and an optional `grid_scene` or `scene_zones` topology. It rolls
+`rng_seed`, and the `grid_scene` (a [`GridScene`](grid.md)) to fight on. It rolls
 initiative, materializes runtime state, and returns a `StartCombatResult`
 wrapping the `CombatHandle` plus the opening `CombatEvent` stream.
 
@@ -21,8 +21,8 @@ optional fields the resolver consumes (`weapon_id`, `spell_id`,
 `advance_monster_turn(handle)`, which runs the [built-in monster
 AI](monsters.md).
 
-A `"move"` intent steps to an **adjacent** cell or zone — the engine does not
-path-find, so crossing ground takes one intent per step. Off-turn reactions
+A `"move"` intent names a destination cell, and the engine walks the
+fewest-cells legal route there in one intent ([Grid](grid.md#pathing)). Off-turn reactions
 (Shield, Counterspell, opportunity attacks) are never prompted for
 mid-resolution; they must be [pre-armed](reactions.md).
 

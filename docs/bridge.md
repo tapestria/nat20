@@ -67,7 +67,7 @@ All routes are under `/v1`. Requests and responses are JSON.
 | `POST /v1/combat` | Start a combat: party + monster slugs (by name) → a `combat_id` and the opening event narration. |
 | `POST /v1/combat/{cid}/intent` | Submit one player intent (attack, cast, move, …) for the given combat. |
 | `POST /v1/combat/{cid}/advance-monster` | Let a monster take its turn. |
-| `GET /v1/combat/{cid}` | Current combat view: round, initiative order, HP, conditions, whose turn it is, and the combat's `grid` (its `GridScene`, or `null` for a zone-graph combat). |
+| `GET /v1/combat/{cid}` | Current combat view: round, initiative order, HP, conditions, whose turn it is, and the combat's `grid` (its `GridScene`). |
 | `POST /v1/combat/{cid}/end` | Close the combat and return its final `CombatOutcome`. |
 | `GET /v1/srd/{category}` | List slugs in a content category (`items`, `monsters`, `spells`, `species`, `classes`, `subclasses`, `backgrounds`, `feats`, `features`), optionally filtered by a substring query (`?q=`). |
 | `GET /v1/srd/{category}/{slug}` | Fetch one canonical (or homebrew) entry by slug. |

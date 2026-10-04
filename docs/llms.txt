@@ -23,7 +23,7 @@ Core public API (`dnd5e_engine.__all__`):
 - Character building: `make_build_spec`, `build_party_member` (with
   `CharacterBuildSpec`, `CombatInstance`, `AbilityScores`).
 - Specs and grid: `PartyMemberSpec`, `EncounterMemberSpec`, `GridScene`,
-  `SceneTopology`, `ZoneEdge`, `cell_id`, `parse_cell`.
+  `WallSegment`, `cell_id`, `parse_cell`.
 - Effects: `ActiveEffect`, `ActiveEffectChange`, `ActiveEffectDuration`.
 - Results: `StartCombatResult`, `EndCombatResult`, `CombatOutcome`,
   `DeathRecord`, `LootDrop`, `PlayerIntent`, `CombatHandle`, `IntentType`,
