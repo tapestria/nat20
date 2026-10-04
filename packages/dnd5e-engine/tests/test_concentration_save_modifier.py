@@ -10,7 +10,7 @@ from __future__ import annotations
 import asyncio
 from typing import Any, cast
 
-from dnd5e_engine.events import SaveRolled
+from dnd5e_engine.events import ConcentrationCheck
 from dnd5e_engine.orchestrator import _LiveCombat, _project_target_modifiers
 from dnd5e_engine.types.combat import Combatant
 
@@ -95,7 +95,7 @@ def test_concentration_save_applies_con_modifier() -> None:
                 is_overkill=False,
             ),
         )
-        rolled = [e for e in live.event_log if isinstance(e, SaveRolled)]
+        rolled = [e for e in live.event_log if isinstance(e, ConcentrationCheck)]
         assert len(rolled) == 1
         return rolled[0].roll_total
 

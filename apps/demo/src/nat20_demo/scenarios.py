@@ -206,10 +206,10 @@ def _burning_hands() -> Scenario:
                 dexterity=15,
                 monster_template_slug="giant-rat",
                 xp_value=25,
-                # All four share one zone — the cone-of-fire abstraction hits
-                # every living combatant sharing the named target's zone, so
-                # the pack is stacked at the corridor mouth to make that
-                # broadcast land on all of them.
+                # All four stand on one cell at the corridor mouth, inside
+                # Orin's 15-ft cone. ``start_combat`` accepts a shared start
+                # cell (BACKLOG.md); a grid host should seat each creature on
+                # its own.
                 zone_id=cell_id(4, 2),
             )
             for i, init in enumerate([13, 10, 8, 6], start=1)

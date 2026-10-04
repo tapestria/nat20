@@ -131,8 +131,7 @@ def test_c13_s02_damage_triggers_concentration_check_with_con_modifier():
     to a maximum DC of 30."
     (packs/_source/content24/appendices/appendix-d-rule-references.yml:5261-5266).
     F1c gave ``_emit_apply_damage`` the real CON modifier and F2c emits the
-    harmonised ``ConcentrationCheck`` (alongside the legacy ``SaveRolled``
-    until v0.7); F1c also added ``PartyMemberSpec.save_proficiencies``, so a
+    harmonised ``ConcentrationCheck``; F1c also added ``PartyMemberSpec.save_proficiencies``, so a
     CON-save-proficient caster IS expressible now (set below). C13 added the
     DC's SRD maximum-of-30 clamp — pinned separately by C13-S05 below.
     """

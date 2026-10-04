@@ -22,6 +22,7 @@ from dnd5e_engine.events import (
     AttackRolled,
     CheckRolled,
     CombatantLeft,
+    ConcentrationCheck,
     ConcentrationDropped,
     ConditionApplied,
     DamageApplied,
@@ -29,7 +30,6 @@ from dnd5e_engine.events import (
     EffectExpired,
     IntentSubmitted,
     MoveFailed,
-    SaveRolled,
     TurnEnded,
     TurnPhase,
     TurnStarted,
@@ -338,7 +338,9 @@ def _failed_con_save(live: _LiveCombat, handle: CombatHandle) -> None:
     act(handle, OWNER, intent_type="pass")
     act(handle, SPIRIT, intent_type="pass")
     monster_turn(handle)  # the foe hits the summoner; the CON save fails
-    assert [e.succeeded for e in events(live, SaveRolled) if e.target_id == OWNER] == [False]
+    assert [e.succeeded for e in events(live, ConcentrationCheck) if e.target_id == OWNER] == [
+        False
+    ]
 
 
 def _owners_death(live: _LiveCombat, handle: CombatHandle) -> None:

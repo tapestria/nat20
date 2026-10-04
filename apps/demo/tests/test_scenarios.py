@@ -63,8 +63,8 @@ SHOWCASE_SCRIPTS: dict[str, list[Command]] = {
         MonsterTurnCommand(),
         MonsterTurnCommand(),
     ],
-    # Orin's cone catches all four giant rats sharing the corridor-mouth
-    # zone in one cast: four Dex saves, half damage on a save, full on a
+    # Orin's cone catches all four giant rats stacked on the corridor-mouth
+    # cell in one cast: four Dex saves, half damage on a save, full on a
     # fail. One monster turn closes out the round.
     "burning-hands": [
         _cast("char:orin", "burning-hands", target="mon:rat1"),
@@ -119,20 +119,14 @@ SHOWCASE_SCRIPTS: dict[str, list[Command]] = {
     ],
 }
 
-# "hold-the-line" targets {"effect_applied", "concentration_check"} per the
-# design spec's *behavior* -- a hold cast, then concentration held/broken
-# under fire. Engine F2c wired ``ConcentrationCheck``, which is now emitted
-# alongside the ``SaveRolled(ability="con", ...)`` the engine has always
-# emitted (the duplicate is dropped in engine v0.7). The set below stays
-# pinned on ``save_rolled`` -- the shape that survives that removal is the
-# specific assertion in
-# ``test_hold_the_line_proves_concentration_save_on_damage``, which proves the
-# spec's real behavioral intent (a con save against the concentrating cleric
-# specifically) rather than a bare membership check.
+# "hold-the-line" proves the design spec's *behavior* -- a hold cast, then
+# concentration held/broken under fire. The specific assertion in
+# ``test_hold_the_line_proves_concentration_save_on_damage`` proves the check
+# lands on the concentrating cleric, not just any combatant.
 PROOF_EVENTS: dict[str, set[str]] = {
     "goblin-ambush": {"attack_rolled", "damage_applied"},
     "burning-hands": {"save_rolled", "damage_applied"},
-    "hold-the-line": {"effect_applied", "save_rolled"},
+    "hold-the-line": {"effect_applied", "concentration_check"},
     "marsh-crossing": {"actor_moved", "dash_taken", "attack_rolled"},
     "last-stand": {"healing_applied", "death_save_rolled"},
 }
@@ -181,10 +175,8 @@ async def test_hold_the_line_proves_concentration_save_on_damage() -> None:
     concentration held under fire, then broken.
 
     The real SRD §Concentration on-damage check surfaces as a
-    ``SaveRolled(ability="con", ...)`` (and, since engine F2c, a matching
-    ``ConcentrationCheck``). This asserts that specific save fired against
-    Mira (the concentrating cleric), not just any Constitution save in the
-    stream.
+    ``ConcentrationCheck``. This asserts that check fired against Mira (the
+    concentrating cleric), not just against anyone in the stream.
     """
     s = get_scenario("hold-the-line")
     log = FightLog(scenario_id=s.id, seed=s.default_seed, commands=SHOWCASE_SCRIPTS[s.id])
@@ -194,9 +186,7 @@ async def test_hold_the_line_proves_concentration_save_on_damage() -> None:
     concentration_saves = [
         e
         for e in out.all_events
-        if e.type == "save_rolled"
-        and getattr(e, "ability", None) == "con"
-        and getattr(e, "target_id", None) == "char:mira"
+        if e.type == "concentration_check" and getattr(e, "target_id", None) == "char:mira"
     ]
     assert concentration_saves, (
         "expected a Constitution save against char:mira (the concentrating cleric)"

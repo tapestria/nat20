@@ -14,6 +14,7 @@ from dnd5e_srd_data.loader import BundledAssetLoader
 
 from dnd5e_engine import ActiveEffect
 from dnd5e_engine.events import (
+    ConcentrationCheck,
     ConcentrationDropped,
     EffectApplied,
     EffectExpired,
@@ -128,10 +129,9 @@ def test_a_hit_on_the_anchored_caster_draws_the_con_save_and_a_failure_ends_it()
     _spiritual_weapon(handle)
     act(handle, CLERIC, intent_type="pass")
     monster_turn(handle)
-    [save] = events(live, SaveRolled)
-    assert (save.target_id, save.ability, save.roll_total, save.dc, save.succeeded) == (
+    [check] = events(live, ConcentrationCheck)
+    assert (check.target_id, check.roll_total, check.dc, check.succeeded) == (
         CLERIC,
-        "con",
         9,
         10,
         False,

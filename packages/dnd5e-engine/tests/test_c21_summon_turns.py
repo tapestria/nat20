@@ -29,6 +29,7 @@ from dnd5e_engine.events import (
     CastFailed,
     CombatantJoined,
     CombatantLeft,
+    ConcentrationCheck,
     ConcentrationDropped,
     ConditionApplied,
     DamageApplied,
@@ -36,7 +37,6 @@ from dnd5e_engine.events import (
     EffectExpired,
     IntentSubmitted,
     LegendaryActionUsed,
-    SaveRolled,
     TurnEnded,
     TurnPhase,
     TurnStarted,
@@ -411,8 +411,8 @@ def test_a_broken_concentration_dismisses_the_spirit_on_seed_4() -> None:
         17,
         "bludgeoning",
     )
-    [save] = events(live, SaveRolled)
-    assert (save.ability, save.dc, save.natural, save.succeeded) == ("con", 10, 5, False)
+    [check] = events(live, ConcentrationCheck)
+    assert (check.dc, check.natural, check.succeeded) == (10, 5, False)
     cascade = [
         e
         for e in live.event_log[first:]

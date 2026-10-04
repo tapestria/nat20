@@ -81,6 +81,13 @@ def _fmt_save_rolled(e: Any, names: dict[str, str]) -> str:
     return f"{who} rolls a {e.ability} save: {e.roll_total} vs DC {e.dc} — {outcome}."
 
 
+@_register("concentration_check")
+def _fmt_concentration_check(e: Any, names: dict[str, str]) -> str:
+    who = _who(e.target_id, names)
+    outcome = "succeeds" if e.succeeded else "fails"
+    return f"{who} rolls a concentration save: {e.roll_total} vs DC {e.dc} — {outcome}."
+
+
 @_register("check_rolled")
 def _fmt_check_rolled(e: Any, names: dict[str, str]) -> str:
     who = _who(e.actor_id, names)
@@ -166,11 +173,7 @@ def _render_one(event: Any, names: dict[str, str]) -> str:
 # host WHERE the boundary is; the narration already marks it with the
 # ``-- Round N --`` / ``It is X's turn.`` lines, and this text is fed to an LLM,
 # so a raw ``[turn_phase] actor_id=... phase=...`` dump would be pure token noise.
-# ``concentration_check`` is the transitional twin of the ``SaveRolled`` the
-# engine still emits for the same roll; narrating both would describe one
-# concentration save twice. Skip the newer shape and keep the ``save_rolled``
-# line -- remove when the SaveRolled twin is dropped in 0.7.
-_SKIPPED_EVENT_TYPES: frozenset[str] = frozenset({"turn_phase", "concentration_check"})
+_SKIPPED_EVENT_TYPES: frozenset[str] = frozenset({"turn_phase"})
 
 
 def narrate(events: Sequence[CombatEvent], names: dict[str, str]) -> str:

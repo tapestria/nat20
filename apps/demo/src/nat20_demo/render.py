@@ -116,7 +116,7 @@ def grid_context(scenario: Scenario, out: ReplayOutcome) -> dict[str, Any]:
     difficult = set(grid.difficult_terrain_cells)
 
     # Last writer wins if multiple combatants share a cell (e.g. the
-    # burning-hands scenario stacks four foes on one zone) — the grid
+    # burning-hands scenario stacks four foes on one cell) — the grid
     # renders at most one token per cell by construction.
     occupant_by_cell: dict[str, str] = {}
     for entity_id, zone in view.actor_zone.items():
@@ -212,9 +212,9 @@ def actions_context(scenario: Scenario, out: ReplayOutcome) -> dict[str, Any]:
 
     PC turns expand each ``needs_target`` option into one entry per living
     combatant on that option's ``target_side``: "foe" (the default; attacks,
-    offensive AoE) expands over living encounter members (AoE casts target
-    via ``target_id`` too — the target's zone becomes the anchor, per
-    Task 4's verified targeting semantics); "ally" (heal spells) expands
+    offensive AoE) expands over living encounter members (an AoE cast names
+    a ``target_id`` too: a sphere centres on its cell, a cone aims toward
+    it); "ally" (heal spells) expands
     over living party members, including the caster themself (self-heal is
     legal). Monster turns offer the single "advance" command; a finished
     fight offers none.
@@ -375,10 +375,9 @@ def _friendly_combat_ended(e: Any, names: dict[str, str]) -> str:
     return f"Combat ends: {e.reason}"
 
 
-# Covers every event type the brief calls out. Since engine F2c the
-# concentration-on-damage check emits ``concentration_check`` ALONGSIDE the
-# ``save_rolled(ability="con")`` it has always emitted (the duplicate goes
-# away in engine v0.7), so both renderers below are live.
+# Covers every event type the brief calls out. A concentration-on-damage
+# check arrives as ``concentration_check`` alone; ``save_rolled`` covers every
+# other save.
 _FRIENDLY: dict[str, Callable[[Any, dict[str, str]], str]] = {
     "attack_rolled": _friendly_attack_rolled,
     "save_rolled": _friendly_save_rolled,

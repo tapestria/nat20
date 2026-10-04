@@ -79,7 +79,7 @@ async def test_grid_marks_tokens_and_terrain() -> None:
 
 
 async def test_grid_stacked_cell_renders_exactly_one_token() -> None:
-    # burning-hands deliberately stacks all four giant rats on one zone
+    # burning-hands deliberately stacks all four giant rats on one cell
     # (cell_id(4, 2)) so a single Burning Hands cast hits them all. The
     # grid context's per-cell shape has room for exactly one token, so
     # this pins down the documented last-writer-wins behavior rather than

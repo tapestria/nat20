@@ -4,12 +4,9 @@ SRD 5.2 §Concentration: *"If you take damage, you must succeed on a
 Constitution saving throw to maintain Concentration. The DC equals 10 or half
 the damage taken, whichever number is higher."*
 
-Before F2c the orchestrator emitted a bare ``SaveRolled(ability="con")`` and
-``ConcentrationCheck`` was an unconstructed event type; a host could only tell a
-concentration save from any other CON save by convention. The specific event is
-now emitted ALONGSIDE the generic one for one release (removed in v0.7), and the
-d20 goes through the shared ``roll_d20_test`` primitive, so ``SaveRolled`` also
-carries its ``natural`` / ``modifier`` breakdown.
+The check is the roll's only event: no generic ``SaveRolled(ability="con")``
+accompanies it. Its d20 goes through the shared ``roll_d20_test`` primitive, so
+the event carries the ``natural`` / ``modifier`` breakdown.
 """
 
 from __future__ import annotations
@@ -92,49 +89,23 @@ def test_concentration_check_dc_is_ten_or_half_the_damage(amount: int, expected_
     assert checks[0].target_id == "char:a"
 
 
-def test_concentration_check_mirrors_the_save_it_duplicates() -> None:
-    """TRANSITIONAL: both events are emitted for one release (v0.7 drops the
-    ``SaveRolled``), so they must agree on total and outcome."""
+def test_concentration_check_is_the_rolls_only_event() -> None:
     live = _damage(24)
-    saves = _events(live, SaveRolled)
-    checks = _events(live, ConcentrationCheck)
 
-    assert len(saves) == len(checks) == 1
-    assert saves[0].ability == "con"
-    assert (saves[0].roll_total, saves[0].succeeded) == (
-        checks[0].roll_total,
-        checks[0].succeeded,
-    )
-    assert saves[0].dc == checks[0].dc
-    # The SaveRolled is emitted FIRST — hosts that already listen for it keep
-    # their ordering; the new event follows.
-    assert live.event_log.index(saves[0]) < live.event_log.index(checks[0])
+    assert len(_events(live, ConcentrationCheck)) == 1
+    assert _events(live, SaveRolled) == []
 
 
-def test_concentration_save_carries_its_roll_breakdown() -> None:
-    """F2c — the save now reports the kept natural and the flat modifier
+def test_concentration_check_carries_its_roll_breakdown() -> None:
+    """F2c — the check reports the kept natural and the flat modifier
     (CON 18 + proficiency at level 5 = +4 + 3)."""
-    save = _events(_damage(24), SaveRolled)[0]
+    check = _events(_damage(24), ConcentrationCheck)[0]
 
-    assert save.natural is not None
-    assert 1 <= save.natural <= 20
-    assert save.modifier == 7
-    assert save.roll_total == save.natural + save.modifier
-    assert save.advantage == "normal"
-    assert save.sources == []
-
-
-def test_concentration_check_carries_the_same_roll_breakdown() -> None:
-    """The breakdown rides the SPECIFIC event too, so it survives the v0.7
-    removal of the duplicate ``SaveRolled``."""
-    live = _damage(24)
-    save = _events(live, SaveRolled)[0]
-    check = _events(live, ConcentrationCheck)[0]
-
-    assert check.natural == save.natural
+    assert check.natural is not None
+    assert 1 <= check.natural <= 20
     assert check.modifier == 7
     assert check.roll_total == check.natural + check.modifier
-    assert check.advantage == save.advantage == "normal"
+    assert check.advantage == "normal"
     assert check.sources == []
 
 
@@ -172,7 +143,7 @@ def test_concentration_check_draws_exactly_one_d20() -> None:
         ),
     )
 
-    assert _events(live, SaveRolled)[0].natural == expected_natural
+    assert _events(live, ConcentrationCheck)[0].natural == expected_natural
     assert live.rng.randint(1, 20) == expected_next
 
 

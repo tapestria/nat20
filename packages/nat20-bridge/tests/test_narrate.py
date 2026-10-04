@@ -8,7 +8,6 @@ from dnd5e_engine.events import (
     DamageApplied,
     Death,
     RoundStarted,
-    SaveRolled,
     TurnPhase,
     TurnStarted,
 )
@@ -156,28 +155,23 @@ def test_narrating_only_markers_yields_empty_text() -> None:
 
 
 def test_concentration_save_narrates_exactly_one_line() -> None:
-    """The engine emits ``ConcentrationCheck`` *and* a twin ``SaveRolled`` for
-    one concentration save until v0.7. Narrating both would tell the LLM the
-    same save happened twice, so the transitional ``concentration_check`` is
-    skipped and the human-readable ``save_rolled`` line is the one kept.
-    """
-    events = [
-        SaveRolled(
-            target_id="char:elara",
-            ability="con",
-            dc=10,
-            roll_total=14,
-            succeeded=True,
-        ),
-        ConcentrationCheck(
-            target_id="char:elara",
-            dc=10,
-            roll_total=14,
-            succeeded=True,
-        ),
-    ]
-    text = narrate(events, NAMES)
+    """The engine reports a concentration save as one ``ConcentrationCheck``
+    and nothing else, so it narrates as one readable line, never the raw
+    ``[concentration_check] k=v`` fallback dump."""
+    text = narrate(
+        [ConcentrationCheck(target_id="char:elara", dc=10, roll_total=14, succeeded=True)],
+        NAMES,
+    )
     lines = text.splitlines()
     assert len(lines) == 1
     assert "concentration_check" not in text
-    assert "Elara" in lines[0] and "con save" in lines[0] and "14" in lines[0]
+    assert "Elara" in lines[0] and "concentration save" in lines[0]
+    assert "14" in lines[0] and "DC 10" in lines[0] and "succeeds" in lines[0]
+
+
+def test_a_failed_concentration_save_says_so() -> None:
+    text = narrate(
+        [ConcentrationCheck(target_id="char:elara", dc=12, roll_total=7, succeeded=False)],
+        NAMES,
+    )
+    assert "fails" in text and "DC 12" in text
