@@ -1,9 +1,10 @@
 """Areas of effect on the grid (SRD 5.2 §Areas of Effect).
 
 Pure helpers shared by every path that resolves an area: which activity is an
-area, where its template lies, and which creatures standing in it it affects.
-No I/O and no orchestrator import: the caller passes the topology, the
-creatures in the area and their allegiance in.
+area, where its template lies, which creatures standing in it it affects, and
+where a creature that aims for itself places it (``best_aim``). No I/O and no
+orchestrator import: the caller passes the topology, the creatures in the area
+and their allegiance in.
 """
 
 from __future__ import annotations
@@ -13,7 +14,7 @@ from dataclasses import dataclass
 from typing import Any, Final, Literal
 
 from dnd5e_engine.events import AreaShape
-from dnd5e_engine.spatial import GridTopology, SpatialTopology
+from dnd5e_engine.spatial import GridTopology, SpatialTopology, parse_cell
 
 #: The shapes ``GridTopology.cells_in_template`` rasterises.
 GridShape = Literal["sphere", "cone", "line", "cube", "cylinder"]
@@ -53,6 +54,21 @@ _AREA_KINDS: Final[frozenset[str]] = frozenset({"save", "damage", "heal"})
 # than creatures: Earthquake's one 100-foot circle is a ``space``.
 _NOT_CREATURES: Final[frozenset[str]] = frozenset({"self", "object", "space"})
 
+#: The eight grid directions a Cone, Cube or Line can be aimed in, as
+#: ``(column step, row step)``: north (row - 1) first, then clockwise. A
+#: creature that aims for itself tries them in this order, so a tie between
+#: two directions goes to the earlier one.
+AIM_DIRECTIONS: Final[tuple[tuple[int, int], ...]] = (
+    (0, -1),
+    (1, -1),
+    (1, 0),
+    (1, 1),
+    (0, 1),
+    (-1, 1),
+    (-1, 0),
+    (-1, -1),
+)
+
 
 @dataclass(frozen=True)
 class AreaTemplate:
@@ -76,6 +92,15 @@ class AreaSelection:
 
     affected_ids: tuple[str, ...]
     spared_ids: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class AreaAim:
+    """Where a creature places an area, and whom the area then affects."""
+
+    origin: str
+    direction: tuple[int, int] | None
+    selection: AreaSelection
 
 
 def area_activity(activities: Sequence[Any]) -> Any | None:
@@ -198,7 +223,86 @@ def select_affected(
     )
 
 
+def best_aim(
+    topology: GridTopology,
+    activity: Any,
+    template: AreaTemplate,
+    *,
+    actor_id: str,
+    actor_cell: str,
+    target_cells: Sequence[str],
+    creatures: Sequence[tuple[str, str]],
+    is_enemy: Callable[[str], bool],
+    is_ally: Callable[[str], bool],
+) -> AreaAim | None:
+    """Where a creature that aims for itself places ``activity``'s area: the
+    aim whose affected creatures hold the most enemies minus allies, never the
+    creature itself and at least one enemy; ``None`` when no aim qualifies.
+    Draws no dice.
+
+    The candidates, tried in a fixed order: an Emanation from ``actor_cell``;
+    a Cone, Cube or Line from ``actor_cell`` in each of ``AIM_DIRECTIONS``; a
+    Sphere or Cylinder centred on each of ``target_cells``, the cells of the
+    enemies the creature can see within range, which the caller picks. A tie
+    goes to the aim that affects fewer allies, then to the one whose enemies
+    sit nearest its axis (a Cone, Cube or Line) or its point of origin (any
+    other shape), then to the earlier candidate.
+
+    ``creatures`` are the ``(id, cell)`` pairs of every creature an area can
+    affect, in a stable order; whom an aim affects follows ``select_affected``
+    with no exclusions, so "each enemy", "of your choice" and "up to N"
+    apply as they do for any other actor. ``is_ally`` is true for the
+    creature itself."""
+    if template.anchor == "target":
+        candidates: list[tuple[str, tuple[int, int] | None]] = [(c, None) for c in target_cells]
+    elif template.directional:
+        candidates = [(actor_cell, d) for d in AIM_DIRECTIONS]
+    else:
+        candidates = [(actor_cell, None)]
+    cell_of = dict(creatures)
+    best: AreaAim | None = None
+    best_score: tuple[int, int, int] | None = None
+    for origin, direction in candidates:
+        cells = area_cells(topology, template, origin, direction)
+        selection = select_affected(
+            [i for i, cell in creatures if cell in cells],
+            affects_type=activity.target.affects.type,
+            choice=is_choice(activity),
+            count=creature_count(activity),
+            harmful=is_harmful([activity]),
+            excluded_ids=None,
+            is_enemy=is_enemy,
+            is_ally=is_ally,
+        )
+        affected = selection.affected_ids
+        enemies = [i for i in affected if is_enemy(i)]
+        allies = sum(1 for i in affected if is_ally(i))
+        if actor_id in affected or not enemies:
+            continue
+        spread = sum(_off_centre(origin, cell_of[i], direction) for i in enemies)
+        score = (len(enemies) - allies, -allies, -spread)
+        if best_score is None or score > best_score:
+            best, best_score = AreaAim(origin, direction, selection), score
+    return best
+
+
+def _off_centre(origin: str, cell: str, direction: tuple[int, int] | None) -> int:
+    """How far ``cell`` sits from an area's centre line: its sideways offset
+    from a Cone's, Cube's or Line's axis (the measure
+    ``GridTopology.cells_in_template`` widens a Cone by), else its distance
+    from the point of origin, in cells."""
+    origin_col, origin_row = parse_cell(origin)
+    col, row = parse_cell(cell)
+    d_col, d_row = col - origin_col, row - origin_row
+    if direction is None:
+        return max(abs(d_col), abs(d_row))
+    step_col, step_row = direction
+    return abs(d_col * step_row - d_row * step_col)
+
+
 __all__ = [
+    "AIM_DIRECTIONS",
+    "AreaAim",
     "AreaSelection",
     "AreaTemplate",
     "GridShape",
@@ -206,6 +310,7 @@ __all__ = [
     "area_activity",
     "area_cells",
     "area_template",
+    "best_aim",
     "creature_count",
     "has_line_of_effect",
     "is_choice",
