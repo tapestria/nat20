@@ -35,11 +35,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Sneak Attack's once-per-turn flag clears at every turn start** (C24).
 - **Monsters flee on the grid** to the reachable, unoccupied cell farthest from
   their nearest enemy; an Incapacitated monster takes no flee stance (C24).
+- **`start_combat(grid_scene=...)` is required** (C25): `grid_scene=None` raises
+  `ValueError`, before any combat state exists.
+- **`dnd5e_engine.orchestrator.__all__` exports `GridScene`** in place of
+  `SceneTopology` and `ZoneEdge` (C25).
+- **Rage**: an enemy's concentration check no longer counts as a saving throw
+  the barbarian forced (C25).
+- **nat20-bridge**: a concentration save narrates as its own
+  `concentration_check` line (C25).
+
+### Deprecated
+
+- **`ZoneTransit`** — never emitted; it stays in the `CombatEvent` union so a
+  host that imports it keeps working, and a later breaking release removes it
+  (C25).
+
+### Removed
+
+- **The zone-graph backend** (C25): `start_combat(scene_zones=...)`,
+  `SceneTopology` and `ZoneEdge` (from `dnd5e_engine`, `dnd5e_engine.specs` and
+  `dnd5e_engine.orchestrator`), and `dnd5e_engine.testing.ZoneGraph`. Pass
+  `grid_scene=GridScene(...)`; `docs/migration/v0.6-to-v0.7.md` has the porting
+  recipe.
+- **The concentration `SaveRolled` twin** (C25): a damage-triggered
+  concentration save emits `ConcentrationCheck` alone.
 
 ### Fixed
 
 - An opportunity attack on a Prone creature beyond 5 ft now has Disadvantage
   (C24).
+- A failed concentration check no longer stands in for the failed save behind a
+  condition's end-of-turn repeat save (C25).
 
 ## [0.6.0]
 

@@ -1,7 +1,7 @@
 # dnd5e-engine
 
 Pure-Python D&D 5e SRD rules engine — host-agnostic, zero I/O. Combat, checks, effects,
-on a zone graph or a 2-D grid.
+on a 2-D grid.
 
 ## Status
 
@@ -10,12 +10,9 @@ Working engine. It resolves combat against the typed 2024-SRD corpus shipped by
 `canonical/` data — no network, no DB). The engine is edition-agnostic: it consumes
 whatever typed content it is handed.
 
-Two spatial backends are supported, selected at `start_combat`:
-
-- **Zone graph** — pass `scene_zones=SceneTopology(zones=..., edges=...)`; range/reach are
-  resolved as shortest-path distance over a weighted, undirected zone graph.
-- **2-D grid** — pass `grid_scene=GridScene(width, height)`; positions are `"col,row"` cell
-  ids (`cell_id(col, row)`), distance is Chebyshev (8-direction, one cell = `cell_size_ft`).
+Combat resolves on a 2-D grid: pass `grid_scene=GridScene(width, height)` to
+`start_combat`. Positions are `"col,row"` cell ids (`cell_id(col, row)`), and distance is
+Chebyshev (8-direction, one cell = `cell_size_ft`).
 
 ## Install
 
@@ -112,7 +109,7 @@ engine fetches the typed weapon from the bundled corpus and walks its activities
 
 All exported names live in `__all__` in `src/dnd5e_engine/__init__.py`. The key entry points:
 
-- `start_combat(*, session_id, party, encounter, scene_zones=|grid_scene=, rng_seed, ...)` —
+- `start_combat(*, session_id, party, encounter, grid_scene, rng_seed, ...)` —
   open a combat, materialize runtime state, return a `StartCombatResult` (`.handle`, opening
   `.events`).
 - `submit_player_intent(handle, actor_id, intent)` — validate and resolve a PC's
@@ -134,7 +131,6 @@ All exported names live in `__all__` in `src/dnd5e_engine/__init__.py`. The key 
 Spatial helpers and spec types:
 
 - `GridScene` / `cell_id(col, row)` / `parse_cell(cell_id)` — 2-D grid scene + cell-id codec.
-- `SceneTopology` / `ZoneEdge` — zone-graph scene description.
 - `PartyMemberSpec` / `EncounterMemberSpec` — combatant inputs to `start_combat`.
 - `PlayerIntent` — a PC's submitted intent (move / attack / cast_spell / use_item / ...).
 - `CombatHandle`, `StartCombatResult`, `EndCombatResult`, `CombatOutcome`, `CombatEvent`,
@@ -153,8 +149,8 @@ packages/dnd5e-engine/
 ├── src/dnd5e_engine/
 │   ├── __init__.py         public API (__all__)
 │   ├── orchestrator.py     start/submit/advance/end combat seam + live state
-│   ├── spatial.py          grid + zone topologies, cell_id / parse_cell
-│   ├── specs.py            GridScene, SceneTopology, party/encounter specs
+│   ├── spatial.py          grid topology, cell_id / parse_cell
+│   ├── specs.py            GridScene, party/encounter specs
 │   ├── check.py            out-of-combat ability check / saving throw resolver
 │   ├── build_party.py / build_spec.py   character build → combat spec projection
 │   ├── lib_loader.py       BundledAssetLoader singleton (typed SRD corpus)

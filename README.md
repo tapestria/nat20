@@ -6,7 +6,7 @@
 
 **Nat20** is an open-source, host-agnostic, zero-I/O **D&D 5e SRD 5.2 (CC-BY-4.0)**
 rules engine for Python. Deterministic combat, skill checks, saving throws, effects,
-and grid or zone-graph movement — driven by a typed, bundled SRD dataset. No network,
+and grid movement — driven by a typed, bundled SRD dataset. No network,
 no database, no game host required.
 
 ## What is Nat20
@@ -15,7 +15,7 @@ Nat20 is a `uv` workspace of two complementary packages:
 
 | Package | What it is | License |
 |---------|-----------|---------|
-| [`dnd5e-engine`](packages/dnd5e-engine) | Pure-Python 5e SRD rules engine — combat, checks, effects, grid/zone movement. Ships no rules data; reads the dataset at runtime. | **MIT** (code) |
+| [`dnd5e-engine`](packages/dnd5e-engine) | Pure-Python 5e SRD rules engine — combat, checks, effects, grid movement. Ships no rules data; reads the dataset at runtime. | **MIT** (code) |
 | [`dnd5e-srd-data`](packages/dnd5e-srd-data) | The typed, canonical SRD 5.2 dataset the engine consumes via `BundledAssetLoader`. | **CC-BY-4.0** (data) |
 | [`nat20-bridge`](packages/nat20-bridge) | Localhost FastAPI sidecar that exposes the engine over HTTP — rolls, checks, rests, party validation, full combat lifecycle, SRD browsing, and homebrew content. | **MIT** (code) |
 

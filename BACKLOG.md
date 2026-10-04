@@ -335,7 +335,7 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   Fireball hits the caster in its own radius") — but the same list feeds
   Sleep's save resolution too, so a caster standing in its own Sleep sphere
   rolls the Wisdom save alongside its targets and can fall Sleeping itself.
-  Confirmed on both spatial backends, the zone graph and `GridTopology`. The
+  Confirmed on `GridTopology`. The
   dataset schema carries a `target.affects.choice` flag for exactly this
   Foundry semantic (set on Spirit Guardians, Holy Aura, Weird and others),
   but no resolver code reads it — "of your choice" area targeting is
@@ -351,9 +351,19 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   creature occupies one cell regardless of size, a Large summoned Draconic
   Spirit included: its placement needs one free cell.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_summon_placement`)
+- **`start_combat` seats two combatants on one cell (2026-10-03, C25).** It
+  checks that each start cell is in bounds and unblocked, not that it is free,
+  so two creatures can start on one cell, which no move can produce (SRD 5.2:
+  "You can't willingly end a move in a space occupied by another creature").
+  The demo's burning-hands scenario stacks four giant rats this way.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_resolve_topology`)
 
 ## Event stream observability (2026-08-22)
 
+- **`ZoneTransit` is never emitted (2026-10-03, C25).** It stays in the closed
+  `CombatEvent` union only because a host imports it. Drop it in a later
+  breaking minor, once no host does.
+  (`packages/dnd5e-engine/src/dnd5e_engine/events.py::ZoneTransit`)
 - **`DeathRecord.killer_id` names the current actor, not the attacker
   (2026-09-27, C23).** Every death is recorded with `live.current_actor_id`,
   so a kill landed off the killer's own turn names whoever's turn it is: an
@@ -542,6 +552,12 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   `orchestrator.py::_pierces_invisibility`; an effect-vocabulary carve-out is
   a future cluster's seam.
   (`packages/dnd5e-engine/src/dnd5e_engine/spatial.py::GridTopology.can_see`)
+- **An area the engine can't map onto the grid hits one cell (2026-10-03,
+  C25).** A `wall` template (Blade Barrier, Tsunami, Wall of Fire, Wall of
+  Thorns, Wind Wall) or a size written as a formula (Confusion) falls back to
+  anchor-cell targeting: every creature on the named target's cell, else on the
+  caster's.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_expand_aoe_target_list`)
 - **Monster-cast AoE applies no forced-movement rider** (2026-08-27). Only the
   player-intent cast path calls `activities/forced_movement.py`, so a monster
   casting Thunderwave deals damage but pushes nobody.
