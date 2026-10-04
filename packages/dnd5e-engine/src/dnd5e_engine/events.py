@@ -595,6 +595,35 @@ class AttackFailed(BaseModel):
     ]
 
 
+# ── areas of effect ─────────────────────────────────────────────────────────
+
+#: SRD 5.2's six area shapes (§Areas of Effect).
+AreaShape = Literal["cone", "cube", "cylinder", "emanation", "line", "sphere"]
+
+
+class AreaTargeted(BaseModel):
+    """An area of effect was placed, before anything in it rolls.
+
+    ``origin`` is the point of origin's cell and ``direction`` the aim of a
+    Cone, Cube or Line (``None`` for the other shapes). ``affected_ids`` are
+    the creatures the area affects; ``excluded_ids`` are the creatures standing
+    in it that it spares — by its creator's choice (SRD 5.2 "each creature of
+    your choice"), by the side it names ("each enemy"), or beyond the number it
+    affects ("up to six creatures"). Both lists follow initiative order; a
+    creature outside the area appears in neither.
+    """
+
+    type: Literal["area_targeted"] = "area_targeted"
+    actor_id: str
+    source_id: str
+    shape: AreaShape
+    size_ft: int
+    origin: str
+    direction: tuple[int, int] | None
+    affected_ids: list[str]
+    excluded_ids: list[str]
+
+
 # ── spell / reaction outcomes ───────────────────────────────────────────────
 
 
@@ -750,6 +779,7 @@ CombatEvent = Annotated[
     | DashTaken
     | MoveFailed
     | AttackFailed
+    | AreaTargeted
     | CastFailed
     | SpellCast
     | ReactionTriggered
@@ -796,6 +826,7 @@ ALL_COMBAT_EVENT_TYPES: tuple[type[BaseModel], ...] = (
     DashTaken,
     MoveFailed,
     AttackFailed,
+    AreaTargeted,
     CastFailed,
     SpellCast,
     ReactionTriggered,
@@ -812,6 +843,8 @@ __all__ = [
     "ActorMoved",
     "AdvantageMode",
     "AdvantageSource",
+    "AreaShape",
+    "AreaTargeted",
     "AttackFailed",
     "AttackRolled",
     "CastFailed",

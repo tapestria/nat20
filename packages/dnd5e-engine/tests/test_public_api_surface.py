@@ -133,3 +133,17 @@ def test_orchestrator_star_import_carries_what_start_combat_needs():
     exec("from dnd5e_engine.orchestrator import *", namespace)
     missing = [name for name in orchestrator.__all__ if name not in namespace]
     assert missing == [], f"star import did not bind: {missing}"
+
+
+def test_every_combat_event_is_registered_and_exported() -> None:
+    """A host imports event classes from ``dnd5e_engine.events``: every member of
+    the closed ``CombatEvent`` union is in ``ALL_COMBAT_EVENT_TYPES`` and in the
+    module's ``__all__``, so a new event can't ship half-registered."""
+    import typing
+
+    from dnd5e_engine import events
+
+    union, _discriminator = typing.get_args(events.CombatEvent)
+    members = set(typing.get_args(union))
+    assert members == set(events.ALL_COMBAT_EVENT_TYPES)
+    assert {cls.__name__ for cls in members} <= set(events.__all__)
