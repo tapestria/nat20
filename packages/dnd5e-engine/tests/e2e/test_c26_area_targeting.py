@@ -39,7 +39,6 @@ from dnd5e_engine.specs import EncounterMemberSpec, GridScene, PartyMemberSpec
 from tests.e2e.harness import cell, events_of, grid_scene, run_async, xfail_cluster
 
 _MONSTER_AIMING = xfail_cluster(26, "area targeting: monster aiming")
-_ACTOR_SIDE = xfail_cluster(26, "area targeting: the actor's side")
 
 
 def _pc(entity_id: str, at: str, **fields: Any) -> PartyMemberSpec:
@@ -235,7 +234,6 @@ def test_c26_s09_a_spent_recharge_action_sits_out_the_multiattack() -> None:
 # ── the actor's side ─────────────────────────────────────────────────────────
 
 
-@_ACTOR_SIDE
 def test_c26_s05_sleep_spares_its_caster() -> None:
     def cast(session: str, **intent: Any):
         handle, live = _start(
@@ -275,7 +273,6 @@ def test_c26_s05_sleep_spares_its_caster() -> None:
     assert (area.affected_ids, area.excluded_ids) == (["char:wiz", "mon:g1", "mon:g2"], [])
 
 
-@_ACTOR_SIDE
 def test_c26_s06_an_explicit_exclusion_replaces_the_default() -> None:
     handle, live = _start(
         [
@@ -306,7 +303,6 @@ def test_c26_s06_an_explicit_exclusion_replaces_the_default() -> None:
     )
 
 
-@_ACTOR_SIDE
 def test_c26_s07_an_exclusion_on_an_area_with_no_choice_is_refused() -> None:
     handle, live = _start(
         [_wizard(cell(0, 5), ["fireball"], {3: 1}), _pc("char:ally", cell(8, 6), initiative=15)],
@@ -344,7 +340,6 @@ def test_c26_s07_an_exclusion_on_an_area_with_no_choice_is_refused() -> None:
     assert live.spell_slots_by_entity["char:wiz"][3] == 0
 
 
-@_ACTOR_SIDE
 def test_c26_s08_phantasmal_force_affects_the_one_creature_named() -> None:
     handle, live = _start(
         [_wizard(cell(0, 5), ["phantasmal-force"], {2: 1})],
@@ -444,7 +439,6 @@ def test_c26_s13_of_your_choice_and_up_to_six_are_in_the_data() -> None:
 # ── the actor's side, beyond spells ──────────────────────────────────────────
 
 
-@_ACTOR_SIDE
 def test_c26_s14_slow_affects_six_enemies_in_its_cube() -> None:
     goblins = [
         _foe(f"mon:g{i}", cell(col, row), initiative=10 - i)
@@ -476,7 +470,6 @@ def test_c26_s14_slow_affects_six_enemies_in_its_cube() -> None:
     assert area.excluded_ids == ["char:ally", "mon:g7"]
 
 
-@_ACTOR_SIDE
 def test_c26_s15_a_breath_weapon_feature_is_an_area() -> None:
     drake = _pc(
         "char:drake", cell(0, 5), species_slug="dragonborn", character_level=5, constitution=14
@@ -509,7 +502,6 @@ def test_c26_s15_a_breath_weapon_feature_is_an_area() -> None:
     )
 
 
-@_ACTOR_SIDE
 def test_c26_s16_the_pipes_of_haunting_frighten_only_enemies_by_default() -> None:
     handle, live = _start(
         [_pc("char:bard", cell(5, 5)), _pc("char:ally", cell(6, 6), initiative=15)],

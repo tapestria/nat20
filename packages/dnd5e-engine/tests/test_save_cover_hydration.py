@@ -3,7 +3,7 @@ save even when the resolving activity carries a measured AoE template
 (Acid Splash's SRD 5.2 5-ft-radius Sphere) and the point of origin
 coincides with the single creature it affects.
 
-``_target_cover_map`` / ``_aoe_cover_origin`` shift the cover point-of-origin
+``_target_cover_map`` / ``_area_cover_origin`` shift the cover point-of-origin
 to the AoE's burst point for every templated cast (SRD 5.2 §Cover — "an area
 of effect ... measure cover from the point of origin"), pinned for a genuine
 multi-target burst by ``tests/test_c16_orchestrator.py::

@@ -32,7 +32,7 @@ def test_c16_s01_fireball_sphere_hits_every_creature_within_radius():
     id npdEWb2egUPnB5Fa, heading "Sphere"); fireball's 20 ft radius:
     packages/dnd5e-srd-data/src/dnd5e_srd_data/canonical/spells/fireball.json
     (``target.template = {type: "sphere", size: "20", units: "ft"}``).
-    ``orchestrator._expand_aoe_target_list`` walks
+    ``orchestrator._area_targets`` walks
     ``GridTopology.cells_in_template("sphere", 20)`` from the point of
     origin and keeps every alive combatant standing in a resulting cell
     with line of effect, so the geometrically-in-radius but unnamed
@@ -130,7 +130,7 @@ def test_c16_s02_burning_hands_cone_fires_from_casters_own_cell():
     ``mon:front`` (2 cells "ahead", inside the 3-cell forward cone) takes
     ``DamageApplied(damage_type="fire")`` (bounded ``[3, 18]``, 3d6) and
     ``mon:behind`` (2 cells "behind") takes none.
-    ``_expand_aoe_target_list`` (orchestrator.py) now walks
+    ``_area_targets`` (orchestrator.py) now walks
     ``GridTopology.cells_in_template("cone", 15, direction=(1, 0))`` from
     the caster's own cell (origin excluded per SRD) and keeps every alive
     combatant standing in a resulting cell, so ``mon:behind`` is excluded
@@ -211,7 +211,7 @@ def test_c16_s03_lightning_bolt_line_hits_every_cell_along_its_length():
     (packs/_source/content24/appendices/appendix-d-rule-references.yml,
     id 6DOoBgg7okm9gBc6, heading "Line"). Lightning Bolt's 100 ft line:
     packages/dnd5e-srd-data/src/dnd5e_srd_data/canonical/spells/lightning-bolt.json.
-    ``_expand_aoe_target_list`` enumerates the line's cells from the
+    ``_area_targets`` enumerates the line's cells from the
     caster's own point of origin, so every creature standing on the
     bolt's path is hit — both the named target and ``mon:near``, which
     sits between the caster and it — while a creature off the path

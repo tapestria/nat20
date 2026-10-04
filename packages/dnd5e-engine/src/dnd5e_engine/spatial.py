@@ -447,8 +447,8 @@ class GridTopology:
           Cone's) point of origin "isn't included in the area of effect
           unless its creator decides otherwise", so this primitive is
           deliberately INCLUSIVE and the caller drops the origin. The only
-          in-engine caller, ``orchestrator._expand_aoe_target_list``, does
-          exactly that via the typed ``_AoeTemplate.include_origin``, so no
+          in-engine caller, ``areas.area_cells``, does exactly that via the
+          typed ``AreaTemplate.includes_origin``, so no
           shipped behaviour is off-SRD; a host calling this directly must
           discard ``origin`` itself. Behaviour is pinned by tests.
         * ``"cone"``: requires ``direction``; a cell at offset ``(dx, dy)``

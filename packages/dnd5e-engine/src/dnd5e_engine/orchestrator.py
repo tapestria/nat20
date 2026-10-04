@@ -130,12 +130,23 @@ from dnd5e_engine.activities.passive_stats import (
 )
 from dnd5e_engine.activities.resolver import resolve_activity
 from dnd5e_engine.activities.scale import build_scale_values, feature_owners
+from dnd5e_engine.areas import (
+    AreaTemplate,
+    area_activity,
+    area_cells,
+    area_template,
+    creature_count,
+    is_choice,
+    is_harmful,
+    select_affected,
+)
 from dnd5e_engine.death_saves import DeathSaveState, roll_death_save
 from dnd5e_engine.events import (
     Ability,
     ActorMoved,
     AdvantageMode,
     AdvantageSource,
+    AreaTargeted,
     AttackFailed,
     AttackRolled,
     CastFailed,
@@ -310,6 +321,14 @@ class PlayerIntent(BaseModel):
     # omitted for a directional template the orchestrator aims from the caster
     # through ``target_id``. Ignored for sphere / cylinder and non-AoE intents.
     direction: tuple[int, int] | None = None
+    # SRD 5.2 "Each creature of your choice in a 5-foot-radius Sphere" — the
+    # creatures an area of your choice spares. ``None`` (the default) spares
+    # the actor's allies and the actor itself when the area harms (a save or
+    # damage), and its enemies when it helps; ``()`` spares nobody, so the
+    # actor opts itself in. Refused with ``target_invalid`` before anything is
+    # spent when an id is not in the combat, or when an attack, cast, item use
+    # or feature use resolves no area of your choice. Other intents ignore it.
+    excluded_target_ids: tuple[str, ...] | None = None
     # SRD §Combat — Dash / Disengage budget choice. False → Action (default).
     # True → Bonus Action: for ``dash`` and ``disengage`` only with Cunning
     # Action among the granted features (SRD 5.2 Rogue 2), else
@@ -363,6 +382,13 @@ class PlayerIntent(BaseModel):
     def _direction_nonzero(cls, value: tuple[int, int] | None) -> tuple[int, int] | None:
         if value is not None and value == (0, 0):
             raise ValueError("direction must be a nonzero grid vector")
+        return value
+
+    @field_validator("excluded_target_ids")
+    @classmethod
+    def _excluded_ids_distinct(cls, value: tuple[str, ...] | None) -> tuple[str, ...] | None:
+        if value is not None and ("" in value or len(set(value)) != len(value)):
+            raise ValueError("excluded_target_ids must be distinct, non-empty ids")
         return value
 
 
@@ -928,8 +954,8 @@ def _target_cover_map(
     The origin is ``caster_id``'s own cell for an attack or a single-target
     cast. For an AREA of effect the SRD measures cover from the area's point of
     origin instead — a Fireball centred forty feet away shields its victims
-    from the BURST POINT, not from the wizard — so the AoE cast path passes the
-    resolved template origin as ``origin_cell`` (see ``_aoe_cover_origin``).
+    from the BURST POINT, not from the wizard — so an area passes its resolved
+    point of origin as ``origin_cell`` (see ``_area_cover_origin``).
     When ``origin_cell`` is given the caster is no longer assumed to stand on
     the origin, so it is no longer excluded from the occupancy sweep: a caster
     standing between the burst point and a victim grants that victim half cover
@@ -5812,114 +5838,66 @@ def _build_hydration_payload(live: _LiveCombat, caster: Combatant | None = None)
     }
 
 
-# ── AoE target-list expansion ───────────────────────────────────────────────
+# ── Areas of effect ─────────────────────────────────────────────────────────
 
-# SRD §Areas of Effect — a spell whose creature-targeting activity carries a
-# measured template affects every creature standing in the template's cells
-# (``_expand_aoe_target_list``).
-#
-# Selection signal: the TYPED activity's ``target.template`` measured-template
-# block. Foundry tags every area spell with a measured template
-# (``type``/``size``: Fireball=sphere/20, Burning Hands=cone/15, Sleep=sphere/5,
-# Faerie Fire=cube/20) on the activity that resolves against creatures; a
-# single-target spell (Sacred Flame, Cure Wounds, Magic Missile, Fire Bolt)
-# carries no template. The lib's Foundry→canonical converter now surfaces this
-# (inherited from ``system.target`` when the activity doesn't override it), so
-# the typed activity alone is the AoE discriminator — no the legacy evaluator-wrapper read.
+# SRD 5.2 §Areas of Effect — an activity that resolves against creatures and
+# carries a measured template (Foundry ``target.template``: Fireball's
+# sphere/20, Burning Hands' cone/15) affects the creatures in its area, whatever
+# the intent: a spell, a feature (a Breath Weapon) or an item (the Pipes of
+# Haunting). ``dnd5e_engine.areas`` holds the pure geometry and selection; this
+# section places the area, applies it and reports it (``AreaTargeted``).
 
-# Activity kinds that resolve against a creature target (vs. ``utility``, which
-# is a self/zone-creating rider that affects no external creature). Only these
-# carry a meaningful ``target.template`` signal for AoE-vs-single selection.
-# Detect Thoughts' 30-ft detection radius lives on its ``utility`` activity, so
-# excluding ``utility`` keeps that spell single-target — its creature-resolving
-# ``save`` activity carries no template.
-_TARGETING_ACTIVITY_KINDS = frozenset({"save", "damage", "attack", "heal"})
-
-
-def _activity_has_measured_template(activity: Any) -> bool:
-    """Return True if a creature-targeting activity carries a measured AoE
-    template (a non-empty shape ``type``). Foundry's measured-template block is
-    the area signal; an empty ``type`` means the activity resolves against a
-    discrete target, not an area."""
-    if activity.kind not in _TARGETING_ACTIVITY_KINDS:
-        return False
-    return bool(activity.target.template.type)
-
-
-def _typed_spell_broadcasts(activities: Sequence[Any]) -> bool:
-    """Return True if the TYPED activities broadcast to every creature in an area.
-
-    The authoritative single-vs-area signal is a measured ``target.template``
-    on the activity that resolves against creatures (see
-    ``_activity_has_measured_template``):
-
-    - a creature-targeting activity with a measured template (Fireball's
-      ``save`` ⇒ sphere/20, Burning Hands ⇒ cone/15) ⇒ area broadcast.
-    - no measured template on any creature-targeting activity (Sacred Flame,
-      Cure Wounds, Magic Missile, Detect Thoughts' single-creature ``save``)
-      ⇒ single target.
-
-    Per-turn / per-creature repeat-save *riders* in genuine clouds
-    (Stinking Cloud, Spirit Guardians) resolve their primary cast via a
-    ``utility`` activity (excluded above), so they correctly resolve single at
-    cast time and surface per-creature saves via the end-of-turn sweep.
-    """
-    return any(_activity_has_measured_template(a) for a in activities)
-
-
-# C16 — Foundry ``target.template.type`` → engine template. ``origin`` says
-# where the point of origin sits ("target": the named target's cell, else the
-# caster's; "caster": always the caster's cell); ``include_origin`` follows
-# SRD 5.2 §Areas of Effect (Sphere/Cylinder include it; Cone/Cube/Line and an
-# Emanation — Foundry ``radius`` — do not "unless its creator decides
-# otherwise", and the engine does not). ``wall`` (Wall of Fire's line of
-# panels) has no single-origin geometry and falls back to anchor-cell
-# targeting (``_expand_aoe_target_list``).
-_AoeShape = Literal["sphere", "cone", "line", "cube", "cylinder"]
-_AOE_TEMPLATE_TYPES: dict[str, tuple[_AoeShape, Literal["target", "caster"], bool]] = {
-    "sphere": ("sphere", "target", True),
-    "circle": ("sphere", "target", True),
-    "cylinder": ("cylinder", "target", True),
-    "radius": ("sphere", "caster", False),
-    "cube": ("cube", "caster", False),
-    "square": ("cube", "caster", False),
-    "cone": ("cone", "caster", False),
-    "line": ("line", "caster", False),
-}
+# The intents that resolve activities, so the only ones an area can come from.
+_AREA_INTENTS: Final[frozenset[IntentType]] = frozenset(
+    {"attack", "cast_spell", "use_item", "use_feature"}
+)
 
 
 @dataclass(frozen=True)
-class _AoeTemplate:
-    shape: _AoeShape
-    size_ft: int
-    origin: Literal["target", "caster"]
-    include_origin: bool
+class _AreaPlan:
+    """How an intent's area activity resolves (``_area_plan``)."""
+
+    activity: Any
+    #: ``None`` for a template the engine can't place (a ``wall``, a formula size).
+    template: AreaTemplate | None
+    #: "up to N creatures" (``areas.creature_count``).
+    count: int | None
+    #: The creatures a counted area names: ``target_ids``, else a lone
+    #: ``target_id`` for a count of one ("a creature you can see").
+    named_ids: tuple[str, ...]
+
+    @property
+    def places_template(self) -> bool:
+        """The engine enumerates the template's cells: a template it can place,
+        unless the intent names the creatures a counted area affects."""
+        return self.template is not None and not (self.count is not None and self.named_ids)
 
 
-def _aoe_template(activities: Sequence[Any]) -> _AoeTemplate | None:
-    """The first creature-targeting activity's measured template, or ``None``
-    when the spell is single-target or its template has no grid geometry."""
-    for activity in activities:
-        if not _activity_has_measured_template(activity):
-            continue
-        template = activity.target.template
-        mapped = _AOE_TEMPLATE_TYPES.get(template.type)
-        try:
-            size_ft = int(float(template.size))
-        except (TypeError, ValueError):
-            size_ft = 0
-        if mapped is None or size_ft <= 0:
-            _LOGGER.warning(
-                "aoe_template_unsupported type=%s size=%r — falling back to anchor-cell targeting",
-                template.type,
-                template.size,
-            )
-            return None
-        shape, origin, include_origin = mapped
-        return _AoeTemplate(
-            shape=shape, size_ft=size_ft, origin=origin, include_origin=include_origin
-        )
-    return None
+def _area_plan(intent: PlayerIntent, activities: Sequence[Any]) -> _AreaPlan | None:
+    """The intent's area activity and how it resolves, or ``None`` when its
+    activities resolve against a named target.
+
+    SRD 5.2 §Making an Attack: an attack roll always targets one creature or
+    object, so an ``attack`` intent never area-expands, even when the
+    weapon's other activities carry a template of their own (Mace of
+    Terror's Wave of Terror rides the same weapon as a separate,
+    itemUses-gated use, not the swing itself).
+    """
+    if intent.intent_type == "attack":
+        return None
+    activity = area_activity(activities)
+    if activity is None:
+        return None
+    count = creature_count(activity)
+    named: tuple[str, ...] = ()
+    if count is not None:
+        if intent.target_ids:
+            named = tuple(intent.target_ids)
+        elif count == 1 and intent.target_id:
+            named = (intent.target_id,)
+    return _AreaPlan(
+        activity=activity, template=area_template(activity), count=count, named_ids=named
+    )
 
 
 def _aoe_direction(
@@ -5938,41 +5916,88 @@ def _aoe_direction(
     return ((tc > cc) - (tc < cc), (tr > cr) - (tr < cr))
 
 
-# SRD 5.2 §Areas of Effect — a Cone, Line or Cube "extends in straight lines
-# from a point of origin in a direction its creator chooses", so these three
-# shapes cannot be placed without an aim vector. Sphere / Cylinder / Emanation
-# are radial and need none.
-_DIRECTIONAL_AOE_SHAPES: frozenset[str] = frozenset({"cone", "line", "cube"})
+def _area_origin(
+    live: _LiveCombat, actor_id: str, intent: PlayerIntent, template: AreaTemplate
+) -> str:
+    """The area's SRD 5.2 point of origin: the named target's cell for a
+    Sphere or Cylinder (Fireball), else the actor's cell (Burning Hands,
+    Thunderwave, an Emanation)."""
+    actor_cell = live.actor_zone[actor_id]
+    if template.anchor == "target" and intent.target_id:
+        return live.actor_zone.get(intent.target_id, actor_cell)
+    return actor_cell
 
 
-def _directional_aoe_lacks_direction(
-    live: _LiveCombat, actor_id: str, intent: PlayerIntent, cast_spell: Spell | None
-) -> bool:
-    """True iff this cast is a grid AoE whose template needs an aim vector and
-    none can be derived (no ``intent.direction``, no distinct named target).
+def _area_cover_origin(
+    live: _LiveCombat, actor_id: str, intent: PlayerIntent, activities: Sequence[Any]
+) -> str | None:
+    """SRD 5.2 §Cover — "if a target is behind an area of effect's point of
+    origin, measure cover from that point": the placed area's origin, or
+    ``None`` (the actor's cell) when the intent places no template."""
+    plan = _area_plan(intent, activities)
+    if plan is None or plan.template is None or not plan.places_template:
+        return None
+    return _area_origin(live, actor_id, intent, plan.template)
 
-    Reads the ``Spell`` already fetched for casting-time classification, so the
-    gate costs no extra loader hit, and shares ``_aoe_template`` /
-    ``_aoe_direction`` with ``_expand_aoe_target_list`` — one implementation,
-    two call sites.
+
+def _area_target_failure(
+    live: _LiveCombat,
+    current: Combatant,
+    actor_id: str,
+    intent: PlayerIntent,
+    feature_invocation: _FeatureInvocation | None,
+) -> CombatEvent | None:
+    """``target_invalid`` for an area the intent can't resolve, before anything
+    is spent; ``None`` otherwise. One of the ``pre_resolution_gates``.
+
+    - A Cone, Cube or Line with no aim: no ``direction`` and no other named
+      creature (SRD 5.2: it extends "in a direction its creator chooses").
+    - ``excluded_target_ids`` naming a creature not in the combat, or sent with
+      an intent that resolves no area of your choice.
+    - A counted area naming more creatures than it affects, one creature
+      twice, or a creature not in the combat.
     """
-    if intent.intent_type != "cast_spell" or cast_spell is None:
-        return False
-    template = _aoe_template(cast_spell.activities)
-    if template is None or template.shape not in _DIRECTIONAL_AOE_SHAPES:
-        return False
-    return _aoe_direction(live, actor_id, intent) is None
-
-
-def _has_line_of_effect(topology: SpatialTopology, origin: str, cell: str) -> bool:
-    """SRD 5.2 §Point of Origin — "If all straight lines extending from the
-    point of origin to a location ... are blocked, that location isn't included
-    ... To block a line, an obstruction must provide Total Cover." Walls and
-    blocked cells block; creatures (half cover at most) never do, so no
-    ``occupied_cells`` are passed."""
-    return origin == cell or (
-        topology.has_line_of_sight(origin, cell) and topology.cover_between(origin, cell) != "total"
+    if intent.intent_type not in _AREA_INTENTS:
+        return None
+    activities = _resolve_intent_activities(
+        intent,
+        feature_invocation,
+        current,
+        stat_block_slug=_current_stat_block_slug(live, actor_id),
+    ).activities
+    plan = _area_plan(intent, activities)
+    in_combat = {c.entity_id for c in live.initiative}
+    invalid = (
+        (
+            plan is not None
+            and plan.template is not None
+            and plan.places_template
+            and plan.template.directional
+            and _aoe_direction(live, actor_id, intent) is None
+        )
+        or (
+            intent.excluded_target_ids is not None
+            and (
+                plan is None
+                or not is_choice(plan.activity)
+                or not set(intent.excluded_target_ids) <= in_combat
+            )
+        )
+        or (
+            plan is not None
+            and plan.count is not None
+            and (
+                len(plan.named_ids) > plan.count
+                or len(set(plan.named_ids)) != len(plan.named_ids)
+                or not set(plan.named_ids) <= in_combat
+            )
+        )
     )
+    if not invalid:
+        return None
+    if intent.intent_type == "attack":
+        return AttackFailed(actor_id=actor_id, target_id=intent.target_id, reason="target_invalid")
+    return CastFailed(actor_id=actor_id, spell_id=intent.spell_id or "", reason="target_invalid")
 
 
 def _activities_bear_effects(activities: Sequence[Any]) -> bool:
@@ -6014,89 +6039,76 @@ def _spell_is_self_or_targetless(cast_spell: Spell | None, named_target_id: str 
     return named_target_id is None
 
 
-def _aoe_cover_origin(
-    live: _LiveCombat,
-    caster_id: str,
-    intent: PlayerIntent,
-    activities: Sequence[Any],
-) -> str | None:
-    """The cell an AoE's template is centred on — its SRD 5.2 point of origin —
-    or ``None`` when this cast is not a grid AoE (no mappable template, or no
-    tracked caster cell).
-
-    Single source of truth for two consumers that must agree: the template walk
-    in ``_expand_aoe_target_list`` (which cells are in the area, and which have
-    line of effect) and the cover sweep in ``_target_cover_map`` (§Cover — "if
-    a target is behind an area of effect's point of origin, measure cover from
-    that point"). A ``target``-origin template (Fireball) centres on the named
-    target's cell; a ``caster``-origin one (Burning Hands, Thunderwave) on the
-    caster's.
-    """
-    caster_cell = live.actor_zone.get(caster_id)
-    if caster_cell is None:
-        return None
-    template = _aoe_template(activities)
-    if template is None:
-        return None
-    if template.origin == "target" and intent.target_id:
-        return live.actor_zone.get(intent.target_id, caster_cell)
-    return caster_cell
-
-
-def _expand_aoe_target_list(
-    live: _LiveCombat,
-    caster: Combatant,
-    intent: PlayerIntent,
-    activities: Sequence[Any],
+def _area_targets(
+    live: _LiveCombat, actor: Combatant, intent: PlayerIntent, plan: _AreaPlan
 ) -> list[Combatant]:
-    """Build the AoE candidate list (SRD 5.2 §Areas of Effect).
+    """The creatures an intent's area affects (SRD 5.2 §Areas of Effect).
 
-    Resolve the typed template (``_aoe_template``), place its point of
-    origin, aim it, enumerate ``cells_in_template``, drop every cell without
-    line of effect from the origin, and return every alive combatant standing
-    in a surviving cell (allies and the caster included when the geometry
-    says so — Fireball hits the caster in its own radius).
-
-    Anchor-cell targeting: a template ``_aoe_template`` cannot map (a ``wall``,
-    or a size that is a formula) affects every alive combatant standing on
-    the anchor cell — the named target's, else the caster's.
+    A template the engine can place is placed at its point of origin, aimed,
+    trimmed to the cells with line of effect, and reported in an
+    ``AreaTargeted``; ``areas.select_affected`` then applies the activity's
+    ``affects`` (an "each enemy" type, "of your choice", "up to N"), the
+    caster included only where the geometry and the choice say so — Fireball
+    still hits the caster in its own radius. A counted area whose creatures
+    the intent names affects exactly those. A template the engine can't place
+    (a ``wall``, a formula size) affects the named target only.
     """
-    named_target_id = intent.target_id
     alive = [c for c in live.initiative if c.is_alive and c.entity_id not in live.dead_ids]
-    topology = live.topology
-    caster_cell = live.actor_zone.get(caster.entity_id)
-    if caster_cell is not None:
-        template = _aoe_template(activities)
-        if template is not None:
-            origin = _aoe_cover_origin(live, caster.entity_id, intent, activities) or caster_cell
-            direction: tuple[int, int] | None = None
-            if template.shape in _DIRECTIONAL_AOE_SHAPES:
-                direction = _aoe_direction(live, caster.entity_id, intent)
-                if direction is None:
-                    # Unreachable on the live cast path: the pre-slot
-                    # ``_directional_aoe_lacks_direction`` gate in
-                    # ``submit_player_intent`` already emitted
-                    # ``CastFailed(target_invalid)`` and returned before any
-                    # slot or action was spent. Kept as a defensive floor so an
-                    # unaimed template can never reach ``cells_in_template``,
-                    # which raises.
-                    return []
-            cells = topology.cells_in_template(
-                origin, template.shape, template.size_ft, direction=direction
-            )
-            area = {c for c in cells if _has_line_of_effect(topology, origin, c)}
-            if not template.include_origin:
-                area.discard(origin)
-            return [c for c in alive if live.actor_zone.get(c.entity_id) in area]
-    anchor_cell: str | None = None
-    if named_target_id:
-        anchor_cell = live.actor_zone.get(named_target_id)
-    if anchor_cell is None:
-        anchor_cell = caster_cell
-    if anchor_cell is None:
-        # No tracked cell — fall back to caster + named target only.
-        return [c for c in live.initiative if c.entity_id in {caster.entity_id, named_target_id}]
-    return [c for c in alive if live.actor_zone.get(c.entity_id) == anchor_cell]
+    excluded = intent.excluded_target_ids or ()
+    if plan.template is None:
+        _LOGGER.warning(
+            "aoe_template_unsupported type=%s size=%r — falling back to the named target",
+            plan.activity.target.template.type,
+            plan.activity.target.template.size,
+        )
+        return [c for c in alive if c.entity_id == intent.target_id and c.entity_id not in excluded]
+    by_id = {c.entity_id: c for c in alive}
+    if not plan.places_template:
+        return [by_id[i] for i in plan.named_ids if i in by_id and i not in excluded]
+    template = plan.template
+    origin = _area_origin(live, actor.entity_id, intent, template)
+    # The ``_area_target_failure`` gate already refused an unaimed Cone, Cube
+    # or Line before anything was spent.
+    direction = _aoe_direction(live, actor.entity_id, intent) if template.directional else None
+    cells = area_cells(live.topology, template, origin, direction)
+    in_area = [c.entity_id for c in alive if live.actor_zone.get(c.entity_id) in cells]
+    selection = select_affected(
+        in_area,
+        affects_type=plan.activity.target.affects.type,
+        choice=is_choice(plan.activity),
+        count=plan.count,
+        harmful=is_harmful([plan.activity]),
+        excluded_ids=intent.excluded_target_ids,
+        is_enemy=lambda other: _is_enemy(live, actor.entity_id, other),
+        is_ally=lambda other: other in _allied_ids(live, actor.entity_id),
+    )
+    _emit(
+        live,
+        AreaTargeted(
+            actor_id=actor.entity_id,
+            source_id=_area_source_id(intent),
+            shape=template.shape,
+            size_ft=template.size_ft,
+            origin=origin,
+            direction=direction,
+            affected_ids=list(selection.affected_ids),
+            excluded_ids=list(selection.spared_ids),
+        ),
+    )
+    return [by_id[i] for i in selection.affected_ids]
+
+
+def _area_source_id(intent: PlayerIntent) -> str:
+    """The slug of what makes the area: the spell, item, feature or stat-block
+    action the intent names."""
+    return (
+        intent.spell_id
+        or intent.item_id
+        or intent.feature_id
+        or intent.stat_block_action_id
+        or intent.weapon_id
+        or ""
+    )
 
 
 # ── Concentration writeback ─────────────────────────────────────────────────
@@ -10185,14 +10197,11 @@ def _cast_target_invalid(
 ) -> bool:
     """Every pre-slot ``target_invalid`` reason for a cast, in one predicate.
 
-    Two today: Hellish Rebuke's "the creature that damaged you" trigger target,
-    and a Cone/Line/Cube AoE template with no way to aim it. Both must reject
-    before budget/slot consumption, so they share one gate in
-    ``submit_player_intent`` and one ``CastFailed`` emission.
+    One today: Hellish Rebuke's "the creature that damaged you" trigger
+    target. An area's own refusals (an unaimed Cone/Line/Cube, exclusions) are
+    ``_area_target_failure``'s, which covers every intent kind.
     """
-    return _hellish_rebuke_target_invalid(caster, intent) or _directional_aoe_lacks_direction(
-        live, actor_id, intent, cast_spell
-    )
+    return _hellish_rebuke_target_invalid(caster, intent)
 
 
 def _cast_target_invalid_failure(
@@ -10203,10 +10212,9 @@ def _cast_target_invalid_failure(
     cast_spell: Spell | None,
 ) -> CombatEvent | None:
     """``CastFailed(reason="target_invalid")`` for every pre-slot illegal
-    target or template placement (Hellish Rebuke's fixed target, an unaimed
-    Cone/Line/Cube) — see ``_cast_target_invalid``; ``None`` otherwise. One of
-    the ``pre_resolution_gates`` failure-builders consumed by
-    ``submit_player_intent``."""
+    cast target (Hellish Rebuke's fixed target) — see ``_cast_target_invalid``;
+    ``None`` otherwise. One of the ``pre_resolution_gates`` failure-builders
+    consumed by ``submit_player_intent``."""
     if not _cast_target_invalid(live, current, actor_id, intent, cast_spell):
         return None
     return CastFailed(actor_id=actor_id, spell_id=intent.spell_id or "", reason="target_invalid")
@@ -11116,17 +11124,18 @@ def _resolve_targets(
     activities: list[Any],
     cast_spell: Spell | None,
 ) -> list[Combatant]:
-    """SRD §Areas of Effect / §Range: Self — resolve the target list. An AoE
-    cast expands through ``_expand_aoe_target_list`` (every creature standing
-    in a cell of the measured template that has line of effect from the point
-    of origin; anchor-cell targeting for a template it cannot map). Otherwise
-    the named target is used, defaulting to the caster for an effect-bearing
-    self/targetless buff or a self-targeting feature. A count-bearing activity
-    (R5 — Magic Missile darts) expands via ``_count_scaled_targets`` in place
-    of the plain ``target_id`` lookup."""
+    """SRD §Areas of Effect / §Range: Self — resolve the target list. An
+    intent whose activities carry an area resolves through ``_area_targets``
+    (the creatures in the template's cells with line of effect from its point
+    of origin that the area affects; the named target for a template it
+    cannot place). Otherwise the named target is used, defaulting to the
+    caster for an effect-bearing self/targetless buff or a self-targeting
+    feature. A count-bearing activity (R5 — Magic Missile darts) expands via
+    ``_count_scaled_targets`` in place of the plain ``target_id`` lookup."""
     targets: list[Combatant]
-    if intent.intent_type == "cast_spell" and _typed_spell_broadcasts(activities):
-        targets = _expand_aoe_target_list(live, current, intent, activities)
+    plan = _area_plan(intent, activities)
+    if plan is not None:
+        targets = _area_targets(live, current, intent, plan)
     else:
         expanded = _count_scaled_targets(live, intent, activities, cast_spell)
         targets = (
@@ -11872,8 +11881,10 @@ async def submit_player_intent(
     # Loading) -> Charmed target (SRD 5.2 "You can't attack the charmer or
     # target the charmer with damaging abilities or magical effects") ->
     # pre-slot ``target_invalid`` (Hellish Rebuke's fixed target, SRD
-    # §Hellish Rebuke; an unaimed Cone/Line/Cube AoE template) -> a second
-    # Action Surge this turn (SRD 5.2 "only once on a turn") -> a Bardic
+    # §Hellish Rebuke) -> an area's own refusals (``_area_target_failure``: an
+    # unaimed Cone/Line/Cube, an exclusion where there is no choice, a counted
+    # area's bad names) -> a second Action Surge this turn (SRD 5.2 "only once
+    # on a turn") -> a Bardic
     # Inspiration with no other creature to inspire -> an attack redeeming a
     # die it cannot roll -> an allowlisted conjuration's own refusals
     # (``_conjuration_gate_failure``). The first gate whose failure-builder
@@ -11887,6 +11898,7 @@ async def submit_player_intent(
         lambda: _cast_target_invalid_failure(
             live, current, actor_id, intent, cast_spell_for_timing
         ),
+        lambda: _area_target_failure(live, current, actor_id, intent, feature_invocation),
         lambda: _action_surge_failure(current, intent),
         lambda: _bardic_inspiration_target_failure(live, actor_id, intent),
         lambda: _granted_die_failure(live, current, intent),
@@ -12202,11 +12214,7 @@ async def submit_player_intent(
                 # point of origin, which for a target-origin template is NOT the
                 # caster's cell. ``None`` for every non-AoE cast/attack ⇒ the
                 # caster's cell.
-                cover_origin=(
-                    _aoe_cover_origin(live, current.entity_id, intent, activities)
-                    if intent.intent_type == "cast_spell" and _typed_spell_broadcasts(activities)
-                    else None
-                ),
+                cover_origin=_area_cover_origin(live, current.entity_id, intent, activities),
             ),
         )
         for activity in activities:

@@ -3,7 +3,7 @@ one event.
 
 ``start_combat`` takes a required ``GridScene``; the zone graph and its
 ``scene_zones`` keyword are gone. A template the engine can't map onto the grid
-still resolves, against the creatures on its anchor cell.
+still resolves, against its named target.
 """
 
 from __future__ import annotations
@@ -58,10 +58,9 @@ def test_a_zone_name_destination_is_unreachable_on_the_grid() -> None:
     assert combatant(live).movement_remaining == budget
 
 
-def test_an_unmappable_area_targets_the_anchor_cell_only(caplog: pytest.LogCaptureFixture) -> None:
+def test_an_unmappable_area_targets_the_named_target_only(caplog: pytest.LogCaptureFixture) -> None:
     """Confusion's sphere size is a formula the engine can't map, so the cast
-    falls back to anchor-cell targeting: the named target's cell, which holds
-    only that target — never its neighbour, never the caster."""
+    falls back to its named target — never its neighbour, never the caster."""
     caster = wizard(spells_known=["confusion"], spell_slots={4: 1}, character_level=7)
     near = foe(entity_id="mon:a", name="A", zone_id=cell_id(4, 0))
     neighbour = foe(entity_id="mon:b", name="B", zone_id=cell_id(4, 1))
@@ -76,7 +75,7 @@ def test_an_unmappable_area_targets_the_anchor_cell_only(caplog: pytest.LogCaptu
             slot_level=4,
         )
     assert [e.target_id for e in events(live, SaveRolled)] == ["mon:a"]
-    assert "falling back to anchor-cell targeting" in caplog.text
+    assert "falling back to the named target" in caplog.text
 
 
 def test_an_enemy_concentration_check_does_not_extend_rage() -> None:

@@ -118,27 +118,27 @@ def _damaged(live: Any) -> set[str]:
 def test_aoe_template_maps_foundry_types():
     from dnd5e_srd_data.loader import BundledAssetLoader
 
-    from dnd5e_engine.orchestrator import _aoe_template
+    from dnd5e_engine.areas import area_activity, area_template
 
     # Real corpus, independent of any MemoryAssetLoader set by other tests.
     loader = BundledAssetLoader()
-    fireball = _aoe_template(loader.get_spell("fireball").activities)
+    fireball = area_template(area_activity(loader.get_spell("fireball").activities))
     assert fireball is not None
-    assert (fireball.shape, fireball.size_ft, fireball.origin, fireball.include_origin) == (
+    assert (fireball.shape, fireball.size_ft, fireball.anchor, fireball.includes_origin) == (
         "sphere",
         20,
         "target",
         True,
     )
-    thunderwave = _aoe_template(loader.get_spell("thunderwave").activities)
+    thunderwave = area_template(area_activity(loader.get_spell("thunderwave").activities))
     assert thunderwave is not None
     assert (
         thunderwave.shape,
         thunderwave.size_ft,
-        thunderwave.origin,
-        thunderwave.include_origin,
-    ) == ("cube", 15, "caster", False)
-    assert _aoe_template(loader.get_spell("sacred-flame").activities) is None
+        thunderwave.anchor,
+        thunderwave.includes_origin,
+    ) == ("cube", 15, "actor", False)
+    assert area_activity(loader.get_spell("sacred-flame").activities) is None
 
 
 def test_sphere_line_of_effect_excludes_cells_behind_a_wall():
@@ -162,7 +162,7 @@ def test_line_of_effect_ignores_creature_occupancy_but_not_total_cover():
     a Total Cover obstruction and an impassable cell both do. All three cases
     use the SAME interposing cell, so the assertions turn on the obstruction
     model rather than on the geometry."""
-    from dnd5e_engine.orchestrator import _has_line_of_effect
+    from dnd5e_engine.areas import has_line_of_effect as _has_line_of_effect
     from dnd5e_engine.spatial import GridTopology
 
     open_grid = GridTopology(GridScene(width=5, height=1))

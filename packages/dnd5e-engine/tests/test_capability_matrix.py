@@ -290,9 +290,14 @@ _PROBES: dict[str, tuple[Any, str]] = {
         ),
         "✅",
     ),
-    # C16: AoE spells enumerate template cells instead of zone equality.
+    # C16: areas enumerate template cells; C26a: for every intent kind, with
+    # "of your choice" exclusions and a reported AreaTargeted.
     "AoE templates (sphere / cone / line / cube / cylinder)": (
-        lambda: "cells_in_template(" in _src("orchestrator.py"),
+        lambda: (
+            "cells_in_template(" in _src("areas.py")
+            and "AreaTargeted(" in _src("orchestrator.py")
+            and "excluded_target_ids" in _src("orchestrator.py")
+        ),
         "✅",
     ),
     # C16: the forced-movement primitive emits CombatantMoved.
