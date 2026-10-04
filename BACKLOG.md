@@ -355,7 +355,13 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   checks that each start cell is in bounds and unblocked, not that it is free,
   so two creatures can start on one cell, which no move can produce (SRD 5.2:
   "You can't willingly end a move in a space occupied by another creature").
-  The demo's burning-hands scenario stacks four giant rats this way.
+  The demo's burning-hands scenario stacks four giant rats this way, and 18
+  engine tests start two creatures on one cell (under
+  `packages/dnd5e-engine/tests/`: `e2e/test_c20_class_features.py`,
+  `test_dodge_help_hide.py`, `test_c20_fighting_styles.py`,
+  `test_loading_property.py`, `e2e/test_c21_summons.py`,
+  `test_c21_polymorph.py`, `test_c21_wild_shape.py`); refusing a shared
+  start cell means re-seating them first.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_resolve_topology`)
 
 ## Event stream observability (2026-08-22)

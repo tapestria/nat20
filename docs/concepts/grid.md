@@ -109,6 +109,11 @@ and the engine aims caster → named target. A self-origin cone/line/cube with
 neither is rejected before the slot is spent, with
 `CastFailed(reason="target_invalid")`.
 
+A template the engine can't map onto the grid (the five `wall` spells: Blade
+Barrier, Tsunami, Wall of Fire, Wall of Thorns and Wind Wall; and Confusion,
+whose size is a formula) affects only the creatures standing on its anchor
+cell: the named target's, else the caster's. `BACKLOG.md` tracks it.
+
 ## Vision and light
 
 Three optional `GridScene` fields model SRD 5.2 §Vision and Light:
