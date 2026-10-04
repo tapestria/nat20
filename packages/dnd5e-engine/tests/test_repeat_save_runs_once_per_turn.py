@@ -24,12 +24,13 @@ from dnd5e_engine.lib_loader import set_lib_loader_for_tests
 from dnd5e_engine.orchestrator import _get_live, start_combat, submit_player_intent
 from dnd5e_engine.specs import (
     EncounterMemberSpec,
+    GridScene,
     PartyMemberSpec,
-    SceneTopology,
-    ZoneEdge,
 )
+from tests.e2e.harness import adjacent_cells, grid_scene
 
 _HOLD_IDENTITY = ("char:hero", "effect:hold_person", "cast:hold-person:mon:foe")
+_HERO_CELL, _FOE_CELL = adjacent_cells(2)
 
 
 @pytest.fixture(autouse=True)
@@ -58,7 +59,7 @@ def _party() -> list[PartyMemberSpec]:
             # level change doesn't affect the bonus-action scenario.
             character_level=4,
             class_slug="barbarian",
-            zone_id="zone:start",
+            zone_id=_HERO_CELL,
         )
     ]
 
@@ -72,16 +73,13 @@ def _encounter() -> list[EncounterMemberSpec]:
             initiative=1,
             hp_current=200,
             hp_max=200,
-            zone_id="zone:start",
+            zone_id=_FOE_CELL,
         )
     ]
 
 
-def _topology() -> SceneTopology:
-    return SceneTopology(
-        zones=["zone:start"],
-        edges=[ZoneEdge(a="zone:start", b="zone:start", distance_ft=0)],
-    )
+def _topology() -> GridScene:
+    return grid_scene(width=1, height=2)
 
 
 def _seed_pending_repeat_save(live) -> None:
@@ -113,7 +111,7 @@ def _run(session_id: str, intents: list[PlayerIntent]):
             session_id=session_id,
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=7,
         )
         live = _get_live(start.handle)

@@ -33,10 +33,10 @@ from dnd5e_engine.orchestrator import (
 )
 from dnd5e_engine.specs import (
     EncounterMemberSpec,
+    GridScene,
     PartyMemberSpec,
-    SceneTopology,
-    ZoneEdge,
 )
+from tests.e2e.harness import adjacent_cells, grid_scene
 
 
 @pytest.fixture(autouse=True)
@@ -49,11 +49,11 @@ def _reset_lib_loader():
     set_lib_loader_for_tests(None)
 
 
-def _topology() -> SceneTopology:
-    return SceneTopology(
-        zones=["zone:start"],
-        edges=[ZoneEdge(a="zone:start", b="zone:start", distance_ft=0)],
-    )
+_HERO_CELL, _FOE_CELL = adjacent_cells(2)
+
+
+def _topology() -> GridScene:
+    return grid_scene(width=1, height=2)
 
 
 def _barbarian() -> list[PartyMemberSpec]:
@@ -70,7 +70,7 @@ def _barbarian() -> list[PartyMemberSpec]:
             constitution=16,
             character_level=5,
             class_slug="barbarian",
-            zone_id="zone:start",
+            zone_id=_HERO_CELL,
         )
     ]
 
@@ -88,7 +88,7 @@ def _fighter() -> list[PartyMemberSpec]:
             constitution=14,
             character_level=5,
             class_slug="fighter",
-            zone_id="zone:start",
+            zone_id=_HERO_CELL,
         )
     ]
 
@@ -105,7 +105,7 @@ def _encounter() -> list[EncounterMemberSpec]:
             hp_current=500,
             hp_max=500,
             ac=1,
-            zone_id="zone:start",
+            zone_id=_FOE_CELL,
         )
     ]
 
@@ -123,7 +123,7 @@ def _run_melee(*, with_rage: bool, weapon_slug: str, seed: int):
             session_id=f"sess-rage-{with_rage}-{weapon_slug}",
             party=_barbarian(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=seed,
         )
         live = _get_live(start.handle)
@@ -196,7 +196,7 @@ def test_second_wind_heals_1d10_plus_fighter_level():
             session_id="sess-second-wind",
             party=_fighter(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=3,
         )
         live = _get_live(start.handle)

@@ -33,7 +33,8 @@ from dnd5e_engine.orchestrator import (
     start_combat,
     submit_player_intent,
 )
-from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec, SceneTopology, ZoneEdge
+from dnd5e_engine.specs import EncounterMemberSpec, GridScene, PartyMemberSpec
+from tests.e2e.harness import adjacent_cells, grid_scene
 
 # Chosen via the scan in the task brief (Step 1): the non-cast charged item
 # with the smallest deterministic pool.
@@ -58,11 +59,11 @@ ITEM_SLUG = "pipes-of-haunting"
 COUNTER_KEY = f"item_use:{ITEM_SLUG}"
 
 
-def _topology() -> SceneTopology:
-    return SceneTopology(
-        zones=["zone:start"],
-        edges=[ZoneEdge(a="zone:start", b="zone:start", distance_ft=0)],
-    )
+_HERO_CELL, _FOE_CELL = adjacent_cells(2)
+
+
+def _topology() -> GridScene:
+    return grid_scene(width=1, height=2)
 
 
 def _party(**pc_overrides: object) -> list[PartyMemberSpec]:
@@ -75,7 +76,7 @@ def _party(**pc_overrides: object) -> list[PartyMemberSpec]:
         attack_bonus=5,
         strength=16,
         dexterity=16,
-        zone_id="zone:start",
+        zone_id=_HERO_CELL,
     )
     base.update(pc_overrides)
     return [PartyMemberSpec(**base)]  # type: ignore[arg-type]
@@ -90,7 +91,7 @@ def _encounter() -> list[EncounterMemberSpec]:
             initiative=1,
             hp_current=200,
             hp_max=200,
-            zone_id="zone:start",
+            zone_id=_FOE_CELL,
         )
     ]
 
@@ -130,7 +131,7 @@ def test_use_item_spends_a_charge():
             session_id="sess-pipes-spend",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -157,7 +158,7 @@ def test_use_item_rejected_when_exhausted():
             session_id="sess-pipes-exhausted",
             party=_party(custom_counters={COUNTER_KEY: {"spent": 3}}),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -203,7 +204,7 @@ def test_use_item_without_pool_is_ungated():
             session_id="sess-net-ungated",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -234,7 +235,7 @@ def test_partial_seed_spend_accumulates():
             session_id="sess-pipes-partial",
             party=_party(custom_counters={COUNTER_KEY: {"spent": 2}}),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -305,7 +306,7 @@ def test_multi_activity_item_usable_at_full_pool():
             session_id="sess-staff-full-pool",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -340,7 +341,7 @@ def test_symbolic_and_negative_targets_ignored():
             session_id="sess-ball-bearings",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -392,7 +393,7 @@ def test_activity_id_selects_invocation_and_cost():
             session_id="sess-cube-of-force",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -462,7 +463,7 @@ def test_charges_to_spend_over_scaling_max_rejected():
             session_id="sess-wand-over-scaling-max",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -502,7 +503,7 @@ def test_charges_to_spend_spends_that_many():
             session_id="sess-wand-spends-requested",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -529,7 +530,7 @@ def test_charges_to_spend_on_unscalable_item_rejected():
             session_id="sess-pipes-unscalable",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -568,7 +569,7 @@ def test_charges_to_spend_on_pool_less_item_rejected():
             session_id="sess-net-pool-less-scaling",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -620,7 +621,7 @@ def test_wand_cast_delegates_to_spell(caplog):
             session_id="sess-wand-cast-delegates",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -669,7 +670,7 @@ def test_wand_upcast_spends_and_scales():
             session_id="sess-wand-upcast-scales",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -753,7 +754,7 @@ def test_item_cast_without_challenge_override_resolves():
             session_id="sess-staff-of-fire-no-override",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -802,7 +803,7 @@ def test_unselected_multi_cast_item_resolves_single_activity():
             session_id="sess-wand-of-binding-unselected",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -842,7 +843,7 @@ def test_charges_to_spend_on_non_cast_activity_rejected():
             session_id="sess-staff-of-striking-charges",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -882,7 +883,7 @@ def test_charges_to_spend_on_recharge_activity_rejected():
             session_id="sess-rope-of-climbing-charges",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
         )
         live = _get_live(start.handle)

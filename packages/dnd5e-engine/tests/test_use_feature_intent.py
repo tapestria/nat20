@@ -30,10 +30,10 @@ from dnd5e_engine.orchestrator import (
 from dnd5e_engine.rules.uses import UsesRollData
 from dnd5e_engine.specs import (
     EncounterMemberSpec,
+    GridScene,
     PartyMemberSpec,
-    SceneTopology,
-    ZoneEdge,
 )
+from tests.e2e.harness import adjacent_cells, grid_scene
 
 
 @pytest.fixture(autouse=True)
@@ -45,11 +45,11 @@ def _reset_lib_loader():
     set_lib_loader_for_tests(None)
 
 
-def _topology() -> SceneTopology:
-    return SceneTopology(
-        zones=["zone:start"],
-        edges=[ZoneEdge(a="zone:start", b="zone:start", distance_ft=0)],
-    )
+_HERO_CELL, _FOE_CELL = adjacent_cells(2)
+
+
+def _topology() -> GridScene:
+    return grid_scene(width=1, height=2)
 
 
 def _party(**overrides: object) -> list[PartyMemberSpec]:
@@ -64,7 +64,7 @@ def _party(**overrides: object) -> list[PartyMemberSpec]:
         constitution=16,
         character_level=5,
         class_slug="barbarian",
-        zone_id="zone:start",
+        zone_id=_HERO_CELL,
     )
     base.update(overrides)
     return [PartyMemberSpec(**base)]  # type: ignore[arg-type]
@@ -79,7 +79,7 @@ def _encounter() -> list[EncounterMemberSpec]:
             initiative=1,
             hp_current=200,
             hp_max=200,
-            zone_id="zone:start",
+            zone_id=_FOE_CELL,
         )
     ]
 
@@ -107,7 +107,7 @@ def _run_use_feature(
             session_id=f"sess-feat-{feature_id}",
             party=party,
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
         )
         live = _get_live(start.handle)

@@ -10,7 +10,10 @@ import asyncio
 
 from dnd5e_engine import LiveCombatView, get_live
 from dnd5e_engine.orchestrator import _get_live, _LiveCombat, start_combat
-from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec, SceneTopology
+from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
+from tests.e2e.harness import adjacent_cells, grid_scene
+
+_HERO_CELL, _FOE_CELL = adjacent_cells(2)
 
 
 def _party() -> list[PartyMemberSpec]:
@@ -21,7 +24,7 @@ def _party() -> list[PartyMemberSpec]:
             initiative=15,
             hp_current=20,
             hp_max=20,
-            zone_id="zone:start",
+            zone_id=_HERO_CELL,
         ),
     ]
 
@@ -35,7 +38,7 @@ def _encounter() -> list[EncounterMemberSpec]:
             initiative=10,
             hp_current=11,
             hp_max=11,
-            zone_id="zone:start",
+            zone_id=_FOE_CELL,
         ),
     ]
 
@@ -46,7 +49,7 @@ def _start():
             session_id="sess-view",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=SceneTopology(zones=["zone:start"], edges=[]),
+            grid_scene=grid_scene(width=1, height=2),
             rng_seed=0,
         )
     )
@@ -100,7 +103,7 @@ def test_custom_counters_snapshot_is_three_levels_deep():
             initiative=15,
             hp_current=20,
             hp_max=20,
-            zone_id="zone:start",
+            zone_id=_HERO_CELL,
             custom_counters={"item_use:wand": {"spent": 1}},
         ),
     ]
@@ -109,7 +112,7 @@ def test_custom_counters_snapshot_is_three_levels_deep():
             session_id="sess-view-counters",
             party=party,
             encounter=_encounter(),
-            scene_zones=SceneTopology(zones=["zone:start"], edges=[]),
+            grid_scene=grid_scene(width=1, height=2),
             rng_seed=0,
         )
     ).handle
@@ -123,8 +126,9 @@ def _make_live() -> _LiveCombat:
     """Construct a minimal _LiveCombat for testing view projections."""
     import random
 
-    from dnd5e_engine.orchestrator import _LiveCombat, _ZoneGraph
-    from dnd5e_engine.specs import SceneTopology
+    from dnd5e_engine.orchestrator import _LiveCombat
+    from dnd5e_engine.spatial import GridTopology
+    from dnd5e_engine.specs import GridScene
 
     return _LiveCombat(
         handle_id="test:handle",
@@ -132,7 +136,7 @@ def _make_live() -> _LiveCombat:
         initiative=[],
         party_ids=set(),
         encounter_ids=set(),
-        topology=_ZoneGraph(SceneTopology(zones=["zone:test"], edges=[])),
+        topology=GridTopology(GridScene(width=1, height=1)),
         rng=random.Random(0),
         event_queue=asyncio.Queue(),
         scene_location_id="scene:test",

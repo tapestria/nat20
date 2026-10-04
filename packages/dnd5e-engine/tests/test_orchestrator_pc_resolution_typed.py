@@ -55,11 +55,11 @@ from dnd5e_engine.orchestrator import (
 )
 from dnd5e_engine.specs import (
     EncounterMemberSpec,
+    GridScene,
     PartyMemberSpec,
-    SceneTopology,
-    ZoneEdge,
 )
 from dnd5e_engine.types.conditions import ActiveCondition
+from tests.e2e.harness import adjacent_cells, grid_scene
 
 
 def _provenance() -> Provenance:
@@ -123,11 +123,11 @@ def _finesse_weapon(slug: str = "rapier", dice: str = "1d8") -> Weapon:
     )
 
 
-def _topology() -> SceneTopology:
-    return SceneTopology(
-        zones=["zone:start"],
-        edges=[ZoneEdge(a="zone:start", b="zone:start", distance_ft=0)],
-    )
+_HERO_CELL, _FOE_CELL, _FOE2_CELL = adjacent_cells(3)
+
+
+def _topology() -> GridScene:
+    return grid_scene(width=2, height=2)
 
 
 def _party(**pc_overrides: object) -> list[PartyMemberSpec]:
@@ -143,7 +143,7 @@ def _party(**pc_overrides: object) -> list[PartyMemberSpec]:
         # the weapon-attack test asserts — now off real abilities (piece 4).
         strength=16,
         dexterity=16,
-        zone_id="zone:start",
+        zone_id=_HERO_CELL,
     )
     base.update(pc_overrides)
     return [PartyMemberSpec(**base)]  # type: ignore[arg-type]
@@ -158,7 +158,7 @@ def _encounter() -> list[EncounterMemberSpec]:
             initiative=1,
             hp_current=200,
             hp_max=200,
-            zone_id="zone:start",
+            zone_id=_FOE_CELL,
         )
     ]
 
@@ -188,7 +188,7 @@ def test_magic_missile_cast_emits_force_damage_no_roll():
             session_id="sess-mm",
             party=_party(spell_slots={1: 2}),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -223,7 +223,7 @@ def _run_weapon_attack(weapon: Weapon, slug: str):
             session_id=f"sess-{slug}",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=4242,
         )
         live = _get_live(start.handle)
@@ -285,7 +285,7 @@ def test_hold_person_effect_precedes_condition_and_links_recorded():
             session_id="sess-hold",
             party=_party(attack_bonus=10, spell_slots={2: 2}),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -340,7 +340,7 @@ def test_self_buff_cast_with_no_target_applies_effect_to_caster():
             session_id="sess-self-buff",
             party=_party(spell_slots={1: 2}),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -369,7 +369,7 @@ def test_self_buff_cast_with_no_target_applies_effect_to_caster():
 
 
 def _two_foe_encounter() -> list[EncounterMemberSpec]:
-    """Two monsters in the SAME zone as the caster — the AoE candidate set."""
+    """Two monsters adjacent to the caster — the AoE candidate set."""
     return [
         EncounterMemberSpec(
             entity_id="mon:foe",
@@ -378,7 +378,7 @@ def _two_foe_encounter() -> list[EncounterMemberSpec]:
             initiative=1,
             hp_current=200,
             hp_max=200,
-            zone_id="zone:start",
+            zone_id=_FOE_CELL,
         ),
         EncounterMemberSpec(
             entity_id="mon:foe2",
@@ -387,13 +387,13 @@ def _two_foe_encounter() -> list[EncounterMemberSpec]:
             initiative=0,
             hp_current=200,
             hp_max=200,
-            zone_id="zone:start",
+            zone_id=_FOE2_CELL,
         ),
     ]
 
 
 def _run_aoe_cast(slug: str):
-    """Cast ``slug`` at ``mon:foe`` with two foes in-zone.
+    """Cast ``slug`` at ``mon:foe`` with two adjacent foes.
 
     Injects the typed spell into the lib loader; the orchestrator's AoE gate
     decides area-expansion from the typed ``target.affects`` shape alone.
@@ -407,7 +407,7 @@ def _run_aoe_cast(slug: str):
             session_id=f"sess-aoe-{slug}",
             party=_party(attack_bonus=10, spell_slots={3: 4}),
             encounter=_two_foe_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -426,17 +426,18 @@ def _run_aoe_cast(slug: str):
     return asyncio.run(_run())
 
 
-def test_fireball_expands_to_all_in_zone():
+def test_fireball_expands_to_every_creature_in_its_sphere():
     """Fireball — a TYPED SaveActivity with ``target.affects.count`` != "1"
-    (empty ⇒ area) — saves every creature in the caster's zone (both foes),
-    not just the named target."""
+    (empty ⇒ area) — saves every creature in its 20-ft-radius sphere (both
+    foes), not just the named target."""
     live = _run_aoe_cast("fireball")
     saved = {e.target_id for e in _events_of(live, SaveRolled)}
-    # The sphere catches every creature in the caster's zone (SRD: allies and
-    # the caster too) — the load-bearing contract is that the NON-named foe is
-    # swept in, i.e. selection went beyond the single named target.
+    # The sphere catches every creature in its 20-ft-radius sphere (SRD:
+    # allies and the caster too) — the load-bearing contract is that the
+    # NON-named foe is swept in, i.e. selection went beyond the single named
+    # target.
     assert {"mon:foe", "mon:foe2"} <= saved, (
-        f"fireball must roll a save for every in-zone creature, got {saved}"
+        f"fireball must roll a save for every creature in its sphere, got {saved}"
     )
 
 
@@ -458,7 +459,7 @@ def test_use_item_resolves_item_activities():
             session_id="sess-net",
             party=_party(attack_bonus=10),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -495,7 +496,7 @@ def test_use_item_potion_of_healing_heals_drinker():
             session_id="sess-potion",
             party=_party(hp_current=8, hp_max=20),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
         )
         live = _get_live(start.handle)
@@ -524,13 +525,13 @@ def test_use_item_potion_of_healing_heals_drinker():
 def test_detect_thoughts_stays_single_target_despite_large_aoe():
     """Detect Thoughts — its TYPED targeting SaveActivity is
     ``target.affects.count`` == "1" (explicit single-target). It must probe
-    exactly the named target, never the whole zone. Regression for the
+    exactly the named target, never every creature nearby. Regression for the
     over-expansion confirmed bug in the Task 5 cutover."""
     live = _run_aoe_cast("detect-thoughts")
     saved = {e.target_id for e in _events_of(live, SaveRolled)}
     assert saved == {"mon:foe"}, (
         f"detect-thoughts is single-target (affects.count=='1'); "
-        f"it must not expand to the whole zone, got {saved}"
+        f"it must not expand to every creature nearby, got {saved}"
     )
 
 
@@ -562,7 +563,7 @@ def test_restrained_target_dex_save_rolls_two_d20s_keeps_lower():
             session_id="sess-restrained-save",
             party=_party(attack_bonus=10, spell_slots={1: 4}),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=7,
         )
         live = _get_live(start.handle)

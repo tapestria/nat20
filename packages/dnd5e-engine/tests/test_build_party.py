@@ -6,10 +6,12 @@ from dnd5e_srd_data.loader import BundledAssetLoader
 from dnd5e_engine.build_party import build_party_member
 from dnd5e_engine.build_spec import CombatInstance, make_build_spec
 from dnd5e_engine.orchestrator import _get_live, start_combat
-from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec, SceneTopology
+from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
 from dnd5e_engine.types.combat import Combatant
+from tests.e2e.harness import adjacent_cells, cell, grid_scene
 
 _LOADER = BundledAssetLoader()  # real lib data; barbarian/dwarf/berserker exist
+_HERO_CELL, _FOE_CELL = adjacent_cells(2)
 _INST = CombatInstance(
     entity_id="char:1",
     name="Korg",
@@ -18,7 +20,7 @@ _INST = CombatInstance(
     ac=15,
     attack_bonus=7,
     initiative=12,
-    zone_id="zone:a",
+    zone_id=cell(0, 0),
 )
 
 
@@ -58,7 +60,7 @@ def test_combat_instance_carries_identity():
         ac=15,
         attack_bonus=7,
         initiative=12,
-        zone_id="zone:a",
+        zone_id=cell(0, 0),
     )
     assert ci.entity_id == "char:1"
     assert ci.name == "Korg"
@@ -74,7 +76,7 @@ def test_specs_carry_all_six_abilities_and_subclass():
         hp_max=45,
         ac=15,
         attack_bonus=7,
-        zone_id="z",
+        zone_id=cell(0, 0),
         strength=16,
         dexterity=14,
         constitution=14,
@@ -111,7 +113,7 @@ def test_start_combat_copies_abilities_and_subclass_to_combatant():
                 hp_max=45,
                 ac=15,
                 attack_bonus=7,
-                zone_id="zone:start",
+                zone_id=_HERO_CELL,
                 strength=16,
                 dexterity=14,
                 constitution=14,
@@ -131,14 +133,14 @@ def test_start_combat_copies_abilities_and_subclass_to_combatant():
                 initiative=10,
                 hp_current=11,
                 hp_max=11,
-                zone_id="zone:start",
+                zone_id=_FOE_CELL,
             )
         ]
         return await start_combat(
             session_id="sess-copy",
             party=party,
             encounter=encounter,
-            scene_zones=SceneTopology(zones=["zone:start"], edges=[]),
+            grid_scene=grid_scene(width=1, height=2),
             rng_seed=1,
         )
 
@@ -163,7 +165,7 @@ def test_combatant_and_spec_carry_senses():
         hp_current=45,
         hp_max=45,
         ac=15,
-        zone_id="zone:a",
+        zone_id=cell(0, 0),
         senses=CombatantSenses(darkvision=120),
     )
     assert spec.senses.darkvision == 120
@@ -196,7 +198,7 @@ def test_start_combat_copies_senses_and_resistances_to_combatant():
                 hp_max=30,
                 ac=16,
                 attack_bonus=5,
-                zone_id="zone:start",
+                zone_id=_HERO_CELL,
                 damage_resistances=["poison"],
                 senses=CombatantSenses(darkvision=120),
             )
@@ -209,14 +211,14 @@ def test_start_combat_copies_senses_and_resistances_to_combatant():
                 initiative=10,
                 hp_current=11,
                 hp_max=11,
-                zone_id="zone:start",
+                zone_id=_FOE_CELL,
             )
         ]
         return await start_combat(
             session_id="sess-senses",
             party=party,
             encounter=encounter,
-            scene_zones=SceneTopology(zones=["zone:start"], edges=[]),
+            grid_scene=grid_scene(width=1, height=2),
             rng_seed=1,
         )
 
