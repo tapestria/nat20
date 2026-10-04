@@ -15,6 +15,7 @@ from dnd5e_engine.activities.monster_actions import (
     _name_from_foundry_id,
     _parse_item_counts,
     expand_action_to_activities,
+    expand_action_to_parts,
 )
 
 
@@ -90,8 +91,10 @@ def test_mnemonic_foundry_ids_recover_their_action_name() -> None:
 def test_corpus_wide_precise_join_rate_does_not_regress(loader: BundledAssetLoader) -> None:
     """Ratchet: the share of multiattacks resolving without a lossy fallback.
 
-    Was 6/180 before the name-form + mnemonic-id join landed. This floor exists
-    so a translator or parser change that silently reverts that is caught.
+    Was 6/180 before the name-form + mnemonic-id join landed, 127/180 before a
+    clause stopped ending inside an item token (the pirate's "two Dagger
+    attacks"). This floor exists so a translator or parser change that
+    silently reverts that is caught.
     """
     import logging
 
@@ -124,4 +127,59 @@ def test_corpus_wide_precise_join_rate_does_not_regress(loader: BundledAssetLoad
 
     precise = total - lossy
     assert total >= 180, f"corpus shrank unexpectedly: {total} multiattacks"
-    assert precise >= 115, f"precise multiattack joins regressed to {precise}/{total}"
+    assert precise >= 128, f"precise multiattack joins regressed to {precise}/{total}"
+
+
+def _multiattack(loader: BundledAssetLoader, slug: str):
+    monster = loader.get_monster(slug)
+    assert monster is not None, f"corpus is missing {slug}"
+    return monster, next(a for a in monster.actions if a.slug == "multiattack")
+
+
+def test_the_fallback_repeats_only_an_attack_the_clause_names(loader: BundledAssetLoader) -> None:
+    """ "The djinni makes three attacks, using Storm Blade or Storm Bolt in any
+    combination" — never its Create Whirlwind, at any distance; the iron
+    golem's "using Bladed Arm or Fiery Bolt" never breathes."""
+    djinni, multiattack = _multiattack(loader, "djinni")
+    for distance, slug in [(None, "storm-blade"), (5, "storm-blade"), (60, "storm-bolt")]:
+        parts = expand_action_to_parts(djinni, multiattack, target_distance_ft=distance)
+        assert [action.slug for action, _ in parts] == [slug] * 3, distance
+    golem, golem_multiattack = _multiattack(loader, "iron-golem")
+    parts = expand_action_to_parts(golem, golem_multiattack, target_distance_ft=30)
+    assert [action.slug for action, _ in parts] == ["fiery-bolt", "fiery-bolt"]
+
+
+def test_a_clause_reads_past_an_item_id_that_starts_with_a_capital(
+    loader: BundledAssetLoader,
+) -> None:
+    """The goblin boss's Shortbow token is ``[[/item .XbNHC5OBGT6VQF40]]``: the
+    period before its capital ``X`` is no sentence break."""
+    boss, multiattack = _multiattack(loader, "goblin-boss")
+    assert "{Shortbow}" in _multiattack_clause(multiattack.description)
+    parts = expand_action_to_parts(boss, multiattack, target_distance_ft=30)
+    assert [action.slug for action, _ in parts] == ["shortbow", "shortbow"]
+
+
+def test_a_form_qualified_action_answers_to_its_plain_name(loader: BundledAssetLoader) -> None:
+    """The wererat's clause names "Hand Crossbow"; its action is "Hand Crossbow
+    (Humanoid or Hybrid Form Only)", still the attack it repeats at 30 ft."""
+    wererat, multiattack = _multiattack(loader, "wererat")
+    parts = expand_action_to_parts(wererat, multiattack, target_distance_ft=30)
+    assert [action.slug for action, _ in parts] == ["hand-crossbow", "hand-crossbow"]
+
+
+def test_each_part_names_its_action_and_an_unavailable_one_sits_out(
+    loader: BundledAssetLoader,
+) -> None:
+    """ "The doppelganger makes two Slam attacks and uses Unsettling Visage if
+    available": each part carries the action it comes from, and an action the
+    caller reports unavailable (a spent Recharge) is left out."""
+    doppelganger, multiattack = _multiattack(loader, "doppelganger")
+    parts = expand_action_to_parts(doppelganger, multiattack)
+    assert [action.slug for action, _ in parts] == ["slam", "slam", "unsettling-visage"]
+    assert all(activity in action.activities for action, activity in parts)
+    assert expand_action_to_activities(doppelganger, multiattack) == [a for _, a in parts]
+    spent = expand_action_to_parts(
+        doppelganger, multiattack, is_available=lambda action: action.slug != "unsettling-visage"
+    )
+    assert [action.slug for action, _ in spent] == ["slam", "slam"]
