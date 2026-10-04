@@ -115,6 +115,10 @@ def test_no_public_module_exports_a_zone_graph_name():
         m: sorted(set(importlib.import_module(m).__all__) & _ZONE_GRAPH_NAMES) for m in modules
     }
     assert {m: names for m, names in leaked.items() if names} == {}
+    for m in modules:
+        mod = importlib.import_module(m)
+        for name in _ZONE_GRAPH_NAMES:
+            assert not hasattr(mod, name), f"{m}.{name} still resolves"
 
 
 def test_orchestrator_star_import_carries_what_start_combat_needs():
@@ -125,3 +129,7 @@ def test_orchestrator_star_import_carries_what_start_combat_needs():
     assert {"EncounterMemberSpec", "GridScene", "PartyMemberSpec", "start_combat"} <= set(
         orchestrator.__all__
     )
+    namespace: dict[str, object] = {}
+    exec("from dnd5e_engine.orchestrator import *", namespace)
+    missing = [name for name in orchestrator.__all__ if name not in namespace]
+    assert missing == [], f"star import did not bind: {missing}"
