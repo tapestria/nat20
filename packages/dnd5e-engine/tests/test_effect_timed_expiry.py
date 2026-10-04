@@ -33,15 +33,14 @@ from dnd5e_engine.orchestrator import (
     start_combat,
     submit_player_intent,
 )
-from dnd5e_engine.specs import (
-    EncounterMemberSpec,
-    PartyMemberSpec,
-    SceneTopology,
-)
+from dnd5e_engine.specs import EncounterMemberSpec, GridScene, PartyMemberSpec
 from dnd5e_engine.types.effects import (
     ActiveEffect,
     ActiveEffectDuration,
 )
+from tests.e2e.harness import adjacent_cells, grid_scene
+
+_HERO_CELL, _FOE_CELL = adjacent_cells(2)
 
 
 def _party() -> list[PartyMemberSpec]:
@@ -52,7 +51,7 @@ def _party() -> list[PartyMemberSpec]:
             initiative=15,
             hp_current=40,
             hp_max=40,
-            zone_id="zone:start",
+            zone_id=_HERO_CELL,
         ),
     ]
 
@@ -66,13 +65,13 @@ def _encounter() -> list[EncounterMemberSpec]:
             initiative=10,
             hp_current=30,
             hp_max=30,
-            zone_id="zone:start",
+            zone_id=_FOE_CELL,
         ),
     ]
 
 
-def _topology() -> SceneTopology:
-    return SceneTopology(zones=["zone:start"], edges=[])
+def _topology() -> GridScene:
+    return grid_scene()
 
 
 async def _start(session_id: str, effects: tuple[ActiveEffect, ...]) -> Any:
@@ -80,7 +79,7 @@ async def _start(session_id: str, effects: tuple[ActiveEffect, ...]) -> Any:
         session_id=session_id,
         party=_party(),
         encounter=_encounter(),
-        scene_zones=_topology(),
+        grid_scene=_topology(),
         rng_seed=1,
         active_effects=effects,
     )

@@ -20,16 +20,15 @@ from __future__ import annotations
 import asyncio
 
 from dnd5e_engine.orchestrator import _build_hydration_payload, _get_live, start_combat
-from dnd5e_engine.specs import (
-    EncounterMemberSpec,
-    PartyMemberSpec,
-    SceneTopology,
-)
+from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
 from dnd5e_engine.types.effects import (
     ActiveEffect,
     ActiveEffectChange,
     ActiveEffectDuration,
 )
+from tests.e2e.harness import adjacent_cells, grid_scene
+
+_HERO_CELL, _FOE_CELL = adjacent_cells(2)
 
 
 def _party():
@@ -40,7 +39,7 @@ def _party():
             initiative=15,
             hp_current=20,
             hp_max=20,
-            zone_id="zone:start",
+            zone_id=_HERO_CELL,
         ),
     ]
 
@@ -54,13 +53,13 @@ def _encounter():
             initiative=10,
             hp_current=11,
             hp_max=11,
-            zone_id="zone:start",
+            zone_id=_FOE_CELL,
         ),
     ]
 
 
 def _topology():
-    return SceneTopology(zones=["zone:start"], edges=[])
+    return grid_scene()
 
 
 def _project(live):
@@ -84,7 +83,7 @@ def test_cloak_ac_bonus_folds_into_passive_ac_bonus():
             session_id="sess-ac",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
             active_effects=(cloak,),
         )
@@ -115,7 +114,7 @@ def test_cloak_save_bonus_folds_into_passive_save_bonus():
             session_id="sess-save",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
             active_effects=(cloak,),
         )
@@ -143,7 +142,7 @@ def test_per_ability_save_bonus_folds_into_passive_save_bonus():
             session_id="sess-wisdom-save",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
             active_effects=(ring,),
         )
@@ -190,7 +189,7 @@ def test_weapon_tagged_effect_does_not_fold_attack_damage_into_sidecar():
             session_id="sess-sword",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
             active_effects=(sword,),
         )
@@ -228,7 +227,7 @@ def test_untagged_attack_bonus_still_folds():
             session_id="sess-bless",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
             active_effects=(bless,),
         )
@@ -257,7 +256,7 @@ def test_dice_formula_passes_through():
             session_id="sess-formula",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
             active_effects=(burning_blade,),
         )
@@ -288,7 +287,7 @@ def test_advantage_flags_do_not_fold_into_passive_bonus():
             session_id="sess-adv",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
             active_effects=(bless_adv,),
         )

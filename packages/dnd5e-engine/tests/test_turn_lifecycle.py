@@ -34,8 +34,11 @@ from dnd5e_engine.orchestrator import (
     start_combat,
     submit_player_intent,
 )
-from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec, SceneTopology
+from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
 from dnd5e_engine.turn_lifecycle import TurnLifecycle
+from tests.e2e.harness import adjacent_cells, grid_scene
+
+_HERO_CELL, _FOE_CELL = adjacent_cells(2)
 
 
 def _party():
@@ -46,7 +49,7 @@ def _party():
             initiative=20,
             hp_current=20,
             hp_max=20,
-            zone_id="zone:start",
+            zone_id=_HERO_CELL,
         ),
     ]
 
@@ -60,13 +63,13 @@ def _encounter():
             initiative=10,
             hp_current=11,
             hp_max=11,
-            zone_id="zone:start",
+            zone_id=_FOE_CELL,
         ),
     ]
 
 
 def _topology():
-    return SceneTopology(zones=["zone:start"], edges=[])
+    return grid_scene()
 
 
 async def _start(session_id: str):
@@ -74,7 +77,7 @@ async def _start(session_id: str):
         session_id=session_id,
         party=_party(),
         encounter=_encounter(),
-        scene_zones=_topology(),
+        grid_scene=_topology(),
         rng_seed=7,
     )
 

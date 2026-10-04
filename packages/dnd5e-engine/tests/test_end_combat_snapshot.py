@@ -49,12 +49,10 @@ def test_end_combat_result_has_final_active_effects_field():
 
 import asyncio  # noqa: E402
 
-from dnd5e_engine.specs import (  # noqa: E402
-    EncounterMemberSpec,
-    PartyMemberSpec,
-    SceneTopology,
-    ZoneEdge,
-)
+from dnd5e_engine.specs import EncounterMemberSpec, GridScene, PartyMemberSpec  # noqa: E402
+from tests.e2e.harness import adjacent_cells, grid_scene  # noqa: E402
+
+_ARIA_CELL, _GOBLIN_CELL = adjacent_cells(2)
 
 
 def _party() -> list[PartyMemberSpec]:
@@ -65,7 +63,7 @@ def _party() -> list[PartyMemberSpec]:
             initiative=15,
             hp_current=20,
             hp_max=20,
-            zone_id="zone:entrance",
+            zone_id=_ARIA_CELL,
         ),
     ]
 
@@ -79,16 +77,13 @@ def _encounter() -> list[EncounterMemberSpec]:
             initiative=12,
             hp_current=7,
             hp_max=7,
-            zone_id="zone:entrance",
+            zone_id=_GOBLIN_CELL,
         ),
     ]
 
 
-def _topology() -> SceneTopology:
-    return SceneTopology(
-        zones=["zone:entrance", "zone:back"],
-        edges=[ZoneEdge(a="zone:entrance", b="zone:back", distance_ft=30)],
-    )
+def _topology() -> GridScene:
+    return grid_scene()
 
 
 def test_end_combat_returns_surviving_effects(monkeypatch):
@@ -113,7 +108,7 @@ def test_end_combat_returns_surviving_effects(monkeypatch):
             session_id="sess",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
             active_effects=(bless,),
         )

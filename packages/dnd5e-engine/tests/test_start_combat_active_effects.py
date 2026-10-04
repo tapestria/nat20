@@ -4,12 +4,10 @@ from __future__ import annotations
 
 import asyncio
 
-from dnd5e_engine.specs import (
-    EncounterMemberSpec,
-    PartyMemberSpec,
-    SceneTopology,
-    ZoneEdge,
-)
+from dnd5e_engine.specs import EncounterMemberSpec, GridScene, PartyMemberSpec
+from tests.e2e.harness import adjacent_cells, grid_scene
+
+_ARIA_CELL, _GOBLIN_CELL = adjacent_cells(2)
 
 
 def _party() -> list[PartyMemberSpec]:
@@ -20,7 +18,7 @@ def _party() -> list[PartyMemberSpec]:
             initiative=15,
             hp_current=20,
             hp_max=20,
-            zone_id="zone:entrance",
+            zone_id=_ARIA_CELL,
         ),
     ]
 
@@ -34,16 +32,13 @@ def _encounter() -> list[EncounterMemberSpec]:
             initiative=12,
             hp_current=7,
             hp_max=7,
-            zone_id="zone:entrance",
+            zone_id=_GOBLIN_CELL,
         ),
     ]
 
 
-def _topology() -> SceneTopology:
-    return SceneTopology(
-        zones=["zone:entrance", "zone:back"],
-        edges=[ZoneEdge(a="zone:entrance", b="zone:back", distance_ft=30)],
-    )
+def _topology() -> GridScene:
+    return grid_scene()
 
 
 def test_start_combat_default_active_effects_empty():
@@ -55,7 +50,7 @@ def test_start_combat_default_active_effects_empty():
             session_id="sess1",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
         )
     )
@@ -86,7 +81,7 @@ def test_start_combat_seeds_active_effects():
             session_id="sess2",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
             active_effects=(bless,),
         )
@@ -113,7 +108,7 @@ def test_start_combat_unions_statuses_into_combatant_conditions():
             session_id="sess3",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
             active_effects=(hold,),
         )
@@ -146,7 +141,7 @@ def test_start_combat_skips_effect_targeting_unknown_entity():
             session_id="sess4",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
             active_effects=(stray,),
         )

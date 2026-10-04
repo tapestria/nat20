@@ -15,16 +15,15 @@ from __future__ import annotations
 import asyncio
 
 from dnd5e_engine.orchestrator import _get_live, start_combat
-from dnd5e_engine.specs import (
-    EncounterMemberSpec,
-    PartyMemberSpec,
-    SceneTopology,
-)
+from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
 from dnd5e_engine.types.effects import (
     ActiveEffect,
     ActiveEffectChange,
     ActiveEffectDuration,
 )
+from tests.e2e.harness import adjacent_cells, grid_scene
+
+_CASTER_CELL, _FIGHTER_CELL, _FOE_CELL = adjacent_cells(3)
 
 
 def _party():
@@ -35,7 +34,7 @@ def _party():
             initiative=15,
             hp_current=20,
             hp_max=20,
-            zone_id="zone:start",
+            zone_id=_CASTER_CELL,
         ),
         PartyMemberSpec(
             entity_id="char:fighter",
@@ -43,7 +42,7 @@ def _party():
             initiative=12,
             hp_current=25,
             hp_max=25,
-            zone_id="zone:start",
+            zone_id=_FIGHTER_CELL,
         ),
     ]
 
@@ -57,13 +56,13 @@ def _encounter():
             initiative=10,
             hp_current=11,
             hp_max=11,
-            zone_id="zone:start",
+            zone_id=_FOE_CELL,
         ),
     ]
 
 
 def _topology():
-    return SceneTopology(zones=["zone:start"], edges=[])
+    return grid_scene()
 
 
 def test_seeded_concentration_effect_enters_concentration_chain():
@@ -89,7 +88,7 @@ def test_seeded_concentration_effect_enters_concentration_chain():
             session_id="sess-seed-conc",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
             active_effects=(bless,),
         )
@@ -125,7 +124,7 @@ def test_seeded_effect_with_statuses_enters_conditions_by_effect():
             session_id="sess-seed-status",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
             active_effects=(hold,),
         )
@@ -160,7 +159,7 @@ def test_seeded_item_enchantment_does_not_enter_concentration_chain():
             session_id="sess-seed-item",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
             active_effects=(sword,),
         )
@@ -189,7 +188,7 @@ def test_seeded_effect_without_concentration_skips_chain():
             session_id="sess-seed-no-conc",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
             active_effects=(mage_armor,),
         )

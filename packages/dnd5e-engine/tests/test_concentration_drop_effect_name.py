@@ -17,15 +17,13 @@ import asyncio
 
 from dnd5e_engine.events import ConcentrationDropped
 from dnd5e_engine.orchestrator import _drop_concentration, _get_live, start_combat
-from dnd5e_engine.specs import (
-    EncounterMemberSpec,
-    PartyMemberSpec,
-    SceneTopology,
-)
+from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
 from dnd5e_engine.types.effects import ActiveEffect, ActiveEffectDuration
+from tests.e2e.harness import adjacent_cells, grid_scene
 
 _CASTER = "char:aaaaaaaaaaaa"
 _TARGET = "mon:111111111111"
+_CASTER_CELL, _TARGET_CELL = adjacent_cells(2)
 
 
 def _party() -> list[PartyMemberSpec]:
@@ -36,7 +34,7 @@ def _party() -> list[PartyMemberSpec]:
             initiative=15,
             hp_current=20,
             hp_max=20,
-            zone_id="zone:start",
+            zone_id=_CASTER_CELL,
         ),
     ]
 
@@ -50,7 +48,7 @@ def _encounter() -> list[EncounterMemberSpec]:
             initiative=10,
             hp_current=7,
             hp_max=7,
-            zone_id="zone:start",
+            zone_id=_TARGET_CELL,
         ),
     ]
 
@@ -72,7 +70,7 @@ def test_concentration_dropped_effect_name_is_the_effect_id() -> None:
             session_id="sess-conc-drop-name",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=SceneTopology(zones=["zone:start"], edges=[]),
+            grid_scene=grid_scene(),
             rng_seed=1,
             active_effects=(bane,),
         )

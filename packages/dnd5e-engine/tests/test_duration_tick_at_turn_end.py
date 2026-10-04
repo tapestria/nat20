@@ -30,15 +30,14 @@ from dnd5e_engine.orchestrator import (
     start_combat,
     submit_player_intent,
 )
-from dnd5e_engine.specs import (
-    EncounterMemberSpec,
-    PartyMemberSpec,
-    SceneTopology,
-)
+from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
 from dnd5e_engine.types.effects import (
     ActiveEffect,
     ActiveEffectDuration,
 )
+from tests.e2e.harness import adjacent_cells, grid_scene
+
+_HERO_CELL, _FOE_CELL = adjacent_cells(2)
 
 
 def _party():
@@ -49,7 +48,7 @@ def _party():
             initiative=15,
             hp_current=20,
             hp_max=20,
-            zone_id="zone:start",
+            zone_id=_HERO_CELL,
         ),
     ]
 
@@ -63,13 +62,13 @@ def _encounter():
             initiative=10,
             hp_current=11,
             hp_max=11,
-            zone_id="zone:start",
+            zone_id=_FOE_CELL,
         ),
     ]
 
 
 def _topology():
-    return SceneTopology(zones=["zone:start"], edges=[])
+    return grid_scene()
 
 
 def test_rounds_decrement_at_player_turn_end():
@@ -88,7 +87,7 @@ def test_rounds_decrement_at_player_turn_end():
             session_id="sess-tick",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
             active_effects=(bless,),
         )
@@ -125,7 +124,7 @@ def test_rounds_zero_expires_effect():
             session_id="sess-expire",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
             active_effects=(bless,),
         )
@@ -170,7 +169,7 @@ def test_caster_keyed_tick_for_multi_target_effect():
             session_id="sess-caster-tick",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
             active_effects=(bless1, bless2),
         )
@@ -208,7 +207,7 @@ def test_no_tick_when_non_caster_turn_ends():
             session_id="sess-no-tick",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
             active_effects=(eff,),
         )
@@ -240,7 +239,7 @@ def test_permanent_effect_no_rounds_does_not_tick():
             session_id="sess-permanent",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
             active_effects=(sword,),
         )

@@ -11,12 +11,11 @@ from __future__ import annotations
 import asyncio
 
 from dnd5e_engine.orchestrator import _get_live, start_combat
-from dnd5e_engine.specs import (
-    EncounterMemberSpec,
-    PartyMemberSpec,
-    SceneTopology,
-)
+from dnd5e_engine.specs import EncounterMemberSpec, GridScene, PartyMemberSpec
 from dnd5e_engine.types.effects import ActiveEffect, ActiveEffectDuration
+from tests.e2e.harness import adjacent_cells, grid_scene
+
+_HERO_A_CELL, _HERO_B_CELL, _BANDIT_CELL = adjacent_cells(3)
 
 
 def _party() -> list[PartyMemberSpec]:
@@ -28,7 +27,7 @@ def _party() -> list[PartyMemberSpec]:
             initiative=15,
             hp_current=20,
             hp_max=20,
-            zone_id="zone:start",
+            zone_id=_HERO_A_CELL,
         ),
         PartyMemberSpec(
             entity_id="char:bbbbbbbbbbbb",
@@ -36,7 +35,7 @@ def _party() -> list[PartyMemberSpec]:
             initiative=12,
             hp_current=20,
             hp_max=20,
-            zone_id="zone:start",
+            zone_id=_HERO_B_CELL,
         ),
     ]
 
@@ -50,13 +49,13 @@ def _encounter() -> list[EncounterMemberSpec]:
             initiative=10,
             hp_current=11,
             hp_max=11,
-            zone_id="zone:start",
+            zone_id=_BANDIT_CELL,
         ),
     ]
 
 
-def _topology() -> SceneTopology:
-    return SceneTopology(zones=["zone:start"], edges=[])
+def _topology() -> GridScene:
+    return grid_scene()
 
 
 def test_two_blesses_track_independent_identity():
@@ -86,7 +85,7 @@ def test_two_blesses_track_independent_identity():
             session_id="sess-two-bless",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
             active_effects=(bless_a, bless_b),
         )
@@ -128,7 +127,7 @@ def test_same_target_two_origins_no_merge():
             session_id="sess-same-target",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
             active_effects=(bless_a, bless_b),
         )

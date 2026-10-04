@@ -15,15 +15,14 @@ import asyncio
 
 from dnd5e_engine import PlayerIntent
 from dnd5e_engine.orchestrator import _get_live, start_combat, submit_player_intent
-from dnd5e_engine.specs import (
-    EncounterMemberSpec,
-    PartyMemberSpec,
-    SceneTopology,
-)
+from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
 from dnd5e_engine.types.effects import (
     ActiveEffect,
     ActiveEffectDuration,
 )
+from tests.e2e.harness import adjacent_cells, grid_scene
+
+_HERO_CELL, _FOE_CELL = adjacent_cells(2)
 
 
 def _party():
@@ -34,7 +33,7 @@ def _party():
             initiative=15,
             hp_current=20,
             hp_max=20,
-            zone_id="zone:start",
+            zone_id=_HERO_CELL,
         ),
     ]
 
@@ -48,13 +47,13 @@ def _encounter():
             initiative=10,
             hp_current=11,
             hp_max=11,
-            zone_id="zone:start",
+            zone_id=_FOE_CELL,
         ),
     ]
 
 
 def _topology():
-    return SceneTopology(zones=["zone:start"], edges=[])
+    return grid_scene()
 
 
 def test_status_clears_from_active_conditions_when_effect_expires():
@@ -83,7 +82,7 @@ def test_status_clears_from_active_conditions_when_effect_expires():
             session_id="sess-expire-status",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
             active_effects=(hold,),
         )
@@ -142,7 +141,7 @@ def test_status_stays_when_another_active_effect_still_imposes_it():
             session_id="sess-stacked-status",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
             active_effects=(eff1, eff2),
         )

@@ -14,15 +14,14 @@ from dnd5e_engine.orchestrator import (
     _get_live,
     start_combat,
 )
-from dnd5e_engine.specs import (
-    EncounterMemberSpec,
-    PartyMemberSpec,
-    SceneTopology,
-)
+from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
 from dnd5e_engine.types.effects import (
     ActiveEffect,
     ActiveEffectDuration,
 )
+from tests.e2e.harness import adjacent_cells, grid_scene
+
+_RANGER1_CELL, _RANGER2_CELL, _FOE_CELL = adjacent_cells(3)
 
 
 def _party():
@@ -33,7 +32,7 @@ def _party():
             initiative=15,
             hp_current=20,
             hp_max=20,
-            zone_id="zone:start",
+            zone_id=_RANGER1_CELL,
         ),
         PartyMemberSpec(
             entity_id="char:ranger2",
@@ -41,7 +40,7 @@ def _party():
             initiative=12,
             hp_current=20,
             hp_max=20,
-            zone_id="zone:start",
+            zone_id=_RANGER2_CELL,
         ),
     ]
 
@@ -55,13 +54,13 @@ def _encounter():
             initiative=10,
             hp_current=50,
             hp_max=50,
-            zone_id="zone:start",
+            zone_id=_FOE_CELL,
         ),
     ]
 
 
 def _topology():
-    return SceneTopology(zones=["zone:start"], edges=[])
+    return grid_scene()
 
 
 def test_seeded_status_populates_active_conditions():
@@ -86,7 +85,7 @@ def test_seeded_status_populates_active_conditions():
             session_id="sess-seeded-status",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
             active_effects=(hold,),
         )

@@ -14,16 +14,15 @@ import asyncio
 
 from dnd5e_engine import get_actor_active_effects
 from dnd5e_engine.orchestrator import start_combat
-from dnd5e_engine.specs import (
-    EncounterMemberSpec,
-    PartyMemberSpec,
-    SceneTopology,
-)
+from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
 from dnd5e_engine.types.effects import (
     ActiveEffect,
     ActiveEffectChange,
     ActiveEffectDuration,
 )
+from tests.e2e.harness import adjacent_cells, grid_scene
+
+_HERO_CELL, _BANDIT_CELL = adjacent_cells(2)
 
 
 def _party():
@@ -34,7 +33,7 @@ def _party():
             initiative=15,
             hp_current=20,
             hp_max=20,
-            zone_id="zone:start",
+            zone_id=_HERO_CELL,
         ),
     ]
 
@@ -48,13 +47,13 @@ def _encounter():
             initiative=10,
             hp_current=11,
             hp_max=11,
-            zone_id="zone:start",
+            zone_id=_BANDIT_CELL,
         ),
     ]
 
 
 def _topology():
-    return SceneTopology(zones=["zone:start"], edges=[])
+    return grid_scene()
 
 
 def _bless(target_id: str) -> ActiveEffect:
@@ -80,7 +79,7 @@ def test_get_actor_active_effects_returns_seeded_effects():
             session_id="sess-get-actor",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
             active_effects=(bless,),
         )
@@ -99,7 +98,7 @@ def test_get_actor_active_effects_unknown_entity_returns_empty():
             session_id="sess-unknown-entity",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
         )
 
@@ -131,7 +130,7 @@ def test_get_actor_active_effects_returns_tuple_not_live_reference():
             session_id="sess-immutable",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
             active_effects=(bless,),
         )

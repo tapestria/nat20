@@ -14,16 +14,15 @@ from __future__ import annotations
 import asyncio
 
 from dnd5e_engine.orchestrator import _build_hydration_payload, _get_live, start_combat
-from dnd5e_engine.specs import (
-    EncounterMemberSpec,
-    PartyMemberSpec,
-    SceneTopology,
-)
+from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
 from dnd5e_engine.types.effects import (
     ActiveEffect,
     ActiveEffectChange,
     ActiveEffectDuration,
 )
+from tests.e2e.harness import adjacent_cells, grid_scene
+
+_CLERIC_CELL, _FOE_CELL = adjacent_cells(2)
 
 
 def _party():
@@ -34,7 +33,7 @@ def _party():
             initiative=15,
             hp_current=20,
             hp_max=20,
-            zone_id="zone:start",
+            zone_id=_CLERIC_CELL,
         ),
     ]
 
@@ -48,13 +47,13 @@ def _encounter():
             initiative=10,
             hp_current=11,
             hp_max=11,
-            zone_id="zone:start",
+            zone_id=_FOE_CELL,
         ),
     ]
 
 
 def _topology():
-    return SceneTopology(zones=["zone:start"], edges=[])
+    return grid_scene()
 
 
 def test_per_ability_save_bucket_stays_out_of_passive_save_bonus():
@@ -74,7 +73,7 @@ def test_per_ability_save_bucket_stays_out_of_passive_save_bonus():
             session_id="sess-per-ability-save",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
             active_effects=(ring,),
         )
@@ -103,7 +102,7 @@ def test_generic_save_bucket_still_flows_through():
             session_id="sess-generic-save",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
             active_effects=(cloak,),
         )
@@ -133,7 +132,7 @@ def test_seeded_concentration_sets_caster_concentration_effect_id():
             session_id="sess-seed-conc-effect-id",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
             active_effects=(bless,),
         )
@@ -163,7 +162,7 @@ def test_seeded_concentration_existing_concentration_in_hydration():
             session_id="sess-hydration-conc",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
             active_effects=(bless,),
         )
@@ -195,7 +194,7 @@ def test_non_caster_origin_does_not_set_concentration_effect_id():
             session_id="sess-item-conc-defensive",
             party=_party(),
             encounter=_encounter(),
-            scene_zones=_topology(),
+            grid_scene=_topology(),
             rng_seed=1,
             active_effects=(item_eff,),
         )
