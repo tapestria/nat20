@@ -14,7 +14,7 @@ import pytest
 from pydantic import ValidationError
 
 from dnd5e_engine import PlayerIntent
-from dnd5e_engine.events import AttackFailed, CastFailed, IntentSubmitted, SaveRolled
+from dnd5e_engine.events import AttackFailed, AttackRolled, CastFailed, IntentSubmitted, SaveRolled
 from dnd5e_engine.spatial import cell_id
 from tests.c20_support import act, combatant, events, foe, pc, start, wizard
 
@@ -94,12 +94,12 @@ def test_an_exclusion_on_a_weapon_attack_is_refused() -> None:
 
 
 def test_a_mace_of_terror_swing_attacks_only_its_target() -> None:
-    """ORCHESTRATOR RULING (2026-10-04): SRD 5.2 §Making an Attack — an attack
-    roll always targets one creature, so an ``attack`` intent never
-    area-expands, even when the weapon's other activities carry a template of
-    their own. Mace of Terror's Wave of Terror rides the same weapon as a
-    separate, itemUses-gated use; a plain swing must not turn it loose on
-    every enemy within 30 feet."""
+    """SRD 5.2 §Making an Attack — an attack roll always targets one
+    creature, so an ``attack`` intent never area-expands, even when the
+    weapon's other activities carry a template of their own. Mace of
+    Terror's Wave of Terror rides the same weapon as a separate,
+    itemUses-gated use; a plain swing must not turn it loose on every enemy
+    within 30 feet."""
     handle, live = start(
         [pc(equipment=("mace-of-terror",))],
         seed=1,
@@ -112,8 +112,80 @@ def test_a_mace_of_terror_swing_attacks_only_its_target() -> None:
         weapon_id="mace-of-terror",
         target_id="mon:g1",
     )
-    assert _saved(live) == ["mon:g1"]
+    assert [e.target_id for e in events(live, AttackRolled)] == ["mon:g1"]
+    # Not pinned to ``["mon:g1"]``: whether the swing also forces a Wave of
+    # Terror save from its own target is a separate, known quirk (the save
+    # activity still resolves against the attack's single-target list). What
+    # this test pins is that it never reaches mon:g2 or mon:g3.
+    assert set(_saved(live)) <= {"mon:g1"}
     assert _areas(live) == []
+
+
+def test_javelin_of_lightning_use_item_without_an_activity_id_attacks_only_its_target() -> None:
+    """Javelin of Lightning's thrown attack and its Lightning Bolt are
+    alternative activities on the same item (Foundry activities are
+    alternatives, never a batch): a ``use_item`` call that names neither
+    resolves both, and an attack roll among them means the whole call stays
+    single-target rather than spreading the Lightning Bolt's 120-foot line
+    over whoever else is in it."""
+    handle, live = start(
+        [pc(equipment=("javelin-of-lightning",))],
+        seed=1,
+        encounter=[_goblin("mon:g1", 1, 0), _goblin("mon:g2", 5, 0), _goblin("mon:g3", 9, 0)],
+    )
+    act(
+        handle,
+        "char:hero",
+        intent_type="use_item",
+        item_id="javelin-of-lightning",
+        target_id="mon:g1",
+    )
+    assert [e.target_id for e in events(live, AttackRolled)] == ["mon:g1"]
+    assert set(_saved(live)) <= {"mon:g1"}
+    assert _areas(live) == []
+
+
+def test_horn_of_blasting_without_an_activity_id_resolves_no_area() -> None:
+    """Horn of Blasting's blast, its object-damage rider, its
+    explosion-chance roll and its misfire damage are four alternative
+    activities, not a batch: a ``use_item`` call that names none of them is
+    itself ambiguous and must not treat any one of them — the blast
+    included — as if it alone fired over an area."""
+    handle, live = start(
+        [pc(equipment=("horn-of-blasting",))],
+        seed=1,
+        encounter=[_goblin("mon:g1", 1, 0), _goblin("mon:g2", 2, 0)],
+    )
+    act(
+        handle,
+        "char:hero",
+        intent_type="use_item",
+        item_id="horn-of-blasting",
+        target_id="mon:g1",
+    )
+    assert "mon:g2" not in set(_saved(live))
+    assert _areas(live) == []
+
+
+def test_horn_of_blasting_with_the_blast_chosen_resolves_its_cone() -> None:
+    """The same call, with the blast's own activity picked explicitly, is no
+    longer ambiguous and still gets its area."""
+    handle, live = start(
+        [pc(equipment=("horn-of-blasting",))],
+        seed=1,
+        encounter=[_goblin("mon:g1", 1, 0), _goblin("mon:g2", 2, 0)],
+    )
+    act(
+        handle,
+        "char:hero",
+        intent_type="use_item",
+        item_id="horn-of-blasting",
+        activity_id="FMTcQOb5MZKBohdN",
+        direction=(1, 0),
+    )
+    [area] = _areas(live)
+    assert (area.shape, area.size_ft, area.direction) == ("cone", 30, (1, 0))
+    assert set(area.affected_ids) == {"mon:g1", "mon:g2"}
 
 
 def test_the_pipes_spare_the_bards_allies_unless_it_opts_everyone_in() -> None:

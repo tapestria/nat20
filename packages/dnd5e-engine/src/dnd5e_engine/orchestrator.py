@@ -5878,12 +5878,24 @@ def _area_plan(intent: PlayerIntent, activities: Sequence[Any]) -> _AreaPlan | N
     activities resolve against a named target.
 
     SRD 5.2 §Making an Attack: an attack roll always targets one creature or
-    object, so an ``attack`` intent never area-expands, even when the
-    weapon's other activities carry a template of their own (Mace of
-    Terror's Wave of Terror rides the same weapon as a separate,
-    itemUses-gated use, not the swing itself).
+    object, so no intent whose resolved activities include an attack roll
+    ever area-expands — an ``attack`` intent itself, or a multi-function item
+    or feature (the Rod of Lordly Might's buttons, Javelin of Lightning's
+    thrown attack alongside its Lightning Bolt) that bundles one with a
+    templated save, damage or heal. A ``use_item`` / ``use_feature`` that
+    resolves more than one activity because no ``activity_id`` picked a
+    single one is itself ambiguous and never area-expands either (Horn of
+    Blasting's Blow Horn alongside its other functions): an item or feature
+    with one unambiguous area activity, or whose area activity is chosen via
+    ``activity_id`` or is the charged one, still gets its area.
     """
-    if intent.intent_type == "attack":
+    if intent.intent_type == "attack" or any(a.kind == "attack" for a in activities):
+        return None
+    if (
+        intent.intent_type in ("use_item", "use_feature")
+        and not intent.activity_id
+        and len(activities) > 1
+    ):
         return None
     activity = area_activity(activities)
     if activity is None:
