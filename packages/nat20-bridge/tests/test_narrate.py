@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dnd5e_engine.events import (
+    AreaTargeted,
     AttackRolled,
     ConcentrationCheck,
     DamageApplied,
@@ -175,3 +176,36 @@ def test_a_failed_concentration_save_says_so() -> None:
         NAMES,
     )
     assert "fails" in text and "DC 12" in text
+
+
+def test_an_area_names_whom_it_catches_and_spares() -> None:
+    area = AreaTargeted(
+        actor_id="char:elara",
+        source_id="sleep",
+        shape="sphere",
+        size_ft=5,
+        origin="5,5",
+        direction=None,
+        affected_ids=["mon:gob-1", "mon:gob-2"],
+        excluded_ids=["char:elara"],
+    )
+    text = narrate([area], NAMES)
+    assert text == (
+        "Elara's sleep fills a 5-ft sphere at 5,5: catches Goblin 1, mon:gob-2; spares Elara."
+    )
+
+
+def test_an_area_that_catches_no_one_says_so() -> None:
+    area = AreaTargeted(
+        actor_id="char:elara",
+        source_id="burning-hands",
+        shape="cone",
+        size_ft=15,
+        origin="0,0",
+        direction=(1, 0),
+        affected_ids=[],
+        excluded_ids=[],
+    )
+    assert narrate([area], NAMES) == (
+        "Elara's burning-hands fills a 15-ft cone at 0,0: catches no one."
+    )

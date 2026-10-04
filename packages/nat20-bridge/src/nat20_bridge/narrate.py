@@ -124,6 +124,16 @@ def _fmt_condition_removed(e: Any, names: dict[str, str]) -> str:
     return f"{who} is no longer {e.condition}."
 
 
+@_register("area_targeted")
+def _fmt_area_targeted(e: Any, names: dict[str, str]) -> str:
+    who = _who(e.actor_id, names)
+    caught = ", ".join(_who(i, names) for i in e.affected_ids) or "no one"
+    spared = ", ".join(_who(i, names) for i in e.excluded_ids)
+    tail = f"; spares {spared}" if spared else ""
+    area = f"a {e.size_ft}-ft {e.shape} at {e.origin}"
+    return f"{who}'s {e.source_id} fills {area}: catches {caught}{tail}."
+
+
 @_register("cast_failed")
 def _fmt_cast_failed(e: Any, names: dict[str, str]) -> str:
     who = _who(e.actor_id, names)
