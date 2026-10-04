@@ -229,18 +229,18 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   `stat_block_action_id` emits only `IntentSubmitted` and ends the turn: no
   attack roll, the Action gone. It should be refused before anything is spent.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::submit_player_intent`)
-- **An `attack` or an unchosen `use_item`/`use_feature` resolves every
-  activity on its weapon, item or feature, not the one it means to fire
-  (2026-10-04, C26a).** A weapon's own non-attack activity (the Mace of
-  Terror's Wave of Terror save) and an item's or a feature's alternative
-  modes (Javelin of Lightning, Rod of Lordly Might, the Staff of Power, the
-  Staff of the Magi, the Staff of Thunder and Lightning, Thunderous
-  Greatclub, Horn of Blasting) all resolve together against the intent's
-  single target whenever nothing names which one to fire. C26a's area
-  resolver guards the one visible symptom — none of these intents ever
-  area-expands — but the ambiguous resolution itself stands: the proper fix
-  resolves only the chosen activity, requiring `activity_id` when an item or
-  feature carries alternatives.
+- **An `attack` or an unchosen `use_item` resolves every activity on its
+  weapon or item, not the one it means to fire (2026-10-04, C26a).** A
+  weapon's own non-attack activity (the Mace of Terror's Wave of Terror
+  save) and an item's alternative modes (Javelin of Lightning, Rod of
+  Lordly Might, the Staff of Power, the Staff of the Magi, the Staff of
+  Thunder and Lightning, Thunderous Greatclub, Horn of Blasting) all resolve
+  together against the intent's single target whenever nothing names which
+  one to fire. C26a's area resolver guards the one visible symptom — none of
+  these intents ever area-expands — but the ambiguous resolution itself
+  stands: the proper fix resolves only the chosen activity, requiring
+  `activity_id` when an item carries alternatives, as a feature already
+  does.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_resolve_intent_activities`)
 - **A seeded Incapacitated effect ends nothing (2026-09-27, C23).** SRD 5.2
   Incapacitated: "Your Concentration is broken." `_seed_active_effects` writes
@@ -826,15 +826,34 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   `packages/dnd5e-engine/src/dnd5e_engine/activities/formula.py`,
   `packages/dnd5e-engine/src/dnd5e_engine/activities/dice.py`,
   `packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_resolve_intent_activities`)
+- **An Emanation never includes its creature of origin, even when its text
+  says otherwise (2026-10-04, C26a).** SRD 5.2 Dust of Sneezing and Choking:
+  "forcing yourself and every creature in a 30-foot Emanation originating
+  from you to make a DC 15 Constitution saving throw." `area_template`'s
+  `radius` row always sets `includes_origin=False`, so its `use_item` now
+  catches everyone else within 30 feet, but never the user. Preserve Life's
+  "which can include you" (below) is the healing twin.
+  (`packages/dnd5e-engine/src/dnd5e_engine/areas.py::area_template`)
 - **Preserve Life's "divide those Hit Points among them" is not modelled
   (2026-10-04, C26a).** Its heal is an area of your choice (a 30-foot
   Emanation), and an area heal gives every creature it affects the whole
   amount, so once its `5 * @classes.cleric.levels` formula parses (see the
   half-paid row above) each ally in range would regain the whole pool rather
-  than a share. The cleric's own space is outside its Emanation, so it can't
-  heal itself ("which can include you"), and the "no more than half its Hit
+  than a share. The cleric's own space is outside its Emanation (an
+  Emanation never includes its creator — see above), so it can't heal
+  itself ("which can include you"), and the "no more than half its Hit
   Point maximum" cap is not applied.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_area_targets`)
+- **`affects.special` creature-type restrictions are not honoured
+  (2026-10-04, C26a).** Sear Undead's save and the Helm of Brilliance's
+  Diamond Light both carry `target.affects.special == "Undead"`; a Calm
+  Emotions-style "Each Humanoid" is narrower still — its restriction lives
+  only in description prose, with no typed field at all. `select_affected`
+  reads `affects_type` (`"enemy"`/`"ally"`), `choice` and `count`, but never
+  `special`, so now that these feature and item areas resolve (C26a), they
+  catch every creature, or every enemy, in range rather than only the
+  named creature type.
+  (`packages/dnd5e-engine/src/dnd5e_engine/areas.py::select_affected`)
 
 ### Passive-stat projection (`activities/passive_stats.py`)
 
@@ -1197,6 +1216,24 @@ zone + apply logic:
   have the same shape. Needs a per-activity timing signal and a turn-boundary
   producer (see "No ongoing-damage producer").
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::submit_player_intent`)
+- **An item's hazard area saves at use time, not when a creature enters it
+  (2026-10-04, C26a).** SRD 5.2 Ball Bearings and Caltrops: "A creature that
+  enters this area for the first time on a turn must succeed on a DC …
+  Dexterity saving throw." A `use_item` now makes every creature already
+  standing in the square save at once — an ally included — rather than
+  waiting for a creature to walk into it on a later turn (v0.6: the named
+  target only). This is the item-side sibling of the turn-boundary row
+  above.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_area_targets`)
+- **A creature caught by its own effect repeats the save at the end of the
+  current turn, not "the end of its next turn" (2026-10-04, C26a).** Sleep
+  cast with `excluded_target_ids=()` catches its own caster: the caster
+  saves at the cast, then again when that same casting turn ends, because
+  the repeat-save hook fires for whichever actor's turn is ending without
+  checking whether the effect was applied on this very turn.
+  `test_c26_s05_sleep_spares_its_caster` slices `[:3]` around the extra
+  save.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_hook_run_end_of_turn_saves`)
 - **Empty `scaling.mode` is treated as whole-mode dice scaling on upcast
   (2026-09-03, C17).** `activities/dice.py::_scaling_steps` scales dice for
   any leveled spell whose damage part carries the corpus-default
@@ -1586,7 +1623,8 @@ layer over the engine — see `docs/bridge.md`. Gaps found while shipping it:
   `max(str_mod, dex_mod)` for finesse or `dex_mod` for ranged
   (`packages/nat20-bridge/src/nat20_bridge/sheet.py`).
 - **The combat intent carries no class-feature or form field (2026-09-24, C20
-  scope cut; amended 2026-09-25, C21a, and 2026-09-26, C21b).** `_IntentRequest` forwards only
+  scope cut; amended 2026-09-25, C21a, 2026-09-26, C21b, and 2026-10-04,
+  C26a).** `_IntentRequest` forwards only
   `intent_type`, `spell_id`, `target_id`, `item_id`, `weapon_id`,
   `feature_id` and `target_zone_id`, so a bridge client can't aim or shape an
   area (`direction`, `target_ids`, `excluded_target_ids`), pick an
