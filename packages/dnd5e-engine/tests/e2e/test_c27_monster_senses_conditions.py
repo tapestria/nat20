@@ -42,7 +42,6 @@ from dnd5e_engine.orchestrator import (
 from dnd5e_engine.specs import EncounterMemberSpec, GridScene, PartyMemberSpec
 from tests.e2e.harness import cell, events_of, grid_scene, run_async, xfail_cluster
 
-_SENSES = xfail_cluster(27, "monster senses")
 _CONDITIONS = xfail_cluster(27, "condition clauses")
 
 
@@ -127,7 +126,6 @@ def _holds(live, entity_id: str, condition: str) -> bool:
 # ── monster senses ───────────────────────────────────────────────────────────
 
 
-@_SENSES
 def test_c27_a_templated_goblin_sees_a_hero_in_the_dark() -> None:
     # SRD 5.2 Goblin Warrior: "Senses Darkvision 60 ft."
     dark = grid_scene(lighting={cell(0, 0): "dark"})
@@ -140,7 +138,6 @@ def test_c27_a_templated_goblin_sees_a_hero_in_the_dark() -> None:
     assert "unseen" not in swing.sources
 
 
-@_SENSES
 def test_c27_a_bats_blindsight_sees_an_invisible_hero() -> None:
     # SRD 5.2 Bat: "Senses Blindsight 60 ft."
     handle, live = _start(
@@ -156,7 +153,6 @@ def test_c27_a_bats_blindsight_sees_an_invisible_hero() -> None:
     assert "condition:attacker" not in swing.sources
 
 
-@_SENSES
 def test_c27_hiding_in_the_dark_fails_against_darkvision() -> None:
     dark = grid_scene(lighting={cell(0, 0): "dark"})
     handle, live = _start(
@@ -172,7 +168,6 @@ def test_c27_hiding_in_the_dark_fails_against_darkvision() -> None:
     assert events_of(live, CheckRolled) == []
 
 
-@_SENSES
 def test_c27_a_blinded_bat_still_makes_an_opportunity_attack() -> None:
     handle, live = _start(
         [_hero(initiative=20)],
@@ -187,7 +182,6 @@ def test_c27_a_blinded_bat_still_makes_an_opportunity_attack() -> None:
     assert live.actor_zone["char:hero"] == cell(0, 2)
 
 
-@_SENSES
 def test_c27_an_explicit_senses_override_wins_over_the_template() -> None:
     dark = grid_scene(lighting={cell(0, 0): "dark"})
     # No special sense, though the goblin's stat block has Darkvision.
@@ -245,7 +239,6 @@ def _cleric_casts_contagion(foe: EncounterMemberSpec, *, session: str, effects=(
     return live
 
 
-@_SENSES
 def test_c27_a_templated_skeleton_is_immune_to_poisoned() -> None:
     # SRD 5.2 Skeleton: "Condition Immunities Exhaustion, Poisoned".
     skeleton = _foe("skeleton", initiative=1, hp_current=200, hp_max=200)

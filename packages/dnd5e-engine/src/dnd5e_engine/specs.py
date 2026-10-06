@@ -269,9 +269,16 @@ class EncounterMemberSpec(BaseModel):
     # Threaded onto ``Combatant.damage_vulnerabilities`` → the damage sidecar.
     damage_vulnerabilities: list[str] = Field(default_factory=list)
     # SRD §Condition Immunity — condition slugs this creature can't suffer.
-    # Empty by default; populated from MonsterTemplate at the session layer.
-    # Copied onto the live ``Combatant`` at start_combat.
+    # Empty by default; when a ``monster_template_slug`` is set and this list is
+    # empty, ``_build_foe_combatants`` hydrates it from
+    # ``Monster.condition_immunities`` (the Skeleton's ``["exhaustion",
+    # "poisoned"]``). Copied onto the live ``Combatant`` at start_combat.
     condition_immunities: list[str] = Field(default_factory=list)
+    # SRD §Senses — special senses in feet. ``None`` (the default) takes them
+    # from the ``monster_template_slug`` stat block (the Goblin Warrior's
+    # Darkvision 60 ft.), or no special sense without one; an explicit value,
+    # ``CombatantSenses()`` included, wins over the template.
+    senses: CombatantSenses | None = None
     # C22 — see ``Combatant.physical_resistances_nonmagical_only``. Leave True
     # for the common "resistant to nonmagical B/P/S" profile; set False for
     # a creature whose B/P/S resistance also applies to magical damage.

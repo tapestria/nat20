@@ -7439,10 +7439,19 @@ def _build_foe_combatants(
         # "explicitly set to 10", so 10 always defers to the template).
         # Read by ``activities/actor_stats`` on every save/check path (F1c/F1d);
         # a foe with no ``monster_template_slug`` keeps the spec's values.
+        # SRD 5.2 stat blocks list Senses and Condition Immunities: the
+        # template supplies both unless the host set them (``senses`` not
+        # ``None``; a non-empty ``condition_immunities``).
         template_kw: dict[str, Any] = {}
+        senses = foe.senses
+        condition_immunities = list(foe.condition_immunities)
         if foe.monster_template_slug:
             monster = get_lib_loader().get_monster(foe.monster_template_slug)
             if monster is not None:
+                if senses is None:
+                    senses = _monster_senses(monster)
+                if not condition_immunities:
+                    condition_immunities = list(monster.condition_immunities)
                 if not vulnerabilities:
                     vulnerabilities = list(monster.damage_vulnerabilities)
                 if not resistances and not immunities:
@@ -7502,7 +7511,8 @@ def _build_foe_combatants(
                 damage_resistances=resistances,
                 damage_immunities=immunities,
                 damage_vulnerabilities=vulnerabilities,
-                condition_immunities=list(foe.condition_immunities),
+                condition_immunities=condition_immunities,
+                senses=senses if senses is not None else CombatantSenses(),
                 physical_resistances_nonmagical_only=nonmagical_only,
                 base_speed=foe.base_speed,
                 movement_remaining=foe.base_speed,
@@ -9938,6 +9948,17 @@ def _stat_block_fields(monster: Monster) -> dict[str, Any]:
     }
 
 
+def _monster_senses(monster: Monster) -> CombatantSenses:
+    """A stat block's special senses (SRD 5.2 §Senses: Blindsight, Darkvision,
+    Tremorsense, Truesight), without its Passive Perception."""
+    return CombatantSenses(
+        darkvision=monster.senses.darkvision,
+        blindsight=monster.senses.blindsight,
+        tremorsense=monster.senses.tremorsense,
+        truesight=monster.senses.truesight,
+    )
+
+
 def _physical_stat_fields(form: Monster) -> dict[str, Any]:
     """AC, STR / DEX / CON, Speed and movement modes, senses, damage and
     condition traits, trait mechanics, and a 5-ft reach (the corpus carries no
@@ -9955,12 +9976,7 @@ def _physical_stat_fields(form: Monster) -> dict[str, Any]:
             fly=form.movement.fly,
             burrow=form.movement.burrow,
         ),
-        "senses": CombatantSenses(
-            darkvision=form.senses.darkvision,
-            blindsight=form.senses.blindsight,
-            tremorsense=form.senses.tremorsense,
-            truesight=form.senses.truesight,
-        ),
+        "senses": _monster_senses(form),
         "melee_reach_ft": 5,
         "damage_resistances": list(form.damage_resistances),
         "damage_immunities": list(form.damage_immunities),

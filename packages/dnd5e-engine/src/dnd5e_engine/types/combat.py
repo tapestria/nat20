@@ -135,7 +135,7 @@ class Combatant(BaseModel):
     # (Nature's Ward → ``"poisoned"``). Projected from PC always-on feature
     # ``system.traits.ci.value`` changes via ``build_party_member`` →
     # ``PartyMemberSpec.condition_immunities`` and copied here at start_combat;
-    # monster/NPC templates thread theirs through the spec. The condition-
+    # a foe takes its spec's list, else its template's. The condition-
     # application path (``activities/effects.py::apply_activity_effects``)
     # suppresses a ``ConditionApplied`` whose condition is in this list
     # . Empty by default. NOTE: distinct from the dead, host-supplied
@@ -144,8 +144,8 @@ class Combatant(BaseModel):
     # SRD §Senses — special senses in feet (darkvision/blindsight/tremorsense/
     # truesight). Projected from PC species + always-on feature passive_effects
     # via ``build_party_member`` → ``PartyMemberSpec.senses`` and copied here at
-    # start_combat. Defaults to an empty ``CombatantSenses`` (no special senses)
-    # for monsters / fixtures until a sense projection lands.
+    # start_combat; a foe takes ``EncounterMemberSpec.senses`` when set, else its
+    # template's. Defaults to an empty ``CombatantSenses`` (no special senses).
     senses: CombatantSenses = Field(default_factory=CombatantSenses)
     # SRD §Concentration — the effect_id this combatant is concentrating on,
     # if any. ``None`` when not concentrating. Hydrated by the orchestrator
