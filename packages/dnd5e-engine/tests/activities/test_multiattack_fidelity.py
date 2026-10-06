@@ -229,8 +229,8 @@ def test_corpus_wide_fallback_never_yields_a_usage_gated_part(
     part ever names a usage-gated action — whichever branch resolves it.
     ``is_available`` already excludes them from the precise join; passing
     the same predicate here must see that reflected from the fallback too,
-    which never consults ``is_available`` at all and must exclude them on
-    its own.
+    which drops them whether or not ``is_available`` reports them (the
+    aboleth and gold-dragon test above passes no ``is_available``).
     """
     for slug in loader.list_slugs("monsters"):
         monster = loader.get_monster(slug)
@@ -248,3 +248,19 @@ def test_corpus_wide_fallback_never_yields_a_usage_gated_part(
             )
             gated = [a.slug for a, _ in parts if _action_is_usage_gated(a)]
             assert not gated, f"{slug} at {distance} ft: {gated}"
+
+
+def test_the_fallback_passes_over_an_area_the_caller_reports_unavailable(
+    loader: BundledAssetLoader,
+) -> None:
+    """An area the monster can't place on an enemy (the ancient gold dragon's
+    Weakening Breath, a 90-foot Cone, its foe 120 ft away) sits the fallback
+    out, so the dragon repeats the Rend it can walk in with."""
+    dragon, multiattack = _multiattack(loader, "ancient-gold-dragon")
+    parts = expand_action_to_parts(
+        dragon,
+        multiattack,
+        target_distance_ft=120,
+        is_available=lambda action: action.slug != "weakening-breath",
+    )
+    assert [action.slug for action, _ in parts] == ["rend"]

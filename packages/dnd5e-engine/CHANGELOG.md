@@ -109,8 +109,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   names: the Djinni no longer conjures three whirlwinds (C26b).
 - A Multiattack description is no longer cut short at an item whose id starts
   with a capital letter (C26b).
-- A Multiattack's fallback join no longer repeats a Recharge or X/Day action:
-  the Aboleth's Dominate Mind, the Ancient Gold Dragon's Fire Breath (C26b).
+- A Multiattack's fallback join no longer repeats a Recharge or X/Day action,
+  nor an area it can't place on an enemy: the Aboleth's Dominate Mind, the
+  Ancient Gold Dragon's Fire Breath, and its Weakening Breath beyond 90 feet
+  (C26b).
 
 ## [0.6.0]
 

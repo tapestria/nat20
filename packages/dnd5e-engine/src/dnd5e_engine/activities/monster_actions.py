@@ -32,7 +32,9 @@ to a typed sibling. Resolution, in order:
    (see ``_distribute_any_combination`` below) rather than joined 1:1.
 4. Otherwise repeat one chosen AT-WILL sibling ``count`` times — one the
    clause names, when it names any, never a Recharge/``N/Day``/limited-use
-   one — and log ``multiattack_join_unresolved`` at WARNING (the loss is
+   one, nor one the caller reports unavailable (an area that affects no
+   enemy from where the monster stands) — and log
+   ``multiattack_join_unresolved`` at WARNING (the loss is
    visible — never a silent normalization). This is correctness-preserving
    for the homogeneous ("three Rend attacks") and free-choice ("two attacks,
    using Slam or Force Bolt in any combination") shapes, and lossy only for
@@ -530,12 +532,14 @@ def expand_action_to_parts(
 
     ``is_available`` gates a sibling joined through the PRECISE path by name:
     SRD 5.2 "uses Unsettling Visage if available" — a sibling it reports
-    unavailable (a spent Recharge) sits the turn out. The fallback never
-    consults ``is_available``; it repeats only an AT-WILL sibling — the one
-    the clause names, when it names any — never a Recharge, ``N/Day`` or
+    unavailable (a spent Recharge) sits the turn out. The fallback repeats
+    only an AT-WILL sibling the caller reports available — the one the
+    clause names, when it names any: never a Recharge, ``N/Day`` or
     limited-use-cast sibling, since repeating one of those its own ``count``
-    times would spend it more than once in a single turn regardless of what
-    the caller reports available.
+    times would spend it more than once in a single turn whatever the caller
+    reports, and never one ``is_available`` rules out (an area that affects
+    no enemy from where the monster stands), which would leave the turn with
+    nothing to resolve and nothing to walk toward.
     """
     if action.slug != _MULTIATTACK_SLUG:
         resolved: list[tuple[MonsterAction, Activity]] = []
@@ -596,10 +600,14 @@ def expand_action_to_parts(
     # ``_activity_range_ft``), and repeating one ``count`` times would spend
     # it more than once in a single turn — a budget the fallback has no
     # availability seam to check, unlike the precise join.
+    # A sibling the caller reports unavailable is dropped too: an area the
+    # monster can't place on an enemy (the ancient gold dragon's Weakening
+    # Breath beyond 90 ft) has no reach to lose the tie-break on, so it
+    # would beat the attack that walks in, then resolve nothing.
     at_will_candidates = [
         sibling
         for sibling in _clause_siblings(_multiattack_clause(action.description), siblings)
-        if not _action_is_usage_gated(sibling)
+        if not _action_is_usage_gated(sibling) and (is_available is None or is_available(sibling))
     ]
     if not at_will_candidates:
         _LOGGER.warning(
