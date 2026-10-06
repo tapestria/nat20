@@ -141,9 +141,29 @@ or `line`), its size, its origin cell and aim, the creatures it affects
 A template the engine can't place on the grid (the five `wall` spells: Blade
 Barrier, Tsunami, Wall of Fire, Wall of Thorns and Wind Wall; and Confusion,
 whose size is a formula) affects its named target only, and so does a counted
-area whose creatures the intent names; neither emits `AreaTargeted`. A
-monster's own area action still resolves against one target. `BACKLOG.md`
-tracks all three.
+area whose creatures the intent names; neither emits `AreaTargeted`.
+`BACKLOG.md` tracks both.
+
+### A monster's areas
+
+The monster AI places its own areas — a breath, a stat-block spell, a
+legendary action — under the same rules for whom they affect, with no
+exclusions. It aims from the cell it stands in when its turn's action is
+chosen and takes the placement that affects the most enemies minus allies,
+never itself: an Emanation from its cell; a Cone, Cube or Line in each of the
+eight directions (north first, then clockwise); a Sphere or Cylinder centred on
+each foe it can see within the action's or spell's range. The area then
+affects every creature it catches there, a creature at 0 Hit Points included —
+only a choice or counted area spares the monster's own charmer — though the AI
+scores the placement itself only against enemies above 0 Hit Points. A tie
+goes to the placement that affects fewer allies, then to the one whose foes
+sit nearest its centre line, then to the earlier candidate, so the aim is
+deterministic and draws no dice. An area that would affect no enemy is not an
+option that turn: the monster takes its next action, spell or legendary
+action. An action whose template counts "one creature" (the Aboleth's Dominate
+Mind) and a template the grid can't place keep the AI's single target. Each
+placed area emits `AreaTargeted`, whose `source_id` is the action's slug
+(`"fire-breath"`) or the spell's (`"fireball"`).
 
 ## Vision and light
 

@@ -128,6 +128,18 @@ obstruction must provide **Total Cover**" — so the test is precisely
 "total"` check. Half and three-quarters cover do **not** exclude a cell; they
 only feed the covered creature's AC / Dexterity save.
 
+**Monster aim.** `areas.best_aim` places an area for a creature that aims for
+itself (the monster AI). Its candidates are an Emanation from the creature's
+own cell, a Cone, Cube or Line from that cell in each of `AIM_DIRECTIONS`
+(north `(0, -1)` first, then clockwise), and a Sphere or Cylinder centred on
+each enemy cell the caller offers (foes it can see within range). Each
+candidate's affected creatures come from `area_cells` and `select_affected`;
+it scores enemies minus allies, rejects a candidate that affects the creature
+itself or no enemy, and breaks ties by fewer allies, then by the smallest sum
+of the enemies' `lateral` offsets from the template's axis (the cone's own
+measure) or of their Chebyshev distances from a Sphere's or Emanation's origin,
+then by candidate order.
+
 ## Legal steps
 
 `GridTopology.edge_distance(a, b)` is the single legality oracle for one step:

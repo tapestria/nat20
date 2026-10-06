@@ -22,6 +22,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`AreaTargeted`** and **`AreaShape`** (`dnd5e_engine.events`) — each placed
   area of effect: its shape, size, origin and aim, and the creatures it
   affects and spares (C26a).
+- **`best_aim`**, **`AreaAim`** and **`AIM_DIRECTIONS`** (`dnd5e_engine.areas`) —
+  where a creature that aims for itself places an area: the most enemies minus
+  allies, never itself (C26b).
+- **`expand_action_to_parts`** (`dnd5e_engine.activities.monster_actions`) — a
+  monster action's activities, each with the stat-block action it comes from
+  (C26b).
 
 ### Changed
 
@@ -62,6 +68,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   where it used to fall back to the creatures on one cell.
 - **nat20-bridge**: an area narrates as one line naming whom it catches and
   spares (C26a).
+- **Monsters aim their own areas** (C26b): a stat-block action, a stat-block
+  spell and a legendary action with an area resolve against the creatures in
+  it — a creature at 0 Hit Points included, with only a choice or counted
+  area sparing the monster's charmer — placed where it affects the most
+  enemies minus allies and never the monster itself, from where the monster
+  stands; a Sphere centres on a foe it can see within range. Each placed area
+  emits `AreaTargeted`. An area that would affect no enemy is not an option
+  that turn: the monster takes its next action, spell or legendary action.
+- **A Multiattack resolves an area it uses against that area** and spends a
+  Recharge action it uses when it fires; an action it uses "if available"
+  sits out while it isn't (C26b).
 
 ### Deprecated
 
@@ -85,6 +102,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (C24).
 - A failed concentration check no longer stands in for the failed save behind a
   condition's end-of-turn repeat save (C25).
+- A readied Shield no longer fires on a monster's save action (C26b).
+- A spent Recharge action a Multiattack uses no longer resolves: the
+  Doppelganger's Unsettling Visage (C26b).
+- A Multiattack whose description offers alternatives repeats only an attack it
+  names: the Djinni no longer conjures three whirlwinds (C26b).
+- A Multiattack description is no longer cut short at an item whose id starts
+  with a capital letter (C26b).
+- A Multiattack's fallback join no longer repeats a Recharge or X/Day action:
+  the Aboleth's Dominate Mind, the Ancient Gold Dragon's Fire Breath (C26b).
 
 ## [0.6.0]
 
