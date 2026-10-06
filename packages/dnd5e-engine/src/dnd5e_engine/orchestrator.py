@@ -3880,13 +3880,16 @@ def _strip_condition_from_combatant(live: _LiveCombat, entity_id: str, condition
     honours): an entry bridged from an effect that is STILL active is kept —
     ``_drop_concentration`` emits one ``ConditionRemoved`` per condition its
     dropped effect installed, and that must not clear a condition another live
-    effect keeps imposing. The coarse ``live.active_conditions`` name
-    (discarded by the ``_emit`` fold before we are called) is always resynced
-    from whatever survives in the typed list below — NOT only when the typed
-    list itself needed a rewrite, since ``_emit_apply_effect_expired`` may
-    already have reconciled it (same source_effect_id rule) for a DIFFERENT
-    expiring effect, leaving the lengths equal but the coarse set still
-    short the discard above.
+    effect keeps imposing. The invariant: ``live.active_conditions``'s coarse
+    name for ``condition`` always agrees with whether a typed entry for it
+    survives. ``_emit`` unconditionally discards that name before calling us,
+    so the resync below is unconditional too — re-adding it whenever a
+    surviving entry still earns it, not only when the filter changed the
+    typed list's length. (A DIFFERENT fold, such as
+    ``_emit_apply_effect_expired`` for another expiring effect, can leave the
+    typed list already exactly as this filter would; that is one way the
+    length check alone would miss the resync, not the reason it is
+    unconditional.)
     """
     c = _find_combatant(live, entity_id)
     if c is None or not any(ac.condition == condition for ac in c.conditions):
@@ -5343,21 +5346,35 @@ def _emit_apply_temp_hp(live: _LiveCombat, event: TempHpApplied) -> None:
 
 def _emit_apply_effect_applied(live: _LiveCombat, event: EffectApplied) -> None:
     """Fold an ``EffectApplied`` into running state: track the active effect,
-    union its imposed statuses into the target's conditions, and record
-    concentration spell-slot expenditure for PCs."""
+    stamp one ``ActiveCondition`` entry per (status, effect) — the same key
+    the ``start_combat`` seed stamps (``_seed_active_effects``) — onto the
+    target's conditions, and record concentration spell-slot expenditure
+    for PCs."""
     applied = event.effect
     live.active_effects.setdefault(applied.target_id, []).append(applied)
-    # Union the effect's imposed statuses into the combatant.conditions
-    # list so passive projections (advantage/disadvantage on attack,
-    # save, etc.) observe the new state immediately.
+    # One entry per (status, effect), not per status: a SECOND effect that
+    # genuinely lands a condition the target already holds (from a
+    # DIFFERENT effect) gets its OWN entry, so losing either effect later
+    # (``_emit_apply_effect_expired`` / ``_strip_condition_from_combatant``,
+    # both keyed on ``source_effect_id``) removes only its entry and the
+    # condition survives on the other's — rather than the status silently
+    # never attaching for the second effect, or disappearing when either
+    # effect ends. Passive projections (advantage/disadvantage on attack,
+    # save, etc.) observe the new state immediately either way.
     target_combatant = _find_combatant(live, applied.target_id)
     added: list[str] = []
     if target_combatant is not None and applied.statuses:
-        existing_slugs = {ac.condition for ac in target_combatant.conditions}
+        # Captured BEFORE any entry below is added: the first-landing hooks
+        # near the end of this function fire once per condition NAME newly
+        # held, not once per owning effect — a second effect landing a
+        # condition the creature already has isn't a new incapacitation
+        # (``_end_what_incapacitation_ends``'s own invariant: "runs once
+        # however the condition arrives").
+        already_named = {ac.condition for ac in target_combatant.conditions}
+        existing_keys = {(ac.condition, ac.source_effect_id) for ac in target_combatant.conditions}
         new_conditions = list(target_combatant.conditions)
+        dirty = False
         for status in applied.statuses:
-            if status in existing_slugs:
-                continue
             # SRD §Condition Immunity — an immune target never acquires the
             # condition. ``activities/effects.py::apply_activity_effects``
             # already SUPPRESSES the matching ``ConditionApplied``; without the
@@ -5369,13 +5386,21 @@ def _emit_apply_effect_applied(live: _LiveCombat, event: EffectApplied) -> None:
             # ``live.active_conditions``, the store ``views.py`` shows the host.
             # The shared predicate, so a condition-granted immunity counts
             # too: Petrified — held, or arriving in this same effect — keeps
-            # Poisoned off.
+            # Poisoned off. Runs for every status regardless of whether the
+            # NAME is already held — being already Paralyzed grants no
+            # immunity to Paralyzed, so a second genuine source must still
+            # clear this gate on its own.
             if is_condition_immune(target_combatant, status, imposed=applied.statuses):
                 _LOGGER.info(
                     "condition_immune_not_folded status=%s target_id=%s",
                     status,
                     applied.target_id,
                 )
+                continue
+            # Idempotency guard, the same (status, effect) key the seed
+            # uses: a fold that somehow runs twice for the same effect must
+            # not double-stamp.
+            if (status, applied.id) in existing_keys:
                 continue
             # Derive source_entity_id from the origin tag when it
             # encodes one (e.g. "cast:bless:char:abc12"); otherwise
@@ -5389,8 +5414,10 @@ def _emit_apply_effect_applied(live: _LiveCombat, event: EffectApplied) -> None:
                     source_effect_id=applied.id,
                 )
             )
-            added.append(status)
-        if added:
+            dirty = True
+            if status not in already_named:
+                added.append(status)
+        if dirty:
             for idx, c in enumerate(live.initiative):
                 if c.entity_id == applied.target_id:
                     live.initiative[idx] = c.model_copy(update={"conditions": new_conditions})
@@ -5416,7 +5443,7 @@ def _emit_apply_effect_applied(live: _LiveCombat, event: EffectApplied) -> None:
 def _emit_apply_effect_expired(live: _LiveCombat, event: EffectExpired) -> None:
     """Fold an ``EffectExpired`` into running state: pop the matching effect,
     then clear each status it imposed from both ``live.active_conditions`` and
-    the target's conditions — but only if that status's own ``ActiveCondition``
+    the target's conditions — unless that status's own ``ActiveCondition``
     entry is owned by a DIFFERENT effect still in ``live.active_effects``
     (``source_effect_id``: the same per-entry signal
     ``_strip_condition_from_combatant`` reads for ``ConditionRemoved``, so the
@@ -5449,12 +5476,12 @@ def _emit_apply_effect_expired(live: _LiveCombat, event: EffectExpired) -> None:
                         live.initiative[idx] = c.model_copy(update={"conditions": new_conditions})
                         break
             surviving_statuses = {ac.condition for ac in new_conditions}
-        # Also clear the status from live.active_conditions
-        # (orchestrator_bridge reads this when mirroring combatant
-        # conditions back to host storage). Without this, the projection
-        # re-attaches the expired status to session state on the next
-        # mirror tick. Derived from the same ``surviving_statuses`` the
-        # typed list above just computed, so the two stores cannot disagree.
+        # Also clear the status from live.active_conditions — the coarse
+        # per-entity name set a host mirrors into its own storage. Without
+        # this, a host's mirror re-attaches the expired status to its own
+        # state on the next sync. Derived from the same ``surviving_statuses``
+        # the typed list above just computed, so the two stores cannot
+        # disagree.
         active_cond_set = live.active_conditions.get(event.target_id)
         if active_cond_set is not None:
             for status in expired_effect.statuses:
@@ -7676,11 +7703,11 @@ def _seed_active_effects(live: _LiveCombat, active_effects: Sequence[ActiveEffec
 
         if not statuses:
             continue
-        # Also project into live.active_conditions so orchestrator_bridge's
-        # project_combat_state_to_redis sees the seeded statuses on the next
-        # mirror tick. Without this, statuses only land on initiative[*]
-        # .conditions (set below) and are silently dropped when the bridge
-        # rebuilds host storage conditions from active_conditions. # .
+        # Also project into live.active_conditions — the coarse per-entity
+        # name set a host mirrors into its own storage — so a seeded status
+        # is there on the next sync. Without this, statuses only land on
+        # initiative[*].conditions (set below) and are silently dropped when
+        # a host rebuilds its own condition storage from active_conditions.
         live.active_conditions.setdefault(eff.target_id, set()).update(statuses)
         for idx, c in enumerate(live.initiative):
             if c.entity_id != eff.target_id:

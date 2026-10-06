@@ -18,6 +18,7 @@ from dnd5e_engine.events import (
     CheckRolled,
     CombatantMoved,
     ConditionApplied,
+    ConditionRemoved,
     EffectApplied,
     EffectExpired,
     MoveFailed,
@@ -69,6 +70,26 @@ def _status(target_id: str, *statuses: str, by: str = "mon:foe") -> ActiveEffect
     )
 
 
+def _effect(name: str, *statuses: str, target_id: str = "mon:foe") -> ActiveEffect:
+    # Named by ``name``, not by its statuses like ``_status``: two SEPARATE
+    # effects that impose the SAME status need distinct ids.
+    return ActiveEffect(
+        id=f"effect:{name}",
+        name=name,
+        origin=f"test:{name}",
+        target_id=target_id,
+        statuses=set(statuses),
+    )
+
+
+def _apply_effect(live, effect: ActiveEffect) -> None:
+    # A rider's own order (``activities/effects.py``): ``EffectApplied``
+    # first, then its ``ConditionApplied``(s), sorted.
+    _emit(live, EffectApplied(effect=effect))
+    for status in sorted(effect.statuses):
+        _emit(live, ConditionApplied(target_id=effect.target_id, condition=status))
+
+
 _SESSION_SEQ = itertools.count()
 
 
@@ -98,6 +119,17 @@ def _act(handle, actor_id: str, **intent: Any) -> None:
 def _typed(live, entity_id: str) -> set[str]:
     return {
         ac.condition for c in live.initiative if c.entity_id == entity_id for ac in c.conditions
+    }
+
+
+def _typed_sources(live, entity_id: str) -> set[tuple[str, str | None]]:
+    # Unlike ``_typed``, keeps each entry's ``source_effect_id`` — the
+    # per-entry detail that tells two same-named entries apart.
+    return {
+        (ac.condition, ac.source_effect_id)
+        for c in live.initiative
+        if c.entity_id == entity_id
+        for ac in c.conditions
     }
 
 
@@ -223,6 +255,55 @@ def test_expiring_an_effect_drops_only_its_own_entry_not_a_withheld_one() -> Non
     assert _typed(live, "mon:foe") == set()
     assert live.active_conditions.get("mon:foe", set()) == set()
     assert _build_hydration_payload(live)["check_modifiers"]["mon:foe"]["disadvantage"] is False
+
+
+def test_two_runtime_effects_imposing_the_same_status_survive_independently() -> None:
+    # Two mid-combat effects BOTH land Paralyzed, each through its own
+    # EffectApplied-then-ConditionApplied rider order. E1 timing out must
+    # drop only E1's own entry, leaving E2's; E2 timing out afterwards must
+    # then clear Paralyzed from both stores.
+    e1, e2 = _effect("e1", "paralyzed"), _effect("e2", "paralyzed")
+    _handle, live = _start([_hero()], [_foe()])
+    _apply_effect(live, e1)
+    _apply_effect(live, e2)
+    assert _typed_sources(live, "mon:foe") == {("paralyzed", e1.id), ("paralyzed", e2.id)}
+    assert live.active_conditions["mon:foe"] == {"paralyzed"}
+
+    _emit(
+        live,
+        EffectExpired(effect_id=e1.id, target_id="mon:foe", origin=e1.origin, reason="duration"),
+    )
+    assert _typed_sources(live, "mon:foe") == {("paralyzed", e2.id)}
+    assert live.active_conditions["mon:foe"] == {"paralyzed"}
+
+    _emit(
+        live,
+        EffectExpired(effect_id=e2.id, target_id="mon:foe", origin=e2.origin, reason="duration"),
+    )
+    assert _typed_sources(live, "mon:foe") == set()
+    assert live.active_conditions.get("mon:foe", set()) == set()
+
+
+def test_two_runtime_effects_imposing_the_same_status_survive_a_save_ends_removal() -> None:
+    # Same stacking, but E1 ends the way a repeat-save's success or a
+    # concentration drop does: EffectExpired immediately followed by its own
+    # ConditionRemoved for the status it carried (``_drop_concentration``;
+    # the save-ends repeat-save path). E2's independent entry must still
+    # carry Paralyzed afterwards, in both stores.
+    e1, e2 = _effect("e1", "paralyzed"), _effect("e2", "paralyzed")
+    _handle, live = _start([_hero()], [_foe()])
+    _apply_effect(live, e1)
+    _apply_effect(live, e2)
+
+    _emit(
+        live,
+        EffectExpired(
+            effect_id=e1.id, target_id="mon:foe", origin=e1.origin, reason="concentration_drop"
+        ),
+    )
+    _emit(live, ConditionRemoved(target_id="mon:foe", condition="paralyzed"))
+    assert _typed_sources(live, "mon:foe") == {("paralyzed", e2.id)}
+    assert live.active_conditions["mon:foe"] == {"paralyzed"}
 
 
 def test_a_hider_immune_to_invisible_is_not_hidden() -> None:
