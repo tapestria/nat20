@@ -11,6 +11,7 @@ import pytest
 from dnd5e_srd_data import BundledAssetLoader
 
 from dnd5e_engine.activities.monster_actions import (
+    _action_is_usage_gated,
     _multiattack_clause,
     _name_from_foundry_id,
     _parse_item_counts,
@@ -183,3 +184,67 @@ def test_each_part_names_its_action_and_an_unavailable_one_sits_out(
         doppelganger, multiattack, is_available=lambda action: action.slug != "unsettling-visage"
     )
     assert [action.slug for action, _ in spent] == ["slam", "slam"]
+
+
+def test_the_fallback_never_repeats_a_usage_gated_sibling(loader: BundledAssetLoader) -> None:
+    """The aboleth's Dominate Mind (2/Day) and the ancient gold dragon's Fire
+    Breath (Recharge 5-6) both carry a self/cone activity whose reach
+    ``_activity_range_ft`` can't resolve — so distance never disqualified
+    either, and each used to win its monster's range tie-break and get
+    repeated past its own budget. The fallback must drop both from its
+    candidate pool outright, never conditionally on ``is_available``.
+
+    At 30 ft the aboleth resolves to its OTHER at-will save, Consume
+    Memories (its own 30 ft range covers; Tentacle's melee-only reach
+    doesn't); within Tentacle's melee reach, Tentacle wins the tie over
+    Consume Memories (also covering) by list order. Nothing at-will covers
+    past Consume Memories' 30 ft, so beyond it the existing no-reach fallback
+    returns the first at-will sibling in list order — Tentacle again, the
+    same behaviour as when no sibling covers at all.
+    """
+    aboleth, aboleth_multiattack = _multiattack(loader, "aboleth")
+    for distance, slugs in [
+        (30, ["consume-memories", "consume-memories"]),
+        (5, ["tentacle", "tentacle"]),  # within Tentacle's melee reach
+        (60, ["tentacle", "tentacle"]),  # no-reach fallback: siblings[0]
+    ]:
+        parts = expand_action_to_parts(aboleth, aboleth_multiattack, target_distance_ft=distance)
+        assert [action.slug for action, _ in parts] == slugs, distance
+        assert not any(_action_is_usage_gated(action) for action, _ in parts), distance
+
+    dragon, dragon_multiattack = _multiattack(loader, "ancient-gold-dragon")
+    for distance, slugs in [
+        (60, ["weakening-breath"]),  # Fire Breath (Recharge 5-6) excluded
+        (5, ["rend"]),  # within Rend's melee reach
+    ]:
+        parts = expand_action_to_parts(dragon, dragon_multiattack, target_distance_ft=distance)
+        assert [action.slug for action, _ in parts] == slugs, distance
+        assert not any(_action_is_usage_gated(action) for action, _ in parts), distance
+
+
+def test_corpus_wide_fallback_never_yields_a_usage_gated_part(
+    loader: BundledAssetLoader,
+) -> None:
+    """For every bundled Multiattack, at a spread of distances, no resolved
+    part ever names a usage-gated action — whichever branch resolves it.
+    ``is_available`` already excludes them from the precise join; passing
+    the same predicate here must see that reflected from the fallback too,
+    which never consults ``is_available`` at all and must exclude them on
+    its own.
+    """
+    for slug in loader.list_slugs("monsters"):
+        monster = loader.get_monster(slug)
+        if monster is None:
+            continue
+        action = next((a for a in monster.actions if a.slug == "multiattack"), None)
+        if action is None:
+            continue
+        for distance in (5, 30, 60, 120):
+            parts = expand_action_to_parts(
+                monster,
+                action,
+                target_distance_ft=distance,
+                is_available=lambda a: not _action_is_usage_gated(a),
+            )
+            gated = [a.slug for a, _ in parts if _action_is_usage_gated(a)]
+            assert not gated, f"{slug} at {distance} ft: {gated}"

@@ -30,13 +30,13 @@ to a typed sibling. Resolution, in order:
    combination" clause is the one exception to "repeated its own count": its
    parsed count is instead distributed range-aware over the named siblings
    (see ``_distribute_any_combination`` below) rather than joined 1:1.
-4. Otherwise repeat one chosen sibling ``count`` times — one the clause
-   names, when it names any — and log ``multiattack_join_unresolved`` at
-   WARNING (the loss is visible — never a silent normalization). This is
-   correctness-preserving for the homogeneous ("three Rend attacks") and
-   free-choice ("two attacks, using Slam or Force Bolt in any combination")
-   shapes, and lossy only for a heterogeneous multiattack whose tokens are
-   bare ids.
+4. Otherwise repeat one chosen AT-WILL sibling ``count`` times — one the
+   clause names, when it names any, never a Recharge/``N/Day``/limited-use
+   one — and log ``multiattack_join_unresolved`` at WARNING (the loss is
+   visible — never a silent normalization). This is correctness-preserving
+   for the homogeneous ("three Rend attacks") and free-choice ("two attacks,
+   using Slam or Force Bolt in any combination") shapes, and lossy only for
+   a heterogeneous multiattack whose tokens are bare ids.
 
 "in any combination" clauses distribute the parsed count over the named
 siblings range-aware (see ``_distribute_any_combination``).
@@ -485,6 +485,22 @@ def _clause_siblings(clause: str, siblings: list[MonsterAction]) -> list[Monster
     ] or siblings
 
 
+def _action_is_usage_gated(action: MonsterAction) -> bool:
+    """``action`` is spent by use: SRD 5.2 "Recharge X-Y", a flat ``N/Day``
+    pool, or a limited-use ``N/Day`` cast activity (Innate Spellcasting).
+
+    The multiattack fallback must never repeat such a sibling: repeating an
+    available 2/Day action ``count`` times would spend it more than once in
+    one turn, a budget only the PRECISE join's ``is_available`` seam can
+    account for (one name, one availability check — never N).
+    """
+    return (
+        action.recharge is not None
+        or action.uses_per_day is not None
+        or bool(_limited_use_cast_activities(action))
+    )
+
+
 def expand_action_to_parts(
     monster: Monster,
     action: MonsterAction,
@@ -512,11 +528,14 @@ def expand_action_to_parts(
     whose own range covers it (``RANGED`` tie-breaks toward the ranged sibling).
     Omitting them preserves the historical first-in-list-order fallback.
 
-    ``is_available`` is the caller's seam into live state for a sibling the
-    clause joins by name: SRD 5.2 "uses Unsettling Visage if available" — a
-    sibling it reports unavailable (a spent Recharge) sits the turn out.
-    The fallback repeats only a sibling the clause names ("using Storm Blade
-    or Storm Bolt in any combination"), never another action of the monster.
+    ``is_available`` gates a sibling joined through the PRECISE path by name:
+    SRD 5.2 "uses Unsettling Visage if available" — a sibling it reports
+    unavailable (a spent Recharge) sits the turn out. The fallback never
+    consults ``is_available``; it repeats only an AT-WILL sibling — the one
+    the clause names, when it names any — never a Recharge, ``N/Day`` or
+    limited-use-cast sibling, since repeating one of those its own ``count``
+    times would spend it more than once in a single turn regardless of what
+    the caller reports available.
     """
     if action.slug != _MULTIATTACK_SLUG:
         resolved: list[tuple[MonsterAction, Activity]] = []
@@ -571,11 +590,26 @@ def expand_action_to_parts(
     # Correctness-preserving for single-attack-type multiattacks (owlbear → Rend)
     # and "any combination" count cases (goblin-boss → 2 attacks); range/profile-
     # aware for mixed melee+ranged repertoires (scout → longbow at 100 ft).
+    # Usage-gated siblings never enter the pool to pick from: the aboleth's
+    # Dominate Mind (2/Day) and a dragon's Fire Breath (Recharge) cover any
+    # distance an unresolvable reach can't disqualify them from (see
+    # ``_activity_range_ft``), and repeating one ``count`` times would spend
+    # it more than once in a single turn — a budget the fallback has no
+    # availability seam to check, unlike the precise join.
+    at_will_candidates = [
+        sibling
+        for sibling in _clause_siblings(_multiattack_clause(action.description), siblings)
+        if not _action_is_usage_gated(sibling)
+    ]
+    if not at_will_candidates:
+        _LOGGER.warning(
+            "multiattack_join_unresolved monster=%s reason=no_at_will_sibling description=%r",
+            monster.slug,
+            action.description,
+        )
+        return []
     chosen_sibling = _select_fallback_sibling(
-        _clause_siblings(_multiattack_clause(action.description), siblings),
-        target_distance_ft,
-        behavior_profile,
-        melee_reach_ft,
+        at_will_candidates, target_distance_ft, behavior_profile, melee_reach_ft
     )
     first_activity = _first_offensive_activity(chosen_sibling)
     if first_activity is None:
