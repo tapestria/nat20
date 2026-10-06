@@ -1612,8 +1612,13 @@ cluster owns.
   a different live effect still owns it (`source_effect_id`); an entry with
   no owning effect at all — an action's Prone (Shove), or the dying rules'
   Unconscious — is cleared too when an unrelated effect that names the same
-  status in its own `statuses` expires.
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_emit_apply_effect_expired`)
+  status in its own `statuses` expires. The reverse also holds: a condition
+  an action applies to a creature that already holds it from an effect gets
+  no entry of its own (`_fold_condition_onto_combatant` keeps one entry per
+  name), so a Shove's Prone ends with that effect, and a Grapple's escape DC
+  is never stored, so `escape_grapple` is refused.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_emit_apply_effect_expired`,
+  `packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_fold_condition_onto_combatant`)
 - **`ConditionRemoved` announces an ending effect's condition even while
   another live effect keeps it (2026-10-06, C27).** `_drop_concentration`
   and the end-of-turn repeat-save path emit it for every condition the
@@ -1623,6 +1628,15 @@ cluster owns.
   happen.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_drop_concentration`,
   `packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_run_end_of_turn_saves`)
+- **A non-condition status an effect brings mid-combat reaches only the typed
+  condition list (2026-10-06, C27).** Foundry statuses that are not SRD
+  conditions (Hunter's Mark's `marked`, and `cursed`, `ethereal`, `stable`
+  and the rest) land on `Combatant.conditions`, and so in
+  `LiveCombatView.initiative[*].conditions`, through the `EffectApplied`
+  fold. No `ConditionApplied` follows, so `active_conditions` never lists
+  them, while a seeded effect writes them to both stores. No rule reads
+  them; the two stores just disagree on them.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_emit_apply_effect_applied`)
 
 ## C12 deferred minors (2026-08-27)
 

@@ -90,7 +90,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **A templated monster takes its stat block's senses**, and its condition
   immunities while its spec lists none (C27): it sees in Darkness, through
   Blinded with Blindsight, and an Invisible creature within its Blindsight or
-  Truesight, for its attacks, its opportunity attacks, Dodge and Hide.
+  Truesight, for its attacks, its opportunity attacks, its own Dodge and Hide.
 - **Frightened's Disadvantage on ability checks needs its source in sight**,
   as its attack-roll half did; **Poisoned and Frightened impose Disadvantage on
   Hide's Stealth check and on escaping a grapple** (C27).
@@ -98,6 +98,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is in sight** (C27).
 - **Petrified resists Poison damage instead of being immune to it** (C27):
   `project_passive_damage_modifiers(["petrified"])` lists no immunity.
+- **`LiveCombatView.initiative[*].conditions` lists one entry per effect
+  imposing a condition**, mid-combat as seeded stacking already did;
+  `active_conditions` stays deduplicated (C27).
 
 ### Deprecated
 
@@ -137,9 +140,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A Petrified creature is immune to the Poisoned condition, an effect that
   brings both included, and a Poisoned it already had imposes no Disadvantage
   (C27).
-- A condition two effects impose now outlives the first one's ending: by
-  duration, by a successful end-of-turn save, or by concentration ending.
-  Previously it could end with the first effect (C27).
+- A condition two effects impose now outlives the first one's ending by a
+  successful end-of-turn save or by concentration ending; previously it
+  ended with the first effect (C27).
 - After a `ConditionRemoved`, `active_conditions` now keeps a condition
   that another live effect still imposes, so the two condition stores
   agree (C27).
