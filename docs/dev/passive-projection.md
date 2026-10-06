@@ -137,8 +137,9 @@ Literal member). Every *other* SRD condition's `ci` token already equals its
 condition slug; poison/poisoned is the sole irregular pair. The interpreter
 normalizes the one irregular token via a small alias table
 (`_CI_TOKEN_TO_CONDITION = {"poison": "poisoned"}`) so `condition_immunities`
-stores condition slugs and the emit-gate is a plain `status in
-target.condition_immunities` membership test. This is deliberately a
+stores condition slugs and the emit-gate (`is_condition_immune`) compares
+them directly — since C27 it also counts the immunity a held or arriving
+condition grants (Petrified → Poisoned). This is deliberately a
 single-entry alias, not a general trait-vocabulary engine (YAGNI).
 
 **Emit-vs-suppress decision:** the gate **suppresses the `ConditionApplied`

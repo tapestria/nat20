@@ -227,8 +227,8 @@ attacks), the Ranged Attacks in Close Combat "enemy who can see you" gate, the
 Opportunity Attack "creature that you can see" trigger (both PC↔monster
 directions — a sight-blocked reactor spends no Reaction and fires no attack),
 Hide's "out of any enemy's line of sight" conjunct, and Frightened's
-line-of-sight gate (both the attack-roll disadvantage and the "can't
-willingly move closer to the source of fear" movement rule).
+line-of-sight gate on its attack rolls and ability checks (its "can't
+willingly move closer to the source of fear" rule has no sight clause).
 
 ## Terrain cost model
 

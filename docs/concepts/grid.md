@@ -180,6 +180,9 @@ Three optional `GridScene` fields model SRD 5.2 §Vision and Light:
 creature at `b`. It requires line of sight, then checks the target's cell:
 Darkness and Heavy Obscurement make it unseen unless the viewer's senses reach —
 darkvision covers a dark cell, blindsight and truesight see regardless of light.
+A character's senses come from `PartyMemberSpec.senses` (`build_party_member`
+fills them), a templated monster's from its stat block unless
+`EncounterMemberSpec.senses` overrides them.
 **Tremorsense is not sight**: the SRD defines it as sensing *location* through
 vibration, which does not satisfy "a target you can see".
 
@@ -198,7 +201,7 @@ sight, sees an Invisible target — never darkvision. Every SRD
 row reads this composite: the Dodge action's attack-disadvantage half, Ranged
 Attacks in Close Combat, the Opportunity Attack trigger in both directions,
 Hide's "out of any enemy's line of sight" gate, and Frightened's line-of-sight
-gate (attack-roll disadvantage and the "can't willingly move closer to the
-source of fear" movement rule). See
+gate on its attack rolls and ability checks (its "can't willingly move closer to
+the source of fear" rule has no sight clause and holds either way). See
 [`docs/dev/spatial-geometry.md`](../dev/spatial-geometry.md#composite-predicate)
 for the exact step order.

@@ -230,6 +230,12 @@ _PROBES: dict[str, tuple[Any, str]] = {
         lambda: "_combatant_can_see(live, hostile, current)" in _src("orchestrator.py"),
         "out of every living, non-Incapacitated hostile's line of sight (C16b",
     ),
+    # C27: Poisoned / Frightened reach the two checks the engine rolls outside
+    # an activity — Hide's Stealth and escaping a grapple.
+    "rolls the check at Disadvantage (C27)": (
+        lambda: _src("orchestrator.py").count("_condition_check_sources(live, current)") == 2,
+        "rolls the check at Disadvantage (C27)",
+    ),
     # C16b (Hide Task 4): a dark cell satisfies "Heavily Obscured" via the
     # new ``SpatialTopology.light_on_cell`` seam.
     "`GridTopology.light_on_cell`": (
@@ -267,6 +273,15 @@ _PROBES: dict[str, tuple[Any, str]] = {
             and '"frightened",' in _event_class_body("MoveFailed")
         ),
         "now gated on line of sight to a known, living, tracked fear source (C16b",
+    ),
+    # C27: SRD 5.2 Petrified resists Poison damage and grants Immunity to
+    # the Poisoned condition.
+    "Petrified's Resistance to all damage, Poison included (C27)": (
+        lambda: (
+            'out["immunities"].append("poison")' not in _src("rules/conditions.py")
+            and "CONDITION_GRANTED_IMMUNITIES" in _src("rules/conditions.py")
+        ),
+        "Petrified's Resistance to all damage, Poison included (C27)",
     ),
     # C12: the SRD 5.2 exhaustion penalty is a real projection, not prose.
     "| Exhaustion |": (
@@ -321,6 +336,14 @@ _PROBES: dict[str, tuple[Any, str]] = {
         lambda: "def _combatant_can_see(" in _src("orchestrator.py"),
         "composite `_combatant_can_see` predicate",
     ),
+    # C27: a templated foe takes its stat block's senses.
+    "a templated monster sees with its stat block's senses": (
+        lambda: (
+            "senses = _monster_senses(monster)" in _src("orchestrator.py")
+            and "senses: CombatantSenses | None = None" in _src("specs.py")
+        ),
+        "a templated monster sees with its stat block's senses",
+    ),
     # C22: Magic Resistance is read from the hydrated trait list.
     "`special_abilities`": (
         lambda: (
@@ -362,6 +385,14 @@ _PROBES: dict[str, tuple[Any, str]] = {
     "Grapple / Shove": (
         lambda: "_roll_unarmed_option_save(" in _src("orchestrator.py"),
         "⚠️ Partial",
+    ),
+    # C27: the shared immunity predicate gates Grapple and Shove's Prone.
+    "but the condition never lands (C27)": (
+        lambda: (
+            'is_condition_immune(target, "grappled")' in _src("orchestrator.py")
+            and '_emit_condition_applied(live, target, "prone")' in _src("orchestrator.py")
+        ),
+        "but the condition never lands (C27)",
     ),
     # C14 Task 2: the Light-property off-hand Bonus Action window.
     "Two-weapon fighting": (

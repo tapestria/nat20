@@ -54,6 +54,23 @@ Hit Points, XP or death of its own. A `DeathRecord.killer_id` can still name
 it, as the current actor that dealt the blow: `CombatantJoined.origin_caster_id`
 names its caster.
 
+## Conditions a host adjudicates
+
+The engine applies every condition rule that touches a roll it makes. Two SRD
+5.2 rules touch only checks it never rolls, so they are a host's to apply:
+
+- **Blinded and Deafened:** "You can't see and automatically fail any ability
+  check that requires sight" (Deafened: hearing). No check the engine rolls
+  needs a sense — Hide is Stealth, escaping a grapple is Athletics or
+  Acrobatics. When a check of your own does (a Wisdom (Perception) check to
+  spot something), read the creature's conditions from
+  `get_live(handle).active_conditions` and fail the check without rolling it.
+- **Charmed:** "The charmer has Advantage on any ability check to interact with
+  you socially." When the charmer makes a social check against the creature it
+  charmed, pass `CheckSpec(advantage=True)` to `resolve_check`. The
+  `EffectApplied` that charmed the creature names its caster at the end of the
+  effect's `origin`.
+
 ## Determinism and events
 
 Every die roll flows through the seeded RNG you pass to `start_combat`, so a

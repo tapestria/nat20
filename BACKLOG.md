@@ -46,6 +46,12 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   an attack ability, a damage type) and a carrier naming their item. True
   Polymorph, Animal Shapes and Shapechange ship no `transform` activity.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/conjuration.py::CONJURATION_ALLOWLIST`)
+- **An item's own effect riders resolve nothing on `use_item` (2026-10-06,
+  C27).** The context takes the cast spell's or the feature's passive effects,
+  never the item's, so an item activity's rider logs `effect_ref_unresolved`
+  and applies nothing: Dagger of Venom's poison ("have the Poisoned
+  condition") deals its damage on a failed save but never Poisons.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_resolve_intent_activities`)
 - **Monster summon riders stay narrative (2026-09-25, C21a).** A monster
   attack or an item never gets a conjuration carrier, so the 16 monster
   `summon` riders resolve nothing. Monster casts of a construct or summon
@@ -78,6 +84,15 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   Golem's "three Slam attacks if it used Hasten this turn" (always two).
   Limited-use gating is only partial: see "Typed
   `MonsterAction.uses_per_day` is never consulted" below.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/monster_actions.py::expand_action_to_parts`)
+- **The Vampire's Multiattack never Bites (2026-10-06, C27).** SRD 5.2: "The
+  vampire makes two Grave Strike attacks and uses Bite." The precise join
+  doesn't strip the form qualifier from "Bite (Bat or Vampire Form Only)" —
+  only the fallback does — so it falls back to two Grave Strikes. Joining the
+  Bite needs its own target clause read first: "one creature within 5 feet
+  that is willing or that has the Grappled, Incapacitated, or Restrained
+  condition", an `affects.special` nothing reads, and Grave Strike's grapple
+  never lands (see "A monster action's effect riders" under the dataset).
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/monster_actions.py::expand_action_to_parts`)
 - **A Multiattack alternative with its own count repeats the leading count
   (2026-10-06, C26b).** SRD 5.2 Planetar: "makes three Radiant Sword attacks
@@ -602,7 +617,9 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   "heavy" cell (pinned by `test_can_see_heavy_obscurement_beats_darkvision_but_not_blindsight`),
   and a grid cell can't say whether its heavy obscurement is magical
   Darkness or fog, so the fix needs that distinction first. (C23 stopped
-  Truesight from working through the Blinded condition.)
+  Truesight from working through the Blinded condition.) Since C27 a
+  templated monster has its stat block's senses, so the 17 SRD creatures with
+  Truesight see into fog this way (amended 2026-10-06, C27).
   (`packages/dnd5e-engine/src/dnd5e_engine/spatial.py::GridTopology.can_see`)
 - **Vision is scene-lit only** (2026-08-27, amended 2026-09-02, 2026-09-03).
   No light sources (torches, *Light*, *Darkness*), no viewer-side
@@ -1418,19 +1435,6 @@ now calls the engine rather than standing in for it. Residual gaps:
   modelled; Keen Senses and Aggressive are absent from the SRD 5.2 corpus
   entirely.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/save_primitive.py`)
-- **A templated monster's senses are never hydrated (2026-09-27, C23).**
-  `EncounterMemberSpec` has no `senses` field, and `_build_foe_combatants`
-  copies a template's ability scores, proficiency bonus, save/skill
-  proficiencies, trait mechanics and spellcasting ability onto the live
-  `Combatant` but never its Blindsight, Darkvision, Truesight or
-  Tremorsense — every templated foe keeps `Combatant.senses`'s all-`None`
-  default. So C23's Blindsight-through-Blinded rule, and every other
-  sense-gated consumer (Dodge, Ranged Attacks in Close Combat, Opportunity
-  Attacks, Hide, Frightened, the Invisible carve-out), never reaches a
-  templated monster. Hydrating it changes seeded results (a templated foe
-  that currently can't see in the dark or through Invisible would start
-  seeing), so the fix belongs in its own cluster.
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_build_foe_combatants`)
 - **An engine-rolled Initiative reads a monster's Dexterity modifier, never
   its own Initiative modifier (2026-09-27, C23).** SRD 5.2: "A monster's
   Initiative modifier is typically equal to its Dexterity modifier, but some
@@ -1470,6 +1474,15 @@ covers the steeds Find Steed and Phantom Steed summon (SRD 5.2 Find Steed:
 the steed "functions as a controlled mount while you ride it"), so both
 spells stay narrative (2026-09-26, C21b;
 `packages/dnd5e-engine/src/dnd5e_engine/activities/conjuration.py::SUMMONS`).
+
+Two condition rules touch only checks the engine never rolls, so a host
+applies them (2026-10-06, C27): Blinded's and Deafened's "automatically fail
+any ability check that requires sight" (or hearing) — Hide is Stealth and
+escaping a grapple is Athletics or Acrobatics, so no engine check needs a
+sense — and Charmed's "The charmer has Advantage on any ability check to
+interact with you socially" — the engine rolls no social check.
+`docs/concepts/combat.md` gives the recipe for both
+(`packages/dnd5e-engine/src/dnd5e_engine/rules/conditions.py`).
 
 ## Foundations follow-ups (2026-08-26)
 
@@ -1560,37 +1573,56 @@ C12 gave all 15 conditions teeth on the live combat path (see
 `docs/capabilities.md`). These rows are what is left; each needs a seam another
 cluster owns.
 
-- **Frightened's ability-check half of the line-of-sight gate** (2026-09-02).
-  SRD 5.2 Frightened: "Disadvantage on ability checks and attack rolls while
-  the source of fear is within line of sight." C16b gated the attack-roll
-  half (`conditions_grant_advantage_on_attack`'s `fear_source_in_sight`
-  kwarg) and the "can't willingly move closer to the source of fear"
-  movement rule (`MoveFailed(reason="frightened")`); the ability-check half
-  still applies the disadvantage unconditionally.
-  (`packages/dnd5e-engine/src/dnd5e_engine/rules/conditions.py::conditions_grant_disadvantage_on_ability_checks`)
-- **Frightened's no-approach rule is additionally gated on line of sight to
-  the source (plan ruling R5); SRD 5.2 imposes it unconditionally**
-  (2026-09-03). SRD 5.2 Frightened's "You can't willingly move closer to the
-  source of fear." sentence carries no line-of-sight conjunct — only the
-  disadvantage sentence does — but the engine's `_frightened_approach_blocked`
-  reuses `_combatant_can_see` for both, a deliberate (kept) deviation: a
-  Frightened creature that cannot currently see its fear source may move
-  toward it unimpeded, where SRD 5.2 would still block the approach.
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_frightened_approach_blocked`)
-- **Blinded / Deafened "automatically fail ability checks that require
-  sight/hearing".** There is no per-check sense vocabulary on `CheckSpec` /
-  `CheckActivity`, so a check cannot declare it requires sight or hearing.
-  (`packages/dnd5e-engine/src/dnd5e_engine/activities/check.py`)
-- **Charmed grants the charmer advantage on social ability checks.** The
-  engine has no social-interaction check surface to attach it to (no
-  `influence` intent, no interaction DC), so the row is unrepresentable rather
-  than merely unimplemented.
-  (`packages/dnd5e-engine/src/dnd5e_engine/rules/conditions.py`)
-- **Petrified's "immunity to the Poisoned condition".** The shipped projection
-  gives poison *damage* immunity; SRD 5.2 grants immunity to poison damage AND
-  to the Poisoned condition, and condition immunity is keyed off
-  `Combatant.condition_immunities`, which no projection writes.
-  (`packages/dnd5e-engine/src/dnd5e_engine/rules/conditions.py`)
+- **An engine-rolled Initiative ignores a seeded Poisoned, Frightened or
+  Invisible status (2026-10-06, C27).** Initiative is a Dexterity check (SRD
+  5.2: "they make a Dexterity check"), so a Poisoned creature, or one
+  Frightened of a creature in sight, should roll it at Disadvantage, and SRD
+  5.2 Invisible gives "Advantage on the roll"; `_resolve_initiative` reads
+  only Surprise and a seeded Incapacitated status, set before any immunity
+  check (`_seeded_incapacitated_ids`) — so a Ghost seeded Paralyzed still
+  rolls Initiative at Disadvantage.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_resolve_initiative`)
+- **A condition immunity an active effect grants is not honoured (2026-10-06,
+  C27).** The `system.traits.ci.value` change is read only from a character's
+  always-on features when it is built (Nature's Ward), so Heroes' Feast
+  (Frightened, Poisoned), Heroism (Frightened), Freedom of Movement
+  (Paralyzed, Restrained), Mind Blank (Charmed), Calm Emotions (Charmed,
+  Frightened), Gaseous Form and Wind Walk (Prone), Mindless Rage while raging
+  (Charmed, Frightened) and the Periapt of Proof against Poison (Poisoned)
+  grant no immunity in combat. The dying rules don't consult
+  `is_condition_immune` either: a character that regains Hit Points, or
+  rolls a 20 on a death save, is left Prone even when immune to it (Wind
+  Walk, or a host-listed `condition_immunities`).
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_fold_active_effect_changes`,
+  `packages/dnd5e-engine/src/dnd5e_engine/activities/effects.py::is_condition_immune`,
+  `packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_emit_apply_healing`)
+- **Invisible's "Concealed" is not modelled (2026-10-06, C27).** SRD 5.2: "You
+  aren't affected by any effect that requires its target to be seen unless
+  the effect's creator can somehow see you." No spell or effect checks that
+  its creator can see its target, so Hold Person ("a Humanoid that you can
+  see") holds an Invisible one.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_combatant_can_see`)
+- **Grappled's "Movable" is not modelled (2026-10-06, C27).** SRD 5.2: "The
+  grappler can drag or carry you when it moves, but every foot of movement
+  costs it 1 extra foot unless you are Tiny or two or more sizes smaller than
+  it." A grappler's move leaves the creature it grapples where it stands.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_handle_grapple`)
+- **An ending effect also clears a same-name condition entry no effect owns
+  (2026-10-06, C27).** `_emit_apply_effect_expired` keeps an entry only when
+  a different live effect still owns it (`source_effect_id`); an entry with
+  no owning effect at all — an action's Prone (Shove), or the dying rules'
+  Unconscious — is cleared too when an unrelated effect that names the same
+  status in its own `statuses` expires.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_emit_apply_effect_expired`)
+- **`ConditionRemoved` announces an ending effect's condition even while
+  another live effect keeps it (2026-10-06, C27).** `_drop_concentration`
+  and the end-of-turn repeat-save path emit it for every condition the
+  ending effect installed, unconditionally. The state is right — the typed
+  list and `active_conditions` keep the entry the other effect owns — but
+  narration reading the event stream may report a removal that did not
+  happen.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_drop_concentration`,
+  `packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_run_end_of_turn_saves`)
 
 ## C12 deferred minors (2026-08-27)
 
@@ -1856,6 +1888,15 @@ pool entries.
   through the translator, so the fix is a correction there or a recorded
   divergence per monster.
   (`packages/dnd5e-srd-data/tools/translators/foundry.py`)
+- **A monster action's effect riders ship no effect definitions (2026-10-06,
+  C27).** 245 action and legendary-action activities across 176 SRD
+  monsters reference effects
+  (`activities[].effects`), but `Monster` carries no `passive_effects` for
+  them to resolve against and the engine passes none, so none applies: the
+  Giant Spider's Web never Restrains and the Vampire's Grave Strike never
+  Grapples. The translator would have to carry each action's effects.
+  (`packages/dnd5e-srd-data/src/dnd5e_srd_data/schema/monster.py::MonsterAction`,
+  `packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_resolve_monster_attack_activities`)
 - **Three monster recharges disagree between the pinned Foundry pack and the
   SRD 5.2 creature text (2026-10-04, C26a).** The Ghost's Possession ships no
   recharge (open5e's SRD 5.2 text: Recharge 6), the Minotaur of Baphomet's Gore
