@@ -55,6 +55,19 @@ The built-in AI is deliberately simple and predictable:
    distance first if needed (and Dashing when that helps).
 4. **Flee** when badly hurt, unless the creature is `DEFENSIVE`.
 
+An area of effect — a breath, a spell, a legendary action — the AI places
+itself. From the cell the monster stands in, it takes the placement that
+affects the most enemies minus allies and never the monster itself: an
+Emanation from that cell; a Cone, Cube or Line in one of eight directions; a
+Sphere or Cylinder centred on a foe it can see within the action's or spell's
+range. Whom it affects follows the stat block ("each creature", "each enemy").
+An area that would affect no enemy is not an option that turn: the monster
+takes its next action, spell or legendary action, and a charged breath stays
+charged. It never moves first to bring a breath into reach. Each placed area
+emits `AreaTargeted`, whose `source_id` names the action (`"fire-breath"`) or
+the spell (`"fireball"`); `IntentSubmitted.target_id` still names the creature
+the AI targets.
+
 `EncounterMemberSpec.behavior_profile` selects between three profiles:
 
 | Profile | Behaviour |
@@ -72,19 +85,27 @@ A multiattack names its sub-attacks only in prose, so the engine parses the
 description to fan it out — "makes two Claw attacks and uses Roar" becomes two
 claws and one roar.
 
-**119 of the 180 multiattacks in the corpus resolve to the exact SRD attack
-mix.** The remaining 61 fall back to repeating one attack N times and log
-`multiattack_join_unresolved` at WARNING, so the loss is always visible in your
-logs rather than silent. For homogeneous multiattacks ("three Rend attacks")
-the fallback is correct; 5 monsters are heterogeneous and get the wrong mix.
-See the [capability matrix](../capabilities.md) for the specifics.
+**128 of the 180 multiattacks in the corpus resolve to the exact SRD attack
+mix.** Of the remaining 52, 51 fall back to repeating one attack N times —
+one the description names, when it names any: "three attacks, using Storm
+Blade or Storm Bolt in any combination" repeats Storm Blade or Storm Bolt,
+whichever reaches — and the Avatar of Death's, with no attack to repeat,
+resolves nothing; each logs `multiattack_join_unresolved` at WARNING, so the
+loss is always visible in your logs rather than silent. For homogeneous
+multiattacks ("three Rend attacks")
+the fallback is correct; for a heterogeneous one it repeats one of the attacks
+named. An action a multiattack uses "if available" (the Doppelganger's
+Unsettling Visage) sits out while its Recharge is spent, and an area it uses
+(the Sphinx of Valor's Roar) is aimed like any other. See the
+[capability matrix](../capabilities.md) for the specifics.
 
 ## Monster action economy
 
 A monster's turn picks the most powerful option it has: a charged Recharge
 action first, then a Spellcasting action whose N/Day offensive spell still has
 a use left, then Multiattack, then its other attacks and at-will spells in
-stat-block order. At the start of a living monster's own turn the engine rolls
+stat-block order — skipping any whose area would affect no enemy. At the start
+of a living monster's own turn the engine rolls
 Recharge for each spent recharge action, applies Regeneration and refills its
 legendary-action pool. Legendary actions are host-driven:
 `advance_monster_turn(handle, legendary=True)` after another creature's turn
@@ -99,6 +120,9 @@ engine consumes.
   Sunlight Sensitivity.
 - Real stat-block numbers for a template monster that is not transformed, and
   commanding a stat block's save actions (a Breath Weapon).
+- Moving into reach and then using an area: a monster chooses an area only
+  from where its turn starts (an area its Multiattack uses is placed after
+  the Multiattack's walk).
 
 All are tracked in `BACKLOG.md`. If you need them, resolve them host-side and
 apply the results through the engine's normal paths.

@@ -69,17 +69,24 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   confirmed still open after C18 (2026-09-03) — out of that cluster's scope
   per its R10 ruling.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
-- **Multiattack conditional clauses are not modelled.** Since C22 every
-  multiattack token is labelled, so the five opaque-key monsters join
-  precisely; doppelganger and chain-devil now ALSO count their conditional
-  feat use ("uses Unsettling Visage if…") as one fixed use per turn. The
-  "if …" clause needs a carve-out in `_parse_item_counts`. (Recharge gating
-  for a recharge action chosen on its own closed 2026-09-03, C18, via
-  `rank_monster_actions` and the turn-start recharge roll; joined into a
-  Multiattack it is still ungated — see `_mark_monster_action_used` below.
+- **Two Multiattack conditional clauses are not modelled (amended
+  2026-10-04, C26b).** An action a Multiattack uses "if available" sits out
+  while it isn't, and a Recharge action it uses is spent when it fires (C26b),
+  but two other conditions are not read: the Aboleth's "uses either Consume
+  Memories or Dominate Mind if available" (its fallback repeats Tentacle, or
+  Consume Memories at 30 ft, never the 2/Day Dominate Mind) and the Clay
+  Golem's "three Slam attacks if it used Hasten this turn" (always two).
   Limited-use gating is only partial: see "Typed
-  `MonsterAction.uses_per_day` is never consulted" below.)
-  (`packages/dnd5e-engine/src/dnd5e_engine/activities/monster_actions.py`)
+  `MonsterAction.uses_per_day` is never consulted" below.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/monster_actions.py::expand_action_to_parts`)
+- **A Multiattack alternative with its own count repeats the leading count
+  (2026-10-06, C26b).** SRD 5.2 Planetar: "makes three Radiant Sword attacks
+  or uses Holy Burst twice." Out of sword reach the fallback repeats Holy
+  Burst three times, and the three resolve as one placement (one
+  `AreaTargeted`, three saves for each enemy in it) rather than two bursts,
+  each aimed.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/monster_actions.py::expand_action_to_parts`,
+  `packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_resolve_monster_parts`)
 - **Typed `MonsterAction.uses_per_day` is never consulted, and a non-cast
   N/Day `uses.max` is never decremented** (2026-09-23).
   `_hydrate_monster_action_uses` reads only activity-level `uses.max`, so the
@@ -93,46 +100,77 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   limited. Fix shape: seed `uses_remaining` from `uses_per_day` when no
   activity carries a digit, and decrement non-cast uses on selection.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_hydrate_monster_action_uses`)
-- **`_mark_monster_action_used` spends only the ranked action itself**
-  (2026-09-23). When the chosen action is a Multiattack whose join
-  substitutes a recharge sibling (a "uses X" clause resolving to a Recharge
-  action), only `ranked[0]` — the Multiattack — is marked; the substituted
-  recharge sibling is never marked spent, so it would fire every turn, and
-  the join never asks whether the sibling is available either. The
-  Doppelganger's does join one ("…and uses Unsettling Visage if available"):
-  once its Recharge 6 visage is spent, every later Multiattack still rolls the
-  visage's Wisdom save (amended 2026-10-04, C26a).
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_mark_monster_action_used`)
-- **A monster's own AoE (cone/sphere/etc.) still resolves against a single
-  chosen target, not the template** (2026-09-03, C18). Grid AoE template
-  expansion (C16) is wired for the PC cast path; a monster save/damage
-  action with an area shape resolves the same way every monster action
-  always has — one picked target — rather than enumerating
-  `cells_in_template` the way a PC's cast does.
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
-- **Monster AI is friendly-fire unaware** (2026-09-03, C18). Nothing checks
-  whether an ally stands in a chosen action's blast/save area (or a
-  Multiattack's own reach) before the monster acts, unlike the PC-facing
-  `PlayerIntent.direction` aiming a host controls by hand.
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
-- **A readied Shield fires on a monster's save action (2026-10-04, C26a).**
-  `_resolve_monster_attack_activities` drains its targets' `hit_by_attack`
-  reactions before any monster action resolves, so a Fire Breath pops a
-  wizard's readied Shield (`ReactionTriggered`, then `SpellCast(shield)`),
-  spending its Reaction and slot, though SRD 5.2 Shield answers "being hit by
-  an attack roll".
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_resolve_monster_attack_activities`)
-- **The Djinni's Multiattack resolves Create Whirlwind three times
-  (2026-10-04, C26a).** "The djinni makes three attacks, using Storm Blade or
-  Storm Bolt in any combination": `_parse_item_counts` returns `None` on the
-  "or", and the fallback takes the first sibling, Create Whirlwind.
-  (`packages/dnd5e-engine/src/dnd5e_engine/activities/monster_actions.py::_parse_item_counts`)
+- **A Recharge cast action never ranks first (2026-10-06, C26b).** Tier 1
+  requires `_action_has_offense` — an `AttackActivity` or `SaveActivity` on
+  the action itself — so a Recharge action whose only activities are
+  `CastActivity` (the Stone Golem's Slow: "Recharge 5–6") never qualifies,
+  unlike a non-cast Recharge action (a dragon's breath). It falls to tier 4
+  instead, behind Multiattack and, in stat-block list order, behind its own
+  attacks.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/monster_actions.py::rank_monster_actions`)
+- **The monster AI chooses an area only from where its turn starts
+  (2026-10-04, C26b).** It never moves into reach and then breathes: a young
+  red dragon 45 feet from its foes walks (or Dashes) closer rather than
+  closing to 30 feet and using its 30-foot Fire Breath the same turn, though
+  SRD 5.2 lets a creature move before and after its action. The same holds
+  for a spell's or a legendary action's area. Only an area a Multiattack
+  uses is placed after the Multiattack's walk, and only if it was already an
+  option where the turn started.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_monster_aim`)
+- **Every behaviour profile aims an area the same way (2026-10-04, C26b).**
+  The AI always takes the placement that affects the most enemies minus
+  allies and never catches itself, trading allies for enemies one for one:
+  one enemy is enough, so it still fires when every placement catches more
+  allies than enemies. No profile weighs friendly fire differently, holds an
+  area back for a better turn, or prefers the target it would attack.
+  (`packages/dnd5e-engine/src/dnd5e_engine/areas.py::best_aim`)
+- **A monster's "one creature" area action lands at any range (2026-10-04,
+  C26b).** An action whose template counts one creature keeps the AI's single
+  target, as before, with no range check: the Aboleth's Dominate Mind ("one
+  creature the aboleth can see within 30 feet"), the Chuul's Paralyzing
+  Tentacles, the Chain Devil's Conjure Infernal Chain and Unnerving Gaze, the
+  Bugbear Stalker's Quick Grapple and the Stone Giant's Deflect Missile. (Two
+  of these, Deflect Missile and Unnerving Gaze, are reactions: see the row
+  below.)
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_monster_area`)
+- **A monster's offensive reaction is ranked as an action (2026-10-06,
+  C26b).** `rank_monster_actions` ranks every offensive entry in
+  `Monster.actions`, reactions included: the Stone Giant's Deflect Missile
+  (Recharge 5–6; "Trigger: The giant is hit by a ranged attack roll …") is
+  its first choice on its own turn and applies its damage-reduction heal to
+  its target before the save, and the Chain Devil's Unnerving Gaze ranks
+  after its Multiattack.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/monster_actions.py::rank_monster_actions`)
+- **The Lich's Deathly Teleport bursts on an enemy, not on the space it leaves
+  (2026-10-04, C26b).** SRD 5.2: "The lich teleports up to 60 feet to an
+  unoccupied space it can see, and each creature within 10 feet of the space it
+  left takes 11 (2d10) Necrotic damage." Its activity carries a 10-foot circle
+  with the teleport's 60-foot range, so the AI centres the burst on a foe up to
+  60 feet away; the teleport itself is not modelled (nor the Solar's Radiant
+  Teleport).
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_take_legendary_action`)
+- **A Multiattack that uses a Recharge action is passed over while that action
+  is charged (2026-10-04, C26b).** SRD 5.2 Doppelganger: "makes two Slam
+  attacks and uses Unsettling Visage if available." A charged Recharge action
+  ranks first, so the Doppelganger uses Unsettling Visage on its own rather
+  than with its two Slams; its Multiattack runs only while the visage is
+  spent or reaches no one.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/monster_actions.py::rank_monster_actions`)
 - **Utility-only and cost > 1 legendary actions are never selected by the
   built-in AI** (2026-09-03, C18). `_take_legendary_action` only considers
   entries whose `legendary_cost` is unset or `1` and that carry an
   attack/save/damage activity (or a castable spell) — a `utility`-only entry
   (e.g. Pounce) and a multi-point legendary action are skipped even when
   legal. The bundled corpus carries no multi-point legendary action today.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_take_legendary_action`)
+- **A legendary action's "can't take this action again until the start of
+  its next turn" is not enforced (2026-10-06, C26b).** 38 bundled legendary
+  actions carry the clause, the Lich's Disrupt Life, the green dragons'
+  Noxious Miasma, the silver dragons' Cold Gale, the white dragons' Freezing
+  Burst and the Kraken's Toxic Ink among the areas, but
+  `_take_legendary_action` takes the first available entry in every window:
+  a Lich beside the party uses Disrupt Life (a 20-foot Emanation) three
+  times a round.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_take_legendary_action`)
 - **Legendary Resistance is host-armed only — no AI policy decides when to
   spend it** (2026-09-03, C18). `resolve_legendary_resistance` is a pure
@@ -367,10 +405,13 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
 
 - **No elevation.** The grid is strictly 2-D, so flying creatures have no
   altitude and `movement_modes` beyond walk speed do not affect positioning.
-- **No multi-tile creature footprints (amended 2026-09-26, C21b).** Every
-  creature occupies one cell regardless of size, a Large summoned Draconic
-  Spirit included: its placement needs one free cell.
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_summon_placement`)
+- **No multi-tile creature footprints (amended 2026-09-26, C21b; amended
+  2026-10-04, C26b).** Every creature occupies one cell regardless of size, a
+  Large summoned Draconic Spirit included: its placement needs one free cell.
+  An area in a monster's own space can catch no one else: the Water
+  Elemental's Whelm ("each creature in the elemental's space") is never used.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_summon_placement`,
+  `::_monster_aim`)
 - **`start_combat` seats two combatants on one cell (2026-10-03, C25).** It
   checks that each start cell is in bounds and unblocked, not that it is free,
   so two creatures can start on one cell, which no move can produce (SRD 5.2:
@@ -583,9 +624,12 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   Barrier, Tsunami, Wall of Fire, Wall of Thorns, Wind Wall) or a size written
   as a formula (Confusion's `@item.level`) has no grid geometry, so the engine
   logs `aoe_template_unsupported` and resolves it against the named target
-  alone (nobody, if the intent names none), with no `AreaTargeted`.
+  alone (nobody, if the intent names none), with no `AreaTargeted`. A
+  monster's (the Efreeti's Wall of Fire, the Glabrezu's Confusion) resolves
+  against the creature the AI targets (amended 2026-10-04, C26b).
   (`packages/dnd5e-engine/src/dnd5e_engine/areas.py::area_template`,
-  `packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_area_targets`)
+  `packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_area_targets`,
+  `::_monster_area`)
 - **A counted area's named creatures aren't checked against its template
   (2026-10-04, C26a).** For "up to N creatures" (Slow's six, Mass Cure Wounds'
   six, Phantasmal Force's one) the engine takes the creatures
@@ -599,8 +643,19 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   (2026-10-04, C26a).** A Sphere or Cylinder centres on the named target's cell
   (else the caster's), and a Cone, Cube, Line or Emanation starts at the
   caster's; SRD 5.2's "a point you choose within range" on an empty cell
-  (`target_zone_id`) is not accepted for an area.
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_area_origin`)
+  (`target_zone_id`) is not accepted for an area. The monster AI centres a
+  Sphere or Cylinder on a foe it can see, so it never places one on an empty
+  cell between two groups (amended 2026-10-04, C26b). A monster's own ranged
+  Cube spell inherits the caster-anchor too: see the row below.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_area_origin`,
+  `packages/dnd5e-engine/src/dnd5e_engine/areas.py::best_aim`)
+- **A monster's ranged Cube spells land only next to it (2026-10-06,
+  C26b).** Web, Entangle, Faerie Fire, Hypnotic Pattern and Slow anchor at
+  the caster's cell under the point-of-origin model above (see
+  `docs/concepts/grid.md`): whatever the spell's own range, the built-in AI
+  can only place the Cube at its own feet, in one of the eight directions,
+  never offset toward a foe it can see at range.
+  (`packages/dnd5e-engine/src/dnd5e_engine/areas.py::best_aim`)
 - **A delegated cast resolves against its named target only (2026-10-04,
   C26a).** An item whose activity casts a spell (the Wand of Fireballs, a Spell
   Scroll) resolves the spell's activities against the item intent's target
@@ -1679,14 +1734,18 @@ layer over the engine — see `docs/bridge.md`. Gaps found while shipping it:
   multiattack fan-out parses them — so cleanup must preserve them while
   resolving `[[lookup]]`, `&Reference[]` and entity escapes.
   (`packages/dnd5e-srd-data/tools/translators/prose_cleanup.py`)
-- **`monsters/ancient-gold-dragon.json` ships an unfilled template.** Its
-  multiattack description is literally
-  `"makes {count} [[/item]] attacks and uses [[/item]]"`, so the action cannot
-  fan out. Every sibling ancient dragon names its Rend attack correctly, so the
-  defect appears to be upstream rather than in our translator. Registered in
+- **`monsters/ancient-gold-dragon.json` ships an unfilled template (amended
+  2026-10-06, C26b).** Its multiattack description is literally
+  `"makes {count} [[/item]] attacks and uses [[/item]]."`, so the action
+  cannot fan out: the engine's Multiattack join reads one attack or breath
+  where SRD 5.2 says "The dragon makes three Rend attacks". Every sibling
+  ancient dragon names its Rend attack, and the upstream Foundry actor ships
+  the same unfilled text, so the translator is faithful: the fix is a
+  translator correction plus a regen, or an upstream fix. Registered in
   `tests/oracle/known_prose_defects.json` and gated by
   `tests/test_corpus_prose_integrity.py`; re-check on the next
   `make refresh-upstream` and de-register if upstream has fixed it.
+  (`packages/dnd5e-srd-data/tools/translators/foundry.py::_build_monster_action`)
 - **Inherited activation `type` is not resolved** (2026-08-27). An activity
   with `activation.override: false` inherits the item-level activation in
   Foundry (Shield's utility activity is a Reaction, but canonical stores the

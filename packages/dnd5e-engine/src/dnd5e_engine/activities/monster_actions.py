@@ -30,12 +30,15 @@ to a typed sibling. Resolution, in order:
    combination" clause is the one exception to "repeated its own count": its
    parsed count is instead distributed range-aware over the named siblings
    (see ``_distribute_any_combination`` below) rather than joined 1:1.
-4. Otherwise repeat one chosen sibling ``count`` times and log
-   ``multiattack_join_unresolved`` at WARNING (the loss is visible — never a
-   silent normalization). This is correctness-preserving for the homogeneous
-   ("three Rend attacks") and free-choice ("two attacks, using Slam or Force
-   Bolt in any combination") shapes, and lossy only for a heterogeneous
-   multiattack whose tokens are bare ids.
+4. Otherwise repeat one chosen AT-WILL sibling ``count`` times — one the
+   clause names, when it names any, never a Recharge/``N/Day``/limited-use
+   one, nor one the caller reports unavailable (an area that affects no
+   enemy from where the monster stands) — and log
+   ``multiattack_join_unresolved`` at WARNING (the loss is
+   visible — never a silent normalization). This is correctness-preserving
+   for the homogeneous ("three Rend attacks") and free-choice ("two attacks,
+   using Slam or Force Bolt in any combination") shapes, and lossy only for
+   a heterogeneous multiattack whose tokens are bare ids.
 
 "in any combination" clauses distribute the parsed count over the named
 siblings range-aware (see ``_distribute_any_combination``).
@@ -212,8 +215,15 @@ _FOUNDRY_MM_ID_RE = re.compile(r"^mm([A-Za-z][A-Za-z]*?)0*$")
 _CAMEL_BOUNDARY_RE = re.compile(r"(?<=[a-z])(?=[A-Z])")
 
 # Sentence break. The corpus is not consistently spaced ("attacks.It can
-# replace…"), so a period followed by whitespace OR a capital letter ends it.
-_SENTENCE_BREAK_RE = re.compile(r"\.(?:\s+|(?=[A-Z]))")
+# replace…"), so a period followed by whitespace OR a capital letter ends it —
+# unless it sits inside an item token, whose Foundry id starts with one
+# ("[[/item .XbNHC5OBGT6VQF40]]{Shortbow}").
+_SENTENCE_BREAK_RE = re.compile(r"\.(?:\s+|(?=[A-Z]))(?![^\[\]]*\]\])")
+
+# A sibling's name may carry a form qualifier the clause leaves out: the
+# clause's "Hand Crossbow" is the wererat's "Hand Crossbow (Humanoid or Hybrid
+# Form Only)".
+_FORM_QUALIFIER_RE = re.compile(r"\s*\([^)]*\)\s*$")
 
 
 def _multiattack_clause(description: str) -> str:
@@ -408,7 +418,7 @@ def _distribute_any_combination(
     target_distance_ft: int | None,
     behavior_profile: str | None,
     melee_reach_ft: int,
-) -> list[Activity]:
+) -> list[tuple[MonsterAction, Activity]]:
     """SRD "makes N attacks, using A and B in any combination": the monster
     chooses the mix. Candidates are the named siblings whose reach covers the
     live distance (all of them when the distance is unknown or none covers);
@@ -430,11 +440,12 @@ def _distribute_any_combination(
         return []
     if len(candidates) > 1 and behavior_profile == "RANGED":
         candidates = [max(candidates, key=lambda s: _reach(s) or 0)]
-    out: list[Activity] = []
+    out: list[tuple[MonsterAction, Activity]] = []
     for index in range(count):
-        activity = _first_offensive_activity(candidates[index % len(candidates)])
+        sibling = candidates[index % len(candidates)]
+        activity = _first_offensive_activity(sibling)
         assert activity is not None  # filtered above
-        out.append(activity)
+        out.append((sibling, activity))
     return out
 
 
@@ -446,7 +457,63 @@ def expand_action_to_activities(
     behavior_profile: str | None = None,
     melee_reach_ft: int = 5,
 ) -> list[Activity]:
-    """Expand a chosen action into the activities to resolve this turn.
+    """The activities ``expand_action_to_parts`` resolves, without the action
+    each one comes from."""
+    return [
+        activity
+        for _, activity in expand_action_to_parts(
+            monster,
+            action,
+            target_distance_ft=target_distance_ft,
+            behavior_profile=behavior_profile,
+            melee_reach_ft=melee_reach_ft,
+        )
+    ]
+
+
+def _clause_siblings(clause: str, siblings: list[MonsterAction]) -> list[MonsterAction]:
+    """The siblings a multiattack clause names, in ``siblings`` order — "using
+    Storm Blade or Storm Bolt in any combination" names two of the Djinni's
+    three — or every sibling when its tokens name none."""
+    names = set()
+    for match in _ITEM_TOKEN_RE.finditer(clause):
+        name = match.group("label") or match.group("name") or ""
+        if not name.strip():
+            name = _name_from_foundry_id(match.group("id") or "") or ""
+        if name.strip():
+            names.add(name.strip().casefold())
+    return [
+        s for s in siblings if _FORM_QUALIFIER_RE.sub("", s.name).casefold() in names
+    ] or siblings
+
+
+def _action_is_usage_gated(action: MonsterAction) -> bool:
+    """``action`` is spent by use: SRD 5.2 "Recharge X-Y", a flat ``N/Day``
+    pool, or a limited-use ``N/Day`` cast activity (Innate Spellcasting).
+
+    The multiattack fallback must never repeat such a sibling: repeating an
+    available 2/Day action ``count`` times would spend it more than once in
+    one turn, a budget only the PRECISE join's ``is_available`` seam can
+    account for (one name, one availability check — never N).
+    """
+    return (
+        action.recharge is not None
+        or action.uses_per_day is not None
+        or bool(_limited_use_cast_activities(action))
+    )
+
+
+def expand_action_to_parts(
+    monster: Monster,
+    action: MonsterAction,
+    *,
+    target_distance_ft: int | None = None,
+    behavior_profile: str | None = None,
+    melee_reach_ft: int = 5,
+    is_available: Callable[[MonsterAction], bool] | None = None,
+) -> list[tuple[MonsterAction, Activity]]:
+    """Expand a chosen action into the activities to resolve this turn, each
+    with the action it comes from (a multiattack's sibling, else ``action``).
 
     Non-multiattack actions resolve their own activities, but Foundry's 2024
     weapon/monster actions ship the SAME attack as multiple ``AttackActivity``
@@ -462,16 +529,27 @@ def expand_action_to_activities(
     distance to the chosen target is supplied, the fallback prefers a sibling
     whose own range covers it (``RANGED`` tie-breaks toward the ranged sibling).
     Omitting them preserves the historical first-in-list-order fallback.
+
+    ``is_available`` gates a sibling joined through the PRECISE path by name:
+    SRD 5.2 "uses Unsettling Visage if available" — a sibling it reports
+    unavailable (a spent Recharge) sits the turn out. The fallback repeats
+    only an AT-WILL sibling the caller reports available — the one the
+    clause names, when it names any: never a Recharge, ``N/Day`` or
+    limited-use-cast sibling, since repeating one of those its own ``count``
+    times would spend it more than once in a single turn whatever the caller
+    reports, and never one ``is_available`` rules out (an area that affects
+    no enemy from where the monster stands), which would leave the turn with
+    nothing to resolve and nothing to walk toward.
     """
     if action.slug != _MULTIATTACK_SLUG:
-        resolved: list[Activity] = []
+        resolved: list[tuple[MonsterAction, Activity]] = []
         seen_attack = False
         for activity in action.activities:
             if isinstance(activity, AttackActivity):
                 if seen_attack:
                     continue  # alternative attack-mode variant — skip duplicates
                 seen_attack = True
-            resolved.append(activity)
+            resolved.append((action, activity))
         return resolved
 
     siblings = _attack_siblings(monster, exclude=action)
@@ -493,28 +571,53 @@ def expand_action_to_activities(
         by_name = {sibling.name.casefold(): sibling for sibling in siblings}
         matched = [(by_name.get(name.casefold()), name_count) for name, name_count in parsed]
         if all(sibling is not None for sibling, _ in matched):
-            named = [sibling for sibling, _ in matched if sibling is not None]
+            available = [
+                (sibling, name_count)
+                for sibling, name_count in matched
+                if sibling is not None and (is_available is None or is_available(sibling))
+            ]
+            named = [sibling for sibling, _ in available]
             if _ANY_COMBINATION_RE.search(_multiattack_clause(action.description)):
                 distributed = _distribute_any_combination(
                     named, count, target_distance_ft, behavior_profile, melee_reach_ft
                 )
                 if distributed:
                     return distributed
-            matched_resolved: list[Activity] = []
-            for sibling, name_count in matched:
-                assert sibling is not None  # narrowed by the all(...) guard
+            matched_resolved: list[tuple[MonsterAction, Activity]] = []
+            for sibling, name_count in available:
                 sibling_activity = _first_offensive_activity(sibling)
                 if sibling_activity is not None:
-                    matched_resolved.extend([sibling_activity] * name_count)
-            if matched_resolved:
-                return matched_resolved
+                    matched_resolved.extend([(sibling, sibling_activity)] * name_count)
+            return matched_resolved
 
     # Fallback: repeat the chosen attack sibling's first offensive activity.
     # Correctness-preserving for single-attack-type multiattacks (owlbear → Rend)
     # and "any combination" count cases (goblin-boss → 2 attacks); range/profile-
     # aware for mixed melee+ranged repertoires (scout → longbow at 100 ft).
+    # Usage-gated siblings never enter the pool to pick from: the aboleth's
+    # Dominate Mind (2/Day) and a dragon's Fire Breath (Recharge) cover any
+    # distance an unresolvable reach can't disqualify them from (see
+    # ``_activity_range_ft``), and repeating one ``count`` times would spend
+    # it more than once in a single turn — a budget the fallback has no
+    # availability seam to check, unlike the precise join.
+    # A sibling the caller reports unavailable is dropped too: an area the
+    # monster can't place on an enemy (the ancient gold dragon's Weakening
+    # Breath beyond 90 ft) has no reach to lose the tie-break on, so it
+    # would beat the attack that walks in, then resolve nothing.
+    at_will_candidates = [
+        sibling
+        for sibling in _clause_siblings(_multiattack_clause(action.description), siblings)
+        if not _action_is_usage_gated(sibling) and (is_available is None or is_available(sibling))
+    ]
+    if not at_will_candidates:
+        _LOGGER.warning(
+            "multiattack_join_unresolved monster=%s reason=no_at_will_sibling description=%r",
+            monster.slug,
+            action.description,
+        )
+        return []
     chosen_sibling = _select_fallback_sibling(
-        siblings, target_distance_ft, behavior_profile, melee_reach_ft
+        at_will_candidates, target_distance_ft, behavior_profile, melee_reach_ft
     )
     first_activity = _first_offensive_activity(chosen_sibling)
     if first_activity is None:
@@ -531,4 +634,4 @@ def expand_action_to_activities(
         chosen_sibling.slug,
         action.description,
     )
-    return [first_activity] * count
+    return [(chosen_sibling, first_activity)] * count

@@ -8,8 +8,9 @@ a creature of your choice, you can choose yourself"; monster stat blocks name
 "which creatures make the save" ("each creature in a 60-foot Cone", "each enemy
 in a 20-foot-radius Sphere").
 
-S01–S04 and S09 are the monster side of area targeting and stay strict-xfail
-until the monster-aiming cluster lands.
+S01–S04 and S09 are the monster side: a monster aims its own area where it
+catches the most enemies minus allies, never itself, and only when it catches
+an enemy from where it stands at the start of its turn.
 """
 
 from __future__ import annotations
@@ -36,9 +37,7 @@ from dnd5e_engine.orchestrator import (
     submit_player_intent,
 )
 from dnd5e_engine.specs import EncounterMemberSpec, GridScene, PartyMemberSpec
-from tests.e2e.harness import cell, events_of, grid_scene, run_async, xfail_cluster
-
-_MONSTER_AIMING = xfail_cluster(26, "area targeting: monster aiming")
+from tests.e2e.harness import cell, events_of, grid_scene, run_async
 
 
 def _pc(entity_id: str, at: str, **fields: Any) -> PartyMemberSpec:
@@ -136,10 +135,9 @@ def _combatant(live, entity_id: str):
     return next(c for c in live.initiative if c.entity_id == entity_id)
 
 
-# ── monster side (strict-xfail until monster aiming) ─────────────────────────
+# ── monster side ─────────────────────────────────────────────────────────────
 
 
-@_MONSTER_AIMING
 def test_c26_s01_a_breath_hits_everyone_in_the_cone() -> None:
     dragon = _foe("mon:dragon", cell(5, 5), "adult-red-dragon", initiative=20, hp_current=256)
     party = [
@@ -167,7 +165,6 @@ def test_c26_s01_a_breath_hits_everyone_in_the_cone() -> None:
     assert set(area.affected_ids) == {"char:a", "char:b", "char:c"}
 
 
-@_MONSTER_AIMING
 def test_c26_s02_the_ai_breathes_away_from_its_ally() -> None:
     dragon = _foe("mon:dragon", cell(5, 5), "adult-red-dragon", initiative=20, hp_current=256)
     kobold = _foe("mon:kobold", cell(6, 7), "kobold-warrior", initiative=1)
@@ -185,21 +182,43 @@ def test_c26_s02_the_ai_breathes_away_from_its_ally() -> None:
     assert area.direction == (0, -1)
 
 
-@_MONSTER_AIMING
 def test_c26_s03_no_enemy_in_reach_means_no_breath() -> None:
-    dragon = _foe("mon:dragon", cell(0, 5), "adult-red-dragon", initiative=20, hp_current=256)
-    party = [_sturdy("char:a", cell(25, 5), 10), _sturdy("char:b", cell(25, 6), 9)]
+    # The young red dragon's Fire Breath is a 30-foot Cone; it has no spell to
+    # fall back on. It aims from where it stands as its turn starts: 75 ft away,
+    # then 45 ft away after its first walk, so it breathes on neither turn.
+    # base_speed=30 is already the default; it's explicit because turn 2's
+    # Dash-not-Rend assertion below depends on it (SRD 5.2 speed is 40 ft).
+    dragon = _foe(
+        "mon:dragon",
+        cell(0, 5),
+        "young-red-dragon",
+        initiative=20,
+        hp_current=178,
+        base_speed=30,
+    )
+    party = [_sturdy("char:a", cell(15, 5), 10), _sturdy("char:b", cell(15, 6), 9)]
     handle, live = _start(party, [dragon], session="e2e-c26-s03", grid=grid_scene(30, 12))
     _monster_turn(handle)
     assert events_of(live, SaveRolled) == []
     assert [e for e in events_of(live, ActorMoved) if e.actor_id == "mon:dragon"]
     _act(handle, "char:a", intent_type="pass")
     _act(handle, "char:b", intent_type="pass")
+    turn_two = len(live.event_log)
     _monster_turn(handle)
     assert [e for e in events_of(live, RechargeRolled) if e.action_slug == "fire-breath"] == []
+    later = live.event_log[turn_two:]
+    assert [e for e in later if isinstance(e, (SaveRolled, DamageApplied))] == []
+    assert [e for e in later if isinstance(e, ActorMoved) and e.actor_id == "mon:dragon"]
+    # In reach at last, the dragon breathes on its third turn.
+    _act(handle, "char:a", intent_type="pass")
+    _act(handle, "char:b", intent_type="pass")
+    turn_three = len(live.event_log)
+    _monster_turn(handle)
+    third = live.event_log[turn_three:]
+    assert {e.target_id for e in third if isinstance(e, SaveRolled)} == {"char:a", "char:b"}
+    assert [e.source_id for e in third if e.type == "area_targeted"] == ["fire-breath"]
 
 
-@_MONSTER_AIMING
 def test_c26_s04_a_monster_fireball_catches_the_cluster() -> None:
     mage = _foe("mon:mage", cell(0, 5), "mage", initiative=20, hp_current=81)
     party = [
@@ -214,7 +233,6 @@ def test_c26_s04_a_monster_fireball_catches_the_cluster() -> None:
     assert sorted(_saved(live)) == ["char:a", "char:b", "char:c"]
 
 
-@_MONSTER_AIMING
 def test_c26_s09_a_spent_recharge_action_sits_out_the_multiattack() -> None:
     doppelganger = _foe("mon:dop", cell(1, 0), "doppelganger", initiative=20, hp_current=52)
     handle, live = _start(

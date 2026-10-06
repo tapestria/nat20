@@ -291,12 +291,14 @@ _PROBES: dict[str, tuple[Any, str]] = {
         "✅",
     ),
     # C16: areas enumerate template cells; C26a: for every intent kind, with
-    # "of your choice" exclusions and a reported AreaTargeted.
+    # "of your choice" exclusions and a reported AreaTargeted; C26b: monsters
+    # aim their own.
     "AoE templates (sphere / cone / line / cube / cylinder)": (
         lambda: (
             "cells_in_template(" in _src("areas.py")
             and "AreaTargeted(" in _src("orchestrator.py")
             and "excluded_target_ids" in _src("orchestrator.py")
+            and "best_aim(" in _src("orchestrator.py")
         ),
         "✅",
     ),
@@ -689,12 +691,21 @@ _PROBES: dict[str, tuple[Any, str]] = {
         lambda: not _spell_resolves(_canonical_spell("dispel-magic")),
         "❌",
     ),
+    # C26b: the AI aims an area, and an unaimable one is no option.
     "Typed action selection + built-in AI": (
-        lambda: "def rank_monster_actions(" in _src("activities/monster_actions.py"),
+        lambda: (
+            "def rank_monster_actions(" in _src("activities/monster_actions.py")
+            and "def best_aim(" in _src("areas.py")
+            and "_monster_area_unaimable(" in _src("orchestrator.py")
+        ),
         "✅",
     ),
+    # C26b: a fallback repeats only an attack its clause names.
     "| Multiattack fan-out |": (
-        lambda: "_ANY_COMBINATION_RE" in _src("activities/monster_actions.py"),
+        lambda: (
+            "_ANY_COMBINATION_RE" in _src("activities/monster_actions.py")
+            and "def _clause_siblings(" in _src("activities/monster_actions.py")
+        ),
         "⚠️ Partial",
     ),
     "| Monster spellcasting |": (
@@ -756,8 +767,13 @@ _PROBES: dict[str, tuple[Any, str]] = {
         ),
         "✅",
     ),
+    # C26b: a monster's save action leaves a readied Shield readied.
     "Shield (incl. vs. Magic Missile)": (
-        lambda: "def _apply_magic_missile_shield_carveout(" in _src("orchestrator.py"),
+        lambda: (
+            "def _apply_magic_missile_shield_carveout(" in _src("orchestrator.py")
+            and "if any(isinstance(a, AttackActivity) for a in activities):"
+            in _src("orchestrator.py")
+        ),
         "✅",
     ),
     # A readied reaction fires only on one of the engine's named triggers.

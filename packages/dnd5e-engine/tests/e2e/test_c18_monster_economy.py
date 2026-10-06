@@ -542,7 +542,8 @@ def test_c18_s07_stat_block_spellcaster_monster_actually_casts():
                     hp_current=40,
                     hp_max=40,
                     ac=12,
-                    zone_id=cell(2, 0),
+                    # 30 ft from the hero: its Fireball leaves the mage outside.
+                    zone_id=cell(6, 0),
                     monster_template_slug="mage",
                 )
             ],
