@@ -519,15 +519,14 @@ def conditions_auto_crit_within_5ft(target_condition_names: list[str]) -> bool:
 def project_passive_damage_modifiers(conditions: list[str]) -> dict[str, list[str]]:
     """Return the resistance / vulnerability / immunity projection for ``conditions``.
 
-    Only Petrified contributes here per SRD 5.1 §Conditions — "resistance
-    to all damage" + immune to poison + can't be poisoned (we surface the
-    poison damage immunity, not the condition-immunity which lives on
-    ``Combatant`` separately).
+    Only Petrified contributes: SRD 5.2 "Resist Damage. You have Resistance to
+    all damage." Poison damage is halved like any other — its "Poison
+    Immunity" is to the Poisoned condition (``CONDITION_GRANTED_IMMUNITIES``),
+    not to the damage type.
     """
     out: dict[str, list[str]] = {"resistances": [], "vulnerabilities": [], "immunities": []}
     if "petrified" in {c.lower() for c in conditions}:
         out["resistances"].append("all")
-        out["immunities"].append("poison")
     return out
 
 

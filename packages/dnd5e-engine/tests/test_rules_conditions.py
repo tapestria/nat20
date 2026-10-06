@@ -367,11 +367,13 @@ def test_remove_with_implies_of_an_absent_condition_is_a_no_op() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_petrified_projects_blanket_resistance_and_poison_immunity() -> None:
+def test_petrified_projects_resistance_to_all_damage_and_no_immunity() -> None:
+    """SRD 5.2 Petrified: "Resist Damage. You have Resistance to all damage."
+    Its "Poison Immunity" is to the Poisoned condition, not to Poison damage."""
     out = project_passive_damage_modifiers(["petrified"])
 
     assert out["resistances"] == ["all"]
-    assert out["immunities"] == ["poison"]
+    assert out["immunities"] == []
     assert out["vulnerabilities"] == []
 
 

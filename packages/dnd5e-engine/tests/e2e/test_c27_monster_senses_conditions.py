@@ -40,9 +40,7 @@ from dnd5e_engine.orchestrator import (
     submit_player_intent,
 )
 from dnd5e_engine.specs import EncounterMemberSpec, GridScene, PartyMemberSpec
-from tests.e2e.harness import cell, events_of, grid_scene, run_async, xfail_cluster
-
-_CONDITIONS = xfail_cluster(27, "condition clauses")
+from tests.e2e.harness import cell, events_of, grid_scene, run_async
 
 
 def _hero(**fields: Any) -> PartyMemberSpec:
@@ -269,7 +267,6 @@ def _escape_while_frightened(*, dark: bool):
     return next(e for e in events_of(live, CheckRolled) if e.actor_id == "char:hero")
 
 
-@_CONDITIONS
 def test_c27_escaping_a_grapple_while_frightened_of_an_unseen_source() -> None:
     unseen = _escape_while_frightened(dark=True)
     assert unseen.advantage == "normal"
@@ -279,7 +276,6 @@ def test_c27_escaping_a_grapple_while_frightened_of_an_unseen_source() -> None:
     assert "condition:attacker" in seen.sources
 
 
-@_CONDITIONS
 def test_c27_a_poisoned_hider_rolls_stealth_at_disadvantage() -> None:
     dark = grid_scene(lighting={cell(0, 0): "dark"})
     handle, live = _start(
@@ -296,7 +292,6 @@ def test_c27_a_poisoned_hider_rolls_stealth_at_disadvantage() -> None:
     assert "condition:attacker" in stealth.sources
 
 
-@_CONDITIONS
 def test_c27_frightened_blocks_approach_to_an_unseen_source() -> None:
     dark = grid_scene(lighting={cell(5, 0): "dark"})
     handle, live = _start(
@@ -349,14 +344,12 @@ def _ray_of_sickness_damage(status: str) -> int:
     return damage[0].amount
 
 
-@_CONDITIONS
 def test_c27_a_petrified_creature_resists_poison_damage() -> None:
     rolled = _ray_of_sickness_damage("restrained")
     assert rolled > 1
     assert _ray_of_sickness_damage("petrified") == rolled // 2
 
 
-@_CONDITIONS
 def test_c27_a_petrified_creature_is_immune_to_poisoned() -> None:
     foe = _foe(initiative=1, hp_current=200, hp_max=200)
     live = _cleric_casts_contagion(
@@ -370,7 +363,6 @@ def test_c27_a_petrified_creature_is_immune_to_poisoned() -> None:
     assert _holds(live, "mon:foe", "petrified")
 
 
-@_CONDITIONS
 def test_c27_a_ghost_cannot_be_grappled() -> None:
     # SRD 5.2 Ghost: "Condition Immunities ... Grappled ..."
     handle, live = _start(

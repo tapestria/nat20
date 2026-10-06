@@ -117,6 +117,7 @@ from dnd5e_engine.activities.conjuration import (
 from dnd5e_engine.activities.context import ActivityResolutionContext
 from dnd5e_engine.activities.d20 import AdvantageSources, roll_d20_test
 from dnd5e_engine.activities.dice import roll_damage_part
+from dnd5e_engine.activities.effects import is_condition_immune
 from dnd5e_engine.activities.forced_movement import FORCED_MOVEMENT_RIDERS
 from dnd5e_engine.activities.monster_actions import (
     expand_action_to_activities,
@@ -165,6 +166,7 @@ from dnd5e_engine.events import (
     ConcentrationDropped,
     ConditionApplied,
     ConditionRemoved,
+    ConditionType,
     DamageApplied,
     DashTaken,
     Death,
@@ -204,6 +206,7 @@ from dnd5e_engine.rules.conditions import (
     Condition,
     active_condition_names,
     conditions_block_actions,
+    conditions_grant_disadvantage_on_ability_checks,
     d20_test_penalty,
     exhaustion_level_of,
     is_condition_active,
@@ -1572,14 +1575,16 @@ def _combatant_can_see(live: _LiveCombat, viewer: Combatant, target: Combatant) 
 
 
 def _fear_source_in_sight(live: _LiveCombat, combatant: Combatant) -> bool:
-    """SRD 5.2 Frightened: "Disadvantage on ability checks and attack rolls
-    while the source of fear is within line of sight." (plan ruling R5):
-    True (penalty stays) when ``combatant`` isn't Frightened, when its fear
-    source is unknown (``_condition_source_entity`` returns ``None``), or
-    when the source is dead/untracked/no longer in the initiative order
-    (SRD-conservative — can't prove it's out of sight). False only for a
-    known, LIVING, tracked source that ``_combatant_can_see`` says the
-    Frightened creature cannot currently see.
+    """SRD 5.2 Frightened: "You have Disadvantage on ability checks and attack
+    rolls while the source of fear is within line of sight." The flag both
+    rows read (``conditions_grant_advantage_on_attack``,
+    ``conditions_grant_disadvantage_on_ability_checks``), "within line of
+    sight" read as "can see". True (penalty stays) when ``combatant`` isn't
+    Frightened, when its fear source is unknown (``_condition_source_entity``
+    returns ``None``), or when the source is dead/untracked/no longer in the
+    initiative order (SRD-conservative — can't prove it's out of sight).
+    False only for a known, LIVING, tracked source that ``_combatant_can_see``
+    says the Frightened creature cannot currently see.
     """
     if not is_condition_active(Condition.FRIGHTENED, _condition_names(combatant)):
         return True
@@ -1592,15 +1597,29 @@ def _fear_source_in_sight(live: _LiveCombat, combatant: Combatant) -> bool:
     return _combatant_can_see(live, combatant, source)
 
 
+def _condition_check_sources(live: _LiveCombat, actor: Combatant) -> AdvantageSources:
+    """The condition rows on an ability check the engine rolls outside an
+    activity (Hide's Stealth, escaping a grapple): SRD 5.2 Poisoned, "You have
+    Disadvantage on attack rolls and ability checks", and Frightened, while
+    the source of fear is in sight. A ``CheckActivity`` reads the same rows
+    through ``project_passive_check_modifiers``."""
+    if conditions_grant_disadvantage_on_ability_checks(
+        _condition_names(actor), fear_source_in_sight=_fear_source_in_sight(live, actor)
+    ):
+        return AdvantageSources(disadvantage=("condition:attacker",))
+    return AdvantageSources()
+
+
 def _frightened_approach_blocked(live: _LiveCombat, mover: Combatant, path: list[str]) -> bool:
     """SRD 5.2 Frightened: "You can't willingly move closer to the source of
-    fear." (C16b) True iff ``mover`` is Frightened of a known, LIVING,
-    tracked source it can currently see (``_fear_source_in_sight``, reused
-    for the "visible" half — R5's unknown/dead/untracked ⇒ no restriction
-    carries over identically here), AND some consecutive pair of cells in
-    ``path`` strictly reduces ``live.topology.distance_ft`` to that source's
-    cell. An unresolvable pairwise distance (untracked/cross-topology) never
-    blocks.
+    fear." Unlike the disadvantage sentence, this one has no line-of-sight
+    clause, so a source the mover can't see still blocks it. True iff
+    ``mover`` is Frightened of a known, LIVING, tracked source (an unknown,
+    dead or untracked source leaves nothing to move closer to, so it imposes
+    nothing here, though ``_fear_source_in_sight`` keeps its Disadvantage)
+    AND some consecutive pair of cells in ``path`` strictly reduces
+    ``live.topology.distance_ft`` to that source's cell. An unresolvable
+    pairwise distance (untracked/cross-topology) never blocks.
     """
     if not is_condition_active(Condition.FRIGHTENED, _condition_names(mover)):
         return False
@@ -1609,8 +1628,6 @@ def _frightened_approach_blocked(live: _LiveCombat, mover: Combatant, path: list
         return False
     source = next((c for c in live.initiative if c.entity_id == source_id), None)
     if source is None or not source.is_alive:
-        return False
-    if not _combatant_can_see(live, mover, source):
         return False
     source_cell = live.actor_zone.get(source_id)
     if source_cell is None:
@@ -3812,6 +3829,19 @@ def _fold_condition_onto_combatant(
     _end_what_incapacitation_ends(live, entity_id, condition)
 
 
+def _emit_condition_applied(live: _LiveCombat, target_id: str, condition: ConditionType) -> bool:
+    """Emit ``ConditionApplied`` for a condition an action applies (Shove's
+    Prone, Hide's Invisible) unless the target is immune — SRD 5.2: "If you
+    have Immunity to a damage type or a condition, it doesn't affect you in any
+    way." Returns whether the condition landed."""
+    target = _find_combatant(live, target_id)
+    if target is not None and is_condition_immune(target, condition):
+        _LOGGER.info("condition_immune_suppressed status=%s target_id=%s", condition, target_id)
+        return False
+    _emit(live, ConditionApplied(target_id=target_id, condition=condition))
+    return True
+
+
 def _end_what_incapacitation_ends(live: _LiveCombat, entity_id: str, condition: str) -> None:
     """What ``condition`` ends as it first lands on ``entity_id``, when it is
     Incapacitated or implies it (Paralyzed / Petrified / Stunned / Unconscious
@@ -4156,7 +4186,8 @@ def _handle_grapple(live: _LiveCombat, attacker: Combatant, intent: PlayerIntent
     own — a plain D20 Test), so Paralyzed/Stunned/Petrified/Unconscious
     targets auto-fail with zero draws. On failure, applies the engine-owned
     Grappled condition with the escape DC + source effect stored on the
-    ``ActiveCondition`` (see ``_emit_grapple_condition_applied``). The
+    ``ActiveCondition`` (see ``_emit_grapple_condition_applied``) — unless
+    the target is immune to it (``is_condition_immune``: the Ghost). The
     Action is already spent (budget consumed by the caller); Grapple
     resolves no other activities and ends the turn (``_end_action``)."""
     assert intent.target_id is not None  # narrowed by the range gate above
@@ -4164,7 +4195,7 @@ def _handle_grapple(live: _LiveCombat, attacker: Combatant, intent: PlayerIntent
     target = _find_combatant(live, target_id)
     assert target is not None  # narrowed by the range gate above
     save = _roll_unarmed_option_save(live, attacker, target)
-    if not save.succeeded:
+    if not save.succeeded and not is_condition_immune(target, "grappled"):
         effect_id = f"effect:grapple:{live.round_number}:{attacker.entity_id}:{target_id}"
         effect = ActiveEffect(
             id=effect_id,
@@ -4201,9 +4232,10 @@ def _handle_shove(live: _LiveCombat, attacker: Combatant, intent: PlayerIntent) 
     """SRD 5.2 Unarmed Strike — Shove. Rolls the target's save via the same
     ``_roll_unarmed_option_save`` helper ``_handle_grapple`` uses (auto-fail
     conditions + exhaustion penalty come free; no advantage source of its
-    own — a plain D20 Test). On failure: Prone (default) or a 5-ft forced
-    push away from the shover, per ``intent.shove_push``. No damage either
-    way. The Action is already spent (budget consumed by the caller); Shove
+    own — a plain D20 Test). On failure: Prone (default; withheld from a
+    creature immune to it, ``_emit_condition_applied``) or a 5-ft forced push
+    away from the shover, per ``intent.shove_push``. No damage either way.
+    The Action is already spent (budget consumed by the caller); Shove
     resolves no other activities and ends the turn (``_end_action``)."""
     assert intent.target_id is not None  # narrowed by the range gate above
     target_id = intent.target_id
@@ -4216,7 +4248,7 @@ def _handle_shove(live: _LiveCombat, attacker: Combatant, intent: PlayerIntent) 
             assert origin_cell is not None  # the attacker is on the live grid
             push_combatant(live, target_id, origin_cell=origin_cell, distance_ft=5)
         else:
-            _emit(live, ConditionApplied(target_id=target_id, condition="prone"))
+            _emit_condition_applied(live, target_id, "prone")
     _end_action(live, attacker.entity_id, intent)
 
 
@@ -4251,8 +4283,10 @@ def _handle_escape_grapple(live: _LiveCombat, current: Combatant, intent: Player
     recomputed — the grappler's Strength may have changed since). Controller
     ruling R3 picks Athletics vs Acrobatics by whichever check modifier is
     higher (tie -> Athletics/STR), via the same ``check_modifier`` primitive
-    every other skill check on this seam uses. The Action is already spent
-    (budget consumed by the caller); escape ends the turn (``_end_action``)."""
+    every other skill check on this seam uses; Poisoned, and Frightened while
+    its source is in sight, roll it at Disadvantage
+    (``_condition_check_sources``). The Action is already spent (budget
+    consumed by the caller); escape ends the turn (``_end_action``)."""
     grappled_ac = next((ac for ac in current.conditions if ac.condition == "grappled"), None)
     assert grappled_ac is not None  # narrowed by the gate above
     assert grappled_ac.save_dc is not None  # every grapple emit stores one
@@ -4268,7 +4302,7 @@ def _handle_escape_grapple(live: _LiveCombat, current: Combatant, intent: Player
     # already threads this (mirroring ``_run_end_of_turn_saves``); the
     # escape check must too (Fix round 1).
     modifier += d20_test_penalty(current.conditions)
-    roll = roll_d20_test(live.rng, modifier, AdvantageSources())
+    roll = roll_d20_test(live.rng, modifier, _condition_check_sources(live, current))
     succeeded = roll.total >= dc
     _emit(
         live,
@@ -4449,7 +4483,11 @@ def _handle_hide(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
     ``IntentRejectedError("target_invalid")`` with NO d20 draw (zero
     stream perturbation on rejection).
 
-    On success: emits ``ConditionApplied(condition="invisible")`` (the C12
+    The Stealth check carries the hider's Poisoned / Frightened
+    Disadvantage (``_condition_check_sources``).
+
+    On success (unless the hider is immune to Invisible): emits
+    ``ConditionApplied(condition="invisible")`` (the C12
     Invisible wiring already grants the hider's next attack Advantage and
     imposes Disadvantage on attacks against it) and records the hider in
     ``live.hidden_entities`` so the break-on-attack /
@@ -4516,7 +4554,7 @@ def _handle_hide(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
     modifier = check_modifier(current, "dex", "stealth").total + d20_test_penalty(
         current.conditions
     )
-    roll = roll_d20_test(live.rng, modifier, AdvantageSources())
+    roll = roll_d20_test(live.rng, modifier, _condition_check_sources(live, current))
     dc = 15
     succeeded = roll.total >= dc
     _emit(
@@ -4534,8 +4572,7 @@ def _handle_hide(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
             sources=list(roll.sources),
         ),
     )
-    if succeeded:
-        _emit(live, ConditionApplied(target_id=actor_id, condition="invisible"))
+    if succeeded and _emit_condition_applied(live, actor_id, "invisible"):
         live.hidden_entities.add(actor_id)
 
 
@@ -5319,10 +5356,10 @@ def _emit_apply_effect_applied(live: _LiveCombat, event: EffectApplied) -> None:
             # auto-fail, the within-5-ft auto-crit) against a creature that
             # cannot have the condition — and would diverge from
             # ``live.active_conditions``, the store ``views.py`` shows the host.
-            # Compared as a bare slug, matching the emit-gate's convention
-            # (``passive_stats._CI_TOKEN_TO_CONDITION`` normalises the one
-            # irregular Foundry token at projection time).
-            if status in target_combatant.condition_immunities:
+            # The shared predicate, so a condition-granted immunity counts
+            # too: Petrified — held, or arriving in this same effect — keeps
+            # Poisoned off.
+            if is_condition_immune(target_combatant, status, imposed=applied.statuses):
                 _LOGGER.info(
                     "condition_immune_not_folded status=%s target_id=%s",
                     status,
@@ -5848,7 +5885,9 @@ def _project_target_modifiers(
     cond_names = [ac.condition for ac in c.conditions]
     damage_proj = project_passive_damage_modifiers(cond_names)
     save_proj = project_passive_save_modifiers(cond_names)
-    check_proj = project_passive_check_modifiers(cond_names)
+    check_proj = project_passive_check_modifiers(
+        cond_names, fear_source_in_sight=_fear_source_in_sight(live, c)
+    )
     # Merge per-creature damage_resistances / damage_immunities (from the
     # monster/character stat block) into the condition-derived projection.
     # SRD §Damage Resistance / §Damage Immunity — both sources are
@@ -7602,8 +7641,12 @@ def _seed_active_effects(live: _LiveCombat, active_effects: Sequence[ActiveEffec
         # condition riders stay live), exactly as the emit-path keeps the
         # ``EffectApplied`` and drops only the ``ConditionApplied``.
         target_combatant = _find_combatant(live, eff.target_id)
-        immunities = set(target_combatant.condition_immunities) if target_combatant else set()
-        statuses = {s for s in eff.statuses if s not in immunities}
+        statuses = {
+            s
+            for s in eff.statuses
+            if target_combatant is None
+            or not is_condition_immune(target_combatant, s, imposed=eff.statuses)
+        }
 
         # Conditions-by-effect: every status the effect imposes is
         # attributed to (target_id, id, origin), so expire/concentration
