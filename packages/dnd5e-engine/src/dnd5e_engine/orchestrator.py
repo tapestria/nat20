@@ -3829,16 +3829,19 @@ def _fold_condition_onto_combatant(
     _end_what_incapacitation_ends(live, entity_id, condition)
 
 
-def _emit_condition_applied(live: _LiveCombat, target_id: str, condition: ConditionType) -> bool:
+def _emit_condition_applied(live: _LiveCombat, target: Combatant, condition: ConditionType) -> bool:
     """Emit ``ConditionApplied`` for a condition an action applies (Shove's
     Prone, Hide's Invisible) unless the target is immune — SRD 5.2: "If you
     have Immunity to a damage type or a condition, it doesn't affect you in any
-    way." Returns whether the condition landed."""
-    target = _find_combatant(live, target_id)
-    if target is not None and is_condition_immune(target, condition):
-        _LOGGER.info("condition_immune_suppressed status=%s target_id=%s", condition, target_id)
+    way." Takes the ``Combatant`` directly: both callers already hold it, so
+    there is no need for a second lookup. Returns whether the condition
+    landed."""
+    if is_condition_immune(target, condition):
+        _LOGGER.info(
+            "condition_immune_suppressed status=%s target_id=%s", condition, target.entity_id
+        )
         return False
-    _emit(live, ConditionApplied(target_id=target_id, condition=condition))
+    _emit(live, ConditionApplied(target_id=target.entity_id, condition=condition))
     return True
 
 
@@ -3877,9 +3880,13 @@ def _strip_condition_from_combatant(live: _LiveCombat, entity_id: str, condition
     honours): an entry bridged from an effect that is STILL active is kept —
     ``_drop_concentration`` emits one ``ConditionRemoved`` per condition its
     dropped effect installed, and that must not clear a condition another live
-    effect keeps imposing. When such an entry survives, the coarse
-    ``live.active_conditions`` name (discarded by the ``_emit`` fold before we
-    are called) is restored so both views agree.
+    effect keeps imposing. The coarse ``live.active_conditions`` name
+    (discarded by the ``_emit`` fold before we are called) is always resynced
+    from whatever survives in the typed list below — NOT only when the typed
+    list itself needed a rewrite, since ``_emit_apply_effect_expired`` may
+    already have reconciled it (same source_effect_id rule) for a DIFFERENT
+    expiring effect, leaving the lengths equal but the coarse set still
+    short the discard above.
     """
     c = _find_combatant(live, entity_id)
     if c is None or not any(ac.condition == condition for ac in c.conditions):
@@ -3891,12 +3898,11 @@ def _strip_condition_from_combatant(live: _LiveCombat, entity_id: str, condition
         if ac.condition != condition
         or (ac.source_effect_id is not None and ac.source_effect_id in live_effect_ids)
     ]
-    if len(new) == len(c.conditions):
-        return
-    for idx, slot in enumerate(live.initiative):
-        if slot.entity_id == entity_id:
-            live.initiative[idx] = slot.model_copy(update={"conditions": new})
-            break
+    if len(new) != len(c.conditions):
+        for idx, slot in enumerate(live.initiative):
+            if slot.entity_id == entity_id:
+                live.initiative[idx] = slot.model_copy(update={"conditions": new})
+                break
     if any(ac.condition == condition for ac in new):
         live.active_conditions.setdefault(entity_id, set()).add(condition)
 
@@ -4195,19 +4201,24 @@ def _handle_grapple(live: _LiveCombat, attacker: Combatant, intent: PlayerIntent
     target = _find_combatant(live, target_id)
     assert target is not None  # narrowed by the range gate above
     save = _roll_unarmed_option_save(live, attacker, target)
-    if not save.succeeded and not is_condition_immune(target, "grappled"):
-        effect_id = f"effect:grapple:{live.round_number}:{attacker.entity_id}:{target_id}"
-        effect = ActiveEffect(
-            id=effect_id,
-            name="Grappled",
-            origin=f"grapple:unarmed-strike:{attacker.entity_id}",
-            target_id=target_id,
-            statuses={"grappled"},
-        )
-        live.active_effects.setdefault(target_id, []).append(effect)
-        _emit_grapple_condition_applied(
-            live, target_id, save_dc=save.dc, source_effect_id=effect_id
-        )
+    if not save.succeeded:
+        if is_condition_immune(target, "grappled"):
+            _LOGGER.info(
+                "condition_immune_suppressed status=%s target_id=%s", "grappled", target_id
+            )
+        else:
+            effect_id = f"effect:grapple:{live.round_number}:{attacker.entity_id}:{target_id}"
+            effect = ActiveEffect(
+                id=effect_id,
+                name="Grappled",
+                origin=f"grapple:unarmed-strike:{attacker.entity_id}",
+                target_id=target_id,
+                statuses={"grappled"},
+            )
+            live.active_effects.setdefault(target_id, []).append(effect)
+            _emit_grapple_condition_applied(
+                live, target_id, save_dc=save.dc, source_effect_id=effect_id
+            )
     _end_action(live, attacker.entity_id, intent)
 
 
@@ -4248,7 +4259,7 @@ def _handle_shove(live: _LiveCombat, attacker: Combatant, intent: PlayerIntent) 
             assert origin_cell is not None  # the attacker is on the live grid
             push_combatant(live, target_id, origin_cell=origin_cell, distance_ft=5)
         else:
-            _emit_condition_applied(live, target_id, "prone")
+            _emit_condition_applied(live, target, "prone")
     _end_action(live, attacker.entity_id, intent)
 
 
@@ -4572,7 +4583,7 @@ def _handle_hide(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
             sources=list(roll.sources),
         ),
     )
-    if succeeded and _emit_condition_applied(live, actor_id, "invisible"):
+    if succeeded and _emit_condition_applied(live, current, "invisible"):
         live.hidden_entities.add(actor_id)
 
 
@@ -5405,8 +5416,16 @@ def _emit_apply_effect_applied(live: _LiveCombat, event: EffectApplied) -> None:
 def _emit_apply_effect_expired(live: _LiveCombat, event: EffectExpired) -> None:
     """Fold an ``EffectExpired`` into running state: pop the matching effect,
     then clear each status it imposed from both ``live.active_conditions`` and
-    the target's conditions — but only if no OTHER active effect still imposes
-    that status."""
+    the target's conditions — but only if that status's own ``ActiveCondition``
+    entry is owned by a DIFFERENT effect still in ``live.active_effects``
+    (``source_effect_id``: the same per-entry signal
+    ``_strip_condition_from_combatant`` reads for ``ConditionRemoved``, so the
+    two folds agree without a second bookkeeping structure). Merely listing
+    the status in another effect's raw ``statuses`` does not count: SRD
+    Immunity means a withheld status (Petrified's Poisoned, see
+    ``is_condition_immune``) never gets an entry, so an effect that lists a
+    status it never landed can't keep a different, now-expiring effect's
+    status alive."""
     target_effects = live.active_effects.get(event.target_id, [])
     expired_effect: ActiveEffect | None = None
     for i, eff in enumerate(target_effects):
@@ -5415,38 +5434,32 @@ def _emit_apply_effect_expired(live: _LiveCombat, event: EffectExpired) -> None:
             break
     if expired_effect is not None and expired_effect.statuses:
         combatant = _find_combatant(live, event.target_id)
-        remaining_effects = live.active_effects.get(event.target_id, [])
-        # also clear the status from
-        # live.active_conditions (orchestrator_bridge reads this when
-        # mirroring combatant conditions back to host storage). Without this,
-        # the projection re-attaches the expired status to session
-        # state on the next mirror tick.
-        active_cond_set = live.active_conditions.get(event.target_id)
-        for status in expired_effect.statuses:
-            # Only remove if no OTHER active effect still imposes the
-            # same status (multiple sources stacking case).
-            still_imposed = any(status in other.statuses for other in remaining_effects)
-            if still_imposed:
-                continue
-            if active_cond_set is not None:
-                active_cond_set.discard(status)
+        remaining_effect_ids = {eff.id for eff in live.active_effects.get(event.target_id, [])}
+        surviving_statuses: set[str] = set()
         if combatant is not None:
-            new_conditions = list(combatant.conditions)
-            dirty = False
-            for status in expired_effect.statuses:
-                still_imposed = any(status in other.statuses for other in remaining_effects)
-                if still_imposed:
-                    continue
-                for idx, ac in enumerate(new_conditions):
-                    if ac.condition == status:
-                        new_conditions.pop(idx)
-                        dirty = True
-                        break
-            if dirty:
+            new_conditions = [
+                ac
+                for ac in combatant.conditions
+                if ac.condition not in expired_effect.statuses
+                or (ac.source_effect_id is not None and ac.source_effect_id in remaining_effect_ids)
+            ]
+            if len(new_conditions) != len(combatant.conditions):
                 for idx, c in enumerate(live.initiative):
                     if c.entity_id == event.target_id:
                         live.initiative[idx] = c.model_copy(update={"conditions": new_conditions})
                         break
+            surviving_statuses = {ac.condition for ac in new_conditions}
+        # Also clear the status from live.active_conditions
+        # (orchestrator_bridge reads this when mirroring combatant
+        # conditions back to host storage). Without this, the projection
+        # re-attaches the expired status to session state on the next
+        # mirror tick. Derived from the same ``surviving_statuses`` the
+        # typed list above just computed, so the two stores cannot disagree.
+        active_cond_set = live.active_conditions.get(event.target_id)
+        if active_cond_set is not None:
+            for status in expired_effect.statuses:
+                if status not in surviving_statuses:
+                    active_cond_set.discard(status)
     _end_anchor_dependents(live, event)
     _revert_transform_on_expiry(live, event)
 

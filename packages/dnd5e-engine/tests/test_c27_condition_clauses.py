@@ -9,6 +9,7 @@ the Poisoned condition." Immunity: "it doesn't affect you in any way."
 
 from __future__ import annotations
 
+import itertools
 from typing import Any
 
 from dnd5e_engine import ActiveEffect, PlayerIntent
@@ -18,6 +19,7 @@ from dnd5e_engine.events import (
     CombatantMoved,
     ConditionApplied,
     EffectApplied,
+    EffectExpired,
     MoveFailed,
     SaveRolled,
 )
@@ -67,10 +69,17 @@ def _status(target_id: str, *statuses: str, by: str = "mon:foe") -> ActiveEffect
     )
 
 
+_SESSION_SEQ = itertools.count()
+
+
 def _start(party, encounter, *, seed: int = 1, grid: GridScene | None = None, effects=()):
+    # ``start_combat``'s handle_id is ``f"combat:{session_id}:{seed:08x}"`` —
+    # a test that starts two combats at the SAME (default) seed needs a
+    # distinct session_id per call, or the second ``start_combat`` overwrites
+    # the first's registry slot under an identical key.
     async def _inner():
         start = await start_combat(
-            session_id="c27-condition-clauses",
+            session_id=f"c27-condition-clauses-{next(_SESSION_SEQ)}",
             party=party,
             encounter=encounter,
             grid_scene=grid or grid_scene(),
@@ -179,6 +188,41 @@ def test_an_effect_that_petrifies_and_poisons_leaves_its_target_petrified_only()
     _handle, live = _start([_hero()], [_foe()])
     _emit(live, EffectApplied(effect=_status("mon:foe", "petrified", "poisoned")))
     assert _typed(live, "mon:foe") == {"petrified"}
+
+
+def test_expiring_an_effect_drops_only_its_own_entry_not_a_withheld_one() -> None:
+    # A poisons, B petrifies (granting Poisoned immunity), C also poisons —
+    # withheld outright since B is already active when C is seeded. Letting
+    # A expire must drop A's own Poisoned entry, not keep it alive on C's
+    # never-landed listing; letting B expire afterwards must not resurrect
+    # C's withheld Poisoned either. Both condition stores agree throughout.
+    def _effect(name: str, *statuses: str) -> ActiveEffect:
+        return ActiveEffect(
+            id=f"effect:{name}",
+            name=name,
+            origin=f"test:{name}",
+            target_id="mon:foe",
+            statuses=set(statuses),
+        )
+
+    a, b, c = _effect("a", "poisoned"), _effect("b", "petrified"), _effect("c", "poisoned")
+    _handle, live = _start([_hero()], [_foe()], effects=(a, b, c))
+    assert _typed(live, "mon:foe") == {"poisoned", "petrified"}
+
+    _emit(
+        live,
+        EffectExpired(effect_id=a.id, target_id="mon:foe", origin=a.origin, reason="duration"),
+    )
+    assert _typed(live, "mon:foe") == {"petrified"}
+    assert live.active_conditions["mon:foe"] == {"petrified"}
+
+    _emit(
+        live,
+        EffectExpired(effect_id=b.id, target_id="mon:foe", origin=b.origin, reason="duration"),
+    )
+    assert _typed(live, "mon:foe") == set()
+    assert live.active_conditions.get("mon:foe", set()) == set()
+    assert _build_hydration_payload(live)["check_modifiers"]["mon:foe"]["disadvantage"] is False
 
 
 def test_a_hider_immune_to_invisible_is_not_hidden() -> None:
