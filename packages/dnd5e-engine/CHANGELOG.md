@@ -143,6 +143,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - After a `ConditionRemoved`, `active_conditions` now keeps a condition
   that another live effect still imposes, so the two condition stores
   agree (C27).
+- `escape_grapple` from a creature whose Grappled stores no escape DC (a
+  seeded Grappled, or one another effect keeps after the grapple ends) is
+  refused with `target_invalid` before the Action is spent, instead of
+  raising `AssertionError` (C27).
 
 ## [0.6.0]
 

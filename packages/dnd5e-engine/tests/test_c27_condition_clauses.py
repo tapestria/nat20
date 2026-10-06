@@ -12,6 +12,8 @@ from __future__ import annotations
 import itertools
 from typing import Any
 
+import pytest
+
 from dnd5e_engine import ActiveEffect, PlayerIntent
 from dnd5e_engine.events import (
     ActorMoved,
@@ -25,6 +27,7 @@ from dnd5e_engine.events import (
     SaveRolled,
 )
 from dnd5e_engine.orchestrator import (
+    IntentRejectedError,
     _build_hydration_payload,
     _emit,
     _get_live,
@@ -318,3 +321,31 @@ def test_a_hider_immune_to_invisible_is_not_hidden() -> None:
     assert [e.succeeded for e in events_of(live, CheckRolled)] == [True]
     assert events_of(live, ConditionApplied) == []
     assert "char:hero" not in live.hidden_entities
+
+
+def test_escaping_a_seeded_grappled_is_refused_before_the_action_is_spent() -> None:
+    # A seeded Grappled stores no escape DC, so there is nothing to roll
+    # against: refused before the Action is spent, with no d20.
+    handle, live = _start([_hero()], [_foe()], effects=(_status("char:hero", "grappled"),))
+    with pytest.raises(IntentRejectedError) as rejected:
+        _act(handle, "char:hero", intent_type="escape_grapple")
+    assert rejected.value.reason == "target_invalid"
+    assert events_of(live, CheckRolled) == []
+    assert next(c for c in live.initiative if c.entity_id == "char:hero").action_available
+
+
+def test_escaping_an_effects_grappled_left_after_the_grapple_ends_is_refused() -> None:
+    # The bandit grapples the hero and an effect also Grapples it; the bandit
+    # is then Stunned, which ends its grapple. The effect's Grappled stays and
+    # stores no escape DC: the escape is refused, not crashed.
+    handle, live = _start(
+        [_hero(initiative=1)], [_foe(initiative=20, monster_template_slug="bandit")]
+    )
+    _act(handle, "mon:foe", intent_type="grapple", target_id="char:hero")
+    _apply_effect(live, _effect("hold", "grappled", target_id="char:hero"))
+    _apply_effect(live, _effect("stun", "stunned"))
+    assert _typed_sources(live, "char:hero") == {("grappled", "effect:hold")}
+    with pytest.raises(IntentRejectedError) as rejected:
+        _act(handle, "char:hero", intent_type="escape_grapple")
+    assert rejected.value.reason == "target_invalid"
+    assert [e for e in events_of(live, CheckRolled) if e.actor_id == "char:hero"] == []

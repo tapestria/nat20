@@ -4266,10 +4266,22 @@ def _handle_shove(live: _LiveCombat, attacker: Combatant, intent: PlayerIntent) 
     _end_action(live, attacker.entity_id, intent)
 
 
+def _escapable_grapple(current: Combatant) -> ActiveCondition | None:
+    """The Grappled entry an escape rolls against: the first one storing an
+    escape DC. Only a Grapple stores one; a Grappled an effect imposes (a
+    seeded one, or one still kept by another effect after the grapple ends)
+    carries none, so it gives an escape nothing to roll against."""
+    return next(
+        (ac for ac in current.conditions if ac.condition == "grappled" and ac.save_dc is not None),
+        None,
+    )
+
+
 def _escape_grapple_actor_invalid(current: Combatant) -> bool:
-    """True (reject) unless ``current`` currently carries the Grappled
-    condition — ``escape_grapple`` has nothing to escape from otherwise."""
-    return not any(ac.condition == "grappled" for ac in current.conditions)
+    """True (reject) unless ``current`` is Grappled by a grapple with an
+    escape DC (``_escapable_grapple``) — ``escape_grapple`` has nothing to
+    roll against otherwise."""
+    return _escapable_grapple(current) is None
 
 
 def _reject_invalid_escape_grapple_actor(
@@ -4284,7 +4296,8 @@ def _reject_invalid_escape_grapple_actor(
     if intent.intent_type == "escape_grapple" and _escape_grapple_actor_invalid(current):
         raise IntentRejectedError(
             "target_invalid",
-            f"actor_id={actor_id!r} is not Grappled; nothing to escape",
+            f"actor_id={actor_id!r} is not Grappled by a grapple with an escape DC; "
+            "nothing to escape",
         )
 
 
@@ -4301,9 +4314,9 @@ def _handle_escape_grapple(live: _LiveCombat, current: Combatant, intent: Player
     its source is in sight, roll it at Disadvantage
     (``_condition_check_sources``). The Action is already spent (budget
     consumed by the caller); escape ends the turn (``_end_action``)."""
-    grappled_ac = next((ac for ac in current.conditions if ac.condition == "grappled"), None)
+    grappled_ac = _escapable_grapple(current)
     assert grappled_ac is not None  # narrowed by the gate above
-    assert grappled_ac.save_dc is not None  # every grapple emit stores one
+    assert grappled_ac.save_dc is not None  # ``_escapable_grapple`` picks one storing a DC
     dc = grappled_ac.save_dc
     athletics_mod = check_modifier(current, "str", "athletics").total
     acrobatics_mod = check_modifier(current, "dex", "acrobatics").total
