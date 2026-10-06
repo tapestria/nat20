@@ -186,7 +186,16 @@ def test_c26_s03_no_enemy_in_reach_means_no_breath() -> None:
     # The young red dragon's Fire Breath is a 30-foot Cone; it has no spell to
     # fall back on. It aims from where it stands as its turn starts: 75 ft away,
     # then 45 ft away after its first walk, so it breathes on neither turn.
-    dragon = _foe("mon:dragon", cell(0, 5), "young-red-dragon", initiative=20, hp_current=178)
+    # base_speed=30 is already the default; it's explicit because turn 2's
+    # Dash-not-Rend assertion below depends on it (SRD 5.2 speed is 40 ft).
+    dragon = _foe(
+        "mon:dragon",
+        cell(0, 5),
+        "young-red-dragon",
+        initiative=20,
+        hp_current=178,
+        base_speed=30,
+    )
     party = [_sturdy("char:a", cell(15, 5), 10), _sturdy("char:b", cell(15, 6), 9)]
     handle, live = _start(party, [dragon], session="e2e-c26-s03", grid=grid_scene(30, 12))
     _monster_turn(handle)

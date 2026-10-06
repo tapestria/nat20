@@ -2432,6 +2432,9 @@ def _resolve_monster_parts(
             _mark_monster_action_used(live, current, owner)
 
 
+# ── Monster action selection, casts and legendary actions ───────────────────
+
+
 def _monster_cast_candidate(
     live: _LiveCombat, current: Combatant, action: MonsterAction
 ) -> tuple[CastActivity, Spell] | None:
