@@ -312,8 +312,9 @@ def test_mage_opens_with_fireball_and_tracks_the_daily_use():
     """
 
     async def go():
+        # 30 ft apart: a Fireball centred on the hero leaves the mage outside it.
         handle, live = await _start(
-            [_hero(initiative=1)], [_foe("mage", initiative=20, hp=40, ac=12)], seed=5
+            [_hero(initiative=1)], [_foe("mage", initiative=20, hp=40, ac=12, col=6)], seed=5
         )
         await advance_monster_turn(handle)
         return live
@@ -475,8 +476,9 @@ def test_save_only_monster_cast_leaves_an_armed_help_grant_untouched():
     """
 
     async def go():
+        # 30 ft apart: a Fireball centred on the hero leaves the mage outside it.
         handle, live = await _start(
-            [_hero(initiative=1)], [_foe("mage", initiative=20, hp=40, ac=12)], seed=5
+            [_hero(initiative=1)], [_foe("mage", initiative=20, hp=40, ac=12, col=6)], seed=5
         )
         live.help_grants["char:hero"] = ["mon:foe"]
         await advance_monster_turn(handle)
@@ -1306,9 +1308,10 @@ def test_adult_red_dragon_breathes_casts_fireball_once_then_multiattacks():
     else Multiattack (Rend) — never an at-will Command over Rend."""
 
     async def go(seed):
+        # 30 ft apart: its Fireball, centred on the hero, leaves the dragon outside.
         handle, live = await _start(
             [_hero(initiative=25, hp=900, ac=18)],
-            [_foe("adult-red-dragon", initiative=10, hp=256, ac=19, col=1)],
+            [_foe("adult-red-dragon", initiative=10, hp=256, ac=19, col=6)],
             seed=seed,
         )
         turns = []

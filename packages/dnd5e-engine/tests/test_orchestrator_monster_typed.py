@@ -415,12 +415,12 @@ def test_self_centered_breath_weapon_does_not_force_close_resolves_from_position
     set_lib_loader_for_tests(MemoryAssetLoader(monsters=[dragon]))
 
     async def _run():
-        # PC is 105ft (21 cells) away. A melee-reach reading would force a
-        # long walk across the grid; the self-centered breath must NOT
-        # trigger that.
+        # PC is 75ft (15 cells) away, inside the 90-ft line. A melee-reach
+        # reading would force a long walk across the grid; the self-centered
+        # breath must NOT trigger that.
         start = await start_combat(
             session_id="sess-breath-self",
-            party=_party(pc_zone=cell_id(21, 0)),
+            party=_party(pc_zone=cell_id(15, 0)),
             encounter=_encounter("breather", foe_zone=cell_id(0, 0)),
             grid_scene=_topology(),
             rng_seed=1,

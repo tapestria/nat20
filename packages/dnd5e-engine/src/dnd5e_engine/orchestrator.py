@@ -120,6 +120,7 @@ from dnd5e_engine.activities.dice import roll_damage_part
 from dnd5e_engine.activities.forced_movement import FORCED_MOVEMENT_RIDERS
 from dnd5e_engine.activities.monster_actions import (
     expand_action_to_activities,
+    expand_action_to_parts,
     multiattack_count,
     rank_monster_actions,
 )
@@ -131,10 +132,12 @@ from dnd5e_engine.activities.passive_stats import (
 from dnd5e_engine.activities.resolver import resolve_activity
 from dnd5e_engine.activities.scale import build_scale_values, feature_owners
 from dnd5e_engine.areas import (
+    AreaAim,
     AreaTemplate,
     area_activity,
     area_cells,
     area_template,
+    best_aim,
     creature_count,
     is_choice,
     is_harmful,
@@ -2038,7 +2041,7 @@ def _monster_target_distance_ft(
     """Path distance (ft) from a monster to its chosen target, or ``None``.
 
     The same shortest-path cost the movement gate reads — handed to
-    ``expand_action_to_activities`` so its range-aware multiattack fallback and
+    ``expand_action_to_parts`` so its range-aware multiattack fallback and
     the gate agree on the live distance. ``None`` when either actor
     has no tracked cell or no path connects them.
     """
@@ -2219,6 +2222,209 @@ def _synthesize_attack_from_legacy_fields(current: Combatant) -> AttackActivity 
     )
 
 
+# ── Monster areas of effect ─────────────────────────────────────────────────
+
+#: One activity a monster's turn resolves, with the stat-block action it comes
+#: from (``None`` for a legacy fixture's synthesized attack).
+_MonsterPart = tuple[MonsterAction | None, Any]
+
+# SRD 5.2 stat blocks name "which creatures make the save" ("each creature in a
+# 60-foot Cone", "each enemy in a 20-foot-radius Sphere"), and a monster places
+# its own area: the built-in AI aims it where it affects the most enemies minus
+# allies (``areas.best_aim``), never on itself, and only when it affects an
+# enemy — else that action or spell is not an option this turn, and the monster
+# takes its next one. The same holds for a stat-block action, a monster's spell
+# and a legendary action.
+
+
+def _monster_area(activities: Sequence[Any]) -> tuple[Any, AreaTemplate] | None:
+    """The area a monster's activities place, as its area activity and grid
+    template; ``None`` when they resolve against the turn's one target: no
+    templated save, damage or heal; an attack among them (an attack roll
+    targets one creature); a template the grid can't place (a ``wall``, a
+    formula size); or "one creature" (a count of one keeps that one target)."""
+    if any(a.kind == "attack" for a in activities):
+        return None
+    activity = area_activity(activities)
+    if activity is None:
+        return None
+    template = area_template(activity)
+    if template is None or creature_count(activity) == 1:
+        return None
+    return activity, template
+
+
+def _range_ft(block: Any) -> int | None:
+    """A range block's reach in whole feet, or ``None`` for one given in other
+    units ("self", "touch") or as a formula."""
+    value = str(block.value or "")
+    if block.units != "ft" or not value.isdigit() or int(value) == 0:
+        return None
+    return int(value)
+
+
+def _monster_aim(
+    live: _LiveCombat,
+    monster: Combatant,
+    activity: Any,
+    template: AreaTemplate,
+    range_ft: int | None,
+) -> AreaAim | None:
+    """Where ``monster`` places ``activity``'s area, and whom it then affects.
+
+    ``areas.best_aim`` scores each candidate placement against ``monster``'s
+    own targets (``_select_monster_targets``: living, above 0 Hit Points, a
+    charmer excepted) — a Sphere or Cylinder centres on one it can see
+    within ``range_ft`` — and picks the aim with the most of those targets
+    minus allies, never the monster itself, requiring at least one of them
+    among the affected. That scored selection is valid only for the
+    population it was scored against: once an origin and direction are
+    chosen this way, whom the area actually affects is recomputed at that
+    placement against every living creature it catches there, 0 Hit Points
+    included (SRD 5.2: a creature at 0 Hit Points in an area still makes its
+    save or takes its damage)."""
+    actor_cell = live.actor_zone[monster.entity_id]
+    enemies = _select_monster_targets(live, monster)
+    target_cells = [
+        cell
+        for enemy in enemies
+        if range_ft is not None
+        and (cell := live.actor_zone.get(enemy.entity_id)) is not None
+        and live.topology.within_range(actor_cell, cell, range_ft)
+        and _combatant_can_see(live, monster, enemy)
+    ]
+    creatures = [
+        (c.entity_id, cell)
+        for c in live.initiative
+        if c.is_alive
+        and c.entity_id not in live.dead_ids
+        and (cell := live.actor_zone.get(c.entity_id)) is not None
+    ]
+    enemy_ids = {c.entity_id for c in enemies}
+    allies = _allied_ids(live, monster.entity_id)
+    aim = best_aim(
+        live.topology,
+        activity,
+        template,
+        actor_id=monster.entity_id,
+        actor_cell=actor_cell,
+        target_cells=target_cells,
+        creatures=creatures,
+        is_enemy=enemy_ids.__contains__,
+        is_ally=allies.__contains__,
+    )
+    if aim is None:
+        return None
+    charmer_id = (
+        _condition_source_entity(live, monster, "charmed")
+        if is_choice(activity) or creature_count(activity) is not None
+        else None
+    )
+
+    def affected_is_enemy(other_id: str) -> bool:
+        return _is_enemy(live, monster.entity_id, other_id) and other_id != charmer_id
+
+    cells = area_cells(live.topology, template, aim.origin, aim.direction)
+    selection = select_affected(
+        [entity_id for entity_id, cell in creatures if cell in cells],
+        affects_type=activity.target.affects.type,
+        choice=is_choice(activity),
+        count=creature_count(activity),
+        harmful=is_harmful([activity]),
+        excluded_ids=None,
+        is_enemy=affected_is_enemy,
+        is_ally=allies.__contains__,
+    )
+    return AreaAim(aim.origin, aim.direction, selection)
+
+
+def _place_monster_area(
+    live: _LiveCombat, monster: Combatant, source_id: str, template: AreaTemplate, aim: AreaAim
+) -> list[Combatant]:
+    """Report a monster's area (``AreaTargeted``) and return the creatures it
+    affects, in initiative order."""
+    _emit(
+        live,
+        AreaTargeted(
+            actor_id=monster.entity_id,
+            source_id=source_id,
+            shape=template.shape,
+            size_ft=template.size_ft,
+            origin=aim.origin,
+            direction=aim.direction,
+            affected_ids=list(aim.selection.affected_ids),
+            excluded_ids=list(aim.selection.spared_ids),
+        ),
+    )
+    by_id = {c.entity_id: c for c in live.initiative}
+    return [by_id[i] for i in aim.selection.affected_ids]
+
+
+def _monster_area_unaimable(
+    live: _LiveCombat, monster: Combatant, activities: Sequence[Any], range_ft: int | None
+) -> bool:
+    """True when ``activities`` place an area that affects no enemy from where
+    ``monster`` stands. ``range_ft`` is a spell's range; ``None`` reads the area
+    activity's own."""
+    area = _monster_area(activities)
+    if area is None:
+        return False
+    activity, template = area
+    reach = range_ft if range_ft is not None else _range_ft(activity.range)
+    return _monster_aim(live, monster, activity, template, reach) is None
+
+
+def _resolve_monster_area(
+    live: _LiveCombat,
+    monster: Combatant,
+    source_id: str,
+    area: tuple[Any, AreaTemplate],
+    activities: Sequence[Any],
+) -> bool:
+    """Resolve ``activities`` against the creatures ``area`` affects from where
+    ``monster`` stands, reported in an ``AreaTargeted`` naming ``source_id``
+    (the action's slug). ``False``, with nothing resolved, when its best aim
+    affects no enemy."""
+    activity, template = area
+    aim = _monster_aim(live, monster, activity, template, _range_ft(activity.range))
+    if aim is None:
+        return False
+    affected = _place_monster_area(live, monster, source_id, template, aim)
+    _resolve_monster_attack_activities(live, monster, affected, activities, cover_origin=aim.origin)
+    return True
+
+
+def _resolve_monster_parts(
+    live: _LiveCombat,
+    current: Combatant,
+    target: Combatant,
+    parts: Sequence[_MonsterPart],
+) -> None:
+    """Resolve a monster turn's chosen action part by part — SRD 5.2
+    Multiattack: the attacks it makes and the actions it uses, in order.
+    Consecutive parts that place no area resolve together against
+    ``target``, as one action; a part whose action places an area resolves
+    against the creatures that area affects (``_resolve_monster_area``), and
+    is skipped when, from where the monster ended its move, that is no enemy.
+    A Recharge action the turn resolves is spent."""
+
+    def area_action(part: _MonsterPart) -> MonsterAction | None:
+        action = part[0]
+        if action is None or _monster_area(action.activities) is None:
+            return None
+        return action
+
+    for action, group in itertools.groupby(parts, key=area_action):
+        members = list(group)
+        activities = [activity for _, activity in members]
+        if action is None or (area := _monster_area(action.activities)) is None:
+            _resolve_monster_attack_activities(live, current, [target], activities)
+        elif not _resolve_monster_area(live, current, action.slug, area, activities):
+            continue
+        for owner in {id(a): a for a, _ in members if a is not None}.values():
+            _mark_monster_action_used(live, current, owner)
+
+
 def _monster_cast_candidate(
     live: _LiveCombat, current: Combatant, action: MonsterAction
 ) -> tuple[CastActivity, Spell] | None:
@@ -2242,7 +2448,9 @@ def _monster_cast_candidate(
       * carries at least one offensive activity of its own (an
         ``AttackActivity``/``SaveActivity``/``DamageActivity`` — a buff/
         utility spell like Mage Armor or Invisibility is never worth the
-        monster's action over an attack).
+        monster's action over an attack);
+      * when it places an area, affects an enemy from where the monster
+        stands (``_monster_area_unaimable``).
 
     The limited-use-first order is the SRD 5.2 Multiattack DM guidance
     ("have it use Multiattack on any of its turns in which it's not using
@@ -2280,6 +2488,8 @@ def _monster_cast_candidate(
             isinstance(a, (AttackActivity, SaveActivity, DamageActivity)) for a in spell.activities
         ):
             continue
+        if _monster_area_unaimable(live, current, spell.activities, _range_ft(spell.range)):
+            continue
         return activity, spell
     return None
 
@@ -2308,10 +2518,12 @@ def _monster_action_available(live: _LiveCombat, current: Combatant, action: Mon
     True (SRD 5.2 "Recharge X-Y" — spent and not yet rolled back in); its
     activities are ALL ``CastActivity`` and ``_monster_cast_candidate``
     can't resolve one (every candidate exhausted/unresolvable/non-offensive);
-    or its limited-use activities are all exhausted (``uses_remaining``
+    its limited-use activities are all exhausted (``uses_remaining``
     tracked and all zero) with no unlimited activity on the same action to
-    fall back to. ``True`` otherwise, including for an action with no
-    tracked ``MonsterActionUses`` entry at all (nothing to gate).
+    fall back to; or it places an area that affects no enemy from where the
+    monster stands (``_monster_area_unaimable``). ``True`` otherwise,
+    including for an action with no tracked ``MonsterActionUses`` entry at
+    all (nothing to gate).
     """
     entry = live.monster_action_uses_by_entity.get(current.entity_id, {}).get(action.slug)
     if entry is not None and entry.recharge_spent:
@@ -2325,7 +2537,7 @@ def _monster_action_available(live: _LiveCombat, current: Combatant, action: Mon
         )
         if not has_unlimited_activity and all(v <= 0 for v in entry.uses_remaining.values()):
             return False
-    return True
+    return not _monster_area_unaimable(live, current, activities, None)
 
 
 def _mark_monster_action_used(live: _LiveCombat, current: Combatant, action: MonsterAction) -> None:
@@ -2377,28 +2589,30 @@ def _resolve_monster_activities(
     monster_slug: str | None,
     skip_to_record_pass: bool,
     chosen_target: Combatant | None,
-) -> tuple[list[Any], tuple[MonsterAction, CastActivity, Spell] | None]:
+) -> tuple[list[_MonsterPart], tuple[MonsterAction, CastActivity, Spell] | None]:
     """Resolve monster activities: legacy-fallback when no template, or typed
     activity selection from a ``Monster`` template.
 
-    Returns ``(activities, cast_selection)``. ``activities`` is a list of
-    ``Activity`` objects (typically empty or one element, expanded to
-    multiple on multiattack) — empty when the monster has no template and
-    ``damage_dice`` doesn't parse, when a slug is unresolvable from the
-    lib, or when the chosen action is a stat-block spellcast (its own
-    activities are ``CastActivity`` wrappers, never resolver-ready
+    Returns ``(parts, cast_selection)``. ``parts`` pairs each ``Activity`` to
+    resolve with the stat-block action it comes from (``None`` for the
+    legacy fallback's synthesized attack) — typically one action's own
+    activities, a multiattack's sub-attacks and the actions it uses, in
+    order (``expand_action_to_parts``). It is empty when the monster has no
+    template and ``damage_dice`` doesn't parse, when a slug is unresolvable
+    from the lib, or when the chosen action is a stat-block spellcast (its
+    own activities are ``CastActivity`` wrappers, never resolver-ready
     directly). ``cast_selection`` is the ``(action, activity, spell)``
     tuple ``_monster_cast_candidate`` resolved when the ranked pick is a
-    cast-only action, else ``None`` — mutually exclusive with a non-empty
-    ``activities`` list.
+    cast-only action, else ``None`` — mutually exclusive with non-empty
+    ``parts``.
     """
-    monster_activities: list[Any] = []
+    monster_parts: list[_MonsterPart] = []
     cast_selection: tuple[MonsterAction, CastActivity, Spell] | None = None
     if not skip_to_record_pass and monster_slug is None:
         # Legacy-fixture fallback — see _synthesize_attack_from_legacy_fields.
         synthesized = _synthesize_attack_from_legacy_fields(current)
         if synthesized is not None:
-            monster_activities = [synthesized]
+            monster_parts = [(None, synthesized)]
     if not skip_to_record_pass and monster_slug is not None:
         monster = get_lib_loader().get_monster(monster_slug)
         if monster is None:
@@ -2429,17 +2643,22 @@ def _resolve_monster_activities(
                     # distance + profile so it can prefer a sibling whose own range
                     # already covers the target (scout → longbow at 100 ft) instead
                     # of the first-listed melee weapon. Distance is the same path
-                    # cost the movement gate below reads, so the two agree.
-                    monster_activities = expand_action_to_activities(
-                        monster,
-                        monster_action,
-                        target_distance_ft=_monster_target_distance_ft(
-                            live, current.entity_id, chosen_target
-                        ),
-                        behavior_profile=current.behavior_profile,
-                        melee_reach_ft=current.melee_reach_ft,
+                    # cost the movement gate below reads, so the two agree. A
+                    # sibling the Multiattack uses "if available" sits the turn
+                    # out while it isn't (a spent Recharge).
+                    monster_parts = list(
+                        expand_action_to_parts(
+                            monster,
+                            monster_action,
+                            target_distance_ft=_monster_target_distance_ft(
+                                live, current.entity_id, chosen_target
+                            ),
+                            behavior_profile=current.behavior_profile,
+                            melee_reach_ft=current.melee_reach_ft,
+                            is_available=lambda a: _monster_action_available(live, current, a),
+                        )
                     )
-    return monster_activities, cast_selection
+    return monster_parts, cast_selection
 
 
 def _monster_context_kwargs(
@@ -2447,6 +2666,8 @@ def _monster_context_kwargs(
     current: Combatant,
     target_list: list[Combatant],
     payload: dict[str, Any],
+    *,
+    origin_cell: str | None = None,
 ) -> dict[str, Any]:
     """The ``build_activity_context`` keyword block shared by every monster
     resolution path (the mundane attack site; the C18 Task 5 stat-block
@@ -2458,7 +2679,8 @@ def _monster_context_kwargs(
     ``spell_book``). Extracted from the historical single monster attack
     site so a second monster resolution branch can share it byte-for-byte
     rather than re-deriving it (and to hold ``advance_monster_turn`` under
-    the McCabe ceiling).
+    the McCabe ceiling). ``origin_cell`` is an area's point of origin, which
+    cover is measured from (``_target_cover_map``).
     """
     target_unseen, attacker_unseen_by = _target_visibility_maps(live, current, target_list)
     attacker_invisibility_pierced_by, target_invisibility_pierced = _invisibility_pierced_maps(
@@ -2469,7 +2691,9 @@ def _monster_context_kwargs(
         "save_modifiers": payload["save_modifiers"],
         "check_modifiers": payload["check_modifiers"],
         "d20_test_penalty": payload["d20_test_penalty"],
-        "target_cover": _target_cover_map(live, current.entity_id, target_list),
+        "target_cover": _target_cover_map(
+            live, current.entity_id, target_list, origin_cell=origin_cell
+        ),
         "target_distance_ft": _target_distance_map(live, current.entity_id, target_list),
         # SRD 5.2 §Actions in Combat — Dodge: a dodging target imposes
         # disadvantage only while it can also see THIS attacker (C16b's
@@ -2554,17 +2778,27 @@ def _resolve_monster_cast(
     monster's own ``Combatant.spellcasting_ability`` (hydrated from
     ``Monster.spellcasting_ability`` in ``_build_foe_combatants``).
 
-    No AoE template expansion (single ``chosen_target`` only — out of
-    scope for this task) and no movement-closing gambit (the caller never
-    reads ``monster_activities`` for range on this path, so a cast always
-    resolves from the monster's current position).
+    A spell that places an area resolves against the creatures its best aim
+    affects (``_monster_aim``; the aim's point of origin is where cover is
+    measured from), reported in an ``AreaTargeted`` whose ``source_id`` is
+    the spell's slug; any other spell resolves against ``chosen_target``. No
+    movement-closing gambit (the caller never reads the turn's parts for
+    range on this path, so a cast always resolves from the monster's current
+    position).
     """
     target_list = [chosen_target]
+    cover_origin: str | None = None
     slot_level = activity.spell.level if activity.spell.level is not None else spell.level
     spellcasting_ability = activity.spell.ability or current.spellcasting_ability
 
     payload = _build_hydration_payload(live, caster=current)
     pre_event_count = len(live.event_log)
+    _emit_spell_cast(live, current.entity_id, spell, slot_level)
+    area = _monster_area(spell.activities)
+    aim = None if area is None else _monster_aim(live, current, *area, _range_ft(spell.range))
+    if area is not None and aim is not None:
+        target_list = _place_monster_area(live, current, spell.slug, area[1], aim)
+        cover_origin = aim.origin
     actx = build_activity_context(
         current,
         target_list,
@@ -2576,9 +2810,8 @@ def _resolve_monster_cast(
         concentration=spell.concentration,
         source_passive_effects=list(spell.passive_effects),
         spell_book=_build_cast_spell_book(spell.activities),
-        **_monster_context_kwargs(live, current, target_list, payload),
+        **_monster_context_kwargs(live, current, target_list, payload, origin_cell=cover_origin),
     )
-    _emit_spell_cast(live, current.entity_id, spell, slot_level)
     for child_activity in spell.activities:
         resolve_activity(child_activity, actx)
 
@@ -2691,6 +2924,7 @@ def _resolve_monster_attack_activities(
     activities: Sequence[Any],
     *,
     is_opportunity_attack: bool = False,
+    cover_origin: str | None = None,
 ) -> None:
     """Resolve a monster's own attack/save ``Activity`` list against
     ``target_list``: Shield drain, ``build_activity_context`` (via
@@ -2699,26 +2933,30 @@ def _resolve_monster_attack_activities(
     clause, and concentration/effect-lifecycle writeback — the ONE
     resolution sequence shared by the mundane monster-attack branch of
     ``advance_monster_turn`` (which first expands multiattack via
-    ``expand_action_to_activities`` and may close distance with a move
-    before calling this) and a legendary action's own attack/save entry
+    ``expand_action_to_parts`` and may close distance with a move before
+    calling this, through ``_resolve_monster_parts``) and a legendary
+    action's own attack/save entry
     (``_take_legendary_action``, which never moves and always resolves
     from the monster's current position — same as a stat-block spellcast,
     ``_resolve_monster_cast``) and a stat-block creature's opportunity attack
     (``is_opportunity_attack``). Extracted (C18 Task 6 fix round 1) so a
     future hook added to one caller can't silently miss the other.
+    ``cover_origin`` is an area's point of origin (``_resolve_monster_area``).
     """
     # SRD §Reactions — drain the attacked PC's pending ``hit_by_attack``
     # reaction (Shield) BEFORE the sidecar projection below, so the
     # just-applied +5 AC effect folds into THIS attack's hydration
     # payload — the monster-attacker / PC-defender direction. Shield's own
     # resolution draws no dice, so the attack's d20 keeps its seed-stream
-    # position.
-    _drain_targeted_reactions(
-        live,
-        trigger="hit_by_attack",
-        triggering_actor_id=actor.entity_id,
-        targets=target_list,
-    )
+    # position. SRD 5.2 Shield answers "being hit by an attack roll": a
+    # save action (a Breath Weapon) leaves it readied.
+    if any(isinstance(a, AttackActivity) for a in activities):
+        _drain_targeted_reactions(
+            live,
+            trigger="hit_by_attack",
+            triggering_actor_id=actor.entity_id,
+            targets=target_list,
+        )
     # The orchestrator owns the per-entity passive sidecars; project them
     # once and hand the two dicts ``build_activity_context`` needs in (it
     # stays pure — no orchestrator import, no double-compute). Mirrors the
@@ -2749,7 +2987,7 @@ def _resolve_monster_attack_activities(
         # is a recorded follow-up.
         spell_book={},
         is_opportunity_attack=is_opportunity_attack,
-        **_monster_context_kwargs(live, actor, target_list, payload),
+        **_monster_context_kwargs(live, actor, target_list, payload, origin_cell=cover_origin),
     )
     for activity in activities:
         # Monster attacks carry their damage on the AttackActivity itself,
@@ -2793,7 +3031,9 @@ def _take_legendary_action(live: _LiveCombat, monster: Combatant) -> None:
     at-will/N-per-day gating and Spell lookup a stat-block spellcast on the
     monster's own turn uses; a non-cast action qualifies when it carries an
     ``AttackActivity``/``SaveActivity``/``DamageActivity`` and resolves
-    through ``_resolve_monster_attack_activities``. A ``utility``-only entry (e.g.
+    through ``_resolve_monster_attack_activities`` — an area through
+    ``_resolve_monster_area``, and skipped like any unavailable entry when it
+    affects no enemy. A ``utility``-only entry (e.g.
     Pounce) is never offensive and is skipped. Only entries whose
     ``legendary_cost`` is unset or ``1`` are considered — the bundled
     corpus carries no multi-point legendary action today (see BACKLOG for
@@ -2831,10 +3071,14 @@ def _take_legendary_action(live: _LiveCombat, monster: Combatant) -> None:
         is_offensive = any(
             isinstance(a, (AttackActivity, SaveActivity, DamageActivity)) for a in activities
         )
-        if not is_offensive:
+        if not is_offensive or _monster_area_unaimable(live, monster, activities, None):
             continue
         _spend_legendary_use(live, monster, action.slug)
-        _resolve_monster_attack_activities(live, monster, [target], activities)
+        area = _monster_area(activities)
+        if area is None:
+            _resolve_monster_attack_activities(live, monster, [target], activities)
+        else:
+            _resolve_monster_area(live, monster, action.slug, area, activities)
         return
 
     raise IntentRejectedError(
@@ -12602,11 +12846,13 @@ async def advance_monster_turn(
 
     Selection: ``select_typed_monster_action``
     picks an action from the typed ``Monster.actions`` (fetched from the lib
-    loader by ``monster_template_slug``); ``expand_action_to_activities`` fans
+    loader by ``monster_template_slug``); ``expand_action_to_parts`` fans
     multiattack out into its sub-attacks. Targeting: the lowest-HP living
     enemy, first in initiative order on a tie (the legacy gambit's
     ``target_priority="lowest_hp"`` semantics) — the party's members and the
-    summons they own, a charmer excepted (``_select_monster_targets``).
+    summons they own, a charmer excepted (``_select_monster_targets``). An
+    area resolves against the creatures its best aim affects instead
+    (``_resolve_monster_parts``).
     Resolution: each returned ``Activity`` runs through
     ``resolve_activity`` against a context
     built by ``build_activity_context`` — the same typed path as the PC
@@ -12711,9 +12957,10 @@ async def advance_monster_turn(
     # out multiattack. This is the sole monster-turn path; the old the legacy evaluator IR
     # path was retired in .
     monster_slug = live.monster_slug_by_entity.get(current.entity_id)
-    monster_activities, cast_selection = _resolve_monster_activities(
+    monster_parts, cast_selection = _resolve_monster_activities(
         live, current, monster_slug, skip_to_record_pass, chosen_target
     )
+    monster_activities = [activity for _, activity in monster_parts]
     has_action = bool(monster_activities) or cast_selection is not None
 
     # Monster gambit range awareness. When the chosen attack is
@@ -12842,8 +13089,7 @@ async def advance_monster_turn(
         # the resolver runs against the post-move Combatant.
         current = next(c for c in live.initiative if c.entity_id == current.entity_id)
         assert chosen_target is not None  # mypy: narrowed by will_attack
-        target_list = [chosen_target]
-        _resolve_monster_attack_activities(live, current, target_list, monster_activities)
+        _resolve_monster_parts(live, current, chosen_target, monster_parts)
 
     # Advance the turn — the single shared path (F3a); this site used to carry
     # its own copy of the wrap-and-emit block.

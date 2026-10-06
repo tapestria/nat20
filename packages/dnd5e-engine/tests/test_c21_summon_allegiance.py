@@ -431,7 +431,10 @@ def test_a_legendary_action_that_drops_the_current_summon_opens_no_window() -> N
     # SRD 5.2 Legendary Actions: taken "immediately after another creature's
     # turn" — here the summoner's, before its spirit acts. The spirit leaves
     # with no turn to end, so no window opens after it; the next creature's
-    # turn opens once the legendary action has resolved.
+    # turn opens once the legendary action has resolved. The lich's Deathly
+    # Teleport (a 10-foot-radius burst) centres on the spirit, which catches it
+    # and the ally beside it, and leaves the summoner (and its concentration)
+    # out of reach.
     lich = foe(
         entity_id="mon:lich",
         name="Lich",
@@ -440,15 +443,15 @@ def test_a_legendary_action_that_drops_the_current_summon_opens_no_window() -> N
         hp_max=256,
         ac=19,
         monster_template_slug="lich",
-        zone_id=cell_id(2, 1),
+        zone_id=cell_id(7, 3),
     )
     handle, live = start(
-        [summoner(hp_current=90, hp_max=90), pc("char:ally", initiative=15, zone_id=cell_id(0, 2))],
+        [summoner(hp_current=90, hp_max=90), pc("char:ally", initiative=15, zone_id=cell_id(3, 5))],
         seed=1,
         encounter=[lich],
         active_effects=[anchor_effect(OWNER)],
     )
-    seat_summon(live, OWNER, zone_id=cell_id(1, 1), hp=3)
+    seat_summon(live, OWNER, zone_id=cell_id(3, 3), hp=3)
     act(handle, OWNER, intent_type="pass")
     assert _current_actor(live).entity_id == SPIRIT
     first = len(live.event_log)
