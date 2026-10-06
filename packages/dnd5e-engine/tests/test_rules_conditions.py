@@ -22,6 +22,7 @@ import pytest
 from dnd5e_engine.rules.conditions import (
     AUTO_CRIT_WITHIN_5FT_CONDITIONS,
     CONDITION_EFFECTS,
+    CONDITION_GRANTED_IMMUNITIES,
     CONDITION_IMPLIES,
     SPEED_ZERO_CONDITIONS,
     Condition,
@@ -36,6 +37,7 @@ from dnd5e_engine.rules.conditions import (
     d20_test_penalty,
     exhaustion_level_of,
     get_condition_effects,
+    granted_condition_immunities,
     is_condition_active,
     project_passive_check_modifiers,
     project_passive_damage_modifiers,
@@ -598,3 +600,51 @@ def test_frightened_disadvantage_requires_fear_source_in_sight() -> None:
         False,
         False,
     )
+
+
+# ── Frightened's ability-check gate; Petrified's Poison Immunity (C27) ───────
+
+
+def test_frightened_check_disadvantage_requires_fear_source_in_sight() -> None:
+    """SRD 5.2 Frightened: "You have Disadvantage on ability checks and attack
+    rolls while the source of fear is within line of sight." Poisoned has no
+    such clause."""
+    assert conditions_grant_disadvantage_on_ability_checks(["frightened"]) is True
+    assert (
+        conditions_grant_disadvantage_on_ability_checks(["frightened"], fear_source_in_sight=False)
+        is False
+    )
+    assert (
+        conditions_grant_disadvantage_on_ability_checks(
+            ["frightened", "poisoned"], fear_source_in_sight=False
+        )
+        is True
+    )
+
+
+def test_check_projection_follows_the_fear_gate() -> None:
+    assert project_passive_check_modifiers(["frightened"], fear_source_in_sight=False) == {
+        "passive_check_adv": [],
+        "passive_check_dis": [],
+    }
+    assert project_passive_check_modifiers(["poisoned"], fear_source_in_sight=False) == {
+        "passive_check_adv": [],
+        "passive_check_dis": ["all"],
+    }
+
+
+def test_petrified_grants_immunity_to_the_poisoned_condition() -> None:
+    """SRD 5.2 Petrified: "Poison Immunity. You have Immunity to the Poisoned
+    condition." """
+    assert set(CONDITION_GRANTED_IMMUNITIES) == {Condition.PETRIFIED}
+    assert CONDITION_GRANTED_IMMUNITIES[Condition.PETRIFIED] == frozenset({"poisoned"})
+    assert granted_condition_immunities(["Petrified", "prone"]) == frozenset({"poisoned"})
+    assert granted_condition_immunities(["poisoned", "frightened"]) == frozenset()
+
+
+def test_a_petrified_creatures_poisoned_imposes_no_check_disadvantage() -> None:
+    """Immunity "doesn't affect you in any way": a creature Poisoned before it
+    was Petrified rolls its checks without the Poisoned Disadvantage."""
+    assert conditions_grant_disadvantage_on_ability_checks(["poisoned", "petrified"]) is False
+    assert project_passive_check_modifiers(["poisoned", "petrified"])["passive_check_dis"] == []
+    assert conditions_grant_disadvantage_on_ability_checks(["frightened", "petrified"]) is True

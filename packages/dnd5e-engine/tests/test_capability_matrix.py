@@ -244,16 +244,17 @@ _PROBES: dict[str, tuple[Any, str]] = {
         "✅",
     ),
     # C12 landed the enforced rows (the Incapacitated action gate is the
-    # cheapest witness), but three SRD rows are still unenforced (a fourth,
-    # Incapacitated's concentration break, closed with C13) — the
-    # Frightened line-of-sight gate is the one this probe watches, because
-    # ``rules/conditions.py`` names it explicitly as not modelled. While both
-    # halves hold, the row is ⚠️ Partial; implementing the gate (which means
-    # deleting that sentence) flips the probe and forces the row up to ✅.
+    # cheapest witness). One SRD row still unenforced is the engine-rolled
+    # Initiative's: it reads Surprise and a seeded Incapacitated status only,
+    # never a Poisoned, Frightened or Invisible one — the line this probe
+    # watches. While both hold, the row is ⚠️ Partial; giving Initiative its
+    # condition rows changes that line, flips the probe and forces the row to
+    # be revisited.
     "Conditions (the 15 SRD conditions)": (
         lambda: (
             '"actor_incapacitated"' in _src("orchestrator.py")
-            and "line-of-sight gate is not modelled" in _src("rules/conditions.py")
+            and "disadvantage = spec.is_surprised or spec.entity_id in seeded_incapacitated"
+            in _src("orchestrator.py")
         ),
         "⚠️ Partial",
     ),
