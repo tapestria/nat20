@@ -86,11 +86,13 @@ description to fan it out — "makes two Claw attacks and uses Roar" becomes two
 claws and one roar.
 
 **128 of the 180 multiattacks in the corpus resolve to the exact SRD attack
-mix.** The remaining 52 fall back to repeating one attack N times — one the
-description names: "three attacks, using Storm Blade or Storm Bolt in any
-combination" repeats Storm Blade or Storm Bolt, whichever reaches — and log
-`multiattack_join_unresolved` at WARNING, so the loss is always visible in your
-logs rather than silent. For homogeneous multiattacks ("three Rend attacks")
+mix.** Of the remaining 52, 51 fall back to repeating one attack N times —
+one the description names, when it names any: "three attacks, using Storm
+Blade or Storm Bolt in any combination" repeats Storm Blade or Storm Bolt,
+whichever reaches — and the Avatar of Death's, with no attack to repeat,
+resolves nothing; each logs `multiattack_join_unresolved` at WARNING, so the
+loss is always visible in your logs rather than silent. For homogeneous
+multiattacks ("three Rend attacks")
 the fallback is correct; for a heterogeneous one it repeats one of the attacks
 named. An action a multiattack uses "if available" (the Doppelganger's
 Unsettling Visage) sits out while its Recharge is spent, and an area it uses
@@ -118,8 +120,9 @@ engine consumes.
   Sunlight Sensitivity.
 - Real stat-block numbers for a template monster that is not transformed, and
   commanding a stat block's save actions (a Breath Weapon).
-- Moving into reach and then using an area: a monster aims only from where its
-  turn starts.
+- Moving into reach and then using an area: a monster chooses an area only
+  from where its turn starts (an area its Multiattack uses is placed after
+  the Multiattack's walk).
 
 All are tracked in `BACKLOG.md`. If you need them, resolve them host-side and
 apply the results through the engine's normal paths.

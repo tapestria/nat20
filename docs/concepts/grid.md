@@ -149,7 +149,9 @@ area whose creatures the intent names; neither emits `AreaTargeted`.
 The monster AI places its own areas — a breath, a stat-block spell, a
 legendary action — under the same rules for whom they affect, with no
 exclusions. It aims from the cell it stands in when its turn's action is
-chosen and takes the placement that affects the most enemies minus allies,
+chosen (an area its Multiattack uses, from the cell the Multiattack's walk
+ends on, skipped and unspent if it then affects no enemy) and takes the
+placement that affects the most enemies minus allies,
 never itself: an Emanation from its cell; a Cone, Cube or Line in each of the
 eight directions (north first, then clockwise); a Sphere or Cylinder centred on
 each foe it can see within the action's or spell's range. The area then
