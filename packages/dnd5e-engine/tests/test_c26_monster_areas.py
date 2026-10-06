@@ -17,6 +17,7 @@ import pytest
 from dnd5e_srd_data.loader import BundledAssetLoader
 
 from dnd5e_engine.events import (
+    ActorMoved,
     AttackRolled,
     LegendaryActionUsed,
     ReactionTriggered,
@@ -31,6 +32,7 @@ from dnd5e_engine.orchestrator import (
 )
 from dnd5e_engine.spatial import cell_id
 from dnd5e_engine.specs import GridScene
+from dnd5e_engine.types.conditions import ActiveCondition
 from tests.c20_support import act, combatant, events, foe, monster_turn, pc, start, wizard
 
 
@@ -239,8 +241,10 @@ def test_a_one_creature_action_keeps_the_turns_target() -> None:
 
 
 def test_the_lich_never_bursts_on_itself() -> None:
-    # Deathly Teleport's 10-foot burst, centred on the adjacent hero, would
-    # catch the lich: its next legendary action, Disrupt Life, goes instead.
+    # Deathly Teleport's 10-foot burst, which the engine centres on an enemy
+    # rather than on the space the lich leaves (BACKLOG.md), would catch the
+    # lich beside its hero: its next legendary action, Disrupt Life, goes
+    # instead.
     handle, live = start([pc()], seed=1, encounter=[_monster("lich", 1, initiative=1)])
     act(handle, "char:hero", intent_type="pass")
     asyncio.run(advance_monster_turn(handle, legendary=True))
@@ -266,3 +270,108 @@ def test_a_lich_with_no_enemy_in_reach_takes_no_legendary_action() -> None:
     assert refused.value.reason == "no_legendary_action"
     assert combatant(live, "mon:foe").legendary_actions_remaining == 3
     assert _areas(live) == []
+
+
+def test_a_dragon_whose_breaths_reach_no_one_closes_in() -> None:
+    # Both of the ancient gold dragon's 90-foot Cones fall short of a foe
+    # 120 ft away: its Multiattack walks in with Rend instead of idling.
+    async def _run():
+        started = await start_combat(
+            session_id="c26b-gold-far",
+            party=[pc(zone_id=cell_id(24, 0))],
+            encounter=[_monster("ancient-gold-dragon", 0, hp_current=500, hp_max=500)],
+            grid_scene=GridScene(width=30, height=10),
+            rng_seed=1,
+        )
+        return started.handle, _get_live(started.handle)
+
+    handle, live = asyncio.run(_run())
+    asyncio.run(advance_monster_turn(handle))
+    assert [e for e in events(live, ActorMoved) if e.actor_id == "mon:foe"]
+    assert _areas(live) == []
+
+
+def test_a_charmed_monsters_choice_area_spares_its_charmer() -> None:
+    # SRD 5.2 Sleep: "Each creature of your choice in a 5-foot-radius Sphere".
+    # A charmed couatl centres it on its other foe and spares its charmer,
+    # who stands in the Sphere. (A condition source takes a 12-hex-digit id.)
+    charmer = "char:00000000cafe"
+    handle, live = start(
+        [pc(charmer, zone_id=cell_id(6, 5)), pc("char:other", zone_id=cell_id(6, 6))],
+        seed=1,
+        encounter=[_monster("couatl", 0, 5)],
+    )
+    combatant(live, "mon:foe").conditions.append(
+        ActiveCondition(condition="charmed", source_entity_id=charmer, scope="combat")
+    )
+    live.active_conditions.setdefault("mon:foe", set()).add("charmed")
+    monster_turn(handle)
+    [area] = _areas(live)
+    assert (area.source_id, area.affected_ids, area.excluded_ids) == (
+        "sleep",
+        ["char:other"],
+        [charmer],
+    )
+    assert [e.target_id for e in events(live, SaveRolled)] == ["char:other"]
+
+
+def test_a_multiattacks_area_part_is_aimed_from_where_its_walk_ends() -> None:
+    # "The sphinx makes two Claw attacks and uses Roar": 25 ft from its target
+    # it walks into reach, and the Roar's Emanation starts where the walk
+    # ended. Its first turn spends its daily Zone of Truth.
+    handle, live = start(
+        [
+            pc(zone_id=cell_id(5, 5)),
+            pc("char:far", hp_current=300, hp_max=300, zone_id=cell_id(9, 9)),
+        ],
+        seed=1,
+        encounter=[_monster("sphinx-of-valor", 0, 5)],
+    )
+    monster_turn(handle)
+    for pid in [c.entity_id for c in live.initiative if c.entity_id.startswith("char:")]:
+        act(handle, pid, intent_type="pass")
+    turn_two = len(live.event_log)
+    monster_turn(handle)
+    later = live.event_log[turn_two:]
+    assert [e for e in later if isinstance(e, ActorMoved) and e.actor_id == "mon:foe"]
+    [roar] = [e for e in later if e.type == "area_targeted"]
+    assert roar.source_id == "roar"
+    assert roar.origin == live.actor_zone["mon:foe"] != cell_id(0, 5)
+
+
+def test_a_monster_spell_is_aimed_within_its_own_range() -> None:
+    # A Sphere spell whose activity reads 150 ft but whose own range is Self:
+    # the gate and the cast both read the spell's range, so neither aims it.
+    from dnd5e_engine.orchestrator import (
+        _monster_aim,
+        _monster_area,
+        _monster_area_unaimable,
+        _range_ft,
+    )
+
+    fireball = BundledAssetLoader().get_spell("fireball")
+    assert fireball is not None
+    activity = fireball.activities[0]
+    self_range = fireball.model_copy(
+        update={
+            "range": fireball.range.model_copy(update={"units": "self", "value": None}),
+            "activities": [
+                activity.model_copy(
+                    update={
+                        "range": activity.range.model_copy(update={"units": "ft", "value": "150"})
+                    }
+                )
+            ],
+        }
+    )
+    _handle, live = start(
+        [pc(zone_id=cell_id(8, 0))],
+        seed=1,
+        encounter=[foe(monster_template_slug="mage", zone_id=cell_id(0, 0))],
+    )
+    mage = combatant(live, "mon:foe")
+    area = _monster_area(self_range.activities)
+    assert area is not None
+    assert _monster_aim(live, mage, *area, _range_ft(self_range.range)) is None
+    assert _monster_area_unaimable(live, mage, self_range.activities, self_range) is True
+    assert _monster_area_unaimable(live, mage, fireball.activities, fireball) is False

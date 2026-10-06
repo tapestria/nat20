@@ -2282,7 +2282,9 @@ def _monster_aim(
     chosen this way, whom the area actually affects is recomputed at that
     placement against every living creature it catches there, 0 Hit Points
     included (SRD 5.2: a creature at 0 Hit Points in an area still makes its
-    save or takes its damage)."""
+    save or takes its damage). There an enemy is any creature on the other
+    side; a charmer is spared only where the monster chooses whom the area
+    affects (a choice or counted area)."""
     actor_cell = live.actor_zone[monster.entity_id]
     enemies = _select_monster_targets(live, monster)
     target_cells = [
@@ -2361,37 +2363,40 @@ def _place_monster_area(
 
 
 def _monster_area_unaimable(
-    live: _LiveCombat, monster: Combatant, activities: Sequence[Any], range_ft: int | None
+    live: _LiveCombat, monster: Combatant, activities: Sequence[Any], spell: Spell | None
 ) -> bool:
     """True when ``activities`` place an area that affects no enemy from where
-    ``monster`` stands. ``range_ft`` is a spell's range; ``None`` reads the area
-    activity's own."""
+    ``monster`` stands, within ``spell``'s own range when it casts one (the
+    range ``_resolve_monster_cast`` aims with), else the area activity's."""
     area = _monster_area(activities)
     if area is None:
         return False
     activity, template = area
-    reach = range_ft if range_ft is not None else _range_ft(activity.range)
+    reach = _range_ft(spell.range) if spell is not None else _range_ft(activity.range)
     return _monster_aim(live, monster, activity, template, reach) is None
+
+
+def _action_area_aim(
+    live: _LiveCombat, monster: Combatant, area: tuple[Any, AreaTemplate]
+) -> AreaAim | None:
+    """``_monster_aim`` for a stat-block or legendary action's area, within
+    its area activity's own range."""
+    activity, template = area
+    return _monster_aim(live, monster, activity, template, _range_ft(activity.range))
 
 
 def _resolve_monster_area(
     live: _LiveCombat,
     monster: Combatant,
     source_id: str,
-    area: tuple[Any, AreaTemplate],
+    template: AreaTemplate,
+    aim: AreaAim,
     activities: Sequence[Any],
-) -> bool:
-    """Resolve ``activities`` against the creatures ``area`` affects from where
-    ``monster`` stands, reported in an ``AreaTargeted`` naming ``source_id``
-    (the action's slug). ``False``, with nothing resolved, when its best aim
-    affects no enemy."""
-    activity, template = area
-    aim = _monster_aim(live, monster, activity, template, _range_ft(activity.range))
-    if aim is None:
-        return False
+) -> None:
+    """Resolve ``activities`` against the creatures ``aim`` affects, reported
+    in an ``AreaTargeted`` naming ``source_id`` (the action's slug)."""
     affected = _place_monster_area(live, monster, source_id, template, aim)
     _resolve_monster_attack_activities(live, monster, affected, activities, cover_origin=aim.origin)
-    return True
 
 
 def _resolve_monster_parts(
@@ -2419,8 +2424,10 @@ def _resolve_monster_parts(
         activities = [activity for _, activity in members]
         if action is None or (area := _monster_area(action.activities)) is None:
             _resolve_monster_attack_activities(live, current, [target], activities)
-        elif not _resolve_monster_area(live, current, action.slug, area, activities):
+        elif (aim := _action_area_aim(live, current, area)) is None:
             continue
+        else:
+            _resolve_monster_area(live, current, action.slug, area[1], aim, activities)
         for owner in {id(a): a for a, _ in members if a is not None}.values():
             _mark_monster_action_used(live, current, owner)
 
@@ -2488,7 +2495,7 @@ def _monster_cast_candidate(
             isinstance(a, (AttackActivity, SaveActivity, DamageActivity)) for a in spell.activities
         ):
             continue
-        if _monster_area_unaimable(live, current, spell.activities, _range_ft(spell.range)):
+        if _monster_area_unaimable(live, current, spell.activities, spell):
             continue
         return activity, spell
     return None
@@ -3071,14 +3078,17 @@ def _take_legendary_action(live: _LiveCombat, monster: Combatant) -> None:
         is_offensive = any(
             isinstance(a, (AttackActivity, SaveActivity, DamageActivity)) for a in activities
         )
-        if not is_offensive or _monster_area_unaimable(live, monster, activities, None):
+        if not is_offensive:
+            continue
+        area = _monster_area(activities)
+        aim = None if area is None else _action_area_aim(live, monster, area)
+        if area is not None and aim is None:
             continue
         _spend_legendary_use(live, monster, action.slug)
-        area = _monster_area(activities)
-        if area is None:
+        if area is None or aim is None:
             _resolve_monster_attack_activities(live, monster, [target], activities)
         else:
-            _resolve_monster_area(live, monster, action.slug, area, activities)
+            _resolve_monster_area(live, monster, action.slug, area[1], aim, activities)
         return
 
     raise IntentRejectedError(

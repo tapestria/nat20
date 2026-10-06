@@ -432,9 +432,10 @@ def test_a_legendary_action_that_drops_the_current_summon_opens_no_window() -> N
     # turn" — here the summoner's, before its spirit acts. The spirit leaves
     # with no turn to end, so no window opens after it; the next creature's
     # turn opens once the legendary action has resolved. The lich's Deathly
-    # Teleport (a 10-foot-radius burst) centres on the spirit, which catches it
-    # and the ally beside it, and leaves the summoner (and its concentration)
-    # out of reach.
+    # Teleport (a 10-foot-radius burst) is placed by the engine's current
+    # approximation — centred on an enemy, not on the space the lich leaves
+    # (BACKLOG.md) — here on the spirit, which catches it and the ally beside
+    # it and leaves the summoner (and its concentration) out of reach.
     lich = foe(
         entity_id="mon:lich",
         name="Lich",
