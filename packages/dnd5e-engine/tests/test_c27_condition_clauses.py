@@ -349,3 +349,46 @@ def test_escaping_an_effects_grappled_left_after_the_grapple_ends_is_refused() -
         _act(handle, "char:hero", intent_type="escape_grapple")
     assert rejected.value.reason == "target_invalid"
     assert [e for e in events_of(live, CheckRolled) if e.actor_id == "char:hero"] == []
+
+
+def test_one_spell_from_two_casters_shares_one_entry_until_both_end() -> None:
+    # Effect ids derive from the effect's name, so Hold Person from two
+    # casters lands two effects with one id: they share one Paralyzed entry,
+    # which lasts while either effect does.
+    first, second = (
+        ActiveEffect(
+            id="effect:paralyzed",
+            name="Paralyzed",
+            origin=f"cast:hold-person:{caster}",
+            target_id="mon:foe",
+            statuses={"paralyzed"},
+        )
+        for caster in ("char:a", "char:b")
+    )
+    _handle, live = _start([_hero()], [_foe()])
+    _apply_effect(live, first)
+    _apply_effect(live, second)
+    foe = next(c for c in live.initiative if c.entity_id == "mon:foe")
+    assert [ac.source_effect_id for ac in foe.conditions] == ["effect:paralyzed"]
+
+    _emit(
+        live,
+        EffectExpired(
+            effect_id=first.id,
+            target_id="mon:foe",
+            origin=first.origin,
+            reason="concentration_drop",
+        ),
+    )
+    _emit(live, ConditionRemoved(target_id="mon:foe", condition="paralyzed"))
+    assert _typed(live, "mon:foe") == {"paralyzed"}
+    assert live.active_conditions["mon:foe"] == {"paralyzed"}
+
+    _emit(
+        live,
+        EffectExpired(
+            effect_id=second.id, target_id="mon:foe", origin=second.origin, reason="duration"
+        ),
+    )
+    assert _typed(live, "mon:foe") == set()
+    assert live.active_conditions.get("mon:foe", set()) == set()

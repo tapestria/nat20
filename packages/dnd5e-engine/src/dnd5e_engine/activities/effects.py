@@ -87,6 +87,8 @@ def is_condition_immune(target: Combatant, condition: str, *, imposed: Iterable[
         return True
     held = [ac.condition for ac in target.conditions]
     # A status the target is immune to never lands, so it grants nothing.
+    # Filtering static immunities alone is exact while no condition grants
+    # immunity to a condition that grants one (Petrified grants Poisoned only).
     landing = [s for s in imposed if s not in target.condition_immunities]
     return condition in granted_condition_immunities([*held, *landing])
 
@@ -269,6 +271,9 @@ def apply_activity_effects(
                 # emit-and-neutralize: a condition is binary present/absent with
                 # no amount to zero, so a ConditionApplied the engine treats as
                 # not-applied would mislead every condition-tick reader.
+                # ``target`` is the creature as this activity began, so a
+                # Petrified an earlier rider landed doesn't shield a later
+                # rider's Poisoned; no activity carries both riders.
                 if is_condition_immune(target, status, imposed=pe.statuses):
                     _LOGGER.info(
                         "condition_immune_suppressed status=%s target_id=%s",

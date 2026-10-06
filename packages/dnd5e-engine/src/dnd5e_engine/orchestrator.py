@@ -3881,15 +3881,9 @@ def _strip_condition_from_combatant(live: _LiveCombat, entity_id: str, condition
     ``_drop_concentration`` emits one ``ConditionRemoved`` per condition its
     dropped effect installed, and that must not clear a condition another live
     effect keeps imposing. The invariant: ``live.active_conditions``'s coarse
-    name for ``condition`` always agrees with whether a typed entry for it
-    survives. ``_emit`` unconditionally discards that name before calling us,
-    so the resync below is unconditional too — re-adding it whenever a
-    surviving entry still earns it, not only when the filter changed the
-    typed list's length. (A DIFFERENT fold, such as
-    ``_emit_apply_effect_expired`` for another expiring effect, can leave the
-    typed list already exactly as this filter would; that is one way the
-    length check alone would miss the resync, not the reason it is
-    unconditional.)
+    name for ``condition`` agrees with whether a typed entry for it survives.
+    ``_emit`` discards that name before calling us, so the name is re-added
+    whenever an entry survives, whether or not this filter dropped any.
     """
     c = _find_combatant(live, entity_id)
     if c is None or not any(ac.condition == condition for ac in c.conditions):
@@ -5365,15 +5359,13 @@ def _emit_apply_effect_applied(live: _LiveCombat, event: EffectApplied) -> None:
     for PCs."""
     applied = event.effect
     live.active_effects.setdefault(applied.target_id, []).append(applied)
-    # One entry per (status, effect), not per status: a SECOND effect that
-    # genuinely lands a condition the target already holds (from a
-    # DIFFERENT effect) gets its OWN entry, so losing either effect later
-    # (``_emit_apply_effect_expired`` / ``_strip_condition_from_combatant``,
-    # both keyed on ``source_effect_id``) removes only its entry and the
-    # condition survives on the other's — rather than the status silently
-    # never attaching for the second effect, or disappearing when either
-    # effect ends. Passive projections (advantage/disadvantage on attack,
-    # save, etc.) observe the new state immediately either way.
+    # One entry per (status, effect), the seed's key: an effect that lands a
+    # condition the target already holds from another effect gets its own
+    # entry, so losing either effect later (``_emit_apply_effect_expired`` /
+    # ``_strip_condition_from_combatant``, both keyed on ``source_effect_id``)
+    # removes only its entry and the condition survives on the other's.
+    # Passive projections (advantage/disadvantage on attack, save, etc.)
+    # observe the new state immediately.
     target_combatant = _find_combatant(live, applied.target_id)
     added: list[str] = []
     if target_combatant is not None and applied.statuses:
@@ -5410,9 +5402,10 @@ def _emit_apply_effect_applied(live: _LiveCombat, event: EffectApplied) -> None:
                     applied.target_id,
                 )
                 continue
-            # Idempotency guard, the same (status, effect) key the seed
-            # uses: a fold that somehow runs twice for the same effect must
-            # not double-stamp.
+            # The seed's (status, effect id) key. Effect ids derive from the
+            # effect's name, so one spell from two casters lands two effects
+            # with one id: they share this entry, which the expiry and
+            # ConditionRemoved folds keep while either effect lasts.
             if (status, applied.id) in existing_keys:
                 continue
             # Derive source_entity_id from the origin tag when it
