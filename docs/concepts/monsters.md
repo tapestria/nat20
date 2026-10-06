@@ -102,7 +102,8 @@ Unsettling Visage) sits out while its Recharge is spent, and an area it uses
 A monster's turn picks the most powerful option it has: a charged Recharge
 action first, then a Spellcasting action whose N/Day offensive spell still has
 a use left, then Multiattack, then its other attacks and at-will spells in
-stat-block order — skipping any whose area would affect no enemy. At the start of a living monster's own turn the engine rolls
+stat-block order — skipping any whose area would affect no enemy. At the start
+of a living monster's own turn the engine rolls
 Recharge for each spent recharge action, applies Regeneration and refills its
 legendary-action pool. Legendary actions are host-driven:
 `advance_monster_turn(handle, legendary=True)` after another creature's turn

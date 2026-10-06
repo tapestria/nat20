@@ -1695,11 +1695,11 @@ layer over the engine — see `docs/bridge.md`. Gaps found while shipping it:
   `tests/test_corpus_prose_integrity.py`; re-check on the next
   `make refresh-upstream` and de-register if upstream has fixed it.
 - **The Ancient Gold Dragon's canonical Multiattack description is an
-  unresolved Foundry template (2026-10-06, C26b).** `"The dragon makes
-  {count} [[/item]] attacks and uses [[/item]]."` never substituted its
-  tokens, so the engine's Multiattack join resolves it to a single attack. It
-  is the only canonical monster with a `{count}` or bare `[[/item]]` token in
-  its description.
+  unresolved Foundry template (2026-10-06, C26b).** Its action text —
+  `"makes {count} [[/item]] attacks and uses [[/item]]."` — never substituted
+  the `{count}` placeholder or its two bare `[[/item]]` references, so the
+  engine's Multiattack join resolves it to a single attack. It is the only
+  canonical monster with these unresolved tokens.
   (`packages/dnd5e-srd-data/tools/translators/foundry.py::_build_monster_action`)
 - **Inherited activation `type` is not resolved** (2026-08-27). An activity
   with `activation.override: false` inherits the item-level activation in
