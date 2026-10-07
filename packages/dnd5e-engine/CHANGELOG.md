@@ -28,6 +28,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`expand_action_to_parts`** (`dnd5e_engine.activities.monster_actions`) — a
   monster action's activities, each with the stat-block action it comes from
   (C26b).
+- **`EncounterMemberSpec.senses`** — a foe's special senses; `None` (the
+  default) takes its template's (C27).
+- **`CONDITION_GRANTED_IMMUNITIES`** and **`granted_condition_immunities`**
+  (`dnd5e_engine.rules.conditions`) — the immunities a condition grants:
+  Petrified's to Poisoned (C27).
+- **`fear_source_in_sight`** on `conditions_grant_disadvantage_on_ability_checks`
+  and `project_passive_check_modifiers` — Frightened's line-of-sight gate for
+  ability checks (C27).
 
 ### Changed
 
@@ -79,6 +87,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **A Multiattack resolves an area it uses against that area** and spends a
   Recharge action it uses when it fires; an action it uses "if available"
   sits out while it isn't (C26b).
+- **A templated monster takes its stat block's senses**, and its condition
+  immunities while its spec lists none (C27): it sees in Darkness, through
+  Blinded with Blindsight, and an Invisible creature within its Blindsight or
+  Truesight, for its attacks, its opportunity attacks, its own Dodge and Hide.
+- **Frightened's Disadvantage on ability checks needs its source in sight**,
+  as its attack-roll half did; **Poisoned and Frightened impose Disadvantage on
+  Hide's Stealth check and on escaping a grapple** (C27).
+- **Frightened's "can't willingly move closer" holds whether or not its source
+  is in sight** (C27).
+- **Petrified resists Poison damage instead of being immune to it** (C27):
+  `project_passive_damage_modifiers(["petrified"])` lists no immunity.
+- **`LiveCombatView.initiative[*].conditions` lists one entry per effect
+  imposing a condition**, mid-combat as seeded stacking already did;
+  `active_conditions` stays deduplicated (C27).
 
 ### Deprecated
 
@@ -113,6 +135,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   nor an area it can't place on an enemy: the Aboleth's Dominate Mind, the
   Ancient Gold Dragon's Fire Breath, and its Weakening Breath beyond 90 feet
   (C26b).
+- A creature immune to Grappled or Prone (the Ghost) is no longer grappled or
+  shoved Prone; the save still rolls (C27).
+- A Petrified creature is immune to the Poisoned condition, an effect that
+  brings both included, and a Poisoned it already had imposes no Disadvantage
+  (C27).
+- A condition two effects impose now outlives the first one's ending by a
+  successful end-of-turn save or by concentration ending; previously it
+  ended with the first effect (C27).
+- After a `ConditionRemoved`, `active_conditions` now keeps a condition
+  that another live effect still imposes, so the two condition stores
+  agree (C27).
+- `escape_grapple` from a creature whose Grappled stores no escape DC (a
+  seeded Grappled, or one another effect keeps after the grapple ends) is
+  refused with `target_invalid` before the Action is spent, instead of
+  raising `AssertionError` (C27).
 
 ## [0.6.0]
 

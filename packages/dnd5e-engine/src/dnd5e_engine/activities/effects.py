@@ -20,11 +20,12 @@ from __future__ import annotations
 
 import logging
 import typing
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from typing import TYPE_CHECKING, Any, get_args
 
 from dnd5e_engine.activities.formula import resolve_roll_data
 from dnd5e_engine.events import ConditionApplied, ConditionType, EffectApplied
+from dnd5e_engine.rules.conditions import granted_condition_immunities
 from dnd5e_engine.types.combat import Combatant
 from dnd5e_engine.types.effects import (
     ActiveEffect,
@@ -64,18 +65,32 @@ _MODE_MAP: dict[int, ChangeMode] = {
 _DEFAULT_CHANGE_PRIORITY = 20
 
 
-def is_condition_immune(target: Combatant, condition: str) -> bool:
-    """SRD 5.2 §Immunity: "Immunity to a condition means you aren't affected
-    by it." A target immune to ``condition`` never has it attach.
+def is_condition_immune(target: Combatant, condition: str, *, imposed: Iterable[str] = ()) -> bool:
+    """SRD 5.2 §Immunity: "If you have Immunity to a damage type or a
+    condition, it doesn't affect you in any way." A target immune to
+    ``condition`` never has it attach.
 
-    Shared gate for every ``ConditionApplied`` emit site: the effect-status
-    path below (``passive_effect_to_active_effect`` riders) AND
-    ``activities/mastery.py``'s Topple prone rider (C15 Task 6) — Topple's
-    Constitution save always rolls regardless; only the resulting
-    ``ConditionApplied`` emit is gated by this check. Extracted so the two
-    sites cannot drift on the immunity semantics.
+    Immune when the condition is among ``target.condition_immunities`` (its
+    stat block, its features) or granted by a condition it has
+    (``rules.conditions.granted_condition_immunities``: Petrified grants
+    Poisoned). ``imposed`` names the other conditions arriving with this one
+    (one effect's statuses), so an effect that both petrifies and poisons
+    leaves its target Petrified only.
+
+    The one gate every action or effect that applies a condition consults: the
+    effect-status riders below, ``activities/mastery.py``'s Topple, the
+    orchestrator's effect folds, and the conditions its actions apply
+    (Grapple, Shove, Hide). A save that comes first (Topple's, a grapple's)
+    still rolls; only the condition is withheld.
     """
-    return condition in target.condition_immunities
+    if condition in target.condition_immunities:
+        return True
+    held = [ac.condition for ac in target.conditions]
+    # A status the target is immune to never lands, so it grants nothing.
+    # Filtering static immunities alone is exact while no condition grants
+    # immunity to a condition that grants one (Petrified grants Poisoned only).
+    landing = [s for s in imposed if s not in target.condition_immunities]
+    return condition in granted_condition_immunities([*held, *landing])
 
 
 def _name_slug(name: str) -> str:
@@ -256,7 +271,10 @@ def apply_activity_effects(
                 # emit-and-neutralize: a condition is binary present/absent with
                 # no amount to zero, so a ConditionApplied the engine treats as
                 # not-applied would mislead every condition-tick reader.
-                if is_condition_immune(target, status):
+                # ``target`` is the creature as this activity began, so a
+                # Petrified an earlier rider landed doesn't shield a later
+                # rider's Poisoned; no activity carries both riders.
+                if is_condition_immune(target, status, imposed=pe.statuses):
                     _LOGGER.info(
                         "condition_immune_suppressed status=%s target_id=%s",
                         status,

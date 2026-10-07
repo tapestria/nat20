@@ -8,10 +8,7 @@ a host to submit.
 
 Pass `monster_template_slug` on an `EncounterMemberSpec` and the engine resolves
 that creature from the bundled SRD corpus, giving it its actual actions,
-resistances and saves. It does NOT hydrate the template's senses (Blindsight,
-Darkvision, Truesight, Tremorsense) — `EncounterMemberSpec` has no `senses`
-field, so a templated foe keeps `Combatant.senses`'s all-`None` default
-(BACKLOG.md):
+resistances, saves, senses and condition immunities:
 
 ```python
 EncounterMemberSpec(
@@ -31,8 +28,14 @@ Omit it and you get a generic combatant driven by the inline `attack_bonus` /
 
 The template supplies the creature's actions, ability scores (Dexterity too,
 while the spec leaves it at 10), proficiencies, traits and spellcasting
-ability. Its Armor Class, Hit Points, speed and `attack_bonus` stay the
-spec's. A template monster's attacks roll to hit at that `attack_bonus` and
+ability. It also supplies the creature's senses — Blindsight, Darkvision,
+Tremorsense, Truesight — unless the spec's `senses` is set
+(`senses={}` gives it none, and any value gives an un-templated
+creature its own), and its condition immunities while the spec's
+`condition_immunities` is empty (a Skeleton can't be Poisoned). So a Goblin
+Warrior sees a character standing in Darkness, and a Bat sees an Invisible one
+within its Blindsight. Its Armor Class, Hit Points, speed and `attack_bonus`
+stay the spec's. A template monster's attacks roll to hit at that `attack_bonus` and
 add no ability modifier to their damage, and with no spellcasting ability its
 save DC is `8 + attack_bonus` — so with the default `attack_bonus=0` a Tough's
 Mace rolls d20 + 0 for 1d6, where its stat block says +4 and 1d6 + 2. Pin `ac`

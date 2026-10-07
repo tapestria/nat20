@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
@@ -33,6 +34,15 @@ CONDITION_IMPLIES: dict[Condition, list[Condition]] = {
     Condition.PETRIFIED: [Condition.INCAPACITATED],
     Condition.STUNNED: [Condition.INCAPACITATED],
     Condition.UNCONSCIOUS: [Condition.INCAPACITATED, Condition.PRONE],
+}
+
+#: Conditions that make their bearer immune to another condition. SRD 5.2
+#: Petrified: "Poison Immunity. You have Immunity to the Poisoned condition."
+#: Immunity means the condition "doesn't affect you in any way": it never
+#: attaches (``activities/effects.py::is_condition_immune``), and one the
+#: creature already had stops imposing anything while the grant lasts.
+CONDITION_GRANTED_IMMUNITIES: dict[Condition, frozenset[str]] = {
+    Condition.PETRIFIED: frozenset({Condition.POISONED.value}),
 }
 
 # Human-readable effects per condition, phrased against SRD 5.2 (2024).
@@ -259,27 +269,47 @@ def remove_condition_with_implies(
     return result
 
 
+def granted_condition_immunities(conditions: Iterable[str]) -> frozenset[str]:
+    """The condition slugs ``conditions`` make their bearer immune to
+    (``CONDITION_GRANTED_IMMUNITIES``): ``{"poisoned"}`` while Petrified."""
+    active = {c.lower() for c in conditions}
+    granted: set[str] = set()
+    for condition, immune_to in CONDITION_GRANTED_IMMUNITIES.items():
+        if condition.value in active:
+            granted |= immune_to
+    return frozenset(granted)
+
+
 def check_immunity(condition_name: str, immunities: list[str]) -> bool:
-    """Check if condition_name is in the immunities list."""
+    """Static immunities only; ``granted_condition_immunities`` adds the
+    immunity a held condition grants (Petrified → Poisoned)."""
     return condition_name in immunities
 
 
-def conditions_grant_disadvantage_on_ability_checks(conditions: list[str]) -> bool:
+def conditions_grant_disadvantage_on_ability_checks(
+    conditions: list[str], *, fear_source_in_sight: bool = True
+) -> bool:
     """Return True if conditions impose disadvantage on ability checks.
 
     SRD 5.2 glossary: Poisoned — "You have Disadvantage on attack rolls and
     ability checks."; Frightened — "You have Disadvantage on ability checks and
-    attack rolls while the source of fear is within line of sight" (the
-    line-of-sight gate is not modelled here; C16b gated the attack-roll half
-    and the no-approach movement rule, but this ability-check half is a
-    residual — see BACKLOG.md "Conditions — SRD 5.2 rows not enforced").
+    attack rolls while the source of fear is within line of sight."
+
+    ``fear_source_in_sight`` is the attack-roll helper's flag
+    (``conditions_grant_advantage_on_attack``): True, the SRD-conservative
+    default, unless the caller knows the Frightened creature can't see its
+    fear source. A condition the creature is immune to imposes nothing
+    (``granted_condition_immunities``: a Petrified creature's Poisoned).
 
     Exhaustion is deliberately NOT here: SRD 5.2 replaced the 2014 ladder with a
     numeric ``-2 x level`` penalty on every D20 Test — see ``d20_test_penalty``.
     (Behavioural change in 0.6.0; see docs/migration/v0.5-to-v0.6.md.)
     """
     active = {c.lower() for c in conditions}
-    return bool(active & {"poisoned", "frightened"})
+    active -= granted_condition_immunities(active)
+    if Condition.POISONED.value in active:
+        return True
+    return Condition.FRIGHTENED.value in active and fear_source_in_sight
 
 
 def conditions_grant_advantage_on_attack(
@@ -489,15 +519,14 @@ def conditions_auto_crit_within_5ft(target_condition_names: list[str]) -> bool:
 def project_passive_damage_modifiers(conditions: list[str]) -> dict[str, list[str]]:
     """Return the resistance / vulnerability / immunity projection for ``conditions``.
 
-    Only Petrified contributes here per SRD 5.1 §Conditions — "resistance
-    to all damage" + immune to poison + can't be poisoned (we surface the
-    poison damage immunity, not the condition-immunity which lives on
-    ``Combatant`` separately).
+    Only Petrified contributes: SRD 5.2 "Resist Damage. You have Resistance to
+    all damage." Poison damage is halved like any other — its "Poison
+    Immunity" is to the Poisoned condition (``CONDITION_GRANTED_IMMUNITIES``),
+    not to the damage type.
     """
     out: dict[str, list[str]] = {"resistances": [], "vulnerabilities": [], "immunities": []}
     if "petrified" in {c.lower() for c in conditions}:
         out["resistances"].append("all")
-        out["immunities"].append("poison")
     return out
 
 
@@ -535,23 +564,23 @@ def project_passive_save_modifiers(conditions: list[str]) -> dict[str, list[str]
     return out
 
 
-def project_passive_check_modifiers(conditions: list[str]) -> dict[str, list[str]]:
+def project_passive_check_modifiers(
+    conditions: list[str], *, fear_source_in_sight: bool = True
+) -> dict[str, list[str]]:
     """Return ``passive_check_adv`` / ``passive_check_dis`` lists.
 
     Conditions that impose disadvantage on *every* ability check use the
     ``"all"`` catch-all marker the ``check.py`` handler already recognizes
-    (see ``_reconcile_adv_dis``):
-
-    * Frightened — "disadvantage on ability checks ... while source of fear
-      is in line of sight" (we project as ``all`` — the line-of-sight gate
-      isn't carried on the live state today)
-    * Poisoned — "disadvantage on attack rolls and ability checks"
-    * Exhaustion — NOT projected here (SRD 5.2: numeric ``-2 x level`` penalty
-      on every D20 Test, see ``d20_test_penalty``).
+    (see ``_reconcile_adv_dis``): Poisoned, and Frightened while its source is
+    in sight — ``conditions_grant_disadvantage_on_ability_checks`` decides,
+    with the same ``fear_source_in_sight`` flag. Exhaustion is NOT projected
+    here (SRD 5.2: numeric ``-2 x level`` penalty on every D20 Test, see
+    ``d20_test_penalty``).
     """
     out: dict[str, list[str]] = {"passive_check_adv": [], "passive_check_dis": []}
-    active = {c.lower() for c in conditions}
-    if active & {"frightened", "poisoned"}:
+    if conditions_grant_disadvantage_on_ability_checks(
+        conditions, fear_source_in_sight=fear_source_in_sight
+    ):
         out["passive_check_dis"].append("all")
     return out
 
@@ -559,6 +588,7 @@ def project_passive_check_modifiers(conditions: list[str]) -> dict[str, list[str
 __all__ = [
     "AUTO_CRIT_WITHIN_5FT_CONDITIONS",
     "CONDITION_EFFECTS",
+    "CONDITION_GRANTED_IMMUNITIES",
     "CONDITION_IMPLIES",
     "EXHAUSTION_D20_PENALTY_PER_LEVEL",
     "EXHAUSTION_SPEED_PENALTY_PER_LEVEL",
@@ -575,6 +605,7 @@ __all__ = [
     "d20_test_penalty",
     "exhaustion_level_of",
     "get_condition_effects",
+    "granted_condition_immunities",
     "is_condition_active",
     "project_passive_check_modifiers",
     "project_passive_damage_modifiers",
