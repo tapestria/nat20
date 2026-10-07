@@ -201,6 +201,10 @@ class Combatant(BaseModel):
     # SRD 5.2 Fighting Style feats in play (``PartyMemberSpec.feats`` plus
     # ``fighting_style``), read by the attack resolver. Empty for monsters.
     fighting_styles: tuple[FightingStyle, ...] = ()
+    # SRD 5.2 feats this creature has (a character's ``PartyMemberSpec.feats``):
+    # the attack resolver applies Savage Attacker and Grappler from it. Empty
+    # for monsters.
+    feats: tuple[str, ...] = ()
     # SRD 5.2 armor worn and Shield wielded, from ``PartyMemberSpec.equipment``
     # (armor and Shields listed there are worn). Martial Arts needs neither.
     worn_armor: WornArmor | None = None
@@ -240,6 +244,13 @@ class Combatant(BaseModel):
     # creature's turn can deal Sneak Attack again. Defaults False (rider may
     # fire) for every combatant.
     sneak_attack_spent_this_turn: bool = False
+    # SRD 5.2 Savage Attacker, "Once per turn" — True once this creature has
+    # rolled a weapon's damage dice twice this turn. Gates the second roll in
+    # ``activities/attack.py`` (projected per resolution into
+    # ``ActivityResolutionContext.savage_attacker_spent``). Reset at every
+    # TurnStarted, any creature's, as Sneak Attack's is: an opportunity attack
+    # on another creature's turn can use it again.
+    savage_attacker_spent_this_turn: bool = False
     # SRD §Extra Attack — "you can attack twice, instead of once, whenever
     # you take the Attack action on your turn" (and thrice/four-times at
     # higher tiers). The remaining main-hand swings this Action; refreshed

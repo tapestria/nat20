@@ -101,6 +101,14 @@ _IN_CRIT = "in_crit"
 # SRD 5.2 Archery: "You gain a +2 bonus to attack rolls you make with Ranged weapons."
 _ARCHERY_BONUS: Final = 2
 
+# SRD 5.2 feat slugs the attack resolver applies (``Combatant.feats``).
+_GRAPPLER: Final = "grappler"
+_SAVAGE_ATTACKER: Final = "savage-attacker"
+# SRD 5.2 Unarmed Strike: "Instead of using a weapon to make a melee attack,
+# you can use a punch, kick, head-butt, or similar forceful blow" — the corpus
+# files it as a Simple Melee weapon, but it is not a weapon.
+_UNARMED_STRIKE: Final = "unarmed-strike"
+
 
 def _fighting_style_attack_bonus(ctx: ActivityResolutionContext, weapon: Weapon | None) -> int:
     """Archery's +2 on a Ranged weapon's attack roll. It stacks on a host-pinned
@@ -543,6 +551,13 @@ def _attack_roll_sources(
         MonsterTraitMechanic.PACK_TACTICS in ctx.caster.trait_mechanics
         and ctx.pack_tactics_ally_adjacent.get(target.entity_id)
     ):
+        adv_sources.append("trait")
+    # SRD 5.2 Grappler: "You have Advantage on attack rolls against a creature
+    # Grappled by you." Who grapples the target is PRE-RESOLVED in
+    # ``orchestrator.py`` (``target_grappled_by_attacker``); the feat gates it
+    # here.
+    # Reuses the SAME "trait" token (the ``AdvantageSource`` Literal is closed).
+    if _GRAPPLER in ctx.caster.feats and ctx.target_grappled_by_attacker.get(target.entity_id):
         adv_sources.append("trait")
     # C18 §Monster action economy — SRD 5.2 stat-block trait "Sunlight
     # Sensitivity" (bundled corpus text): "While in sunlight, the monster
@@ -1197,6 +1212,30 @@ def _martial_arts_parts(parts: list[DamagePart], die: int | str | None) -> list[
     return [parts[0].model_copy(update={"dice": martial_die}), *parts[1:]]
 
 
+def _savage_attacker_applies(ctx: ActivityResolutionContext, weapon: Weapon) -> bool:
+    """SRD 5.2 Savage Attacker: "Once per turn when you hit a target with a
+    weapon, you can roll the weapon's damage dice twice and use either roll
+    against the target." The attacker has the feat and has not used it this
+    turn (``ctx.savage_attacker_spent``), and the hit is a weapon's — an
+    Unarmed Strike is not a weapon."""
+    return (
+        _SAVAGE_ATTACKER in ctx.caster.feats
+        and weapon.slug != _UNARMED_STRIKE
+        and not ctx.savage_attacker_spent.get(ctx.caster.entity_id, False)
+    )
+
+
+def _roll_weapon_dice(
+    parts: list[DamagePart],
+    ctx: ActivityResolutionContext,
+    *,
+    is_crit: bool,
+    die_floor: int | None,
+) -> list[int]:
+    """One roll of each base damage part's dice, in part order."""
+    return [roll_damage_part(part, ctx.rng, crit=is_crit, die_floor=die_floor) for part in parts]
+
+
 def _roll_base_weapon_damage(
     weapon: Weapon,
     ctx: ActivityResolutionContext,
@@ -1229,6 +1268,15 @@ def _roll_base_weapon_damage(
     applies``), the FIRST part's dice are swapped for the caster's Martial
     Arts die via ``_martial_arts_parts`` (only when that die rolls higher on
     average; the Unarmed Strike's flat 1 always loses to it).
+
+    SRD 5.2 Savage Attacker (``_savage_attacker_applies``) rolls these dice a
+    second time, the same way, and keeps the higher total — the engine takes
+    the better roll for the attacker, as it does for every option it applies
+    automatically — then marks the feat used for this turn. The modifier and
+    the magic bonus are added once, to the roll it keeps. Skipped when the
+    weapon's own damage part(s) roll no dice (e.g. the Blowgun's flat ``"1"``)
+    — spending the once-per-turn second roll there would deny it to a later
+    weapon hit this turn that actually rolls dice.
     """
     first_type: str | None = None
     flat_addition = weapon.magical_bonus
@@ -1247,8 +1295,13 @@ def _roll_base_weapon_damage(
     if _martial_arts_applies(ctx, weapon):
         parts = _martial_arts_parts(parts, ctx.scale_values.get("monk.die"))
 
-    for index, part in enumerate(parts):
-        rolled = roll_damage_part(part, ctx.rng, crit=is_crit, die_floor=die_floor)
+    rolls = _roll_weapon_dice(parts, ctx, is_crit=is_crit, die_floor=die_floor)
+    if _savage_attacker_applies(ctx, weapon) and any("d" in part.dice for part in parts):
+        ctx.savage_attacker_spent[ctx.caster.entity_id] = True
+        again = _roll_weapon_dice(parts, ctx, is_crit=is_crit, die_floor=die_floor)
+        if sum(again) > sum(rolls):
+            rolls = again
+    for index, (part, rolled) in enumerate(zip(parts, rolls, strict=True)):
         if index == 0:
             rolled += flat_addition
             first_type = part.damage_type
