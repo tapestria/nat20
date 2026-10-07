@@ -35,7 +35,7 @@ from dnd5e_engine.orchestrator import (
     submit_player_intent,
 )
 from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
-from tests.e2e.harness import cell, events_of, grid_scene, run_async, xfail_cluster
+from tests.e2e.harness import cell, events_of, grid_scene, run_async
 
 LOADER = BundledAssetLoader()
 
@@ -233,8 +233,6 @@ def test_c28_a_grappler_has_advantage_against_the_creature_it_grapples() -> None
 
 # ── Magic Initiate ───────────────────────────────────────────────────────────
 
-_MAGIC_INITIATE = xfail_cluster(28, "magic initiate")
-
 
 def _cast_guiding_bolt(handle) -> None:
     _act(
@@ -242,7 +240,6 @@ def _cast_guiding_bolt(handle) -> None:
     )
 
 
-@_MAGIC_INITIATE
 def test_c28_magic_initiate_casts_its_level_1_spell_once_without_a_slot() -> None:
     # An Acolyte's Magic Initiate (Cleric), cast with Wisdom by a Fighter 1.
     member = build_party_member(

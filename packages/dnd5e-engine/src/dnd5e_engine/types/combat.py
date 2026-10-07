@@ -342,6 +342,12 @@ class Combatant(BaseModel):
     # their own caster ability elsewhere) and monsters without spellcasting;
     # hydrated by C18 Task 5.
     spellcasting_ability: str | None = None
+    # SRD 5.2 Magic Initiate: a spell slug → the ability that casts it, in place
+    # of the class's (``PartyMemberSpec.spell_abilities``), and the spells cast
+    # once at their own level without a slot (``PartyMemberSpec.slotless_casts``;
+    # the use is tallied in ``custom_counters``). Empty for monsters.
+    spell_abilities: dict[str, SpellcastingAbility] = Field(default_factory=dict)
+    slotless_casts: tuple[str, ...] = ()
     # SRD 5.2 Loading — "You can fire only one piece of ammunition from a
     # Loading weapon when you use an action, a Bonus Action, or a Reaction
     # to fire it, regardless of the number of attacks you can normally

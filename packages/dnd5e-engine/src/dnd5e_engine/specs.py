@@ -166,9 +166,12 @@ class PartyMemberSpec(BaseModel):
     # via the session-side enchantment projection, not this slug list).
     equipment: tuple[str, ...] = ()
     # SRD 5.2 feats the PC has (``DerivedSheet.feats``; ``build_party_member``
-    # fills it). The Fighting Style feats among them apply in combat (Archery,
-    # Great Weapon Fighting, Two-Weapon Fighting); Defense is already in ``ac``
-    # when ``derive_sheet`` computed it. Other feats are recorded, not applied.
+    # fills it). In combat the engine applies Alert (an engine-rolled
+    # Initiative), Savage Attacker, Grappler's Advantage and the Fighting Style
+    # feats (Archery, Great Weapon Fighting, Two-Weapon Fighting); Defense is
+    # already in ``ac`` when ``derive_sheet`` computed it, and Magic Initiate
+    # reaches combat through ``spell_abilities`` and ``slotless_casts``. Other
+    # feats are recorded, not applied.
     feats: tuple[str, ...] = ()
     # One Fighting Style feat for a hand-built spec; merged with any in ``feats``.
     fighting_style: FightingStyle | None = None

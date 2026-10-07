@@ -52,6 +52,11 @@ FEATURE_USE_COUNTER_PREFIX = "feature_use:"
 # mirroring ``FEATURE_USE_COUNTER_PREFIX`` for ``Item.uses`` charge tracking.
 ITEM_USE_COUNTER_PREFIX = "item_use:"
 
+# Prefix under which a spell cast without a spell slot is tallied in the same
+# ``custom_counters`` sidecar (``slotless_cast:<spell-slug>`` → ``{"spent": n}``):
+# SRD 5.2 Magic Initiate's level 1 spell, cast "once without a spell slot".
+SLOTLESS_CAST_COUNTER_PREFIX = "slotless_cast:"
+
 
 @dataclass(frozen=True)
 class HitDicePool:
@@ -353,14 +358,34 @@ def recover_item_uses(
     return _recover_uses(counters, ITEM_USE_COUNTER_PREFIX, period, recovery, rng)
 
 
+def recover_slotless_casts(
+    counters: dict[str, dict[str, int]], period: RecoveryPeriod
+) -> dict[str, int]:
+    """Apply a rest to a caster's ``slotless_cast:<spell>`` tallies.
+
+    SRD 5.2 Magic Initiate: "You can cast it once without a spell slot, and you
+    regain the ability to cast it in that way when you finish a Long Rest." A
+    Long Rest (``"lr"``) returns each tally to ``0``; any other period leaves it.
+    Returns ``{"<spell>": <new spent count>, ...}`` for the host to write back —
+    pure, it does not mutate ``counters``.
+    """
+    return {
+        key[len(SLOTLESS_CAST_COUNTER_PREFIX) :]: 0 if period == "lr" else counter.get("spent", 0)
+        for key, counter in counters.items()
+        if key.startswith(SLOTLESS_CAST_COUNTER_PREFIX)
+    }
+
+
 __all__ = [
     "FEATURE_USE_COUNTER_PREFIX",
     "ITEM_USE_COUNTER_PREFIX",
+    "SLOTLESS_CAST_COUNTER_PREFIX",
     "HitDicePool",
     "RecoveryPeriod",
     "RestOutcome",
     "recover_feature_uses",
     "recover_item_uses",
+    "recover_slotless_casts",
     "resolve_long_rest",
     "resolve_short_rest",
 ]
