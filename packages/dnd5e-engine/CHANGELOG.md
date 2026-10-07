@@ -36,6 +36,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`fear_source_in_sight`** on `conditions_grant_disadvantage_on_ability_checks`
   and `project_passive_check_modifiers` — Frightened's line-of-sight gate for
   ability checks (C27).
+- **`PartyMemberSpec.spell_abilities`** and **`slotless_casts`** (also on
+  `DerivedSheet` and `Combatant`) — the ability each of a character's spells
+  is cast with, and the spells it casts once without a slot (C28).
+- **The `magic-initiate:` choice token** — one Magic Initiate's spell list,
+  ability, cantrips and level 1 spell (`MagicInitiatePick`) (C28).
+- **`recover_slotless_casts`** and **`SLOTLESS_CAST_COUNTER_PREFIX`**
+  (`dnd5e_engine.rest`) — a Long Rest restores a spell cast without a slot
+  (C28).
+- **`Combatant.feats`**, **`Combatant.savage_attacker_spent_this_turn`** and
+  **`SpellcastingAbility`** (`dnd5e_engine.types.combat`) (C28).
 
 ### Changed
 
@@ -101,6 +111,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`LiveCombatView.initiative[*].conditions` lists one entry per effect
   imposing a condition**, mid-combat as seeded stacking already did;
   `active_conditions` stays deduplicated (C27).
+- **`derive_sheet` adds the background's Origin feat** to `DerivedSheet.feats`,
+  and raises `ValueError` for a feat taken twice that isn't repeatable and for
+  an Epic Boon taken at an Ability Score Improvement below character level 19
+  (C28).
+- **Alert, Savage Attacker and Grappler apply in combat** (C28): Alert adds
+  the Proficiency Bonus to an engine-rolled Initiative; Savage Attacker rolls
+  a weapon's damage dice twice on the first weapon hit of each turn and keeps
+  the higher roll; a Grappler has Advantage against a creature it grapples.
+- **Magic Initiate's spells are cast with their chosen ability**, and its
+  level 1 spell once without a slot before a slot is spent (C28).
 
 ### Deprecated
 

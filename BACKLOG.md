@@ -483,20 +483,33 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   `class_slug`, so every spell a multiclass caster casts uses that class's
   ability: a Cleric/Wizard whose `class_slug` is the Cleric casts its Wizard
   spells with Wisdom, and a non-caster `class_slug` falls back to the flat
-  approximation.
+  approximation. A host can name a spell's ability in
+  `PartyMemberSpec.spell_abilities` meanwhile (amended 2026-10-06, C28: Magic
+  Initiate's carrier).
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_resolve_caster_spellcasting_ability`)
-- **Feats other than the four Fighting Styles are almost entirely inert
-  (amended 2026-09-24, C20).** The engine applies the four SRD 5.2 Fighting
-  Style feats itself, by slug; of the other 13 corpus feats only Boon of the
-  Night Spirit carries a mechanical activity. The dataset `Feat` schema has no
-  `passive_effects`, so the effects Foundry ships on feats (Archery's and
-  Defense's among them) are dropped at translation. Prerequisites are only
-  partly checked (2026-09-24): a feat's free-text `requirement` (Grappler's
-  "Strength or Dexterity 13+") is never validated, and the two epic boons
-  whose corpus `prerequisites` carry no `level` entry at all — `boon-of-fate`
-  and `boon-of-irresistible-offense` — are accepted below the SRD's Epic Boon
-  floor of character level 19, unlike `boon-of-combat-prowess`, whose entry
-  does carry `level: 19`.
+- **Most feat benefits are recorded, not applied (amended 2026-10-06,
+  C28).** The engine applies the four SRD 5.2 Fighting Style feats (C20), and
+  Alert's Initiative bonus, Savage Attacker, Grappler's Attack Advantage and
+  Magic Initiate's spells (C28), each by slug. Grappler's Advantage carries
+  two limits of its own: its construct attack (Spiritual Weapon) gets none,
+  since the construct path builds no "grappled by you" map, and only the
+  first grappler of a creature counts — a creature an ally grapples first,
+  then the Grappler grapples, counts as the ally's. Still not applied: Alert's
+  Initiative Swap ("Immediately after you roll Initiative, you can swap your
+  Initiative with the Initiative of one willing ally" — the choice follows the
+  rolls, so it needs a host decision point); Grappler's Punch and Grab (a
+  Grapple riding an Unarmed Strike hit; the engine's Grapple takes the Action
+  and ends the turn), Fast Wrestler (see Grappled's "Movable") and its +1
+  Strength or Dexterity (see the feat ability increases under `derive_sheet`
+  below); Skilled's three proficiencies (the `skill:` tokens are uncapped);
+  and every Epic Boon's benefits — Boon of the Night Spirit's activity can't be
+  used, since the feature gate covers class, subclass and species features
+  only. A Polymorphed character keeps its feats in combat, though SRD 5.2
+  Polymorph replaces "The target's game statistics" (Wild Shape keeps
+  "feats"). The dataset `Feat` schema has no `passive_effects`, so the effects
+  Foundry ships on feats (Archery's and Defense's among them) are dropped at
+  translation. A feat's free-text `requirement` (Grappler's "Strength or
+  Dexterity 13+") is never validated.
   (`packages/dnd5e-engine/src/dnd5e_engine/build_spec.py::_asi_level_feats`,
   `packages/dnd5e-srd-data/src/dnd5e_srd_data/schema/feat.py`,
   `packages/dnd5e-srd-data/tools/translators/foundry.py`)
@@ -515,10 +528,9 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   (`packages/dnd5e-srd-data/src/dnd5e_srd_data/schema/item.py`,
   `packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_is_proficient_with_weapon`)
 - **`derive_sheet` does not apply several SRD inputs (2026-09-23, C19 scope
-  cuts).** Recorded but not applied: languages, tool proficiencies, the
-  background's Origin feat (`starting_feat_slug` is an unresolved Foundry
-  id), ability increases from feats other than the Ability Score
-  Improvement feat, and level-20 capstone increases (the Monk's Body and
+  cuts).** Recorded but not applied: languages, tool proficiencies, ability
+  increases from feats other than the Ability Score Improvement feat, and
+  level-20 capstone increases (the Monk's Body and
   Mind is a fixed `points: 0` ASI entry up to 25, the Barbarian's Primal
   Champion a feature). Not validated at all: multiclass ability
   prerequisites (the sheet has no score history, and enforcing them would
@@ -529,9 +541,10 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   Fighter 1 with two) gets every one, `attunement_constraint`, untrained-armor
   penalties (`armor_training` is reported so a host can apply them), and
   magic items' own passive effects (hosts pass them as `active_effects`).
-  Feat repeatability is also prose-only, so `DerivedSheet.feats` is not
-  de-duplicated: a feat reachable both as a bare feature-choice-pool pick
-  and as a `feat:<class>:<level>:<feat>` token lands twice.
+  Nor which spell list a Magic Initiate spell is on — no corpus spell or class
+  carries spell lists — or that an Acolyte's Magic Initiate uses the Cleric
+  list and a Sage's the Wizard list, which only the background's prose names
+  ("Feat: Magic Initiate (Cleric)") (amended 2026-10-06, C28).
   (`packages/dnd5e-engine/src/dnd5e_engine/build_spec.py::derive_sheet`)
 - **In-combat consumers of several C19-derived sheet fields don't exist yet
   (2026-09-23, C19 scope cut).** `DerivedSheet.stealth_disadvantage`,
@@ -1589,7 +1602,10 @@ cluster owns.
   (Paralyzed, Restrained), Mind Blank (Charmed), Calm Emotions (Charmed,
   Frightened), Gaseous Form and Wind Walk (Prone), Mindless Rage while raging
   (Charmed, Frightened) and the Periapt of Proof against Poison (Poisoned)
-  grant no immunity in combat. The dying rules don't consult
+  grant no immunity in combat. Nor does a spell a stat block casts before
+  combat: the Archmage's Spellcasting lists "Mind Blank (cast before
+  combat)", and its Charmed immunity comes only from that spell (amended
+  2026-10-06, C28). The dying rules don't consult
   `is_condition_immune` either: a character that regains Hit Points, or
   rolls a 20 on a death save, is left Prone even when immune to it (Wind
   Walk, or a host-listed `condition_immunities`).
@@ -1908,7 +1924,10 @@ pool entries.
   (`activities[].effects`), but `Monster` carries no `passive_effects` for
   them to resolve against and the engine passes none, so none applies: the
   Giant Spider's Web never Restrains and the Vampire's Grave Strike never
-  Grapples. The translator would have to carry each action's effects.
+  Grapples. The translator would have to carry each action's effects, and
+  each of the 40 Grappled riders (39 monsters) its escape DC, which
+  `escape_grapple` reads from `ActiveCondition.save_dc` (amended 2026-10-06,
+  C28).
   (`packages/dnd5e-srd-data/src/dnd5e_srd_data/schema/monster.py::MonsterAction`,
   `packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_resolve_monster_attack_activities`)
 - **Three monster recharges disagree between the pinned Foundry pack and the
