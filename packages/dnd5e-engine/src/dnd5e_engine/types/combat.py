@@ -24,6 +24,11 @@ from dnd5e_engine.types.conditions import ActiveCondition
 # SRD ships. Dueling and the other 2024 styles are not SRD 5.2 content.
 FightingStyle = Literal["archery", "defense", "great-weapon-fighting", "two-weapon-fighting"]
 
+# SRD 5.2 spellcasting abilities: every class's, and Magic Initiate's
+# ("Intelligence, Wisdom, or Charisma is your spellcasting ability for this
+# feat's spells"), is one of these.
+SpellcastingAbility = Literal["int", "wis", "cha"]
+
 # The body armor a creature wears (SRD 5.2 armor categories); a Shield is
 # tracked on its own.
 WornArmor = Literal["light", "medium", "heavy"]
@@ -395,5 +400,6 @@ __all__ = [
     "Combatant",
     "FightingStyle",
     "MonsterActionUses",
+    "SpellcastingAbility",
     "WornArmor",
 ]

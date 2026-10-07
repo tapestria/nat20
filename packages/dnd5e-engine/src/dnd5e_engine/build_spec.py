@@ -10,13 +10,14 @@ from __future__ import annotations
 import logging
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import Any, Final, cast
 
 from dnd5e_srd_data.loader import AssetLoader
 from dnd5e_srd_data.schema.advancement import AdvancementEntry
 from dnd5e_srd_data.schema.background import Background
 from dnd5e_srd_data.schema.class_ import Class, Subclass
 from dnd5e_srd_data.schema.common import PassiveEffectChange
+from dnd5e_srd_data.schema.feat import FeatCategory
 from dnd5e_srd_data.schema.item import Armor
 from dnd5e_srd_data.schema.species import Species
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -57,7 +58,7 @@ from dnd5e_engine.rules.character import (
     validate_increase_budget,
     weapon_proficiencies_from_changes,
 )
-from dnd5e_engine.rules.choices import ParsedChoices, parse_selected_choices
+from dnd5e_engine.rules.choices import MagicInitiatePick, ParsedChoices, parse_selected_choices
 from dnd5e_engine.rules.dice import ability_modifier, proficiency_bonus
 from dnd5e_engine.rules.skills import SKILL_CODE_TO_SLUG, Skill, passive_perception
 from dnd5e_engine.spellcasting import (
@@ -67,6 +68,7 @@ from dnd5e_engine.spellcasting import (
     multiclass_caster_level,
     slots_for_caster_level,
 )
+from dnd5e_engine.types.combat import SpellcastingAbility
 
 # Long-form -> the canonical field; short-form aliases the backend cache / lib may pass.
 # A plain ``dict(ABILITY_NAME_BY_CODE)`` keeps the source's Literal key/value types,
@@ -286,6 +288,12 @@ _log = logging.getLogger(__name__)
 
 _LeveledSource = tuple[Class | Subclass | Species | None, int]
 
+# SRD 5.2 Epic Boon feats: "Epic Boon Feat (Prerequisite: Level 19+)". Two boons
+# carry no level prerequisite in the dataset, so the floor comes from the
+# category.
+_EPIC_BOON_LEVEL: Final = 19
+_MAGIC_INITIATE: Final = "magic-initiate"
+
 
 class DerivedSheet(BaseModel):
     """Everything ``derive_sheet`` derives from a ``CharacterBuildSpec``.
@@ -319,6 +327,11 @@ class DerivedSheet(BaseModel):
     extra_attack_count: int
     features: tuple[str, ...]
     feats: tuple[str, ...]
+    # SRD 5.2 Magic Initiate: each spell the ``magic-initiate:`` tokens chose →
+    # the ability that casts it, and the level 1 spells cast once per Long Rest
+    # without a spell slot.
+    spell_abilities: dict[str, SpellcastingAbility] = Field(default_factory=dict)
+    slotless_casts: tuple[str, ...] = ()
     spell_slots: dict[int, int]
     pact_slots: dict[int, int]
     hp_max: int
@@ -410,6 +423,18 @@ def _background(slug: str | None, loader: AssetLoader) -> Background | None:
     if background is None:
         raise ValueError(f"unknown background: {slug!r}")
     return background
+
+
+def _background_feats(background: Background | None, loader: AssetLoader) -> list[str]:
+    """The background's feat — SRD 5.2: "A background gives your character a
+    specified Origin feat"."""
+    if background is None or not background.starting_feat_slug:
+        return []
+    if loader.get_feat(background.starting_feat_slug) is None:
+        raise ValueError(
+            f"background {background.slug!r} grants unknown feat {background.starting_feat_slug!r}"
+        )
+    return [background.starting_feat_slug]
 
 
 def _skills(
@@ -546,6 +571,15 @@ def _asi_level_feats(
         feat = loader.get_feat(pick.feat_slug)
         if feat is None:
             raise ValueError(f"unknown feat: {pick.feat_slug!r}")
+        # The highest character level the build can have had when it reached
+        # this class level: every level it took afterwards was in another class.
+        taken_at = spec.level - (spec.classes[pick.class_slug] - pick.level)
+        if feat.category is FeatCategory.EPIC_BOON and taken_at < _EPIC_BOON_LEVEL:
+            raise ValueError(
+                f"feat {feat.slug!r} is an Epic Boon and needs character level "
+                f"{_EPIC_BOON_LEVEL}; feat:{pick.class_slug}:{pick.level} is taken at "
+                f"character level {taken_at} at most"
+            )
         for prerequisite in feat.prerequisites:
             if prerequisite.level is not None and spec.level < prerequisite.level:
                 raise ValueError(
@@ -557,6 +591,47 @@ def _asi_level_feats(
                 raise ValueError(f"feat {feat.slug!r} needs {missing}")
         feats.append(feat.slug)
     return feats
+
+
+def _check_repeats(feats: Sequence[str], loader: AssetLoader) -> None:
+    """SRD 5.2: "A feat can be taken only once unless its description states
+    otherwise in a "Repeatable" subsection" (``Feat.repeatable``)."""
+    for slug in sorted({slug for slug in feats if feats.count(slug) > 1}):
+        feat = loader.get_feat(slug)
+        if feat is None or not feat.repeatable:
+            raise ValueError(
+                f"feat {slug!r} is not repeatable; the build takes it {feats.count(slug)} times"
+            )
+
+
+def _magic_initiate_spells(
+    picks: Sequence[MagicInitiatePick], feats: Sequence[str], loader: AssetLoader
+) -> tuple[dict[str, SpellcastingAbility], tuple[str, ...]]:
+    """SRD 5.2 Magic Initiate: "You learn two cantrips of your choice ...
+    Intelligence, Wisdom, or Charisma is your spellcasting ability for this
+    feat's spells"; "Choose a level 1 spell ... You can cast it once without a
+    spell slot". One ``magic-initiate:`` token per Magic Initiate the build
+    takes; one without a token has no spells chosen yet. Returns each chosen
+    spell's ability and the level 1 spells cast without a slot. Which list a
+    spell is on is not checked: no corpus entry carries spell lists."""
+    taken = feats.count(_MAGIC_INITIATE)
+    if len(picks) > taken:
+        raise ValueError(
+            f"selected_choices has {len(picks)} magic-initiate: tokens but the build "
+            f"takes Magic Initiate {taken} times"
+        )
+    abilities: dict[str, SpellcastingAbility] = {}
+    for pick in picks:
+        for slug, level in ((pick.cantrips[0], 0), (pick.cantrips[1], 0), (pick.spell, 1)):
+            spell = loader.get_spell(slug)
+            if spell is None:
+                raise ValueError(f"unknown spell: {slug!r}")
+            if spell.level != level:
+                want = "a cantrip" if level == 0 else "a level 1 spell"
+                got = "a cantrip" if spell.level == 0 else f"a level {spell.level} spell"
+                raise ValueError(f"Magic Initiate: {slug!r} is {got}, not {want}")
+            abilities[slug] = pick.ability
+    return abilities, tuple(pick.spell for pick in picks)
 
 
 @dataclass(frozen=True)
@@ -674,12 +749,15 @@ def derive_sheet(spec: CharacterBuildSpec, *, loader: AssetLoader) -> DerivedShe
     changes = _always_on_changes(features, loader)
     used_asi_slots: set[tuple[str, int]] = set()
     scores = _ability_scores(spec, choices, class_docs, background, used_asi_slots)
+    origin_feats = [*_background_feats(background, loader), *picked_feats]
     feats = [
-        *picked_feats,
+        *origin_feats,
         *_asi_level_feats(
-            spec, choices, class_docs, used_asi_slots, {*features, *picked_feats}, loader
+            spec, choices, class_docs, used_asi_slots, {*features, *origin_feats}, loader
         ),
     ]
+    _check_repeats(feats, loader)
+    spell_abilities, slotless_casts = _magic_initiate_spells(choices.magic_initiate, feats, loader)
     modifiers = {name: ability_modifier(score) for name, score in scores.items()}
     pb = proficiency_bonus(spec.level)
     grants = proficiency_grants(
@@ -747,6 +825,8 @@ def derive_sheet(spec: CharacterBuildSpec, *, loader: AssetLoader) -> DerivedShe
         extra_attack_count=extra_attack_count(features),
         features=tuple(features),
         feats=tuple(feats),
+        spell_abilities=spell_abilities,
+        slotless_casts=slotless_casts,
         spell_slots=derive_multiclass_slots(spec.classes, loader=loader),
         pact_slots=derive_multiclass_pact_slots(spec.classes, loader=loader),
         hp_max=_hit_points(spec, die_sizes, modifiers["constitution"], changes),

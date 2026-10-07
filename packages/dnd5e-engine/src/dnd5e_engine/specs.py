@@ -12,7 +12,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from dnd5e_engine.activities.passive_stats import CombatantMovementModes, CombatantSenses
-from dnd5e_engine.types.combat import FightingStyle
+from dnd5e_engine.types.combat import FightingStyle, SpellcastingAbility
 
 
 class PartyMemberSpec(BaseModel):
@@ -70,6 +70,17 @@ class PartyMemberSpec(BaseModel):
     # resolver. Unknown slugs are skipped (with no warning — the caster simply
     # cannot cast that spell at runtime).
     spells_known: list[str] = Field(default_factory=list)
+    # SRD 5.2 Magic Initiate: "Intelligence, Wisdom, or Charisma is your
+    # spellcasting ability for this feat's spells". A spell slug → the ability
+    # (``"wis"``) that casts it, in place of the class's. ``build_party_member``
+    # fills it from the build's ``magic-initiate:`` tokens; empty by default.
+    spell_abilities: dict[str, SpellcastingAbility] = Field(default_factory=dict)
+    # SRD 5.2 Magic Initiate: "You can cast it once without a spell slot, and you
+    # regain the ability to cast it in that way when you finish a Long Rest."
+    # The spells this character can cast at their own level once without a
+    # slot; each use is tallied in ``custom_counters`` under
+    # ``slotless_cast:<spell>``. Empty by default.
+    slotless_casts: tuple[str, ...] = ()
     # Custom limited-use counters, carried onto live combat state for the
     # caster. Namespaced key conventions (see dnd5e_engine.rest):
     # ``feature_use:<slug>`` / ``item_use:<slug>`` → ``{"spent": n}``.

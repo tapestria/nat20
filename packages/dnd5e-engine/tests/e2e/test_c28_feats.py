@@ -37,8 +37,6 @@ from dnd5e_engine.orchestrator import (
 from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
 from tests.e2e.harness import cell, events_of, grid_scene, run_async, xfail_cluster
 
-_SHEET = xfail_cluster(28, "feats on the character sheet")
-
 LOADER = BundledAssetLoader()
 
 
@@ -113,7 +111,6 @@ def _combatant(live, entity_id: str):
 # ── the character sheet ──────────────────────────────────────────────────────
 
 
-@_SHEET
 @pytest.mark.parametrize(
     ("background", "feat"),
     [
@@ -129,7 +126,6 @@ def test_c28_a_backgrounds_origin_feat_lands_on_the_sheet(background: str, feat:
     assert _sheet(background).feats == (feat,)
 
 
-@_SHEET
 def test_c28_a_feat_is_taken_once_unless_it_is_repeatable() -> None:
     # A criminal Human picking Alert again from Versatile takes it twice.
     with pytest.raises(ValueError, match="'alert'"):
@@ -141,7 +137,6 @@ def test_c28_a_feat_is_taken_once_unless_it_is_repeatable() -> None:
     assert sheet.feats == ("alert", "skilled", "skilled")
 
 
-@_SHEET
 @pytest.mark.parametrize("boon", ["boon-of-fate", "boon-of-irresistible-offense"])
 def test_c28_an_epic_boon_needs_character_level_19(boon: str) -> None:
     # SRD 5.2: "Epic Boon Feat (Prerequisite: Level 19+)".
