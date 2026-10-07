@@ -477,29 +477,40 @@ def _is_srd_doc(doc: dict[str, Any]) -> bool:
     )
 
 
+def _index_pack(packs_root: Path, pack: str) -> dict[str, GrantRef]:
+    """``build_feature_index`` for one pack: the compendium UUID of each SRD
+    document in ``packs_root / pack`` → its canonical ref."""
+    index: dict[str, GrantRef] = {}
+    src = packs_root / pack
+    if not src.is_dir():
+        return index
+    ref_type = _INDEX_PACK_REF_TYPE[pack]
+    for yaml_path in sorted(src.rglob("*.yml")):
+        if yaml_path.name.startswith("_"):
+            continue
+        doc = _load_yaml(yaml_path)
+        if not isinstance(doc, dict) or not _is_srd_doc(doc):
+            continue
+        if pack in _FEATURE_PACKS and doc.get("type") != "feat":
+            continue
+        doc_id = str(doc.get("_id") or "")
+        if not doc_id:
+            continue
+        uuid = f"Compendium.dnd5e.{pack}.Item.{doc_id}"
+        slug = _feature_slug(doc, yaml_path) if pack in _FEATURE_PACKS else _slug(doc, yaml_path)
+        index[uuid] = GrantRef(ref_type=ref_type, slug=slug)
+    return index
+
+
 def build_feature_index(packs_root: Path) -> dict[str, GrantRef]:
     index: dict[str, GrantRef] = {}
-    for pack, ref_type in _INDEX_PACK_REF_TYPE.items():
-        src = packs_root / pack
-        if not src.is_dir():
-            continue
-        for yaml_path in sorted(src.rglob("*.yml")):
-            if yaml_path.name.startswith("_"):
-                continue
-            doc = _load_yaml(yaml_path)
-            if not isinstance(doc, dict) or not _is_srd_doc(doc):
-                continue
-            if pack in _FEATURE_PACKS and doc.get("type") != "feat":
-                continue
-            doc_id = str(doc.get("_id") or "")
-            if not doc_id:
-                continue
-            uuid = f"Compendium.dnd5e.{pack}.Item.{doc_id}"
-            slug = (
-                _feature_slug(doc, yaml_path) if pack in _FEATURE_PACKS else _slug(doc, yaml_path)
-            )
-            index[uuid] = GrantRef(ref_type=ref_type, slug=slug)
+    for pack in _INDEX_PACK_REF_TYPE:
+        index.update(_index_pack(packs_root, pack))
     return index
+
+
+# Read once per pack: every background resolves its feat grant in ``feats24``.
+_cached_pack_index = functools.cache(_index_pack)
 
 
 @functools.cache
@@ -2876,13 +2887,34 @@ def _background_languages(advancement: list[AdvancementEntry]) -> list[str]:
     return out
 
 
-def _background_starting_feat_slug(advancement: list[AdvancementEntry]) -> str:
-    """Final slug segment of the "Background Feat" ItemGrant's compendium UUID.
+def _granted_feat_slug(uuid: str, packs_root: Path) -> str:
+    """The canonical slug of the SRD feat a ``Compendium.dnd5e.<pack>.Item.<id>``
+    UUID names, through that pack's index; ``ValueError`` if it names none."""
+    parts = uuid.split(".")
+    pack = parts[2] if len(parts) == 5 else ""
+    ref = _cached_pack_index(packs_root, pack).get(uuid) if pack in _INDEX_PACK_REF_TYPE else None
+    if ref is None or ref.ref_type != "feat":
+        raise ValueError(f"background feat {uuid!r} names no SRD feat")
+    return ref.slug
+
+
+def _packs_root(yaml_path: Path) -> Path:
+    """The ``packs/_source`` directory a pack document sits under."""
+    parts = yaml_path.resolve().parts
+    if "_source" not in parts:
+        raise ValueError(f"{yaml_path} is not under a packs/_source tree")
+    return Path(*parts[: parts.index("_source") + 1])
+
+
+def _background_starting_feat_slug(advancement: list[AdvancementEntry], yaml_path: Path) -> str:
+    """The canonical slug of the Origin feat the "Background Feat" ItemGrant grants.
 
     The feat ItemGrant is identified by title; its
     ``configuration.items[0].uuid`` is a Foundry compendium ref like
-    ``Compendium.dnd5e.feats24.Item.phbftMagicInitia`` — we surface the trailing
-    ``phbftMagicInitia`` segment as the feat slug."""
+    ``Compendium.dnd5e.feats24.Item.phbftMagicInitia``, resolved through that
+    pack's index to the feat's canonical slug (``magic-initiate``). The packs
+    root is resolved here, lazily, only once a grant is actually found, so a
+    background with no "Background Feat" ItemGrant never needs one."""
     for entry in advancement:
         if entry.type is not AdvancementType.ITEM_GRANT:
             continue
@@ -2896,7 +2928,7 @@ def _background_starting_feat_slug(advancement: list[AdvancementEntry]) -> str:
                 continue
             uuid = item.get("uuid")
             if uuid:
-                return str(uuid).rsplit(".", 1)[-1]
+                return _granted_feat_slug(str(uuid), _packs_root(yaml_path))
     return ""
 
 
@@ -2924,7 +2956,7 @@ def translate_background_yaml(
         skill_proficiencies=skills,
         tool_proficiencies=tools,
         languages=_background_languages(advancement),
-        starting_feat_slug=_background_starting_feat_slug(advancement),
+        starting_feat_slug=_background_starting_feat_slug(advancement, yaml_path),
         starting_equipment=starting_equipment,
         wealth=str(system.get("wealth") or ""),
         provenance=_provenance(yaml_path, ingest_date, ingest_version),
@@ -2990,6 +3022,7 @@ def translate_feat_yaml(
         description=_description(doc),
         category=_feat_category(system),
         prerequisites=_feat_prerequisites(system),
+        repeatable=bool((system.get("prerequisites") or {}).get("repeatable")),
         activities=_translate_activities(system),
         provenance=_provenance(yaml_path, ingest_date, ingest_version),
         review=ReviewState(),

@@ -29,6 +29,7 @@ def test_feat_minimal_alert() -> None:
     assert feat.slug == "alert"
     assert feat.category is FeatCategory.ORIGIN
     assert feat.prerequisites == []
+    assert feat.repeatable is False
     assert feat.activities == []
     assert feat.entry_kind == "feat"
 

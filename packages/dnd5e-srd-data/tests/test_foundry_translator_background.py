@@ -40,7 +40,8 @@ def test_translates_acolyte() -> None:
     assert bg.skill_proficiencies == ["ins", "rel"]
     assert bg.tool_proficiencies == ["art:calligrapher"]
     assert bg.languages == ["common"]
-    assert bg.starting_feat_slug == "phbftMagicInitia"
+    # The "Background Feat" grant resolves to the feat's canonical slug.
+    assert bg.starting_feat_slug == "magic-initiate"
     assert bg.wealth == "50"
     assert bg.starting_equipment  # preserved structurally
     assert bg.provenance.srd_version == frozenset({"5.2"})
@@ -56,7 +57,7 @@ def test_translates_criminal_advancement_order_independent() -> None:
     assert bg.skill_proficiencies == ["slt", "ste"]
     assert bg.tool_proficiencies == ["thief"]
     assert bg.languages == ["common"]
-    assert bg.starting_feat_slug == "phbftAlert000000"
+    assert bg.starting_feat_slug == "alert"
 
 
 def test_translates_soldier_tool_choice_pool() -> None:
@@ -68,4 +69,4 @@ def test_translates_soldier_tool_choice_pool() -> None:
     assert bg.ability_options.options == frozenset({"str", "dex", "con"})
     assert bg.skill_proficiencies == ["ath", "itm"]
     assert "game:*" in bg.tool_proficiencies
-    assert bg.starting_feat_slug == "phbftSavageAttac"
+    assert bg.starting_feat_slug == "savage-attacker"

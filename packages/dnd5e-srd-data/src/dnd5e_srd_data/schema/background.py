@@ -12,8 +12,8 @@ soldier) as ``type: background`` documents. The mechanical payload lives in
   (``skills:<short>`` / ``tool:<group>:<kind>`` grant strings).
 - A second ``Trait`` advancement grants the language(s) (``languages:...``).
 - An ``ItemGrant`` advancement titled "Background Feat" grants the starting
-  feat (a Foundry compendium UUID; the translator surfaces its final slug
-  segment).
+  feat (a Foundry compendium UUID, which the translator resolves to the
+  feat's canonical slug).
 
 ``system.startingEquipment[]`` plus ``system.wealth`` (the gp alternative)
 carry the equipment options. The starting-equipment entries are preserved
@@ -71,10 +71,11 @@ class Background(BaseModel):
     "Standard Languages" choices are a player decision, not a fixed grant, so
     they are not surfaced here."""
     starting_feat_slug: str = ""
-    """Final slug segment of the ItemGrant "Background Feat" compendium UUID
-    (e.g. ``phbftMagicInitia`` from
-    ``Compendium.dnd5e.feats24.Item.phbftMagicInitia``). Resolved against the
-    canonical feat dataset by a later phase."""
+    """SRD 5.2: "A background gives your character a specified Origin feat."
+    The canonical slug of that feat (``magic-initiate`` for the Acolyte),
+    resolved from the "Background Feat" ItemGrant's compendium UUID
+    (``Compendium.dnd5e.feats24.Item.phbftMagicInitia``). Empty for a
+    background that grants none."""
     starting_equipment: list[dict[str, Any]] = Field(default_factory=list)
     """Foundry ``system.startingEquipment`` preserved structurally — the
     typed group/linked/focus/tool entries that describe the "Choose A or B"

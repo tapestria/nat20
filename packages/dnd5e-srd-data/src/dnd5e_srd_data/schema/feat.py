@@ -13,7 +13,8 @@ Foundry's ``system.prerequisites`` block carries a minimum character ``level``
 and an ``items`` list of prerequisite-feature identifiers (the Fighting Style
 feats require the ``fighting-style`` feature); ``system.requirements`` is the
 human-readable prerequisite prose (e.g. "Strength or Dexterity 13+"). Both are
-folded into ``FeatPrerequisite``.
+folded into ``FeatPrerequisite``. The same block's ``repeatable`` flag becomes
+``Feat.repeatable``.
 """
 
 from __future__ import annotations
@@ -54,6 +55,11 @@ class Feat(BaseModel):
     description: str
     category: FeatCategory
     prerequisites: list[FeatPrerequisite] = Field(default_factory=list)
+    repeatable: bool = False
+    """SRD 5.2: "A feat can be taken only once unless its description states
+    otherwise in a "Repeatable" subsection." Foundry's
+    ``system.prerequisites.repeatable``: true for Ability Score Improvement,
+    Magic Initiate and Skilled."""
     activities: list[Activity] = Field(default_factory=list)
     """Translated ``system.activities`` (reusing the shared ``Activity``
     discriminated union). Empty for the 13 passive feats; populated for the

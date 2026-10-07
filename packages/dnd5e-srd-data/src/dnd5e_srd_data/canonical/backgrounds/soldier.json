@@ -105,7 +105,7 @@
       "type": "linked"
     }
   ],
-  "starting_feat_slug": "phbftSavageAttac",
+  "starting_feat_slug": "savage-attacker",
   "tool_proficiencies": [
     "game:*"
   ],
