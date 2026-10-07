@@ -215,7 +215,7 @@ from dnd5e_engine.rules.conditions import (
     project_passive_save_modifiers,
     project_speed,
 )
-from dnd5e_engine.rules.dice import ability_modifier
+from dnd5e_engine.rules.dice import ability_modifier, proficiency_bonus
 from dnd5e_engine.rules.uses import UsesRollData, evaluate_uses_formula
 from dnd5e_engine.spatial import GridTopology, SpatialTopology, cell_id, parse_cell
 from dnd5e_engine.specs import (
@@ -1450,6 +1450,20 @@ def _sneak_ally_adjacent_map(
     return out
 
 
+def _grappled_by_map(
+    live: _LiveCombat, attacker: Combatant, targets: Sequence[Combatant]
+) -> dict[str, bool]:
+    """SRD 5.2 Grappler — "a creature Grappled by you": per target, is it
+    Grappled by ``attacker`` (``_condition_source_entity``)? Threaded into
+    ``ActivityResolutionContext.target_grappled_by_attacker``; ``attack.py``
+    applies it only to an attacker with the feat."""
+    return {
+        t.entity_id: True
+        for t in targets
+        if _condition_source_entity(live, t, "grappled") == attacker.entity_id
+    }
+
+
 def _pack_tactics_map(
     live: _LiveCombat, attacker: Combatant, targets: Sequence[Combatant]
 ) -> dict[str, bool]:
@@ -1856,6 +1870,21 @@ def _record_sneak_attack_spent(
     for idx, c in enumerate(live.initiative):
         if c.entity_id == caster.entity_id:
             live.initiative[idx] = c.model_copy(update={"sneak_attack_spent_this_turn": True})
+            break
+
+
+def _record_savage_attacker_spent(
+    live: _LiveCombat, caster: Combatant, actx: ActivityResolutionContext
+) -> None:
+    """SRD 5.2 Savage Attacker, "Once per turn" — flip the caster's
+    ``savage_attacker_spent_this_turn`` once the resolver rolled a weapon's
+    damage dice twice (it marks ``actx.savage_attacker_spent``). The flag
+    clears at every ``TurnStarted`` (``_emit_apply_turn_started``)."""
+    if not actx.savage_attacker_spent.get(caster.entity_id):
+        return
+    for idx, c in enumerate(live.initiative):
+        if c.entity_id == caster.entity_id:
+            live.initiative[idx] = c.model_copy(update={"savage_attacker_spent_this_turn": True})
             break
 
 
@@ -5021,11 +5050,17 @@ def _emit_apply_turn_started(live: _LiveCombat, event: TurnStarted) -> None:
                 }
             )
             break
-    # SRD 5.2 Sneak Attack: "Once per turn" — any creature's turn, not only the
-    # rogue's own: an opportunity attack on another creature's turn can deal it.
+    # SRD 5.2 Sneak Attack and Savage Attacker: "Once per turn" — any creature's
+    # turn, not only the attacker's own: an opportunity attack on another
+    # creature's turn can use them again.
     for idx, c in enumerate(live.initiative):
-        if c.sneak_attack_spent_this_turn:
-            live.initiative[idx] = c.model_copy(update={"sneak_attack_spent_this_turn": False})
+        if c.sneak_attack_spent_this_turn or c.savage_attacker_spent_this_turn:
+            live.initiative[idx] = c.model_copy(
+                update={
+                    "sneak_attack_spent_this_turn": False,
+                    "savage_attacker_spent_this_turn": False,
+                }
+            )
     # SRD 5.2 §Actions in Combat — Help: "This benefit expires at the start
     # of your next turn" — the HELPER's own next turn, not the helped-
     # against target's. Strip this actor's entity_id out of every grant
@@ -7454,6 +7489,7 @@ def _build_pc_combatants(
                 class_slug=pc.class_slug,
                 classes=dict(pc.classes),
                 fighting_styles=styles_from_feats(pc.feats, pc.fighting_style),
+                feats=tuple(pc.feats),
                 worn_armor=worn_armor,
                 shield_equipped=shield_equipped,
                 subclass_slug=pc.subclass_slug,
@@ -7772,7 +7808,21 @@ def _resolve_initiative(
         return spec.initiative
     disadvantage = spec.is_surprised or spec.entity_id in seeded_incapacitated
     sources = AdvantageSources(disadvantage=("condition:attacker",) if disadvantage else ())
-    return roll_d20_test(rng, ability_modifier(_initiative_dexterity(spec)), sources).total
+    modifier = ability_modifier(_initiative_dexterity(spec)) + _initiative_bonus(spec)
+    return roll_d20_test(rng, modifier, sources).total
+
+
+def _initiative_bonus(spec: PartyMemberSpec | EncounterMemberSpec) -> int:
+    """SRD 5.2 Alert: "When you roll Initiative, you can add your Proficiency
+    Bonus to the roll." Only an engine-rolled Initiative reaches here: a host
+    that rolls its own adds the bonus itself."""
+    if isinstance(spec, PartyMemberSpec) and _ALERT in spec.feats:
+        return proficiency_bonus(spec.character_level)
+    return 0
+
+
+# SRD 5.2 feat slugs this module applies (``PartyMemberSpec.feats``).
+_ALERT: Final = "alert"
 
 
 def _initiative_dexterity(spec: PartyMemberSpec | EncounterMemberSpec) -> int:
@@ -12091,6 +12141,11 @@ def _pc_attack_context_kwargs(
         "active_effects": tuple(live.active_effects.get(current.entity_id, [])),
         "sneak_attack_spent": {current.entity_id: current.sneak_attack_spent_this_turn},
         "sneak_attack_ally_adjacent": _sneak_ally_adjacent_map(live, current, geometry_targets),
+        # SRD 5.2 Savage Attacker: the per-turn use, rebuilt from the live
+        # Combatant flag (``_record_savage_attacker_spent`` writes it back).
+        "savage_attacker_spent": {current.entity_id: current.savage_attacker_spent_this_turn},
+        # SRD 5.2 Grappler: which targets this attacker grapples.
+        "target_grappled_by_attacker": _grappled_by_map(live, current, geometry_targets),
         # SRD 5.2 §Weapon Proficiency (C15) — real gate: proficient iff
         # ``current.weapon_proficiencies`` is the ``None`` sentinel (host never
         # opted in) or the weapon's category/slug is listed; ``True`` for a
@@ -12604,6 +12659,7 @@ async def submit_player_intent(
         # resolution (finesse/ranged weapon + Advantage or an adjacent ally),
         # was not already spent, and at least one target took damage.
         _record_sneak_attack_spent(live, current, fetched_weapon, targets, actx, pre_event_count)
+        _record_savage_attacker_spent(live, current, actx)
 
         # SRD 5.2 §Spell Descriptions — typed forced-movement riders (e.g.
         # Thunderwave's "pushed 10 feet away from you") fire after the
@@ -12946,6 +13002,7 @@ def _resolve_opportunity_attack(live: _LiveCombat, reactor: Combatant, mover: Co
     _fold_mastery_procs(live, reactor.entity_id, actx)
     _break_hide(live, reactor.entity_id)
     _record_sneak_attack_spent(live, reactor, weapon, targets, actx, pre_event_count)
+    _record_savage_attacker_spent(live, reactor, actx)
     _fold_resolution_outcome(live, reactor, spell=None, actx=actx, pre_event_count=pre_event_count)
     _sync_legendary_resistance(live, pre_event_count)
 

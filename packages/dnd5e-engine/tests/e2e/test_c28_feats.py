@@ -147,8 +147,6 @@ def test_c28_an_epic_boon_needs_character_level_19(boon: str) -> None:
 
 # ── feats in combat ──────────────────────────────────────────────────────────
 
-_COMBAT = xfail_cluster(28, "feats in combat")
-
 
 def _initiatives(seed: int, *, feats: tuple[str, ...], initiative: int | None = None):
     """Each combatant's Initiative when a level-5 hero (DEX 14) with ``feats``
@@ -158,7 +156,6 @@ def _initiatives(seed: int, *, feats: tuple[str, ...], initiative: int | None = 
     return {c.entity_id: c.initiative for c in live.initiative}
 
 
-@_COMBAT
 def test_c28_alert_adds_the_proficiency_bonus_to_rolled_initiative() -> None:
     for seed in (1, 2, 3):
         plain = _initiatives(seed, feats=())
@@ -183,7 +180,6 @@ _FIGHTER = {"class_slug": "fighter", "character_level": 5, "strength": 16}
 _MONK = {"class_slug": "monk", "character_level": 5, "dexterity": 16}
 
 
-@_COMBAT
 def test_c28_savage_attacker_rolls_weapon_damage_twice_once_per_turn() -> None:
     higher = 0
     for seed in range(1, 21):
@@ -199,7 +195,6 @@ def test_c28_savage_attacker_rolls_weapon_damage_twice_once_per_turn() -> None:
     assert _combatant(live, "char:hero").savage_attacker_spent_this_turn is False
 
 
-@_COMBAT
 def test_c28_savage_attacker_skips_an_unarmed_strike() -> None:
     # An Unarmed Strike is not a weapon: a Monk's rolls its Martial Arts die
     # once, and the feat is still unused for the weapon attack that follows.
@@ -227,7 +222,6 @@ def _attack_after_grappling(*, feats: tuple[str, ...]) -> AttackRolled:
     return next(e for e in events_of(live, AttackRolled) if e.attacker_id == "char:hero")
 
 
-@_COMBAT
 def test_c28_a_grappler_has_advantage_against_the_creature_it_grapples() -> None:
     swing = _attack_after_grappling(feats=("grappler",))
     assert swing.advantage == "advantage"
