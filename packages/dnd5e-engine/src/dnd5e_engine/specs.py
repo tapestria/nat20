@@ -32,7 +32,8 @@ class PartyMemberSpec(BaseModel):
     # SRD 5.2 Initiative — "every participant rolls Initiative; they make a
     # Dexterity check". A fixed int seats the combatant directly (legacy /
     # host-supplied path, zero RNG draws). ``None`` opts into an
-    # engine-rolled ``d20 + DEX modifier`` in ``start_combat`` instead.
+    # engine-rolled ``d20 + DEX modifier`` in ``start_combat`` instead, plus
+    # the Proficiency Bonus for a character with Alert.
     initiative: int | None
     # SRD 5.2 Surprise — "that creature is surprised, which causes it to
     # have Disadvantage on its Initiative roll." Only consulted when
@@ -83,7 +84,8 @@ class PartyMemberSpec(BaseModel):
     slotless_casts: tuple[str, ...] = ()
     # Custom limited-use counters, carried onto live combat state for the
     # caster. Namespaced key conventions (see dnd5e_engine.rest):
-    # ``feature_use:<slug>`` / ``item_use:<slug>`` → ``{"spent": n}``.
+    # ``feature_use:<slug>`` / ``item_use:<slug>`` / ``slotless_cast:<spell>``
+    # → ``{"spent": n}``.
     custom_counters: dict[str, dict[str, int]] = Field(default_factory=dict)
     # SRD §Concentration — ``effect_id`` the caster is currently concentrating
     # on, or ``None``. Carried across to the live ``Combatant`` so the

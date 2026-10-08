@@ -1273,10 +1273,10 @@ def _roll_base_weapon_damage(
     second time, the same way, and keeps the higher total — the engine takes
     the better roll for the attacker, as it does for every option it applies
     automatically — then marks the feat used for this turn. The modifier and
-    the magic bonus are added once, to the roll it keeps. Skipped when the
-    weapon's own damage part(s) roll no dice (e.g. the Blowgun's flat ``"1"``)
-    — spending the once-per-turn second roll there would deny it to a later
-    weapon hit this turn that actually rolls dice.
+    the magic bonus are added once, to the roll it keeps (the first on a tie).
+    Skipped when the weapon's own damage part(s) roll no dice (e.g. the
+    Blowgun's flat ``"1"``) — spending the once-per-turn second roll there
+    would deny it to a later weapon hit this turn that actually rolls dice.
     """
     first_type: str | None = None
     flat_addition = weapon.magical_bonus

@@ -1884,12 +1884,8 @@ def _record_savage_attacker_spent(
     ``savage_attacker_spent_this_turn`` once the resolver rolled a weapon's
     damage dice twice (it marks ``actx.savage_attacker_spent``). The flag
     clears at every ``TurnStarted`` (``_emit_apply_turn_started``)."""
-    if not actx.savage_attacker_spent.get(caster.entity_id):
-        return
-    for idx, c in enumerate(live.initiative):
-        if c.entity_id == caster.entity_id:
-            live.initiative[idx] = c.model_copy(update={"savage_attacker_spent_this_turn": True})
-            break
+    if actx.savage_attacker_spent.get(caster.entity_id):
+        _update_combatant(live, caster.entity_id, savage_attacker_spent_this_turn=True)
 
 
 def _path_total_distance(topology: SpatialTopology, path: Sequence[str]) -> int | None:
@@ -7805,7 +7801,8 @@ def _resolve_initiative(
     """SRD 5.2 Initiative: "every participant rolls Initiative; they make a
     Dexterity check". ``spec.initiative`` being an explicit int always wins
     (zero RNG draws — the legacy / host-supplied path). ``None`` opts into an
-    engine-rolled d20 + DEX modifier. Surprise (and Incapacitated at roll
+    engine-rolled d20 + DEX modifier, plus a character's Proficiency Bonus with
+    Alert (``_initiative_bonus``). Surprise (and Incapacitated at roll
     time — both SRD-cited on the spec fields / ``_seeded_incapacitated_ids``)
     impose Disadvantage per SRD 5.2 Surprise / the Incapacitated glossary
     entry.
@@ -7818,6 +7815,10 @@ def _resolve_initiative(
     return roll_d20_test(rng, modifier, sources).total
 
 
+# SRD 5.2 feat slugs this module applies (``PartyMemberSpec.feats``).
+_ALERT: Final = "alert"
+
+
 def _initiative_bonus(spec: PartyMemberSpec | EncounterMemberSpec) -> int:
     """SRD 5.2 Alert: "When you roll Initiative, you can add your Proficiency
     Bonus to the roll." Only an engine-rolled Initiative reaches here: a host
@@ -7825,10 +7826,6 @@ def _initiative_bonus(spec: PartyMemberSpec | EncounterMemberSpec) -> int:
     if isinstance(spec, PartyMemberSpec) and _ALERT in spec.feats:
         return proficiency_bonus(spec.character_level)
     return 0
-
-
-# SRD 5.2 feat slugs this module applies (``PartyMemberSpec.feats``).
-_ALERT: Final = "alert"
 
 
 def _initiative_dexterity(spec: PartyMemberSpec | EncounterMemberSpec) -> int:
@@ -11099,9 +11096,10 @@ def _cast_payable(live: _LiveCombat, caster: Combatant, spell: Spell, slot_level
 
 
 def _pay_for_cast(live: _LiveCombat, caster: Combatant, spell: Spell, slot_level: int) -> bool:
-    """Pay for a leveled cast: the slotless cast when one is available
-    (Magic Initiate: "You can also cast the spell using any spell slots you
-    have" — the slotless cast goes first), else a slot (``_take_spell_slot``).
+    """Pay for a leveled cast: the slotless cast when one is available, else a
+    slot (``_take_spell_slot``). Magic Initiate: "You can also cast the spell
+    using any spell slots you have." The slotless cast goes first because a
+    slot can pay for any spell and the slotless cast only for this one.
     Returns ``False`` and spends nothing when neither is available."""
     if _slotless_cast_available(live, caster, spell, slot_level):
         counters = live.custom_counters_by_entity.setdefault(caster.entity_id, {})
@@ -11821,8 +11819,8 @@ def _resolve_readied_spell_cast(
     if spell.level > 0:
         _pay_for_cast(live, reactor, spell, slot_level)
     # ``_emit_spell_cast`` normalises ``slot_level`` to ``None`` for a
-    # cantrip; ``slot_level`` here stays the raw popped/derived value for the
-    # slot-take check above.
+    # cantrip; ``slot_level`` here stays the raw popped/derived value the
+    # payment above used.
 
     _emit(
         live,
@@ -11997,8 +11995,8 @@ def _drain_counterspell_reaction(
     if save_activity is None:
         return False
 
-    # Counterspell's OWN slot is spent whether or not it succeeds — only the
-    # INTERRUPTED spell's slot is conditionally preserved, below.
+    # Counterspell is paid for (a slot, or its slotless cast) whether or not
+    # it succeeds — only the INTERRUPTED spell's slot is preserved, below.
     for idx, c in enumerate(live.initiative):
         if c.entity_id == reactor.entity_id:
             live.initiative[idx] = c.model_copy(update={"reaction_available": False})
