@@ -87,9 +87,8 @@ def test_wrong_turn_intent_is_409_unknown_combat_404(client: TestClient) -> None
 def test_combat_ids_never_reused_after_a_combat_ends(client: TestClient) -> None:
     # Regression: an earlier `cid = f"c{len(state.combats) + 1}"` scheme
     # collided once a combat was removed from the registry — start A (c1),
-    # start B (c2), end A (drops A from `combats`, leaving just B), start C
-    # would then also mint "c2", silently clobbering B's still-live
-    # combats/events_log/names/seeds/collectors entries with C's.
+    # start B (c2), end A (drops A, leaving just B), start C would then
+    # also mint "c2", silently clobbering B's still-live session with C's.
     a = _start(client, seed=101)
     b = _start(client, seed=102)
     assert a["combat_id"] != b["combat_id"]
@@ -148,10 +147,8 @@ def test_a_summon_joins_the_view_and_dodges_on_advance_monster(tmp_path: Path) -
     order right after its caster (SRD 5.2: "it takes its turn immediately after
     yours"), and ``/advance-monster`` on its turn plays the uncommanded Dodge.
 
-    The client is entered as a context manager so every request shares one
-    event loop: the event collector ``/v1/combat`` starts then delivers the
-    events of later requests, as it does for a real client. Seed 42 puts the
-    wizard first."""
+    The client is entered as a context manager, so every request shares one
+    event loop as under a real server. Seed 42 puts the wizard first."""
     wizard = {
         "name": "Vex",
         "build": {

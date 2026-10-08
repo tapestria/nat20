@@ -6,7 +6,14 @@ from pathlib import Path
 import uvicorn
 
 from nat20_bridge.app import create_app
-from nat20_bridge.state import BridgeState
+from nat20_bridge.state import DEFAULT_MAX_COMBATS, BridgeState
+
+
+def _at_least_one(text: str) -> int:
+    value = int(text)
+    if value < 1:
+        raise argparse.ArgumentTypeError(f"must be at least 1, got {value}")
+    return value
 
 
 def main() -> None:
@@ -19,7 +26,14 @@ def main() -> None:
         default=Path.home() / ".nat20-bridge",
         help="where homebrew.json persists",
     )
+    parser.add_argument(
+        "--max-combats",
+        type=_at_least_one,
+        default=DEFAULT_MAX_COMBATS,
+        help="how many combats stay live; starting one more ends the least recently used",
+    )
     args = parser.parse_args()
     args.data_dir.mkdir(parents=True, exist_ok=True)
-    app = create_app(BridgeState(homebrew_path=args.data_dir / "homebrew.json"))
+    state = BridgeState(homebrew_path=args.data_dir / "homebrew.json", max_combats=args.max_combats)
+    app = create_app(state)
     uvicorn.run(app, host=args.host, port=args.port)  # pragma: no cover

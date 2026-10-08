@@ -23,10 +23,6 @@ from fastapi.testclient import TestClient
 from nat20_bridge.app import create_app
 from nat20_bridge.state import BridgeState
 
-_SESSIONS = pytest.mark.xfail(
-    strict=True, reason="bridge parity (combat dice and retention) not yet implemented"
-)
-
 _BROM = {
     "name": "Brom",
     "build": {
@@ -72,7 +68,6 @@ def _first_attack(client: TestClient, cid: str) -> dict[str, Any]:
     return next(e for e in resp.json()["events"] if e["type"] == "attack_rolled")
 
 
-@_SESSIONS
 def test_c29_a_seeded_combat_never_touches_the_global_random(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -87,7 +82,6 @@ def test_c29_a_seeded_combat_never_touches_the_global_random(
     assert client.post(f"/v1/combat/{cid}/end", json={}).status_code == 200
 
 
-@_SESSIONS
 def test_c29_the_first_attack_no_longer_replays_the_initiative_roll(client: TestClient) -> None:
     brom_first = replays = 0
     for seed in range(1000, 1400):
@@ -117,7 +111,6 @@ def _alive(client: TestClient, cid: str) -> bool:
     return resp.status_code == 200
 
 
-@_SESSIONS
 def test_c29_the_least_recently_used_combat_ends_past_the_cap(tmp_path: Path) -> None:
     client = _app(tmp_path, max_combats=2)
     c1, c2, c3 = _start(client, 1), _start(client, 2), _start(client, 3)
@@ -130,7 +123,6 @@ def test_c29_the_least_recently_used_combat_ends_past_the_cap(tmp_path: Path) ->
     assert [_alive(client, cid) for cid in (c1, c2, c3)] == [True, False, True]
 
 
-@_SESSIONS
 def test_c29_ending_a_combat_releases_its_session(tmp_path: Path) -> None:
     state = BridgeState(homebrew_path=tmp_path / "homebrew.json")
     client = TestClient(create_app(state))

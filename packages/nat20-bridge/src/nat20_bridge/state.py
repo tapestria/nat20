@@ -1,50 +1,58 @@
 from __future__ import annotations
 
-import asyncio
+from collections import OrderedDict
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
 if TYPE_CHECKING:
-    from dnd5e_engine import CombatEvent, CombatHandle, GridScene
+    from dnd5e_engine import CombatHandle, GridScene
     from dnd5e_srd_data.loader import AssetLoader
 
     from nat20_bridge.homebrew import HomebrewStore
+
+#: How many combats stay live at once unless ``--max-combats`` says otherwise.
+DEFAULT_MAX_COMBATS: Final = 16
+
+
+@dataclass
+class CombatSession:
+    """One live combat: the engine's handle and what the bridge serves beside it."""
+
+    handle: CombatHandle
+    # entity_id -> display name, for narration and the GET /v1/combat/{cid}
+    # view. A creature that joins mid-combat (a summon) is added when its
+    # ``combatant_joined`` event is drained.
+    names: dict[str, str]
+    # The battlefield the combat was started on. The engine takes the scene at
+    # start_combat time and does not hand it back through LiveCombatView, so
+    # the bridge keeps it to serve the view's grid block.
+    grid: GridScene
+    seed: int
 
 
 @dataclass
 class BridgeState:
     homebrew_path: Path
+    # Live combats are capped: starting one more ends the least recently used
+    # (the engine releases a combat only once it has ended), and its id then
+    # answers 404. max_combats must be ≥ 1. No clock and no background task
+    # are involved.
+    max_combats: int = DEFAULT_MAX_COMBATS
     # Monotonically increasing counter for combat_id allocation — never
-    # reused, even after a combat ends and is popped from `combats`. Using
-    # `len(combats) + 1` for the id (as an earlier draft did) collides once
-    # any combat has been removed: start A (c1), start B (c2), end A, start
-    # C -> len(combats) is back down to 1, so C would mint "c2" again and
-    # silently clobber B's still-live combats/events_log/names/seeds/
-    # collectors entries.
+    # reused, even after a combat ends and leaves `sessions`. Using
+    # `len(sessions) + 1` for the id collides once any combat has been
+    # removed: start A (c1), start B (c2), end A, start C -> len(sessions)
+    # is back down to 1, so C would mint "c2" again and silently clobber
+    # B's still-live session.
     next_combat_id: int = 1
-    combats: dict[str, CombatHandle] = field(default_factory=dict)
-    events_log: dict[str, list[CombatEvent]] = field(default_factory=dict)
-    seeds: dict[str, int] = field(default_factory=dict)
-    # entity_id -> display name, per combat_id. Used to render narration and
-    # the GET /v1/combat/{cid} view without re-deriving names from the
-    # engine's Combatant rows (which only carry the name the caller gave it
-    # at start_combat time anyway).
-    names: dict[str, dict[str, str]] = field(default_factory=dict)
-    # The battlefield each combat was started on, per combat_id. The engine
-    # takes the scene at start_combat time and does not hand it back through
-    # LiveCombatView, so the bridge keeps its own copy to serve the grid
-    # block on GET /v1/combat/{cid} (hosts need the extent and terrain to
-    # render the zones the view already reports).
-    grids: dict[str, GridScene] = field(default_factory=dict)
-    # Background collector tasks draining ``narration_events(handle)`` into
-    # ``events_log[cid]`` for the lifetime of each combat — see
-    # ``routes_combat.py``'s module docstring for the drain protocol. Kept
-    # here (not just fire-and-forgot) so the task object stays referenced
-    # (asyncio only guarantees a task survives GC while something holds it)
-    # and so ``end_combat`` can await its clean shutdown.
-    collectors: dict[str, asyncio.Task[None]] = field(default_factory=dict)
+    # Live combats by combat_id, least recently used first: every request
+    # that names a combat moves it to the end. Only the async combat routes
+    # touch it, all on the event loop's thread, and none yields mid-update,
+    # so it takes no lock: a sync route (FastAPI runs those on its thread
+    # pool) must not touch it.
+    sessions: OrderedDict[str, CombatSession] = field(default_factory=OrderedDict)
     # The homebrew store + the overlay loader built from it, and a callable
     # to rebuild the overlay after a homebrew mutation (Task 10). Populated
     # by ``create_app`` — never ``None`` once the app is constructed.
