@@ -22,12 +22,7 @@ from __future__ import annotations
 import random
 from typing import Any
 
-import pytest
 from fastapi.testclient import TestClient
-
-_INTENTS = pytest.mark.xfail(
-    strict=True, reason="bridge parity (intents, view, summon names) not yet implemented"
-)
 
 _GOBLIN = "mon:goblin-warrior-1"
 
@@ -87,7 +82,6 @@ def _summon(client: TestClient) -> tuple[str, str, dict[str, Any]]:
     return cid, joined["entity_id"], cast
 
 
-@_INTENTS
 def test_c29_a_summon_attacks_with_its_stat_block_action(client: TestClient) -> None:
     cid, spirit, _ = _summon(client)
     view = _view(client, cid)
@@ -100,7 +94,6 @@ def test_c29_a_summon_attacks_with_its_stat_block_action(client: TestClient) -> 
     assert [e["attacker_id"] for e in rend["events"] if e["type"] == "attack_rolled"] == [spirit]
 
 
-@_INTENTS
 def test_c29_a_spell_is_upcast_with_slot_level(client: TestClient) -> None:
     wizard = _member(
         "Elara",
@@ -124,7 +117,6 @@ def test_c29_a_spell_is_upcast_with_slot_level(client: TestClient) -> None:
     assert _types(cast).count("damage_applied") == 5  # three darts and two more
 
 
-@_INTENTS
 def test_c29_wild_shape_takes_the_named_form(client: TestClient) -> None:
     druid = _member("Bryn", "druid", 2, ability_scores={"wis": 16, "dex": 14, "con": 14})
     cid = _start(client, druid, seed=5)  # seed 5: Bryn first
@@ -137,7 +129,6 @@ def test_c29_wild_shape_takes_the_named_form(client: TestClient) -> None:
 _CLERIC = _member("Ilse", "cleric", 2, ability_scores={"wis": 16, "dex": 12, "con": 14})
 
 
-@_INTENTS
 def test_c29_a_feature_activity_is_picked_by_its_id(client: TestClient) -> None:
     cid = _start(client, _CLERIC, seed=5)  # seed 5: Ilse first
     heal = _act(
@@ -166,7 +157,6 @@ def test_c29_a_feature_activity_is_picked_by_its_id(client: TestClient) -> None:
     assert resp.status_code == 422
 
 
-@_INTENTS
 def test_c29_cunning_action_dashes_as_a_bonus_action(client: TestClient) -> None:
     rogue = _member("Nyx", "rogue", 2, ability_scores={"str": 8, "dex": 16, "con": 14})
     cid = _start(client, rogue, seed=2)  # seed 2: Nyx first
@@ -180,7 +170,6 @@ def test_c29_cunning_action_dashes_as_a_bonus_action(client: TestClient) -> None
     assert "attack_rolled" in _types(attack)
 
 
-@_INTENTS
 def test_c29_a_bad_intent_type_or_an_unknown_key_is_refused(client: TestClient) -> None:
     cid = _start(client, _VEX, seed=42)  # seed 42: Vex first
     url = f"/v1/combat/{cid}/intent"
@@ -193,7 +182,6 @@ def test_c29_a_bad_intent_type_or_an_unknown_key_is_refused(client: TestClient) 
     assert _view(client, cid)["current_actor"].startswith("char:vex")
 
 
-@_INTENTS
 def test_c29_a_multiclass_build_starts_a_combat(client: TestClient) -> None:
     kael = {
         "name": "Kael",
@@ -208,7 +196,6 @@ def test_c29_a_multiclass_build_starts_a_combat(client: TestClient) -> None:
     assert row["max_hp"] == 40
 
 
-@_INTENTS
 def test_c29_the_engine_rolls_initiative_with_the_derived_dexterity_and_alert(
     client: TestClient,
 ) -> None:
@@ -230,7 +217,6 @@ def test_c29_the_engine_rolls_initiative_with_the_derived_dexterity_and_alert(
         assert row["initiative"] == random.Random(seed).randint(1, 20) + 3 + 2
 
 
-@_INTENTS
 def test_c29_a_summon_narrates_by_its_name(client: TestClient) -> None:
     cid, spirit, cast = _summon(client)
     lines = cast["narration"].splitlines()

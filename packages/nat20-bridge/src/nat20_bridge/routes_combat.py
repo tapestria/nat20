@@ -14,6 +14,7 @@ the least recently used, and its id then answers 404.
 
 from __future__ import annotations
 
+import dataclasses
 import re
 from typing import Any
 
@@ -27,10 +28,10 @@ from dnd5e_engine import (
     drain_pending_events,
     end_combat,
     get_live,
-    make_build_spec,
     start_combat,
     submit_player_intent,
 )
+from dnd5e_engine.events import CombatantJoined
 from dnd5e_engine.orchestrator import IntentRejectedError
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -65,15 +66,12 @@ class _CombatStartRequest(BaseModel):
     seed: int | None = None
 
 
-class _IntentRequest(BaseModel):
+class _IntentRequest(PlayerIntent):
+    """``PlayerIntent`` plus the creature that acts. Every intent field reaches
+    the engine, and an unknown key is refused (``PlayerIntent`` forbids extra
+    keys) rather than silently dropped."""
+
     actor_id: str
-    intent_type: str
-    spell_id: str | None = None
-    target_id: str | None = None
-    item_id: str | None = None
-    weapon_id: str | None = None
-    feature_id: str | None = None
-    target_zone_id: str | None = None
 
 
 def _session(state: BridgeState, cid: str) -> CombatSession:
@@ -86,8 +84,13 @@ def _session(state: BridgeState, cid: str) -> CombatSession:
 
 
 def _drain(session: CombatSession) -> list[CombatEvent]:
-    """The events the last engine call queued."""
-    return drain_pending_events(session.handle)
+    """The events the last engine call queued. A creature that joined the
+    fight (a summon) adds its name, so it narrates by name from then on."""
+    events = drain_pending_events(session.handle)
+    for event in events:
+        if isinstance(event, CombatantJoined):
+            session.names[event.entity_id] = _sanitize_name(event.name)
+    return events
 
 
 def _refused(session: CombatSession, status_code: int, detail: str) -> HTTPException:
@@ -118,16 +121,8 @@ def _build_party_specs(
     for i, member_req in enumerate(party):
         entity_id = member_req.entity_id or f"char:{slugify(member_req.name)}"
         try:
-            build_spec = make_build_spec(
-                species_slug=member_req.build.species_slug,
-                class_slug=member_req.build.class_slug,
-                level=member_req.build.level,
-                subclass_slug=member_req.build.subclass_slug,
-                ability_scores=member_req.build.ability_scores.model_dump(by_alias=True),
-                equipment=member_req.build.equipment,
-            )
             member = derive_sheet(
-                build_spec,
+                member_req.build.to_build_spec(),
                 name=_sanitize_name(member_req.name),
                 entity_id=entity_id,
                 loader=loader,
@@ -218,22 +213,17 @@ async def _start_route(state: BridgeState, req: _CombatStartRequest) -> dict[str
     return _envelope(cid, events, names, over=False)
 
 
-def _player_intent_from_request(req: _IntentRequest) -> PlayerIntent:
-    payload = {
-        k: v
-        for k, v in req.model_dump().items()
-        if k not in ("actor_id", "intent_type") and v is not None
-    }
-    return PlayerIntent(intent_type=req.intent_type, **payload)  # type: ignore[arg-type]
-
-
 async def _intent_route(state: BridgeState, cid: str, req: _IntentRequest) -> dict[str, Any]:
     session = _session(state, cid)
-    player_intent = _player_intent_from_request(req)
+    intent = PlayerIntent.model_validate(req.model_dump(exclude={"actor_id"}, exclude_unset=True))
     try:
-        await submit_player_intent(session.handle, req.actor_id, player_intent)
+        await submit_player_intent(session.handle, req.actor_id, intent)
     except IntentRejectedError as exc:
         raise _refused(session, 409, exc.reason) from exc
+    except ValueError as exc:
+        # An intent the engine can't resolve as sent (an activity it has no
+        # context for yet) is the client's to change, not a server fault.
+        raise _refused(session, 422, str(exc)) from exc
     events = _drain(session)
     return _envelope(cid, events, session.names, over=get_live(session.handle).ended)
 
@@ -258,6 +248,7 @@ def _order_row(combatant: Any, names: dict[str, str], live_view: Any) -> dict[st
     return {
         "entity_id": eid,
         "name": names.get(eid, combatant.name),
+        "initiative": combatant.initiative,
         "hp": live_view.tracked_hp.get(eid, combatant.hp_current),
         "max_hp": combatant.hp_max,
         "dead": eid in live_view.dead_ids,
@@ -283,6 +274,11 @@ async def _view_route(state: BridgeState, cid: str) -> dict[str, Any]:
         "order": order,
         "ended": live_view.ended,
         "grid": session.grid.model_dump(),
+        "seed": session.seed,
+        "turn": dataclasses.asdict(live_view.turn),
+        "summons": {k: dataclasses.asdict(v) for k, v in live_view.summons.items()},
+        "transformations": {k: dataclasses.asdict(v) for k, v in live_view.transformations.items()},
+        "constructs": {k: dataclasses.asdict(v) for k, v in live_view.constructs.items()},
     }
 
 
