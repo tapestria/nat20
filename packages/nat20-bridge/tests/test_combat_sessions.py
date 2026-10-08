@@ -81,3 +81,28 @@ def test_a_monster_turn_the_engine_cannot_resolve_leaves_nothing_behind(
     ).json()
     submitted = [e["actor_id"] for e in turn["events"] if e["type"] == "intent_submitted"]
     assert submitted == ["char:brom"]
+
+
+def test_an_engine_fault_on_an_intent_leaves_nothing_behind(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Seed 1 puts the goblin first, then Brom. An engine fault of any type
+    # stays a server error, and the next response holds only its own events.
+    real = routes_combat.submit_player_intent
+
+    async def _resolve_then_fail(handle: object, actor_id: str, intent: object) -> None:
+        await real(handle, actor_id, intent)
+        raise KeyError("an engine fault")
+
+    cid = client.post(
+        "/v1/combat", json={"party": [_BROM], "monsters": ["goblin-warrior"], "seed": 1}
+    ).json()["combat_id"]
+    assert client.post(f"/v1/combat/{cid}/advance-monster", json={}).status_code == 200
+    monkeypatch.setattr(routes_combat, "submit_player_intent", _resolve_then_fail)
+    with pytest.raises(KeyError, match="an engine fault"):
+        client.post(
+            f"/v1/combat/{cid}/intent", json={"actor_id": "char:brom", "intent_type": "pass"}
+        )
+    turn = client.post(f"/v1/combat/{cid}/advance-monster", json={}).json()
+    submitted = [e["actor_id"] for e in turn["events"] if e["type"] == "intent_submitted"]
+    assert submitted == ["mon:goblin-warrior-1"]

@@ -74,3 +74,14 @@ def test_max_combats_below_one_is_refused(
     with pytest.raises(SystemExit):
         cli.main()
     assert "must be at least 1" in capsys.readouterr().err
+
+
+def test_a_max_combats_that_is_not_a_number_is_refused(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(
+        "sys.argv", ["nat20-bridge", "--data-dir", str(tmp_path), "--max-combats", "many"]
+    )
+    with pytest.raises(SystemExit):
+        cli.main()
+    assert "--max-combats: must be a whole number, got 'many'" in capsys.readouterr().err

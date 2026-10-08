@@ -10,7 +10,10 @@ from nat20_bridge.state import DEFAULT_MAX_COMBATS, BridgeState
 
 
 def _at_least_one(text: str) -> int:
-    value = int(text)
+    try:
+        value = int(text)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"must be a whole number, got {text!r}") from None
     if value < 1:
         raise argparse.ArgumentTypeError(f"must be at least 1, got {value}")
     return value

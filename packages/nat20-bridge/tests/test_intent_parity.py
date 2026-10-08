@@ -131,3 +131,37 @@ def test_the_view_reports_a_spiritual_weapon_and_the_turn(client: TestClient) ->
     # A Bonus Action spell: Ilse's Action, and its one attack, are still hers.
     assert view["current_actor"].startswith("char:ilse")
     assert view["turn"] == {"attacks_remaining": 1, "extra_actions_remaining": 0}
+
+
+_VEX = {
+    "name": "Vex",
+    "build": {
+        "species_slug": "human",
+        "class_slug": "wizard",
+        "level": 9,
+        "ability_scores": {"int": 18, "dex": 14, "con": 14},
+    },
+    "spells_known": ["summon-dragon"],
+}
+
+
+def test_a_refused_call_still_names_a_creature_that_joined(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The engine raises after the spirit joined: what the call queued is
+    # dropped, but the spirit narrates by its name from then on.
+    real = routes_combat.submit_player_intent
+
+    async def _summon_then_raise(handle: object, actor_id: str, intent: PlayerIntent) -> None:
+        await real(handle, actor_id, intent)
+        raise ValueError("a part of the spell the engine can't resolve")
+
+    cid = _start(client, _VEX, seed=42)  # seed 42: Vex first
+    monkeypatch.setattr(routes_combat, "submit_player_intent", _summon_then_raise)
+    cast = client.post(
+        f"/v1/combat/{cid}/intent",
+        json={"actor_id": "char:vex", "intent_type": "cast_spell", "spell_id": "summon-dragon"},
+    )
+    assert cast.status_code == 422
+    turn = client.post(f"/v1/combat/{cid}/advance-monster", json={})
+    assert "Draconic Spirit attempts dodge." in turn.json()["narration"].splitlines()

@@ -1,12 +1,15 @@
 """Combat lifecycle routes: start / intent / advance-monster / view / end.
 
 Each combat is one ``CombatSession`` (``state.py``): the engine's handle, the
-display names, the battlefield and the seed. ``submit_player_intent`` and
-``advance_monster_turn`` return ``None`` and queue the events they emit on the
-live combat, so every route drains that queue (``drain_pending_events``)
-right after its engine call and reports exactly the events its own request
-produced. A call the engine refuses drops what it queued first, so the next
-response starts clean.
+display names, the battlefield and the seed. ``start_combat``,
+``submit_player_intent`` and ``advance_monster_turn`` queue the events they
+emit on the live combat, so their routes drain that queue
+(``drain_pending_events``) right after the engine call and report exactly
+the events their own request produced; ``/end`` reports the events
+``end_combat`` returns. A failed call leaves nothing for the next response: a
+refused one (409, 422) drops what it queued, and the intent and
+advance-monster routes drop whatever an engine fault (a 500) left queued
+before they call the engine.
 
 At most ``BridgeState.max_combats`` combats stay live: starting one more ends
 the least recently used, and its id then answers 404.
@@ -95,8 +98,9 @@ def _drain(session: CombatSession) -> list[CombatEvent]:
 
 def _refused(session: CombatSession, status_code: int, detail: str) -> HTTPException:
     """The error for an engine call that refused. Whatever it queued first is
-    dropped, so the next response reports only its own request's events."""
-    drain_pending_events(session.handle)
+    dropped (a creature that joined still gets its name), so the next response
+    reports only its own request's events."""
+    _drain(session)
     return HTTPException(status_code=status_code, detail=detail)
 
 
@@ -215,14 +219,18 @@ async def _start_route(state: BridgeState, req: _CombatStartRequest) -> dict[str
 
 async def _intent_route(state: BridgeState, cid: str, req: _IntentRequest) -> dict[str, Any]:
     session = _session(state, cid)
+    _drain(session)  # what an engine fault (a 500) left queued belongs to no response
     intent = PlayerIntent.model_validate(req.model_dump(exclude={"actor_id"}, exclude_unset=True))
     try:
         await submit_player_intent(session.handle, req.actor_id, intent)
     except IntentRejectedError as exc:
         raise _refused(session, 409, exc.reason) from exc
     except ValueError as exc:
-        # An intent the engine can't resolve as sent (an activity it has no
-        # context for yet) is the client's to change, not a server fault.
+        # The engine can't resolve the intent as sent: an activity it has no
+        # context for yet, or, partway through a move, a foe's opportunity
+        # attack its stat block can't resolve (BACKLOG.md lists both). The
+        # combat goes on and another intent can still resolve, so this is a
+        # 422, not a 500; what the engine spent before it raised stays spent.
         raise _refused(session, 422, str(exc)) from exc
     events = _drain(session)
     return _envelope(cid, events, session.names, over=get_live(session.handle).ended)
@@ -230,15 +238,11 @@ async def _intent_route(state: BridgeState, cid: str, req: _IntentRequest) -> di
 
 async def _advance_monster_route(state: BridgeState, cid: str) -> dict[str, Any]:
     session = _session(state, cid)
+    _drain(session)  # what an engine fault (a 500) left queued belongs to no response
     try:
         await advance_monster_turn(session.handle)
     except IntentRejectedError as exc:
         raise _refused(session, 409, exc.reason) from exc
-    except ValueError:
-        # A stat block the engine can't resolve yet stays a server error, but
-        # what the failed turn queued must not reach the next response.
-        drain_pending_events(session.handle)
-        raise
     events = _drain(session)
     return _envelope(cid, events, session.names, over=get_live(session.handle).ended)
 
