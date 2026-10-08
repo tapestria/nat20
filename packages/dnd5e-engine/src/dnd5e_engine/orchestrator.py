@@ -9681,11 +9681,12 @@ def _apply_construct_requests(
                 _resolve_construct_attack(live, caster, construct, target)
 
 
-def _construct_spellcasting_ability(owner: Combatant) -> str | None:
-    """The ability a construct's attack uses: the owner's class spellcasting
-    ability, else its stat block's (a monster), else ``None`` (the legacy
-    fallbacks of a classless caster)."""
-    return _resolve_caster_spellcasting_ability(owner) or owner.spellcasting_ability
+def _construct_spellcasting_ability(owner: Combatant, spell_id: str) -> str | None:
+    """The ability a construct's or summon's attack uses: the owner's ability
+    for ``spell_id`` (``_spellcasting_ability_for``: its own entry in
+    ``spell_abilities``, else its class's), else its stat block's (a monster),
+    else ``None`` (the legacy fallbacks of a classless caster)."""
+    return _spellcasting_ability_for(owner, spell_id) or owner.spellcasting_ability
 
 
 def _resolve_construct_attack(
@@ -9703,7 +9704,7 @@ def _resolve_construct_attack(
     owner's."""
     spec = CONSTRUCTS[construct.spell_id]
     target_list = [target]
-    ability = _construct_spellcasting_ability(owner)
+    ability = _construct_spellcasting_ability(owner, construct.spell_id)
     attack_bonus, modifier = spell_attack_magnitudes(owner, ability)
     payload = _build_hydration_payload(live, caster=owner)
     pre_event_count = len(live.event_log)
@@ -9978,7 +9979,7 @@ def _seat_summon(live: _LiveCombat, caster: Combatant, request: SummonRequest) -
     # The registry test pins that every ``SUMMONS`` stat block loads with an AC.
     assert monster is not None
     assert monster.ac is not None
-    ability = _construct_spellcasting_ability(caster)
+    ability = _construct_spellcasting_ability(caster, request.spell_id)
     spell_attack, modifier = spell_attack_magnitudes(caster, ability)
     roll_data = SummonRollData(level=request.slot_level, mod=modifier)
     ac = monster.ac + evaluate_summon_formula(request.bonuses.ac, roll_data)
@@ -11110,6 +11111,19 @@ def _pay_for_cast(live: _LiveCombat, caster: Combatant, spell: Spell, slot_level
     return _take_spell_slot(live, caster.entity_id, slot_level)
 
 
+def _spend_countered_slotless_cast(
+    live: _LiveCombat, caster: Combatant, intent: PlayerIntent
+) -> None:
+    """SRD 5.2 Counterspell: "If that spell was cast with a spell slot, the slot
+    isn't expended." Only a slot is spared: a countered spell its slotless cast
+    pays for (``_pay_for_cast`` spends that before a slot) still spends it."""
+    spell = get_lib_loader().get_spell(intent.spell_id or "")
+    if spell is not None and spell.level > 0:
+        slot_level = intent.slot_level if intent.slot_level is not None else spell.level
+        if _slotless_cast_available(live, caster, spell, slot_level):
+            _pay_for_cast(live, caster, spell, slot_level)
+
+
 def _take_spell_slot(live: _LiveCombat, entity_id: str, slot_level: int) -> bool:
     """Expend one slot at ``slot_level`` — Spellcasting pool first, then Pact (R3).
     Returns ``False`` and mutates nothing when neither pool has one."""
@@ -12046,6 +12060,7 @@ def _drain_counterspell_reaction(
     if succeeded:
         return False
 
+    _spend_countered_slotless_cast(live, current, intent)
     _emit(
         live,
         CastFailed(

@@ -19,6 +19,7 @@ from dnd5e_engine.events import AttackRolled, CastFailed, ReactionTriggered, Sav
 from dnd5e_engine.lib_loader import set_lib_loader_for_tests
 from dnd5e_engine.rest import recover_slotless_casts
 from dnd5e_engine.spatial import cell_id
+from dnd5e_engine.specs import PartyMemberSpec
 from tests.c20_support import act, events, foe, monster_turn, pc, start
 
 
@@ -124,3 +125,50 @@ def test_a_long_rest_restores_a_slotless_cast_and_a_short_rest_does_not() -> Non
     assert recover_slotless_casts(counters, "lr") == {"guiding-bolt": 0}
     assert recover_slotless_casts(counters, "sr") == {"guiding-bolt": 1}
     assert counters["slotless_cast:guiding-bolt"] == {"spent": 1}  # pure
+
+
+def _counterspeller(**fields: Any) -> PartyMemberSpec:
+    """``char:mage``, a level 5 caster on 0,1 who acts first."""
+    base: dict[str, Any] = {"initiative": 25, "zone_id": cell_id(0, 1), "character_level": 5}
+    return pc("char:mage", **(base | fields))
+
+
+def _cast_into_a_readied_counterspell(mage: PartyMemberSpec, **hero: Any):
+    """``char:mage`` readies Counterspell; the hero casts Guiding Bolt."""
+    handle, live = start([mage, pc(**hero)], seed=1, encounter=[foe(ac=10, zone_id=cell_id(3, 0))])
+    act(
+        handle,
+        "char:mage",
+        intent_type="ready",
+        spell_id="counterspell",
+        reaction_trigger="cast_spell",
+    )
+    _cast(handle, "guiding-bolt")
+    return live
+
+
+def test_a_countered_slotless_cast_is_spent_and_a_slot_is_not() -> None:
+    # SRD 5.2 Counterspell: "If that spell was cast with a spell slot, the slot
+    # isn't expended." Only a slot is spared: the slotless cast the engine pays
+    # Guiding Bolt with is spent (Constitution save 5 against DC 15).
+    mage = _counterspeller(class_slug="wizard", intelligence=18, spell_slots={3: 1})
+    live = _cast_into_a_readied_counterspell(mage, class_slug="cleric", spell_slots={1: 1}, **_BOLT)
+    assert [e.reason for e in events(live, CastFailed)] == ["countered"]
+    assert live.custom_counters_by_entity["char:hero"]["slotless_cast:guiding-bolt"] == {"spent": 1}
+    assert live.spell_slots_by_entity["char:hero"] == {1: 1}
+
+
+def test_a_spiritual_weapon_attacks_with_the_spells_own_ability() -> None:
+    # A Wizard naming Wisdom for Spiritual Weapon (a Cleric/Wizard): the force
+    # attacks at +6 (Proficiency Bonus 3 + Wisdom 3), where its class's
+    # Intelligence 10 gives +3.
+    caster = pc(
+        class_slug="wizard",
+        character_level=5,
+        wisdom=16,
+        spell_slots={2: 1},
+        spell_abilities={"spiritual-weapon": "wis"},
+    )
+    handle, live = start([caster], seed=9)
+    _cast(handle, "spiritual-weapon")
+    assert [e.modifier for e in events(live, AttackRolled)] == [6]
