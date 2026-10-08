@@ -6,6 +6,7 @@ from typing import Any
 import pytest
 
 from nat20_bridge import cli
+from nat20_bridge.state import BridgeState
 
 
 def test_main_builds_app_and_creates_data_dir(
@@ -46,3 +47,41 @@ def test_main_defaults(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     assert captured["host"] == "127.0.0.1"
     assert captured["port"] == 8020
     assert (tmp_path / ".nat20-bridge").is_dir()
+
+
+def test_max_combats_reaches_the_state(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    states: list[BridgeState] = []
+
+    def fake_create_app(state: BridgeState) -> object:
+        states.append(state)
+        return object()
+
+    monkeypatch.setattr(cli, "create_app", fake_create_app)
+    monkeypatch.setattr(cli.uvicorn, "run", lambda app, host, port: None)
+    monkeypatch.setattr(
+        "sys.argv", ["nat20-bridge", "--data-dir", str(tmp_path), "--max-combats", "3"]
+    )
+    cli.main()
+    assert [s.max_combats for s in states] == [3]
+
+
+def test_max_combats_below_one_is_refused(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(
+        "sys.argv", ["nat20-bridge", "--data-dir", str(tmp_path), "--max-combats", "0"]
+    )
+    with pytest.raises(SystemExit):
+        cli.main()
+    assert "must be at least 1" in capsys.readouterr().err
+
+
+def test_a_max_combats_that_is_not_a_number_is_refused(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(
+        "sys.argv", ["nat20-bridge", "--data-dir", str(tmp_path), "--max-combats", "many"]
+    )
+    with pytest.raises(SystemExit):
+        cli.main()
+    assert "--max-combats: must be a whole number, got 'many'" in capsys.readouterr().err

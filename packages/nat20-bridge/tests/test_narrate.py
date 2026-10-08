@@ -5,6 +5,8 @@ from __future__ import annotations
 from dnd5e_engine.events import (
     AreaTargeted,
     AttackRolled,
+    CombatantJoined,
+    CombatantLeft,
     ConcentrationCheck,
     DamageApplied,
     Death,
@@ -209,3 +211,32 @@ def test_an_area_that_catches_no_one_says_so() -> None:
     assert narrate([area], NAMES) == (
         "Elara's burning-hands fills a 15-ft cone at 0,0: catches no one."
     )
+
+
+_SPIRIT = "summon:char:elara:draconic-spirit:1"
+
+
+def test_a_summon_joining_narrates_its_name_and_its_summoner() -> None:
+    joined = CombatantJoined(
+        entity_id=_SPIRIT,
+        name="Draconic Spirit",
+        stat_block_slug="draconic-spirit",
+        origin_caster_id="char:elara",
+        spell_id="summon-dragon",
+        initiative_count=14,
+        after_entity_id="char:elara",
+        zone_id="0,1",
+        hp_max=50,
+        ac=19,
+    )
+    assert narrate([joined], NAMES) == "Draconic Spirit joins the fight, summoned by Elara."
+    # A name the map already holds wins over the event's.
+    assert narrate([joined], NAMES | {_SPIRIT: "Ember"}) == (
+        "Ember joins the fight, summoned by Elara."
+    )
+
+
+def test_a_summon_leaving_narrates_why() -> None:
+    left = CombatantLeft(entity_id=_SPIRIT, reason="zero_hp")
+    names = NAMES | {_SPIRIT: "Draconic Spirit"}
+    assert narrate([left], names) == "Draconic Spirit leaves the fight (zero_hp)."

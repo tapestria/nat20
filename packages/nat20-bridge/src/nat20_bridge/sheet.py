@@ -4,7 +4,7 @@ combat-ready ``PartyMemberSpec``.
 A thin wrapper over the engine: ``build_party_member`` derives HP, AC, speed,
 proficiencies and spell slots through ``dnd5e_engine.derive_sheet``. The bridge
 only checks the requested spell list and supplies the combat identity (name,
-id, start cell, initiative).
+id, start cell, initiative: ``None`` lets ``start_combat`` roll it).
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ def derive_sheet(
     hp_current: int | None = None,
     spells_known: list[str] | None = None,
     zone_id: str = "0,0",
-    initiative: int = 0,
+    initiative: int | None = 0,
 ) -> PartyMemberSpec:
     known = list(spells_known or [])
     for slug in known:

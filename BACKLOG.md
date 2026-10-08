@@ -906,7 +906,8 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
     Rage's heal, Preserve Life, Improved Blessed Strikes and Slow Fall,
     `max(…)` in Tireless and Dark One's Blessing.
   A check that refuses these before anything is spent would end the half-paid
-  state until each shape is supported.
+  state until each shape is supported. Over HTTP the bridge answers such an
+  intent 422, its half-paid turn included (amended 2026-10-07, C29).
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/save.py`,
   `packages/dnd5e-engine/src/dnd5e_engine/activities/formula.py`,
   `packages/dnd5e-engine/src/dnd5e_engine/activities/dice.py`,
@@ -1476,6 +1477,23 @@ now calls the engine rather than standing in for it. Residual gaps:
 - **Bridge does not serve the `conditions` / `traits` categories**
   (2026-08-27) — `routes_content._CATEGORIES` predates C22.
   (`packages/nat20-bridge/src/nat20_bridge/routes_content.py`)
+- **Seven stat blocks raise `ValueError` on their own turn (2026-10-07,
+  C29).** `advance_monster_turn` raises out of the activity layer whenever
+  the turn picks one of these actions, so the monster's turn fails (over
+  HTTP, `/advance-monster` answers 500): the Night Hag's Phantasmal Killer
+  (Spellcasting) saves with no ability; the Air Elemental's Whirlwind and,
+  fought as foes, the Draconic Spirit's Rend and the Giant Insect's attacks
+  roll `@mod` with no governing ability; the Homunculus's Bite has an empty
+  damage formula; and the Large and Huge Animated Objects' Slam reads
+  `@flags.dnd5e.summon.level`. Five of them — the Homunculus, the Draconic
+  Spirit, the Giant Insect and the two Animated Objects — raise the same way
+  from their opportunity attack: a character moving away from one answers
+  422 mid-move, left partway down its path, with the move's own events
+  dropped too.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/save.py::_resolve_save_ability`,
+  `packages/dnd5e-engine/src/dnd5e_engine/activities/formula.py::_resolve_token`,
+  `packages/dnd5e-engine/src/dnd5e_engine/activities/dice.py::_parse`,
+  `packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_resolve_opportunity_attack`)
 
 ## Not modelled by design (recorded so nobody re-audits them)
 
@@ -1702,67 +1720,49 @@ re-discovered.
 The SillyTavern sidecar (`packages/nat20-bridge`) is a thin FastAPI routing
 layer over the engine — see `docs/bridge.md`. Gaps found while shipping it:
 
-- **`BuildRequest` lacks the C19 build-spec fields (2026-09-23).** The
-  bridge's HTTP model still exposes only `species_slug`, `class_slug`,
-  `subclass_slug`, `level`, `ability_scores` and `equipment` — a caller
-  cannot reach `classes` (multiclass), `background_slug`,
-  `selected_choices`, `hp_mode`/`hp_rolls`, `ac_calc_mode`, `attuned_items`
-  or `ability_score_method` over `/v1/party/validate` or `/v1/combat`, even
-  though `sheet.py` now derives from all of them.
-  (`packages/nat20-bridge/src/nat20_bridge/models.py::BuildRequest`)
-- **Global-`random` seeding is not safe under concurrent requests**
-  (2026-08-21). `_start_route` (and `app.py`'s `_do_roll`/`_do_check`) seed the
-  stdlib global `random` module to make the engine's legacy dice seam
-  (`roll_dice_str`, `rules/effects.py`) reproducible per request, since that
-  seam reads the global module rather than an injectable RNG. Two `/v1/roll`,
-  `/v1/check`, or `/v1/combat` requests racing concurrently (different seeds)
-  can have one request's reseed clobber the other's before its dice resolve —
-  fine for the bridge's current single-connection, same-machine ST usage, not
-  safe for concurrent multi-client load. Real fix: thread an injectable
-  `random.Random` through the legacy dice paths instead of reading the global
-  module (`packages/nat20-bridge/src/nat20_bridge/routes_combat.py`).
-- **Collector tasks + event logs leak for combats never `/end`ed**
-  (2026-08-21). `BridgeState.combats`/`events_log`/`names`/`seeds`/`collectors`
-  are only cleaned up by `_end_route` (`state.combats.pop`, `_stop_collector`)
-  — a combat a client abandons without calling `POST /v1/combat/{cid}/end`
-  keeps its background collector task running and its event log growing for
-  the life of the bridge process. Needs either a TTL/idle-reap sweep or an
-  explicit cap on live combats (`packages/nat20-bridge/src/nat20_bridge/state.py`).
-- **`attack_bonus` derivation ignores Dexterity / finesse weapons**
-  (2026-08-21). `derive_sheet`'s `attack_bonus = proficiency + str_mod`
-  (`sheet.py`) always uses the Strength modifier, regardless of whether the
-  character's weapon is finesse (SRD 5.2: finesse lets the wielder use either
-  Strength or Dexterity, typically Dexterity for a Rogue/ranged-leaning build)
-  or a ranged weapon (which SRD-legally uses Dexterity, not Strength, absent a
-  feat). A Dex-based Rogue or ranged character gets an under- or over-stated
-  attack bonus in `/v1/party/validate` and `/v1/combat` party derivation.
-  Needs the weapon's `properties`/`weapon_kind` consulted to pick
-  `max(str_mod, dex_mod)` for finesse or `dex_mod` for ranged
-  (`packages/nat20-bridge/src/nat20_bridge/sheet.py`).
-- **The combat intent carries no class-feature or form field (2026-09-24, C20
-  scope cut; amended 2026-09-25, C21a, 2026-09-26, C21b, and 2026-10-04,
-  C26a).** `_IntentRequest` forwards only
-  `intent_type`, `spell_id`, `target_id`, `item_id`, `weapon_id`,
-  `feature_id` and `target_zone_id`, so a bridge client can't aim or shape an
-  area (`direction`, `target_ids`, `excluded_target_ids`), pick an
-  `activity_id` (Flurry of Blows, Lay on Hands, Channel Divinity), set
-  `use_bonus_action` (Cunning Action, the Bonus Unarmed Strike) or
-  `two_handed`, draw `pool_points`, redeem a Bardic die
-  (`redeem_granted_die`), name a Wild Shape or Polymorph form (`form_id`:
-  both are refused with `invalid_form`) or command a stat-block attack
-  (`stat_block_action_id`) — so a summoned Draconic Spirit, whose only
-  commandable attack is its Rend, can't be made to attack at all.
-  `_view_route` doesn't expose `LiveCombatView.turn`, `constructs`,
-  `transformations` or `summons` either, so `extra_actions_remaining`, a
-  Spiritual Weapon force, a creature's form and a summon's caster aren't
-  visible over HTTP.
-  (`packages/nat20-bridge/src/nat20_bridge/routes_combat.py::_IntentRequest`)
-- **The narration names a summon by its id (2026-09-26, C21b).** The bridge
-  builds its name map when `/v1/combat` starts, so a creature that joins later
-  narrates as `summon:<caster>:<stat block>:<n>` ("…'s turn begins"), and its
-  `combatant_joined` / `combatant_left` events fall back to generic lines;
-  the `name` a `CombatantJoined` carries never reaches the map.
-  (`packages/nat20-bridge/src/nat20_bridge/routes_combat.py::_intent_route`)
+- **`over` is always `false` (2026-10-07, C29).** An intent or
+  advance-monster response's `over` is `LiveCombatView.ended`, which only
+  `/end` sets, and an ended combat's id answers 404, so no response reports
+  `true`, not even for a fight whose last foe or last character has dropped.
+  A "fight decided" flag, with the outcome and the combat ended for the
+  client, needs a client release that reads it.
+  (`packages/nat20-bridge/src/nat20_bridge/routes_combat.py::_envelope`)
+- **No legendary routes (2026-10-07, C29).** `/advance-monster` takes no
+  body, so a client can't spend a legendary action
+  (`advance_monster_turn(legendary=True, actor_id=...)`) or arm a Legendary
+  Resistance (`resolve_legendary_resistance`).
+  (`packages/nat20-bridge/src/nat20_bridge/routes_combat.py::_advance_monster_route`)
+- **`/v1/check` takes no Expertise, Jack of All Trades or Reliable Talent
+  (2026-10-07, C29).** `CheckSpec` has `expertise_skills`,
+  `jack_of_all_trades` and `reliable_talent`; the route's request model
+  doesn't.
+  (`packages/nat20-bridge/src/nat20_bridge/app.py::_CheckRequest`)
+- **A bridge combat starts rested, and its view shows no spell slots or
+  feature uses (2026-10-07, C29).** `/v1/combat` passes no `spell_slots`,
+  `pact_slots` or `custom_counters`, so every fight starts with full slots and
+  feature uses, Magic Initiate's slotless cast included; and
+  `LiveCombatView.spell_slots_by_entity`, `pact_slots_by_entity` and
+  `custom_counters_by_entity` stay engine-side, so a client can't show what a
+  character has left. The view omits Temporary Hit Points
+  (`tracked_temp_hp`), concentration (`concentration_chain`) and a foe's
+  recharge and legendary pools (`monster_action_uses_by_entity`,
+  `legendary_actions_by_entity`, `legendary_resistances_by_entity`) too.
+  (`packages/nat20-bridge/src/nat20_bridge/routes_combat.py::_build_party_specs`,
+  `packages/nat20-bridge/src/nat20_bridge/routes_combat.py::_view_route`)
+- **Two party members with one name share an entity id (2026-10-07, C29).**
+  `/v1/combat` derives `char:<name>` when a member omits `entity_id`, and
+  `start_combat` accepts two combatants with one `entity_id`: the initiative
+  order lists both, but their cells, HP and turns collide.
+  (`packages/nat20-bridge/src/nat20_bridge/routes_combat.py::_build_party_specs`,
+  `packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::start_combat`)
+- **Sixteen event types narrate through the generic fallback (2026-10-07,
+  C29).** `spell_cast`, `effect_applied`, `effect_expired`, `temphp_applied`,
+  `recharge_rolled`, `concentration_dropped`, `death_save_started`,
+  `death_save_rolled`, `stabilized`, `actor_moved`, `combatant_moved`,
+  `dash_taken`, `move_failed`, `reaction_triggered`,
+  `legendary_action_used` and `legendary_resistance_used` render as
+  `[type] key=value …` dumps in the narration a client hands its model.
+  (`packages/nat20-bridge/src/nat20_bridge/narrate.py`)
 
 ---
 

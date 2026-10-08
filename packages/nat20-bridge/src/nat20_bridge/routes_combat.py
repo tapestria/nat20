@@ -1,73 +1,48 @@
 """Combat lifecycle routes: start / intent / advance-monster / view / end.
 
-Event-drain protocol
----------------------
+Each combat is one ``CombatSession`` (``state.py``): the engine's handle, the
+display names, the battlefield and the seed. ``start_combat``,
+``submit_player_intent`` and ``advance_monster_turn`` queue the events they
+emit on the live combat, so their routes drain that queue
+(``drain_pending_events``) right after the engine call and report exactly
+the events their own request produced; ``/end`` reports the events
+``end_combat`` returns. A failed call leaves nothing for the next response: a
+refused one (409, 422) drops what it queued, and the intent and
+advance-monster routes drop whatever an engine fault (a 500) left queued
+before they call the engine.
 
-``start_combat`` returns its opening events directly (``StartCombatResult
-.events``), but ``submit_player_intent`` / ``advance_monster_turn`` return
-``None`` — every event they emit goes exclusively onto the live combat's
-internal ``asyncio.Queue``, drainable only through the public
-``narration_events(handle)`` async iterator (it terminates only at
-``end_combat``, when the engine pushes a ``None`` sentinel).
-
-So each combat gets one persistent background collector task, spawned right
-after ``start_combat`` (see ``_start_collector``), that does:
-
-    async for event in narration_events(handle):
-        state.events_log[cid].append(event)
-
-and runs for the combat's whole lifetime. Because the collector only wakes
-up when the event loop schedules it, a route handler that just awaited an
-engine call (which synchronously queued events via ``_emit`` during that
-await) must yield control back to the loop before the collector's appended
-rows are visible. ``_pump_until_stable`` does exactly that: it awaits
-``asyncio.sleep(0)`` in a bounded loop (100 iterations) until
-``events_log[cid]``'s length stops growing for two consecutive checks.
-
-Each route captures ``len(events_log[cid])`` before its engine call and
-slices the delta after pumping, so a response only reports events produced
-by that one request — not the whole combat's history.
-
-This is the "DECISION" path from the design brief; it was verified to work
-under ``TestClient`` because httpx's ``TestClient`` runs the whole ASGI app
-(including any tasks it spawns) on a single event loop for the lifetime of
-the client, so a collector task created during one request is still alive
-and pumping during the next.
+At most ``BridgeState.max_combats`` combats stay live: starting one more ends
+the least recently used, and its id then answers 404.
 """
 
 from __future__ import annotations
 
-import asyncio
-import random
+import dataclasses
 import re
 from typing import Any
 
 from dnd5e_engine import (
     CombatEvent,
-    CombatHandle,
     EncounterMemberSpec,
     GridScene,
     PlayerIntent,
     advance_monster_turn,
     cell_id,
+    drain_pending_events,
     end_combat,
     get_live,
-    make_build_spec,
-    narration_events,
     start_combat,
     submit_player_intent,
 )
-from dnd5e_engine.orchestrator import IntentRejectedError, UnknownHandleError
+from dnd5e_engine.events import CombatantJoined
+from dnd5e_engine.orchestrator import IntentRejectedError
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from nat20_bridge.models import PartyValidateRequest, resolve_seed, slugify
 from nat20_bridge.narrate import narrate
 from nat20_bridge.sheet import derive_sheet
-from nat20_bridge.state import BridgeState
-
-_PUMP_MAX_ITERATIONS = 100
-_PUMP_STABLE_CHECKS = 2
+from nat20_bridge.state import BridgeState, CombatSession
 
 _CONTROL_CHARS_RE = re.compile(r"[\x00-\x1f\x7f]+")
 _WHITESPACE_RE = re.compile(r"\s+")
@@ -88,60 +63,45 @@ def _sanitize_name(name: str, max_len: int = _MAX_NAME_LEN) -> str:
     return collapsed[:max_len]
 
 
-def _ability_mod(score: int) -> int:
-    return (score - 10) // 2
-
-
 class _CombatStartRequest(BaseModel):
     party: list[PartyValidateRequest]
     monsters: list[str]
     seed: int | None = None
 
 
-class _IntentRequest(BaseModel):
+class _IntentRequest(PlayerIntent):
+    """``PlayerIntent`` plus the creature that acts. Every intent field reaches
+    the engine, and an unknown key is refused (``PlayerIntent`` forbids extra
+    keys) rather than silently dropped."""
+
     actor_id: str
-    intent_type: str
-    spell_id: str | None = None
-    target_id: str | None = None
-    item_id: str | None = None
-    weapon_id: str | None = None
-    feature_id: str | None = None
-    target_zone_id: str | None = None
 
 
-def _get_handle(state: BridgeState, cid: str) -> CombatHandle:
-    handle = state.combats.get(cid)
-    if handle is None:
-        raise HTTPException(status_code=404, detail=f"unknown combat: {cid!r}")
-    return handle
+def _session(state: BridgeState, cid: str) -> CombatSession:
+    """The combat's session, marked as the most recently used."""
+    session = state.sessions.get(cid)
+    if session is None:
+        raise HTTPException(status_code=404, detail=f"unknown or expired combat: {cid!r}")
+    state.sessions.move_to_end(cid)
+    return session
 
 
-async def _collect_events(handle: CombatHandle, cid: str, state: BridgeState) -> None:
-    """Background task: drain ``narration_events`` into ``events_log`` for good."""
-    async for event in narration_events(handle):
-        state.events_log.setdefault(cid, []).append(event)
+def _drain(session: CombatSession) -> list[CombatEvent]:
+    """The events the last engine call queued. A creature that joined the
+    fight (a summon) adds its name, so it narrates by name from then on."""
+    events = drain_pending_events(session.handle)
+    for event in events:
+        if isinstance(event, CombatantJoined):
+            session.names[event.entity_id] = _sanitize_name(event.name)
+    return events
 
 
-async def _pump_until_stable(state: BridgeState, cid: str) -> None:
-    """Yield to the loop until the collector task's appends settle.
-
-    The engine's ``_emit`` pushes events onto the live queue synchronously
-    during an awaited engine call, but the collector task only sees them
-    once the loop schedules it — bounded ``asyncio.sleep(0)`` pump, per the
-    module docstring's drain protocol.
-    """
-    prev_len = -1
-    stable = 0
-    for _ in range(_PUMP_MAX_ITERATIONS):
-        await asyncio.sleep(0)
-        cur_len = len(state.events_log.get(cid, []))
-        if cur_len == prev_len:
-            stable += 1
-            if stable >= _PUMP_STABLE_CHECKS:
-                return
-        else:
-            stable = 0
-        prev_len = cur_len
+def _refused(session: CombatSession, status_code: int, detail: str) -> HTTPException:
+    """The error for an engine call that refused. Whatever it queued first is
+    dropped (a creature that joined still gets its name), so the next response
+    reports only its own request's events."""
+    _drain(session)
+    return HTTPException(status_code=status_code, detail=detail)
 
 
 def _envelope(
@@ -156,7 +116,7 @@ def _envelope(
 
 
 def _build_party_specs(
-    state: BridgeState, party: list[PartyValidateRequest], rng: random.Random
+    state: BridgeState, party: list[PartyValidateRequest]
 ) -> tuple[list[Any], dict[str, str]]:
     assert state.loader is not None
     loader = state.loader
@@ -165,24 +125,17 @@ def _build_party_specs(
     for i, member_req in enumerate(party):
         entity_id = member_req.entity_id or f"char:{slugify(member_req.name)}"
         try:
-            build_spec = make_build_spec(
-                species_slug=member_req.build.species_slug,
-                class_slug=member_req.build.class_slug,
-                level=member_req.build.level,
-                subclass_slug=member_req.build.subclass_slug,
-                ability_scores=member_req.build.ability_scores.model_dump(by_alias=True),
-                equipment=member_req.build.equipment,
-            )
-            dex_mod = _ability_mod(member_req.build.ability_scores.dex)
             member = derive_sheet(
-                build_spec,
+                member_req.build.to_build_spec(),
                 name=_sanitize_name(member_req.name),
                 entity_id=entity_id,
                 loader=loader,
                 hp_current=member_req.hp_current,
                 spells_known=member_req.spells_known,
                 zone_id=cell_id(0, i),
-                initiative=rng.randint(1, 20) + dex_mod,
+                # The engine rolls it from the combat's own seeded generator:
+                # d20 + the derived Dexterity modifier, plus Alert's bonus.
+                initiative=None,
             )
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -192,7 +145,7 @@ def _build_party_specs(
 
 
 def _build_encounter_specs(
-    state: BridgeState, monster_slugs: list[str], rng: random.Random
+    state: BridgeState, monster_slugs: list[str]
 ) -> tuple[list[EncounterMemberSpec], dict[str, str]]:
     assert state.loader is not None
     loader = state.loader
@@ -204,12 +157,11 @@ def _build_encounter_specs(
             raise HTTPException(status_code=404, detail=f"unknown monster: {slug!r}")
         n = i + 1
         entity_id = f"mon:{slug}-{n}"
-        dex_mod = _ability_mod(monster.ability_scores.dex)
         enc = EncounterMemberSpec(
             entity_id=entity_id,
             entity_type="Monster",
             name=_sanitize_name(f"{monster.name} {n}"),
-            initiative=rng.randint(1, 20) + dex_mod,
+            initiative=None,
             hp_current=monster.hp,
             hp_max=monster.hp,
             ac=monster.ac or 10,
@@ -227,97 +179,72 @@ def _build_encounter_specs(
     return encounter_specs, names
 
 
+async def _evict_least_recently_used(state: BridgeState) -> None:
+    """End the least recently used combats until at most ``max_combats`` are live."""
+    while len(state.sessions) > state.max_combats:
+        _, session = state.sessions.popitem(last=False)
+        await end_combat(session.handle)
+
+
 async def _start_route(state: BridgeState, req: _CombatStartRequest) -> dict[str, Any]:
     seed = resolve_seed(req.seed)
-    # Legacy dice paths (roll_dice_str et al.) read the stdlib global
-    # `random` module rather than an injectable RNG — see app.py's
-    # `_do_roll` for the same rationale. Seeding it here (in addition to
-    # the engine's own `rng_seed`-threaded RNG) is what makes the
-    # same-seed-same-narration test reproducible end to end.
-    # KNOWN LIMITATION (accepted, tracked in BACKLOG under Task 15): this
-    # mutates process-global state, so two `/v1/combat` requests racing
-    # concurrently (different seeds) can have one request's global reseed
-    # clobber the other's before its dice resolve — not safe under
-    # concurrent load. Fine for the current single-connection ST-bridge
-    # usage; a real fix needs the legacy dice paths to accept an injectable
-    # RNG instead of reading the global module.
-    random.seed(seed)
-    rng = random.Random(seed)
-
-    party_specs, party_names = _build_party_specs(state, req.party, rng)
-    encounter_specs, monster_names = _build_encounter_specs(state, req.monsters, rng)
+    party_specs, party_names = _build_party_specs(state, req.party)
+    encounter_specs, monster_names = _build_encounter_specs(state, req.monsters)
     names = {**party_names, **monster_names}
 
-    # Monotonic counter, not `len(state.combats) + 1` — the latter
-    # collides once any combat has ended and been popped from `combats`
-    # (see BridgeState.next_combat_id's docstring).
+    # Monotonic counter, not `len(state.sessions) + 1` — the latter
+    # collides once any combat has ended and left `sessions` (see
+    # BridgeState.next_combat_id's comment).
     cid = f"c{state.next_combat_id}"
     state.next_combat_id += 1
     grid_scene = GridScene(width=12, height=12)
-    result = await start_combat(
-        session_id=cid,
-        party=party_specs,
-        encounter=encounter_specs,
-        grid_scene=grid_scene,
-        rng_seed=seed,
-    )
+    try:
+        result = await start_combat(
+            session_id=cid,
+            party=party_specs,
+            encounter=encounter_specs,
+            grid_scene=grid_scene,
+            rng_seed=seed,
+        )
+    except ValueError as exc:
+        # An empty side, or more combatants than the grid has start cells.
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
-    state.grids[cid] = grid_scene
-    state.combats[cid] = result.handle
-    state.events_log[cid] = []
-    state.names[cid] = names
-    state.seeds[cid] = seed
-    state.collectors[cid] = asyncio.create_task(_collect_events(result.handle, cid, state))
-
-    await _pump_until_stable(state, cid)
-    events = state.events_log[cid]
+    session = CombatSession(handle=result.handle, names=names, grid=grid_scene, seed=seed)
+    state.sessions[cid] = session
+    events = _drain(session)
+    await _evict_least_recently_used(state)
     return _envelope(cid, events, names, over=False)
 
 
-def _player_intent_from_request(req: _IntentRequest) -> PlayerIntent:
-    payload = {
-        k: v
-        for k, v in req.model_dump().items()
-        if k not in ("actor_id", "intent_type") and v is not None
-    }
-    return PlayerIntent(intent_type=req.intent_type, **payload)  # type: ignore[arg-type]
-
-
 async def _intent_route(state: BridgeState, cid: str, req: _IntentRequest) -> dict[str, Any]:
-    handle = _get_handle(state, cid)
-    names = state.names.get(cid, {})
-    start_idx = len(state.events_log.get(cid, []))
-    player_intent = _player_intent_from_request(req)
-
+    session = _session(state, cid)
+    _drain(session)  # what an engine fault (a 500) left queued belongs to no response
+    intent = PlayerIntent.model_validate(req.model_dump(exclude={"actor_id"}, exclude_unset=True))
     try:
-        await submit_player_intent(handle, req.actor_id, player_intent)
+        await submit_player_intent(session.handle, req.actor_id, intent)
     except IntentRejectedError as exc:
-        raise HTTPException(status_code=409, detail=exc.reason) from exc
-    except UnknownHandleError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-
-    await _pump_until_stable(state, cid)
-    events = state.events_log.get(cid, [])[start_idx:]
-    over = get_live(handle).ended
-    return _envelope(cid, events, names, over=over)
+        raise _refused(session, 409, exc.reason) from exc
+    except ValueError as exc:
+        # The engine can't resolve the intent as sent: an activity it has no
+        # context for yet, or, partway through a move, a foe's opportunity
+        # attack its stat block can't resolve (BACKLOG.md lists both). The
+        # combat goes on and another intent can still resolve, so this is a
+        # 422, not a 500; what the engine spent before it raised stays spent.
+        raise _refused(session, 422, str(exc)) from exc
+    events = _drain(session)
+    return _envelope(cid, events, session.names, over=get_live(session.handle).ended)
 
 
 async def _advance_monster_route(state: BridgeState, cid: str) -> dict[str, Any]:
-    handle = _get_handle(state, cid)
-    names = state.names.get(cid, {})
-    start_idx = len(state.events_log.get(cid, []))
-
+    session = _session(state, cid)
+    _drain(session)  # what an engine fault (a 500) left queued belongs to no response
     try:
-        await advance_monster_turn(handle)
+        await advance_monster_turn(session.handle)
     except IntentRejectedError as exc:
-        raise HTTPException(status_code=409, detail=exc.reason) from exc
-    except UnknownHandleError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-
-    await _pump_until_stable(state, cid)
-    events = state.events_log.get(cid, [])[start_idx:]
-    over = get_live(handle).ended
-    return _envelope(cid, events, names, over=over)
+        raise _refused(session, 409, exc.reason) from exc
+    events = _drain(session)
+    return _envelope(cid, events, session.names, over=get_live(session.handle).ended)
 
 
 def _order_row(combatant: Any, names: dict[str, str], live_view: Any) -> dict[str, Any]:
@@ -325,6 +252,7 @@ def _order_row(combatant: Any, names: dict[str, str], live_view: Any) -> dict[st
     return {
         "entity_id": eid,
         "name": names.get(eid, combatant.name),
+        "initiative": combatant.initiative,
         "hp": live_view.tracked_hp.get(eid, combatant.hp_current),
         "max_hp": combatant.hp_max,
         "dead": eid in live_view.dead_ids,
@@ -334,13 +262,9 @@ def _order_row(combatant: Any, names: dict[str, str], live_view: Any) -> dict[st
 
 
 async def _view_route(state: BridgeState, cid: str) -> dict[str, Any]:
-    handle = _get_handle(state, cid)
-    names = state.names.get(cid, {})
-    try:
-        live_view = get_live(handle)
-    except UnknownHandleError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-
+    session = _session(state, cid)
+    names = session.names
+    live_view = get_live(session.handle)
     order = [_order_row(combatant, names, live_view) for combatant in live_view.initiative]
 
     current_actor = ""
@@ -348,44 +272,27 @@ async def _view_route(state: BridgeState, cid: str) -> dict[str, Any]:
         current = live_view.initiative[live_view.current_turn_index]
         current_actor = f"{current.entity_id} ({names.get(current.entity_id, current.name)})"
 
-    grid = state.grids.get(cid)
     return {
         "round_number": live_view.round_number,
         "current_actor": current_actor,
         "order": order,
         "ended": live_view.ended,
-        "grid": grid.model_dump() if grid is not None else None,
+        "grid": session.grid.model_dump(),
+        "seed": session.seed,
+        "turn": dataclasses.asdict(live_view.turn),
+        "summons": {k: dataclasses.asdict(v) for k, v in live_view.summons.items()},
+        "transformations": {k: dataclasses.asdict(v) for k, v in live_view.transformations.items()},
+        "constructs": {k: dataclasses.asdict(v) for k, v in live_view.constructs.items()},
     }
 
 
-async def _stop_collector(state: BridgeState, cid: str) -> None:
-    task = state.collectors.pop(cid, None)
-    if task is None:
-        return
-    try:
-        await asyncio.wait_for(task, timeout=1)
-    except (TimeoutError, asyncio.CancelledError):
-        task.cancel()
-
-
 async def _end_route(state: BridgeState, cid: str) -> dict[str, Any]:
-    handle = _get_handle(state, cid)
-    names = state.names.get(cid, {})
-    try:
-        result = await end_combat(handle)
-    except UnknownHandleError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-
-    await _pump_until_stable(state, cid)
-    await _stop_collector(state, cid)
-    state.combats.pop(cid, None)
-    # Unlike names/events_log/seeds (kept for post-mortem reads), nothing can
-    # reach a grid once the combat is popped — the view route 404s first.
-    state.grids.pop(cid, None)
-
+    session = _session(state, cid)
+    result = await end_combat(session.handle)
+    del state.sessions[cid]
     return {
         "outcome": result.outcome.model_dump(),
-        "narration": narrate(result.events, names),
+        "narration": narrate(result.events, session.names),
     }
 
 

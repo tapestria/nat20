@@ -10,8 +10,14 @@ from __future__ import annotations
 
 import re
 import secrets
+from typing import TYPE_CHECKING
 
+from dnd5e_engine import make_build_spec
+from dnd5e_engine.rules.character import AbilityScoreMethod, AcCalcMode, HpMode
 from pydantic import BaseModel, Field
+
+if TYPE_CHECKING:
+    from dnd5e_engine import CharacterBuildSpec
 
 _SLUG_RE = re.compile(r"[^a-z0-9]+")
 
@@ -55,12 +61,33 @@ class AbilityScoresModel(BaseModel):
 
 
 class BuildRequest(BaseModel):
+    """A character build: ``make_build_spec``'s keywords, one field each.
+
+    Unknown keys are ignored, as pydantic does by default, so a client can send
+    a saved character as it stands.
+    """
+
     species_slug: str
-    class_slug: str
+    class_slug: str | None = None
+    level: int | None = None
+    classes: dict[str, int] | None = None
     subclass_slug: str | None = None
-    level: int = 1
     ability_scores: AbilityScoresModel = Field(default_factory=lambda: AbilityScoresModel())
     equipment: tuple[str, ...] = ()
+    selected_choices: tuple[str, ...] = ()
+    background_slug: str | None = None
+    hp_mode: HpMode = "fixed"
+    hp_rolls: dict[str, list[int]] | None = None
+    ac_calc_mode: AcCalcMode | None = None
+    attuned_items: tuple[str, ...] = ()
+    ability_score_method: AbilityScoreMethod | None = None
+
+    def to_build_spec(self) -> CharacterBuildSpec:
+        """The engine's build spec. Raises ``ValueError`` for a build it refuses."""
+        return make_build_spec(
+            **self.model_dump(exclude={"ability_scores"}),
+            ability_scores=self.ability_scores.model_dump(by_alias=True),
+        )
 
 
 class PartyValidateRequest(BaseModel):

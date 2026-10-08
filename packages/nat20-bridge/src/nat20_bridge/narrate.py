@@ -158,6 +158,17 @@ def _fmt_death(e: Any, names: dict[str, str]) -> str:
     return f"{who} dies."
 
 
+@_register("combatant_joined")
+def _fmt_combatant_joined(e: Any, names: dict[str, str]) -> str:
+    who = names.get(e.entity_id, e.name)
+    return f"{who} joins the fight, summoned by {_who(e.origin_caster_id, names)}."
+
+
+@_register("combatant_left")
+def _fmt_combatant_left(e: Any, names: dict[str, str]) -> str:
+    return f"{_who(e.entity_id, names)} leaves the fight ({e.reason})."
+
+
 @_register("combat_ended")
 def _fmt_combat_ended(e: Any, names: dict[str, str]) -> str:
     return f"-- Combat ends ({e.reason}) --"
