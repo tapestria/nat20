@@ -173,7 +173,11 @@ class CombatInstance(BaseModel):
     spec instead. Deciding by ``is None`` (rather than a
     ``model_fields_set`` sentinel) means a ``CombatInstance`` rebuilt from
     ``CombatInstance(**inst.model_dump())``, or round-tripped through JSON,
-    still derives whatever it left unset.
+    still derives whatever it left unset. ``initiative`` is seated as given
+    (``0`` by default); ``None`` lets ``start_combat`` roll it — d20 + the
+    derived Dexterity modifier, plus the Proficiency Bonus for a character
+    with Alert (SRD 5.2 Initiative: "every participant rolls Initiative; they
+    make a Dexterity check").
     """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
@@ -184,7 +188,7 @@ class CombatInstance(BaseModel):
     ac: int | None = None
     attack_bonus: int | None = None
     base_speed: int | None = None
-    initiative: int = 0
+    initiative: int | None = 0
     zone_id: str = ""
     concentration_effect_id: str | None = None
     spell_slots: dict[int, int] = Field(default_factory=dict)

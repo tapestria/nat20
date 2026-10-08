@@ -24,7 +24,9 @@ def build_party_member(
     ``is None`` check, so a ``CombatInstance`` rebuilt from
     ``CombatInstance(**inst.model_dump())`` still derives whatever it left
     unset). An unpinned ``attack_bonus`` stays unset on the built spec, so
-    the engine computes each weapon's to-hit bonus. The spells Magic Initiate
+    the engine computes each weapon's to-hit bonus. ``instance.initiative``
+    passes through as given: ``None`` has ``start_combat`` roll it from the
+    derived Dexterity, with Alert's bonus. The spells Magic Initiate
     chose join ``instance.spells_known``, with the ability each is cast with and
     the level 1 spells cast once without a slot. Raises ``ValueError`` for an
     invalid build (see ``derive_sheet``).
