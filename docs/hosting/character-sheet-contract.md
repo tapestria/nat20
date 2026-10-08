@@ -59,8 +59,10 @@ multiclass slot table"; pass a non-empty map to pin one.
 combat (Defense is already in the derived `ac`, and only while Light, Medium
 or Heavy armor is worn), and so do Alert (its Proficiency Bonus on an
 Initiative the engine rolls — add it yourself to one you roll), Savage
-Attacker and Grappler's Advantage. Each class's features and scale values are
-read at that class's own level.
+Attacker and Grappler's Advantage. `CombatInstance.initiative` always passes an
+Initiative (`0` by default): start combat with
+`member.model_copy(update={"initiative": None})` to have the engine roll it.
+Each class's features and scale values are read at that class's own level.
 
 Magic Initiate's spells join `spells_known`, and `spell_abilities` and
 `slotless_casts` carry the rest: the engine casts each spell with the ability

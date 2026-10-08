@@ -120,7 +120,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a weapon's damage dice twice on the first weapon hit of each turn and keeps
   the higher roll; a Grappler has Advantage against a creature it grapples.
 - **Magic Initiate's spells are cast with their chosen ability**, and its
-  level 1 spell once without a slot before a slot is spent (C28).
+  level 1 spell once without a slot before a slot is spent; a countered
+  slotless cast is still spent, as SRD 5.2 Counterspell spares only a slot
+  (C28).
 
 ### Deprecated
 
