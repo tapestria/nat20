@@ -534,6 +534,11 @@ _PROBES: dict[str, tuple[Any, str]] = {
         lambda: "background_slug: str | None" in _src("build_spec.py"),
         "⚠️ Partial",
     ),
+    # C28: the background's Origin feat reaches the sheet.
+    "its Origin feat joins `DerivedSheet.feats` (C28)": (
+        lambda: "def _background_feats(" in _src("build_spec.py"),
+        "its Origin feat joins `DerivedSheet.feats` (C28)",
+    ),
     "Class, subclass, level 1–20, species": (
         lambda: "def subclass_gate_level(" in _src("rules/character.py"),
         "✅ Resolved",
@@ -613,6 +618,42 @@ _PROBES: dict[str, tuple[Any, str]] = {
     "| Feats |": (
         lambda: "def styles_from_feats(" in _src("rules/character.py"),
         "Fighting Style feats apply (C20",
+    ),
+    # C28: repeats and the Epic Boon floor on the sheet; Alert, Savage
+    # Attacker, Grappler and Magic Initiate in combat.
+    "takes a feat once unless it is repeatable": (
+        lambda: (
+            "def _check_repeats(" in _src("build_spec.py")
+            and "_EPIC_BOON_LEVEL" in _src("build_spec.py")
+        ),
+        "takes a feat once unless it is repeatable",
+    ),
+    "Alert adds the Proficiency Bonus to an engine-rolled Initiative": (
+        lambda: "def _initiative_bonus(" in _src("orchestrator.py"),
+        "Alert adds the Proficiency Bonus to an engine-rolled Initiative",
+    ),
+    "Savage Attacker rolls a weapon's damage dice twice": (
+        lambda: (
+            "def _savage_attacker_applies(" in _src("activities/attack.py")
+            and "def _record_savage_attacker_spent(" in _src("orchestrator.py")
+        ),
+        "Savage Attacker rolls a weapon's damage dice twice",
+    ),
+    "a Grappler has Advantage on attack rolls against a creature it grapples": (
+        lambda: "def _grappled_by_map(" in _src("orchestrator.py"),
+        "a Grappler has Advantage on attack rolls against a creature it grapples",
+    ),
+    "gives its level 1 spell one cast per Long Rest without a slot": (
+        lambda: "def _pay_for_cast(" in _src("orchestrator.py"),
+        "gives its level 1 spell one cast per Long Rest without a slot",
+    ),
+    "unless `PartyMemberSpec.spell_abilities` names one for the spell (C28)": (
+        lambda: "def _spellcasting_ability_for(" in _src("orchestrator.py"),
+        "unless `PartyMemberSpec.spell_abilities` names one for the spell (C28)",
+    ),
+    "`recover_slotless_casts` restores": (
+        lambda: "def recover_slotless_casts(" in _src("rest.py"),
+        "`recover_slotless_casts` restores",
     ),
     # C21: every concentration spell concentrates — a caster-held anchor for
     # one that applies no concentration effect of its own.

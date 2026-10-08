@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`Feat.repeatable`** (C28) — SRD 5.2: "A feat can be taken only once unless
+  its description states otherwise in a "Repeatable" subsection." True for
+  Ability Score Improvement, Magic Initiate and Skilled (Foundry's
+  `system.prerequisites.repeatable`).
+
+### Changed
+
+- **`Background.starting_feat_slug` names the canonical feat** (C28): `alert`
+  (Criminal), `magic-initiate` (Acolyte, Sage), `savage-attacker` (Soldier),
+  where it held the Foundry compendium id (`phbftAlert000000`).
+
 ### Fixed
 
 - **Who an area affects follows the SRD 5.2 text** (C26a). Sleep, Slow, Mass

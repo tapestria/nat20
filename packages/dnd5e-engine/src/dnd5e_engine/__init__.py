@@ -67,6 +67,7 @@ from dnd5e_engine.rest import (
     RestOutcome,
     recover_feature_uses,
     recover_item_uses,
+    recover_slotless_casts,
     resolve_long_rest,
     resolve_short_rest,
 )
@@ -134,6 +135,7 @@ __all__ = [
     "parse_cell",
     "recover_feature_uses",
     "recover_item_uses",
+    "recover_slotless_casts",
     "resolve_check",
     "resolve_legendary_resistance",
     "resolve_long_rest",

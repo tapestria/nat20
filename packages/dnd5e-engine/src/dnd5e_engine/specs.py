@@ -12,7 +12,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from dnd5e_engine.activities.passive_stats import CombatantMovementModes, CombatantSenses
-from dnd5e_engine.types.combat import FightingStyle
+from dnd5e_engine.types.combat import FightingStyle, SpellcastingAbility
 
 
 class PartyMemberSpec(BaseModel):
@@ -32,7 +32,8 @@ class PartyMemberSpec(BaseModel):
     # SRD 5.2 Initiative — "every participant rolls Initiative; they make a
     # Dexterity check". A fixed int seats the combatant directly (legacy /
     # host-supplied path, zero RNG draws). ``None`` opts into an
-    # engine-rolled ``d20 + DEX modifier`` in ``start_combat`` instead.
+    # engine-rolled ``d20 + DEX modifier`` in ``start_combat`` instead, plus
+    # the Proficiency Bonus for a character with Alert.
     initiative: int | None
     # SRD 5.2 Surprise — "that creature is surprised, which causes it to
     # have Disadvantage on its Initiative roll." Only consulted when
@@ -70,9 +71,21 @@ class PartyMemberSpec(BaseModel):
     # resolver. Unknown slugs are skipped (with no warning — the caster simply
     # cannot cast that spell at runtime).
     spells_known: list[str] = Field(default_factory=list)
+    # SRD 5.2 Magic Initiate: "Intelligence, Wisdom, or Charisma is your
+    # spellcasting ability for this feat's spells". A spell slug → the ability
+    # (``"wis"``) that casts it, in place of the class's. ``build_party_member``
+    # fills it from the build's ``magic-initiate:`` tokens; empty by default.
+    spell_abilities: dict[str, SpellcastingAbility] = Field(default_factory=dict)
+    # SRD 5.2 Magic Initiate: "You can cast it once without a spell slot, and you
+    # regain the ability to cast it in that way when you finish a Long Rest."
+    # The spells this character can cast at their own level once without a
+    # slot; each use is tallied in ``custom_counters`` under
+    # ``slotless_cast:<spell>``. Empty by default.
+    slotless_casts: tuple[str, ...] = ()
     # Custom limited-use counters, carried onto live combat state for the
     # caster. Namespaced key conventions (see dnd5e_engine.rest):
-    # ``feature_use:<slug>`` / ``item_use:<slug>`` → ``{"spent": n}``.
+    # ``feature_use:<slug>`` / ``item_use:<slug>`` / ``slotless_cast:<spell>``
+    # → ``{"spent": n}``.
     custom_counters: dict[str, dict[str, int]] = Field(default_factory=dict)
     # SRD §Concentration — ``effect_id`` the caster is currently concentrating
     # on, or ``None``. Carried across to the live ``Combatant`` so the
@@ -155,9 +168,12 @@ class PartyMemberSpec(BaseModel):
     # via the session-side enchantment projection, not this slug list).
     equipment: tuple[str, ...] = ()
     # SRD 5.2 feats the PC has (``DerivedSheet.feats``; ``build_party_member``
-    # fills it). The Fighting Style feats among them apply in combat (Archery,
-    # Great Weapon Fighting, Two-Weapon Fighting); Defense is already in ``ac``
-    # when ``derive_sheet`` computed it. Other feats are recorded, not applied.
+    # fills it). In combat the engine applies Alert (an engine-rolled
+    # Initiative), Savage Attacker, Grappler's Advantage and the Fighting Style
+    # feats (Archery, Great Weapon Fighting, Two-Weapon Fighting); Defense is
+    # already in ``ac`` when ``derive_sheet`` computed it, and Magic Initiate
+    # reaches combat through ``spell_abilities`` and ``slotless_casts``. Other
+    # feats are recorded, not applied.
     feats: tuple[str, ...] = ()
     # One Fighting Style feat for a hand-built spec; merged with any in ``feats``.
     fighting_style: FightingStyle | None = None

@@ -424,12 +424,18 @@ def _check_background(slug: str, canonical: dict[str, Any], oracle: dict[str, An
             f"{slug}.skill_proficiencies: canonical={actual_skills!r} oracle={expected_skills!r}"
         )
 
+    # Origin feat: the oracle ships the 5e-bits feat index (``magic-initiate``),
+    # the same canonical slug the translator resolves the "Background Feat"
+    # grant to.
+    expected_feat = oracle.get("feat")
+    if expected_feat and canonical.get("starting_feat_slug") != expected_feat:
+        diffs.append(
+            f"{slug}.starting_feat_slug: canonical={canonical.get('starting_feat_slug')!r} "
+            f"oracle={expected_feat!r}"
+        )
+
     # NOT cross-checked (genuine cross-source vocabulary divergence, mirrors the
     # species ``traits``/feat handling):
-    # - ``feat``: the oracle ships the 5e-bits feat index (``magic-initiate``),
-    #   canonical carries the Foundry compendium-UUID segment
-    #   (``phbftMagicInitia``). The two ID spaces are not comparable without a
-    #   feat-slug map that a later phase introduces.
     # - ``tool_proficiencies``: oracle uses equipment slugs
     #   (``calligraphers-supplies``, ``thieves-tools``), canonical carries
     #   Foundry tool keys (``art:calligrapher``, ``thief``, ``game:*``) — again

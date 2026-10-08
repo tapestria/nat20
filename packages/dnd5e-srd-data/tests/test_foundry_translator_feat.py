@@ -35,6 +35,7 @@ def test_translates_origin_feat() -> None:
     assert feat.category is FeatCategory.ORIGIN
     assert feat.activities == []
     assert feat.prerequisites == []  # level=null, no items, empty requirements
+    assert feat.repeatable is False
     assert feat.provenance.srd_version == frozenset({"5.2"})
 
 
@@ -63,6 +64,16 @@ def test_translates_ability_score_improvement_empty_subtype() -> None:
     feat = _translate("general-feats", "ability-score-improvement.yml")
     assert feat.slug == "ability-score-improvement"
     assert feat.category is FeatCategory.GENERAL
+    # "Repeatable. You can take this feat more than once."
+    assert feat.repeatable is True
+
+
+def test_translates_repeatable_from_the_prerequisites_block() -> None:
+    # Foundry ``system.prerequisites.repeatable``: Magic Initiate and Skilled
+    # repeat; Grappler does not.
+    assert _translate("origin-feats", "magic-initiate.yml").repeatable is True
+    assert _translate("origin-feats", "skilled.yml").repeatable is True
+    assert _translate("general-feats", "grappler.yml").repeatable is False
 
 
 def test_translates_epic_boon_with_activity() -> None:

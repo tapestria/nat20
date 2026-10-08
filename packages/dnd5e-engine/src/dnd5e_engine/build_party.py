@@ -24,8 +24,10 @@ def build_party_member(
     ``is None`` check, so a ``CombatInstance`` rebuilt from
     ``CombatInstance(**inst.model_dump())`` still derives whatever it left
     unset). An unpinned ``attack_bonus`` stays unset on the built spec, so
-    the engine computes each weapon's to-hit bonus. Raises ``ValueError`` for
-    an invalid build (see ``derive_sheet``).
+    the engine computes each weapon's to-hit bonus. The spells Magic Initiate
+    chose join ``instance.spells_known``, with the ability each is cast with and
+    the level 1 spells cast once without a slot. Raises ``ValueError`` for an
+    invalid build (see ``derive_sheet``).
     """
     sheet = derive_sheet(build_spec, loader=loader)
     hp_max = sheet.hp_max if instance.hp_max is None else instance.hp_max
@@ -46,7 +48,12 @@ def build_party_member(
         zone_id=instance.zone_id,
         spell_slots=dict(instance.spell_slots) or dict(sheet.spell_slots),
         pact_slots=dict(instance.pact_slots) or dict(sheet.pact_slots),
-        spells_known=list(instance.spells_known),
+        spells_known=[
+            *instance.spells_known,
+            *(slug for slug in sheet.spell_abilities if slug not in instance.spells_known),
+        ],
+        spell_abilities=dict(sheet.spell_abilities),
+        slotless_casts=sheet.slotless_casts,
         concentration_effect_id=instance.concentration_effect_id,
         character_level=build_spec.level,
         class_slug=build_spec.class_slug,

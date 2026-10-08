@@ -24,6 +24,11 @@ from dnd5e_engine.types.conditions import ActiveCondition
 # SRD ships. Dueling and the other 2024 styles are not SRD 5.2 content.
 FightingStyle = Literal["archery", "defense", "great-weapon-fighting", "two-weapon-fighting"]
 
+# SRD 5.2 spellcasting abilities: every class's, and Magic Initiate's
+# ("Intelligence, Wisdom, or Charisma is your spellcasting ability for this
+# feat's spells"), is one of these.
+SpellcastingAbility = Literal["int", "wis", "cha"]
+
 # The body armor a creature wears (SRD 5.2 armor categories); a Shield is
 # tracked on its own.
 WornArmor = Literal["light", "medium", "heavy"]
@@ -201,6 +206,10 @@ class Combatant(BaseModel):
     # SRD 5.2 Fighting Style feats in play (``PartyMemberSpec.feats`` plus
     # ``fighting_style``), read by the attack resolver. Empty for monsters.
     fighting_styles: tuple[FightingStyle, ...] = ()
+    # SRD 5.2 feats this creature has (a character's ``PartyMemberSpec.feats``):
+    # the attack resolver applies Savage Attacker and Grappler from it. Empty
+    # for monsters.
+    feats: tuple[str, ...] = ()
     # SRD 5.2 armor worn and Shield wielded, from ``PartyMemberSpec.equipment``
     # (armor and Shields listed there are worn). Martial Arts needs neither.
     worn_armor: WornArmor | None = None
@@ -240,6 +249,13 @@ class Combatant(BaseModel):
     # creature's turn can deal Sneak Attack again. Defaults False (rider may
     # fire) for every combatant.
     sneak_attack_spent_this_turn: bool = False
+    # SRD 5.2 Savage Attacker, "Once per turn" — True once this creature has
+    # rolled a weapon's damage dice twice this turn. Gates the second roll in
+    # ``activities/attack.py`` (projected per resolution into
+    # ``ActivityResolutionContext.savage_attacker_spent``). Reset at every
+    # TurnStarted, any creature's, as Sneak Attack's is: an opportunity attack
+    # on another creature's turn can use it again.
+    savage_attacker_spent_this_turn: bool = False
     # SRD §Extra Attack — "you can attack twice, instead of once, whenever
     # you take the Attack action on your turn" (and thrice/four-times at
     # higher tiers). The remaining main-hand swings this Action; refreshed
@@ -326,6 +342,12 @@ class Combatant(BaseModel):
     # their own caster ability elsewhere) and monsters without spellcasting;
     # hydrated by C18 Task 5.
     spellcasting_ability: str | None = None
+    # SRD 5.2 Magic Initiate: a spell slug → the ability that casts it, in place
+    # of the class's (``PartyMemberSpec.spell_abilities``), and the spells cast
+    # once at their own level without a slot (``PartyMemberSpec.slotless_casts``;
+    # the use is tallied in ``custom_counters``). Empty for monsters.
+    spell_abilities: dict[str, SpellcastingAbility] = Field(default_factory=dict)
+    slotless_casts: tuple[str, ...] = ()
     # SRD 5.2 Loading — "You can fire only one piece of ammunition from a
     # Loading weapon when you use an action, a Bonus Action, or a Reaction
     # to fire it, regardless of the number of attacks you can normally
@@ -384,5 +406,6 @@ __all__ = [
     "Combatant",
     "FightingStyle",
     "MonsterActionUses",
+    "SpellcastingAbility",
     "WornArmor",
 ]

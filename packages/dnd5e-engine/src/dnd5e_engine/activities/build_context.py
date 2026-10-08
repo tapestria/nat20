@@ -216,6 +216,7 @@ def build_activity_context(
     active_effects: Sequence[ActiveEffect] = (),
     sneak_attack_spent: dict[str, bool] | None = None,
     sneak_attack_ally_adjacent: dict[str, bool] | None = None,
+    savage_attacker_spent: dict[str, bool] | None = None,
     target_unseen: dict[str, bool] | None = None,
     attacker_unseen_by: dict[str, bool] | None = None,
     suppress_positive_ability_damage_mod: bool = False,
@@ -235,6 +236,7 @@ def build_activity_context(
     legendary_resistance_armed: dict[str, int] | None = None,
     legendary_resistances_remaining_by_entity: dict[str, int] | None = None,
     pack_tactics_ally_adjacent: dict[str, bool] | None = None,
+    target_grappled_by_attacker: dict[str, bool] | None = None,
     attacker_in_sunlight: bool = False,
     undead_fortitude_holds: dict[str, bool] | None = None,
     scaling_value: int | None = None,
@@ -519,6 +521,9 @@ def build_activity_context(
         target_conditions={t.entity_id: active_condition_names(t.conditions) for t in targets},
         sneak_attack_spent=sneak_attack_spent or {},
         sneak_attack_ally_adjacent=sneak_attack_ally_adjacent or {},
+        # SRD 5.2 Savage Attacker: the per-turn use, projected by
+        # ``orchestrator.py`` and written back by ``attack.py``.
+        savage_attacker_spent=savage_attacker_spent or {},
         check_modifiers=_check_modifier_sidecar(check_modifiers),
         source_passive_effects=source_passive_effects,
         spell_book=spell_book,
@@ -555,6 +560,9 @@ def build_activity_context(
         # / ``live.scene_sunlight``). Defaults ({} / False) leave the golden
         # corpus identical (no adjacency data, no sunlit scene).
         pack_tactics_ally_adjacent=pack_tactics_ally_adjacent or {},
+        # SRD 5.2 Grappler: PRE-RESOLVED per-target "Grappled by the
+        # attacker" map (``_grappled_by_map``). Absent (``None``) -> empty.
+        target_grappled_by_attacker=target_grappled_by_attacker or {},
         attacker_in_sunlight=attacker_in_sunlight,
         # C18 §Monster action economy, fix round 1 — Undead Fortitude's
         # live write-back handshake (see ``ActivityResolutionContext.

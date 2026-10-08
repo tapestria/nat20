@@ -30,7 +30,7 @@ def test_background_minimal_acolyte() -> None:
         skill_proficiencies=["ins", "rel"],
         tool_proficiencies=["art:calligrapher"],
         languages=["common"],
-        starting_feat_slug="phbftMagicInitia",
+        starting_feat_slug="magic-initiate",
         wealth="50",
         provenance=_prov(),
         review=ReviewState(),
@@ -38,7 +38,7 @@ def test_background_minimal_acolyte() -> None:
     assert bg.slug == "acolyte"
     assert bg.ability_options.options == frozenset({"int", "wis", "cha"})
     assert bg.skill_proficiencies == ["ins", "rel"]
-    assert bg.starting_feat_slug == "phbftMagicInitia"
+    assert bg.starting_feat_slug == "magic-initiate"
     assert bg.entry_kind == "background"
 
 

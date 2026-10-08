@@ -175,7 +175,10 @@ resolver, with the interrupted caster as sole target.
    `CastFailed` branches' own `_advance_turn` call — the shipped precedent
    for "a failed cast still ends the turn, with no further activity this
    turn"), and return `True` — the caller returns immediately, **before**
-   `_consume_spell_slot` ever runs for the triggering spell.
+   `_consume_spell_slot` ever runs for the triggering spell. Only a slot is
+   spared (SRD 5.2: "If that spell was cast with a spell slot, the slot isn't
+   expended"): a spell its caster's slotless cast pays for (Magic Initiate)
+   still spends that cast (`_spend_countered_slotless_cast`).
 
 ### Slot-consumption redesign (closes the discovered "slots consumed at
 submission" entry)

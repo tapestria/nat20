@@ -51,6 +51,7 @@ TOP_LEVEL = {
     "parse_cell",
     "recover_feature_uses",
     "recover_item_uses",
+    "recover_slotless_casts",
     "resolve_check",
     "resolve_legendary_resistance",
     "resolve_long_rest",

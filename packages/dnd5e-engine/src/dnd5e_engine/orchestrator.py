@@ -196,7 +196,11 @@ from dnd5e_engine.outcome import (
     DeathRecord,
     LootDrop,
 )
-from dnd5e_engine.rest import FEATURE_USE_COUNTER_PREFIX, ITEM_USE_COUNTER_PREFIX
+from dnd5e_engine.rest import (
+    FEATURE_USE_COUNTER_PREFIX,
+    ITEM_USE_COUNTER_PREFIX,
+    SLOTLESS_CAST_COUNTER_PREFIX,
+)
 from dnd5e_engine.rules.character import (
     extra_attack_count,
     leveled_feature_slugs,
@@ -215,7 +219,7 @@ from dnd5e_engine.rules.conditions import (
     project_passive_save_modifiers,
     project_speed,
 )
-from dnd5e_engine.rules.dice import ability_modifier
+from dnd5e_engine.rules.dice import ability_modifier, proficiency_bonus
 from dnd5e_engine.rules.uses import UsesRollData, evaluate_uses_formula
 from dnd5e_engine.spatial import GridTopology, SpatialTopology, cell_id, parse_cell
 from dnd5e_engine.specs import (
@@ -1450,6 +1454,20 @@ def _sneak_ally_adjacent_map(
     return out
 
 
+def _grappled_by_map(
+    live: _LiveCombat, attacker: Combatant, targets: Sequence[Combatant]
+) -> dict[str, bool]:
+    """SRD 5.2 Grappler — "a creature Grappled by you": per target, is it
+    Grappled by ``attacker`` (``_condition_source_entity``)? Threaded into
+    ``ActivityResolutionContext.target_grappled_by_attacker``; ``attack.py``
+    applies it only to an attacker with the feat."""
+    return {
+        t.entity_id: True
+        for t in targets
+        if _condition_source_entity(live, t, "grappled") == attacker.entity_id
+    }
+
+
 def _pack_tactics_map(
     live: _LiveCombat, attacker: Combatant, targets: Sequence[Combatant]
 ) -> dict[str, bool]:
@@ -1857,6 +1875,17 @@ def _record_sneak_attack_spent(
         if c.entity_id == caster.entity_id:
             live.initiative[idx] = c.model_copy(update={"sneak_attack_spent_this_turn": True})
             break
+
+
+def _record_savage_attacker_spent(
+    live: _LiveCombat, caster: Combatant, actx: ActivityResolutionContext
+) -> None:
+    """SRD 5.2 Savage Attacker, "Once per turn" — flip the caster's
+    ``savage_attacker_spent_this_turn`` once the resolver rolled a weapon's
+    damage dice twice (it marks ``actx.savage_attacker_spent``). The flag
+    clears at every ``TurnStarted`` (``_emit_apply_turn_started``)."""
+    if actx.savage_attacker_spent.get(caster.entity_id):
+        _update_combatant(live, caster.entity_id, savage_attacker_spent_this_turn=True)
 
 
 def _path_total_distance(topology: SpatialTopology, path: Sequence[str]) -> int | None:
@@ -5021,11 +5050,17 @@ def _emit_apply_turn_started(live: _LiveCombat, event: TurnStarted) -> None:
                 }
             )
             break
-    # SRD 5.2 Sneak Attack: "Once per turn" — any creature's turn, not only the
-    # rogue's own: an opportunity attack on another creature's turn can deal it.
+    # SRD 5.2 Sneak Attack and Savage Attacker: "Once per turn" — any creature's
+    # turn, not only the attacker's own: an opportunity attack on another
+    # creature's turn can use them again.
     for idx, c in enumerate(live.initiative):
-        if c.sneak_attack_spent_this_turn:
-            live.initiative[idx] = c.model_copy(update={"sneak_attack_spent_this_turn": False})
+        if c.sneak_attack_spent_this_turn or c.savage_attacker_spent_this_turn:
+            live.initiative[idx] = c.model_copy(
+                update={
+                    "sneak_attack_spent_this_turn": False,
+                    "savage_attacker_spent_this_turn": False,
+                }
+            )
     # SRD 5.2 §Actions in Combat — Help: "This benefit expires at the start
     # of your next turn" — the HELPER's own next turn, not the helped-
     # against target's. Strip this actor's entity_id out of every grant
@@ -7454,6 +7489,9 @@ def _build_pc_combatants(
                 class_slug=pc.class_slug,
                 classes=dict(pc.classes),
                 fighting_styles=styles_from_feats(pc.feats, pc.fighting_style),
+                feats=tuple(pc.feats),
+                spell_abilities=dict(pc.spell_abilities),
+                slotless_casts=tuple(pc.slotless_casts),
                 worn_armor=worn_armor,
                 shield_equipped=shield_equipped,
                 subclass_slug=pc.subclass_slug,
@@ -7763,7 +7801,8 @@ def _resolve_initiative(
     """SRD 5.2 Initiative: "every participant rolls Initiative; they make a
     Dexterity check". ``spec.initiative`` being an explicit int always wins
     (zero RNG draws — the legacy / host-supplied path). ``None`` opts into an
-    engine-rolled d20 + DEX modifier. Surprise (and Incapacitated at roll
+    engine-rolled d20 + DEX modifier, plus a character's Proficiency Bonus with
+    Alert (``_initiative_bonus``). Surprise (and Incapacitated at roll
     time — both SRD-cited on the spec fields / ``_seeded_incapacitated_ids``)
     impose Disadvantage per SRD 5.2 Surprise / the Incapacitated glossary
     entry.
@@ -7772,7 +7811,21 @@ def _resolve_initiative(
         return spec.initiative
     disadvantage = spec.is_surprised or spec.entity_id in seeded_incapacitated
     sources = AdvantageSources(disadvantage=("condition:attacker",) if disadvantage else ())
-    return roll_d20_test(rng, ability_modifier(_initiative_dexterity(spec)), sources).total
+    modifier = ability_modifier(_initiative_dexterity(spec)) + _initiative_bonus(spec)
+    return roll_d20_test(rng, modifier, sources).total
+
+
+# SRD 5.2 feat slugs this module applies (``PartyMemberSpec.feats``).
+_ALERT: Final = "alert"
+
+
+def _initiative_bonus(spec: PartyMemberSpec | EncounterMemberSpec) -> int:
+    """SRD 5.2 Alert: "When you roll Initiative, you can add your Proficiency
+    Bonus to the roll." Only an engine-rolled Initiative reaches here: a host
+    that rolls its own adds the bonus itself."""
+    if isinstance(spec, PartyMemberSpec) and _ALERT in spec.feats:
+        return proficiency_bonus(spec.character_level)
+    return 0
 
 
 def _initiative_dexterity(spec: PartyMemberSpec | EncounterMemberSpec) -> int:
@@ -9625,11 +9678,12 @@ def _apply_construct_requests(
                 _resolve_construct_attack(live, caster, construct, target)
 
 
-def _construct_spellcasting_ability(owner: Combatant) -> str | None:
-    """The ability a construct's attack uses: the owner's class spellcasting
-    ability, else its stat block's (a monster), else ``None`` (the legacy
-    fallbacks of a classless caster)."""
-    return _resolve_caster_spellcasting_ability(owner) or owner.spellcasting_ability
+def _construct_spellcasting_ability(owner: Combatant, spell_id: str) -> str | None:
+    """The ability a construct's or summon's attack uses: the owner's ability
+    for ``spell_id`` (``_spellcasting_ability_for``: its own entry in
+    ``spell_abilities``, else its class's), else its stat block's (a monster),
+    else ``None`` (the legacy fallbacks of a classless caster)."""
+    return _spellcasting_ability_for(owner, spell_id) or owner.spellcasting_ability
 
 
 def _resolve_construct_attack(
@@ -9647,7 +9701,7 @@ def _resolve_construct_attack(
     owner's."""
     spec = CONSTRUCTS[construct.spell_id]
     target_list = [target]
-    ability = _construct_spellcasting_ability(owner)
+    ability = _construct_spellcasting_ability(owner, construct.spell_id)
     attack_bonus, modifier = spell_attack_magnitudes(owner, ability)
     payload = _build_hydration_payload(live, caster=owner)
     pre_event_count = len(live.event_log)
@@ -9922,7 +9976,7 @@ def _seat_summon(live: _LiveCombat, caster: Combatant, request: SummonRequest) -
     # The registry test pins that every ``SUMMONS`` stat block loads with an AC.
     assert monster is not None
     assert monster.ac is not None
-    ability = _construct_spellcasting_ability(caster)
+    ability = _construct_spellcasting_ability(caster, request.spell_id)
     spell_attack, modifier = spell_attack_magnitudes(caster, ability)
     roll_data = SummonRollData(level=request.slot_level, mod=modifier)
     ac = monster.ac + evaluate_summon_formula(request.bonuses.ac, roll_data)
@@ -11020,6 +11074,54 @@ def _slot_available(live: _LiveCombat, entity_id: str, slot_level: int) -> bool:
     return int(spell.get(slot_level, 0)) > 0 or int(pact.get(slot_level, 0)) > 0
 
 
+def _slotless_cast_available(
+    live: _LiveCombat, caster: Combatant, spell: Spell, slot_level: int
+) -> bool:
+    """SRD 5.2 Magic Initiate: "You can cast it once without a spell slot, and
+    you regain the ability to cast it in that way when you finish a Long
+    Rest." True when ``spell`` is one of ``caster``'s slotless casts, cast at
+    its own level, and its ``custom_counters`` tally is unspent."""
+    if spell.slug not in caster.slotless_casts or slot_level != spell.level:
+        return False
+    counters = live.custom_counters_by_entity.get(caster.entity_id, {})
+    return counters.get(f"{SLOTLESS_CAST_COUNTER_PREFIX}{spell.slug}", {}).get("spent", 0) < 1
+
+
+def _cast_payable(live: _LiveCombat, caster: Combatant, spell: Spell, slot_level: int) -> bool:
+    """Can ``caster`` pay for a leveled ``spell`` at ``slot_level``: its
+    slotless cast, else a slot (``_slot_available``)?"""
+    return _slotless_cast_available(live, caster, spell, slot_level) or _slot_available(
+        live, caster.entity_id, slot_level
+    )
+
+
+def _pay_for_cast(live: _LiveCombat, caster: Combatant, spell: Spell, slot_level: int) -> bool:
+    """Pay for a leveled cast: the slotless cast when one is available, else a
+    slot (``_take_spell_slot``). Magic Initiate: "You can also cast the spell
+    using any spell slots you have." The slotless cast goes first because a
+    slot can pay for any spell and the slotless cast only for this one.
+    Returns ``False`` and spends nothing when neither is available."""
+    if _slotless_cast_available(live, caster, spell, slot_level):
+        counters = live.custom_counters_by_entity.setdefault(caster.entity_id, {})
+        counter = counters.setdefault(f"{SLOTLESS_CAST_COUNTER_PREFIX}{spell.slug}", {"spent": 0})
+        counter["spent"] = counter.get("spent", 0) + 1
+        return True
+    return _take_spell_slot(live, caster.entity_id, slot_level)
+
+
+def _spend_countered_slotless_cast(
+    live: _LiveCombat, caster: Combatant, intent: PlayerIntent
+) -> None:
+    """SRD 5.2 Counterspell: "If that spell was cast with a spell slot, the slot
+    isn't expended." Only a slot is spared: a countered spell its slotless cast
+    pays for (``_pay_for_cast`` spends that before a slot) still spends it."""
+    spell = get_lib_loader().get_spell(intent.spell_id or "")
+    if spell is not None and spell.level > 0:
+        slot_level = intent.slot_level if intent.slot_level is not None else spell.level
+        if _slotless_cast_available(live, caster, spell, slot_level):
+            _pay_for_cast(live, caster, spell, slot_level)
+
+
 def _take_spell_slot(live: _LiveCombat, entity_id: str, slot_level: int) -> bool:
     """Expend one slot at ``slot_level`` — Spellcasting pool first, then Pact (R3).
     Returns ``False`` and mutates nothing when neither pool has one."""
@@ -11168,10 +11270,10 @@ def _consume_spell_slot(
         )
         _end_turn_and_advance(live, actor_id)
         return True
-    # Consume the slot. The typed PC resolver does not touch
-    # ``_counter_state``, so this subtract is the authoritative
-    # decrement — no post-evaluation writeback overwrites it.
-    if base_level > 0 and not _take_spell_slot(live, current.entity_id, slot_level):
+    # Consume the slot — or the spell's slotless cast (``_pay_for_cast``). The
+    # typed PC resolver does not touch ``_counter_state``, so this subtract is
+    # the authoritative decrement — no post-evaluation writeback overwrites it.
+    if base_level > 0 and not _pay_for_cast(live, current, slot_gate_spell, slot_level):
         _emit(
             live,
             CastFailed(
@@ -11259,6 +11361,14 @@ def _resolve_caster_spellcasting_ability(caster: Combatant) -> str | None:
     return cls.spellcasting.ability
 
 
+def _spellcasting_ability_for(caster: Combatant, spell_slug: str) -> str | None:
+    """The ability ``caster`` casts ``spell_slug`` with: its own entry in
+    ``Combatant.spell_abilities`` (SRD 5.2 Magic Initiate: "Intelligence,
+    Wisdom, or Charisma is your spellcasting ability for this feat's spells"),
+    else its class's (``_resolve_caster_spellcasting_ability``)."""
+    return caster.spell_abilities.get(spell_slug) or _resolve_caster_spellcasting_ability(caster)
+
+
 def _resolve_intent_activities(
     intent: PlayerIntent,
     feature_invocation: _FeatureInvocation | None,
@@ -11303,9 +11413,10 @@ def _resolve_intent_activities(
             activities = list(cast_spell.activities)
             # SRD 5.2 §Spellcasting — the real class->ability mapping
             # (cleric -> wis, wizard -> int, ...), read off the caster's own
-            # class doc. ``None`` (unknown class / non-caster class) falls
-            # back to the legacy flat approximation in ``build_context.py``.
-            spellcasting_ability = _resolve_caster_spellcasting_ability(caster)
+            # class doc, unless the spell has its own (Magic Initiate). ``None``
+            # (unknown class / non-caster class) falls back to the legacy flat
+            # approximation in ``build_context.py``.
+            spellcasting_ability = _spellcasting_ability_for(caster, intent.spell_id)
     elif intent.intent_type == "use_item" and intent.item_id:
         # Parity with the OLD resolver's ``use_item`` branch: an item (potion,
         # scroll, wand) may carry its own activities — most often a
@@ -11685,7 +11796,8 @@ def _resolve_readied_spell_cast(
 ) -> None:
     """Auto-fire a pre-armed reaction spell (Shield) as a full self-cast.
 
-    Consumes the reactor's Reaction + spell slot, emits ``ReactionTriggered``,
+    Consumes the reactor's Reaction and pays for the spell (``_pay_for_cast``:
+    its slotless cast, else a slot), emits ``ReactionTriggered``,
     then resolves the spell's own activities against the reactor as sole
     target through the SAME typed resolver every on-turn cast uses — no
     bespoke Shield-only mechanics. Any ``EffectApplied`` this produces on the
@@ -11705,10 +11817,10 @@ def _resolve_readied_spell_cast(
 
     slot_level = popped.slot_level if popped.slot_level is not None else spell.level
     if spell.level > 0:
-        _take_spell_slot(live, reactor.entity_id, slot_level)
+        _pay_for_cast(live, reactor, spell, slot_level)
     # ``_emit_spell_cast`` normalises ``slot_level`` to ``None`` for a
-    # cantrip; ``slot_level`` here stays the raw popped/derived value for the
-    # slot-take check above.
+    # cantrip; ``slot_level`` here stays the raw popped/derived value the
+    # payment above used.
 
     _emit(
         live,
@@ -11720,7 +11832,7 @@ def _resolve_readied_spell_cast(
     )
     _emit_spell_cast(live, reactor.entity_id, spell, slot_level)
 
-    spellcasting_ability = _resolve_caster_spellcasting_ability(reactor)
+    spellcasting_ability = _spellcasting_ability_for(reactor, spell.slug)
     payload = _build_hydration_payload(live, caster=reactor)
     actx = build_activity_context(
         reactor,
@@ -11781,15 +11893,16 @@ def _resolve_readied_spell_cast(
 def _readied_cast_eligible(
     live: _LiveCombat, reactor: Combatant, pending: _PendingReaction
 ) -> bool:
-    """R4 — a readied leveled spell (Shield) needs an unexpended slot at its
-    readied level. SRD §Spell Slots: "When you cast a spell, you expend a
-    slot of that spell's level or higher"; a cantrip (level 0) has no slot
-    to expend and is always eligible."""
+    """A readied leveled spell (Shield) needs an unexpended slot at its
+    readied level, or — readied at its own level — its unspent slotless
+    cast (``_cast_payable``). SRD §Spell Slots: "When you cast a spell,
+    you expend a slot of that spell's level or higher"; a cantrip (level
+    0) has no slot to expend and is always eligible."""
     spell = get_lib_loader().get_spell(pending.spell_id or "")
     if spell is None or spell.level == 0:
         return True
     level = pending.slot_level if pending.slot_level is not None else spell.level
-    return _slot_available(live, reactor.entity_id, level)
+    return _cast_payable(live, reactor, spell, level)
 
 
 def _drain_targeted_reactions(
@@ -11838,9 +11951,9 @@ def _drain_counterspell_reaction(
     means no reaction fired OR the save succeeded; either way the triggering
     cast proceeds exactly as if this function had never been called.
 
-    Gates (R4): the reactor must hold a slot at the readied level in either
-    pool and be within Counterspell's own ``range.value`` with line of
-    sight — an ineligible reactor's armed reaction is skipped, not
+    Gates: the reactor must be able to pay for Counterspell at the readied
+    level (``_cast_payable``) and be within its own ``range.value`` with
+    line of sight — an ineligible reactor's armed reaction is skipped, not
     consumed.
     """
     if intent.intent_type != "cast_spell" or not intent.spell_id:
@@ -11853,7 +11966,7 @@ def _drain_counterspell_reaction(
         if spell is None:
             return False
         level = pending.slot_level if pending.slot_level is not None else spell.level
-        if spell.level > 0 and not _slot_available(live, reactor.entity_id, level):
+        if spell.level > 0 and not _cast_payable(live, reactor, spell, level):
             return False
         range_ft = spell.range.value
         reactor_zone = live.actor_zone.get(reactor.entity_id)
@@ -11882,15 +11995,15 @@ def _drain_counterspell_reaction(
     if save_activity is None:
         return False
 
-    # Counterspell's OWN slot is spent whether or not it succeeds — only the
-    # INTERRUPTED spell's slot is conditionally preserved, below.
+    # Counterspell is paid for (a slot, or its slotless cast) whether or not
+    # it succeeds — only the INTERRUPTED spell's slot is preserved, below.
     for idx, c in enumerate(live.initiative):
         if c.entity_id == reactor.entity_id:
             live.initiative[idx] = c.model_copy(update={"reaction_available": False})
             break
     cs_level = popped.slot_level if popped.slot_level is not None else counterspell.level
     if counterspell.level > 0:
-        _take_spell_slot(live, reactor.entity_id, cs_level)
+        _pay_for_cast(live, reactor, counterspell, cs_level)
 
     _emit(
         live,
@@ -11902,7 +12015,7 @@ def _drain_counterspell_reaction(
     )
     _emit_spell_cast(live, reactor.entity_id, counterspell, cs_level)
 
-    reactor_spellcasting_ability = _resolve_caster_spellcasting_ability(reactor)
+    reactor_spellcasting_ability = _spellcasting_ability_for(reactor, counterspell.slug)
     payload = _build_hydration_payload(live, caster=reactor)
     actx = build_activity_context(
         reactor,
@@ -11945,6 +12058,7 @@ def _drain_counterspell_reaction(
     if succeeded:
         return False
 
+    _spend_countered_slotless_cast(live, current, intent)
     _emit(
         live,
         CastFailed(
@@ -12091,6 +12205,11 @@ def _pc_attack_context_kwargs(
         "active_effects": tuple(live.active_effects.get(current.entity_id, [])),
         "sneak_attack_spent": {current.entity_id: current.sneak_attack_spent_this_turn},
         "sneak_attack_ally_adjacent": _sneak_ally_adjacent_map(live, current, geometry_targets),
+        # SRD 5.2 Savage Attacker: the per-turn use, rebuilt from the live
+        # Combatant flag (``_record_savage_attacker_spent`` writes it back).
+        "savage_attacker_spent": {current.entity_id: current.savage_attacker_spent_this_turn},
+        # SRD 5.2 Grappler: which targets this attacker grapples.
+        "target_grappled_by_attacker": _grappled_by_map(live, current, geometry_targets),
         # SRD 5.2 §Weapon Proficiency (C15) — real gate: proficient iff
         # ``current.weapon_proficiencies`` is the ``None`` sentinel (host never
         # opted in) or the weapon's category/slug is listed; ``True`` for a
@@ -12604,6 +12723,7 @@ async def submit_player_intent(
         # resolution (finesse/ranged weapon + Advantage or an adjacent ally),
         # was not already spent, and at least one target took damage.
         _record_sneak_attack_spent(live, current, fetched_weapon, targets, actx, pre_event_count)
+        _record_savage_attacker_spent(live, current, actx)
 
         # SRD 5.2 §Spell Descriptions — typed forced-movement riders (e.g.
         # Thunderwave's "pushed 10 feet away from you") fire after the
@@ -12946,6 +13066,7 @@ def _resolve_opportunity_attack(live: _LiveCombat, reactor: Combatant, mover: Co
     _fold_mastery_procs(live, reactor.entity_id, actx)
     _break_hide(live, reactor.entity_id)
     _record_sneak_attack_spent(live, reactor, weapon, targets, actx, pre_event_count)
+    _record_savage_attacker_spent(live, reactor, actx)
     _fold_resolution_outcome(live, reactor, spell=None, actx=actx, pre_event_count=pre_event_count)
     _sync_legendary_resistance(live, pre_event_count)
 

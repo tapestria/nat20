@@ -87,7 +87,7 @@
       "type": "linked"
     }
   ],
-  "starting_feat_slug": "phbftAlert000000",
+  "starting_feat_slug": "alert",
   "tool_proficiencies": [
     "thief"
   ],

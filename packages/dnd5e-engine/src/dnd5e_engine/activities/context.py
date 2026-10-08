@@ -384,6 +384,16 @@ class ActivityResolutionContext:
     # touches the spatial seam. Absent target ⇒ no adjacent ally. Empty default
     # keeps the golden corpus identical.
     sneak_attack_ally_adjacent: dict[str, bool] = field(default_factory=dict)
+    # SRD 5.2 Savage Attacker: "Once per turn when you hit a target with a
+    # weapon, you can roll the weapon's damage dice twice and use either roll
+    # against the target." Per-ATTACKER, keyed by ``entity_id``: ``True`` once
+    # the attacker has used it this turn. ``orchestrator.py`` projects it from
+    # ``Combatant.savage_attacker_spent_this_turn``; ``attack.py`` sets the
+    # attacker's entry when it rolls the second time (dict mutation on the
+    # frozen dataclass, like ``mastery_procs``), so a Cleave's second hit in
+    # the same resolution rolls once, and ``orchestrator.py`` reads the entry
+    # back to record the use. Absent caster ⇒ not spent.
+    savage_attacker_spent: dict[str, bool] = field(default_factory=dict)
     # C18 §Monster action economy — SRD 5.2 Legendary Resistance: "If the
     # monster fails a saving throw, it can choose to succeed instead." The
     # engine has no mid-resolution round-trip to a host, so the choice is a
@@ -413,6 +423,12 @@ class ActivityResolutionContext:
     # pure resolver never touches ``spatial.py`` itself. Absent target ⇒ no
     # qualifying ally. Empty default keeps every non-bearer byte-identical.
     pack_tactics_ally_adjacent: dict[str, bool] = field(default_factory=dict)
+    # SRD 5.2 Grappler: "You have Advantage on attack rolls against a creature
+    # Grappled by you." Per-TARGET flag, PRE-RESOLVED in ``orchestrator.py``
+    # (``_grappled_by_map``): is that target Grappled by the attacker?
+    # ``attack.py`` applies it only to an attacker with the feat. Empty default
+    # keeps the golden corpus identical.
+    target_grappled_by_attacker: dict[str, bool] = field(default_factory=dict)
     # C18 §Monster action economy — SRD 5.2 stat-block trait "Sunlight
     # Sensitivity" (bundled corpus text): "While in sunlight, the monster
     # has Disadvantage on ability checks and attack rolls." Read for the

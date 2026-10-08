@@ -13,7 +13,7 @@ any time, and the rules the derivation applies.
 | `species_slug` | the species | speed, senses, resistances, species features and choices |
 | `classes` | `{class_slug: level}` **in the order the classes were first taken** | the first key alone gets its Hit Die maximum at level 1 and its initial-class proficiencies |
 | `subclass_slug` | once the class reaches its subclass level (3) | earlier is rejected |
-| `background_slug` | the background | its two skill proficiencies; the options for the `background:` adjustment |
+| `background_slug` | the background | its two skill proficiencies; its Origin feat; the options for the `background:` adjustment |
 | `ability_scores` | the scores **before** the increases listed in `selected_choices` | a host that stores final scores lists no `background:` / `asi:` tokens |
 | `ability_score_method` | optional: `standard_array` or `point_buy` | the base scores are checked against it |
 | `selected_choices` | one token per choice (below) | skills, Expertise, adjustments, ASIs, feats, feature picks |
@@ -31,9 +31,16 @@ any time, and the rules the derivation applies.
 | `background:strength+2,constitution+1` | the background's +2/+1 or +1/+1/+1 |
 | `asi:fighter:4:strength+2` | the Ability Score Improvement feat at Fighter level 4 (+2, or +1/+1) |
 | `feat:fighter:6:grappler` | another feat taken at an Ability Score Improvement level |
+| `magic-initiate:cleric:wis:guidance,sacred-flame:guiding-bolt` | one Magic Initiate's choices: its spell list (`cleric`, `druid` or `wizard`), its spellcasting ability (`int`, `wis` or `cha`), two cantrips and a level 1 spell |
 | `defense` | a pick from a feature-choice pool: Fighting Style, Eldritch Invocation, Metamagic, Divine or Primal Order, a species choice |
 
 Abilities are long names or three-letter codes. Increases stop at 20.
+
+A feat is taken once unless it is repeatable (Ability Score Improvement, Magic
+Initiate, Skilled), counting the background's Origin feat: a Criminal Human
+can't pick Alert from Versatile. Give one `magic-initiate:` token per Magic
+Initiate the build takes, each with a different list and different spells; a
+Magic Initiate without one has no spells chosen yet.
 
 ## Explicit values win
 
@@ -50,15 +57,29 @@ multiclass slot table"; pass a non-empty map to pin one.
 `build_party_member` also forwards the build's `feats` and `classes` to
 `PartyMemberSpec`. The four SRD 5.2 Fighting Style feats therefore apply in
 combat (Defense is already in the derived `ac`, and only while Light, Medium
-or Heavy armor is worn), and each class's features and scale values are read
-at that class's own level.
+or Heavy armor is worn), and so do Alert (its Proficiency Bonus on an
+Initiative the engine rolls — add it yourself to one you roll), Savage
+Attacker and Grappler's Advantage. `CombatInstance.initiative` always passes an
+Initiative (`0` by default): start combat with
+`member.model_copy(update={"initiative": None})` to have the engine roll it.
+Each class's features and scale values are read at that class's own level.
+
+Magic Initiate's spells join `spells_known`, and `spell_abilities` and
+`slotless_casts` carry the rest: the engine casts each spell with the ability
+its token chose, and casts the level 1 spell once at its own level without a
+slot before it spends one. That use is tallied in `custom_counters` under
+`slotless_cast:<spell>`: carry it from one combat to the next with the
+feature counters, and restore it after a Long Rest with
+`recover_slotless_casts(counters, "lr")`.
 
 ## What `derive_sheet` does not apply
 
 Magic items' own passive effects (pass them as `active_effects`), languages,
-tool proficiencies, the background's Origin feat, ability increases from feats
-other than the Ability Score Improvement feat, level-20 capstone increases,
-multiclass ability prerequisites, how many picks a choice allows, and penalties
+tool proficiencies, ability increases from feats other than the Ability Score
+Improvement feat, level-20 capstone increases, which spell list a Magic
+Initiate spell is on (or that an Acolyte's Magic Initiate uses the Cleric list
+and a Sage's the Wizard list), multiclass ability prerequisites, how many
+picks a choice allows, and penalties
 for armor worn without training (`armor_training` is reported so a host can
 apply them). Feature-choice picks other than the Fighting Styles (Eldritch
 Invocations, Metamagic, Blessed Warrior, …) are recorded on
@@ -76,8 +97,11 @@ matched to their base weapon. See `BACKLOG.md` for each.
 `derive_sheet` and `build_party_member` raise `ValueError` with the reason for:
 unknown slugs, a subclass below its level, malformed or repeated tokens,
 adjustments outside their options or budget, unreached or reused ASI levels,
-unmet feat prerequisites, picks outside every reached pool, Expertise without
-proficiency, rolls that don't fit `hp_mode`, two suits of armor or two Shields, an
+unmet feat prerequisites, a feat taken twice that isn't repeatable, an Epic
+Boon taken at an Ability Score Improvement below character level 19, Magic
+Initiate choices that don't fit the feat (more tokens than Magic Initiates, a
+repeated list or spell, a cantrip or a level 1 spell that isn't one), picks
+outside every reached pool, Expertise without proficiency, rolls that don't fit `hp_mode`, two suits of armor or two Shields, an
 `ac_calc_mode` the worn equipment rules out, and attunement over the limit
 (three, or four with the Thief's Use Magic Device) or to items that don't
 need it.

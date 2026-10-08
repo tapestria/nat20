@@ -139,6 +139,7 @@ scaling, and out-of-combat Ritual resolution. Zero I/O, zero host imports.
         - resolve_long_rest
         - recover_feature_uses
         - recover_item_uses
+        - recover_slotless_casts
         - HitDicePool
         - RestOutcome
         - RecoveryPeriod

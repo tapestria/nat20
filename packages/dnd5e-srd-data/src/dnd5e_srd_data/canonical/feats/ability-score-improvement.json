@@ -21,6 +21,7 @@
       "5.2"
     ]
   },
+  "repeatable": true,
   "review": {
     "known_divergence": null,
     "requires_user_decision": false

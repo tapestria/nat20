@@ -87,7 +87,7 @@
       "type": "linked"
     }
   ],
-  "starting_feat_slug": "phbftMagicInitia",
+  "starting_feat_slug": "magic-initiate",
   "tool_proficiencies": [
     "art:calligrapher"
   ],
