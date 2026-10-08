@@ -409,6 +409,11 @@ _PROBES: dict[str, tuple[Any, str]] = {
         lambda: "def _resolve_initiative(" in _src("orchestrator.py"),
         "✅",
     ),
+    # C29: a CombatInstance passes initiative=None through build_party_member.
+    "`CombatInstance.initiative` takes `None` too": (
+        lambda: "initiative: int | None = 0" in _src("build_spec.py"),
+        "`CombatInstance.initiative` takes `None` too",
+    ),
     # C14 Task 8: a seeded incapacitated-implying status also imposes
     # Disadvantage on the engine-rolled Initiative roll.
     "Incapacitated's initiative disadvantage": (

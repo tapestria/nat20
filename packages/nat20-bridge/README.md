@@ -19,6 +19,8 @@ Options:
 - `--host` (default `127.0.0.1`)
 - `--port` (default `8020`)
 - `--data-dir` (default `~/.nat20-bridge`) — where `homebrew.json` persists.
+- `--max-combats` (default `16`) — how many combats stay live at once; starting
+  one more ends the least recently used.
 
 ## Development
 

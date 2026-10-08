@@ -46,6 +46,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (C28).
 - **`Combatant.feats`**, **`Combatant.savage_attacker_spent_this_turn`** and
   **`SpellcastingAbility`** (`dnd5e_engine.types.combat`) (C28).
+- **`CombatInstance.initiative` takes `None`**: `build_party_member` passes it
+  through, so `start_combat` rolls a built character's Initiative with its
+  derived Dexterity and Alert; `0` stays the default (C29).
+- **nat20-bridge**: the intent body takes every `PlayerIntent` field and the
+  build every `make_build_spec` keyword; the view reports `seed`, `turn`,
+  `summons`, `transformations`, `constructs` and each row's `initiative`;
+  `--max-combats` caps the live combats (C29).
 
 ### Changed
 
@@ -123,6 +130,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   level 1 spell once without a slot before a slot is spent; a countered
   slotless cast is still spent, as SRD 5.2 Counterspell spares only a slot
   (C28).
+- **nat20-bridge**: the engine rolls a combat's Initiative from the combat's
+  own generator — the same values for a build whose Dexterity nothing
+  adjusts, a background's increase and Alert counted — so every later roll
+  moves (C29).
+- **nat20-bridge (breaking)**: an intent body's unknown key is refused with
+  422, as is an unknown `intent_type`; an intent the engine can't resolve, an
+  empty side, or a side the grid can't seat is 422, not 500 (C29).
+- **nat20-bridge**: at most 16 combats stay live, and starting one more ends
+  the least recently used, which then answers 404; each response reports only
+  its own request's events (C29).
+- **nat20-bridge**: a summon narrates by its name, and its joining and
+  leaving as lines (C29).
+- **nat20-bridge**: the 404 detail reads `unknown or expired combat: '…'`,
+  and `/v1/party/validate` without a class answers 422 with a string
+  `detail`, not FastAPI's error list (C29).
 
 ### Deprecated
 
@@ -139,6 +161,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   recipe.
 - **The concentration `SaveRolled` twin** (C25): a damage-triggered
   concentration save emits `ConcentrationCheck` alone.
+- **nat20-bridge (breaking)**: `member.attack_bonus` in the
+  `/v1/party/validate` response, always `0`; to-hit is per weapon (C29).
 
 ### Fixed
 
@@ -172,6 +196,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   seeded Grappled, or one another effect keeps after the grapple ends) is
   refused with `target_invalid` before the Action is spent, instead of
   raising `AssertionError` (C27).
+- nat20-bridge: `/v1/roll`, `/v1/check` and `/v1/combat` no longer reseed the
+  process-global `random`, which concurrent requests raced; a combat's first
+  attacks no longer repeat its Initiative d20s; a combat never ended no
+  longer keeps a collector task and an event log (C29).
 
 ## [0.6.0]
 
