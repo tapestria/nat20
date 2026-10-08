@@ -66,6 +66,17 @@ def test_a_build_the_engine_refuses_is_422(client: TestClient) -> None:
         assert message in resp.json()["detail"]
 
 
+def test_a_combat_whose_build_the_engine_refuses_is_422(client: TestClient) -> None:
+    party = [{"name": "Kael", "build": {"species_slug": "human"}}]
+    resp = client.post(
+        "/v1/combat", json={"party": party, "monsters": ["goblin-warrior"], "seed": 1}
+    )
+    assert resp.status_code == 422
+    assert "needs class_slug or classes" in resp.json()["detail"]
+    # Nothing started: the first combat id was never minted.
+    assert client.get("/v1/combat/c1").status_code == 404
+
+
 def test_magic_initiate_reaches_the_sheet(client: TestClient) -> None:
     # An Acolyte's Origin feat, with its choices made in a magic-initiate token.
     resp = client.post(

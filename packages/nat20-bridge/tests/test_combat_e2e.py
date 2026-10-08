@@ -85,10 +85,10 @@ def test_wrong_turn_intent_is_409_unknown_combat_404(client: TestClient) -> None
 
 
 def test_combat_ids_never_reused_after_a_combat_ends(client: TestClient) -> None:
-    # Regression: an earlier `cid = f"c{len(state.combats) + 1}"` scheme
-    # collided once a combat was removed from the registry — start A (c1),
-    # start B (c2), end A (drops A, leaving just B), start C would then
-    # also mint "c2", silently clobbering B's still-live session with C's.
+    # Regression: numbering a combat by how many are live collided once a
+    # combat was removed — start A (c1), start B (c2), end A (drops A,
+    # leaving just B), start C would then also mint "c2", silently
+    # clobbering B's still-live session with C's.
     a = _start(client, seed=101)
     b = _start(client, seed=102)
     assert a["combat_id"] != b["combat_id"]

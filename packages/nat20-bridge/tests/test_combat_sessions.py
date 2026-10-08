@@ -16,14 +16,16 @@ _BROM = {"name": "Brom", "build": {"species_slug": "human", "class_slug": "fight
 
 
 def test_a_side_the_grid_cannot_seat_is_422_not_500(client: TestClient) -> None:
-    # The bridge seats each side in one 12-cell column of its 12x12 grid.
-    for party, monsters in (
-        ([_BROM], []),
-        ([], ["goblin-warrior"]),
-        ([_BROM], ["goblin-warrior"] * 13),
+    # The bridge seats each side in one 12-cell column of its 12x12 grid; the
+    # 422 carries the engine's reason.
+    for party, monsters, reason in (
+        ([_BROM], [], "encounter must be non-empty"),
+        ([], ["goblin-warrior"], "party must be non-empty"),
+        ([_BROM], ["goblin-warrior"] * 13, "start cell '1,12' is out of bounds"),
     ):
         resp = client.post("/v1/combat", json={"party": party, "monsters": monsters, "seed": 1})
         assert resp.status_code == 422, (len(party), len(monsters), resp.text)
+        assert reason in resp.json()["detail"]
 
 
 def test_an_evicted_combat_is_ended_in_the_engine(tmp_path: Path) -> None:
@@ -38,6 +40,18 @@ def test_an_evicted_combat_is_ended_in_the_engine(tmp_path: Path) -> None:
     ).json()["combat_id"]
     assert list(state.sessions) == [second]
     assert get_live(handle).ended  # ended, so the engine itself can release it
+
+
+def test_a_refused_start_evicts_nothing(tmp_path: Path) -> None:
+    state = BridgeState(homebrew_path=tmp_path / "homebrew.json", max_combats=1)
+    client = TestClient(create_app(state))
+    live = client.post(
+        "/v1/combat", json={"party": [_BROM], "monsters": ["goblin-warrior"], "seed": 1}
+    ).json()["combat_id"]
+    refused = client.post("/v1/combat", json={"party": [_BROM], "monsters": [], "seed": 2})
+    assert refused.status_code == 422
+    assert list(state.sessions) == [live]
+    assert client.get(f"/v1/combat/{live}").status_code == 200
 
 
 def test_each_response_reports_its_own_requests_events(client: TestClient) -> None:
@@ -76,6 +90,23 @@ def test_a_monster_turn_the_engine_cannot_resolve_leaves_nothing_behind(
     monkeypatch.setattr(routes_combat, "advance_monster_turn", _resolve_then_raise)
     with pytest.raises(ValueError, match="can't resolve"):
         client.post(f"/v1/combat/{cid}/advance-monster", json={})
+    turn = client.post(
+        f"/v1/combat/{cid}/intent", json={"actor_id": "char:brom", "intent_type": "pass"}
+    ).json()
+    submitted = [e["actor_id"] for e in turn["events"] if e["type"] == "intent_submitted"]
+    assert submitted == ["char:brom"]
+
+
+def test_advance_monster_on_a_characters_turn_is_409_and_leaves_nothing(
+    client: TestClient,
+) -> None:
+    # Seed 1 puts the goblin first; after its turn it is Brom's.
+    cid = client.post(
+        "/v1/combat", json={"party": [_BROM], "monsters": ["goblin-warrior"], "seed": 1}
+    ).json()["combat_id"]
+    assert client.post(f"/v1/combat/{cid}/advance-monster", json={}).status_code == 200
+    refused = client.post(f"/v1/combat/{cid}/advance-monster", json={})
+    assert (refused.status_code, refused.json()["detail"]) == (409, "not_actor_turn")
     turn = client.post(
         f"/v1/combat/{cid}/intent", json={"actor_id": "char:brom", "intent_type": "pass"}
     ).json()
