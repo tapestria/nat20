@@ -158,6 +158,23 @@ def test_a_countered_slotless_cast_is_spent_and_a_slot_is_not() -> None:
     assert live.spell_slots_by_entity["char:hero"] == {1: 1}
 
 
+def test_counterspell_casts_with_its_own_ability_and_its_slotless_cast() -> None:
+    # A Cleric with no spell slot, whose Counterspell is a slotless cast named
+    # Intelligence: it fires, spends that use, and sets DC 8 + Proficiency
+    # Bonus 3 + Intelligence 4 = 15, where its Wisdom 10 would give 11.
+    mage = _counterspeller(
+        class_slug="cleric",
+        wisdom=10,
+        intelligence=18,
+        spell_abilities={"counterspell": "int"},
+        slotless_casts=("counterspell",),
+    )
+    live = _cast_into_a_readied_counterspell(mage, class_slug="cleric", spell_slots={1: 1})
+    assert [e.reaction_name for e in events(live, ReactionTriggered)] == ["counterspell"]
+    assert [e.dc for e in events(live, SaveRolled)] == [15]
+    assert live.custom_counters_by_entity["char:mage"]["slotless_cast:counterspell"] == {"spent": 1}
+
+
 def test_a_spiritual_weapon_attacks_with_the_spells_own_ability() -> None:
     # A Wizard naming Wisdom for Spiritual Weapon (a Cleric/Wizard): the force
     # attacks at +6 (Proficiency Bonus 3 + Wisdom 3), where its class's

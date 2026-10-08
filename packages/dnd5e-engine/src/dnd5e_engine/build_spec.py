@@ -581,10 +581,11 @@ def _asi_level_feats(
                 f"character level {taken_at} at most"
             )
         for prerequisite in feat.prerequisites:
-            if prerequisite.level is not None and spec.level < prerequisite.level:
+            if prerequisite.level is not None and taken_at < prerequisite.level:
                 raise ValueError(
                     f"feat {feat.slug!r} needs character level {prerequisite.level}; "
-                    f"the build has {spec.level}"
+                    f"feat:{pick.class_slug}:{pick.level} is taken at character level "
+                    f"{taken_at} at most"
                 )
             missing = sorted(set(prerequisite.feats) - owned)
             if missing:

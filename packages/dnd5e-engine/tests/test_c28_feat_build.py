@@ -17,6 +17,8 @@ from typing import Any
 
 import pytest
 from dnd5e_srd_data.loader import BundledAssetLoader
+from dnd5e_srd_data.schema.background import Background
+from dnd5e_srd_data.schema.feat import Feat, FeatPrerequisite
 
 from dnd5e_engine.build_party import build_party_member
 from dnd5e_engine.build_spec import CombatInstance, DerivedSheet, derive_sheet, make_build_spec
@@ -63,6 +65,7 @@ def test_a_magic_initiate_token_parses_its_list_ability_cantrips_and_spell() -> 
             (_CLERIC, "magic-initiate:druid:wis:guidance,druidcraft:cure-wounds"),
             "repeats Magic Initiate spells: ['guidance']",
         ),
+        (("magic-initiate:cleric:wis:guidance,light:Bless",), "'Bless' is not a spell slug"),
     ],
 )
 def test_a_malformed_magic_initiate_token_is_refused(tokens: tuple[str, ...], message: str) -> None:
@@ -84,11 +87,57 @@ def test_the_backgrounds_feat_comes_first_and_joins_the_others() -> None:
     assert _sheet().feats == ()
 
 
+def test_the_backgrounds_feat_counts_against_a_feat_token() -> None:
+    # A Criminal already has Alert: Alert again at the level-4 Ability Score
+    # Improvement takes it twice.
+    with pytest.raises(ValueError, match="feat 'alert' is not repeatable; the build takes it 2"):
+        _sheet(background_slug="criminal", level=4, selected_choices=("feat:fighter:4:alert",))
+
+
+class _BackgroundsGrantAnUnknownFeat(BundledAssetLoader):
+    """The bundled corpus, with every background granting a feat it lacks."""
+
+    def get_background(self, slug: str) -> Background | None:
+        found = super().get_background(slug)
+        return found and found.model_copy(update={"starting_feat_slug": "no-such-feat"})
+
+
+def test_a_background_granting_an_unknown_feat_is_refused() -> None:
+    spec = make_build_spec(species_slug="dwarf", class_slug="fighter", background_slug="criminal")
+    with pytest.raises(
+        ValueError, match="background 'criminal' grants unknown feat 'no-such-feat'"
+    ):
+        derive_sheet(spec, loader=_BackgroundsGrantAnUnknownFeat())
+
+
 def test_an_epic_boon_at_a_lower_ability_score_improvement_is_refused() -> None:
     # A Fighter 19 reached its level-4 Ability Score Improvement at character
     # level 4; Epic Boon feats need "Level 19+".
     with pytest.raises(ValueError, match="is taken at character level 4 at most"):
         _sheet(level=19, selected_choices=("feat:fighter:4:boon-of-fate",))
+
+
+class _GrapplerNeedsLevel8(BundledAssetLoader):
+    """The bundled corpus, with Grappler's level prerequisite raised to 8."""
+
+    def get_feat(self, slug: str) -> Feat | None:
+        found = super().get_feat(slug)
+        if found is None or slug != "grappler":
+            return found
+        return found.model_copy(update={"prerequisites": [FeatPrerequisite(level=8)]})
+
+
+def test_a_multiclass_level_prerequisite_is_checked_against_the_level_taken() -> None:
+    # Fighter 8/Rogue 1: the level-4 Ability Score Improvement was reached at
+    # character level 5 at most (every level Fighter gained afterwards could
+    # have come after it), below a feat needing character level 8.
+    spec = make_build_spec(
+        species_slug="dwarf",
+        classes={"fighter": 8, "rogue": 1},
+        selected_choices=("feat:fighter:4:grappler",),
+    )
+    with pytest.raises(ValueError, match="is taken at character level 5 at most"):
+        derive_sheet(spec, loader=_GrapplerNeedsLevel8())
 
 
 def test_a_fighting_style_taken_twice_is_refused() -> None:

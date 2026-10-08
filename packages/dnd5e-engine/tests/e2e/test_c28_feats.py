@@ -34,6 +34,7 @@ from dnd5e_engine.orchestrator import (
     start_combat,
     submit_player_intent,
 )
+from dnd5e_engine.rest import recover_slotless_casts
 from dnd5e_engine.specs import EncounterMemberSpec, PartyMemberSpec
 from tests.e2e.harness import cell, events_of, grid_scene, run_async
 
@@ -269,7 +270,5 @@ def test_c28_magic_initiate_casts_its_level_1_spell_once_without_a_slot() -> Non
     _cast_guiding_bolt(handle)
     assert [e.reason for e in events_of(live, CastFailed)] == ["no_slot"]
     # A Long Rest restores it; a Short Rest does not.
-    from dnd5e_engine.rest import recover_slotless_casts
-
     assert recover_slotless_casts(counters, "sr") == {"guiding-bolt": 1}
     assert recover_slotless_casts(counters, "lr") == {"guiding-bolt": 0}
