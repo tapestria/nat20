@@ -1743,7 +1743,10 @@ layer over the engine — see `docs/bridge.md`. Gaps found while shipping it:
   feature uses, Magic Initiate's slotless cast included; and
   `LiveCombatView.spell_slots_by_entity`, `pact_slots_by_entity` and
   `custom_counters_by_entity` stay engine-side, so a client can't show what a
-  character has left.
+  character has left. The view omits Temporary Hit Points
+  (`tracked_temp_hp`), concentration (`concentration_chain`) and a foe's
+  recharge and legendary pools (`monster_action_uses_by_entity`,
+  `legendary_actions_by_entity`, `legendary_resistances_by_entity`) too.
   (`packages/nat20-bridge/src/nat20_bridge/routes_combat.py::_build_party_specs`,
   `packages/nat20-bridge/src/nat20_bridge/routes_combat.py::_view_route`)
 - **Two party members with one name share an entity id (2026-10-07, C29).**

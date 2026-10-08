@@ -143,8 +143,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **nat20-bridge**: a summon narrates by its name, and its joining and
   leaving as lines (C29).
 - **nat20-bridge**: the 404 detail reads `unknown or expired combat: '…'`,
-  and `/v1/party/validate` without a class answers 422 with a string
-  `detail`, not FastAPI's error list (C29).
+  and a build without a class answers 422 with a string `detail`, not
+  FastAPI's error list, on `/v1/party/validate` and `/v1/combat` (C29).
 
 ### Deprecated
 

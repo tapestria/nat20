@@ -57,7 +57,10 @@ which returns the bridge, engine, and dataset versions.
 
 ## Endpoints
 
-All routes are under `/v1`. Requests and responses are JSON.
+All routes are under `/v1`. Requests and responses are JSON. An error's
+`detail` is a string, except a 422 for a body that doesn't validate (an
+unknown intent key, a missing field, a value of the wrong type), whose
+`detail` is FastAPI's list of errors.
 
 | Method & path | What it does |
 |---|---|
@@ -100,7 +103,7 @@ choice tokens in the
 doesn't know are ignored, so a saved character can be sent as it stands.
 Every keyword it does know is applied exactly as `make_build_spec` would, on
 both routes: `hp_rolls` without `hp_mode: "rolled"` is refused with 422,
-where `/v1/combat` used to start the combat regardless.
+where both used to accept it.
 
 **An intent** (`POST /v1/combat/{cid}/intent`) is `actor_id` plus the
 engine's `PlayerIntent`: an `intent_type` and any of its optional fields —
@@ -135,7 +138,9 @@ has no context for yet) answers 422, though the engine may already have spent
 the actor's Action and a feature's use, or left a PC partway through a move —
 moving away from a few foes provokes an opportunity attack their own stat
 block can't resolve (`BACKLOG.md` lists these activities and foes). Neither
-leaves events behind for the next response.
+leaves events behind for the next response, and a 500 leaves none either:
+`/advance-monster` answers one on the turn of a foe whose stat block the
+engine can't resolve yet (`BACKLOG.md` lists the seven).
 
 At most `--max-combats` combats (16 by default) stay live. Starting one more
 ends the least recently used one — every request that names a combat counts
