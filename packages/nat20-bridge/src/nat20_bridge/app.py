@@ -9,7 +9,6 @@ from dnd5e_engine import (
     CheckSpec,
     HitDicePool,
     configure_lib_loader,
-    make_build_spec,
     resolve_check,
     resolve_long_rest,
     resolve_short_rest,
@@ -39,15 +38,8 @@ from nat20_bridge.state import BridgeState
 
 def _do_roll(req: _RollRequest) -> dict[str, Any]:
     seed = resolve_seed(req.seed)
-    # `roll_dice_str` is the engine's standalone narrator-time dice seam
-    # (rules/effects.py) — it draws from the stdlib global `random` module
-    # by design ("Public test seam: callers monkeypatch this symbol (or
-    # random.randint) for determinism"), not an injectable `random.Random`.
-    # Seeding the global module is the sanctioned way to make this call
-    # reproducible.
-    random.seed(seed)
     try:
-        total = roll_dice_str(req.dice)
+        total = roll_dice_str(req.dice, rng=random.Random(seed))
     except ValueError as exc:
         raise HTTPException(
             status_code=422, detail=f"invalid dice expression {req.dice!r}: {exc}"
@@ -78,8 +70,8 @@ def _do_check(req: _CheckRequest) -> dict[str, Any]:
         dc=req.dc,
         advantage=req.advantage,
         disadvantage=req.disadvantage,
+        rng=random.Random(seed),
     )
-    random.seed(seed)
     try:
         result = resolve_check(spec)
     except ValueError as exc:
@@ -208,16 +200,8 @@ def create_app(state: BridgeState) -> FastAPI:
         entity_id = req.entity_id or f"char:{slugify(req.name)}"
         assert state.loader is not None
         try:
-            build_spec = make_build_spec(
-                species_slug=req.build.species_slug,
-                class_slug=req.build.class_slug,
-                level=req.build.level,
-                subclass_slug=req.build.subclass_slug,
-                ability_scores=req.build.ability_scores.model_dump(by_alias=True),
-                equipment=req.build.equipment,
-            )
             member = derive_sheet(
-                build_spec,
+                req.build.to_build_spec(),
                 name=req.name,
                 entity_id=entity_id,
                 loader=state.loader,
@@ -233,7 +217,9 @@ def create_app(state: BridgeState) -> FastAPI:
             f"{member.class_slug}, HP {member.hp_current}/{member.hp_max}, "
             f"AC {member.ac}, slots {{{slots}}}"
         )
-        return {"member": member.model_dump(), "summary": summary}
+        # To-hit is computed per weapon when an attack resolves: the spec's
+        # unset ``attack_bonus`` is a placeholder, not the character's bonus.
+        return {"member": member.model_dump(exclude={"attack_bonus"}), "summary": summary}
 
     @app.post("/v1/roll")
     def roll(req: _RollRequest) -> dict[str, Any]:

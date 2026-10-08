@@ -26,10 +26,6 @@ from fastapi.testclient import TestClient
 from nat20_bridge.app import create_app
 from nat20_bridge.state import BridgeState
 
-_BUILDS = pytest.mark.xfail(
-    strict=True, reason="bridge parity (builds, roll and check) not yet implemented"
-)
-
 
 def _validate(client: TestClient, build: dict[str, Any]) -> dict[str, Any]:
     resp = client.post("/v1/party/validate", json={"name": "Kael", "build": build})
@@ -38,7 +34,6 @@ def _validate(client: TestClient, build: dict[str, Any]) -> dict[str, Any]:
     return member
 
 
-@_BUILDS
 def test_c29_a_multiclass_build_validates_without_a_level(client: TestClient) -> None:
     member = _validate(
         client,
@@ -54,7 +49,6 @@ def test_c29_a_multiclass_build_validates_without_a_level(client: TestClient) ->
     assert member["hp_max"] == 40
 
 
-@_BUILDS
 def test_c29_rolled_hit_points_reach_the_sheet(client: TestClient) -> None:
     fighter: dict[str, Any] = {
         "species_slug": "human",
@@ -71,7 +65,6 @@ def test_c29_rolled_hit_points_reach_the_sheet(client: TestClient) -> None:
     assert resp.status_code == 422
 
 
-@_BUILDS
 def test_c29_a_background_raises_the_derived_dexterity(client: TestClient) -> None:
     member = _validate(
         client,
@@ -108,7 +101,6 @@ def _forbid_global_random(monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(random, name, _refuse)
 
 
-@_BUILDS
 def test_c29_roll_and_check_never_touch_the_global_random(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -150,7 +142,6 @@ def _first_attack(client: TestClient, weapon: str) -> dict[str, Any]:
     return next(e for e in resp.json()["events"] if e["type"] == "attack_rolled")
 
 
-@_BUILDS
 def test_c29_to_hit_is_per_weapon_not_a_flat_attack_bonus(
     client: TestClient, tmp_path: Path
 ) -> None:
