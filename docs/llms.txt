@@ -8,11 +8,13 @@
 > the host. Not affiliated with, endorsed by, or sponsored by Wizards of the
 > Coast; it uses only System Reference Document (SRD 5.2) content.
 
-Two packages in one uv workspace:
+Three packages in one uv workspace, released together:
 
 - `dnd5e-engine` — the rules engine (combat loop, checks, effects, grid).
 - `dnd5e-srd-data` — the CC-BY-4.0 SRD 5.2 content corpus, a typed
   Foundry-aligned dataset loaded via `BundledAssetLoader`.
+- `nat20-bridge` — a localhost HTTP sidecar that puts the engine behind a
+  JSON API for non-Python clients.
 
 Core public API (`dnd5e_engine.__all__`):
 
@@ -27,7 +29,7 @@ Core public API (`dnd5e_engine.__all__`):
 - Effects: `ActiveEffect`, `ActiveEffectChange`, `ActiveEffectDuration`.
 - Results: `StartCombatResult`, `EndCombatResult`, `CombatOutcome`,
   `DeathRecord`, `LootDrop`, `PlayerIntent`, `CombatHandle`, `IntentType`,
-  `ActionType`, `CombatEvent`.
+  `CombatEvent`.
 
 ## Docs
 

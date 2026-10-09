@@ -3,8 +3,8 @@
 The rich part of a Foundry class doc is its ``system.advancement[]`` array,
 which encodes hit-die / proficiencies (Trait) / class features (ItemGrant) /
 ability score improvements / scale-value tables (rage damage, sneak attack
-dice...). PR 2 preserves the array structurally — the seeder + Phase 7b
-resolver decode per-type ``configuration`` from there.
+dice...). The schema preserves the array structurally — the engine and a
+host decode per-type ``configuration`` from there.
 """
 
 from __future__ import annotations
@@ -45,7 +45,7 @@ class Spellcasting(BaseModel, frozen=True):
     not a prep mode — and the 2014 SRD doesn't ship prep mode on the class
     document at all. Whether a class prepares (cleric/druid/paladin/wizard)
     vs knows (bard/ranger/sorcerer/warlock) is a per-character convention the
-    seeder hardcodes by class identifier, not something canonical surfaces here.
+    host hardcodes by class identifier, not something canonical surfaces here.
     """
 
     ability: Literal["str", "dex", "con", "int", "wis", "cha", ""] = ""
@@ -64,7 +64,7 @@ class PrimaryAbility(BaseModel, frozen=True):
     @field_serializer("value")
     def _serialize_value(self, value: frozenset[str]) -> list[str]:
         # frozenset iteration order is non-deterministic across processes
-        # (PYTHONHASHSEED). Sort so the regen-clean gate (PR A task A7) is
+        # (PYTHONHASHSEED). Sort so the regen-clean gate is
         # stable run-over-run. Same pattern as Provenance.srd_version /
         # Class.saving_throws / Weapon.properties.
         return sorted(value)
@@ -82,7 +82,7 @@ class Class(BaseModel):
     spellcasting: Spellcasting
     wealth: str = ""
     """Starting wealth roll (e.g. ``5d4 * 10``). Foundry ships it as a free
-    string; the seeder parses if needed."""
+    string; a consumer parses it if needed."""
     saving_throws: frozenset[Literal["str", "dex", "con", "int", "wis", "cha"]] = Field(
         default_factory=frozenset
     )
@@ -91,7 +91,7 @@ class Class(BaseModel):
     subclass_identifiers: list[str] = Field(default_factory=list)
     """Foundry subclass-document UUIDs (or short identifiers if available)
     granted by ``Subclass``-type advancement entries' ``configuration``. The
-    seeder resolves these against ``canonical/subclasses/`` to wire the
+    consumer resolves these against ``canonical/subclasses/`` to wire the
     class→subclass graph."""
     advancement: list[AdvancementEntry] = Field(default_factory=list)
     granted_features: list[GrantRef] = Field(default_factory=list)

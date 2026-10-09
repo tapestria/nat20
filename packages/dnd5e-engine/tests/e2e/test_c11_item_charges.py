@@ -1,14 +1,14 @@
 """C11 — Item charge depletion + dawn recharge, against the real corpus.
 
-New cluster (Piece B, Task 4). Model: ``test_c09_rest.py::
+Model: ``test_c09_rest.py::
 test_c09_s03_second_wind_has_no_per_rest_usage_cap`` (seeded ``start_combat``
 + scripted intents + event-log asserts, sync test wrapping an inner
 ``async def _run()`` via ``run_async``). Where c09-s03 pins the
 ``feature_use:<slug>`` per-rest cap, this pins the mirrored
 ``item_use:<slug>`` charge gate end-to-end against a real bundled item —
 Pipes of Haunting, ``uses.max="3"``, single ``save`` activity whose sole
-``itemUses`` consumption target costs 1 charge/use — loaded via the
-autouse ``BundledAssetLoader`` in ``tests/e2e/conftest.py`` (no hand-built
+``itemUses`` consumption target costs 1 charge/use — loaded from the
+bundled corpus every test starts on (``tests/conftest.py``; no hand-built
 item, no pre-seeded ``custom_counters``).
 
 SRD 5.2 §Pipes of Haunting

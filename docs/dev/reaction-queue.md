@@ -183,10 +183,10 @@ resolver, with the interrupted caster as sole target.
 ### Slot-consumption redesign (closes the discovered "slots consumed at
 submission" entry)
 
-Two options were on the table (per the BACKLOG entry and this cluster's
-task brief): move `_consume_spell_slot`'s decrement to resolution-time, or
+Two options were on the table (per the BACKLOG entry): move
+`_consume_spell_slot`'s decrement to resolution-time, or
 add a refund path that undoes an already-applied decrement. **Chosen: a
-third option, already implied by a pinned scenario's own catalog entry — drain the
+third option, already implied by a pinned scenario — drain the
 reaction queue even earlier than `_consume_spell_slot`, so a countered cast
 never reaches the gate at all.** `_consume_spell_slot` itself is completely
 unmodified. Rationale: a refund path needs to reverse a decrement + risks
@@ -200,8 +200,8 @@ today).
 
 ### Independently-verified gap already closed
 
-The task brief's source material (and a prior BACKLOG-adjacent note) flagged
-a second, compounding bug: PC spell save DC allegedly still used the flat
+A prior BACKLOG-adjacent note flagged a second, compounding bug: PC spell
+save DC allegedly still used the flat
 Avrae-era approximation (`8 + 2 + max(0, attack_bonus-2)`) instead of the
 real `8 + proficiency_bonus + ability_mod(spellcasting_ability)` formula,
 which would make this scenario's `dc=15` assertion unreachable. **Verified
@@ -217,7 +217,7 @@ sub-bug needed no fix in this design; it is called out here so the
 "compounding gap" language in the BACKLOG/brief is not silently
 re-litigated by a future reader.
 
-### Slot and range gating (C17 R4) — skip, don't pop
+### Slot and range gating (C17) — skip, don't pop
 
 C17 added an `eligible=` predicate to `_pop_pending_reaction` (the shared
 queue-pop primitive both Counterspell and readied-cast drains call): a
@@ -239,7 +239,7 @@ initiative order — the reactor's own Reaction and slot are both untouched.
 This is a **skip**, never a pop-then-refund: the reaction was never
 consumed in the first place.
 
-### Two-pool slot consumption (C17 R3)
+### Two-pool slot consumption (C17)
 
 Every slot-consuming site in this module — the Counterspell drain, a
 readied-cast resolve (Shield), and the on-turn cast gate — now routes
@@ -263,7 +263,7 @@ carrying one effect ref (`Bv3EoHGfYCprLdG1`) whose `PassiveEffect` change is
 `{key: "system.attributes.ac.bonus", mode: add, value: "5"}`,
 `duration.rounds: 1`. Casting it through the **existing, unmodified**
 activity resolver (a `utility` activity with effect riders already applies
-them per target — Task 9-A FIX 2) needs three additive consumption-side
+them per target) needs three additive consumption-side
 fixes; nothing about the resolver itself changes.
 
 `_resolve_readied_spell_cast(live, reactor, popped)` is the shared "auto-fire
@@ -346,7 +346,7 @@ force-immunity flag on `Combatant` — deliberately narrower than a real
 force-resistance mechanic, matching the SRD's spell-specific wording and
 the smallest change that satisfies it.
 
-### Slot gating on the readied-cast path (C17 R4)
+### Slot gating on the readied-cast path (C17)
 
 Shield's own hook, `_drain_targeted_reactions`, passes `eligible=lambda
 reactor, pending: _readied_cast_eligible(live, reactor, pending)` into

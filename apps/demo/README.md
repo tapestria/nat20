@@ -130,8 +130,8 @@ Rules of the house:
 
 This repository ships no deployment logic on purpose: `nat20-demo` is a plain ASGI app
 (`nat20_demo.app:app`) that any host can run behind uvicorn, and it holds no state, so it
-needs no volume, database, or session store. Deployment of the public Tapestria-hosted
-instance lives in the Tapestria repository, not here.
+needs no volume, database, or session store. A public hosted instance is deployed from
+outside this repository.
 
 ---
 

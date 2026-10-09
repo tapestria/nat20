@@ -10,7 +10,7 @@ make a Strength (Athletics) or Dexterity (Acrobatics) check against the
 grapple's escape DC, ending the condition on itself on a success. The
 condition also ends if the grappler has the Incapacitated condition..."
 
-Controller ruling R3 (deterministic choice policy): the target saves with
+A deterministic choice policy: the target saves with
 whichever of STR/DEX has the higher save modifier (tie -> STR); the escaper
 picks Athletics vs Acrobatics by higher check modifier (tie -> Athletics/STR).
 

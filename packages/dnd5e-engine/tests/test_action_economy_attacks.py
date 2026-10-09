@@ -189,7 +189,7 @@ def test_dash_then_attack_is_rejected_hard_no_double_dip():
     FIRST swing (``attack_action_engaged`` False) — otherwise the actor
     gets a full Dash AND a full attack sequence out of one Action.
 
-    Controller ruling: restore the pre-C14 hard gate for the first swing —
+    The first swing keeps the pre-C14 hard gate —
     ``IntentRejectedError("no_action_economy")``, byte-for-byte today's
     Dash-then-attack behavior — while ``attacks_remaining <= 0`` still
     keeps the C14 turn-keeping ``AttackFailed`` emit (S05 contract).
@@ -364,7 +364,7 @@ class TestLightWeaponOffhandSwing:
 
 
 class TestLightWeaponMainActionPriority:
-    """Fix round 1 (controller ruling): main-action swings take priority.
+    """Main-action swings take priority.
 
     An Extra-Attack actor with Attack-action budget remaining
     (``attacks_remaining > 0``) swinging a SECOND, different Light weapon is
@@ -619,7 +619,7 @@ class TestLightWeaponNegativeAbilityMod:
 
 # ── Final-review fix wave — F1: multi-attack turn deadlock ─────────────────
 #
-# CONTROLLER RULING: ``"pass"`` is exempt from the Action hard gate in
+# ``"pass"`` is exempt from the Action hard gate in
 # ``_action_economy_gate_failure`` — it was never an Action ("I'm done"
 # needs no budget) and must ALWAYS be accepted and end the turn, regardless
 # of what budgets are already spent.
@@ -671,8 +671,8 @@ class TestPassAlwaysEndsTheTurn:
 
 # ── Final-review fix wave — F2: off-hand swing must not end the turn ───────
 #
-# PLAN RULING R1 (verbatim): "An off-hand (bonus-action) swing follows the
-# existing bonus-action tail (never ends the turn)."
+# An off-hand (bonus-action) swing follows the existing bonus-action tail
+# (it never ends the turn).
 
 
 class TestOffhandSwingKeepsTheTurn:

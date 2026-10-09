@@ -511,11 +511,10 @@ class TestHelpExpiry:
 # host/Search concern, out of engine scope; the found-DC (check total) is
 # NOT stored.
 #
-# CONTROLLER RULING: Hide is zero-Action-cost (turn-keeping), NOT the SRD's
-# Action-consuming version — see ``_handle_hide``'s docstring in
-# ``orchestrator.py`` for the rationale (an Action-consuming Hide would make
-# the approved hide-then-attack catalog script unsatisfiable against the
-# hard Action gate the first attack swing enforces).
+# Hide is zero-Action-cost (turn-keeping), NOT the SRD's Action-consuming
+# version — see ``_handle_hide``'s docstring in ``orchestrator.py`` for the
+# rationale (an Action-consuming Hide would make a hide-then-attack turn
+# impossible against the hard Action gate the first attack swing enforces).
 
 
 def _hide_party(**overrides: object) -> list[PartyMemberSpec]:
@@ -569,7 +568,7 @@ class TestHideGateAndCheck:
         """(a) A ``hide`` intent on a Three-Quarters-cover cell rolls a DC 15
         Dexterity (Stealth) check — modifier = DEX mod + PB (stealth
         proficient) — and keeps the actor on turn without touching the
-        Action budget (controller ruling: zero-cost, not soft-consumed)."""
+        Action budget (zero-cost, not soft-consumed)."""
 
         async def _run():
             start = await _start_hide_combat(
@@ -726,7 +725,7 @@ class TestHideFailedCheck:
 
 # ── Final-review fix wave — F3: Hide is retryable-until-success ────────────
 #
-# CONTROLLER RULING: ``_handle_hide`` is zero-cost and turn-keeping with no
+# ``_handle_hide`` is zero-cost and turn-keeping with no
 # repeat gate, which lets a host loop ``hide`` intents until the DC 15 check
 # lands. Fix: one Hide attempt per turn — ``Combatant.hide_attempted_this_
 # turn`` gates a second same-turn attempt with

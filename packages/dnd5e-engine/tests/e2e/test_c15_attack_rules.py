@@ -1,7 +1,6 @@
 """C15 — Attack rules.
 
-Transcribed from specs/e2e-scenario-catalog.md, Cluster 15
-(specs/catalog-v2/c15.md). All setups are Grid-only (``GridScene`` +
+All setups are Grid-only (``GridScene`` +
 ``cell_id``), mirroring ``tests/e2e/test_c05_spatial.py``.
 """
 
@@ -325,10 +324,9 @@ def test_c15_s05_loading_weapon_second_shot_rejected_for_the_right_reason():
     path and emitting a Loading-specific ``AttackFailed(reason=
     "weapon_already_fired")`` event — the same event-based surface as the
     sibling ``out_of_range``/``target_invalid``/``no_action_economy``
-    rejects (``orchestrator.py:4478-4540``), per ``specs/catalog-v2/
-    API-DELTAS.md``'s ``AttackFailed.reason="weapon_already_fired"``
-    entry (NOT a new ``IntentRejectedError`` reason — that Literal stays
-    closed).
+    rejects (``orchestrator.py:4478-4540``): ``AttackFailed.reason=
+    "weapon_already_fired"`` (NOT a new ``IntentRejectedError`` reason —
+    that Literal stays closed).
     """
 
     async def _run():

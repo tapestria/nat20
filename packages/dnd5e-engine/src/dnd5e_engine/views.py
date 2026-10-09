@@ -65,7 +65,7 @@ class SummonView:
 
 @dataclass(frozen=True)
 class TurnCombatView:
-    """Per-current-actor turn-state projection (spec §6 row D2)."""
+    """Per-current-actor turn-state projection."""
 
     attacks_remaining: int
     # SRD 5.2 Action Surge — the current actor's unspent additional actions
@@ -103,9 +103,9 @@ class LiveCombatView:
     final_outcome: CombatOutcome | None
     # SRD §Concentration — caster_id -> [(target_id, effect_id, origin), …];
     # the host-readable projection of the engine's concentration ownership
-    # (C13, API-DELTAS). Empty dict when nobody concentrates.
+    # (C13). Empty dict when nobody concentrates.
     concentration_chain: dict[str, list[tuple[str, str, str]]]
-    # C14 — the current actor's per-Action attack budget (spec §6 row D2).
+    # C14 — the current actor's per-Action attack budget.
     # ``TurnCombatView(attacks_remaining=0)`` when combat has ended or the
     # initiative order is empty (no current actor to project).
     turn: TurnCombatView

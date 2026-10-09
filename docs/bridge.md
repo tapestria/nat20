@@ -19,13 +19,13 @@ reads (`/v1/srd/...`) resolve through `dnd5e-srd-data`'s bundled dataset
 
 ## Quickstart
 
-Once published to PyPI:
+From PyPI:
 
 ```bash
 uvx nat20-bridge
 ```
 
-Working in this repo (before publish, or for local development):
+Working in this repo (for local development):
 
 ```bash
 uv run nat20-bridge

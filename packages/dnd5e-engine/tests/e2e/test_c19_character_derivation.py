@@ -1,13 +1,9 @@
 """C19 — Character derivation.
 
-Transcribed from specs/e2e-scenario-catalog.md, Cluster 19
-(specs/catalog-v2/c19.md). Almost every scenario is a pure
+Almost every scenario is a pure
 ``derive_sheet(CharacterBuildSpec) -> DerivedSheet`` call — no combat
-handle required. ``derive_sheet``/``DerivedSheet`` do not exist on the
-engine today; every scenario presumes them, imported inside the test
-body (mirrors the ``dnd5e_engine.build_spec.derive_spell_slots`` idiom
-C17 already uses) so their absence drives the xfail rather than a
-collection error.
+handle required — imported inside the test body (the
+``dnd5e_engine.build_spec.derive_spell_slots`` idiom C17 uses).
 """
 
 from __future__ import annotations

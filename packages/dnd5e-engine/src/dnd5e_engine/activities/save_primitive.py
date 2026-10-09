@@ -27,7 +27,7 @@ MIRRORS, does not import from, ``effects/save.py``:
   sidecar (``ctx.passive_save_modifiers[entity_id][ability]``), NOT rebuilt from
   ability score + proficiency; an absent target / ability contributes +0.
 * auto-fail / advantage / disadvantage / save-bonus are sourced from the same
-  per-target sidecar shape the OLD the legacy evaluator path read off the host effect store; empty
+  per-target sidecar shape the legacy evaluator path read off its effect store; empty
   sidecars reproduce the prior single-d20 + per-ability-mod behavior exactly.
 """
 
@@ -57,9 +57,8 @@ FORCE_SAVE_D20: Final = "force_save_d20"
 class SaveRoll:
     """The resolved outcome of one saving throw, with its D20 Test provenance.
 
-    A named envelope rather than a bare tuple (CLAUDE.md: results are named
-    envelopes) because the callers now forward the roll breakdown onto
-    ``SaveRolled``.
+    A named envelope rather than a bare tuple, because the callers now
+    forward the roll breakdown onto ``SaveRolled``.
 
     * ``natural`` is the KEPT die (post advantage/disadvantage), or ``None``
       when the save auto-failed and no die was drawn.

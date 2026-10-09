@@ -70,7 +70,7 @@ def resolve_damage(activity: DamageActivity, ctx: ActivityResolutionContext) -> 
     critical = activity.damage.critical
     is_crit = bool(critical.allow) and bool(ctx.variables.get("in_crit"))
 
-    # R5 (C17) — SRD 5.2 Magic Missile: "The spell creates one more dart for
+    # SRD 5.2 Magic Missile: "The spell creates one more dart for
     # each spell slot level above 1", NOT more damage per dart. When the
     # activity's own ``target.affects.count`` GENUINELY encodes the upcast
     # (``count_scales_with_cast_level`` — references ``@item.level``, e.g.

@@ -1,7 +1,6 @@
 """C13 — Concentration lifecycle.
 
-Transcribed from specs/e2e-scenario-catalog.md, Cluster 13
-(specs/catalog-v2/c13.md). Grid-only setups; all assertions are
+Grid-only setups; all assertions are
 RNG-robust (presence/shape/bounds/same-seed A-B deltas, never exact roll
 values). Concentration-chain reads go through the sanctioned
 ``dnd5e_engine.testing.registry`` seam here; ``LiveCombatView`` has since

@@ -8,7 +8,7 @@ apply. Multiple sources of the *same* kind never stack.
 Foundry parity: ``module/dice/d20-roll.mjs`` (``advantageMode`` selects
 ``kh``/``kl`` on a 2d20 formula rather than branching on separate rolls).
 
-Purity boundary (CLAUDE.md): this module imports nothing from
+Purity boundary: this module imports nothing from
 ``orchestrator`` — it is a pure function of an RNG, a modifier, and a typed
 set of advantage/disadvantage sources.
 

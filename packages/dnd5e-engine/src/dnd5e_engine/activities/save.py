@@ -5,13 +5,13 @@ throw vs a DC; ``damage.on_save`` ("half"/"none"/"full") scales the rolled damag
 on a SUCCESS. Canonical SRD 5.2 examples: Fireball (8d6 fire, Dex save, half on
 save) and Flame Strike (5d6 fire + 5d6 radiant, Dex save, half on save).
 
-CRITICAL on-save semantics (a plan-review finding): the on_save scaling is
+CRITICAL on-save semantics: the on_save scaling is
 applied PER PART, before the parts are summed into per-type buckets. A multi-
 typed save spell (Flame Strike: 5d6 fire + 5d6 radiant; Ice Storm: 2d10
 bludgeoning + 4d6 cold) halves EACH typed part independently — never the summed
 total. Halving the summed total would mis-distribute the rounding across types.
 
-CRITICAL roll-once semantics (a cross-model review finding): a multi-target save
+CRITICAL roll-once semantics: a multi-target save
 spell rolls its DAMAGE exactly ONCE; every affected target takes the SAME rolled
 result, then scales by ITS OWN save outcome (fail → full, success → on_save). The
 damage parts are therefore rolled BEFORE the per-target loop (``_roll_shared_damage``)
@@ -33,7 +33,7 @@ MIRRORS, does not import from, ``effects/save.py`` + ``effects/damage.py``:
   (a NEW test seam — ``effects/save.py`` has none) for the FIRST target only; the
   modifier is sourced exactly as ``effects/save.py:_read_save_modifier`` does — the
   RESOLVED per-ability integer off a per-target sidecar (there:
-  ``the host effect store._save_modifiers[id]["saves"]``; here: ``ctx.passive_save_modifiers[id]``),
+  ``_save_modifiers[id]["saves"]``; here: ``ctx.passive_save_modifiers[id]``),
   NOT rebuilt from ability score + proficiency. ``Combatant`` carries no per-
   ability save table, so an absent target / ability contributes +0 (mirrors the
   0 fallback). This handler emits ``SaveRolled`` per target around the primitive.

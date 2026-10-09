@@ -1,10 +1,9 @@
 """Spell schema — surface fields only.
 
 Foundry's ``system.activities`` deep tree is preserved structurally via the
-shared ``Activity`` model (matches the items deferral in PR 1); the
-Phase 7b resolver will walk it. Phase 7a captures every surface field the
-seeder needs (level, school, components, casting time, range, duration,
-materials) plus the verbatim activity tree.
+shared ``Activity`` model, which the engine's resolver walks. The schema
+captures every surface field a consumer needs (level, school, components,
+casting time, range, duration, materials) plus the verbatim activity tree.
 """
 
 from __future__ import annotations
@@ -125,7 +124,7 @@ class Spell(BaseModel):
     """One canonical spell entry. Slug matches the Foundry filename stem.
 
     The class list (which classes can cast the spell) is derived by the
-    seeder from class advancement entries; the spell document itself doesn't
+    consumer from class advancement entries; the spell document itself doesn't
     ship that list in Foundry's 2014 pack.
     """
 
@@ -147,7 +146,7 @@ class Spell(BaseModel):
     preparation: SpellPreparation = Field(default_factory=SpellPreparation)
     activities: list[Activity] = Field(default_factory=list)
     """Foundry's ``system.activities`` deep tree, preserved structurally.
-    The Phase 7b resolver walks these; Phase 7a only persists them."""
+    The engine's resolver walks them."""
     passive_effects: list[PassiveEffect] = Field(default_factory=list)
     """Top-level Foundry ``effects[]`` entries — currently empty for SRD
     spells but preserved structurally so future packs round-trip."""
@@ -161,7 +160,7 @@ class Spell(BaseModel):
     @field_serializer("components")
     def _serialize_components(self, value: frozenset[SpellComponent]) -> list[str]:
         # frozenset iteration order is non-deterministic across processes
-        # (PYTHONHASHSEED). Sort so the regen-clean gate (PR A task A7) is
+        # (PYTHONHASHSEED). Sort so the regen-clean gate is
         # stable run-over-run. Same pattern as Provenance.srd_version /
         # Class.saving_throws / Weapon.properties.
         return sorted(value)

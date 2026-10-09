@@ -1,7 +1,4 @@
-"""C02 — Small mechanics.
-
-Transcribed from specs/e2e-scenario-catalog.md, Cluster 2.
-"""
+"""C02 — Small mechanics."""
 
 from __future__ import annotations
 

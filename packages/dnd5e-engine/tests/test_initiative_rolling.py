@@ -11,7 +11,7 @@ you have Disadvantage on the roll."
 (the pre-C14 host-supplied path, byte-identical); ``None`` opts into an
 engine-rolled d20 + DEX modifier, resolved in spec order (party, then
 encounter) using the SAME ``random.Random(rng_seed)`` instance that then
-seeds every subsequent in-combat draw (controller ruling R4).
+seeds every subsequent in-combat draw.
 """
 
 from __future__ import annotations

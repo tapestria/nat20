@@ -111,8 +111,8 @@ class Weapon(Item):
     magical_bonus: NonNegativeInt = 0
     """Foundry ``system.magicalBonus`` preserved structurally. The base
     ``damage_parts`` stay mundane (e.g. 1d8 slashing for a Longsword +3);
-    consumers fold this bonus into attack and damage rolls at resolve time
-    (Phase 7b engine). Zero for non-magic weapons."""
+    consumers fold this bonus into attack and damage rolls at resolve time.
+    Zero for non-magic weapons."""
     magical: bool = False
     """Foundry item property ``mgc`` (``system.properties``). Independent of
     ``magical_bonus`` — Flame Tongue is magical with a +0 bonus. Consumed by

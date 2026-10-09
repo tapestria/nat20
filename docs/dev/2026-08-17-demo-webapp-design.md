@@ -11,8 +11,8 @@ A public, playable web demo of the `dnd5e-engine` + `dnd5e-srd-data` stack. Its
 job is **engine credibility for developers evaluating the library**: prove the
 engine resolves real 5e SRD combat — attacks, saves, spells, effects,
 concentration, conditions, grid movement, cover, death saves — and that it is
-deterministic and easy to host. Tapestria appears only as light attribution
-(one footer link). The demo is also a living integration reference: it may use
+deterministic and easy to host. The team behind it appears only as light
+attribution (one footer link). The demo is also a living integration reference: it may use
 **only** the engine's public surface (`dnd5e_engine.__all__`).
 
 ## Core architectural decision: stateless replay backend
@@ -91,7 +91,7 @@ clickable elements.
   canonical updated log rides back in the response; `log.js` writes it to
   `localStorage` + URL fragment.
 - `GET /about` — project links; the shared shell footer carries the single
-  Tapestria attribution: "Built by the team behind Tapestria."
+  attribution link: "Built by the team behind …".
 
 UI regions (one template each):
 
@@ -157,8 +157,8 @@ seeding contract live.
 (Dockerfile + Fly.io + a deploy workflow). That was reversed before merge: the
 public library repo ships **no deployment logic**. `nat20-demo` is a plain,
 stateless ASGI app (`nat20_demo.app:app`, console script `nat20-demo`) that any
-host can run behind uvicorn; hosting of the public Tapestria instance lives in
-the Tapestria repository. Local run is the only path this repo documents.
+host can run behind uvicorn; a public hosted instance is deployed from outside
+this repository. Local run is the only path this repo documents.
 
 ## Out of scope
 

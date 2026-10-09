@@ -9,9 +9,9 @@ application concerns (narrators, persistence, world state, UI) are out of scope.
 closes it. When you discover one, add it under the right section with a date and
 a `packages/…` file anchor. Keep entries engine/data-centric — no host-app paths.
 
-Anchors are current as of `dnd5e-engine` / `dnd5e-srd-data` **v0.6.0**
-(re-verified 2026-09-27 by the C23 scrub: every anchor names a file and a
-symbol, never a line number).
+Anchors are current as of `dnd5e-engine` / `dnd5e-srd-data` **v0.7.0**
+(re-verified 2026-10-08: every anchor names a file that exists, and any
+symbol it names is in that file; never a line number).
 
 The user-facing summary of the same information is
 [`docs/capabilities.md`](docs/capabilities.md) — the per-mechanic matrix of what
@@ -62,7 +62,7 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
 ## Monster action economy (2026-08-22)
 
 - **Monster-side ranged-in-melee/Vex/Sap threading is wired but inert
-  (2026-09-02, C15 Task 6/3).** `orchestrator.py`'s monster attack site
+  (2026-09-02, C15).** `orchestrator.py`'s monster attack site
   passes `attacker_ranged_in_melee`, `attacker_vex_advantage`, and
   `attacker_sapped` into the activity context and pops vex grants/sap marks
   after resolution, mirroring the PC site exactly — but a monster attack
@@ -72,8 +72,7 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   fold never fire for a monster attacker. A monster can still be the
   RECEIVING end of a vex grant or sap mark from a prior PC weapon hit
   (that half is live). Needs a monster weapon-mastery/property model;
-  confirmed still open after C18 (2026-09-03) — out of that cluster's scope
-  per its R10 ruling.
+  confirmed still open after C18 (2026-09-03), which left it out of scope.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
 - **Two Multiattack conditional clauses are not modelled (amended
   2026-10-04, C26b).** An action a Multiattack uses "if available" sits out
@@ -310,7 +309,7 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   move separates the pair beyond reach. None of the three block or
   auto-release `grapple`/`shove`/`escape_grapple` today: no combatant has a
   size attribute to read. The Push weapon mastery's "if it is Large or smaller" gate
-  (2026-09-02, C15 Task 7) shares the same missing creature-size attribute
+  (2026-09-02, C15) shares the same missing creature-size attribute
   and pushes every target.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_handle_grapple`,
   `::_handle_shove`, `::_fold_mastery_procs`)
@@ -327,8 +326,8 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   `SpellCast` now carries `components` / `material` / `material_consumed` /
   `material_cost_gp` (via `spellcasting.spell_component_metadata`) on every
   PC cast path, but nothing gates a cast on a gagged/Silenced caster, a free
-  hand, a component pouch/focus, or a costed material's gold cost — a host
-  decision per spec §5 C17.
+  hand, a component pouch/focus, or a costed material's gold cost — a host's
+  decision.
   (`packages/dnd5e-engine/src/dnd5e_engine/spellcasting.py`,
   `packages/dnd5e-engine/src/dnd5e_engine/events.py::SpellCast`)
 - **Rules that suppress or alter an opportunity attack are not modelled
@@ -346,7 +345,7 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
 - **The Cleave chain's damage routes through `_apply_on_hit_damage`, which
   folds Sneak Attack BEFORE the orchestrator writes the once-per-turn cap
   — the chained hit is structurally unguarded against a second Sneak
-  Attack fold on the same turn** (2026-09-02, C15 final-review F7). Not
+  Attack fold on the same turn** (2026-09-02, C15). Not
   reachable today: no shipped Cleave weapon (greataxe, halberd) carries
   Finesse or a ranged category, so `sneak_attack_triggers`'s qualifying-
   weapon gate always excludes them — but nothing in `_resolve_cleave_chain`
@@ -578,7 +577,7 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
 - **Engine does not yet read `canonical/conditions/`.** The dataset category
   exists (C22, `AssetLoader.get_condition`), mirroring `rules/conditions.py`;
-  per campaign design D3 the engine should prefer the data when present and
+  the engine should prefer the data when present and
   fall back to the Python registry. Still open after C12 and C18 (neither
   reads the category); unowned.
   (`packages/dnd5e-engine/src/dnd5e_engine/rules/conditions.py`)
@@ -643,7 +642,7 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   trait disadvantages ALL ability checks in sunlight) is still open (see
   "Typed traits are hydrated..." under "Audit 2026-08-26 — monsters" below).
   No *See Invisibility*-style effect flag
-  pierces the Invisible condition either (C16b plan ruling R3) — only
+  pierces the Invisible condition either (C16b) — only
   blindsight/
   truesight in range with line of sight do, via
   `orchestrator.py::_pierces_invisibility`; an effect-vocabulary carve-out is
@@ -1206,13 +1205,10 @@ zone + apply logic:
 ## Audit 2026-08-26 — action economy & turn structure
 
 - **`search`/`study`/`influence`/`utilize` do not exist as `IntentType`
-  values at all** (`dodge` closed C14 Task 3, `help` assist-an-attack-roll
-  flavor closed C14 Task 4, `hide` closed C14 Task 5 — all 2026-09-01;
-  Help's ability-check flavor is still open, no check-advantage producer
-  exists). Deliberately deferred from C14 in full: the campaign design
-  (spec §5, row C14) lists all four intents, but none has an approved
-  catalog acceptance scenario or a harmonised API-DELTAS row — a maintainer
-  flag, not an oversight.
+  values at all** (`dodge`, `help`'s assist-an-attack-roll flavor and `hide`
+  closed in C14, 2026-09-01; Help's ability-check flavor is still open, no
+  check-advantage producer exists). Deliberately deferred from C14 in full:
+  none of the four has an agreed intent shape or acceptance scenario yet.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py`)
 - **Hide costs no Action** (2026-09-01). SRD 5.2 costs an Action to Hide;
   `_handle_hide` deliberately charges no Action/Bonus-Action budget (the
@@ -1255,7 +1251,7 @@ zone + apply logic:
   a grappler removed from combat by a path that never applies Incapacitated
   leaves its victim's Grappled condition stuck. SRD 5.2 "Ending a Grapple"
   names only the Incapacitated case, so this is RAW-arguable rather than a
-  clear defect — recorded for a future ruling.
+  clear defect — recorded for a future decision.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_release_grapple_victims_of`)
 - **Monster AI never selects Dodge, Hide, Help, Grapple, or Shove.**
   `advance_monster_turn` has no branch that chooses any of the five C14
@@ -1272,14 +1268,14 @@ zone + apply logic:
   see `docs/migration/v0.5-to-v0.6.md`.)
   (`packages/dnd5e-engine/src/dnd5e_engine/turn_lifecycle.py`,
   `packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_register_default_turn_hooks`)
-- **Initiative has no "Delay" option.** C14 Task 8 (2026-09-01) added the
+- **Initiative has no "Delay" option.** C14 (2026-09-01) added the
   engine-rolled `d20 + DEX modifier` path (`initiative=None`) with Surprise
   and Incapacitated Disadvantage; the SRD "Delay" combat option (holding
   your Initiative count to act later) is still absent.
   (`packages/dnd5e-engine/src/dnd5e_engine/specs.py`)
 - **Movement rules beyond the budget are absent:** crawling, climb/swim
   cost, jumping; `Combatant.movement_modes` is hydrated and never read.
-  Standing from Prone (half Speed, rounded down) closed C14 Task 7
+  Standing from Prone (half Speed, rounded down) closed in C14
   (2026-09-01) via the `stand_up` `IntentType`
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_handle_stand_up`).
   Occupancy (C16) treats every enemy space as
@@ -1333,7 +1329,7 @@ zone + apply logic:
   hosts upcasting such spells).
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/dice.py`)
 - **Magic Missile darts share ONE damage roll applied N times, not N
-  independent rolls (2026-09-03, C17, ruling R5).** SRD RAW rolls each
+  independent rolls (2026-09-03, C17).** SRD RAW rolls each
   dart's `1d4+1` separately; `resolve_damage` rolls the part once per
   activity and applies that single result to every target in the
   count-scaled fan-out, so all darts in one cast always deal identical
@@ -1342,7 +1338,7 @@ zone + apply logic:
   level) rather than a gap to close.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/damage.py::resolve_damage`)
 - **Pool choice for a multiclass Warlock cast is Spellcasting-first
-  (2026-09-03, C17 R3); no per-class spell-list gate or `use_pact_slot`
+  (2026-09-03, C17); no per-class spell-list gate or `use_pact_slot`
   flag.** `_slot_available`/`_take_spell_slot` always try the regular
   Spellcasting pool before Pact Magic; SRD §Multiclassing lets either pool
   cast either prepared spell, so this is correct for slot AVAILABILITY, but
@@ -1350,7 +1346,7 @@ zone + apply logic:
   Spellcasting slots and burn Pact Magic first, or vice versa).
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_take_spell_slot`)
 - **Attack-kind repeat instances (Scorching Ray's rays) are not
-  count-scaled (2026-09-03, C17).** R5's target-count scaling
+  count-scaled (2026-09-03, C17).** The target-count scaling
   (`resolve_target_count` / `target.affects.count`) only expands a
   `damage`-kind activity's target list; the corpus encodes an
   `attack`-kind spell's multiple-instances count (Scorching Ray: "three
@@ -1692,7 +1688,7 @@ re-discovered.
 
 ## Blocked
 
-- **Lair actions are blocked on translator support** (2026-09-03, C18 R10).
+- **Lair actions are blocked on translator support** (2026-09-03, C18).
   All 341 bundled monsters ship `lair_actions == []` (schema field exists,
   the translator never populates it from a Foundry source), so there is
   nothing for the engine to spend. The initiative-20 pseudo-turn a lair

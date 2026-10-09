@@ -113,7 +113,7 @@ def apply_damage(
     ``DamageApplied.source_id`` / ``.is_crit`` for the source-id policy.
 
     Returns the TOTAL final (post-modifier) amount actually dealt across every
-    valid type — C15 Task 6 (Vex): "hit a creature ... and deal damage to the
+    valid type — Vex: "hit a creature ... and deal damage to the
     creature" needs the AFTER-immunity total (a damage-immune target dealt 0
     final damage must not proc the rider), not the pre-modifier rolled sum.
     Existing callers that ignore the return are unaffected.
@@ -171,7 +171,7 @@ def apply_damage(
             if succeeded:
                 target.hp_current = 1
                 is_overkill = False
-                # Fix round 1 — live-combat write-back: the ORCHESTRATOR's
+                # Live-combat write-back: the ORCHESTRATOR's
                 # own HP fold (``_emit_apply_damage``) computes the
                 # authoritative post-damage HP from ``live.tracked_hp`` and
                 # this event's UNMODIFIED ``amount``, independent of this

@@ -4,8 +4,8 @@ The canonical dataset carries these pushes only as prose (Foundry's activity
 model has no push field — ``canonical/spells/thunderwave.json`` is a plain
 ``save`` activity with ``effects: []``), so the engine keeps a typed registry
 keyed by spell slug, exactly as conditions/traits started as a Python registry
-before becoming dataset categories (spec §6 D3). Moving this to a dataset
-field is the recorded C22 seam. Pure data: no orchestrator import.
+before becoming dataset categories. Moving this to a dataset field is a
+recorded BACKLOG item. Pure data: no orchestrator import.
 """
 
 from __future__ import annotations

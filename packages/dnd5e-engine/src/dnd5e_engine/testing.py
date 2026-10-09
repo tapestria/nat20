@@ -33,6 +33,6 @@ registry = _REGISTRY
 reset_registry = _reset_registry_for_tests
 
 # Test-support: event-emission and sidecar-hydration helpers used by boundary
-# and scenario tests to drive the same code paths the per-effect handlers take.
+# and end-to-end tests to drive the same code paths the per-effect handlers take.
 emit = _emit
 build_hydration_payload = _build_hydration_payload

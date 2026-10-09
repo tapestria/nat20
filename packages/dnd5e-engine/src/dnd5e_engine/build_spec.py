@@ -1,7 +1,6 @@
 """The build-spec contract: the typed input that resolves into a complete PC.
 
-A 7c test/seed factory produces these now; the char-creation build-core (CharacterDraft,
-spec-only today) becomes a second producer of the identical contract later. Resolution
+A host's character builder or a test fixture produces these. Resolution
 (build_party_member) is pure; selection (who fills the build-spec) is the producer's job.
 """
 
@@ -91,7 +90,7 @@ class AbilityScores(BaseModel):
 class CharacterBuildSpec(BaseModel):
     """The typed input that resolves into a complete PC.
 
-    C17: ``classes`` is the multiclass carrier (spec §3) — a ``{class_slug: level}``
+    ``classes`` is the multiclass carrier — a ``{class_slug: level}``
     map. ``class_slug`` (= the FIRST key, the primary class) and ``level`` (= the SUM
     of class levels) are kept as single-class aliases and always populated, so
     existing single-class callers (``CharacterBuildSpec(class_slug=..., level=...)``)
@@ -193,7 +192,7 @@ class CombatInstance(BaseModel):
     concentration_effect_id: str | None = None
     spell_slots: dict[int, int] = Field(default_factory=dict)
     # SRD Pact Magic — the Warlock's separately-recovering slot pool
-    # ``{slot_level: count_remaining}``; consumed by the orchestrator in C17 Task 3.
+    # ``{slot_level: count_remaining}``, spent by the orchestrator.
     pact_slots: dict[int, int] = Field(default_factory=dict)
     spells_known: tuple[str, ...] = ()
 
@@ -265,7 +264,7 @@ def derive_multiclass_slots(
     """Multiclass Spellcasting-feature slots for a ``{class_slug: level}`` map.
 
     Reads each class's ``spellcasting.progression`` through ``loader`` (default:
-    the configured lib loader), applies the SRD per-class rounding (R2) and looks
+    the configured lib loader), applies the SRD per-class rounding and looks
     the total up in the Multiclass Spellcaster table. A single-class map returns
     exactly ``derive_spell_slots(...)`` for that class.
     """

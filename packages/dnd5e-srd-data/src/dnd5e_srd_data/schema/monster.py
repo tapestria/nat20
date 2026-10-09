@@ -106,8 +106,8 @@ class MonsterTraitMechanic(StrEnum):
     Foundry ships traits as prose-only ``type: feat`` items; this enum is the
     translator's name→mechanic table (``tools/translators/foundry.py::
     _TRAIT_MECHANICS``). Every other trait keeps ``mechanic=None`` and only
-    its ``description`` (campaign design C22: typed vocabulary for the top
-    traits, prose fallback for the rest).
+    its ``description`` (typed vocabulary for the top traits, prose fallback
+    for the rest).
     """
 
     MAGIC_RESISTANCE = "magic_resistance"

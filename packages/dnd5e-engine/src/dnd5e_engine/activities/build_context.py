@@ -66,7 +66,7 @@ def _save_dc(
     class -> ability mapping, e.g. cleric -> wis) uses the honest formula
     against its real ability scores + proficiency bonus (both already
     computed for real above). A Monster caster with a resolved
-    ``spellcasting_ability`` (C18 Task 5 — hydrated from
+    ``spellcasting_ability`` (hydrated from
     ``Monster.spellcasting_ability`` onto ``Combatant.spellcasting_ability``)
     uses the same honest formula against ITS OWN real ability score +
     proficiency bonus (``ability_modifier_of``/``proficiency_bonus_of``,
@@ -299,13 +299,13 @@ def build_activity_context(
     """
     mod = _caster_mod(caster)
     if stat_block_magnitudes is not None:
-        # A transformed creature rolls with its stat block's own numbers
-        # (D4 a): the entity-type branches below, and the fixed to-hit / save
+        # A transformed creature rolls with its stat block's own numbers:
+        # the entity-type branches below, and the fixed to-hit / save
         # DC overrides they imply, do not apply.
         caster_abilities = dict(stat_block_magnitudes.ability_scores)
         caster_proficiency_bonus = stat_block_magnitudes.proficiency_bonus
     elif caster.entity_type == "Character":
-        # PCs carry real six-ability scores + character_level (piece 3), so the
+        # PCs carry real six-ability scores + character_level, so the
         # `@mod`/`@prof`/`@abilities.<ab>.mod` tokens resolve to honest values.
         caster_abilities = {
             "str": caster.strength,
@@ -399,7 +399,7 @@ def build_activity_context(
     # dict); resolve it to a concrete int here via the same seeded ``roll_expr``
     # every other sidecar bonus uses (a plain literal like Shield's "5" draws
     # no dice, so this never perturbs the seed stream for the one reaction
-    # this cluster needs it for).
+    # that needs it).
     passive_ac_bonus: dict[str, int] = {}
     for entity_id, entry in save_modifiers.items():
         saves = entry.get("saves")
@@ -483,7 +483,7 @@ def build_activity_context(
         target_unseen=target_unseen or {},
         attacker_unseen_by=attacker_unseen_by or {},
         target_distance_ft=target_distance_ft or {},
-        # SRD 5.2 §Actions in Combat — Dodge (C14 Task 3): PRE-RESOLVED
+        # SRD 5.2 §Actions in Combat — Dodge: PRE-RESOLVED
         # per-target dodge-benefit flag, computed by the orchestrator
         # (``_dodge_benefit_active``). Absent (``None``) → empty, leaving
         # the golden corpus identical (no dodge geometry).
@@ -500,7 +500,7 @@ def build_activity_context(
         # (``_fear_source_in_sight``). Default ``True`` leaves the golden
         # corpus identical (no vision model ⇒ the penalty always stays).
         attacker_fear_source_in_sight=attacker_fear_source_in_sight,
-        # SRD 5.2 §Actions in Combat — Help (C14 Task 4): PRE-RESOLVED
+        # SRD 5.2 §Actions in Combat — Help: PRE-RESOLVED
         # per-target ally-of-attacker Help-grant flag, computed by the
         # orchestrator (``_target_help_advantage_map``). Absent (``None``) ->
         # empty, leaving the golden corpus identical (no Help geometry).
@@ -532,20 +532,20 @@ def build_activity_context(
         cast_level_override=cast_level_override,
         suppress_positive_ability_damage_mod=suppress_positive_ability_damage_mod,
         use_versatile_damage=use_versatile_damage,
-        # SRD 5.2 §Weapon Mastery — Vex / Sap (C15 Task 6): PRE-RESOLVED
+        # SRD 5.2 §Weapon Mastery — Vex / Sap: PRE-RESOLVED
         # per-target vex-grant / per-attacker sap-mark flags, computed by
         # the orchestrator (``live.vex_grants`` / ``live.sap_marks``).
         # Absent (``None``) -> empty / False, leaving the golden corpus
         # identical (no mastery geometry).
         attacker_vex_advantage=attacker_vex_advantage or {},
         attacker_sapped=attacker_sapped,
-        # SRD 5.2 §Weapon Mastery — Cleave (C15 Task 7): PRE-RESOLVED gate +
-        # deterministic second target (controller ruling R5), computed by
+        # SRD 5.2 §Weapon Mastery — Cleave: PRE-RESOLVED gate +
+        # deterministic second target, computed by
         # the orchestrator. Defaults (False / None) -> no chain, keeping the
         # golden corpus identical.
         cleave_available=cleave_available,
         cleave_candidate=cleave_candidate,
-        # C18 §Monster action economy — Legendary Resistance (Task 7):
+        # C18 §Monster action economy — Legendary Resistance:
         # PRE-RESOLVED per-entity armed-declaration + remaining-pool sidecars,
         # projected by the orchestrator (``_build_hydration_payload``) as
         # disposable COPIES ``activities/save_primitive.roll_save`` mutates in
@@ -554,8 +554,8 @@ def build_activity_context(
         # exactly as before this feature).
         legendary_resistance_armed=legendary_resistance_armed or {},
         legendary_resistances_remaining_by_entity=legendary_resistances_remaining_by_entity or {},
-        # C18 §Monster action economy — Pack Tactics / Sunlight Sensitivity
-        # (Task 8): PRE-RESOLVED per-target ally-adjacency map / scene-wide
+        # C18 §Monster action economy — Pack Tactics / Sunlight Sensitivity:
+        # PRE-RESOLVED per-target ally-adjacency map / scene-wide
         # sunlight flag, projected by the orchestrator (``_pack_tactics_map``
         # / ``live.scene_sunlight``). Defaults ({} / False) leave the golden
         # corpus identical (no adjacency data, no sunlit scene).
@@ -564,7 +564,7 @@ def build_activity_context(
         # attacker" map (``_grappled_by_map``). Absent (``None``) -> empty.
         target_grappled_by_attacker=target_grappled_by_attacker or {},
         attacker_in_sunlight=attacker_in_sunlight,
-        # C18 §Monster action economy, fix round 1 — Undead Fortitude's
+        # C18 §Monster action economy — Undead Fortitude's
         # live write-back handshake (see ``ActivityResolutionContext.
         # undead_fortitude_holds`` docstring). Unlike every sidecar above,
         # this one is a genuine SHARED reference, not a disposable copy:

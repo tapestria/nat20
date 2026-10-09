@@ -1,12 +1,14 @@
 [project]
 name = "nat20-bridge"
-version = "0.6.0"
+version = "0.7.0"
 description = "Localhost HTTP sidecar exposing dnd5e-engine to the SillyTavern nat20 extension"
 requires-python = ">=3.12"
 license = { file = "LICENSE" }
 dependencies = [
-    "dnd5e-engine>=0.6.0",
-    "dnd5e-srd-data>=0.6.0",
+    # Lockstep floors: the bridge builds every member with
+    # CombatInstance(initiative=None), which dnd5e-engine accepts from 0.7.0.
+    "dnd5e-engine>=0.7.0",
+    "dnd5e-srd-data>=0.7.0",
     "fastapi>=0.115",
     "uvicorn>=0.30",
 ]

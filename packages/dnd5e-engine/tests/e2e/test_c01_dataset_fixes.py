@@ -1,7 +1,4 @@
-"""C01 — Dataset fixes: typeless damage parts in canonical spells.
-
-Transcribed from specs/e2e-scenario-catalog.md, Cluster 1.
-"""
+"""C01 — Dataset fixes: typeless damage parts in canonical spells."""
 
 from __future__ import annotations
 

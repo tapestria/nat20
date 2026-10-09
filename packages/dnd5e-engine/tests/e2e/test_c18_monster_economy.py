@@ -1,7 +1,6 @@
 """C18 — Monster action economy.
 
-Transcribed from specs/e2e-scenario-catalog.md, Cluster 18
-(specs/catalog-v2/c18.md). Grid backend only (``GridScene`` + ``cell_id``),
+Grid backend only (``GridScene`` + ``cell_id``),
 never zones. Real bundled corpus slugs throughout (verified live against
 ``BundledAssetLoader`` while drafting the catalog).
 """

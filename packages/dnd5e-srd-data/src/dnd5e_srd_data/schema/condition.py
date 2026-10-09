@@ -8,7 +8,7 @@ links in ``config.mjs`` — there is no structured mechanic upstream. The
 row per sentence, and this module only defines the closed vocabulary.
 
 The engine's ``dnd5e_engine.rules.conditions`` registry stays authoritative
-for enforcement (campaign design D3); this category mirrors it as data so a
+for enforcement; this category mirrors it as data so a
 host can render, extend or audit conditions without reading Python.
 """
 

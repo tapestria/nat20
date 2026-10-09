@@ -2,9 +2,9 @@
 
 ``roll_death_save`` and ``reset_death_saves`` are in
 ``dnd5e_engine.death_saves.__all__`` and are wired into the orchestrator's
-``_maybe_roll_death_save`` dying-PC turn loop. Tapestria's integration suite
-asserts the resulting ``DeathSaveRolled`` events through the orchestrator +
-Redis projection (host-only), but no ported *engine* test exercised the helper
+``_maybe_roll_death_save`` dying-PC turn loop. A host's integration suite
+asserts the resulting ``DeathSaveRolled`` events through the orchestrator and
+its own projection, but no ported *engine* test exercised the helper
 directly. These hermetic tests cover the SRD outcomes (success, failure,
 nat-20 revive, nat-1 double-failure, stabilize, die) against the real public
 signature. Zero I/O; RNG injected.

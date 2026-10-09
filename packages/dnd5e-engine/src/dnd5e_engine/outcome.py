@@ -1,25 +1,22 @@
 """CombatOutcome data classes — the pure-data projection of closed combat state.
 
 These models are the typed payload the public combat seam returns from
-``end_combat``. Translation into a host's ``AnyWorldEvent`` discriminated
-union and persistence via the event pipeline live host-side in
-a host-side outcome record; this module is host-free.
+``end_combat``. Translating them into a host's own world events and
+persisting them happen host-side; this module is host-free.
 
-Event-type mapping (host-side projection):
+A typical host-side projection:
 
-- Deaths → ``CharacterDied`` (PCs) / ``NpcDied`` (NPCs) / ``MonsterDied``
-  (monsters). There is no ``CharacterUnconscious`` event; PCs at 0 HP
-  surface via ``CharacterHpChanged(new_hp=0, …)`` and only escalate to
-  ``CharacterDied`` via the death-save outcome path.
-- Residual HP → ``CharacterHpChanged``.
-- Loot → ``ItemTransferred`` / ``ItemCreated`` per the loot source.
-- XP → ``CharacterXpAwarded``.
+- Deaths → a death event per creature kind (character, NPC, monster). A
+  character at 0 HP is not a death: it surfaces as residual HP 0 and only
+  becomes a death through the death-save outcome path.
+- Residual HP → a character HP change.
+- Loot → an item transfer or an item creation, per the loot source.
+- XP → an XP award per character.
 
-end-of-combat condition carryover is retired; the authoritative
+End-of-combat condition carryover is retired; the authoritative
 end-of-combat effect snapshot lives on
 ``EndCombatResult.final_active_effects`` (Foundry-aligned
-``ActiveEffect`` rows). callers log-and-discard; persistence is
-[effects-cross-combat].
+``ActiveEffect`` rows). Persisting effects across combats is a host concern.
 """
 
 from __future__ import annotations
@@ -52,9 +49,9 @@ class LootDrop(BaseModel):
     # by ``source``.
     source: LootSource
     item_id: str  # canonical id ("item:hex12") — must exist for transfer mode
-    to_id: str  # "char:…" | "npc:…" | "loc:…" — pipeline validates prefix
+    to_id: str  # "char:…" | "npc:…" | "loc:…" — the host validates the prefix
     quantity: int = 1
-    # ``ItemCreated``-only metadata (ignored for transfer mode):
+    # Created-mode-only metadata (ignored for transfer mode):
     location_id: str | None = None
     name: str | None = None
     item_type: str | None = None
@@ -63,10 +60,9 @@ class LootDrop(BaseModel):
 class CombatOutcome(BaseModel):
     """Complete projection of closed combat state into world mutations.
 
-    Every field is the "what should change in the world graph" payload
-    for one mutation category; ``project_outcome_to_events`` (host-side)
-    translates them to typed ``WorldEvent`` instances and ``apply_outcome``
-    flows them through ``persist_and_apply``.
+    Every field is the "what should change in the host's world" payload
+    for one mutation category; a host translates each into its own events
+    and persists them.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -75,9 +71,8 @@ class CombatOutcome(BaseModel):
     ended_reason: EndedReason
 
     deaths: list[DeathRecord] = Field(default_factory=list)
-    # combatant_id → HP at combat-end (only emitted as CharacterHpChanged
-    # for characters; monster/NPC HP at combat-end is not persisted to
-    # graph by this seam — that ephemeral state is owned by combat host storage).
+    # combatant_id → HP at combat end (a host typically persists it for
+    # characters only; monster and NPC HP at combat end is ephemeral).
     residual_hp: dict[str, int] = Field(default_factory=dict)
     residual_temp_hp: dict[str, int] = Field(default_factory=dict)
     loot_drops: list[LootDrop] = Field(default_factory=list)

@@ -12,7 +12,7 @@ its values are pinned to the ``ChangeMode`` Literal order (index == int key).
 
 The ``id``/``origin`` slug conventions MIRROR ``effects/ieffect2.py``
 (``_effect_id_from_name`` / ``_origin_from_name``) verbatim — the orchestrator
-parses ``origin`` back into ``cast:<slug>:<caster_id>`` in Piece 3, so any drift
+parses ``origin`` back into ``cast:<slug>:<caster_id>``, so any drift
 here breaks that round-trip.
 """
 
@@ -170,7 +170,7 @@ def passive_effect_to_active_effect(
     """Build the runtime ``ActiveEffect`` the resolver emits for one target.
 
     ``id``/``origin`` follow the ieffect2 slug conventions so the orchestrator
-    can parse them back in Piece 3. ``flags`` carries ``{"concentration": True}``
+    can parse them back. ``flags`` carries ``{"concentration": True}``
     only when the caster's cast is concentration-gated, then ``extra_flags``
     (an allowlisted conjuration's keys, e.g. the enchanted weapon's slug).
 
@@ -211,7 +211,7 @@ def apply_activity_effects(
     condition.
 
     The EffectApplied-then-ConditionApplied emit order is load-bearing: the
-    orchestrator (Piece 3) pairs each condition to its effect by emit order.
+    orchestrator pairs each condition to its effect by emit order.
 
     ``save_succeeded`` is the target's save outcome for save activities (``None``
     for non-save kinds, which apply unconditionally). ``cast_level`` is the slot

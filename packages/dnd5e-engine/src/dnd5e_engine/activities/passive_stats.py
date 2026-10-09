@@ -39,7 +39,7 @@ _DR_KEY = "system.traits.dr.value"
 _DI_KEY = "system.traits.di.value"
 _CI_KEY = "system.traits.ci.value"
 
-# SRD §Movement . The flat walk-speed change folds into a scalar bonus
+# SRD §Movement. The flat walk-speed change folds into a scalar bonus
 # (composed with the species base_speed at the build seam); the non-walk modes
 # land on the typed ``CombatantMovementModes`` carrier. Foundry's symbolic
 # ``@attributes.movement.walk`` token (Roving's "equal to your Speed") resolves
@@ -58,7 +58,7 @@ _MOVE_WALK_REF = "@attributes.movement.walk"
 # ``"poison"`` for the Poisoned condition; every other SRD condition's ``ci``
 # token already equals its condition slug. Normalize the sole irregular token
 # so the projected ``condition_immunities`` holds condition slugs the
-# ConditionApplied emit-gate compares directly . A single-entry alias,
+# ConditionApplied emit-gate compares directly. A single-entry alias,
 # deliberately not a general trait-vocabulary engine.
 _CI_TOKEN_TO_CONDITION = {"poison": "poisoned"}
 
@@ -166,8 +166,7 @@ def interpret_passive_stats(
 
     ``species_base_speed`` is the creature's unmodified walking speed (feet); the
     symbolic ``@attributes.movement.walk`` token on a non-walk mode resolves
-    against the *boosted* walk speed (``species_base_speed + walk_speed_bonus``,
-    .
+    against the *boosted* walk speed (``species_base_speed + walk_speed_bonus``).
 
     PURE: no I/O, no logging, never raises. Unknown / deferred keys and
     non-literal numeric values are returned in ``skipped_keys``.

@@ -1,9 +1,8 @@
 """C22 — Dataset (conditions/traits typed categories, ignore_cover, magical
 flag, armor requirements, multiattack names, reaction triggers).
 
-Transcribed from specs/e2e-scenario-catalog.md, Cluster 22
-(specs/catalog-v2/c22.md). Every combat-bearing setup is grid-only per
-spec §6 D8 — ``GridScene`` + ``"col,row"`` cell ids
+Every combat-bearing setup is grid-only —
+``GridScene`` + ``"col,row"`` cell ids
 (``dnd5e_engine.spatial.cell_id``). Data
 assertions run against the bundled corpus via ``BundledAssetLoader``;
 compound scenarios (S01-S03) each pair a dataset-leg schema assertion

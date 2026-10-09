@@ -98,7 +98,7 @@ class Combatant(BaseModel):
     save_proficiencies: list[str] = Field(default_factory=list)  # Ability codes
     skill_proficiencies: list[str] = Field(default_factory=list)  # skill slugs
     skill_expertise: list[str] = Field(default_factory=list)
-    # C15 (2026-09-02) R1 sentinel — SRD 5.2 §Weapon Proficiency: "Anyone can
+    # SRD 5.2 §Weapon Proficiency: "Anyone can
     # wield a weapon, but you must have proficiency with it to add your
     # Proficiency Bonus to an attack roll you make with it" (Proficiency
     # Bonus is OMITTED, never subtracted, when unproficient). ``None`` means
@@ -109,20 +109,20 @@ class Combatant(BaseModel):
     # ``slug`` appears in the list. Monsters never carry this field
     # explicitly, so it stays ``None`` -> always proficient, matching the SRD
     # "a monster is proficient with any weapon in its stat block" rule.
-    weapon_proficiencies: list[str] | None = None  # categories + slugs; None = legacy sentinel
+    weapon_proficiencies: list[str] | None = None  # categories + slugs; None = unset sentinel
     death_saves: dict[str, Any] = Field(default_factory=dict)  # serialized DeathSaveState
     # SRD §Creatures — creature_type (e.g. "humanoid", "undead", "construct",
     # "elf"). Drives type-gated spell semantics (Hold Person targets only
     # humanoids; Sleep autopasses undead/elves; etc.). Populated from
-    # MonsterTemplate.creature_type on Neo4j for monsters; PCs default to
+    # the stat block's creature type for monsters; PCs default to
     # ``None`` until the character-sheet projection lands. Read by the
     # condition-predicate evaluator via ``target.creature_type``.
     creature_type: str | None = None
     # SRD §Damage Resistance / §Damage Immunity — per-creature lists of damage
     # type slugs (lower-case SRD 5.1 types: acid, bludgeoning, cold, fire, force,
     # lightning, necrotic, piercing, poison, psychic, radiant, slashing, thunder).
-    # Hydrated from MonsterTemplate.damage_resistances / damage_immunities (via
-    # CombatMonster / CombatNPC) and projected into the orchestrator's
+    # Hydrated from the stat block's damage resistances and immunities
+    # and projected into the orchestrator's
     # ``passive_damage_modifiers`` sidecar so the damage handler can apply
     # halving / zeroing without relying solely on the SRD-condition projection
     # (Petrified). PCs default to empty until the character-sheet projection
@@ -134,7 +134,7 @@ class Combatant(BaseModel):
     # condition-derived source; it is hydrated from the monster template
     # (skeleton → ``["bludgeoning"]``) or a PC spec and folded into the
     # orchestrator's ``passive_damage_modifiers[...]["vulnerabilities"]`` sidecar
-    # by ``_project_target_modifiers`` . Empty by default.
+    # by ``_project_target_modifiers``. Empty by default.
     damage_vulnerabilities: list[str] = Field(default_factory=list)
     # SRD §Condition Immunity — condition slugs this creature can't suffer
     # (Nature's Ward → ``"poisoned"``). Projected from PC always-on feature
@@ -142,8 +142,8 @@ class Combatant(BaseModel):
     # ``PartyMemberSpec.condition_immunities`` and copied here at start_combat;
     # a foe takes its spec's list, else its template's. The condition-
     # application path (``activities/effects.py::apply_activity_effects``)
-    # suppresses a ``ConditionApplied`` whose condition is in this list
-    # . Empty by default. NOTE: distinct from the dead, host-supplied
+    # suppresses a ``ConditionApplied`` whose condition is in this list.
+    # Empty by default. NOTE: distinct from the dead, host-supplied
     # legacy dispatch surface's ``condition_immunities`` (removed in 0.5.0).
     condition_immunities: list[str] = Field(default_factory=list)
     # SRD §Senses — special senses in feet (darkvision/blindsight/tremorsense/
@@ -154,8 +154,8 @@ class Combatant(BaseModel):
     senses: CombatantSenses = Field(default_factory=CombatantSenses)
     # SRD §Concentration — the effect_id this combatant is concentrating on,
     # if any. ``None`` when not concentrating. Hydrated by the orchestrator
-    # into ``the host effect store`` for the SRD single-conc
-    # rule + damage-driven CON-save probe in ``app/combat/effects/spell.py``.
+    # into the hydration payload for the SRD single-concentration
+    # rule and the damage-driven CON-save probe.
     concentration_effect_id: str | None = None
     # SRD §Cantrips / §Character Advancement — character level (1..20). Drives
     # cantrip scaling tiers (1/5/11/17) for both dice-count (Sacred Flame,
@@ -171,7 +171,7 @@ class Combatant(BaseModel):
     reaction_available: bool = True
     # SRD §Movement — a creature's walking speed in feet (used as the per-turn
     # movement budget). ``base_speed`` is the constant max (set at combat
-    # start from Character race / MonsterTemplate.speed.walk; defaults to 30
+    # start from the species or the stat block's walking speed; defaults to 30
     # — the SRD baseline for human-sized creatures). ``movement_remaining``
     # is the per-turn budget, reset to ``base_speed`` on the actor's own
     # TurnStarted and decremented by each successful MOVE intent.
@@ -216,15 +216,15 @@ class Combatant(BaseModel):
     shield_equipped: bool = False
     # SRD §Subclasses — subclass slug for PCs (e.g. "berserker"). Copied from
     # ``PartyMemberSpec.subclass_slug`` at start_combat so subclass-feature
-    # activities (piece 4) can gate on it. ``None`` for monsters / NPCs /
-    # fixtures / graph PCs without a persistent subclass source.
+    # activities can gate on it. ``None`` for monsters / NPCs /
+    # fixtures / PCs a host records without a subclass.
     subclass_slug: str | None = None
     # SRD §Species — species slug for PCs (e.g. "orc", "dragonborn"). Copied
     # from ``PartyMemberSpec.species_slug`` at start_combat so species-feature
     # activities resolve through the same USE_FEATURE repertoire gate as
     # class/subclass features, and species @scale tables (e.g. Dragonborn
-    # breath) resolve. ``None`` for monsters / NPCs / fixtures / graph PCs
-    # without a persistent species source.
+    # breath) resolve. ``None`` for monsters / NPCs / fixtures / PCs a host
+    # records without a species.
     species_slug: str | None = None
     # SRD §Hellish Rebuke — *"the creature that damaged you"*. Tracks the
     # most-recent source_id from a DamageApplied targeting this combatant.
@@ -270,18 +270,18 @@ class Combatant(BaseModel):
     # owes the Action budget (soft-consume: only the first swing pays).
     # Reset to False at the actor's own TurnStarted.
     attack_action_engaged: bool = False
-    # SRD §Two-Weapon Fighting (Task 2) — the main-hand weapon's slug when
+    # SRD §Two-Weapon Fighting — the main-hand weapon's slug when
     # the just-resolved main-hand attack used a Light melee weapon,
     # opening the "attack again with a different Light weapon" off-hand
     # window. ``None`` closes the window (no Light main-hand swing yet
     # this turn). Reset to ``None`` at the actor's own TurnStarted.
     light_weapon_swing_slug: str | None = None
-    # SRD §Two-Weapon Fighting (Task 2) — True once the Bonus Action
+    # SRD §Two-Weapon Fighting — True once the Bonus Action
     # off-hand attack has been made this turn, closing the TWF window for
     # any further off-hand swing. Reset to False at the actor's own
     # TurnStarted.
     offhand_attack_spent: bool = False
-    # SRD §Actions in Combat — Dodge (C14 Task 3). True for the remainder of
+    # SRD §Actions in Combat — Dodge. True for the remainder of
     # this turn and "until the start of your next turn": while active, any
     # attack roll made against this combatant has Disadvantage if the
     # attacker can see it (C16b: gated via ``orchestrator.py::
@@ -291,7 +291,7 @@ class Combatant(BaseModel):
     # see ``_dodge_benefit_active`` in orchestrator.py). Reset to False at
     # the actor's own TurnStarted — the exact SRD expiry point.
     dodging: bool = False
-    # SRD 5.2 §Actions in Combat — Hide (final-review fix F3). Although Hide
+    # SRD 5.2 §Actions in Combat — Hide. Although Hide
     # touches no Action-economy budget (``_handle_hide``'s docstring), the
     # SRD frames it as taking "the Hide action" — a single attempt, not a
     # retry loop against an unresolved DC 15 Dexterity (Stealth) check.
@@ -333,14 +333,14 @@ class Combatant(BaseModel):
     # else 3.
     legendary_resistances_max: int = 0
     legendary_resistances_remaining: int = 0
-    # C18 Task 9 consumes this: True once a fleeing/retreating monster has
+    # True once a fleeing/retreating monster has
     # left the fight (the flee-retreat path does not yet remove combatants
     # from initiative). Defaults False for every combatant.
     has_fled: bool = False
     # SRD §Spellcasting — the ability a monster's innate/prepared spells key
     # off (``Monster.spellcasting_ability``). ``None`` for PCs (who project
     # their own caster ability elsewhere) and monsters without spellcasting;
-    # hydrated by C18 Task 5.
+    # hydrated from the monster's template.
     spellcasting_ability: str | None = None
     # SRD 5.2 Magic Initiate: a spell slug → the ability that casts it, in place
     # of the class's (``PartyMemberSpec.spell_abilities``), and the spells cast
@@ -355,8 +355,8 @@ class Combatant(BaseModel):
     # PC reaction-attack path exists, so action/bonus/reaction collapse to
     # the turn boundary; the cap is per-actor (not per-weapon), matching
     # the SRD's "you" framing. Set True after any resolved main-hand OR
-    # off-hand swing with a ``WeaponProperty.LOADING`` weapon (C15 Task
-    # 5). Reset to False at the actor's own TurnStarted, alongside the
+    # off-hand swing with a ``WeaponProperty.LOADING`` weapon. Reset to
+    # False at the actor's own TurnStarted, alongside the
     # other per-turn attack-economy fields above.
     loading_weapon_fired_this_turn: bool = False
     # SRD 5.2 §Weapon Mastery — Cleave: "You can make this extra attack only
@@ -364,7 +364,7 @@ class Combatant(BaseModel):
     # FIRED this turn (the extra attack roll was made, hit or miss); gates
     # ``ActivityResolutionContext.cleave_available`` for every later swing
     # this turn. Reset to False at the actor's own TurnStarted, alongside
-    # the other per-turn attack-economy fields above (C15 Task 7).
+    # the other per-turn attack-economy fields above.
     cleave_spent_this_turn: bool = False
     # SRD 5.2 Flurry of Blows: "You can expend 1 Focus Point to make two
     # Unarmed Strikes as a Bonus Action" (three with Heightened Focus). The
@@ -384,7 +384,7 @@ class Combatant(BaseModel):
     def migrate_string_conditions(cls, values: Any) -> Any:
         """Backward compat: coerce list[str] conditions to list[ActiveCondition].
 
-        Handles stale host storage sessions with schema_version < 11 (T-01-03 mitigation).
+        Accepts a host's older stored combatants, whose conditions are plain strings.
         """
         conditions = values.get("conditions") if isinstance(values, dict) else None
         if isinstance(conditions, list) and conditions and isinstance(conditions[0], str):

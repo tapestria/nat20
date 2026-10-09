@@ -1,7 +1,4 @@
-"""C03 — Active-effect change modes.
-
-Transcribed from specs/e2e-scenario-catalog.md, Cluster 3.
-"""
+"""C03 — Active-effect change modes."""
 
 from __future__ import annotations
 

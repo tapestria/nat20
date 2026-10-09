@@ -26,8 +26,8 @@ if TYPE_CHECKING:
 class ActivityResolutionContext:
     """Caster/target state + seeded RNG + event sink for one activity resolution.
 
-    Built directly by golden-corpus tests in Piece 1; built by the orchestrator
-    from live combat state in Piece 3. Caster-derived magnitudes (ability mods,
+    Built directly by golden-corpus tests, and by the orchestrator from live
+    combat state. Caster-derived magnitudes (ability mods,
     proficiency, spellcasting ability) live here because the typed Activity only
     declares WHICH ability/DC-calc to use, not the caster's numbers.
     """
@@ -46,7 +46,7 @@ class ActivityResolutionContext:
     is_proficient_attack: bool = True
     # The casting spell's concentration flag (``Spell.concentration``). Threaded
     # into each rider ``ActiveEffect.flags`` as ``{"concentration": True}`` so the
-    # orchestrator (Piece 3) can key concentration-drop + repeat-save lineage off
+    # orchestrator can key concentration-drop + repeat-save lineage off
     # it. Supplied by golden fixtures now; threaded by the orchestrator (from the
     # spell's typed ``concentration``) at cutover. Inert for non-spell activities.
     concentration: bool = False
@@ -83,7 +83,7 @@ class ActivityResolutionContext:
     passive_damage_modifiers: dict[str, dict[str, list[str]]] = field(default_factory=dict)
     # Per-target saving-throw modifier sidecar, keyed entity_id -> {ability ->
     # resolved save bonus}. Mirrors how ``effects/save.py`` sources the target
-    # save modifier (``the host effect store._save_modifiers[target_id]["saves"][ability]``)
+    # save modifier (``_save_modifiers[target_id]["saves"][ability]``)
     # — the resolved per-ability integer, NOT rebuilt from ability score +
     # proficiency. ``Combatant`` carries no per-ability save table, so the save
     # handler reads this sidecar; an absent target / ability contributes +0
@@ -92,8 +92,8 @@ class ActivityResolutionContext:
     passive_save_modifiers: dict[str, dict[str, int]] = field(default_factory=dict)
     # Per-target additive save bonus, keyed entity_id -> a signed dice-expression
     # STRING (e.g. ``"+1d4"`` for Bless, ``"-1d4"`` for Bane; stacked sources
-    # pre-joined as ``"a + b"``). Mirrors the OLD the legacy evaluator path's
-    # ``the host effect store._save_modifiers[id]["passive_save_bonus"]`` (orchestrator
+    # pre-joined as ``"a + b"``). Mirrors the legacy evaluator path's
+    # ``_save_modifiers[id]["passive_save_bonus"]`` (orchestrator
     # hydration, ``_build_hydration_payload``); rolled through ``ctx.rng`` so the
     # bless/bane d4 lands in the same seed stream as the save d20. Absent target →
     # +0 (no bonus). Empty default keeps the golden corpus identical.
@@ -203,7 +203,7 @@ class ActivityResolutionContext:
     # within 5 ft, disadvantage otherwise). Absent target -> unknown -> that row
     # stays inert.
     target_distance_ft: dict[str, int] = field(default_factory=dict)
-    # SRD 5.2 §Range (C15 Task 2): "Your attack roll has Disadvantage when
+    # SRD 5.2 §Range: "Your attack roll has Disadvantage when
     # your target is beyond normal range, and you can't attack a target
     # beyond long range." Per-TARGET flag — True iff the attacker→target
     # distance is beyond the weapon's NORMAL band but still within its MAX
@@ -215,7 +215,7 @@ class ActivityResolutionContext:
     # ``attack.py``, which appends the ``"range:long"`` disadvantage source.
     # Empty default keeps the golden corpus identical (no range geometry).
     target_beyond_normal_range: dict[str, bool] = field(default_factory=dict)
-    # SRD 5.2 "Ranged Attacks in Close Combat" (C15 Task 3): "you have
+    # SRD 5.2 "Ranged Attacks in Close Combat": "you have
     # Disadvantage on the roll if you are within 5 feet of an enemy who can
     # see you and doesn't have the Incapacitated condition." Per-ATTACKER
     # (not per-target) flag — True iff a qualifying hostile is adjacent to
@@ -227,7 +227,7 @@ class ActivityResolutionContext:
     # Default ``False`` keeps the golden corpus identical (no adjacency
     # geometry).
     attacker_ranged_in_melee: bool = False
-    # SRD 5.2 §Actions in Combat — Dodge (C14 Task 3). Per-TARGET whether the
+    # SRD 5.2 §Actions in Combat — Dodge. Per-TARGET whether the
     # Dodge benefit is currently active (``dodging`` AND not Incapacitated
     # AND Speed > 0 — the SRD loss clause), projected once per resolution by
     # the orchestrator (``_dodge_benefit_active``). Consumed in
@@ -240,8 +240,8 @@ class ActivityResolutionContext:
     # separately via ``passive_save_adv`` in the hydration payload. Empty
     # default keeps the golden corpus identical (no dodge geometry).
     target_dodging: dict[str, bool] = field(default_factory=dict)
-    # C16b — SRD 5.2 Invisible "can somehow see you" carve-out (plan ruling
-    # R3): per-TARGET, does that target's own Blindsight/Truesight reach the
+    # C16b — SRD 5.2 Invisible "can somehow see you" carve-out:
+    # per-TARGET, does that target's own Blindsight/Truesight reach the
     # ATTACKER (and line of sight hold) — i.e. does the target pierce the
     # attacker's Invisible condition? Projected once per resolution by the
     # orchestrator (``_invisibility_pierced_maps`` / ``_pierces_invisibility``).
@@ -257,7 +257,7 @@ class ActivityResolutionContext:
     # attacker's Invisible-target disadvantage against that one target. Empty
     # default keeps the golden corpus identical.
     target_invisibility_pierced: dict[str, bool] = field(default_factory=dict)
-    # C16b — SRD 5.2 Frightened line-of-sight gate (plan ruling R5): is the
+    # C16b — SRD 5.2 Frightened line-of-sight gate: is the
     # ATTACKER's own fear source in sight (or unknown/dead/untracked, in
     # which case the penalty stays — SRD-conservative)? A single flag, not a
     # per-target map: Frightened's disadvantage is a property of the
@@ -268,7 +268,7 @@ class ActivityResolutionContext:
     # on the ATTACKER-side call only. Default ``True`` keeps the golden
     # corpus identical (no vision model wired ⇒ penalty always stays).
     attacker_fear_source_in_sight: bool = True
-    # SRD 5.2 §Actions in Combat — Help, Assist an Attack Roll (C14 Task 4).
+    # SRD 5.2 §Actions in Combat — Help, Assist an Attack Roll.
     # Per-TARGET: does an outstanding Help grant against this target belong
     # to an ALLY of the attacker resolving THIS activity? Projected once per
     # resolution by the orchestrator (``live.help_grants`` cross-referenced
@@ -298,7 +298,7 @@ class ActivityResolutionContext:
     # ``_fold_active_effect_changes`` + extracted in ``build_activity_context``);
     # consumed in ``attack.py`` alongside the cover-AC fold, before the
     # ``total >= target_ac`` comparison. Absent target -> +0. Empty default
-    # keeps the golden corpus identical .
+    # keeps the golden corpus identical.
     passive_ac_bonus: dict[str, int] = field(default_factory=dict)
     # Per-actor ability/skill-check modifier sidecar, mirroring
     # ``effects/check.py:_read_check_modifiers``'s shape
@@ -438,7 +438,7 @@ class ActivityResolutionContext:
     # sunlight``. ``False`` default keeps every combat without a sunlit
     # scene byte-identical.
     attacker_in_sunlight: bool = False
-    # C18 §Monster action economy, fix round 1 — SRD 5.2 stat-block trait
+    # C18 §Monster action economy — SRD 5.2 stat-block trait
     # "Undead Fortitude": the live-combat WRITE-BACK half of the trait.
     # ``activities/apply.py`` sets ``undead_fortitude_holds[target_id] =
     # True`` the instant a bearer's CON save succeeds against damage that
@@ -461,8 +461,8 @@ class ActivityResolutionContext:
     variables: dict[str, int] = field(default_factory=dict)
     # SRD 5.2 §Two-Weapon Fighting / Light property — "you don't add your
     # ability modifier to the extra attack's damage unless that modifier is
-    # negative." Set True by the orchestrator only for an off-hand swing
-    # (Task 2); ``_roll_base_weapon_damage`` (attack.py) zeroes a POSITIVE
+    # negative." Set True by the orchestrator only for an off-hand swing;
+    # ``_roll_base_weapon_damage`` (attack.py) zeroes a POSITIVE
     # governing-ability mod when this is set — a negative mod still applies.
     # False default keeps every other swing (main-hand, monster, spell)
     # byte-identical to before this field existed.
@@ -477,7 +477,7 @@ class ActivityResolutionContext:
     # instead of ``Weapon.damage_parts`` when this is set. False default keeps
     # every other swing byte-identical to before this field existed.
     use_versatile_damage: bool = False
-    # SRD 5.2 §Weapon Mastery — Vex (C15 Task 6): "If you hit a creature with
+    # SRD 5.2 §Weapon Mastery — Vex: "If you hit a creature with
     # this weapon and deal damage to the creature, you have Advantage on your
     # next attack roll against that creature before the end of your next
     # turn." Per-TARGET flag for the ATTACKER resolving THIS activity — is
@@ -492,7 +492,7 @@ class ActivityResolutionContext:
     # ``_pop_help_grant``) is an orchestrator-side write after resolution.
     # Empty default keeps the golden corpus identical (no mastery geometry).
     attacker_vex_advantage: dict[str, bool] = field(default_factory=dict)
-    # SRD 5.2 §Weapon Mastery — Sap (C15 Task 6): "If you hit a creature with
+    # SRD 5.2 §Weapon Mastery — Sap: "If you hit a creature with
     # this weapon, that creature has Disadvantage on its next attack roll
     # before the start of your next turn." Per-ATTACKER (the caster
     # resolving THIS activity, who may be the SAPPED creature) — True iff a
@@ -503,19 +503,19 @@ class ActivityResolutionContext:
     # write after resolution. Default ``False`` keeps the golden corpus
     # identical (no mastery geometry).
     attacker_sapped: bool = False
-    # SRD 5.2 §Weapon Mastery — Vex / Sap proc writeback channel (C15 Task 6,
-    # controller ruling R4). Mastery resolvers (``activities/mastery.py``)
+    # SRD 5.2 §Weapon Mastery — Vex / Sap proc writeback channel. Mastery
+    # resolvers (``activities/mastery.py``)
     # APPEND ``(mastery_slug, target_id)`` here when a hit qualifies for a
     # lingering rider (vex: hit AND damage DEALT > 0, post-immunity; sap:
     # hit alone) — they never touch live combat state directly (purity
     # boundary). The orchestrator reads this list AFTER resolution and folds
     # each entry into ``live.vex_grants`` / ``live.sap_marks`` (non-stacking
-    # — a re-proc REFRESHES the grant/mark's expiry rather than stacking,
-    # controller ruling R5). Mutated via ``list.append`` despite the frozen
+    # — a re-proc REFRESHES the grant/mark's expiry rather than stacking).
+    # Mutated via ``list.append`` despite the frozen
     # dataclass (list mutation, not field reassignment, is fine); empty
     # default keeps the golden corpus identical.
     mastery_procs: list[tuple[str, str]] = field(default_factory=list)
-    # SRD 5.2 §Weapon Mastery — Cleave (C15 Task 7): "If you hit a creature
+    # SRD 5.2 §Weapon Mastery — Cleave: "If you hit a creature
     # with a melee attack roll using this weapon, you can make a melee attack
     # roll with the weapon against a second creature within 5 feet of the
     # first that is also within your reach. ... You can make this extra
@@ -524,7 +524,7 @@ class ActivityResolutionContext:
     # ``cleave_available`` — the swung weapon carries ``cleave``, the swing is
     # a melee attack within reach, and the attacker has not already cleaved
     # this turn (``Combatant.cleave_spent_this_turn``); ``cleave_candidate``
-    # — the deterministic second creature (controller ruling R5: a LIVING
+    # — the deterministic second creature (a LIVING
     # hostile within 5 ft of the first target AND within the attacker's
     # reach, excluding the first target; nearest to the ATTACKER, ties broken
     # by ascending entity_id), or ``None`` when no creature qualifies.

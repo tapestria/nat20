@@ -22,7 +22,7 @@ to decide whether it fits.
   a `CharacterBuildSpec` into combat stats; there's no interactive sheet.
 - **Not a narration engine.** Nat20 decides *what happens* mechanically and
   deterministically; it does not write prose. Pair it with your own LLM or
-  templating layer for narrative (that's exactly how Tapestria uses it).
+  templating layer for narrative.
 - **Not a persistence layer.** Effects are combat-scoped; the engine holds no
   database. Cross-combat and long-term state are the host's job.
 
