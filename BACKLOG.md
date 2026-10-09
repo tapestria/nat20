@@ -9,9 +9,9 @@ application concerns (narrators, persistence, world state, UI) are out of scope.
 closes it. When you discover one, add it under the right section with a date and
 a `packages/…` file anchor. Keep entries engine/data-centric — no host-app paths.
 
-Anchors are current as of `dnd5e-engine` / `dnd5e-srd-data` **v0.6.0**
-(re-verified 2026-09-27 by the C23 scrub: every anchor names a file and a
-symbol, never a line number).
+Anchors are current as of `dnd5e-engine` / `dnd5e-srd-data` **v0.7.0**
+(re-verified 2026-10-08: every anchor names a file that exists, and any
+symbol it names is in that file; never a line number).
 
 The user-facing summary of the same information is
 [`docs/capabilities.md`](docs/capabilities.md) — the per-mechanic matrix of what

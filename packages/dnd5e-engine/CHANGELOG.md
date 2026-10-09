@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0]
+
+Lockstep release with `dnd5e-srd-data` 0.7.0 and `nat20-bridge` 0.7.0. The
+engine now depends on `dnd5e-srd-data>=0.7.0` (it reads `Feat.repeatable` and
+the canonical feat slug in `Background.starting_feat_slug`, and its areas rely
+on the corrected area data); `nat20-bridge` requires both at `>=0.7.0`.
+
+A breaking minor release: **C24 — grid movement and reactions** (opportunity
+attacks and monster flee on the grid, resolved through the activity context),
+**C25 — the zone graph and the duplicate concentration `SaveRolled` removed**
+(`GridScene` is the only spatial backend), **C26a and C26b — areas of effect**
+for every intent kind and for monsters, **C27 — monster senses and the
+condition clauses**, **C28 — feats** (the background's Origin feat, Alert,
+Savage Attacker, Grappler and Magic Initiate) and **C29 — bridge parity**,
+closed out by **C30** (the 0.7.0 floors). A host passes `grid_scene=`, reads
+`ConcentrationCheck` and handles the new `AreaTargeted` event;
+`docs/migration/v0.6-to-v0.7.md` has every step and every moved seeded pin.
+
 ### Added
 
 - **`PartyMemberSpec.opportunity_attack_weapon_id`** — the weapon a character

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0]
+
+Lockstep release with `dnd5e-engine` 0.7.0 and `nat20-bridge` 0.7.0.
+
+C26a corrects who an area affects and the monster area actions against their
+SRD 5.2 text; C28 adds `Feat.repeatable` and resolves each background's feat
+to its canonical slug, a value change for a consumer that matched the Foundry
+compendium id (`phbftAlert000000`). `dnd5e-engine` 0.7.0 requires this release
+(`dnd5e-srd-data>=0.7.0`).
+
 ### Added
 
 - **`Feat.repeatable`** (C28) — SRD 5.2: "A feat can be taken only once unless

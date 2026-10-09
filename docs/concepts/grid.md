@@ -63,11 +63,13 @@ A rejected move emits `MoveFailed` with one of:
 
 | Reason | Meaning |
 |---|---|
+| `speed_zero` | the mover's Speed is 0 (Grappled, Restrained, Paralyzed, Petrified, Unconscious, or Exhaustion) — checked first |
 | `not_adjacent` | no destination given, an untracked position, or the destination is the mover's own cell (the legacy reason name is kept for hosts) |
 | `occupied` | the destination holds another creature — ally or enemy |
 | `blocked_path` | the destination is adjacent, but the single step crosses a wall or cuts a blocked corner |
 | `unreachable` | no legal route at all (enemy-occupied cells are impassable; allies may be passed through) |
 | `insufficient_movement` | a legal route exists but costs more than the remaining budget — atomic, nothing moves |
+| `frightened` | the route would take a Frightened mover closer to the source of its fear (SRD 5.2: "You can't willingly move closer to the source of fear") |
 
 The route search minimises the number of *squares*, not their cost, so a mover
 may be routed through difficult terrain when an equally long detour would be

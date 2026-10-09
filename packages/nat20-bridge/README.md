@@ -11,7 +11,8 @@ cross-origin from a loopback address.
 ## Running
 
 ```bash
-uv run nat20-bridge
+uvx nat20-bridge      # from PyPI
+uv run nat20-bridge   # from a checkout of this repository
 ```
 
 Options:
