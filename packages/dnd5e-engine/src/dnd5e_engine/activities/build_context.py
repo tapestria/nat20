@@ -305,7 +305,7 @@ def build_activity_context(
         caster_abilities = dict(stat_block_magnitudes.ability_scores)
         caster_proficiency_bonus = stat_block_magnitudes.proficiency_bonus
     elif caster.entity_type == "Character":
-        # PCs carry real six-ability scores + character_level (piece 3), so the
+        # PCs carry real six-ability scores + character_level, so the
         # `@mod`/`@prof`/`@abilities.<ab>.mod` tokens resolve to honest values.
         caster_abilities = {
             "str": caster.strength,
@@ -399,7 +399,7 @@ def build_activity_context(
     # dict); resolve it to a concrete int here via the same seeded ``roll_expr``
     # every other sidecar bonus uses (a plain literal like Shield's "5" draws
     # no dice, so this never perturbs the seed stream for the one reaction
-    # this cluster needs it for).
+    # that needs it).
     passive_ac_bonus: dict[str, int] = {}
     for entity_id, entry in save_modifiers.items():
         saves = entry.get("saves")

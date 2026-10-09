@@ -749,7 +749,7 @@ def _is_ranged_weapon(weapon: Weapon | None) -> bool:
     """True iff ``weapon`` is a ranged weapon (Foundry rwak scope).
 
     The ranged analog of ``_is_melee_weapon`` — the scope of
-    ``system.bonuses.rwak.damage`` .
+    ``system.bonuses.rwak.damage``.
     """
     return weapon is not None and weapon.weapon_category in _RANGED_CATEGORIES
 
@@ -1174,7 +1174,7 @@ def _damage_source_id(
     legacy-fixture swing (no weapon, see
     ``orchestrator._synthesize_attack_from_legacy_fields``) attributes to its
     synthesized activity id instead. A non-weapon, non-synthesized attack
-    (e.g. a spell attack) yields ``None`` this cluster — cast attribution is a
+    (e.g. a spell attack) yields ``None`` — cast attribution is a
     C17+ seam.
     """
     if override is not None:

@@ -272,8 +272,7 @@ class PlayerIntent(BaseModel):
     ``intent_type`` (e.g. ``"attack"`` consumes ``weapon_id``;
     ``"cast_spell"`` consumes ``spell_id``; ``"use_item"`` consumes
     ``item_id``); ``feature_id`` rides alongside for class-feature
-    activations the cutover prompt extends the IntentType enum to
-    surface.
+    activations (``"use_feature"``).
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -344,8 +343,7 @@ class PlayerIntent(BaseModel):
     # SRD §Combat — Dash / Disengage budget choice. False → Action (default).
     # True → Bonus Action: for ``dash`` and ``disengage`` only with Cunning
     # Action among the granted features (SRD 5.2 Rogue 2), else
-    # ``IntentRejectedError("no_action_economy")``. Carried from
-    # ``ParsedIntent.use_bonus_action``.
+    # ``IntentRejectedError("no_action_economy")``.
     # On an Unarmed Strike ``attack`` by an attacker whose Martial Arts is
     # active it asks for SRD 5.2's "Bonus Unarmed Strike. You can make an
     # Unarmed Strike as a Bonus Action."; without Martial Arts it changes
@@ -3025,7 +3023,7 @@ def _resolve_monster_attack_activities(
     # mundane monster attack. SRD 5.2 §Weapon Proficiency — "A monster is
     # proficient with any weapon in its stat block": left on the default
     # (True) — a monster's ``Combatant.weapon_proficiencies`` is never
-    # explicitly set (the ``None`` sentinel), so it would resolve to True via
+    # explicitly set (the unset sentinel), so it would resolve to True via
     # ``_is_proficient_with_weapon`` anyway; the SRD rule makes the gate
     # a no-op for every monster.
     actx = build_activity_context(
@@ -3151,11 +3149,8 @@ def _take_legendary_action(live: _LiveCombat, monster: Combatant) -> None:
 class _LiveCombat:
     """Per-combat state held by the orchestrator.
 
-    Additive scope (per 01-boundary-api.md): in-memory only. The cutover
-    prompt swaps this for the existing host storage-backed combat state in
-    ``app/session/manager.py``. Keeping it in-memory here lets the
-    boundary surface be exercised standalone without coupling to
-    session/host storage fixtures.
+    In-memory only: keeping it here lets the boundary surface be exercised
+    standalone, without coupling to a host's storage.
     """
 
     handle_id: str
@@ -3260,9 +3255,8 @@ class _LiveCombat:
     # value is the list of ConditionType values that the named
     # effect-instance applied to that target. Walked on EffectExpired
     # (concentration_drop) to synthesize the matching ConditionRemoved
-    # cascade. The session-side ``ActiveCondition.source_effect_id`` is
-    # the long-term home; the orchestrator's in-memory equivalent lives
-    # here until the cutover lands.
+    # cascade. ``ActiveCondition.source_effect_id`` carries the same link on
+    # each condition; this map is the orchestrator's per-effect index of it.
     conditions_by_effect: dict[tuple[str, str, str], list[str]] = field(default_factory=dict)
     # SRD §Hold Person — end-of-turn repeat-save specs. Keyed by the
     # Foundry-shaped identity tuple ``(target_id, effect.id, effect.origin)``;
@@ -3805,8 +3799,8 @@ def _fold_condition_onto_combatant(
     source_effect_id: str | None = None,
 ) -> None:
     """Materialise a condition on **both** condition stores: the coarse
-    ``live.active_conditions`` name set (what ``views.py`` shows the host and
-    what the bridge rebuilds host storage from) and ``Combatant.conditions``,
+    ``live.active_conditions`` name set (what ``views.py`` shows a host) and
+    ``Combatant.conditions``,
     the typed list every projection reads (speed, incapacitated gate, save
     auto-fail, attack rows).
 
@@ -4541,7 +4535,7 @@ def _handle_hide(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
     (the SRD's "an enemy finds you" break clause) is a host concern out
     of this engine's scope.
 
-    FINAL-REVIEW FIX (F3): one Hide attempt per turn. Zero-cost + turn-
+    One Hide attempt per turn. Zero-cost + turn-
     keeping with no repeat gate would otherwise let a host loop ``hide``
     against the DC 15 check until it lands. A SECOND attempt this turn
     raises ``IntentRejectedError("no_action_economy")`` before the cover
@@ -4897,7 +4891,7 @@ async def _handle_move_mark(live: _LiveCombat, caster: Combatant, intent: Player
     # re-target is not a new cast, it's the SAME concentration effect
     # continuing on a new target, so it must preserve the original
     # ``concentration_rounds_remaining`` countdown rather than restart or
-    # clear it. A future cluster touching either path should keep this
+    # clear it. A future change touching either path should keep this
     # divergence intentional, not reintroduce the general-cast gap here.
     new_origin = f"cast:{_MOVE_MARK_EFFECT_NAME}:{caster.entity_id}"
     new_identity = (new_target_id, _MOVE_MARK_EFFECT_ID, new_origin)
@@ -5622,8 +5616,8 @@ def _record_death(live: _LiveCombat, event: Death, *, killer_id: str | None) -> 
 
 # ── Sidecar hydration (per-evaluation projection of session state) ──────────
 #
-# The per-effect handlers under ``app/combat/effects/*.py`` read sidecar
-# surfaces hung off ``ctx.the host effect store`` — passive damage modifiers, save /
+# The per-effect handlers read sidecar surfaces off the hydration
+# payload — passive damage modifiers, save /
 # check modifiers, existing temp-HP, counter pools, narrative text sink,
 # spell book, available slots, active concentration, IEffect graph. The
 # orchestrator projects from ``_LiveCombat`` (the in-memory combat state)
@@ -5631,9 +5625,9 @@ def _record_death(live: _LiveCombat, event: Death, *, killer_id: str | None) -> 
 # before invoking the evaluator. ``set_sidecar_state`` resets ``_text_sink``
 # each call, so the per-evaluation narrative bag is fresh.
 #
-# Follow-ups (NOT in scope here; see PR body):
+# Follow-ups (not in scope here):
 #   * passive damage / save / check modifiers projection requires reading
-#     active effect modifiers, which is async (the host effect store). Today we
+#     active effect modifiers, which is async (a host's effect store). Today we
 #     project empty dicts; handlers tolerate the absent state by returning
 #     defaults (0 modifier, no resistances, no advantage/disadvantage).
 #   * spell_book / available_slots / existing_concentration are not yet
@@ -5684,7 +5678,7 @@ _FOUNDRY_SPELL_DC_BONUS_KEY = "system.bonuses.spell.dc"
 # a numeric bucket" — so the value is a damage-type STRING, not a signed number.
 # Handled at the very top of the change loop, BEFORE the numeric mode guard and
 # the signed-string coercion, appending into the ``resistances`` sidecar list
-# ``apply.py`` already reads ; see docs/dev/passive-projection.md).
+# ``apply.py`` already reads (see docs/dev/passive-projection.md).
 _FOUNDRY_RESISTANCE_KEY = "system.traits.dr.value"
 
 # F1d — the three D20-test bonus buckets that land on the per-actor CHECK sidecar
@@ -6088,7 +6082,7 @@ def _project_caster_pools(
 
 
 def _build_hydration_payload(live: _LiveCombat, caster: Combatant | None = None) -> dict[str, Any]:
-    """Project ``the host effect store`` kwargs from live combat state.
+    """Project the hydration-payload kwargs from live combat state.
 
     Two projection scopes:
 
@@ -6976,10 +6970,6 @@ def _tick_durations_at_turn_end(live: _LiveCombat, actor_id: str) -> None:
     or a future seed pattern that doesn't carry a caster), fall back to
     the target-turn-end tick so they still expire eventually.
 
-    introduced the tick; refined it to the caster-keyed semantics. Pre-Phase-6 the host's
-    ``_sweep_effects`` already tracked sources separately for this
-    case; this restores the same shape.
-
     Pure on ``live.active_effects``: ``_emit`` consumes the
     ``EffectExpired`` we emit and removes the effect from the
     registry. We snapshot identities first so in-loop emissions don't
@@ -7235,8 +7225,7 @@ def _run_end_of_turn_saves(live: _LiveCombat, actor_id: str) -> None:
     advantage source — a single draw, as before.
     """
     # Collect every repeat-save spec keyed on the actor_id-prefixed
-    # identity tuples. Identity is (target_id, effect.id, effect.origin)
-    # post-Phase-6 rekey.
+    # identity tuples. Identity is (target_id, effect.id, effect.origin).
     pending_keys = [k for k in live.repeat_save_on_turn_end if k[0] == actor_id]
     if not pending_keys:
         return
@@ -7362,7 +7351,7 @@ def _run_end_of_turn_saves(live: _LiveCombat, actor_id: str) -> None:
 
 def _pc_condition_immunities(pc: PartyMemberSpec) -> list[str]:
     """Union the PC spec's ``condition_immunities`` with those projected from
-    its always-on granted-feature ``system.traits.ci.value`` changes .
+    its always-on granted-feature ``system.traits.ci.value`` changes.
 
     A PC built via ``build_party_member`` already carries its projected
     condition immunities on the spec; a host that constructs a raw
@@ -7954,10 +7943,8 @@ async def start_combat(
     _REGISTRY[handle_id] = live
     _register_default_turn_hooks(live)
 
-    # — seed _LiveCombat.active_effects from the caller. The hook
-    # is live today for equipped-magic-item enchantments (the host-side
-    # _project_party_equipped_enchantments) and reserved for the wider
-    # [effects-cross-combat] surface.
+    # Seed _LiveCombat.active_effects from the caller: the equipped-magic-item
+    # enchantments a host projects, or any other effect it carries in.
     #
     # Lifecycle bookkeeping: in addition to active_effects + combatant
     # conditions, seeded effects must also populate the concentration_chain
@@ -8108,8 +8095,8 @@ def _granted_feature_slugs(caster: Combatant) -> frozenset[str]:
     The USE_FEATURE repertoire gate: a PC may only invoke a feature its
     class, subclass, or species ``granted_features`` list grants at a level no
     higher than that source's own level — each class at its own level, the
-    subclass at its class's level, the species at character level. The parser
-    prompt routes both class AND species features through USE_FEATURE, so the
+    subclass at its class's level, the species at character level. A host
+    routes both class AND species features through USE_FEATURE, so the
     gate must accept either source. Monsters / casters with no classes and no
     ``species_slug`` grant nothing (empty set ⇒ every USE_FEATURE rejected,
     the correct default).
@@ -10701,7 +10688,7 @@ def _action_economy_gate_failure(
     False) still owes the Action itself, exactly like every other
     Action-costed intent.
 
-    FINAL-REVIEW FIX (F1): ``"pass"`` is exempt from every branch below —
+    ``"pass"`` is exempt from every branch below —
     it was never an Action ("I'm done" needs no budget) and it must ALWAYS
     be accepted and end the turn. Without this exemption, every turn-
     keeping intent (attack/move/cast_spell/drop_concentration/dash/...)
@@ -11370,7 +11357,7 @@ def _resolve_intent_activities(
 ) -> _ResolvedActivities:
     """Fetch the typed entity for the intent's kind from the lib loader and
     collect the activities the resolver will walk. This is the sole PC
-    resolution path; the old the legacy evaluator IR path was retired in .
+    resolution path; the legacy evaluator's IR path is retired.
     ``stat_block_slug`` is the stat block an ``attack`` naming
     ``stat_block_action_id`` swings from (``_current_stat_block_slug``)."""
     cast_spell: Spell | None = None
@@ -12086,7 +12073,7 @@ async def _dispatch_turn_nonending_intent(
       Action, the Bonus Action); movement provokes
       no Opportunity Attacks for the rest of the turn. Like Dash, keeps
       the actor on turn so a same-turn Disengage→Move sequence works
-      ; closes the discovered turn-ending fall-through where
+      (this closes the turn-ending fall-through where
       "disengage" fell through to the generic Action tail that
       unconditionally calls ``_end_turn_and_advance``).
     * ``drop_concentration`` — SRD §Concentration: end Concentration
@@ -12203,7 +12190,7 @@ def _pc_attack_context_kwargs(
         # SRD 5.2 Grappler: which targets this attacker grapples.
         "target_grappled_by_attacker": _grappled_by_map(live, current, geometry_targets),
         # SRD 5.2 §Weapon Proficiency (C15) — real gate: proficient iff
-        # ``current.weapon_proficiencies`` is the ``None`` sentinel (host never
+        # ``current.weapon_proficiencies`` is the unset sentinel (host never
         # opted in) or the weapon's category/slug is listed; ``True`` for a
         # ``None`` weapon.
         "is_proficient_attack": _is_proficient_with_weapon(current, weapon),
@@ -12511,7 +12498,7 @@ async def submit_player_intent(
     #
     # Fetch the typed entity for the intent's kind from the lib loader and
     # collect the activities the resolver will walk. This is the sole PC
-    # resolution path; the old the legacy evaluator IR path was retired in .
+    # resolution path; the legacy evaluator's IR path is retired.
     resolved = _resolve_intent_activities(
         intent,
         feature_invocation,
@@ -12531,8 +12518,8 @@ async def submit_player_intent(
 
     # SRD §Reactions — drain any pending target-owned reactions (Shield)
     # BEFORE the sidecar projection below, so a just-applied reaction effect
-    # (Shield's +5 AC) folds into this very resolution's hydration payload
-    # . Returns the target ids whose reaction fired against a
+    # (Shield's +5 AC) folds into this very resolution's hydration payload.
+    # Returns the target ids whose reaction fired against a
     # Magic Missile trigger — needed for the carve-out injection below.
     shielded_vs_magic_missile = _drain_pre_resolution_reactions(live, current, intent, targets)
 
@@ -13085,7 +13072,7 @@ async def advance_monster_turn(
     Resolution: each returned ``Activity`` runs through
     ``resolve_activity`` against a context
     built by ``build_activity_context`` — the same typed path as the PC
-    turn /6 of the Foundry cutover).
+    turn.
 
     On dead monsters, an unresolvable slug, or no usable action (flee
     threshold, no attack, no PC targets), the orchestrator records
@@ -13183,8 +13170,8 @@ async def advance_monster_turn(
     # ── Typed-Activity monster resolution (Foundry cutover, ─────────
     #
     # Fetch the typed ``Monster`` from the lib loader, pick its action, and fan
-    # out multiattack. This is the sole monster-turn path; the old the legacy evaluator IR
-    # path was retired in .
+    # out multiattack. This is the sole monster-turn path; the legacy evaluator's IR
+    # path is retired.
     monster_slug = live.monster_slug_by_entity.get(current.entity_id)
     monster_parts, cast_selection = _resolve_monster_activities(
         live, current, monster_slug, skip_to_record_pass, chosen_target
@@ -13404,12 +13391,10 @@ def _project_outcome(live: _LiveCombat) -> CombatOutcome:
     recent ``EffectApplied`` (the duration the effect was registered with).
     Deaths — the ordered ``DeathRecord`` list synthesized in ``_emit``.
     XP — SRD §Encounter XP, summed across dead encounter members and divided
-    equally among surviving PCs (legacy ``handle_combat_end_victory`` solo
-    semantics extend naturally — for solo-PC the survivor takes the full
-    total).
+    equally among surviving PCs (a solo PC takes the full total).
     Loot drops — dropped from this seam's projection (loot tables aren't
-    plumbed into ``EncounterMemberSpec`` yet); the cutover prompt wires
-    monster ``loot_table`` lookups before victory.
+    plumbed into ``EncounterMemberSpec`` yet); a host looks up a monster's
+    ``loot_table`` itself.
     Expended resources — accumulated from ``EffectApplied`` with
     ``is_concentration=True`` during the combat.
     """
@@ -13509,7 +13494,7 @@ def _reset_registry_for_tests() -> None:
 
     Pytest's per-function isolation runs each test against fresh module
     state by convention, but the registry is module-global by design
-    here (the cutover replaces it with host storage). This helper lets boundary
+    here. This helper lets boundary
     tests start from a clean slate.
     """
     _REGISTRY.clear()

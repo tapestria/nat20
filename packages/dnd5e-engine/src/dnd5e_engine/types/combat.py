@@ -109,7 +109,7 @@ class Combatant(BaseModel):
     # ``slug`` appears in the list. Monsters never carry this field
     # explicitly, so it stays ``None`` -> always proficient, matching the SRD
     # "a monster is proficient with any weapon in its stat block" rule.
-    weapon_proficiencies: list[str] | None = None  # categories + slugs; None = legacy sentinel
+    weapon_proficiencies: list[str] | None = None  # categories + slugs; None = unset sentinel
     death_saves: dict[str, Any] = Field(default_factory=dict)  # serialized DeathSaveState
     # SRD §Creatures — creature_type (e.g. "humanoid", "undead", "construct",
     # "elf"). Drives type-gated spell semantics (Hold Person targets only
@@ -134,7 +134,7 @@ class Combatant(BaseModel):
     # condition-derived source; it is hydrated from the monster template
     # (skeleton → ``["bludgeoning"]``) or a PC spec and folded into the
     # orchestrator's ``passive_damage_modifiers[...]["vulnerabilities"]`` sidecar
-    # by ``_project_target_modifiers`` . Empty by default.
+    # by ``_project_target_modifiers``. Empty by default.
     damage_vulnerabilities: list[str] = Field(default_factory=list)
     # SRD §Condition Immunity — condition slugs this creature can't suffer
     # (Nature's Ward → ``"poisoned"``). Projected from PC always-on feature
@@ -142,8 +142,8 @@ class Combatant(BaseModel):
     # ``PartyMemberSpec.condition_immunities`` and copied here at start_combat;
     # a foe takes its spec's list, else its template's. The condition-
     # application path (``activities/effects.py::apply_activity_effects``)
-    # suppresses a ``ConditionApplied`` whose condition is in this list
-    # . Empty by default. NOTE: distinct from the dead, host-supplied
+    # suppresses a ``ConditionApplied`` whose condition is in this list.
+    # Empty by default. NOTE: distinct from the dead, host-supplied
     # legacy dispatch surface's ``condition_immunities`` (removed in 0.5.0).
     condition_immunities: list[str] = Field(default_factory=list)
     # SRD §Senses — special senses in feet (darkvision/blindsight/tremorsense/
@@ -154,8 +154,8 @@ class Combatant(BaseModel):
     senses: CombatantSenses = Field(default_factory=CombatantSenses)
     # SRD §Concentration — the effect_id this combatant is concentrating on,
     # if any. ``None`` when not concentrating. Hydrated by the orchestrator
-    # into ``the host effect store`` for the SRD single-conc
-    # rule + damage-driven CON-save probe in ``app/combat/effects/spell.py``.
+    # into the hydration payload for the SRD single-concentration
+    # rule and the damage-driven CON-save probe.
     concentration_effect_id: str | None = None
     # SRD §Cantrips / §Character Advancement — character level (1..20). Drives
     # cantrip scaling tiers (1/5/11/17) for both dice-count (Sacred Flame,
@@ -216,15 +216,15 @@ class Combatant(BaseModel):
     shield_equipped: bool = False
     # SRD §Subclasses — subclass slug for PCs (e.g. "berserker"). Copied from
     # ``PartyMemberSpec.subclass_slug`` at start_combat so subclass-feature
-    # activities (piece 4) can gate on it. ``None`` for monsters / NPCs /
-    # fixtures / graph PCs without a persistent subclass source.
+    # activities can gate on it. ``None`` for monsters / NPCs /
+    # fixtures / PCs a host records without a subclass.
     subclass_slug: str | None = None
     # SRD §Species — species slug for PCs (e.g. "orc", "dragonborn"). Copied
     # from ``PartyMemberSpec.species_slug`` at start_combat so species-feature
     # activities resolve through the same USE_FEATURE repertoire gate as
     # class/subclass features, and species @scale tables (e.g. Dragonborn
-    # breath) resolve. ``None`` for monsters / NPCs / fixtures / graph PCs
-    # without a persistent species source.
+    # breath) resolve. ``None`` for monsters / NPCs / fixtures / PCs a host
+    # records without a species.
     species_slug: str | None = None
     # SRD §Hellish Rebuke — *"the creature that damaged you"*. Tracks the
     # most-recent source_id from a DamageApplied targeting this combatant.
@@ -291,7 +291,7 @@ class Combatant(BaseModel):
     # see ``_dodge_benefit_active`` in orchestrator.py). Reset to False at
     # the actor's own TurnStarted — the exact SRD expiry point.
     dodging: bool = False
-    # SRD 5.2 §Actions in Combat — Hide (final-review fix F3). Although Hide
+    # SRD 5.2 §Actions in Combat — Hide. Although Hide
     # touches no Action-economy budget (``_handle_hide``'s docstring), the
     # SRD frames it as taking "the Hide action" — a single attempt, not a
     # retry loop against an unresolved DC 15 Dexterity (Stealth) check.
@@ -384,7 +384,7 @@ class Combatant(BaseModel):
     def migrate_string_conditions(cls, values: Any) -> Any:
         """Backward compat: coerce list[str] conditions to list[ActiveCondition].
 
-        Handles stale host storage sessions with schema_version < 11 (T-01-03 mitigation).
+        Accepts a host's older stored combatants, whose conditions are plain strings.
         """
         conditions = values.get("conditions") if isinstance(values, dict) else None
         if isinstance(conditions, list) and conditions and isinstance(conditions[0], str):

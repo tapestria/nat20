@@ -345,7 +345,7 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
 - **The Cleave chain's damage routes through `_apply_on_hit_damage`, which
   folds Sneak Attack BEFORE the orchestrator writes the once-per-turn cap
   — the chained hit is structurally unguarded against a second Sneak
-  Attack fold on the same turn** (2026-09-02, C15 final-review F7). Not
+  Attack fold on the same turn** (2026-09-02, C15). Not
   reachable today: no shipped Cleave weapon (greataxe, halberd) carries
   Finesse or a ranged category, so `sneak_attack_triggers`'s qualifying-
   weapon gate always excludes them — but nothing in `_resolve_cleave_chain`

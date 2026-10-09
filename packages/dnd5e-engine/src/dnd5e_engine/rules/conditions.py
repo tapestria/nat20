@@ -491,7 +491,7 @@ def conditions_auto_crit_within_5ft(target_condition_names: list[str]) -> bool:
 #
 # The combat orchestrator hydrates the active-effect projection sidecars from the live
 # combatant's conditions immediately before invoking the per-effect
-# evaluator. The handlers under ``app/combat/effects/*.py`` read three
+# evaluator. The per-effect handlers read three
 # tables off the store:
 #
 #   * ``_passive_damage_modifiers[target_id]`` →

@@ -84,7 +84,7 @@ def test_helper_wrong_category_means_not_proficient():
     assert _is_proficient_with_weapon(combatant, LONGSWORD) is False
 
 
-# ── R1 sentinel threading: PartyMemberSpec -> Combatant ─────────────────
+# ── Unset-sentinel threading: PartyMemberSpec -> Combatant ──────────────
 
 
 def _party_of_one(**hero_kwargs: object) -> list[PartyMemberSpec]:
@@ -180,7 +180,7 @@ def _attack_total(party: list[PartyMemberSpec], session_id: str) -> int:
 
 
 def test_field_not_set_pins_the_legacy_always_proficient_total():
-    # The R1 sentinel (weapon_proficiencies unset -> None -> always
+    # The unset sentinel (weapon_proficiencies unset -> None -> always
     # proficient) makes an unset-field attacker's total identical to an
     # attacker explicitly proficient with the weapon's own category.
     base_total = _attack_total(_party_of_one(), "c15-t1-legacy-pin")
@@ -290,7 +290,7 @@ def test_monster_attack_unaffected_by_proficiency_gate():
 # always resolved a 0 to-hit modifier, silently swallowing BOTH the
 # governing-ability mod AND the proficiency bonus, so the proficiency gate
 # had nothing to gate: proficient and non-proficient totals were always
-# identical (5 == 5, not 5 == 3). Fixed the same way as the R1 sentinel:
+# identical (5 == 5, not 5 == 3). Fixed the same way as the unset sentinel:
 # ``Combatant.attack_bonus`` widened to ``int | None``, threaded ``None``
 # from ``PartyMemberSpec`` via the same ``model_fields_set`` check, and every
 # direct arithmetic reader (``_caster_mod`` / ``_save_dc`` / the two

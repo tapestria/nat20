@@ -27,7 +27,7 @@ MIRRORS, does not import from, ``effects/save.py``:
   sidecar (``ctx.passive_save_modifiers[entity_id][ability]``), NOT rebuilt from
   ability score + proficiency; an absent target / ability contributes +0.
 * auto-fail / advantage / disadvantage / save-bonus are sourced from the same
-  per-target sidecar shape the OLD the legacy evaluator path read off the host effect store; empty
+  per-target sidecar shape the legacy evaluator path read off its effect store; empty
   sidecars reproduce the prior single-d20 + per-ability-mod behavior exactly.
 """
 

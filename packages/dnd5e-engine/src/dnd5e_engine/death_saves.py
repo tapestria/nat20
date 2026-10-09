@@ -13,9 +13,8 @@ injected ``random.Random`` instance and returns the events to emit and the
 updated combatant state. Orchestrator wiring (queue push, broadcast, turn skip)
 is the caller's responsibility.
 
-Reference: legacy ``session/combat.py:handle_player_death_save``. The state
-machine on ``rules/combat_helpers.DeathSaveState`` is the canonical state shape;
-this module is the event-producing wrapper above it.
+``DeathSaveState`` below is the canonical state shape; the module's helpers
+are the event-producing wrapper around it.
 """
 
 from __future__ import annotations

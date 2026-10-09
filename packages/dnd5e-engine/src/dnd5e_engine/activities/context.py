@@ -26,8 +26,8 @@ if TYPE_CHECKING:
 class ActivityResolutionContext:
     """Caster/target state + seeded RNG + event sink for one activity resolution.
 
-    Built directly by golden-corpus tests in Piece 1; built by the orchestrator
-    from live combat state in Piece 3. Caster-derived magnitudes (ability mods,
+    Built directly by golden-corpus tests, and by the orchestrator from live
+    combat state. Caster-derived magnitudes (ability mods,
     proficiency, spellcasting ability) live here because the typed Activity only
     declares WHICH ability/DC-calc to use, not the caster's numbers.
     """
@@ -46,7 +46,7 @@ class ActivityResolutionContext:
     is_proficient_attack: bool = True
     # The casting spell's concentration flag (``Spell.concentration``). Threaded
     # into each rider ``ActiveEffect.flags`` as ``{"concentration": True}`` so the
-    # orchestrator (Piece 3) can key concentration-drop + repeat-save lineage off
+    # orchestrator can key concentration-drop + repeat-save lineage off
     # it. Supplied by golden fixtures now; threaded by the orchestrator (from the
     # spell's typed ``concentration``) at cutover. Inert for non-spell activities.
     concentration: bool = False
@@ -83,7 +83,7 @@ class ActivityResolutionContext:
     passive_damage_modifiers: dict[str, dict[str, list[str]]] = field(default_factory=dict)
     # Per-target saving-throw modifier sidecar, keyed entity_id -> {ability ->
     # resolved save bonus}. Mirrors how ``effects/save.py`` sources the target
-    # save modifier (``the host effect store._save_modifiers[target_id]["saves"][ability]``)
+    # save modifier (``_save_modifiers[target_id]["saves"][ability]``)
     # — the resolved per-ability integer, NOT rebuilt from ability score +
     # proficiency. ``Combatant`` carries no per-ability save table, so the save
     # handler reads this sidecar; an absent target / ability contributes +0
@@ -92,8 +92,8 @@ class ActivityResolutionContext:
     passive_save_modifiers: dict[str, dict[str, int]] = field(default_factory=dict)
     # Per-target additive save bonus, keyed entity_id -> a signed dice-expression
     # STRING (e.g. ``"+1d4"`` for Bless, ``"-1d4"`` for Bane; stacked sources
-    # pre-joined as ``"a + b"``). Mirrors the OLD the legacy evaluator path's
-    # ``the host effect store._save_modifiers[id]["passive_save_bonus"]`` (orchestrator
+    # pre-joined as ``"a + b"``). Mirrors the legacy evaluator path's
+    # ``_save_modifiers[id]["passive_save_bonus"]`` (orchestrator
     # hydration, ``_build_hydration_payload``); rolled through ``ctx.rng`` so the
     # bless/bane d4 lands in the same seed stream as the save d20. Absent target →
     # +0 (no bonus). Empty default keeps the golden corpus identical.
@@ -298,7 +298,7 @@ class ActivityResolutionContext:
     # ``_fold_active_effect_changes`` + extracted in ``build_activity_context``);
     # consumed in ``attack.py`` alongside the cover-AC fold, before the
     # ``total >= target_ac`` comparison. Absent target -> +0. Empty default
-    # keeps the golden corpus identical .
+    # keeps the golden corpus identical.
     passive_ac_bonus: dict[str, int] = field(default_factory=dict)
     # Per-actor ability/skill-check modifier sidecar, mirroring
     # ``effects/check.py:_read_check_modifiers``'s shape

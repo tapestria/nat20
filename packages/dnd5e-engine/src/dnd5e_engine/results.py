@@ -1,12 +1,12 @@
 """Named result envelopes for state-mutating library entry points.
 
-Per the dnd5e-engine extraction spec — start_combat and end_combat
-return envelopes rather than tuples so fields are named, IDE
-introspection works, and adding new return data later is non-breaking.
+start_combat and end_combat return envelopes rather than tuples so
+fields are named, IDE introspection works, and adding new return data
+later is non-breaking.
 
-CombatHandle is defined in dnd5e_engine.orchestrator (moved in ;
-this module imports it via TYPE_CHECKING + model_rebuild() to avoid a
-hard import cycle.
+CombatHandle is defined in dnd5e_engine.orchestrator; this module
+imports it via TYPE_CHECKING + model_rebuild() to avoid a hard import
+cycle.
 """
 
 from __future__ import annotations
@@ -37,8 +37,8 @@ class EndCombatResult(BaseModel):
 
     ``final_active_effects`` is the engine's authoritative snapshot of
     effects still live at end_combat — excludes effects whose source
-    died, durations ticked to zero, or concentration broken. Log-only
-    in ; persisted in [effects-cross-combat].
+    died, durations ticked to zero, or concentration broken. Persisting
+    effects across combats is a host concern.
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True)

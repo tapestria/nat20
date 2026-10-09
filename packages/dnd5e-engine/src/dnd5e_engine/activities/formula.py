@@ -6,7 +6,7 @@ their dice/DC formula fields — e.g. Cure Wounds' healing bonus is verbatim
 read these tokens, so each one is replaced with its caster-derived integer (as a
 string) before the dice helper parses the formula.
 
-MIRRORS, does not import from, the old the legacy path's
+MIRRORS, does not import from, the legacy path's
 ``intent_resolver._walk_and_patch`` / ``_parse_with_injection``: that path
 injected the same caster magnitudes (ability mods, proficiency, spell DC) into
 formula strings before rolling. The caster's numbers live on
@@ -34,7 +34,7 @@ feature activity whose own-pool cost scales by amount (Lay on Hands' Heal).
 Spell upcasting stays with ``dice.py``'s ``DamageScalingBlock`` path; a spell
 formula that names ``@scaling`` still reaches the unknown-token guard below.
 
-Any other ``@``-token reaching this resolver is out of scope for Piece 1: rather
+Any other ``@``-token reaching this resolver is out of scope: rather
 than leave it (``d20.parse`` would fail to parse and the failure site would be
 opaque), we log ``roll_data_token_unhandled`` at WARNING and raise ``ValueError``
 so the gap is loud and discoverable.

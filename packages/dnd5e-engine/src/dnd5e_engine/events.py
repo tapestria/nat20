@@ -359,8 +359,7 @@ class RechargeRolled(BaseModel):
 class EffectApplied(BaseModel):
     type: Literal["effect_applied"] = "effect_applied"
     effect: ActiveEffect
-    # statuses live on `effect.statuses`; no separate field — there is
-    # no bridge step in .
+    # statuses live on `effect.statuses`; no separate field.
 
 
 class EffectExpired(BaseModel):

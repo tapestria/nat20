@@ -375,7 +375,7 @@ def _friendly_combat_ended(e: Any, names: dict[str, str]) -> str:
     return f"Combat ends: {e.reason}"
 
 
-# Covers every event type the brief calls out. A concentration-on-damage
+# The event types the demo renders as friendly lines. A concentration-on-damage
 # check arrives as ``concentration_check`` alone; ``save_rolled`` covers every
 # other save.
 _FRIENDLY: dict[str, Callable[[Any, dict[str, str]], str]] = {

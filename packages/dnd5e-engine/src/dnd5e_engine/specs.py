@@ -20,9 +20,8 @@ class PartyMemberSpec(BaseModel):
 
     The seam takes the projected wire-level shape; building a real
     ``Combatant`` from this happens in ``start_combat``. Combat stats
-    (hp_max, ac, attack_bonus, …) are looked up from the session/world
-    layer by the cutover prompt — the seam keeps them on this spec so
-    the additive surface can be exercised standalone.
+    (hp_max, ac, attack_bonus, …) are the host's to look up — the seam
+    keeps them on this spec so the engine runs standalone.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -91,9 +90,8 @@ class PartyMemberSpec(BaseModel):
     # on, or ``None``. Carried across to the live ``Combatant`` so the
     # single-concentration rule sees it on the first turn after combat opens.
     concentration_effect_id: str | None = None
-    # SRD §Creatures — creature_type. PCs default to ``None``; the
-    # character-sheet projection (race → creature_type) lands in the
-    # session-side cutover. The condition-predicate evaluator reads this
+    # SRD §Creatures — creature_type. PCs default to ``None`` until a host
+    # projects it from the species. The condition-predicate evaluator reads this
     # via ``target.creature_type`` / ``caster.creature_type``.
     creature_type: str | None = None
     # SRD §Damage Resistance / §Damage Immunity — per-PC type lists. Empty by
@@ -102,7 +100,7 @@ class PartyMemberSpec(BaseModel):
     damage_immunities: list[str] = Field(default_factory=list)
     # SRD §Damage Vulnerability — per-PC type list ("applying twice the normal
     # damage"). Empty by default; threaded onto ``Combatant.damage_vulnerabilities``
-    # → the damage sidecar. Symmetric with the monster path .
+    # → the damage sidecar. Symmetric with the monster path.
     damage_vulnerabilities: list[str] = Field(default_factory=list)
     # SRD §Condition Immunity — condition slugs the PC can't suffer (Nature's
     # Ward → ``"poisoned"``). Populated by ``build_party_member`` from always-on
@@ -121,7 +119,7 @@ class PartyMemberSpec(BaseModel):
     # (Eldritch Blast → 1/2/3/4 beams). Carried onto the live ``Combatant`` and
     # surfaced as ``ActivityResolutionContext.caster_level`` for the typed
     # resolver's dice-scaling. (Multi-instance beam/dart count is a recorded
-    # data-layer follow-up — see Phase-7b deferred findings.)
+    # data-layer follow-up.)
     character_level: int = Field(ge=1, le=20, default=1)
     # SRD §Movement — walking speed in feet. Defaults to 30 (the SRD
     # baseline for medium humanoids). Projected onto ``Combatant.base_speed``
@@ -151,21 +149,21 @@ class PartyMemberSpec(BaseModel):
     # single class: ``class_slug`` at ``character_level``.
     classes: dict[str, int] = Field(default_factory=dict)
     # SRD §Subclasses — subclass slug (e.g. ``"berserker"``). Carried across to
-    # the live ``Combatant`` so subclass-feature activities (piece 4) can gate
-    # on it. ``None`` for non-classed entities, fixtures, and graph PCs without
-    # a persistent subclass source.
+    # the live ``Combatant`` so subclass-feature activities can gate
+    # on it. ``None`` for non-classed entities, fixtures, and PCs a host
+    # records without a subclass.
     subclass_slug: str | None = None
     # SRD §Species — species slug (e.g. ``"orc"``, ``"dragonborn"``). Carried
     # across to the live ``Combatant`` so species-feature activities resolve
     # through the USE_FEATURE repertoire gate and species @scale tables resolve.
-    # ``None`` for non-species entities, fixtures, and graph PCs without a
-    # persistent species source.
+    # ``None`` for non-species entities, fixtures, and PCs a host records
+    # without a species.
     species_slug: str | None = None
     # Build-seam equipment carrier — a reference-slug list of item slugs the PC
-    # carries. The build-spec (char-creation / factory) owns equipment selection;
+    # carries. The build-spec owns equipment selection;
     # ``build_party_member`` threads it through here so a built PC's equipment
-    # reaches the spec. Empty for graph PCs (their mechanical equipment crosses
-    # via the session-side enchantment projection, not this slug list).
+    # reaches the spec. Empty for a PC a host builds itself (its equipment's
+    # mechanics can reach the engine as enchantment effects instead).
     equipment: tuple[str, ...] = ()
     # SRD 5.2 feats the PC has (``DerivedSheet.feats``; ``build_party_member``
     # fills it). In combat the engine applies Alert (an engine-rolled
@@ -199,7 +197,7 @@ class PartyMemberSpec(BaseModel):
     # For ``save_proficiencies`` / ``skill_proficiencies`` / ``skill_expertise``,
     # an empty tuple reproduces pre-F1 behaviour exactly: ability modifier
     # only, no proficiency bonus. ``weapon_proficiencies`` is the ONE
-    # exception (an unset-field sentinel): ``Combatant.weapon_proficiencies`` is
+    # exception (the unset sentinel): ``Combatant.weapon_proficiencies`` is
     # ``list[str] | None``, keyed off ``model_fields_set`` rather than off
     # emptiness — an UNSET field on this spec (the field never assigned)
     # projects to ``None`` and assumes proficient with every weapon (the
@@ -265,8 +263,7 @@ class EncounterMemberSpec(BaseModel):
     monster_template_slug: str | None = None
     # SRD §Encounter XP value awarded when this monster dies. The orchestrator's
     # outcome projection sums xp_value across dead encounter members and divides
-    # equally among surviving PCs (legacy ``handle_combat_end_victory`` semantics
-    # for solo; SRD-correct for multi-PC).
+    # equally among surviving PCs (a solo PC takes the full total).
     xp_value: int = 0
     # SRD §Creatures — creature_type ("humanoid", "undead", "fey", ...).
     # Populated from the monster's stat block; ``None`` for

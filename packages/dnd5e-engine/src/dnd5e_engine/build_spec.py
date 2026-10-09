@@ -1,7 +1,6 @@
 """The build-spec contract: the typed input that resolves into a complete PC.
 
-A 7c test/seed factory produces these now; the char-creation build-core (CharacterDraft,
-spec-only today) becomes a second producer of the identical contract later. Resolution
+A host's character builder or a test fixture produces these. Resolution
 (build_party_member) is pure; selection (who fills the build-spec) is the producer's job.
 """
 

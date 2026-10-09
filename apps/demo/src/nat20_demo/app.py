@@ -159,7 +159,7 @@ async def _play_response(
 
 def _act_repro_message(scenario_id: str, seed: int, log: str) -> str:
     # scenario_id/seed/log are echoed verbatim by design (this is the
-    # reproduction block the brief asks for) -- callers must run this
+    # reproduction block a bug report needs) -- callers must run this
     # through ``_error_fragment``, which HTML-escapes the whole message,
     # so a malicious scenario_id/log can never inject markup here.
     return (

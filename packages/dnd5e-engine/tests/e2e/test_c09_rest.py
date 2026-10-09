@@ -1,7 +1,4 @@
-"""C09 — Rest & recovery.
-
-Each test imports ``dnd5e_engine.rest`` inside its body.
-"""
+"""C09 — Rest & recovery."""
 
 from __future__ import annotations
 
