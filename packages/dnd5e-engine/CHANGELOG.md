@@ -305,7 +305,7 @@ Behavioural deltas (and the fixtures they move) are enumerated in
   projects the caster-keyed ownership map for hosts.
 
 - **Attack rules (C15).** Weapon proficiency is a real gate: a host that never
-  sets `PartyMemberSpec.weapon_proficiencies` is assumed proficient (the R1
+  sets `PartyMemberSpec.weapon_proficiencies` is assumed proficient (the unset
   sentinel — legacy behaviour, byte-identical); an explicit (possibly empty)
   list enforces proficiency by the weapon's category or slug, omitting
   Proficiency Bonus (never subtracting it) when unproficient. Attack range now
@@ -764,10 +764,10 @@ Behavioural deltas (and the fixtures they move) are enumerated in
 - **`start_combat(grid_scene=...)` raises `ValueError`** when a combatant's
   `zone_id` is out of bounds or blocked, instead of silently seating them on an
   unusable cell.
-- **A main-hand attack keeps the turn (R1, C14)** when `attacks_remaining > 0`
+- **A main-hand attack keeps the turn (C14)** when `attacks_remaining > 0`
   after the swing, or when a two-weapon-fighting off-hand window is still
   open; the turn ends only once neither condition holds. A subsequent swing
-  in the same Attack action no longer re-pays the Action (R2): only the
+  in the same Attack action no longer re-pays the Action: only the
   first swing hard-gates on `action_available`, and an exhausted
   `attacks_remaining` on a later swing is a turn-KEEPING `AttackFailed`
   rather than the "no Action" rejection every other Action-costed intent
@@ -823,7 +823,7 @@ Behavioural deltas (and the fixtures they move) are enumerated in
   with Disadvantage until the attacker's next turn start (one-use); Slow
   applies a flat, non-stacking −10 ft Speed penalty cleared at the source's
   next turn start; Push forces a full 10 ft move via `push_combatant`
-  (controller ruling: always the full distance; the "Large or smaller" size
+  (always the full distance; the "Large or smaller" size
   gate is unmodelled); Cleave chains one extra attack+damage roll against the
   nearest eligible living hostile within 5 ft of the first target and within
   reach (deterministic tie-break by `entity_id`, once per turn, no re-proc);
@@ -896,7 +896,7 @@ Behavioural deltas (and the fixtures they move) are enumerated in
 ### Fixed
 
 - **A `PartyMemberSpec` that never set `attack_bonus` was pinned to a 0
-  to-hit bonus (2026-09-02, C15 Task 1).** `Combatant.attack_bonus` widens
+  to-hit bonus (2026-09-02, C15).** `Combatant.attack_bonus` widens
   from `int = 0` to `int | None = None`; `None` (the host never explicitly
   set `PartyMemberSpec.attack_bonus`) now correctly falls through to the
   real governing-ability-modifier + proficiency-bonus computation instead of

@@ -67,3 +67,64 @@ def test_referenced_repo_docs_exist() -> None:
         )
     missing = sorted(ref for ref in referenced if not (REPO_ROOT / ref).is_file())
     assert not missing, f"source references documentation that does not exist: {missing}"
+
+
+#: The public Markdown: every page the docs site renders and the repository's
+#: own guides. Listed explicitly so an untracked local file never joins the scan.
+_MARKDOWN_GLOBS = (
+    "docs/**/*.md",
+    "docs/llms.txt",
+    "README.md",
+    "CONTRIBUTING.md",
+    "BACKLOG.md",
+    "packages/*/README.md",
+    "packages/*/CHANGELOG.md",
+    "apps/*/README.md",
+)
+MARKDOWN_FILES = sorted({p for pattern in _MARKDOWN_GLOBS for p in REPO_ROOT.glob(pattern)})
+#: The engine's test modules, this guard excepted: its patterns name what they forbid.
+TEST_FILES = sorted(
+    p for p in Path(__file__).resolve().parent.rglob("*.py") if p.name != Path(__file__).name
+)
+
+#: Labels the public Markdown must not carry. A product name may appear only
+#: as a link's text, which is how the project credits its authors.
+MARKDOWN_FORBIDDEN: dict[str, str] = {
+    r"\bspecs/": "path does not exist in this repo",
+    r"CLAUDE\.md": "names a file that does not exist in this repo",
+    r"(?i)\bruling\b": "campaign-internal decision reference",
+    r"\bR\d+\b": "campaign-internal ruling id",
+    r"\b[Tt]asks? \d|\btask brief\b": "campaign-internal planning reference",
+    r"(?i)\bfix round\b": "campaign-internal review-iteration reference",
+    r"\bTapestria\b(?!\]\()": "names a private downstream application outside an attribution link",
+}
+#: Labels the engine's test prose must not carry.
+TEST_FORBIDDEN: dict[str, str] = {
+    r"\bspecs/": "path does not exist in this repo",
+    r"(?i)\bruling\b": "campaign-internal decision reference",
+    r"\bTapestria\b": "names a private downstream application",
+    r"docs/(?:superpowers|agent-prompts|design)/": "path does not exist in this repo",
+}
+
+
+def _hits(paths: list[Path], pattern: str) -> list[str]:
+    compiled = re.compile(pattern)
+    return [
+        f"{path.relative_to(REPO_ROOT)}:{lineno}: {line.strip()[:120]}"
+        for path in paths
+        for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1)
+        if compiled.search(line)
+    ]
+
+
+@pytest.mark.parametrize("pattern,reason", list(MARKDOWN_FORBIDDEN.items()))
+def test_no_internal_labels_in_public_markdown(pattern: str, reason: str) -> None:
+    assert len(MARKDOWN_FILES) > 20
+    hits = _hits(MARKDOWN_FILES, pattern)
+    assert not hits, f"{pattern} — {reason}:\n" + "\n".join(hits)
+
+
+@pytest.mark.parametrize("pattern,reason", list(TEST_FORBIDDEN.items()))
+def test_no_internal_labels_in_test_prose(pattern: str, reason: str) -> None:
+    hits = _hits(TEST_FILES, pattern)
+    assert not hits, f"{pattern} — {reason}:\n" + "\n".join(hits)

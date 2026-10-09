@@ -223,7 +223,7 @@ _PROBES: dict[str, tuple[Any, str]] = {
         lambda: 'if intent.intent_type == "hide"' in _src("orchestrator.py"),
         "✅",
     ),
-    # C16b (plan ruling R1): Hide's "out of any enemy's line of sight"
+    # C16b: Hide's "out of any enemy's line of sight"
     # conjunct scans hostiles via the composite predicate, skipped only when
     # the hider's own cell already carries Three-Quarters/Total cover.
     "out of every living, non-Incapacitated hostile's line of sight (C16b": (
@@ -330,7 +330,7 @@ _PROBES: dict[str, tuple[Any, str]] = {
         ),
         "⚠️ Partial",
     ),
-    # C16b (plan ruling R4): the composite predicate folding Blinded/
+    # C16b: the composite predicate folding Blinded/
     # Invisible/blindsight/truesight on top of the scene vision model.
     "composite `_combatant_can_see` predicate": (
         lambda: "def _combatant_can_see(" in _src("orchestrator.py"),
@@ -418,7 +418,7 @@ _PROBES: dict[str, tuple[Any, str]] = {
     # Disadvantage on the engine-rolled Initiative roll.
     "Incapacitated's initiative disadvantage": (
         lambda: "seeded_incapacitated" in _src("orchestrator.py"),
-        "closed via C14 Task 8",
+        "closed in C14",
     ),
     # C24: an opportunity attack resolves through the activity context,
     # flagged on its context.

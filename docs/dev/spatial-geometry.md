@@ -197,7 +197,7 @@ unobstructed from `a`"), but several SRD 5.2 rules ask a narrower "can see"
 question that also depends on the *viewer's* and *target's* conditions —
 Blinded blocks a viewer's sight outright, and Invisible defeats a target's
 visibility, unless a special sense pierces either. `orchestrator.py`'s
-`_combatant_can_see(live, viewer, target)` (C16b, plan ruling R4) composes
+`_combatant_can_see(live, viewer, target)` (C16b) composes
 the two:
 
 1. Untracked position on either side ⇒ **seen** — a scene with no positional
