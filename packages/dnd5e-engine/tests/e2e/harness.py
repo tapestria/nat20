@@ -1,9 +1,8 @@
-"""Shared harness for the e2e scenario catalog tests.
+"""Shared harness for the end-to-end scenario tests.
 
-Derived from the approved scenario catalog (local specs/e2e-scenario-catalog.md);
-expectations cite SRD 5.2 and the Foundry VTT dnd5e reference. House style:
-seeded start_combat + scripted intents + event-log assertions
-(cf. tests/test_rage_second_wind_e2e.py).
+Each scenario's expectations cite SRD 5.2 and the Foundry VTT dnd5e
+reference. House style: seeded start_combat + scripted intents + event-log
+assertions (cf. tests/test_rage_second_wind_e2e.py).
 """
 
 from __future__ import annotations

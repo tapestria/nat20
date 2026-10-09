@@ -1,7 +1,6 @@
 """C14 — Action economy & turn structure.
 
-Transcribed from specs/e2e-scenario-catalog.md, Cluster 14
-(specs/catalog-v2/c14.md). Grid-only per D8 — every setup uses
+Grid-only — every setup uses
 ``GridScene`` + ``"col,row"`` cell ids.
 """
 

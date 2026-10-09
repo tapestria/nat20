@@ -1,8 +1,6 @@
-"""Task 2 cutover — ``build_activity_context`` from live combat state.
+"""``build_activity_context`` from live combat state.
 
-Locks the magnitude-reproduction contract (field-mapping table in
-``docs/superpowers/plans/2026-06-03-bundled-asset-loader-cutover-plan.md``):
-the new typed resolver context must reproduce the OLD Avrae path's caster
+Locks the magnitude-reproduction contract: the new typed resolver context must reproduce the OLD Avrae path's caster
 magnitudes (``attack_bonus_override``, flat ``save_dc``, uniform ``@mod``
 across all six abilities) and reuse the existing per-entity passive sidecars.
 """

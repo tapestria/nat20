@@ -1,7 +1,4 @@
-"""C10 — Monster behavior.
-
-Transcribed from specs/e2e-scenario-catalog.md, Cluster 10.
-"""
+"""C10 — Monster behavior."""
 
 from __future__ import annotations
 

@@ -218,8 +218,8 @@ async def test_act_rejected_new_command_returns_original_log_unchanged(
     """The new-command-rejected case: every command already in the log
     (there are none here) still replays clean, only the just-submitted
     command fails. The returned log must be exactly the original -- this
-    is the ``accepted == len(original_log.commands)`` branch of the
-    controller ruling in ``_act_rejected_response``.
+    is the ``accepted == len(original_log.commands)`` branch of
+    ``_act_rejected_response``.
     """
     scenario = get_scenario("goblin-ambush")
     # It's Brynn's turn on an empty log -- Sera acting is a wrong-turn reject.
@@ -246,8 +246,8 @@ async def test_act_rejected_new_command_returns_original_log_unchanged(
 async def test_act_rejected_old_command_truncates_log(client) -> None:
     """The mid-log-corruption case: an OLD command already baked into the
     submitted ``log`` fails on replay (e.g. a tampered/hand-crafted
-    permalink), before the just-submitted command is ever reached. Per the
-    controller ruling, the returned log must be truncated to the true
+    permalink), before the just-submitted command is ever reached. The
+    returned log must be truncated to the true
     accepted prefix (here: empty) so the permalink is playable again,
     rather than returning the still-corrupt original log unchanged.
     """

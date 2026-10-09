@@ -63,7 +63,7 @@ class PartyMemberSpec(BaseModel):
     # slot remains rather than resolving the spell. Empty dict for non-casters.
     spell_slots: dict[int, int] = Field(default_factory=dict)
     # SRD Pact Magic — the Warlock's separately-recovering slot pool
-    # ``{slot_level: count_remaining}``; consumed by the orchestrator in C17 Task 3.
+    # ``{slot_level: count_remaining}``, spent by the orchestrator.
     pact_slots: dict[int, int] = Field(default_factory=dict)
     # SRD §Spells Known — list of spell slugs the caster has prepared/known.
     # The orchestrator resolves each slug to a typed ``Spell`` via
@@ -199,7 +199,7 @@ class PartyMemberSpec(BaseModel):
     # For ``save_proficiencies`` / ``skill_proficiencies`` / ``skill_expertise``,
     # an empty tuple reproduces pre-F1 behaviour exactly: ability modifier
     # only, no proficiency bonus. ``weapon_proficiencies`` is the ONE
-    # exception (C15 R1 sentinel): ``Combatant.weapon_proficiencies`` is
+    # exception (an unset-field sentinel): ``Combatant.weapon_proficiencies`` is
     # ``list[str] | None``, keyed off ``model_fields_set`` rather than off
     # emptiness — an UNSET field on this spec (the field never assigned)
     # projects to ``None`` and assumes proficient with every weapon (the
@@ -269,7 +269,7 @@ class EncounterMemberSpec(BaseModel):
     # for solo; SRD-correct for multi-PC).
     xp_value: int = 0
     # SRD §Creatures — creature_type ("humanoid", "undead", "fey", ...).
-    # Populated from MonsterTemplate.creature_type on Neo4j; ``None`` for
+    # Populated from the monster's stat block; ``None`` for
     # NPCs without a template. Drives type-gated spell semantics (Hold
     # Person targets humanoids; Sleep autopasses undead/elves; etc.).
     creature_type: str | None = None
@@ -300,8 +300,8 @@ class EncounterMemberSpec(BaseModel):
     # a creature whose B/P/S resistance also applies to magical damage.
     physical_resistances_nonmagical_only: bool = True
     # SRD §Movement — walking speed in feet. See PartyMemberSpec.base_speed.
-    # Defaults to 30; monster speed lookup at the session layer threads
-    # MonsterTemplate.speed["walk"] in here.
+    # Defaults to 30; a host threads the stat block's walking speed in
+    # here.
     base_speed: int = 30
 
 

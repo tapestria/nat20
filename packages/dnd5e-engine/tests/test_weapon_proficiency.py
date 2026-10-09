@@ -6,7 +6,7 @@ weapon, but you must have proficiency with it to add your Proficiency
 Bonus to an attack roll you make with it." Proficiency Bonus is OMITTED
 when unproficient, never subtracted.
 
-R1 (binding controller ruling) — ``PartyMemberSpec.weapon_proficiencies``
+``PartyMemberSpec.weapon_proficiencies``
 defaults to ``()``, which is ALSO the legitimate "proficient in nothing"
 declaration. The two are made distinguishable by widening
 ``Combatant.weapon_proficiencies`` to ``list[str] | None``: ``None`` (the

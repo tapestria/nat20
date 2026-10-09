@@ -54,7 +54,7 @@ class BridgeState:
     # pool) must not touch it.
     sessions: OrderedDict[str, CombatSession] = field(default_factory=OrderedDict)
     # The homebrew store + the overlay loader built from it, and a callable
-    # to rebuild the overlay after a homebrew mutation (Task 10). Populated
+    # to rebuild the overlay after a homebrew mutation. Populated
     # by ``create_app`` — never ``None`` once the app is constructed.
     homebrew_store: HomebrewStore | None = None
     loader: AssetLoader | None = None

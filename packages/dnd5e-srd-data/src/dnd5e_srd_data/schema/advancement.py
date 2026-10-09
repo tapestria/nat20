@@ -3,9 +3,9 @@
 Foundry's ``system.advancement`` is a tagged-union array. We preserve every
 entry's surface fields (``type``, ``level``, ``title``, ``hint``, ``_id``)
 structurally; ``configuration`` is kept as an opaque dict because its shape
-varies per ``type`` and downstream consumers (Phase 7b resolver, Tapestria
-seeder) read it directly. The Foundry ``effects[]`` tree on individual
-class/subclass/race documents is not modelled here (Phase 7b territory).
+varies per ``type`` and downstream consumers (the engine, a host's importer)
+read it directly. The Foundry ``effects[]`` tree on individual
+class/subclass/race documents is not modelled here.
 """
 
 from __future__ import annotations

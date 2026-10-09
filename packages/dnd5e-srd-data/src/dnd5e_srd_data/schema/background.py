@@ -18,7 +18,7 @@ soldier) as ``type: background`` documents. The mechanical payload lives in
 ``system.startingEquipment[]`` plus ``system.wealth`` (the gp alternative)
 carry the equipment options. The starting-equipment entries are preserved
 structurally as opaque dicts — their group/linked/focus/tool shape is read
-directly by downstream consumers (Phase 7b resolver, Tapestria seeder).
+directly by downstream consumers (the engine, a host's importer).
 """
 
 from __future__ import annotations

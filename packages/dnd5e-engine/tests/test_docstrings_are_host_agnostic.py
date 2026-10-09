@@ -32,6 +32,15 @@ FORBIDDEN: dict[str, str] = {
     r"\bC\d\d-S\d\d": "campaign-internal scenario id",
     r"\biter-\d": "campaign-internal review-iteration reference",
     r"docs/(?:superpowers|agent-prompts|design)/": "path does not exist in this repo",
+    r"\bspecs/": "path does not exist in this repo",
+    r"CLAUDE\.md": "names a file that does not exist in this repo",
+    r"(?i)\bruling\b": "campaign-internal decision reference",
+    r"\bR\d+\b": "campaign-internal ruling id",
+    r"\bspec §|\bD\d\b": "campaign-internal decision id",
+    r"\b[Tt]asks? \d|\btask-\d|\btask brief\b": "campaign-internal planning reference",
+    r"(?i)\bfix round\b": "campaign-internal review-iteration reference",
+    r"\bWS\b|\bws_projection\b": "names a private host's transport",
+    r"(?i)\bcodex\b": "campaign-internal review reference",
 }
 
 PY_FILES = sorted(SRC.rglob("*.py"))

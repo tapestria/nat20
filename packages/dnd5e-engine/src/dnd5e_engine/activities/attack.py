@@ -22,7 +22,7 @@ MIRRORS, does not import from, ``effects/attack.py`` + ``effects/damage.py``:
   so the emitted source names the side that produced it — ``"condition:attacker"``
   / ``"condition:target"``; both sides can produce either direction). Any advantage plus any
   disadvantage cancel to ``normal`` (SRD §Advantage and Disadvantage). A mode is
-  only ever active when a source exists, so a scenario with no advantage
+  only ever active when a source exists, so a combat with no advantage
   producer still consumes exactly ONE d20 draw per target and its seeded stream
   is unchanged. The same flags additionally GATE the SRD §Sneak Attack trigger
   below. Prone (distance-aware via ``ctx.target_distance_ft``) and Grappled (via
@@ -174,7 +174,7 @@ def resolve_attack(
     # computed once, outside the per-target loop, like the flag half above.
     heavy_disadvantage = _weapon_heavy_disadvantage(weapon, ctx.caster)
 
-    # SRD 5.2 §Weapon Mastery — Cleave (C15 Task 7): "You can make this
+    # SRD 5.2 §Weapon Mastery — Cleave: "You can make this
     # extra attack only once per turn." ``ctx.cleave_available`` already
     # carries the per-turn cap from the orchestrator; this local flag caps
     # the chain to once per RESOLUTION as well (a multi-target attack
@@ -252,7 +252,7 @@ def resolve_attack(
         )
 
         if is_hit:
-            # C15 Task 6 — Vex synergy: a vex-advantaged swing feeds the SAME
+            # Vex synergy: a vex-advantaged swing feeds the SAME
             # boolean ``sneak_attack_triggers`` reads as
             # ``attacker_has_advantage`` (the flag-based override), so a
             # vex-advantaged Rogue attack can Sneak Attack even without the
@@ -271,7 +271,7 @@ def resolve_attack(
             apply_activity_effects(
                 activity, ctx, target, save_succeeded=None, cast_level=cast_level
             )
-            # SRD 5.2 §Weapon Mastery — Cleave (C15 Task 7): "If you hit a
+            # SRD 5.2 §Weapon Mastery — Cleave: "If you hit a
             # creature with a melee attack roll using this weapon, you can
             # make a melee attack roll with the weapon against a second
             # creature ...". Gate + candidate are orchestrator-precomputed
@@ -314,7 +314,7 @@ def _resolve_cleave_chain(
     heavy_disadvantage: bool,
 ) -> None:
     """SRD 5.2 §Weapon Mastery — Cleave: roll the ONE chained melee attack
-    against ``candidate`` (the orchestrator's R5 pick) and, on a hit, apply
+    against ``candidate`` (the orchestrator's deterministic pick) and, on a hit, apply
     "the weapon's damage, but don't add your ability modifier to that damage
     unless that modifier is negative".
 
@@ -326,7 +326,7 @@ def _resolve_cleave_chain(
       a main swing with the candidate's FULL per-target geometry: the
       orchestrator builds every per-target sidecar (visibility, cover,
       distance, range tier, Dodge, Help, Vex, conditions) over the primary
-      targets PLUS the candidate (fix round 1), while ``ctx.targets`` stays
+      targets PLUS the candidate, while ``ctx.targets`` stays
       the primary list. A Help or Vex grant held against the candidate is
       therefore honored on — and consumed by — the chained roll ("the next
       attack roll against that creature"). The ``active_condition_names``
@@ -425,7 +425,7 @@ def _attack_roll_sources(
     ``resolve_attack`` (source ORDER is load-bearing: it is the order
     ``AttackRolled.sources`` reports). Returns the typed sources plus the
     target-keyed Vex flag (which ``resolve_attack`` ALSO feeds into the
-    Sneak Attack trigger). Split out (C15 Task 7) so the Cleave chain rolls
+    Sneak Attack trigger). Split out so the Cleave chain rolls
     its second attack through the exact same source geometry — for the
     chain's candidate the per-target maps (cover / help / vex / dodge /
     range) simply hold no entry, and its conditions are read off the
@@ -500,7 +500,7 @@ def _attack_roll_sources(
     # the orchestrator (``_target_beyond_normal_range_map``).
     if ctx.target_beyond_normal_range.get(target.entity_id):
         dis_sources.append("range:long")
-    # SRD 5.2 "Ranged Attacks in Close Combat" (C15 Task 3): "you have
+    # SRD 5.2 "Ranged Attacks in Close Combat": "you have
     # Disadvantage on the roll if you are within 5 feet of an enemy who
     # can see you and doesn't have the Incapacitated condition." The
     # spatial/incapacitated/vision predicate is pre-resolved orchestrator
@@ -510,8 +510,8 @@ def _attack_roll_sources(
     # swing, even with a hostile adjacent, is never penalized).
     if ctx.attacker_ranged_in_melee and _attack_is_effectively_ranged(weapon, distance_ft):
         dis_sources.append("ranged_in_melee")
-    # SRD 5.2 Heavy — no dedicated ``AdvantageSource`` exists (controller
-    # ruling, C15 task-3 brief): reuses ``"trait"``. Ability-invariant
+    # SRD 5.2 Heavy — no dedicated ``AdvantageSource`` exists, so it
+    # reuses ``"trait"``. Ability-invariant
     # per attack, computed once above.
     if heavy_disadvantage:
         dis_sources.append("trait")
@@ -523,17 +523,17 @@ def _attack_roll_sources(
     # ``target_help_advantage`` docstring.
     if ctx.target_help_advantage.get(target.entity_id):
         adv_sources.append("help")
-    # SRD 5.2 §Weapon Mastery — Vex (C15 Task 6): "you have Advantage on
+    # SRD 5.2 §Weapon Mastery — Vex: "you have Advantage on
     # your next attack roll against that creature". No dedicated
-    # ``AdvantageSource`` exists for mastery riders (controller ruling,
-    # same "trait" reuse as Heavy below) — the Literal is closed.
+    # ``AdvantageSource`` exists for mastery riders (the same "trait"
+    # reuse as Heavy's) — the Literal is closed.
     # ``target_attacker_has_advantage`` (below) folds this into the SAME
     # boolean ``sneak_attack_triggers`` reads, so a vex-advantaged Rogue
     # swing can Sneak Attack.
     target_vex_advantage = bool(ctx.attacker_vex_advantage.get(target.entity_id))
     if target_vex_advantage:
         adv_sources.append("trait")
-    # SRD 5.2 §Weapon Mastery — Sap (C15 Task 6): "that creature has
+    # SRD 5.2 §Weapon Mastery — Sap: "that creature has
     # Disadvantage on its next attack roll". Per-ATTACKER (the acting
     # caster may itself be sapped); reuses the SAME "trait" token.
     if ctx.attacker_sapped:
@@ -788,7 +788,7 @@ def _weapon_heavy_disadvantage(weapon: Weapon | None, caster: Combatant) -> bool
     ranged``, this does not vary per target): a melee weapon with Thrown
     stays STR-gated even when thrown at range (SRD §Thrown — same ability
     as a melee attack with that weapon). No dedicated ``AdvantageSource``
-    exists for Heavy (controller ruling, C15 task-3 brief): the caller
+    exists for Heavy, so the caller
     appends the existing ``"trait"`` source.
     """
     if weapon is None or WeaponProperty.HEAVY not in weapon.properties:
@@ -964,7 +964,7 @@ def _apply_on_hit_damage(
 ) -> int:
     """Roll base weapon damage + activity parts for one hit target and apply.
 
-    ``source_id_override`` (C15 Task 7) replaces the default attribution below
+    ``source_id_override`` replaces the default attribution below
     — the Cleave chain passes ``"mastery:cleave"`` so its ``DamageApplied``
     is distinguishable from the main weapon hit.
 
@@ -974,7 +974,7 @@ def _apply_on_hit_damage(
     ``effects/attack.py:_recurse_hit`` push/pop discipline).
 
     Returns the total (post-modifier) damage actually dealt to ``target``
-    (``apply_damage``'s return) — C15 Task 6 (Vex) needs this to gate its
+    (``apply_damage``'s return) — Vex needs this to gate its
     on-hit proc on damage actually landing, not merely a hit.
     """
     previous = ctx.variables.get(_IN_CRIT)

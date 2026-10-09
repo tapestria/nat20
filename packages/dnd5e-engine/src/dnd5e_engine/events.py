@@ -1,11 +1,9 @@
 """Combat evaluator event union.
 
-Exhaustively
-defined here so per-effect implementers + scenario authors do NOT extend
-the union at runtime; any new event type lands as a scaffold-extension
-PR that updates this module first.
+Exhaustively defined here: nothing extends the union at runtime, and a new
+event type lands as a change to this module.
 
-Typed-semantics rule (CLAUDE.md): every field over a closed set is a
+Typed-semantics rule: every field over a closed set is a
 ``Literal[...]`` or dedicated enum, never bare ``str``.
 """
 
@@ -125,7 +123,7 @@ CastFailedReason = Literal[
     # SRD 5.2 Charmed — "You can't attack the charmer or target the
     # charmer with damaging abilities or magical effects." (C12)
     "target_is_charmer",
-    # C17 R8 — a ritual cast takes 10 extra minutes; the turn economy cannot
+    # A ritual cast takes 10 extra minutes; the turn economy cannot
     # host it, hosts resolve rituals between combats via
     # ``spellcasting.resolve_ritual_cast``.
     "ritual_in_combat",
@@ -156,9 +154,8 @@ IntentType = Literal[
     "use_feature",
     "pass",
     "drop_concentration",
-    # C14 Task 6/7 — Unarmed Strike options (SRD 5.2 §Actions in Combat) and
-    # the SRD 5.2 "Ending a Grapple" escape action. All four land together so
-    # a later task adding shove/stand_up handlers needs no events.py edit.
+    # Unarmed Strike options (SRD 5.2 §Actions in Combat) and the SRD 5.2
+    # "Ending a Grapple" escape action.
     "grapple",
     "shove",
     "stand_up",
@@ -246,8 +243,7 @@ class AttackRolled(BaseModel):
     # mechanically identical to a regular Melee Attack roll, so it rides the
     # same event shape. ``True`` marks the attack as triggered by the
     # reactor's Reaction (interrupting the mover's MOVE intent) rather than
-    # the attacker's own Action. Consumed by the WS client + future monster-
-    # AoO path when the reaction queue lands.
+    # the attacker's own Action.
     is_opportunity_attack: bool = False
     # F2 — optional D20 Test provenance (``activities.d20.D20Result``).
     # Additive: unset by pre-F2 callers (e.g. the opportunity-attack path);
@@ -525,8 +521,8 @@ class MoveFailed(BaseModel):
     """Emitted when a MOVE intent is rejected post-validation.
 
     Mirrors ``CastFailed`` for movement: the actor keeps the turn, no
-    budget is consumed, and the failure surfaces a typed reason the WS
-    client can branch on.
+    budget is consumed, and the failure surfaces a typed reason a host
+    can branch on.
     """
 
     type: Literal["move_failed"] = "move_failed"
@@ -637,7 +633,7 @@ class CastFailed(BaseModel):
 class SpellCast(BaseModel):
     """SRD 5.2 §Components: "A spell's components are physical requirements
     the spellcaster must meet to cast the spell." Metadata only — never
-    enforced (host decision, spec §5 C17). Emitted at every cast site (on-turn,
+    enforced (a host's decision). Emitted at every cast site (on-turn,
     readied-reaction resolve, Counterspell drain) so a host can render
     component/material bookkeeping without re-deriving it from the spell doc.
     """

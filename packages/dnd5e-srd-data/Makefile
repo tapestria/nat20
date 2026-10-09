@@ -22,7 +22,7 @@ check-provenance:
 	uv run python tools/audit/check_foundry_pin.py
 	$(MAKE) check-regen-clean
 
-# Regen-clean gate (PR A task A7): translator output MUST be deterministic.
+# Regen-clean gate: translator output MUST be deterministic.
 # Re-runs regen + asserts canonical/ is clean, but skips when the inputs
 # that influence regen output haven't changed (cached by stamp under
 # .cache/regen.stamp). CI starts from a fresh checkout with no stamp and

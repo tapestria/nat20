@@ -57,9 +57,8 @@ FORCE_SAVE_D20: Final = "force_save_d20"
 class SaveRoll:
     """The resolved outcome of one saving throw, with its D20 Test provenance.
 
-    A named envelope rather than a bare tuple (CLAUDE.md: results are named
-    envelopes) because the callers now forward the roll breakdown onto
-    ``SaveRolled``.
+    A named envelope rather than a bare tuple, because the callers now
+    forward the roll breakdown onto ``SaveRolled``.
 
     * ``natural`` is the KEPT die (post advantage/disadvantage), or ``None``
       when the save auto-failed and no die was drawn.

@@ -1,7 +1,6 @@
 """C17 — Spell slots & rests.
 
-Transcribed from specs/e2e-scenario-catalog.md, Cluster 17
-(specs/catalog-v2/c17.md). Most scenarios are pure derivation/rest
+Most scenarios are pure derivation/rest
 questions (no combat handle needed, per the C09-S01/S02 convention);
 C17-S05/S06 drive a live combat to pin an upcast/reaction gap against the
 real bundled corpus.

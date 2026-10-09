@@ -641,7 +641,7 @@ def test_charmed_actor_cannot_target_the_charmer_with_a_harmful_spell() -> None:
 def test_charmed_actor_may_target_the_charmer_with_a_beneficial_spell() -> None:
     # SRD 5.2 Charmed only bars "damaging abilities or magical effects" - a
     # utility-only cantrip (no attack/damage/save activity) aimed at the
-    # charmer is exactly the carve-out the ruling preserves.
+    # charmer is exactly the carve-out the rule preserves.
     start = _start(
         "c12-charm-beneficial",
         [_hero(spells_known=["guidance"])],

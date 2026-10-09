@@ -1,9 +1,7 @@
 """Public API — get_actor_active_effects reads engine effect state mid-combat.
 
-Phase 6 codex review follow-up: the host (Tapestria's
-build_dispatch_context) needs to feed in-combat active effects into the
-DispatchContext for resolvers that run alongside the engine's own
-dispatch (FLEE skill check, CONSULT_CODEX Investigation check, etc.).
+A host's own resolvers that run alongside the engine (a flee check, an
+investigation check) need the in-combat active effects.
 The engine owns _LiveCombat.active_effects as the single source of
 truth; this helper is the read-only public access.
 """

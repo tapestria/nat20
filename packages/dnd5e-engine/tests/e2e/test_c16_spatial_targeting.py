@@ -1,7 +1,6 @@
 """C16 — Spatial targeting & geometry (grid-only) + C16b Vision & light.
 
-Transcribed from specs/e2e-scenario-catalog.md, Cluster 16
-(specs/catalog-v2/c16.md). Grid-only throughout — ``GridScene`` +
+Grid-only throughout — ``GridScene`` +
 ``GridTopology``, cell ids ``"col,row"`` (``dnd5e_engine.spatial.cell_id``).
 Setups mirror ``tests/e2e/test_c05_spatial.py``'s idioms (single-cell
 ``zone_id``s, same-seed A/B via a ``_run(grid_scene)`` closure).

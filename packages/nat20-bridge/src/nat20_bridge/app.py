@@ -173,7 +173,7 @@ def create_app(state: BridgeState) -> FastAPI:
     # Homebrew overlay is installed ONCE here, at app creation, over the
     # engine's module-global lib loader singleton (`configure_lib_loader`).
     # `combat` routes (routes_combat.py) resolve monsters/spells/weapons
-    # through this same overlay via `state.loader`; Task 10's homebrew
+    # through this same overlay via `state.loader`; the homebrew
     # mutation routes call `state.refresh_loader()` to rebuild the overlay's
     # in-memory layer after an add/remove without restarting the process.
     store = HomebrewStore(state.homebrew_path)

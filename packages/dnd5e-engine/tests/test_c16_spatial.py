@@ -1,6 +1,6 @@
 """C16 — pure GridTopology geometry units (obstruction model, legal steps,
 cube/cylinder templates, push path, can_see). Every rule quotes the SRD 5.2
-card in specs/rule-cards/c16-spatial-vision.md."""
+text."""
 
 from __future__ import annotations
 
@@ -38,8 +38,7 @@ def test_cover_between_occupied_endpoints_never_count():
 def test_cover_between_target_own_cover_cell_counts_but_origin_does_not():
     # SRD 5.2 §Cover, Half: "an object that covers at least half of the
     # target" — an obstacle IN the target's own space shields it; one in the
-    # attacker's space does not. Shared ruling with C22 Task 6 (C22-S03 tags
-    # the target's own cell). Re-pins
+    # attacker's space does not. Re-pins
     # tests/test_grid_topology.py::test_cover_between_ignores_cover_on_the_endpoints_themselves
     # to this rule (rename it ``..._ignores_cover_on_the_origin_cell``).
     g = _grid(cover_cells={"2,0": "half", "0,0": "three_quarters"})

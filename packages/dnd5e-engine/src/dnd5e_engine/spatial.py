@@ -292,7 +292,7 @@ class GridTopology:
 
         * ``cover_cells`` — host-authored degree per cell. The TARGET's own
           cell counts (an object in its space covers it); the ORIGIN cell
-          never does. Ruling shared with C22 Task 6 — keep at merge;
+          never does;
         * ``blocked_cells`` — "an object that covers the whole target" ⇒ ``total``;
         * ``occupied_cells`` — "another creature … that covers at least half
           of the target" ⇒ ``half``. The caller passes the cells of every
@@ -431,8 +431,7 @@ class GridTopology:
     ) -> list[str]:
         """SRD 5.2 §Areas of Effect — the in-bounds cell set for a template.
 
-        Chebyshev metric throughout (maintainer decision, catalog —
-        settled, not relitigated): ``radius_cells = size_ft // cell_size_ft``.
+        Chebyshev metric throughout: ``radius_cells = size_ft // cell_size_ft``.
 
         * ``"sphere"``: every cell with ``max(|dx|, |dy|) <= radius_cells``
           from ``origin`` (origin included — SRD: "a Sphere's point of origin

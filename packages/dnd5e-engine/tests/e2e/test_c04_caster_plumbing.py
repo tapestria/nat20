@@ -1,7 +1,4 @@
-"""C04 — Caster plumbing (spellcasting ability, scales, bonuses).
-
-Transcribed from specs/e2e-scenario-catalog.md, Cluster 4.
-"""
+"""C04 — Caster plumbing (spellcasting ability, scales, bonuses)."""
 
 from __future__ import annotations
 

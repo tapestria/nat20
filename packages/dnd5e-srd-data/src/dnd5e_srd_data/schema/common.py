@@ -1,6 +1,6 @@
 """Shared schema building blocks for canonical SRD entries.
 
-Activity sub-schema (Phase 7b PR A — task A3) mirrors Foundry's per-kind
+Activity sub-schema mirrors Foundry's per-kind
 data classes from ``raw_sources/foundry/module/data/activity/*-data.mjs``.
 ``Activity`` is a discriminated union of ten per-kind models keyed on the
 ``kind`` field (Foundry calls it ``type``); each per-kind model composes
@@ -10,14 +10,14 @@ contents (``ActivationField``, ``DurationField``, ``RangeField``,
 ``AppliedEffectField``).
 
 Naming convention: snake_case throughout the Python layer. The translator
-(``tools/translators/foundry.py``, task A4) maps Foundry's camelCase
+(``tools/translators/foundry.py``) maps Foundry's camelCase
 (``spellSlot`` / ``chatFlavor`` / ``includeBase``) into these names. The
 underlying structure (``save.ability``, ``damage.parts[].denomination``,
 ``check.dc.calculation``) follows Foundry verbatim so the translator stays a
 near-pass-through.
 
-Spatial fields stay in feet (per PR A design spec §E); grid conversion
-happens at Phase 8 resolution time, not at the data seam.
+Spatial fields stay in feet; grid conversion happens at resolution time, not
+at the data seam.
 """
 
 from __future__ import annotations
@@ -765,7 +765,7 @@ Activity = Annotated[
 
 
 # ---------------------------------------------------------------------------
-# Creature movement / senses / passive effects (unchanged from Phase 7a).
+# Creature movement / senses / passive effects.
 # ---------------------------------------------------------------------------
 
 
@@ -802,14 +802,14 @@ class PassiveEffect(BaseModel):
     modifiers that the resolver applies while an item is worn/attuned (e.g.
     Cloak of Protection's ``+1`` to AC and saves).
 
-    Activity-resolution (Phase 7b engine) consumes these; Phase 7a only
-    preserves them so canonical → consumer is lossless.
+    Activity resolution consumes these; the schema preserves them so
+    canonical → consumer is lossless.
 
     ``id`` (Foundry ``_id``) is the join key that ``AppliedEffectRef`` points at
     via ``activity.effects[].id``; the resolver follows that pointer to locate
     the effect rider to apply. ``statuses`` is Foundry's condition mechanism — a
     list of SRD condition ids (e.g. ``["paralyzed"]``) the effect imposes while
-    active; the Phase 7b resolver consumes them to apply conditions.
+    active; the resolver consumes them to apply conditions.
     """
 
     id: str = Field(alias="_id", default="")

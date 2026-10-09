@@ -252,7 +252,7 @@ def test_opportunity_attack_not_triggered_when_reactor_cannot_see_mover():
 
 
 def test_opportunity_attack_has_advantage_when_mover_cannot_see_reactor():
-    """Unseen Attackers and Targets on the AoO roll: plan ruling R4 — the
+    """Unseen Attackers and Targets on the AoO roll: the
     "unseen" row on the AoO advantage list uses raw scene vision only (same
     as ``_target_visibility_maps``), NOT the ``_combatant_can_see`` composite,
     so it must fire from the reactor standing in a dark cell that the mover
@@ -291,8 +291,8 @@ def test_opportunity_attack_not_triggered_when_monster_reactor_cannot_see_mover(
 
 
 def test_opportunity_attack_has_advantage_when_pc_mover_cannot_see_monster_reactor():
-    """Unseen Attackers and Targets on the monster-reactor AoO roll: plan
-    ruling R4 — mirrors the PC-reactor test above, so the "unseen" row must
+    """Unseen Attackers and Targets on the monster-reactor AoO roll:
+    mirrors the PC-reactor test above, so the "unseen" row must
     come from the reactor standing in a dark cell the mover (no darkvision)
     genuinely cannot see into, not merely from the mover being Blinded. The
     reactor stands in the dark 0,0 and the mover in the lit 1,0, so the
@@ -621,7 +621,7 @@ def test_opportunity_attack_populates_split_source_lists():
     """Mirror of ``test_opportunity_attack_has_advantage_when_mover_cannot_see_reactor``
     (Task 2 fixture): the reactor stands in a dark cell the mover (mon:foe,
     no darkvision) can't see into, so the reactor's AoO carries "unseen"
-    (plan ruling R4 — raw scene vision, not the Blinded condition); the
+    (raw scene vision, not the Blinded condition); the
     mover stands in the lit 1,0, so the AoO TRIGGER still passes. The mover
     is ALSO Blinded (unrelated to scene vision) so "condition:target"
     (Blinded target) is covered too — both as ADVANTAGE sources only, no

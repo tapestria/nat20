@@ -1,7 +1,6 @@
 """C12 — Conditions enforced.
 
-Transcribed from specs/e2e-scenario-catalog.md, Cluster 12
-(specs/catalog-v2/c12.md). All setups use ``GridScene`` + cell-id
+All setups use ``GridScene`` + cell-id
 positions (``dnd5e_engine.spatial.cell_id``), seeding conditions via
 ``ActiveEffect(statuses={...})`` at ``start_combat`` time.
 """

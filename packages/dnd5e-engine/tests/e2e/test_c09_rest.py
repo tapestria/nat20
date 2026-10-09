@@ -1,10 +1,6 @@
 """C09 — Rest & recovery.
 
-Transcribed from specs/e2e-scenario-catalog.md, Cluster 9.
-
-These entries presume a not-yet-existing ``dnd5e_engine.rest`` module — the
-import lives inside each test body so today's ``ImportError`` is caught by
-the strict xfail marker.
+Each test imports ``dnd5e_engine.rest`` inside its body.
 """
 
 from __future__ import annotations

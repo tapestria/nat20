@@ -1,7 +1,4 @@
-"""C05 — Spatial (walls, LoS, cover, AoE, terrain).
-
-Transcribed from specs/e2e-scenario-catalog.md, Cluster 5.
-"""
+"""C05 — Spatial (walls, LoS, cover, AoE, terrain)."""
 
 from __future__ import annotations
 

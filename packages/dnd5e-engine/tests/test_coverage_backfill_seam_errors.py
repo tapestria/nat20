@@ -1,8 +1,8 @@
 """Coverage backfill — public combat-seam error classes.
 
 ``CombatHandle``, ``UnknownHandleError`` (and its base ``CombatSeamError``), and
-the public read accessor ``get_live`` are in ``orchestrator.__all__``. Tapestria
-integration tests assert the seam raises typed errors so WS dispatch can branch
+the public read accessor ``get_live`` are in ``orchestrator.__all__``. A host
+asserts the seam raises typed errors so its own dispatch can branch
 on them, but no ported engine test exercised the unknown-handle path directly.
 These hermetic tests cover the registry-miss verdict for the public read
 accessor and both public turn-drivers. Zero I/O.

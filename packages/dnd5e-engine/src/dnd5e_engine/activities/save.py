@@ -5,13 +5,13 @@ throw vs a DC; ``damage.on_save`` ("half"/"none"/"full") scales the rolled damag
 on a SUCCESS. Canonical SRD 5.2 examples: Fireball (8d6 fire, Dex save, half on
 save) and Flame Strike (5d6 fire + 5d6 radiant, Dex save, half on save).
 
-CRITICAL on-save semantics (a plan-review finding): the on_save scaling is
+CRITICAL on-save semantics: the on_save scaling is
 applied PER PART, before the parts are summed into per-type buckets. A multi-
 typed save spell (Flame Strike: 5d6 fire + 5d6 radiant; Ice Storm: 2d10
 bludgeoning + 4d6 cold) halves EACH typed part independently — never the summed
 total. Halving the summed total would mis-distribute the rounding across types.
 
-CRITICAL roll-once semantics (a cross-model review finding): a multi-target save
+CRITICAL roll-once semantics: a multi-target save
 spell rolls its DAMAGE exactly ONCE; every affected target takes the SAME rolled
 result, then scales by ITS OWN save outcome (fail → full, success → on_save). The
 damage parts are therefore rolled BEFORE the per-target loop (``_roll_shared_damage``)

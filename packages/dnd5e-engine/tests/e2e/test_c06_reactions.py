@@ -1,8 +1,6 @@
 """C06 — Reactions & off-turn intents.
 
-Transcribed from specs/e2e-scenario-catalog.md, Cluster 6.
-
-Governing constraint (cluster preamble): reactions are pre-armed
+Governing constraint: reactions are pre-armed
 auto-fire. A combatant declares the reaction + trigger condition via a
 normal ON-TURN intent (``intent_type="ready"`` — already a member of the
 ``IntentType`` literal, currently accepted and handled as a safe

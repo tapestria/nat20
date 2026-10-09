@@ -1,7 +1,4 @@
-"""C08 — Passive-stat projection.
-
-Transcribed from specs/e2e-scenario-catalog.md, Cluster 8.
-"""
+"""C08 — Passive-stat projection."""
 
 from __future__ import annotations
 

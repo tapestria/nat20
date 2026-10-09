@@ -3,10 +3,10 @@
 # htmx 2.0.10 (vendored at static/htmx.min.js — https://unpkg.com/htmx.org@2.0.10)
 
 The app holds no server-side state: every ``/play`` request replays a
-:class:`~nat20_demo.replay.FightLog` from scratch (Task 3) against a
-scenario from the catalog (Task 4), then renders the result through the
-pure context builders in :mod:`nat20_demo.render` (Task 5). Task 7 adds
-the ``POST /play/{scenario_id}/act`` endpoint this page's buttons target.
+:class:`~nat20_demo.replay.FightLog` from scratch against a scenario from
+the catalog, then renders the result through the pure context builders in
+:mod:`nat20_demo.render`. The ``POST /play/{scenario_id}/act`` endpoint is
+what this page's buttons target.
 
 Only top-level ``dnd5e_engine`` names are imported here, per the demo's
 ``__all__``-is-the-contract rule.
@@ -185,16 +185,15 @@ async def _act_rejected_response(
     start of ``new_log``, which is also the start of ``original_log``).
     Never persist a log that includes a command that failed replay.
 
-    Controller ruling on the spec-vs-Ruling-2 tension: the *returned log*
-    depends on where the failure happened.
+    The *returned log* depends on where the failure happened.
 
     * If the failure was the just-submitted command (``accepted ==
       len(original_log.commands)`` — every command already in the log
       still replays clean), ``prefix_log`` is byte-identical to
-      ``original_log``: the board is untouched, matching Ruling 2's
-      "return the original log unchanged".
+      ``original_log``: the board is untouched, and the original log comes
+      back unchanged.
     * If the failure was an *old* command already baked into ``log`` (the
-      spec's mid-log-corruption case — a tampered or otherwise-invalid
+      mid-log-corruption case — a tampered or otherwise-invalid
       permalink), ``accepted < len(original_log.commands)`` and
       ``prefix_log`` truncates to the true accepted prefix, so the
       returned permalink is playable again instead of permanently replaying

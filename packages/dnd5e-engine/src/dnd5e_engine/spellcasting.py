@@ -17,10 +17,9 @@ SRD 5.2 ground truth (``content24/``):
   half-caster therefore has slots at level 1 (``ceil(1/2) == 1``) — the 2014
   table's empty level-1 row is NOT what this repo pins. Foundry's own
   ``computeProgression`` also treats ``artificer`` as a half-caster (divisor
-  2, round up) rather than the 0-contribution the plan prose originally
-  assumed; that Foundry-parity behaviour is kept here even though it is
-  corpus-inert — no SRD class in this repo's dataset carries the
-  ``artificer`` progression.
+  2, round up) rather than contributing nothing; that Foundry-parity
+  behaviour is kept here even though it is corpus-inert — no SRD class in
+  this repo's dataset carries the ``artificer`` progression.
 * Pact Magic — *"You regain all expended Pact Magic spell slots when you finish a
   Short or Long Rest. … when you're a level 5 Warlock, you have two level 3 spell
   slots."* Foundry ``pactCastingProgression`` (``config.mjs:3053``); Pact levels
@@ -154,7 +153,7 @@ def derive_pact_slots(level: int) -> dict[int, int]:
 def multiclass_caster_level(
     classes: Mapping[str, tuple[SpellcastingProgression, int]],
 ) -> int:
-    """SRD §Multiclassing Spell Slots — per-class rounded contributions, summed (R2)."""
+    """SRD §Multiclassing Spell Slots — per-class rounded contributions, summed."""
     return sum(effective_caster_level(prog, lvl) for prog, lvl in classes.values())
 
 
@@ -163,11 +162,11 @@ _ITEM_LEVEL_TOKEN: Final = "@item.level"
 
 def count_scales_with_cast_level(count_formula: str) -> bool:
     """True when a Foundry ``target.affects.count`` formula genuinely encodes the
-    R5 upcast mechanic — i.e. it references ``@item.level`` (the cast's slot
+    upcast mechanic — i.e. it references ``@item.level`` (the cast's slot
     level). A blank formula, or a FIXED marker like ``"1"`` (the schema default
     that a plain single-target damage/save/utility activity carries — Hex,
     Hunter's Mark, Revivify, Wall of Fire's per-creature save, ...), is NOT an
-    upcast mechanic: it must not engage the R5 count-expansion machinery (target
+    upcast mechanic: it must not engage the count-expansion machinery (target
     fan-out, damage dice-scaling suppression) at all. The single source of truth
     both ``orchestrator._find_count_activity`` and ``activities/damage.py``'s
     dice-scaling guard consult.
@@ -177,7 +176,7 @@ def count_scales_with_cast_level(count_formula: str) -> bool:
 
 def resolve_target_count(count_formula: str, *, cast_level: int) -> int | None:
     """Foundry ``target.affects.count`` roll-data → int, with ``@item.level`` = the
-    cast's slot level (R5) — SRD 5.2 Magic Missile: "You create three glowing darts
+    cast's slot level — SRD 5.2 Magic Missile: "You create three glowing darts
     of magical force. … The spell creates one more dart for each spell slot level
     above 1." (``target.affects.count == "2 + @item.level"``). Supports integer
     literals, ``+ - *`` and parentheses; any other ``@`` token or AST node raises
@@ -231,7 +230,7 @@ def spell_component_metadata(
     shared by ``SpellCast`` (orchestrator emission) and ``resolve_ritual_cast``
     below. SRD 5.2 §Components: "A spell's components are physical
     requirements the spellcaster must meet to cast the spell." Metadata
-    only — never enforced (host decision, spec §5 C17)."""
+    only — never enforced (a host's decision)."""
     comps = tuple(c for c in _COMPONENT_ORDER if c in {str(x) for x in spell.components})
     return (
         comps,
@@ -243,7 +242,7 @@ def spell_component_metadata(
 
 @dataclass(frozen=True)
 class RitualCast:
-    """Out-of-combat resolution of a Ritual-tagged spell (C17 R8). SRD 5.2
+    """Out-of-combat resolution of a Ritual-tagged spell. SRD 5.2
     §Rituals: "The Ritual version of a spell takes 10 minutes longer to cast
     than normal, but it doesn't expend a spell slot. To cast a spell as a
     Ritual, a spellcaster must have it prepared."
@@ -259,7 +258,7 @@ class RitualCast:
 
 
 def resolve_ritual_cast(spell: Spell, *, prepared: bool, ritual_adept: bool = False) -> RitualCast:
-    """Resolve a Ritual-tagged spell cast outside the turn economy (R8).
+    """Resolve a Ritual-tagged spell cast outside the turn economy.
 
     SRD 5.2 §Rituals: "To cast a spell as a Ritual, a spellcaster must have
     it prepared." §Ritual Adept (feat): "You needn't have the spell

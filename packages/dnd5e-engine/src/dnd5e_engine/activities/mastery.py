@@ -4,8 +4,8 @@
 distinct axis from ``WeaponProperty``. The 2024 SRD defines eight masteries; all
 eight are live. Four resolve INSIDE the attack here; the other four are
 lingering / movement / multi-target riders that this pure resolver only
-REPORTS through the ``ctx.mastery_procs`` writeback channel (controller
-ruling R4) for the orchestrator to fold into live combat state — or, for
+REPORTS through the ``ctx.mastery_procs`` writeback channel for the
+orchestrator to fold into live combat state — or, for
 cleave / nick, are resolved elsewhere entirely:
 
 * **graze** — on a MISS, deal damage equal to the attacker's governing-ability
@@ -19,35 +19,35 @@ cleave / nick, are resolved elsewhere entirely:
   emits ``SaveRolled(ability="con", ...)`` BEFORE any condition. On a FAILURE the
   target is knocked ``prone`` (``ConditionApplied``) UNLESS the target is immune
   to the ``prone`` condition (``effects.is_condition_immune`` — the save still
-  rolls and ``SaveRolled`` still fires; only the emit is gated, C15 Task 6).
-* **vex** (C15 Task 6) — on a HIT that DEALS DAMAGE (the post-immunity total,
+  rolls and ``SaveRolled`` still fires; only the emit is gated).
+* **vex** — on a HIT that DEALS DAMAGE (the post-immunity total,
   ``apply_damage``'s return), append ``("vex", target_id)`` to
   ``ctx.mastery_procs``. The orchestrator folds the proc into a lingering
   Advantage grant ("before the end of your next turn") after resolution.
-* **sap** (C15 Task 6) — on a HIT (damage irrelevant), append
+* **sap** — on a HIT (damage irrelevant), append
   ``("sap", target_id)``. The orchestrator folds it into a lingering
   Disadvantage mark on the TARGET ("before the start of your next turn").
-* **slow** (C15 Task 7) — SRD: "If you hit a creature with this weapon and
+* **slow** — SRD: "If you hit a creature with this weapon and
   deal damage to it, you can reduce its Speed by 10 feet until the start of
   your next turn. If the creature is hit more than once by weapons that have
   this property, the Speed reduction doesn't exceed 10 feet." On a HIT that
   DEALS DAMAGE, append ``("slow", target_id)``; the orchestrator folds it
   into ``live.slow_marks`` (a flat, non-stacking -10 ft on the target's
   effective Speed, cleared at the SOURCE attacker's next turn start).
-* **push** (C15 Task 7) — SRD: "If you hit a creature with this weapon, you
+* **push** — SRD: "If you hit a creature with this weapon, you
   can push the creature up to 10 feet straight away from yourself if it is
   Large or smaller." On a HIT (damage irrelevant), append
   ``("push", target_id)``; the orchestrator folds it into a
-  ``push_combatant(..., 10)`` forced move (controller ruling R5: always the
+  ``push_combatant(..., 10)`` forced move (always the
   full 10 ft). The "Large or smaller" size gate is NOT modelled — creature
   size is not a ``Combatant`` attribute yet (see ``BACKLOG.md``, the
   Grapple/Shove/Push size-gate entry), so every target is pushed.
-* **cleave** (C15 Task 7) — resolved in ``attack.py`` itself (the chained
+* **cleave** — resolved in ``attack.py`` itself (the chained
   second attack roll needs the attack machinery: to-hit, d20, damage), gated
   by the orchestrator-precomputed ``ctx.cleave_available`` /
   ``ctx.cleave_candidate``. Nothing to do here on the main hit; the chained
   roll never re-enters this module.
-* **nick** (C15 Task 7) — pure action-economy: the orchestrator's off-hand
+* **nick** — pure action-economy: the orchestrator's off-hand
   consume path (``_consume_offhand_attack_budget``) leaves the Bonus Action
   unspent when the off-hand weapon carries ``nick``. No in-attack rider.
 
@@ -55,8 +55,8 @@ Topple's Con save runs through the shared
 ``activities/save_primitive.py:roll_save`` (the same primitive the ``save``
 kind uses), so its ``force_save_d20`` determinism and modifier sourcing match;
 graze has no roll. The one import from ``effects/`` (``is_condition_immune``)
-is the shared condition-immunity gate (C15 Task 6) — otherwise this module
-still does not import evaluator/orchestrator/neo4j machinery.
+is the shared condition-immunity gate — otherwise this module
+still does not import evaluator or orchestrator machinery.
 """
 
 from __future__ import annotations
@@ -228,7 +228,7 @@ def _resolve_topple(
     condition (a topple that applies prone without first emitting SaveRolled is a
     bug). The save d20 honors ``force_save_d20`` for determinism.
 
-    C15 Task 6: SRD §Immunity — "Immunity to a condition means you aren't
+    SRD §Immunity — "Immunity to a condition means you aren't
     affected by it." The save STILL rolls (and ``SaveRolled`` still fires)
     against a prone-immune target; only the ``ConditionApplied`` emit is
     gated by the shared ``is_condition_immune`` helper.

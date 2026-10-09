@@ -701,7 +701,7 @@ def test_a_slow_hit_dealing_zero_damage_does_not_proc() -> None:
 def test_b_push_hit_shoves_the_target_10_ft_straight_away() -> None:
     """(b) A greatclub (push) hit moves the target 10 ft directly away from
     the attacker — ``CombatantMoved(forced=True, distance_ft=10)`` and the
-    live position update (controller ruling R5: always the full 10 ft)."""
+    live position update (always the full 10 ft)."""
     greatclub = _LOADER.get_weapon("greatclub")
     assert greatclub is not None
     assert greatclub.mastery == "push"
@@ -949,7 +949,7 @@ def _spend_bonus_action(live, entity_id: str) -> None:
 
 
 def test_d_nick_offhand_swing_resolves_even_with_the_bonus_action_already_spent() -> None:
-    """(d) Nick fidelity (controller ruling): "as part of the Attack action
+    """(d) Nick fidelity: "as part of the Attack action
     instead of as a Bonus Action" — a Nick off-hand swing needs NO Bonus
     Action. With the hero's Bonus Action already spent, dagger main-hand ->
     scimitar (Nick) off-hand RESOLVES; the same state with a non-Nick
@@ -1069,8 +1069,8 @@ def test_c_cleave_chain_honors_three_quarters_cover_on_the_candidate() -> None:
 def test_f3_heavy_plus_sap_disadvantage_trait_source_is_not_duplicated() -> None:
     """F3 — Heavy (``_weapon_heavy_disadvantage``) and Sap
     (``ctx.attacker_sapped``) both reuse the SAME ``"trait"``
-    ``AdvantageSource`` token (no dedicated token exists for either,
-    controller ruling). When both are simultaneously active on one attack
+    ``AdvantageSource`` token (no dedicated token exists for either).
+    When both are simultaneously active on one attack
     roll, ``"trait"`` must appear at most once in ``AttackRolled.sources``
     — the docstring on ``AdvantageSources``/``sources`` promises a
     set-like list, and a duplicate is a latent bug even though the roll

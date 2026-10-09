@@ -11,7 +11,7 @@ replaced by the Beast's stat block". The dataset carries their Foundry
 ``summon`` / ``enchant`` / ``transform`` activities, but no model the engine
 can resolve generically, so the engine keeps a typed registry keyed by source
 slug: a Python registry now, a dataset field later, as conditions and traits
-began (spec §6 D3). Every other summon, enchant and transform activity stays
+began. Every other summon, enchant and transform activity stays
 narrative.
 
 The resolver routes an allowlisted activity only when the orchestrator hands it
@@ -164,7 +164,7 @@ class ConstructSpec:
 # Action on your later turns, you can move the force up to 20 feet and repeat
 # the attack against a creature within 5 feet of it." The Foundry actor that
 # carries this attack upstream is a quarantined CC-BY conjuration, so the
-# registry holds the numbers (spec §6 D3).
+# registry holds the numbers.
 CONSTRUCTS: Final[Mapping[str, ConstructSpec]] = MappingProxyType(
     {
         "spiritual-weapon": ConstructSpec(

@@ -1,7 +1,4 @@
-"""C07 — Sneak Attack & feature repertoires.
-
-Transcribed from specs/e2e-scenario-catalog.md, Cluster 7.
-"""
+"""C07 — Sneak Attack & feature repertoires."""
 
 from __future__ import annotations
 

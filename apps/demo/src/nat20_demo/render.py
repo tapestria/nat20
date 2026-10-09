@@ -1,8 +1,8 @@
 """Pure renderers — engine views/events → plain-dict template contexts.
 
 Everything here is a pure function over public engine/demo types (no I/O,
-no mutation). Task 6's Jinja templates and Task 7's endpoint handlers are
-the only consumers; keeping this module free of FastAPI/Jinja imports
+no mutation). The Jinja templates and the endpoint handlers are the only
+consumers; keeping this module free of FastAPI/Jinja imports
 means it can be unit-tested without either.
 
 Only top-level ``dnd5e_engine`` names are imported here, per the demo's
@@ -100,12 +100,12 @@ def grid_context(scenario: Scenario, out: ReplayOutcome) -> dict[str, Any]:
     Chebyshev-distance-within-speed reachability estimate that ignores
     difficult terrain doubling and line of sight. The engine is the sole
     authority on whether a submitted move is legal; a rejected move
-    surfaces through the normal rejection path (see Task 7).
+    surfaces through the normal rejection path (``app.py``'s act endpoint).
 
     Wall segments (``scenario.grid.wall_segments``) block line of sight,
     not movement, and are corner-to-corner edges rather than cells — they
     are not folded into any cell's ``kind`` here (the closed kind enum has
-    no "wall" value). Task 6's template draws them directly from
+    no "wall" value). The play template draws them directly from
     ``scenario.grid.wall_segments``.
     """
     view = out.view

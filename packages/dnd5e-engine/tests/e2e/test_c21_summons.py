@@ -1,15 +1,11 @@
 """C21 — Summons, transform, enchant.
 
-Transcribed from specs/e2e-scenario-catalog.md, Cluster 21
-(specs/catalog-v2/c21.md). Grid-only setups over real corpus slugs; each
+Grid-only setups over real corpus slugs; each
 scenario is a same-seed A/B or a single seeded run that asserts the
-presence of the mechanic the SRD 5.2 text requires, and strict-xfails
-until the PR that lands it. Contract repairs S04, S05 and S06 were
-approved on 2026-09-25 (C21a plan R1): Magic Weapon names the weapon it
-touches, and Wild Shape and Polymorph name their Beast form
-(``PlayerIntent.form_id``). Contract repair S02 was approved on
-2026-09-25 (C21b plan R1): the summon's own turn is driven before the
-breaker's, and its id is read from ``CombatantJoined``.
+presence of the mechanic the SRD 5.2 text requires. Magic Weapon names
+the weapon it touches, Wild Shape and Polymorph name their Beast form
+(``PlayerIntent.form_id``), and the summon's own turn is driven before the
+breaker's, with its id read from ``CombatantJoined``.
 """
 
 from __future__ import annotations

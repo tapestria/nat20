@@ -1,9 +1,7 @@
 """C20 — Class feature mechanics.
 
-Transcribed from specs/e2e-scenario-catalog.md, Cluster 20
-(specs/catalog-v2/c20.md). Grid-only setups (``GridScene`` + ``cell_id``),
-same-seed A/B for every rider/bonus delta. Contract repairs S03, S04,
-S06, S07, S08, S09, S10 and S11 were approved on 2026-09-24 (C20 plan R1).
+Grid-only setups (``GridScene`` + ``cell_id``),
+same-seed A/B for every rider/bonus delta.
 """
 
 from __future__ import annotations
