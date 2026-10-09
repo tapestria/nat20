@@ -24,6 +24,9 @@ site/
 .idea/
 .vscode/
 
+# Browser-automation logs
+.playwright-mcp/
+
 # Upstream raw sources (regenerated locally via `make refresh-upstream`; never committed)
 packages/dnd5e-srd-data/raw_sources/foundry/
 packages/dnd5e-srd-data/raw_sources/open5e/
