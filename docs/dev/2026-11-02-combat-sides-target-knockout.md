@@ -524,30 +524,15 @@ in parallel. `make check` at the root is the gate for each, `mkdocs build
 | **F. Bridge parity** — `allies: list[str] = []` on `_CombatStartRequest` seated through `_build_encounter_specs(side="party")`; an optional `target_id` body on `/v1/combat/{cid}/advance-monster`; a `KnockedOut` formatter in `narrate.py`; tests | `packages/nat20-bridge/src/nat20_bridge/routes_combat.py`, `narrate.py`, tests | A, B, D |
 | **G. Docs and closeout** — `docs/concepts/combat.md` (a "Sides" section after "Summoned creatures"; knock-out under the 0-HP rules), `docs/concepts/monsters.md` (the targeting line), `docs/capabilities.md` rows and the matrix probes, `docs/api.md` members, `docs/migration/v0.7-to-v0.8.md`, the three changelogs, BACKLOG.md (first aid; knock-out by spell attack or by a monster; a legendary ally), the lockstep 0.8.0 bump and floors | docs, `CHANGELOG.md` ×3, `BACKLOG.md`, `pyproject.toml` ×3, `uv.lock` | everything |
 
-## Open questions
+## Decisions
 
-1. **Should a knocked-out creature stay in a foe's target pool?** The SRD lets a
-   monster finish an Unconscious enemy, and the auto-crit rule exists for it.
-   *Recommendation:* exclude it, as the pool excludes a 0-HP character today;
-   the AI is "deliberately simple and predictable", and a host that wants a foe
-   to finish a captive can name it — if that is ever wanted, the override's pool
-   test is the one place to relax.
-2. **Should an illegal `target_id` fall back to the lowest-HP pick with a
-   warning?** *Recommendation:* no. A silent substitution hides a host bug behind
-   a plausible fight; the typed refusal with nothing spent is how every other
-   seam error behaves, and the bridge already turns it into a 409.
-3. **Should a knock-out be available to a monster's turn (an ally capturing a
-   foe) or to a melee spell attack?** *Recommendation:* not in 0.8.0. Both are
-   one additional keyword on the same channel once a consumer exists; adding
-   them now is a flag nobody reads.
-4. **Should `CombatOutcome.knock_outs` be a bare id list?** *Recommendation:*
-   keep the record. The outcome is the host's world-mutation payload and
-   `DeathRecord` is its precedent; a captive needs a captor, and a host that
-   reads only the outcome should not have to replay the event log for it.
-5. **Should the refusal reason be a new value or `target_invalid`?**
-   *Recommendation:* the new `knock_out_not_melee`. The failure is about the
-   attack, not the target, and a host can tell the player why.
-6. **Should first aid be an intent?** *Recommendation:* defer, recorded in
-   BACKLOG.md. It needs a Medicine check as an action on an adjacent creature —
-   a small feature of its own with the `help`-style validation — and the rule's
-   Short Rest already puts the usual case outside the combat loop.
+1. **Knocked-out creatures are excluded from the AI target pool** — not a legal
+   foe target, not a legal `target_id`.
+2. **An illegal `target_id` has no fallback** — `IntentRejectedError("target_invalid")`,
+   nothing spent.
+3. **Knock-out for a monster's turn and for a melee spell attack is deferred** —
+   recorded in BACKLOG.md.
+4. **`CombatOutcome.knock_outs` reports `KnockOutRecord`s, not bare ids.**
+5. **The knock-out refusal is its own reason, `knock_out_not_melee`** — not a
+   reuse of `target_invalid`.
+6. **First aid as an intent is deferred** — recorded in BACKLOG.md.
