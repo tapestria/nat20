@@ -58,24 +58,24 @@ jobs:
         run: |
           zero=0000000000000000000000000000000000000000
           if [ "$EVENT" = pull_request ]; then
-            range="$PR_BASE..$PR_HEAD"
+            range=("$PR_BASE..$PR_HEAD")
           elif [ "$AFTER" = "$zero" ]; then
             echo "Branch deletion; nothing to scan."
             exit 0
           elif [ "$BEFORE" != "$zero" ] && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
-            range="$BEFORE..$AFTER"
+            range=("$BEFORE..$AFTER")
           else
             # New branch, or a force push whose old tip is gone: scan what the default branch lacks.
-            range="$AFTER --not origin/$DEFAULT_BRANCH"
-            if [ -z "$(git rev-list -1 $range)" ]; then
-              range="-1 $AFTER"
+            range=("$AFTER" --not "origin/$DEFAULT_BRANCH")
+            if [ -z "$(git rev-list -1 "${range[@]}")" ]; then
+              range=(-1 "$AFTER")
             fi
           fi
           # gitleaks reads an unresolvable range as zero commits and passes, so refuse it here.
-          if ! git rev-list $range > /dev/null; then
-            echo "::error::Cannot resolve commit range '$range'; refusing to report a clean scan."
+          if ! git rev-list "${range[@]}" > /dev/null; then
+            echo "::error::Cannot resolve commit range '${range[*]}'; refusing to report a clean scan."
             exit 1
           fi
           printf '%s\n' "$RULES" > "$RUNNER_TEMP/rules.toml"
           # No -v: rule ids and matched files stay out of public logs; reproduce locally with the commit hook.
-          gitleaks git --config "$RUNNER_TEMP/rules.toml" --redact --no-banner --log-opts="$range"
+          gitleaks git --config "$RUNNER_TEMP/rules.toml" --redact --no-banner --log-opts="${range[*]}"
