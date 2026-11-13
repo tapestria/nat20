@@ -18,7 +18,7 @@ jobs:
         env:
           RULES: ${{ secrets.BOUNDARY_GITLEAKS_TOML }}
         run: |
-          # Fork PRs get no secrets; skipping keeps them green, and the push scan covers the merge.
+          # The secret is absent on fork PRs (or before it is configured); the push scan covers the merge.
           if [ -z "$RULES" ]; then
             echo "::notice::BOUNDARY_GITLEAKS_TOML is not available; skipping boundary scan."
             echo "present=false" >> "$GITHUB_OUTPUT"
@@ -54,6 +54,7 @@ jobs:
           PR_HEAD: ${{ github.event.pull_request.head.sha }}
           BEFORE: ${{ github.event.before }}
           AFTER: ${{ github.event.after }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           zero=0000000000000000000000000000000000000000
           if [ "$EVENT" = pull_request ]; then
@@ -61,10 +62,20 @@ jobs:
           elif [ "$AFTER" = "$zero" ]; then
             echo "Branch deletion; nothing to scan."
             exit 0
-          elif [ "$BEFORE" = "$zero" ]; then
-            range="-1 $AFTER"
-          else
+          elif [ "$BEFORE" != "$zero" ] && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
             range="$BEFORE..$AFTER"
+          else
+            # New branch, or a force push whose old tip is gone: scan what the default branch lacks.
+            range="$AFTER --not origin/$DEFAULT_BRANCH"
+            if [ -z "$(git rev-list -1 $range)" ]; then
+              range="-1 $AFTER"
+            fi
+          fi
+          # gitleaks reads an unresolvable range as zero commits and passes, so refuse it here.
+          if ! git rev-list $range > /dev/null; then
+            echo "::error::Cannot resolve commit range '$range'; refusing to report a clean scan."
+            exit 1
           fi
           printf '%s\n' "$RULES" > "$RUNNER_TEMP/rules.toml"
+          # No -v: rule ids and matched files stay out of public logs; reproduce locally with the commit hook.
           gitleaks git --config "$RUNNER_TEMP/rules.toml" --redact --no-banner --log-opts="$range"
