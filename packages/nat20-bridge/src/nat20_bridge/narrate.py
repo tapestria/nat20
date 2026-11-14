@@ -35,6 +35,15 @@ def _who(entity_id: str, names: dict[str, str]) -> str:
     return names.get(entity_id, entity_id)
 
 
+def _label(slug: str) -> str:
+    """``cast_spell`` -> ``cast spell``; ``spell:summon-dragon`` -> ``summon dragon``."""
+    return slug.rsplit(":", 1)[-1].replace("_", " ").replace("-", " ")
+
+
+def _title(slug: str) -> str:
+    return _label(slug).title()
+
+
 @_register("round_started")
 def _fmt_round_started(e: Any, names: dict[str, str]) -> str:
     return f"-- Round {e.round_number} --"
@@ -58,7 +67,7 @@ def _fmt_turn_ended(e: Any, names: dict[str, str]) -> str:
 @_register("intent_submitted")
 def _fmt_intent_submitted(e: Any, names: dict[str, str]) -> str:
     who = _who(e.actor_id, names)
-    return f"{who} attempts {e.intent_type}."
+    return f"{who} attempts {_label(e.intent_type)}."
 
 
 @_register("attack_rolled")
@@ -167,6 +176,110 @@ def _fmt_combatant_joined(e: Any, names: dict[str, str]) -> str:
 @_register("combatant_left")
 def _fmt_combatant_left(e: Any, names: dict[str, str]) -> str:
     return f"{_who(e.entity_id, names)} leaves the fight ({e.reason})."
+
+
+@_register("spell_cast")
+def _fmt_spell_cast(e: Any, names: dict[str, str]) -> str:
+    who = _who(e.actor_id, names)
+    spell = _title(e.spell_id)
+    if e.ritual:
+        return f"{who} casts {spell} as a ritual."
+    if e.slot_level is None:
+        return f"{who} casts {spell}."
+    return f"{who} casts {spell} with a level {e.slot_level} slot."
+
+
+@_register("effect_applied")
+def _fmt_effect_applied(e: Any, names: dict[str, str]) -> str:
+    who = _who(e.effect.target_id, names)
+    concentration = " (concentration)" if e.effect.flags.get("concentration") else ""
+    return f"{e.effect.name} takes effect on {who}{concentration}."
+
+
+@_register("effect_expired")
+def _fmt_effect_expired(e: Any, names: dict[str, str]) -> str:
+    return f"{_title(e.effect_id)} on {_who(e.target_id, names)} ends ({_label(e.reason)})."
+
+
+@_register("concentration_dropped")
+def _fmt_concentration_dropped(e: Any, names: dict[str, str]) -> str:
+    return f"{_who(e.target_id, names)} loses concentration on {e.effect_name}."
+
+
+@_register("actor_moved")
+def _fmt_actor_moved(e: Any, names: dict[str, str]) -> str:
+    return f"{_who(e.actor_id, names)} moves {e.distance_ft} ft ({e.from_zone} -> {e.to_zone})."
+
+
+@_register("combatant_moved")
+def _fmt_combatant_moved(e: Any, names: dict[str, str]) -> str:
+    verb = "is pushed" if e.forced else "moves"
+    return f"{_who(e.actor_id, names)} {verb} {e.distance_ft} ft ({e.from_zone} -> {e.to_zone})."
+
+
+@_register("zone_transit")
+def _fmt_zone_transit(e: Any, names: dict[str, str]) -> str:
+    return (
+        f"{_who(e.actor_id, names)} crosses from {e.from_zone} to {e.to_zone} ({e.feet_spent} ft)."
+    )
+
+
+@_register("move_failed")
+def _fmt_move_failed(e: Any, names: dict[str, str]) -> str:
+    return f"{_who(e.actor_id, names)} can't move: {_label(e.reason)}."
+
+
+@_register("dash_taken")
+def _fmt_dash_taken(e: Any, names: dict[str, str]) -> str:
+    who = _who(e.actor_id, names)
+    left = e.doubled_movement_remaining
+    return f"{who} dashes ({_label(e.budget_consumed)}); {left} ft of movement left."
+
+
+@_register("death_save_started")
+def _fmt_death_save_started(e: Any, names: dict[str, str]) -> str:
+    return f"{_who(e.target_id, names)} is dying and starts making death saves."
+
+
+@_register("death_save_rolled")
+def _fmt_death_save_rolled(e: Any, names: dict[str, str]) -> str:
+    who = _who(e.target_id, names)
+    tally = f"{e.running_successes} successes, {e.running_failures} failures"
+    return f"{who} rolls a death save: {e.roll_total} ({_label(e.outcome)}; {tally})."
+
+
+@_register("stabilized")
+def _fmt_stabilized(e: Any, names: dict[str, str]) -> str:
+    return f"{_who(e.target_id, names)} is stable."
+
+
+@_register("temphp_applied")
+def _fmt_temphp_applied(e: Any, names: dict[str, str]) -> str:
+    return f"{_who(e.target_id, names)} gains {e.amount} temporary HP."
+
+
+@_register("reaction_triggered")
+def _fmt_reaction_triggered(e: Any, names: dict[str, str]) -> str:
+    return f"{_who(e.actor_id, names)} reacts: {e.reaction_name}."
+
+
+@_register("recharge_rolled")
+def _fmt_recharge_rolled(e: Any, names: dict[str, str]) -> str:
+    result = "recharges" if e.succeeded else "does not recharge"
+    action = f"{_who(e.monster_id, names)}'s {_title(e.action_slug)}"
+    return f"{action} {result} (rolled {e.roll}, needs {e.threshold})."
+
+
+@_register("legendary_action_used")
+def _fmt_legendary_action_used(e: Any, names: dict[str, str]) -> str:
+    who = _who(e.actor_id, names)
+    return f"{who} uses legendary action {_title(e.action_slug)} ({e.uses_remaining} left)."
+
+
+@_register("legendary_resistance_used")
+def _fmt_legendary_resistance_used(e: Any, names: dict[str, str]) -> str:
+    who = _who(e.actor_id, names)
+    return f"{who} uses Legendary Resistance to succeed instead ({e.uses_remaining} left)."
 
 
 @_register("combat_ended")
