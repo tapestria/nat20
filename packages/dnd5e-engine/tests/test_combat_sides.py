@@ -17,6 +17,7 @@ import random
 from pathlib import Path
 
 import pytest
+from pydantic import BaseModel
 
 from dnd5e_engine import end_combat, start_combat
 from dnd5e_engine.events import (
@@ -218,7 +219,7 @@ def test_a_start_with_no_encounter_side_member_is_refused() -> None:
         )
 
 
-def _fixture_fight(side: dict[str, str]) -> list[dict[str, object]]:
+def _fixture_fight(side: dict[str, str]) -> list[BaseModel]:
     """The fight the stored 0.7.0 payloads were taken from."""
     goblins = [
         foe(
@@ -245,12 +246,23 @@ def _fixture_fight(side: dict[str, str]) -> list[dict[str, object]]:
     act(handle, "char:hero", intent_type="pass")
     monster_turn(handle)
     asyncio.run(end_combat(handle))
-    return [e.model_dump(mode="json") for e in live.event_log]
+    return list(live.event_log)
+
+
+def _assert_reproduces(log: list[BaseModel], stored: list[dict[str, object]]) -> None:
+    """Every stored event comes back with the same values; a field added to an
+    event since the payloads were stored dumps at its default."""
+    assert len(log) == len(stored)
+    for event, old in zip(log, stored, strict=True):
+        dumped = event.model_dump(mode="json")
+        added = {key: dumped.pop(key) for key in set(dumped) - set(old)}
+        assert added == {key: type(event).model_fields[key].default for key in added}
+        assert dumped == old
 
 
 def test_specs_without_a_side_reproduce_the_stored_event_log() -> None:
     stored = json.loads((Path(__file__).parent / "fixtures" / "payloads_0_7_0.json").read_text())[
         "event_log"
     ]
-    assert _fixture_fight({}) == stored
-    assert _fixture_fight({"side": "encounter"}) == stored
+    _assert_reproduces(_fixture_fight({}), stored)
+    _assert_reproduces(_fixture_fight({"side": "encounter"}), stored)
