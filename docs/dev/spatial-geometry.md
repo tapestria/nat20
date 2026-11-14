@@ -158,6 +158,25 @@ in `avoid` (the caller passes enemy-occupied cells). The neighbour enumeration
 order is fixed and part of the determinism contract: every seeded monster walk
 must reproduce byte-identically across releases.
 
+## Wall index
+
+A step test and a sight test read only the walls near the segment they test.
+`GridTopology` buckets every wall, when it is built, by the grid cells whose
+closed square the wall touches or crosses: the wall is walked column slab by
+column slab, and every row its y-range in that slab overlaps is added. A wall
+lying on a grid line therefore belongs to the cells on both sides, and a wall
+that only touches a cell corner belongs to every cell sharing that corner.
+Cells off the map are never queried, so they are never bucketed.
+
+A step reads the buckets of the (at most 2×2) cells its centre-to-centre
+segment spans; a sight line reads the buckets of every cell its segment
+touches, found by the same slab walk. The candidate set is always a superset
+of the walls that intersect the segment, and the orientation test above still
+decides each one, so every answer is the same as testing every wall. What
+changes is the cost: a step costs a handful of wall tests however many walls
+the scene holds, so pathing and reach on a heavily walled map no longer scale
+with the wall count.
+
 ## Visibility
 
 `GridTopology.can_see(a, b, senses=None) -> bool` is a five-step predicate,
