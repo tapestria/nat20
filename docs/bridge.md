@@ -70,10 +70,10 @@ unknown intent key, a missing field, a value of the wrong type), whose
 | `POST /v1/rest/short` | Resolve a short rest (hit-dice spend + healing). |
 | `POST /v1/rest/long` | Resolve a long rest (full heal + hit-dice recovery). |
 | `POST /v1/party/validate` | Build and validate a character (every `make_build_spec` keyword; see [Requests](#requests)) into a derived sheet — HP, AC, speed, proficiencies, spell slots, feats, computed by the engine's `derive_sheet` — without starting combat. The member carries no `attack_bonus`: to-hit is computed per weapon when an attack resolves. |
-| `POST /v1/combat` | Start a combat: party builds + monster slugs → a `combat_id` and the opening events and narration. The engine rolls every Initiative. |
+| `POST /v1/combat` | Start a combat: party builds + monster slugs (and optional ally slugs) → a `combat_id` and the opening events and narration. The engine rolls every Initiative. |
 | `POST /v1/combat/{cid}/intent` | Submit one intent (attack, cast, move, …): `actor_id` plus any `PlayerIntent` field. |
-| `POST /v1/combat/{cid}/advance-monster` | Let a monster take its turn. |
-| `GET /v1/combat/{cid}` | Current combat view: round, initiative order (each row's Initiative, HP, conditions and cell), whose turn it is and its attacks left, the summons, transformations and constructs, the seed, and the combat's `grid` (its `GridScene`). |
+| `POST /v1/combat/{cid}/advance-monster` | Let a monster (a foe or an ally) take its turn, optionally naming the creature a foe attacks. |
+| `GET /v1/combat/{cid}` | Current combat view: round, initiative order (each row's Initiative, HP, conditions and cell), whose turn it is and its attacks left, the summons, transformations and constructs, each side's ids, the knocked-out creatures, the deaths so far, the seed, and the combat's `grid` (its `GridScene`). |
 | `POST /v1/combat/{cid}/end` | Close the combat, release it, and return its final `CombatOutcome`. |
 | `GET /v1/srd/{category}` | List slugs in a content category (`items`, `monsters`, `spells`, `species`, `classes`, `subclasses`, `backgrounds`, `feats`, `features`), optionally filtered by a substring query (`?q=`). |
 | `GET /v1/srd/{category}/{slug}` | Fetch one canonical (or homebrew) entry by slug. |
@@ -119,10 +119,37 @@ or intent type is refused with 422 and reaches nothing.
  "target_id": "mon:ogre-1", "slot_level": 3}
 ```
 
+**Allies** (`POST /v1/combat`) are an optional `allies` list of monster slugs
+seated on the party's side (`side="party"` in the engine), beside the
+`monsters` list of foes. They share the foes' numbering, so a start with
+`"monsters": ["goblin-warrior"]` and `"allies": ["wolf"]` seats
+`mon:goblin-warrior-1` against the party and `mon:wolf-2` with it. An ally
+fights foes and is fought by them, dies at 0 Hit Points as a monster does, and
+takes no share of the XP. `/advance-monster` plays its turn with the engine's
+AI, or an intent with its `actor_id` commands it (`pass`, `move`, `attack`
+with `stat_block_action_id`). A start needs at least one foe: allies alone
+answer 422.
+
+**A chosen foe target** (`POST /v1/combat/{cid}/advance-monster`) is an
+optional body `{"target_id": "<entity id>"}`: the acting foe attacks that
+creature this turn instead of the engine's lowest-HP pick. A creature it
+could not pick (itself, its own side, a dead or knocked-out creature, its
+charmer, any id on a summon's turn) answers 409 `target_invalid` with nothing
+spent. No body, `{}` or `{"target_id": null}` keeps the engine's pick; any
+other key answers 422.
+
+**Knocking out** (`POST /v1/combat/{cid}/intent`) is `"knock_out": true` on an
+`attack`: a melee hit that would drop a creature to 0 Hit Points leaves it at
+1 Hit Point and Unconscious instead, and the response narrates it ("Brom
+knocks Goblin Warrior 1 out."). A swing that is not a melee attack (a ranged
+weapon, a thrown weapon beyond reach) answers 409 `knock_out_not_melee` with
+nothing spent. The view lists the creature under `knocked_out_ids` until it
+regains Hit Points or dies, and `/end`'s outcome lists it under `knock_outs`.
+
 ## Combat sessions
 
-`POST /v1/combat` seats the party in column 0 and the foes in column 1 of a
-12×12 grid. Each foe comes from its stat block: its Hit Points, AC,
+`POST /v1/combat` seats the party in column 0, its allies below the
+characters in the same column, and the foes in column 1 of a 12×12 grid. Each foe comes from its stat block: its Hit Points, AC,
 Dexterity, damage resistances, immunities and vulnerabilities, condition
 immunities and senses, so a foe with Darkvision or Blindsight sees as its
 stat block says. The engine rolls every combatant's Initiative from the
@@ -151,7 +178,8 @@ each fight you are done with.
 The `over` flag of an intent or advance-monster response is always `false`:
 only `/end` ends a combat, and an ended combat's id answers 404. A fight whose
 last foe or last character has dropped still reads `false`: read the view's
-`order` (`dead`) to tell a decided fight.
+`order` (`dead`) and `knocked_out_ids` to tell a decided fight. The view's
+`deaths` lists each death so far in order, as `/end`'s outcome will.
 
 ## Homebrew content format
 
