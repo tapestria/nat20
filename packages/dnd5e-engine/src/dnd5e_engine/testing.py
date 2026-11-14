@@ -14,6 +14,11 @@ read-only live-combat accessor that production host code may use is public on
 
 from __future__ import annotations
 
+import random
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
+
+from dnd5e_engine import orchestrator
 from dnd5e_engine.orchestrator import (
     _REGISTRY,
     _build_hydration_payload,
@@ -26,6 +31,7 @@ __all__ = [
     "emit",
     "registry",
     "reset_registry",
+    "rng_factory",
 ]
 
 # Test-support: live-combat registry handle and lifecycle reset.
@@ -36,3 +42,23 @@ reset_registry = _reset_registry_for_tests
 # and end-to-end tests to drive the same code paths the per-effect handlers take.
 emit = _emit
 build_hydration_payload = _build_hydration_payload
+
+
+@contextmanager
+def rng_factory(factory: Callable[[int], random.Random]) -> Iterator[None]:
+    """Within the block, every combat ``start_combat`` opens draws its dice
+    from ``factory(rng_seed)`` instead of ``random.Random(rng_seed)``.
+
+    The factory returns a ``random.Random``; a subclass may override
+    ``randint`` (the only method the engine draws with) to script or record
+    rolls, Initiative rolled inside ``start_combat`` included. A combat keeps
+    the RNG it opened with after the block ends. The override is process-wide
+    for the duration of the block, not scoped to a task or thread. The default
+    is restored on exit, also when the block raises. Test-support only.
+    """
+    previous = orchestrator._rng_factory
+    orchestrator._rng_factory = factory
+    try:
+        yield
+    finally:
+        orchestrator._rng_factory = previous

@@ -3629,6 +3629,11 @@ class _Summon:
 
 _REGISTRY: dict[str, _LiveCombat] = {}
 
+# Builds the one RNG a combat draws every die from. Only the test-support
+# ``dnd5e_engine.testing.rng_factory`` swaps it, so a host suite can script or
+# record rolls (Initiative included) without patching this module's ``random``.
+_rng_factory: Callable[[int], random.Random] = random.Random
+
 #: How many ended combats stay readable after ``end_combat`` (a repeat close,
 #: a late ``drain_pending_events`` / ``narration_events`` drain, a last
 #: ``get_live``) before the oldest is released, so a long-running host holds a
@@ -7962,7 +7967,7 @@ async def start_combat(
 
     # Hoisted so the SAME instance seeds both the initiative-rolling draws
     # below and every subsequent in-combat draw via ``_LiveCombat.rng``.
-    rng = random.Random(rng_seed)
+    rng = _rng_factory(rng_seed)
 
     # SRD 5.2 Initiative: "every participant rolls Initiative; they make a
     # Dexterity check". Entities with a fixed int ``initiative`` skip the
