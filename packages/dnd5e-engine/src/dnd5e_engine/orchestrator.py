@@ -9483,10 +9483,14 @@ def _reject_knock_out_not_melee(
         if target is not None
         else None
     )
-    melee = intent.spell_id is None and any(
-        isinstance(activity, AttackActivity)
-        and is_melee_attack(activity, resolved.fetched_weapon, distance_ft)
-        for activity in resolved.activities
+    # Every attack the intent resolves (a multiattack's Pistol as much as its
+    # Scimitar) must be a melee attack: one that is not would deal its damage
+    # unpulled.
+    attacks = [a for a in resolved.activities if isinstance(a, AttackActivity)]
+    melee = (
+        intent.spell_id is None
+        and bool(attacks)
+        and all(is_melee_attack(a, resolved.fetched_weapon, distance_ft) for a in attacks)
     )
     if not melee:
         raise IntentRejectedError(

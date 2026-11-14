@@ -187,6 +187,38 @@ def test_a_swing_that_is_not_a_melee_attack_is_refused_with_nothing_spent(
     assert events(live, IntentSubmitted) == []
 
 
+def test_a_multiattack_with_a_ranged_part_is_refused_with_nothing_spent() -> None:
+    """SRD 5.2 Bandit Captain: "Multiattack. The bandit makes two attacks,
+    using Scimitar and Pistol in any combination." Commanded on the party's
+    side, its multiattack resolves a Pistol shot, which is not a melee
+    attack and could kill, so the pulled blow is refused for the whole
+    intent."""
+    captain = foe(
+        entity_id="npc:captain",
+        entity_type="NPC",
+        name="Bandit Captain",
+        side="party",
+        initiative=19,
+        zone_id=cell_id(0, 1),
+        monster_template_slug="bandit-captain",
+    )
+    handle, live = _scripted([pc()], [captain, _frail(zone_id=cell_id(1, 1))])
+    act(handle, "char:hero", intent_type="pass")
+    assert _current_actor(live).entity_id == "npc:captain"
+    before = (len(live.event_log), live.rng.getstate())
+    reason = _refused(
+        handle,
+        "npc:captain",
+        intent_type="attack",
+        stat_block_action_id="multiattack",
+        target_id="mon:foe",
+        knock_out=True,
+    )
+    assert reason == "knock_out_not_melee"
+    assert (len(live.event_log), live.rng.getstate()) == before
+    assert [e for e in events(live, IntentSubmitted) if e.actor_id == "npc:captain"] == []
+
+
 def test_the_same_swing_without_the_choice_is_accepted() -> None:
     handle, live = _scripted([pc()], [_frail(zone_id=cell_id(3, 0))])
     act(handle, "char:hero", intent_type="attack", weapon_id="dagger", target_id="mon:foe")
