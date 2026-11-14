@@ -1,10 +1,9 @@
 """Regression — combat resolvers honor flag-based advantage / disadvantage.
 
-Codex Phase 6 review iter-12 P2: combat.py's saving_throw and
-resolve_player_attack didn't read flag-based advantage / disadvantage
-from active_effects, so Restrained / Guidance-style / Faerie Fire /
-Invisible effects didn't shift the d20 mechanic in combat. Now both
-mirror the iter-10/11 resolve_check fix.
+combat.py's saving_throw and resolve_player_attack read flag-based
+advantage / disadvantage from active_effects, so Restrained /
+Guidance-style / Faerie Fire / Invisible effects shift the d20 mechanic
+in combat, as resolve_check does.
 """
 
 from __future__ import annotations

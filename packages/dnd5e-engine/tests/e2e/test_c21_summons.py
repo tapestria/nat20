@@ -95,7 +95,7 @@ def test_c21_s02_losing_concentration_dismisses_the_summoned_dragon():
     ends"; "In combat, the creature shares your Initiative count, but it
     takes its turn immediately after yours... If you don't issue any, it
     takes the Dodge action". §Concentration — "The DC equals 10 or half
-    the damage taken (round down)". Contract repair (plan R1): the cast
+    the damage taken (round down)". The cast
     registers its own concentration, so no stand-in effect is seeded; the
     summon's id is read from ``CombatantJoined``; and its uncommanded turn
     (the Dodge) is driven before ``mon:breaker``'s, since it acts right
@@ -247,8 +247,8 @@ def test_c21_s04_magic_weapon_enchant_grants_plus1_to_hit_and_damage():
     damage rolls." ``resolver.py`` routes ``EnchantActivity`` to the
     same narrative no-op as every other summon-family kind — no
     ``ActiveEffect`` is ever created via
-    ``activities/effects.py::apply_activity_effects``. Contract repair
-    (plan R1): the cast names the weapon it touches ("You touch a
+    ``activities/effects.py::apply_activity_effects``.
+    The cast names the weapon it touches ("You touch a
     nonmagical weapon"), the hero's nonmagical ``longsword``; the cast
     draws nothing, so both seed-11 runs roll d20 15 and 1d8 8.
     """
@@ -330,8 +330,8 @@ def test_c21_s05_wild_shape_does_not_swap_stat_block_today():
     this feature"; "When you assume a Wild Shape form, you gain a number
     of Temporary Hit Points equal to your Druid level"; "Your game
     statistics are replaced by the Beast's stat block". ``resolver.py``
-    routes ``TransformActivity`` to the narrative no-op. Contract repair
-    (plan R1): the druid names its form, the Giant Badger (CR 1/4, no Fly
+    routes ``TransformActivity`` to the narrative no-op.
+    The druid names its form, the Giant Badger (CR 1/4, no Fly
     Speed, AC 13 — legal at Druid 6); the Temporary Hit Points are read
     right after the shape change; and the druid passes before the
     breaker's turn, since Wild Shape is a Bonus Action. Seed 13: Wild
@@ -413,7 +413,7 @@ def test_c21_s06_polymorph_save_kind_resolves_save_but_no_transform_effect():
     half works via ``resolve_save``, but nothing implements the
     stat-block-swap-with-temp-HP-overlay consequence of a failed save.
 
-    Contract repair (plan R1): the cast names its form, the Giant Badger
+    The cast names its form, the Giant Badger
     (CR 1/4, 15 HP, AC 13), and the foe takes the Tough template (a CR 1/2
     Humanoid with WIS 10 and no Wisdom save proficiency), so the SRD's
     Challenge Rating limit is met. Seed 1 fails the save: its one d20 is a

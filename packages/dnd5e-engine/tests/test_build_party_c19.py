@@ -1,4 +1,4 @@
-"""build_party_member = derive_sheet + an explicit-wins merge (C19 R3/R9)."""
+"""build_party_member = derive_sheet + an explicit-wins merge."""
 
 from __future__ import annotations
 

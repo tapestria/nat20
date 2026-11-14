@@ -1,16 +1,13 @@
 """Regression — ActiveEffect.duration.rounds decrements at turn end.
 
-Codex Phase 6 review iter-6 P1: Phase 6 retired the host-side
-``_sweep_effects`` that decremented rounds_remaining; without the
-engine taking over, rounds-tracked effects persisted indefinitely.
-The fix adds ``_tick_durations_at_turn_end`` at every TurnEnded
-emission site (both player and monster paths). Effects with
-``rounds is None`` (permanent / item-equipped / non-rounds duration)
-are skipped; effects whose rounds counter reaches zero emit
-EffectExpired and are removed from live.active_effects.
+The engine owns the round tick: without it, rounds-tracked effects would
+persist indefinitely. It runs ``_tick_durations_at_turn_end`` at every
+TurnEnded emission site (both player and monster paths). Effects with
+``rounds is None`` (permanent / item-equipped / non-rounds duration) are
+skipped; effects whose rounds counter reaches zero emit EffectExpired
+and are removed from live.active_effects.
 
-The bundled-asset-loader cutover (task 9-B) exempted
-*concentration-flagged* effects from this tick: Foundry packs ship
+*Concentration-flagged* effects are exempt from this tick: Foundry packs ship
 ``duration.rounds`` purely for the turn-tracker display (Bane's pack
 ships ``rounds: 1``), so ticking a concentration spell would expire it
 on the caster's own turn-end. Concentration governs those effects'
@@ -142,8 +139,8 @@ def test_rounds_zero_expires_effect():
 
 def test_caster_keyed_tick_for_multi_target_effect():
     """A rounds-tracked effect on multiple targets should burn ONE round
-    per caster turn — not one per target per round-cycle (Codex iter-7
-    P1). Uses non-concentration effects: the cutover (task 9-B) exempts
+    per caster turn — not one per target per round-cycle. Uses
+    non-concentration effects: the tick exempts
     concentration-flagged effects from the round tick, so the caster-keyed
     tick is exercised on the population it still owns."""
 

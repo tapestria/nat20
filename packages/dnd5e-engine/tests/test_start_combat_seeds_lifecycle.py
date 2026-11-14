@@ -1,13 +1,13 @@
 """Regression — start_combat(active_effects=...) seeds lifecycle indexes.
 
-Codex Phase 6 review iter-3 P2: the seeding block only populated
-``live.active_effects`` and ``combatant.conditions``. The runtime
+Seeding must populate more than ``live.active_effects`` and
+``combatant.conditions``: the runtime
 concentration-drop and end-of-turn repeat-save logic reads from
 ``concentration_chain`` and ``conditions_by_effect`` (populated by
 ``_record_effect_lifecycle_links`` from runtime EffectApplied events),
-so a seeded concentration effect (Bless / Hold Person) would never
-trigger concentration cleanup and would never fire its repeat save.
-This test locks the fix that seeding also populates those indexes.
+so without them a seeded concentration effect (Bless / Hold Person) would
+never trigger concentration cleanup and would never fire its repeat save.
+This test locks that seeding also populates those indexes.
 """
 
 from __future__ import annotations

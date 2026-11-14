@@ -255,7 +255,7 @@ class TestEscapeGrapple:
         assert _effective_speed(target) > 0
 
     def test_escape_check_applies_the_exhaustion_penalty(self):
-        """Fix round 1 — SRD 5.2 Exhaustion: "the roll is reduced by 2 times
+        """SRD 5.2 Exhaustion: "the roll is reduced by 2 times
         your Exhaustion level" on EVERY D20 Test, ability checks included
         (``rules/conditions.py::d20_test_penalty``). The grapple SAVE already
         threads this (mirroring ``_run_end_of_turn_saves``); the escape

@@ -1,9 +1,8 @@
-"""Regression test — Codex Phase 6 review iter-5 fix.
+"""Regression test — seeded statuses populate live.active_conditions.
 
-Seeded statuses must populate live.active_conditions so the
-orchestrator_bridge projection mirrors them into Redis on the next tick.
-Without this, statuses land only on initiative[*].conditions and disappear
-from the client-facing combat state.
+Seeded statuses must populate live.active_conditions, which a host reads
+to mirror combatant conditions. Without this, statuses land only on
+initiative[*].conditions and disappear from the host-facing combat state.
 """
 
 from __future__ import annotations

@@ -103,7 +103,7 @@ def test_pact_slots_reach_live_state_and_view():
 
 
 def test_cast_draws_from_pact_pool_when_spellcasting_pool_lacks_the_level():
-    """SRD Multiclassing Pact Magic: either pool casts either prepared spell (R3)."""
+    """SRD Multiclassing Pact Magic: either pool casts either prepared spell."""
 
     async def _go():
         handle, live = await _start(
@@ -221,7 +221,7 @@ def _counterspell_pair(*, reactor_slots, enemy_col, seed=9):
 
 def test_counterspell_with_empty_pool_does_not_fire_and_keeps_reaction():
     """SRD §Spell Slots: "you expend a slot of that spell's level or higher" — no slot,
-    no cast. The armed reaction is skipped, not popped (R4)."""
+    no cast. The armed reaction is skipped, not popped."""
     live = _counterspell_pair(reactor_slots={3: 0}, enemy_col=1)
     assert not _events(live, ReactionTriggered)
     assert not [e for e in _events(live, CastFailed) if e.reason == "countered"]
@@ -358,7 +358,7 @@ def _cast_mm(*, slot_level, target_id="mon:foe", target_ids=None, extra_foes=())
 
 
 def test_magic_missile_base_level_fires_three_darts_sharing_one_roll():
-    """SRD: "You create three glowing darts" — one DamageApplied per dart, same amount (R5)."""
+    """SRD: "You create three glowing darts" — one DamageApplied per dart, same amount."""
     live = _cast_mm(slot_level=1)
     darts = [e for e in _events(live, DamageApplied) if e.target_id == "mon:foe"]
     assert len(darts) == 3
@@ -444,7 +444,7 @@ def test_ritual_in_combat_is_rejected_without_spending_a_slot():
 
 
 def test_ritual_in_combat_does_not_trigger_a_readied_counterspell():
-    """R8: the ``as_ritual`` rejection must run BEFORE the Counterspell drain
+    """The ``as_ritual`` rejection must run BEFORE the Counterspell drain
     (``_apply_pre_slot_cast_gates``) — an illegal in-combat ritual intent must
     not burn an opponent's readied Counterspell reaction or its slot."""
 

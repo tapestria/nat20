@@ -275,7 +275,7 @@ def test_long_rest_exhaustion_floors_at_zero_and_none_passes_through():
 
 
 def test_rest_pool_without_max_is_rejected():
-    """R7: never guess a maximum."""
+    """Never guess a maximum."""
     pool = HitDicePool(hit_die_size=6, dice_remaining=3, dice_total=3)
     with pytest.raises(ValueError):
         resolve_long_rest(pool, hp_current=1, hp_max=1, spell_slots={1: 0})

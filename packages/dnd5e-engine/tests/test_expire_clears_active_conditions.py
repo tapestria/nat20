@@ -1,12 +1,10 @@
 """Regression — expiring an effect clears its statuses from active_conditions.
 
-Codex Phase 6 review iter-8 P1: the EffectExpired path only updated
-``initiative[*].conditions`` but left ``live.active_conditions``
-untouched. ``orchestrator_bridge.project_combat_state_to_redis``
-reads ``active_conditions`` to mirror combatant conditions into Redis,
-so the projection would re-attach the expired condition on the next
-mirror tick. This test locks the fix that ``active_conditions`` also
-clears the status when its imposing effect expires.
+The EffectExpired path must update ``live.active_conditions`` as well
+as ``initiative[*].conditions``: a host that mirrors ``active_conditions``
+would otherwise re-attach the expired condition on its next sync. This
+test locks that ``active_conditions`` clears the status when its
+imposing effect expires.
 """
 
 from __future__ import annotations
@@ -72,7 +70,7 @@ def test_status_clears_from_active_conditions_when_effect_expires():
             target_id="mon:foe",
             duration=ActiveEffectDuration(rounds=1),
             statuses={"paralyzed"},
-            # Non-concentration: the cutover (task 9-B) exempts
+            # Non-concentration: the round tick exempts
             # concentration-flagged effects from the round tick, so this
             # test exercises the status-clear-on-expiry path via a
             # rounds-tracked effect.

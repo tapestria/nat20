@@ -229,7 +229,7 @@ def test_vex_from_an_opportunity_attack_lasts_until_the_end_of_the_attackers_nex
 
 
 def test_an_unarmed_strike_at_ten_feet_rolls_no_long_range_disadvantage() -> None:
-    # R2 lets an Unarmed Strike opportunity attack reach reach_ft (10 ft
+    # An Unarmed Strike opportunity attack may reach reach_ft (10 ft
     # here); the trigger already proved the target inside that reach, so it
     # is never a ranged-attack "beyond normal range" roll.
     handle, live = _start([_hero(reach_ft=10)], [_monster(zone_id=cell_id(2, 0))])

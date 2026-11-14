@@ -43,7 +43,7 @@ def test_full_caster_rows(level, expected):
 @pytest.mark.parametrize(
     ("level", "expected"),
     [
-        (1, {1: 2}),  # R1: half rounds UP — a level-1 Paladin has slots in SRD 5.2
+        (1, {1: 2}),  # Half rounds UP — a level-1 Paladin has slots in SRD 5.2
         (2, {1: 2}),
         (3, {1: 3}),
         (5, {1: 4, 2: 2}),
@@ -101,7 +101,7 @@ def test_effective_caster_level_rounding():
 
 
 def test_multiclass_caster_level_rounds_per_class_then_sums():
-    """R2: Paladin 2 -> ceil(1) = 1, Wizard 3 -> 3 => 4 (C17-S03); Paladin 3 / Ranger 3
+    """Paladin 2 -> ceil(1) = 1, Wizard 3 -> 3 => 4 (C17-S03); Paladin 3 / Ranger 3
     => 2 + 2 = 4, NOT ceil(6/2) = 3; Warlock levels never count."""
     assert multiclass_caster_level({"paladin": ("half", 2), "wizard": ("full", 3)}) == 4
     assert multiclass_caster_level({"paladin": ("half", 3), "ranger": ("half", 3)}) == 4
@@ -152,7 +152,7 @@ def test_count_scales_with_cast_level(count_formula, expected):
     assert count_scales_with_cast_level(count_formula) is expected
 
 
-# ── Task 6: RitualCast / resolve_ritual_cast (R8) ────────────────────────────
+# ── RitualCast / resolve_ritual_cast ────────────────────────────────────────
 
 
 def test_ritual_cast_detect_magic_adds_ten_minutes_and_no_slot():

@@ -2,8 +2,8 @@
 
 specs.py has always documented that a missing ``monster_template_slug``
 "falls back to the legacy damage_dice / damage_type single-attack
-heuristic"; the typed-activity cutover dropped the fallback and such foes
-silently passed every turn. The synthesized AttackActivity restores it.
+heuristic". Without it such foes would silently pass every turn; the
+synthesized AttackActivity provides it.
 """
 
 from __future__ import annotations

@@ -1,4 +1,4 @@
-"""Phase 6 — Foundry-aligned ActiveEffect schema unit tests."""
+"""Foundry-aligned ActiveEffect schema unit tests."""
 
 from __future__ import annotations
 

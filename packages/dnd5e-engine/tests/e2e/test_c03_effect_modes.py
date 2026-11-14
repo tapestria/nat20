@@ -18,7 +18,7 @@ def test_c03_s01_multiply_mode_multiplies_accumulated_bucket_bonus():
     Foundry dnd5e-system plumbing, not SRD rules text; engine:
     packages/dnd5e-engine/src/dnd5e_engine/rules/effects.py
     (`apply_changes_to_check` — `mode == "add"` / `mode == "override"` are
-    handled; `multiply` reserved and ignored in Phase 6).
+    handled; `multiply` is reserved and ignored).
     """
     add_effect = ActiveEffect(
         id="effect:add3",
@@ -72,7 +72,7 @@ def test_c03_s02_upgrade_mode_only_raises_never_lowers_bucket_bonus():
     symmetric with `DOWNGRADE` = `min(current, value)`) — Foundry
     dnd5e-system plumbing, not SRD rules text; engine:
     packages/dnd5e-engine/src/dnd5e_engine/rules/effects.py
-    (`apply_changes_to_check`, same `ignored in Phase 6` gap as C03-S01,
+    (`apply_changes_to_check`, same "reserved and ignored" gap as C03-S01,
     verified empirically ignored for `upgrade` too).
     """
 

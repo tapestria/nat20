@@ -1,11 +1,11 @@
-"""Task 5 review fix (finding 1) regression — a FIXED ``target.affects.count``
+"""Regression — a FIXED ``target.affects.count``
 marker (``"1"``, the schema default a plain single-target damage activity
 carries: Hex, Hunter's Mark, Wall of Fire, ...) must NOT suppress that
 activity's own slot-level dice ``scaling`` (``scaling.mode == "whole"``). Only
 a count formula that genuinely references ``@item.level``
 (``spellcasting.count_scales_with_cast_level``) — Magic Missile's darts,
 Hold Person's extra Humanoids — disables the dice-scaling path in
-``resolve_damage`` (R5: the count mechanic wins over the dice mechanic
+``resolve_damage`` (the count mechanic wins over the dice mechanic
 specifically to avoid double-counting THAT spell's own upcast).
 
 Direct ``activities/damage.py``-level test rather than a live-combat /

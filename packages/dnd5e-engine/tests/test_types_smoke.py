@@ -1,8 +1,7 @@
 """Smoke test — types are importable and instantiate cleanly.
 
-Phase 6 migration: ``EffectModifier`` → ``ActiveEffectChange``; ``ActiveEffect``
-now carries ``id``/``name``/``origin``/``target_id`` + ``changes`` + ``duration``.
-``EffectRef`` is retired (Redis-resident hydration shape is gone).
+``ActiveEffect`` carries ``id``/``name``/``origin``/``target_id`` + ``changes`` +
+``duration``; each change is an ``ActiveEffectChange``.
 """
 
 from __future__ import annotations

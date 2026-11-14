@@ -1,4 +1,4 @@
-"""Phase 2 smoke test — package imports and exposes a version string."""
+"""Smoke test — package imports and exposes a version string."""
 
 import dnd5e_engine
 

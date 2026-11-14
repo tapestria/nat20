@@ -1,4 +1,4 @@
-"""Phase 6 — concentration / repeat-save linkage uses (target_id, id, origin).
+"""concentration / repeat-save linkage uses (target_id, id, origin).
 
 Locks the Task 8 rekey. Two casters / two Bless effects had silently
 merged into one concentration record under the prior effect_name-keyed

@@ -1,4 +1,4 @@
-"""Phase 6 — EndCombatResult.final_active_effects + carried_conditions removal."""
+"""EndCombatResult.final_active_effects + carried_conditions removal."""
 
 from __future__ import annotations
 

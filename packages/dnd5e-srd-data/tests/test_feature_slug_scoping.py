@@ -1,4 +1,4 @@
-"""The translator's class-scoped feature slugs (plan R10)."""
+"""The translator's class-scoped feature slugs."""
 
 from pathlib import Path
 

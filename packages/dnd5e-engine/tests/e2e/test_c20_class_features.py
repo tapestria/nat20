@@ -156,7 +156,7 @@ def test_c20_s03_fighting_style_great_weapon_fighting_floors_1_2_damage_dice_at_
     seed's underlying 2d6 roll (never negative per die, never applied
     to dice showing 3-6) — per the catalog's own "pin the seed's raw
     die values via a direct ``rules/dice.py`` reseed-and-roll probe"
-    technique. Contract repair (plan R1): seed 22, whose 2d6 — drawn after
+    technique. Seed 22, whose 2d6 — drawn after
     the attack's d20 — shows a 2 and a 1; the probe skips that d20.
     """
 
@@ -228,7 +228,7 @@ def test_c20_s04_fighting_style_two_weapon_fighting_adds_ability_mod_to_offhand(
     ``two-weapon-fighting.json`` ships ``activities: []``,
     ``passive_effects: []``; the engine's off-hand extra-attack damage
     formula already correctly omits the ability mod but has no flag to
-    re-add it for this feat. Contract repair (plan R1): SRD 5.2 Light —
+    re-add it for this feat. SRD 5.2 Light —
     "That extra attack must be made with a different Light weapon", so the
     off-hand is a Dagger (Light, Finesse: DEX is its ability modifier).
     """
@@ -360,13 +360,13 @@ def test_c20_s05_martial_arts_unarmed_strike_uses_scaling_die_and_dex():
 def test_c20_s06_flurry_of_blows_spends_focus_for_two_bonus_action_strikes():
     """C20-S06: SRD 5.2 ``classes24/monk/class-features/monks-focus.yml``
     (phbmnkMonksFocus), Flurry of Blows activity ``2ghJTBhilLrFn9xT`` —
-    "expend 1 Focus Point to make two Unarmed Strikes as a Bonus
-    Action." ``resolver.py``'s ``utility`` handling only applies
-    ``effects[]`` riders; this activity's ``chatFlavor`` text carries
-    no typed attack payload, and nothing represents "free follow-up
-    attacks paid for by a feature use" today. Contract repair (plan R1):
-    the Monk gains Monk's Focus at level 2, and the two strikes that follow
-    a Flurry of Blows are Flurry strikes by engine inference (no flag).
+    "expend 1 Focus Point to make two Unarmed Strikes as a Bonus Action."
+    ``resolver.py``'s ``utility`` handling only applies ``effects[]``
+    riders; this activity's ``chatFlavor`` text carries no typed attack
+    payload, and nothing represents "free follow-up attacks paid for by a
+    feature use" today. The Monk gains Monk's Focus at level 2, and the two
+    strikes that follow a Flurry of Blows are Flurry strikes by engine
+    inference (no flag).
     """
 
     async def _run():
@@ -436,7 +436,7 @@ def test_c20_s07_action_surge_grants_a_second_action_same_turn():
     in ``orchestrator.py``; the Attack action ends the one-attack Fighter's
     turn (C14), so a second Attack-action swing in the same turn is
     rejected with ``IntentRejectedError("not_actor_turn")``.
-    Contract repair (plan R1): the surge comes first, so the one-attack
+    The surge comes first, so the one-attack
     Fighter's turn does not end after its first swing (the C14 rule that a
     one-attack actor's turn ends after its Attack action stands).
     """
@@ -500,13 +500,12 @@ def test_c20_s08_bardic_inspiration_die_consumed_on_later_ally_roll():
     — "That creature gains one of your Bardic Inspiration dice. ... Once
     within the next hour when the creature fails a D20 Test, the creature
     can roll the Bardic Inspiration die and add the number rolled to the
-    d20, potentially turning the failure into a success." Nothing
-    represents "bank a d6 on the TARGET, redeemable on a LATER roll" today;
-    no ``attack`` intent carries a "redeem a banked die" flag. Contract
-    repair (plan R1): the bard passes, so the ally attacks on its own turn
-    ("Each participant in the battle takes a turn in Initiative order");
-    seed 8's base attack (natural 8 + 3 = 11 against AC 14) fails, so the
-    die is rolled.
+    d20, potentially turning the failure into a success." Nothing represents
+    "bank a d6 on the TARGET, redeemable on a LATER roll" today; no
+    ``attack`` intent carries a "redeem a banked die" flag. The bard passes,
+    so the ally attacks on its own turn ("Each participant in the battle
+    takes a turn in Initiative order"); seed 8's base attack (natural 8 + 3
+    = 11 against AC 14) fails, so the die is rolled.
     """
 
     def _run(*, bank: bool, redeem: bool):
@@ -592,7 +591,7 @@ def test_c20_s09_rage_ends_at_end_of_next_turn_when_not_extended():
     Force a saving throw... Take a Bonus Action to extend." Rage's
     ``ActiveEffect`` duration is decremented once per turn purely by
     ``_tick_durations_at_turn_end`` with no check for an extension — the
-    effect survives regardless. Contract repair (plan R1): the foe's turn
+    effect survives regardless. The foe's turn
     is driven between the barbarian's two turns ("Each participant in the
     battle takes a turn in Initiative order").
     """
@@ -660,7 +659,7 @@ def test_c20_s10_lay_on_hands_pool_caps_at_5x_paladin_level_per_long_rest():
     string ``"5 * @classes.paladin.levels"`` — ``_feature_use_cap``
     only resolves literal ints and ``@scale.<owner>.<key>`` tokens, so
     this formula falls through unresolved (uncapped at runtime today).
-    Contract repair (plan R1): Lay on Hands is a Bonus Action and "You can
+    Lay on Hands is a Bonus Action and "You can
     take only one Bonus Action on your turn", so the pool is probed with
     two draws in one turn — 11 points (more than the pool holds: refused,
     no Bonus Action spent) then 10.
@@ -731,7 +730,7 @@ def test_c20_s11_cunning_action_dash_is_gated_by_feature_not_class_slug():
     """C20-S11: SRD 5.2 ``classes24/rogue/class-features/cunning-action.yml``
     — "On your turn, you can take one of the following actions as a Bonus
     Action: Dash, Disengage, or Hide." ``_handle_dash`` hardcodes
-    ``class_slug != "rogue"``. Contract repair (plan R1): Cunning Action is
+    ``class_slug != "rogue"``. Cunning Action is
     a Rogue level-2 feature, so a Rogue 2's bonus-action Dash succeeds while
     a Rogue 1's and a Fighter 1's are rejected with
     ``IntentRejectedError("no_action_economy")``.

@@ -1,10 +1,10 @@
-"""Regression — Codex Phase 6 review iter-13 fixes.
+"""Regression — per-ability save buckets and seeded concentration.
 
-P2: per-ability save buckets (save.wisdom.bonus, save.dexterity.bonus)
+Per-ability save buckets (save.wisdom.bonus, save.dexterity.bonus)
 must NOT flatten into the action-agnostic passive_save_bonus sidecar.
-Otherwise effect/save.py would apply a Wisdom-only buff to every save.
+Otherwise a Wisdom-only buff would apply to every save.
 
-P2: seeding a concentration effect via start_combat must also set the
+Seeding a concentration effect via start_combat must also set the
 caster Combatant's concentration_effect_id so _build_hydration_payload
 derives existing_concentration correctly.
 """
