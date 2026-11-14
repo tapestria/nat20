@@ -125,7 +125,10 @@ seated on the party's side (`side="party"` in the engine), beside the
 `"monsters": ["goblin-warrior"]` and `"allies": ["wolf"]` seats
 `mon:goblin-warrior-1` against the party and `mon:wolf-2` with it. An ally
 fights foes and is fought by them, dies at 0 Hit Points as a monster does, and
-takes no share of the XP. `/advance-monster` plays its turn with the engine's
+takes no share of the XP. While an ally still stands the party side is not
+out of the fight, so a combat ended after every character has died reads
+`ended_reason` `"forced"` (or `"flee"` when every foe still fighting has
+fled), never `"defeat_tpk"`. `/advance-monster` plays its turn with the engine's
 AI, or an intent with its `actor_id` commands it (`pass`, `move`, `attack`
 with `stat_block_action_id`). A start needs at least one foe: allies alone
 answer 422.
@@ -141,10 +144,14 @@ other key answers 422.
 **Knocking out** (`POST /v1/combat/{cid}/intent`) is `"knock_out": true` on an
 `attack`: a melee hit that would drop a creature to 0 Hit Points leaves it at
 1 Hit Point and Unconscious instead, and the response narrates it ("Brom
-knocks Goblin Warrior 1 out."). A swing that is not a melee attack (a ranged
-weapon, a thrown weapon beyond reach) answers 409 `knock_out_not_melee` with
-nothing spent. The view lists the creature under `knocked_out_ids` until it
-regains Hit Points or dies, and `/end`'s outcome lists it under `knock_outs`.
+knocks Goblin Warrior 1 out."). An attack that is not a melee attack (a ranged
+weapon, a thrown weapon beyond reach, a multiattack with a ranged part) answers
+409 `knock_out_not_melee` with nothing spent. Only the attack's own damage is
+pulled: a rider resolved by a saving throw after the hit can still kill. A
+creature immune to Unconscious is left at 1 Hit Point and fights on. The view
+lists a knocked-out creature under `knocked_out_ids` until it regains Hit
+Points or dies, and `/end`'s outcome lists it under `knock_outs` and counts its
+XP as a dead foe's.
 
 ## Combat sessions
 

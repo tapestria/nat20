@@ -804,8 +804,8 @@ def is_melee_attack(
     """Is this attack, at ``distance_ft`` from its target, a melee attack? A
     melee attack activity whose weapon is not a ranged weapon and not a Thrown
     weapon thrown beyond its reach. The orchestrator refuses a knock-out
-    choice with the same rule before anything is spent, so the choice never
-    silently kills."""
+    choice before anything is spent unless every attack of the intent passes
+    this rule; a save-based rider after the hit is not pulled."""
     return activity.attack.type.value == "melee" and not _attack_is_effectively_ranged(
         weapon, distance_ft
     )

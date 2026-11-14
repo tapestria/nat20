@@ -394,9 +394,10 @@ class PlayerIntent(BaseModel):
     # Hit Point. The creature then has the Unconscious condition." The
     # attacker's choice for THIS attack: every melee hit it lands this intent
     # pulls the blow. Refused with ``IntentRejectedError("knock_out_not_melee")``
-    # before anything is spent when the attack is not a melee attack: a ranged
-    # weapon, or a Thrown melee weapon at a target beyond its reach. Ignored by
-    # other intent types.
+    # before anything is spent when any attack it resolves is not a melee
+    # attack: a ranged weapon, a Thrown melee weapon at a target beyond its
+    # reach, a multiattack with a ranged part. A save-based rider after the hit
+    # is not pulled. Ignored by other intent types.
     knock_out: bool = False
 
     @field_validator("direction")
@@ -9463,10 +9464,12 @@ def _reject_knock_out_not_melee(
     live: _LiveCombat, current: Combatant, intent: PlayerIntent
 ) -> None:
     """SRD 5.2 Knocking Out a Creature works only "with a melee attack". An
-    ``attack`` asking for it must resolve a melee attack activity at a
+    ``attack`` asking for it must resolve only melee attack activities at a
     distance where its weapon is not a ranged weapon nor a Thrown weapon
     beyond its reach (``activities.attack.is_melee_attack``, the rule the
-    resolver applies to the damage), so the choice never silently kills. A
+    resolver applies to the damage), so no attack of it deals unpulled
+    damage; a save-based rider after the hit is not an attack and is not
+    pulled. A
     spell's own attack (a construct's repeat) is not a weapon swing and is
     refused too. Raises before anything is spent."""
     if intent.intent_type != "attack" or not intent.knock_out:

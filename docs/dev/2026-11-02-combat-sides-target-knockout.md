@@ -182,7 +182,10 @@ class EncounterMemberSpec(BaseModel):
 - `_derive_ended_reason` keeps reading the sides: `victory` once every
   encounter-side creature is out of the fight; `defeat_tpk` once every party-side
   creature is — a standing ally keeps the fight open, which is what "side" means.
-  "Out of the fight" is dead or knocked out (see §3).
+  "Out of the fight" is dead or knocked out (see §3). A host should know the
+  consequence: a fight ended once every character is dead while a party-side
+  ally still stands reads `forced` (or `flee` when every foe still in the
+  fight has fled), not `defeat_tpk`.
 - Legendary actions and Legendary Resistance stay encounter-only (`:2924`,
   `:3582`): a legendary ally is a recorded gap (BACKLOG.md), not a feature.
 - `LiveCombatView` needs no new field: `party_ids` lists the ally, and
@@ -285,8 +288,11 @@ class PlayerIntent(BaseModel):
   hit and carry the flag; a save-based rider is not an attack and does not.
 - The intent-time refusal uses the same predicate on the weapon the intent
   resolves and the distance the orchestrator already computes for the context,
-  so the flag never silently kills: a swing that cannot be a melee attack is
-  refused, a swing that can is pulled.
+  over every attack the intent resolves: an intent any of whose attacks is
+  not a melee attack (a ranged weapon, a Thrown weapon beyond reach, a
+  multiattack with a ranged part) is refused, and every attack of one that is
+  accepted is pulled. Only the attack's damage is pulled: a rider resolved by
+  a saving throw after the hit is not part of it and can still kill.
 
 ```python
 class DamageApplied(BaseModel):
@@ -313,7 +319,11 @@ the target is not dead and not a summon, and `event.knock_out` is true:
    creature pulled down by an ally is captured, not dying.
 
 A summon is never knocked out: it "disappears when it drops to 0 Hit Points",
-and keeps doing so (`:5232-5236`).
+and keeps doing so (`:5232-5236`); a blow against it reduces it to 0, so
+Undead Fortitude's save is rolled as for any blow. A creature immune to
+Unconscious is reduced to 1 Hit Point and is not knocked out (SRD 5.2
+Immunity: "it doesn't affect you in any way"): no `KnockedOut`, no record, and
+it stays a legal target that keeps acting.
 
 ```python
 # events.py
@@ -401,7 +411,7 @@ on `advance_monster_turn`. Both are additive later; neither has a consumer.
 | `advance_monster_turn(target_id=)` | in `_select_monster_targets(live, actor)` | `IntentRejectedError("target_invalid")`, nothing spent |
 | `advance_monster_turn(target_id=)` on a summon's turn | never legal | `IntentRejectedError("target_invalid")` |
 | `advance_monster_turn(target_id=)` on a character's turn | existing check first | `IntentRejectedError("not_actor_turn")` |
-| `PlayerIntent.knock_out` on `attack` | the swing is a melee attack | `IntentRejectedError("knock_out_not_melee")`, nothing spent |
+| `PlayerIntent.knock_out` on `attack` | every attack it resolves is a melee attack | `IntentRejectedError("knock_out_not_melee")`, nothing spent |
 | `PlayerIntent.knock_out` on any other intent | ignored | — |
 
 Nothing here catches an exception: every refusal is a typed raise before state
