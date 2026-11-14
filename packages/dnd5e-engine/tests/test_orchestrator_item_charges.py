@@ -691,13 +691,13 @@ def test_wand_upcast_spends_and_scales():
     assert live.custom_counters_by_entity["char:hero"][WAND_COUNTER_KEY] == {"spent": 3}
 
 
-# ── Final-review fix wave (C1/C2/I1/I3) ──────────────────────────────────────
+# ── Charge-spend regressions ─────────────────────────────────────────────────
 
 STAFF_OF_FIRE_SLUG = "staff-of-fire"
 STAFF_OF_FIRE_COUNTER_KEY = f"item_use:{STAFF_OF_FIRE_SLUG}"
 # The staff's ``cast`` activity delegating Fireball: cost 3 charges,
 # ``spell.challenge.override == False`` — no fixed DC, relies entirely on
-# the item-path blanket DC ``build_activity_context`` computes (C1's bug).
+# the item-path blanket DC ``build_activity_context`` computes.
 STAFF_OF_FIRE_FIREBALL_ACTIVITY_ID = "Vb0miyFHetlOTk1l"
 FIREBALL_SPELL_SLUG = "fireball"
 
@@ -708,14 +708,14 @@ HOLD_PERSON_SPELL_SLUG = "hold-person"
 
 STAFF_OF_STRIKING_SLUG = "staff-of-striking"
 # The staff's only charge-consuming activity: kind "damage" (not "cast"),
-# cost 1, ``consumption.scaling.allowed == True`` — I1's target.
+# cost 1, ``consumption.scaling.allowed == True``.
 STAFF_OF_STRIKING_DAMAGE_ACTIVITY_ID = "sviFeLqVM4b4jHvc"
 
 ROPE_OF_CLIMBING_SLUG = "rope-of-climbing"
 # Recharge-flavored "spend" activity whose sole ``itemUses`` consumption
 # target is a NEGATIVE literal ("-1", regain-on-use) — ``_activity_item_use_
 # cost`` only sums POSITIVE targets, so this activity prices at
-# ``base_cost == 0``. Scaling is allowed (``max="20"``) — I3's target.
+# ``base_cost == 0``. Scaling is allowed (``max="20"``).
 ROPE_OF_CLIMBING_RECHARGE_ACTIVITY_ID = "1zQvPyT12aIg017J"
 
 

@@ -184,7 +184,7 @@ def test_c19_s06_save_and_skill_proficiencies_derive_from_class_and_background()
     sheet = derive_sheet(build_spec, loader=loader)
 
     assert sheet.save_proficiencies == frozenset({"str", "con"})
-    # Contract repair (plan R1): the sheet speaks the engine's canonical
+    # The sheet speaks the engine's canonical
     # long-form skill slugs — the vocabulary PartyMemberSpec.skill_proficiencies,
     # CheckSpec.proficient_skills and rules.skills.SKILL_ABILITIES use; the
     # corpus's 3-letter codes are translated at the dataset boundary.
@@ -211,7 +211,7 @@ def test_c19_s07_asi_at_level4_from_selected_choices_raises_ability_score():
         ability_scores={"strength": 16},
         level=4,
         selected_choices=(
-            # Contract repair (plan R1): class-qualified so a multiclass build can
+            # Class-qualified so a multiclass build can
             # name which class's level-4 improvement the choice fills.
             "asi:fighter:4:strength+2",
         ),
@@ -274,7 +274,7 @@ def test_c19_s09_multiclass_fighter3_rogue2_hp_and_proficiency_bonus():
 
     assert sheet.hp_max == 12 + 2 * 8 + 2 * 7 == 42
     assert sheet.proficiency_bonus == 3
-    # Contract repair (plan R1): no Extra Attack before Fighter level 5.
+    # No Extra Attack before Fighter level 5.
     assert sheet.extra_attack_count == 0
 
     # SRD 5.2 Multiclassing, "Extra Attack": "If you gain the Extra Attack

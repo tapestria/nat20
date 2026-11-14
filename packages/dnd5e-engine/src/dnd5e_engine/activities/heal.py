@@ -7,11 +7,9 @@ HP buffer — both confirmed against canonical SRD 5.2 data (cure-wounds.json
 emits ``"healing"``; false-life.json emits ``"temphp"``). When ``temphp`` is
 present we emit ``TempHpApplied``, otherwise ``HealingApplied``.
 
-MIRRORS, does not import from, ``effects/temphp.py`` for the temp-hp token
-distinction. The keep-higher replacement policy lives only on the legacy
-``effects/`` path (which carries an existing-temp-HP lookup); the typed
-Activity resolver emits the rolled grant directly, matching how ``apply.py``
-emits the rolled magnitude for damage.
+The resolver emits the rolled temp-HP grant directly, matching how
+``apply.py`` emits the rolled magnitude for damage; the keep-higher replacement
+policy is applied where the event is folded into live state.
 """
 
 from __future__ import annotations

@@ -1,11 +1,11 @@
-"""Regression — combat resolvers use Foundry-shaped bucket keys (Phase 6).
+"""Regression — combat resolvers use Foundry-shaped bucket keys.
 
-Codex review of Phase 6 caught that ``rules/combat.py`` was passing legacy
-bucket strings (``"saving_throw"``, ``"damage"``, ``"attack_roll"``, ``"ac"``)
-into ``apply_changes_to_check``. The seed templates emit Foundry-shaped keys
-(``save.bonus``, ``damage.bonus``, ``attack.roll.bonus``, ``ac.bonus``); the
-helper does exact key matching, so the resolvers were silently no-op-ing
-every effect. These tests lock the alignment.
+``rules/combat.py`` must pass Foundry-shaped keys (``save.bonus``,
+``damage.bonus``, ``attack.roll.bonus``, ``ac.bonus``) into
+``apply_changes_to_check``, not bare strings (``"saving_throw"``,
+``"damage"``, ``"attack_roll"``, ``"ac"``): the helper does exact key
+matching, so a mismatched key silently no-ops every effect. These tests
+lock the alignment.
 """
 
 from __future__ import annotations

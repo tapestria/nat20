@@ -194,7 +194,7 @@ def test_select_typed_monster_action_is_unchanged():
 
 
 def test_exhausted_limited_use_cast_ranks_behind_multiattack():
-    """C18 final review, finding 4: tier 2 is for a limited-use cast that
+    """Tier 2 is for a limited-use cast that
     still has a use remaining. Once the caller's probe reports none left, the
     Spellcasting action (still available via its at-will casts) drops to the
     ordinary offensive tier, behind Multiattack."""

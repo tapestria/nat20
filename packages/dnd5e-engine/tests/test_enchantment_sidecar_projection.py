@@ -1,15 +1,14 @@
 """Regression — equipped enchantment ActiveEffectChanges reach engine sidecar.
 
-Codex Phase 6 review iter-6 P1: equipped magic items (Cloak of Protection,
-+1 Weapon) were synthesized as ActiveEffect instances and passed via
-start_combat(active_effects=...), but the engine's own monster-turn
-handlers read attack/save state from the legacy sidecar projections in
-_build_hydration_payload() — projections that key on ieffect_passive_index
-lookups, NOT on ActiveEffect.changes. So a PC's Cloak of Protection AC
-bonus would work on player-dispatched attacks (host DispatchContext path)
-but NOT when a monster's attack/save was resolved through the engine.
+Equipped magic items (Cloak of Protection, +1 Weapon) are synthesized as
+ActiveEffect instances and passed via start_combat(active_effects=...). The
+engine's own monster-turn handlers read attack/save state from the sidecar
+projections built in _build_hydration_payload(); if those keyed only on
+ieffect_passive_index lookups and not on ActiveEffect.changes, a PC's Cloak
+of Protection AC bonus would work on player-dispatched attacks but NOT when
+a monster's attack/save was resolved through the engine.
 
-The fix folds int- and dice-formula `mode=add` changes into the same
+The projection folds int- and dice-formula `mode=add` changes into the same
 sidecar surfaces the IR-index path populates (passive_save_bonus,
 passive_to_hit_bonus, passive_ac_bonus, passive_damage_bonus). These
 tests lock the projection.
@@ -151,7 +150,7 @@ def test_per_ability_save_bonus_folds_into_passive_save_bonus():
     live = _get_live(result.handle)
     payload = _project(live)
     hero_save = payload["save_modifiers"].get("char:hero", {})
-    # iter-13 P2 fix: per-ability buckets (save.wisdom.bonus) no longer
+    # Per-ability buckets (save.wisdom.bonus) no longer
     # flatten into the generic passive_save_bonus — they'd silently
     # leak onto every saving throw. The direct active_effects path
     # via apply_changes_to_check (saving_throw, resolve_check) honors
@@ -198,7 +197,7 @@ def test_weapon_tagged_effect_does_not_fold_attack_damage_into_sidecar():
     live = _get_live(result.handle)
     payload = _project(live)
     hero_dmg = payload["passive_damage_modifiers"].get("char:hero", {})
-    # iter-14 P1: weapon-tagged effects route to the weapon-only sidecar
+    # Weapon-tagged effects route to the weapon-only sidecar
     # (passive_weapon_to_hit_bonus / passive_weapon_damage_bonus). The
     # broad surface remains None — the attack handler reads it ONLY for
     # action_type="attack", so spell attacks (Fire Bolt etc.) don't

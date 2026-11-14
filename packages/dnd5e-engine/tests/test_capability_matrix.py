@@ -467,41 +467,41 @@ _PROBES: dict[str, tuple[Any, str]] = {
         lambda: "exhaustion_level" in _src("rest.py"),
         "Long Rest reduces the level by 1",
     ),
-    # C17 Task 4 (R4): Counterspell's reaction-drain eligibility check is
+    # Counterspell's reaction-drain eligibility check is
     # threaded through ``_pop_pending_reaction``'s ``eligible=`` predicate —
     # an ineligible reactor's armed reaction is skipped, not popped.
     "slot-gated at the readied level and 60 ft range/LoS-gated at drain time": (
         lambda: "eligible=" in _src("orchestrator.py"),
         "slot-gated at the readied level and 60 ft range/LoS-gated at drain time",
     ),
-    # C17 Task 4 (R4): a readied leveled spell (Shield) is gated on slot
+    # A readied leveled spell (Shield) is gated on slot
     # availability at drain time via its own ``_readied_cast_eligible``
     # predicate (distinct from Counterspell's inline ``_eligible`` above).
     "an unexpended slot at its readied level": (
         lambda: "def _readied_cast_eligible(" in _src("orchestrator.py"),
         "an unexpended slot at its readied level",
     ),
-    # C17 Task 1: per-class/multiclass/Pact slot tables are derived
+    # Per-class/multiclass/Pact slot tables are derived
     # engine-side rather than accepted as a host-precomputed flat dict.
     "derive_spell_slots`, `derive_multiclass_slots`, `derive_pact_slots": (
         lambda: "def derive_multiclass_slots(" in _src("build_spec.py"),
         "derive_spell_slots`, `derive_multiclass_slots`, `derive_pact_slots",
     ),
-    # C17 Task 1: the multiclass carrier itself (``classes: dict[str, int]``)
+    # The multiclass carrier itself (``classes: dict[str, int]``)
     # is the field this row names — distinct from the derivation function
     # probed above.
     "`CharacterBuildSpec.classes` carrier": (
         lambda: "classes: dict[str, int]" in _src("build_spec.py"),
         "`CharacterBuildSpec.classes` carrier",
     ),
-    # C17 Task 6 (R8): a Ritual-tagged spell resolves out-of-combat only,
+    # A Ritual-tagged spell resolves out-of-combat only,
     # through the pure ``resolve_ritual_cast`` host seam; an in-combat
     # ``as_ritual`` cast is rejected before any slot logic.
     "Out-of-combat via `resolve_ritual_cast`": (
         lambda: "def resolve_ritual_cast(" in _src("spellcasting.py"),
         "Out-of-combat via `resolve_ritual_cast`",
     ),
-    # C17 Task 6: component/material metadata now rides on every PC-path
+    # Component/material metadata now rides on every PC-path
     # cast via the ``SpellCast`` event, but nothing gates on it.
     "Metadata on `SpellCast`, not enforced": (
         lambda: "class SpellCast(" in _src("events.py"),

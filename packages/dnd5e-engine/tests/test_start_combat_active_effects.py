@@ -1,4 +1,4 @@
-"""Phase 6 — start_combat seeds active_effects."""
+"""start_combat seeds active_effects."""
 
 from __future__ import annotations
 

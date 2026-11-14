@@ -108,7 +108,7 @@ def test_get_actor_active_effects_unknown_entity_returns_empty():
 def test_get_actor_active_effects_invalid_handle_returns_empty():
     """A handle with no live combat → empty tuple, no exception.
 
-    Phase 6 contract: out-of-combat callers see no effects. The host
+    Contract: out-of-combat callers see no effects. The host
     treats an empty result the same as "no live combat", so the helper
     must not raise for an unknown handle either.
     """

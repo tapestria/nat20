@@ -1,10 +1,10 @@
-"""Task 1 (phase 7c) — ``build_activity_context`` reads real PC abilities + PB.
+"""``build_activity_context`` reads real PC abilities + PB.
 
-Piece 3 landed real per-ability scores + ``character_level`` on ``Combatant``.
-For PC casters (``entity_type == "Character"``) the context must now expose the
-real ability mods and a level-derived proficiency bonus, instead of the
-Avrae-era uniform fake (``10 + 2*mod`` from ``attack_bonus``, ``PB == 2``).
-Monsters keep the ``attack_bonus``-derived uniform path.
+``Combatant`` carries real per-ability scores + ``character_level``. For PC
+casters (``entity_type == "Character"``) the context must now expose the real
+ability mods and a level-derived proficiency bonus, instead of the Avrae-era
+uniform fake (``10 + 2*mod`` from ``attack_bonus``, ``PB == 2``). Monsters keep
+the ``attack_bonus``-derived uniform path.
 """
 
 from __future__ import annotations

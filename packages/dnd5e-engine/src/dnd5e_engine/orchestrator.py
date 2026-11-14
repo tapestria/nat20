@@ -923,7 +923,7 @@ def _in_range_with_los(topology: SpatialTopology, a: str, b: str, range_ft: int)
     through. SRD 5.2 §Cover: a target with total cover "can't be targeted
     directly" — reuses the same rejection surface (``AttackFailed(reason=
     "out_of_range")``) every other range/LoS rejection already uses. On a
-    backend/scene with no wall or cover geometry, ``has_line_of_sight`` is
+    scene with no wall or cover geometry, ``has_line_of_sight`` is
     always True and ``cover_between`` is always ``"none"``, so this is
     behaviour-identical to a bare ``within_range`` (byte-for-byte preserved).
     """
@@ -2235,8 +2235,8 @@ def _synthesize_attack_from_legacy_fields(current: Combatant) -> AttackActivity 
     ``AttackActivity`` built from the spec-supplied ``attack_bonus`` /
     ``damage_dice`` / ``damage_type`` for a monster with no
     ``monster_template_slug``. ``specs.py`` has always documented this
-    fallback on the field; the typed-activity cutover dropped it and
-    template-less foes silently no-opped every turn. The synthesized
+    fallback on the field; without it, template-less foes would silently
+    no-op every turn. The synthesized
     activity flows through the normal gambit (movement, range gate,
     condition rows, concentration checks): to-hit magnitude comes from
     ``build_activity_context``'s Monster branch (``attack_bonus``), damage
@@ -5361,7 +5361,7 @@ def _emit_apply_temp_hp(live: _LiveCombat, event: TempHpApplied) -> None:
     """Fold a ``TempHpApplied`` into running state: max-not-additive temp-HP
     tracking + initiative slot sync."""
     # SRD §Temporary Hit Points — new amount replaces existing if higher,
-    # not additive (the legacy evaluator/Open5e canonical behavior).
+    # not additive.
     current = live.tracked_temp_hp.get(event.target_id, 0)
     new_temp = max(current, event.amount)
     live.tracked_temp_hp[event.target_id] = new_temp
@@ -5454,8 +5454,8 @@ def _emit_apply_effect_applied(live: _LiveCombat, event: EffectApplied) -> None:
         # caps whatever movement the target had left this turn.
         _clamp_movement_budget(live, applied.target_id)
     # SRD spell-slot consumption: spell effects with concentration imply
-    # a slot was spent. The slot level is not on the event today (follow-up
-    # in the cutover); we record under a coarse "slots" label keyed by name.
+    # a slot was spent. The slot level is not on the event; we record under a
+    # coarse "slots" label keyed by name.
     is_concentration = bool(applied.flags.get("concentration"))
     if is_concentration and applied.target_id in live.party_ids:
         bucket = live.expended_resources.setdefault(applied.target_id, {})
@@ -6058,7 +6058,7 @@ def _project_caster_pools(
         counter_state["spell_slots"] = dict(slot_str_keyed)
     # Spell book — resolve slugs through the bundled lib corpus. Unknown
     # slugs are silently dropped (the lib is the source of truth for what
-    # can be cast). Post-cutover this maps to typed ``Spell`` instances; the
+    # can be cast). This maps to typed ``Spell`` instances; the
     # live ``cast``-delegation seam (``_build_cast_spell_book``) keys spells
     # by Foundry uuid off the resolved intent's own activities instead, so
     # this projection is not that seam's source — it is kept as a per-caster
@@ -11357,7 +11357,7 @@ def _resolve_intent_activities(
 ) -> _ResolvedActivities:
     """Fetch the typed entity for the intent's kind from the lib loader and
     collect the activities the resolver will walk. This is the sole PC
-    resolution path; the legacy evaluator's IR path is retired.
+    resolution path.
     ``stat_block_slug`` is the stat block an ``attack`` naming
     ``stat_block_action_id`` swings from (``_current_stat_block_slug``)."""
     cast_spell: Spell | None = None
@@ -12494,11 +12494,11 @@ async def submit_player_intent(
     # non-use_item intents).
     _record_item_charge_spend(live, actor_id, intent)
 
-    # ── Typed-Activity resolution (Foundry cutover, ─────────────
+    # ── Typed-Activity resolution ─────────────────────────────────
     #
     # Fetch the typed entity for the intent's kind from the lib loader and
     # collect the activities the resolver will walk. This is the sole PC
-    # resolution path; the legacy evaluator's IR path is retired.
+    # resolution path.
     resolved = _resolve_intent_activities(
         intent,
         feature_invocation,
@@ -12757,10 +12757,9 @@ async def submit_player_intent(
     # action does not end the turn, so it must not trigger a repeat save.
     #
     # Advance the turn. End-of-round wraps to next round + emits a
-    # RoundStarted; a follow-up RoundEnded would land in the cutover
-    # path where the evaluator drives the loop. Keeping the additive
-    # surface minimal: TurnEnded → TurnStarted (and RoundStarted on
-    # wrap) is what a narrator-side consumer needs to see today.
+    # RoundStarted. Keeping the additive surface minimal: TurnEnded →
+    # TurnStarted (and RoundStarted on wrap) is what a narrator-side consumer
+    # needs to see.
     #
     # SRD §Action Economy — a bonus action does NOT end the turn; the
     # actor keeps initiative and may follow with a regular Action.
@@ -13167,11 +13166,10 @@ async def advance_monster_turn(
     # no new IntentType is minted). Dead/unconscious monsters never retreat.
     current = _apply_monster_flee_stance(live, current, enemies)
 
-    # ── Typed-Activity monster resolution (Foundry cutover, ─────────
+    # ── Typed-Activity monster resolution ─────────────────────────
     #
     # Fetch the typed ``Monster`` from the lib loader, pick its action, and fan
-    # out multiattack. This is the sole monster-turn path; the legacy evaluator's IR
-    # path is retired.
+    # out multiattack. This is the sole monster-turn path.
     monster_slug = live.monster_slug_by_entity.get(current.entity_id)
     monster_parts, cast_selection = _resolve_monster_activities(
         live, current, monster_slug, skip_to_record_pass, chosen_target

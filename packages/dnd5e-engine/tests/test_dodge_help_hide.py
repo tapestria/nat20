@@ -723,7 +723,7 @@ class TestHideFailedCheck:
         assert attack.advantage == "normal"
 
 
-# ── Final-review fix wave — F3: Hide is retryable-until-success ────────────
+# ── Hide is retryable-until-success ────────────────────────────────────────
 #
 # ``_handle_hide`` is zero-cost and turn-keeping with no
 # repeat gate, which lets a host loop ``hide`` intents until the DC 15 check

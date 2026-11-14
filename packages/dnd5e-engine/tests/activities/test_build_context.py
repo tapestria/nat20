@@ -32,7 +32,7 @@ def _caster(**overrides) -> Combatant:
 def _build(caster: Combatant, targets: list[Combatant], **kw):
     """Invoke build_activity_context with sensible defaults for the payload args.
 
-    Mirrors the orchestrator cutover call: the two hydration dicts are passed
+    Mirrors the orchestrator's call: the two hydration dicts are passed
     in. Tests override ``passive_damage_modifiers`` / ``save_modifiers`` as needed.
     """
     params: dict = dict(
@@ -67,7 +67,7 @@ def _monster(**overrides) -> Combatant:
 
 
 def test_pc_reads_real_abilities_and_level_pb():
-    # PC (piece 4): per-ability mods come from the real Combatant scores, PB
+    # PC: per-ability mods come from the real Combatant scores, PB
     # from character_level. `_caster()` defaults str/con/int/wis/cha=10 (mod 0),
     # dexterity=14 (mod +2), character_level=3 (PB +2 = 2 + (3-1)//4).
     caster = _caster()
@@ -197,9 +197,9 @@ def test_save_sidecar_reshaped_into_typed_fields():
 
 
 def test_roll_save_applies_bonus_and_short_circuits_auto_fail():
-    """Regression for the dropped target-side save sidecar (cutover task 2).
+    """Regression: the typed save path consumes the full target-side save sidecar.
 
-    Would FAIL if the cutover silently dropped passive_save_bonus /
+    Would FAIL if the save path silently dropped passive_save_bonus /
     passive_save_auto_fail: the typed save path must apply the bless-style bonus
     on a normal ability AND short-circuit the auto-fail ability to (0, False)
     without consuming a d20.
@@ -247,7 +247,7 @@ def test_roll_save_empty_sidecar_matches_plain_d20_plus_mod():
 
 
 def test_monster_spell_attack_bonus_uses_the_stat_block_spellcasting_ability():
-    """C18 final review, finding 8: the bundled adult red dragon's
+    """The bundled adult red dragon's
     Spellcasting reads "+12 to hit with spell attacks" (cha 23 -> +6, PB +6)
     while its Rend is +14 — a monster cast with a resolved
     ``spellcasting_ability`` overrides to-hit with PB + that modifier; the

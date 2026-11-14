@@ -8,13 +8,11 @@ level, the referenced spell's base level / concentration flag / own
 ``resolve_activity`` for each activity on the referenced spell. ``cast`` emits
 NOTHING itself — the delegated child activities emit their own events.
 
-MIRRORS, does not import from, ``effects/spell.py`` (the legacy ``type:
-"spell"`` analogue). Reproduces its semantics with the typed lib shapes:
+Semantics, over the typed lib shapes:
 
 * Spell-within-itself cycle guard FIRST (cheap, before the lookup): a ``uuid``
   already in ``ctx.parent_chain`` logs ``cast_spell_cycle`` and no-ops, never
-  recursing infinitely (mirrors ``effects/spell.py``'s ``"spell" in parent_chain``
-  guard).
+  recursing infinitely.
 * Spell lookup is a LOUD no-op on a miss — an unresolved ``uuid`` logs
   ``cast_spell_unresolved`` and returns rather than silently skipping.
 * Cast-level resolution: ``spell.level`` override when set, else the referenced
@@ -63,8 +61,8 @@ def resolve_cast(activity: CastActivity, ctx: ActivityResolutionContext) -> None
     if spell is None:
         _LOGGER.warning("cast_spell_unresolved uuid=%s", uuid)
         return
-    # 3. Cast-level resolution + bounds (SRD §Casting a Spell at a Higher Level;
-    #    mirrors effects/spell.py's ``base_level <= cast_level <= 9`` invariant).
+    # 3. Cast-level resolution + bounds (SRD §Casting a Spell at a Higher Level:
+    #    the ``base_level <= cast_level <= 9`` invariant).
     #    A cantrip's base level is 0 (``0 <= 0 <= 9`` passes). An out-of-range
     #    cast (e.g. a scroll forged at level 10, or below the spell's base) is a
     #    LOUD no-op — never an absurd upcast (cure-wounds at level 10 → 20d8).

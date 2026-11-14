@@ -70,7 +70,7 @@ def test_c18_s01_recharge_gates_a_breath_weapon_ai_cannot_select_it():
         )
         live = _get_live(start.handle)
         await advance_monster_turn(start.handle)  # mephit's turn 1
-        # Contract repair (R1): the hero's turn must be driven before the
+        # The hero's turn must be driven before the
         # mephit's second turn — advance_monster_turn rejects a PC turn.
         await submit_player_intent(
             start.handle, actor_id="char:hero", intent=PlayerIntent(intent_type="pass")
@@ -230,7 +230,7 @@ def test_c18_s03_legendary_resistance_converts_failed_save_and_saves_ignore_prof
             )
             live = _get_live(start.handle)
             if arm_legendary_resistance:
-                # Contract repair (R1/R7): the choice is declared BEFORE the
+                # The choice is declared BEFORE the
                 # save it converts — the engine has no mid-resolution
                 # round-trip.
                 from dnd5e_engine import orchestrator as orchestrator_module
@@ -338,7 +338,7 @@ def test_c18_s04_troll_regeneration_heals_at_start_of_turn_above_zero_hp():
             rng_seed=2,
         )
         live = _get_live(start.handle)
-        # Contract repair (R1): drive the hero's turn before the troll's —
+        # Drive the hero's turn before the troll's —
         # advance_monster_turn rejects a PC turn.
         await submit_player_intent(
             start.handle, actor_id="char:hero", intent=PlayerIntent(intent_type="pass")
@@ -477,7 +477,7 @@ def test_c18_s06_pack_tactics_grants_attack_advantage_with_adjacent_ally():
             rng_seed=3,
         )
         live = _get_live(start.handle)
-        # Contract repair (R1): drive the hero's turn before the wolf's —
+        # Drive the hero's turn before the wolf's —
         # advance_monster_turn rejects a PC turn.
         await submit_player_intent(
             start.handle, actor_id="char:hero", intent=PlayerIntent(intent_type="pass")
@@ -608,7 +608,7 @@ def test_c18_s08_combat_ends_flee_when_every_foe_has_fled():
             rng_seed=1,
         )
         handle = start.handle
-        # Contract repair (R1): drive the hero's turn before the goblin's —
+        # Drive the hero's turn before the goblin's —
         # advance_monster_turn rejects a PC turn.
         await submit_player_intent(
             handle, actor_id="char:hero", intent=PlayerIntent(intent_type="pass")

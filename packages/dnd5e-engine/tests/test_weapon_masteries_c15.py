@@ -818,7 +818,7 @@ def test_c_cleave_fires_only_once_per_turn() -> None:
             start.handle, actor_id="char:hero", intent=_attack("greataxe", "mon:a")
         )
         spent_mid_turn = _combatant(live, "char:hero").cleave_spent_this_turn
-        # An Extra-Attack actor keeps the turn until it passes (C14 R1).
+        # An Extra-Attack actor keeps the turn until it passes.
         await submit_player_intent(start.handle, actor_id="char:hero", intent=_PASS)
         await advance_monster_turn(start.handle)  # mon:a
         await advance_monster_turn(start.handle)  # mon:b -> round wrap -> hero
@@ -985,7 +985,7 @@ def test_d_nick_offhand_swing_resolves_even_with_the_bonus_action_already_spent(
     assert _combatant(plain, "char:hero").offhand_attack_spent is False
 
 
-# ── (c) Cleave — fix round 1: full per-target geometry on the chained roll ──
+# ── (c) Cleave — full per-target geometry on the chained roll ──────────────
 
 
 class _FixedRandom(random.Random):
@@ -1008,7 +1008,7 @@ def _set_dodging(live, entity_id: str) -> None:
 
 
 def test_c_cleave_chain_honors_a_dodging_candidate() -> None:
-    """Fix round 1 — the chained roll gets the candidate's OWN per-target
+    """The chained roll gets the candidate's OWN per-target
     geometry: a Dodging mon:b imposes Disadvantage (``"dodge"`` source) on
     the chained ``AttackRolled`` exactly as it would on a main swing."""
 
@@ -1033,7 +1033,7 @@ def test_c_cleave_chain_honors_a_dodging_candidate() -> None:
 
 
 def test_c_cleave_chain_honors_three_quarters_cover_on_the_candidate() -> None:
-    """Fix round 1 — cover geometry on the chained roll: with a fixed d20 of
+    """Cover geometry on the chained roll: with a fixed d20 of
     10 the hero's total is 10 + 3 (STR) + 2 (prof) = 15 vs mon:b AC 14 — a
     HIT in the open, a MISS behind three-quarters cover (+5 -> effective
     AC 19). Control and covered runs differ ONLY in ``cover_cells``."""

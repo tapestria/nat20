@@ -367,7 +367,7 @@ def test_exhausted_daily_spell_falls_back_to_the_next_candidate():
     assert uses[cone_key] == 0
 
 
-# -- Fix round 1 (reviewer finding) -- an attack-roll monster cast must ----
+# -- An attack-roll monster cast must ---------------------------------------
 # consume Help/Vex/Sap grants exactly like a mundane monster attack does; a
 # save-only cast must never touch them.
 
@@ -577,7 +577,7 @@ def test_incapacitated_dragon_cannot_take_legendary_actions():
 def test_pool_resets_when_the_dragon_takes_its_own_turn():
     """SRD 5.2 §Legendary Actions: "regains all expended uses at the start
     of each of its turns" -- 2 left after the spend, 3 again once the dragon
-    takes its own driven turn (R2)."""
+    takes its own driven turn."""
 
     async def go():
         handle, live = await _dragon_fight()
@@ -649,7 +649,7 @@ async def _cast_hold_monster(handle):
 
 
 def test_arming_requires_the_trait_and_remaining_uses():
-    """R7 — arming validates the trait AND the remaining per-day pool: a
+    """Arming validates the trait AND the remaining per-day pool: a
     goblin (no Legendary Resistance) is rejected outright; the dragon's 3/day
     pool arms exactly three times, then rejects a fourth."""
 
@@ -763,11 +763,11 @@ def test_repeat_save_path_honours_an_armed_use():
     assert used[0].uses_remaining == 2
 
 
-# -- C18 Task 7 fix round 1 -- Grapple/Shove bypass + double-decrement -------
+# -- Grapple/Shove bypass + double-decrement --------------------------------
 
 
 def test_grapple_of_an_armed_dragon_converts_the_failed_save():
-    """Fix round 1, Finding 1 — ``_roll_unarmed_option_save`` (Grapple/Shove)
+    """``_roll_unarmed_option_save`` (Grapple/Shove)
     bypasses ``activities/save_primitive.roll_save`` entirely, just like the
     repeat save and the concentration check; an armed dragon must not be
     Grappled on a save that would otherwise fail, and the spent use must not
@@ -805,7 +805,7 @@ def test_grapple_of_an_armed_dragon_converts_the_failed_save():
 
 
 def test_concentration_check_double_decrement_is_prevented_with_two_armed_uses():
-    """Fix round 1, Finding 2 — ``_consume_armed_legendary_resistance`` fires from
+    """``_consume_armed_legendary_resistance`` fires from
     INSIDE ``resolve_activity`` (via ``_emit_apply_damage``) on the
     concentration-check path, so its ``LegendaryResistanceUsed`` lands inside
     the very ``[pre_event_count, ...)`` window an enclosing
@@ -843,8 +843,8 @@ def test_concentration_check_double_decrement_is_prevented_with_two_armed_uses()
             ),
         )
         # Mirrors the enclosing resolution's own post-``resolve_activity``
-        # call — the exact window Finding 2 identified as re-processing the
-        # helper's own event.
+        # call — the exact window that could re-process the helper's own
+        # event.
         orch._sync_legendary_resistance(live, pre)
         return [e for e in live.event_log[pre:] if isinstance(e, LegendaryResistanceUsed)]
 
@@ -881,7 +881,7 @@ def test_dead_dragon_cannot_take_legendary_actions():
 
 
 def test_pack_tactics_ignores_an_incapacitated_ally():
-    """R8 — SRD 5.2 stat-block trait "Pack Tactics": "if at least one of the
+    """SRD 5.2 stat-block trait "Pack Tactics": "if at least one of the
     [monster]'s allies is within 5 feet of the creature and the ally
     doesn't have the Incapacitated condition." Mirrors the S06 e2e fixture
     (mon:wolf1 adjacent to char:hero at (5,5); mon:wolf2 also adjacent at
@@ -957,7 +957,7 @@ async def _undead_fortitude_fight(*, constitution: int):
     (-5 mod, roll total 4). Mirrors ``dragon.constitution = 1`` elsewhere in
     this file — mutating the hydrated ``Combatant`` directly is this file's
     established seam for forcing a save outcome (no ``force_save_d20`` exists
-    for this trait's roll — R8 deliberately keeps it a single plain draw)."""
+    for this trait's roll — it is deliberately kept a single plain draw)."""
     handle, live = await _start([_hero()], _zombie_encounter(), seed=1)
     zombie = next(c for c in live.initiative if c.entity_id == "mon:zombie")
     zombie.constitution = constitution
@@ -971,7 +971,7 @@ async def _undead_fortitude_fight(*, constitution: int):
 
 
 def test_undead_fortitude_saves_the_zombie_at_one_hp_on_the_live_path():
-    """Fix round 1 — SRD 5.2 stat-block trait "Undead Fortitude" through the
+    """SRD 5.2 stat-block trait "Undead Fortitude" through the
     REAL ``start_combat``/``submit_player_intent`` loop (not just the pure
     ``apply_damage`` harness): a successful save must leave the bearer ALIVE
     at 1 HP, with no ``Death`` event and not in ``dead_ids`` — the exact bug
@@ -985,7 +985,7 @@ def test_undead_fortitude_saves_the_zombie_at_one_hp_on_the_live_path():
     assert save.dc == 7  # 5 + the 2 damage dealt
 
     damage = next(e for e in _events(live, DamageApplied) if e.target_id == "mon:zombie")
-    assert damage.amount == 2  # R8: the event still reports the FULL amount
+    assert damage.amount == 2  # The event still reports the FULL amount
     assert damage.is_overkill is False
 
     assert not _events(live, Death)
@@ -1018,7 +1018,7 @@ def test_undead_fortitude_failed_save_kills_the_zombie_on_the_live_path():
 
 
 def test_fleeing_goblin_sets_has_fled_and_combat_ends_with_flee():
-    """R9: the flee-stance branch of ``advance_monster_turn`` persists
+    """The flee-stance branch of ``advance_monster_turn`` persists
     ``Combatant.has_fled = True`` (AGGRESSIVE goblin below the 10% HP
     threshold), and ``_derive_ended_reason`` reports ``"flee"`` once every
     living foe carries that flag."""
@@ -1038,7 +1038,7 @@ def test_fleeing_goblin_sets_has_fled_and_combat_ends_with_flee():
 
 
 def test_flee_requires_every_living_foe_to_have_fled():
-    """R9: ``"flee"`` requires EVERY living foe to have fled — a second,
+    """``"flee"`` requires EVERY living foe to have fled — a second,
     full-HP goblin that never fled means the encounter is still contested,
     so ``_derive_ended_reason`` falls through to ``"forced"``."""
 
@@ -1077,7 +1077,7 @@ def test_flee_requires_every_living_foe_to_have_fled():
 
 
 def test_dead_foes_do_not_block_flee():
-    """R9: ``living_foes`` excludes ``live.dead_ids`` — a dead ally never
+    """``living_foes`` excludes ``live.dead_ids`` — a dead ally never
     blocks a ``"flee"`` verdict for the survivor that fled, and when EVERY
     foe is dead the pre-existing ``"victory"`` branch still wins (empty
     ``living_foes`` never satisfies the new all-fled check)."""
@@ -1122,7 +1122,7 @@ def test_dead_foes_do_not_block_flee():
 
 
 def test_flag_clears_when_the_monster_fights_again():
-    """R9: healing a fled monster back above the flee threshold and driving
+    """Healing a fled monster back above the flee threshold and driving
     its turn again resets ``has_fled`` to False — the flag reflects current
     stance, not the fact it once fled."""
 
@@ -1148,7 +1148,7 @@ def test_flag_clears_when_the_monster_fights_again():
     assert current.has_fled is False
 
 
-# -- C18 final review fix wave -----------------------------------------------
+# -- Monster-economy regressions --------------------------------------------
 # Finding 1: ``LegendaryResistanceUsed`` fires AFTER the ``SaveRolled`` (and,
 # on the concentration path, the ``ConcentrationCheck``) it converts, on every
 # orchestrator-level save path — the event's own documented contract.

@@ -1,4 +1,4 @@
-"""Task 4 cutover — orchestrator PC gating reads from typed lib entities.
+"""Orchestrator PC gating reads from typed lib entities.
 
 The three PC-side gates that previously read Avrae wrapper DICTs via
 ``get_asset_loader().items/.spells`` are rewired to the typed lib loader

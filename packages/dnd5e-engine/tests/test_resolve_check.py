@@ -1,6 +1,6 @@
-"""Phase 5 — resolve_check workstream tests.
+"""resolve_check tests.
 
-Phase 6 migration: ``EffectModifier`` → ``ActiveEffectChange`` with
+Changes are ``ActiveEffectChange``s with
 ``key``/``mode``/``value``/``priority``; ``ActiveEffect`` is Foundry-aligned
 (``id``/``name``/``origin``/``target_id`` + ``changes`` + ``duration``).
 """

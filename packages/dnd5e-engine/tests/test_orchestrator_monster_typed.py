@@ -1,4 +1,4 @@
-"""Task 6 cutover — ``advance_monster_turn`` resolves through the typed path.
+"""``advance_monster_turn`` resolves through the typed path.
 
 The monster turn previously selected an Avrae wrapper DICT
 (``select_monster_action``), resolved it to IR
@@ -7,17 +7,16 @@ The monster turn previously selected an Avrae wrapper DICT
 loader, picks an action with ``select_typed_monster_action``, fans multiattack
 out with ``expand_action_to_activities``, and resolves each returned
 ``Activity`` through ``resolve_activity`` — the same typed resolver the PC path
-uses (Task 5).
+uses.
 
 Two behaviors are pinned here:
 
 * multiattack fan-out — an owlbear's multiattack yields two ``AttackRolled``
-  events, each against the chosen PC (mirrors
-  ``backend/tests/combat/scenarios/test_goblin_multiattack.py``);
+  events, each against the chosen PC;
 * the range gate — the monster's reach is now read from the selected action's
   typed ``AttackActivity.range`` (falling back to ``Combatant.melee_reach_ft``
   for melee), NOT the retired loader wrapper's ``range_ft``. An out-of-range
-  monster still closes the distance (or skips) exactly as it did pre-cutover.
+  monster still closes the distance (or skips).
 """
 
 from __future__ import annotations
@@ -313,8 +312,7 @@ def test_owlbear_multiattack_emits_two_attacks_at_pc():
 def test_out_of_range_melee_monster_moves_into_reach():
     """Melee monster (reach=5ft) 10 ft (two cells) away → it MOVEs into reach, then attacks.
 
-    Pre-cutover this used the loader wrapper's ``range_ft``; post-cutover the
-    reach is read from the selected ``AttackActivity.range`` (melee ⇒ falls
+    The reach is read from the selected ``AttackActivity.range`` (melee ⇒ falls
     back to ``Combatant.melee_reach_ft`` = 5). On the grid the monster closes
     5 ft (one cell) into reach, stopping short of the PC's cell, then swings.
     """
@@ -349,7 +347,7 @@ def test_out_of_range_melee_monster_skips_when_cannot_reach():
 
     The monster has only 5ft of speed but the target is 105ft (21 cells) away.
     It walks one 5-ft cell, still can't reach, and the attack is skipped —
-    the same move-then-skip the pre-cutover ``range_ft`` gate produced.
+    a move-then-skip.
     """
     monster = _monster("crawler", [_melee_attack("Claw")])
     set_lib_loader_for_tests(MemoryAssetLoader(monsters=[monster]))
@@ -405,9 +403,8 @@ def test_self_centered_breath_weapon_does_not_force_close_resolves_from_position
     """A self-centered AoE save (dragon breath) skips the range gate entirely.
 
     The breath weapon is a ``SaveActivity`` with ``range.units='self'`` and a
-    populated ``target.template`` (90ft line). Pre-cutover the loader wrapper
-    carried ``range_ft: 0``, so the monster never moved — the save resolved
-    from its current cell. Post-fix ``_monster_attack_range_ft`` returns
+    populated ``target.template`` (90ft line); the monster never moves — the
+    save resolves from its current cell. ``_monster_attack_range_ft`` returns
     ``None`` for self-centered / template / non-AttackActivity offensive
     activities, so the gate is skipped: no ``ActorMoved`` and the save fires.
     """
@@ -473,10 +470,9 @@ def test_ranged_save_monster_out_of_range_closes_distance():
 def test_wounded_aggressive_monster_below_flee_threshold_passes():
     """A wounded AGGRESSIVE monster under 10% HP flees — the flee gate fires.
 
-    Pre-cutover ``select_monster_action`` refused to act below the
-    behavior-based HP threshold (``hp_ratio < 0.10`` for AGGRESSIVE). The typed
-    selector lost that gate; the fix reapplies it in ``advance_monster_turn``
-    against the live ``Combatant``. At 4/50 HP (8%) the monster takes no attack
+    A monster does not act below the behavior-based HP threshold
+    (``hp_ratio < 0.10`` for AGGRESSIVE); ``advance_monster_turn`` applies
+    that gate against the live ``Combatant``. At 4/50 HP (8%) the monster takes no attack
     action. The fleeing branch also RETREATS: from 1,0, beside the hero on 0,0,
     its first step away leaves the hero's reach and provokes the hero's
     opportunity attack (SRD §Opportunity Attacks) — so the only ``AttackRolled``

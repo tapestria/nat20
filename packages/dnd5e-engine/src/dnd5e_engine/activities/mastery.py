@@ -54,7 +54,7 @@ cleave / nick, are resolved elsewhere entirely:
 Topple's Con save runs through the shared
 ``activities/save_primitive.py:roll_save`` (the same primitive the ``save``
 kind uses), so its ``force_save_d20`` determinism and modifier sourcing match;
-graze has no roll. The one import from ``effects/`` (``is_condition_immune``)
+graze has no roll. The one import from ``activities/effects.py`` (``is_condition_immune``)
 is the shared condition-immunity gate — otherwise this module
 still does not import evaluator or orchestrator machinery.
 """

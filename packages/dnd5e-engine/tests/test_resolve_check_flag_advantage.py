@@ -1,11 +1,10 @@
 """Regression — resolve_check honors flag-based advantage/disadvantage changes.
 
-Codex Phase 6 review iter-10 P2: ieffect2._translate_passive_to_changes
-emits effects like frightened/blinded as ``flags.disadvantage.check.*``
-changes, but resolve_check only iterated ``check.*.bonus`` / ``save.*.bonus``
-buckets. Frightened actors could still roll SKILL_CHECK / FLEE normally.
+Effects like frightened/blinded arrive as ``flags.disadvantage.check.*``
+changes, not only ``check.*.bonus`` / ``save.*.bonus`` buckets; without
+reading them, Frightened actors could still roll SKILL_CHECK / FLEE normally.
 
-The fix derives advantage / disadvantage from override-mode flag changes
+resolve_check derives advantage / disadvantage from override-mode flag changes
 on the active_effects and ORs them with the spec's own advantage /
 disadvantage before invoking the base roll helper.
 """

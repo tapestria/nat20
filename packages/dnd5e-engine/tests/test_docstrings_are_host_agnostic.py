@@ -17,9 +17,24 @@ import pytest
 SRC = Path(__file__).resolve().parents[1] / "src" / "dnd5e_engine"
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
+#: Campaign-internal labels no public prose may carry: the engine source, the
+#: public Markdown and the engine's test prose all reject these.
+_PROCESS_LABELS: dict[str, str] = {
+    r"\bspecs/": "path does not exist in this repo",
+    r"(?i)\bruling\b": "campaign-internal decision reference",
+    r"\bR\d+\b": "campaign-internal ruling id",
+    r"\bD(?:\d+|X)\.\d+\b": "campaign-internal decision id",
+    r"(?i)\bphase[- ]\d": "campaign-internal planning reference",
+    r"(?i)\bpiece[- ]\d": "campaign-internal planning reference",
+    r"(?i)\bcutover prompt\b": "campaign-internal planning reference",
+    r"(?i)\bfix round\b": "campaign-internal review-iteration reference",
+    r"\b(?:app|backend)/[a-z_]+": "references a private host module path",
+}
+
 #: Patterns that must never appear in engine source prose, with the reason a
 #: reviewer would give for rejecting each.
 FORBIDDEN: dict[str, str] = {
+    **_PROCESS_LABELS,
     r"\bTapestria\b": "names a private downstream application",
     r"\bEffectStore\b": "names a class that does not exist in this package",
     r"\beffect_store\b": "names a private host component",
@@ -27,18 +42,14 @@ FORBIDDEN: dict[str, str] = {
     r"\bAvrae\b": "names a retired third-party evaluator",
     r"\bRedis\b": "names host infrastructure the engine does not use",
     r"\bapp\.[a-z_]+\.": "references a private host module path",
-    r"\bPhase \d": "campaign-internal planning reference",
     r"\bCluster \d": "campaign-internal planning reference",
     r"\bC\d\d-S\d\d": "campaign-internal scenario id",
     r"\biter-\d": "campaign-internal review-iteration reference",
     r"docs/(?:superpowers|agent-prompts|design)/": "path does not exist in this repo",
-    r"\bspecs/": "path does not exist in this repo",
     r"CLAUDE\.md": "names a file that does not exist in this repo",
-    r"(?i)\bruling\b": "campaign-internal decision reference",
-    r"\bR\d+\b": "campaign-internal ruling id",
     r"\bspec §|\bD\d\b": "campaign-internal decision id",
     r"\b[Tt]asks? \d|\btask-\d|\btask brief\b": "campaign-internal planning reference",
-    r"(?i)\bfix round\b": "campaign-internal review-iteration reference",
+    r"(?i)\bfinal[- ]review\b": "campaign-internal review reference",
     r"\bWS\b|\bws_projection\b": "names a private host's transport",
     r"(?i)\bcodex\b": "campaign-internal review reference",
 }
@@ -46,15 +57,19 @@ FORBIDDEN: dict[str, str] = {
 PY_FILES = sorted(SRC.rglob("*.py"))
 
 
-@pytest.mark.parametrize("pattern,reason", list(FORBIDDEN.items()))
-def test_no_forbidden_prose(pattern: str, reason: str) -> None:
+def _hits(paths: list[Path], pattern: str) -> list[str]:
     compiled = re.compile(pattern)
-    hits = [
-        f"{path.relative_to(SRC)}:{lineno}: {line.strip()}"
-        for path in PY_FILES
-        for lineno, line in enumerate(path.read_text().splitlines(), start=1)
+    return [
+        f"{path.relative_to(REPO_ROOT)}:{lineno}: {line.strip()[:120]}"
+        for path in paths
+        for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1)
         if compiled.search(line)
     ]
+
+
+@pytest.mark.parametrize("pattern,reason", list(FORBIDDEN.items()))
+def test_no_forbidden_prose(pattern: str, reason: str) -> None:
+    hits = _hits(PY_FILES, pattern)
     assert not hits, f"{pattern} — {reason}:\n" + "\n".join(hits)
 
 
@@ -90,31 +105,19 @@ TEST_FILES = sorted(
 #: Labels the public Markdown must not carry. A product name may appear only
 #: as a link's text, which is how the project credits its authors.
 MARKDOWN_FORBIDDEN: dict[str, str] = {
-    r"\bspecs/": "path does not exist in this repo",
+    **_PROCESS_LABELS,
     r"CLAUDE\.md": "names a file that does not exist in this repo",
-    r"(?i)\bruling\b": "campaign-internal decision reference",
-    r"\bR\d+\b": "campaign-internal ruling id",
     r"\b[Tt]asks? \d|\btask brief\b": "campaign-internal planning reference",
-    r"(?i)\bfix round\b": "campaign-internal review-iteration reference",
+    r"\bfinal-review\b": "campaign-internal review reference",
     r"\bTapestria\b(?!\]\()": "names a private downstream application outside an attribution link",
 }
 #: Labels the engine's test prose must not carry.
 TEST_FORBIDDEN: dict[str, str] = {
-    r"\bspecs/": "path does not exist in this repo",
-    r"(?i)\bruling\b": "campaign-internal decision reference",
+    **_PROCESS_LABELS,
+    r"(?i)\bfinal[- ]review\b": "campaign-internal review reference",
     r"\bTapestria\b": "names a private downstream application",
     r"docs/(?:superpowers|agent-prompts|design)/": "path does not exist in this repo",
 }
-
-
-def _hits(paths: list[Path], pattern: str) -> list[str]:
-    compiled = re.compile(pattern)
-    return [
-        f"{path.relative_to(REPO_ROOT)}:{lineno}: {line.strip()[:120]}"
-        for path in paths
-        for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1)
-        if compiled.search(line)
-    ]
 
 
 @pytest.mark.parametrize("pattern,reason", list(MARKDOWN_FORBIDDEN.items()))

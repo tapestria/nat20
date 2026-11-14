@@ -1,11 +1,10 @@
 """Regression — resolve_check folds specific bucket keys alongside the generic.
 
-Codex Phase 6 review iter-4 P2: `apply_changes_to_check` is exact-match
-on bucket key. The previous resolve_check only queried the generic
-`check.bonus` / `save.bonus`, silently dropping any
+`apply_changes_to_check` is exact-match on bucket key, so querying only
+the generic `check.bonus` / `save.bonus` would silently drop any
 ActiveEffectChange targeted at a more specific bucket like
-`check.skill_check.bonus` or `save.wisdom.bonus`. This test locks the
-fix that resolve_check now folds both the generic and the kind-specific
+`check.skill_check.bonus` or `save.wisdom.bonus`. This test locks that
+resolve_check folds both the generic and the kind-specific
 (and for saves, the per-ability) bucket keys.
 """
 

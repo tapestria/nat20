@@ -1,10 +1,10 @@
-"""Regression — Codex Phase 6 review iter-11 fixes.
+"""Regression — flat-integer change values and skill-check flag advantage.
 
-P1: flat integer strings ("1", "-1") are valid mode=add values per
+Flat integer strings ("1", "-1") are valid mode=add values per
 SRD asset shape (Haste / Warding Bond / Resurrection). They must
 parse via int() rather than crashing the dice parser.
 
-P2: skill check flag-based advantage / disadvantage derives the
+Skill check flag-based advantage / disadvantage derives the
 relevant ability from the skill via SKILL_ABILITIES; an ability-tagged
 flag (e.g. flags.disadvantage.check.strength from Weakening Breath)
 applies only to skills whose underlying ability matches.

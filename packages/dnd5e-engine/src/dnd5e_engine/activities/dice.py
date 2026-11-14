@@ -1,14 +1,11 @@
 """Seeded dice for the Activity resolver.
 
-MIRRORS, does not import from, the existing ``effects/`` dice code:
-
-* ``roll_expr`` mirrors ``effects/attack.py:_eval_node_via_rng`` — walk a parsed
+* ``roll_expr`` walks a parsed
   ``d20`` AST and draw each die from the *passed-in* ``random.Random`` so every
   roll lands in the same seed stream. ``d20.roll()`` is never used; it draws from
   d20's global RNG and is not seedable.
-* ``roll_damage_part`` mirrors ``effects/damage.py:_roll_damage`` — apply scaling
-  (cantrip / upcast) BEFORE crit doubling, then walk via the seeded rng. The crit
-  doubler mirrors ``_apply_crit_doubling``: double ``d20.ast.Dice.num`` only,
+* ``roll_damage_part`` applies scaling (cantrip / upcast) BEFORE crit doubling,
+  then walks via the seeded rng. The crit doubler doubles ``d20.ast.Dice.num`` only,
   never numeric modifiers (SRD §Critical Hits — dice twice, modifier once).
 
 Damage-part → expression mirrors Foundry's ``shared/damage-field.mjs``
@@ -81,7 +78,7 @@ def _bump_first_die_count(formula: str, die_increase: int) -> str:
 def _parse(expr: str) -> d20.Expression:
     """Parse ``expr``, re-raising d20 parse failures as ``ValueError``.
 
-    Mirrors ``effects/damage.py:225`` — an empty or malformed expression (e.g. a
+    An empty or malformed expression (e.g. a
     ``DamagePartBlock`` whose ``_block_to_expr`` yields ``""``) raises
     ``d20.RollSyntaxError``, which is not a ``ValueError`` subclass. Callers that
     wire these rolls in catch the stdlib class, so wrap at the single parse site.
@@ -95,7 +92,7 @@ def _parse(expr: str) -> d20.Expression:
 def roll_expr(expr: str, rng: random.Random, *, crit: bool = False) -> int:
     """Parse ``expr`` and evaluate it against ``rng`` for deterministic dice.
 
-    Mirrors ``effects/attack.py:_eval_node_via_rng`` — each ``Dice`` node draws
+    Each ``Dice`` node draws
     ``num`` faces via ``rng.randint(1, size)``; literals and +/- operators fold
     as written. Deterministic for a fixed seed.
 
@@ -151,7 +148,7 @@ def roll_damage_part(
 ) -> int:
     """Roll a damage part against ``rng``, applying scaling then crit doubling.
 
-    Order mirrors ``effects/damage.py:_roll_damage``: cantrip / upcast scaling is
+    Order: cantrip / upcast scaling is
     folded into the dice count FIRST, then crit doubling doubles the (already
     scaled) dice count. Crit doubles dice only, never the modifier.
 
@@ -295,7 +292,7 @@ def _scaling_formula_bonus(
 
 
 def _cantrip_dice_count(character_level: int) -> int:
-    """SRD §Cantrips scaling table — mirrors ``effects/damage.py:_cantrip_dice_count``."""
+    """SRD §Cantrips scaling table."""
     if character_level < 5:
         return 1
     if character_level < 11:
@@ -308,8 +305,7 @@ def _cantrip_dice_count(character_level: int) -> int:
 def _double_dice(ast: d20.ast.Node) -> d20.ast.Node:
     """SRD §Critical Hits — double every ``Dice.num``, leave literals alone.
 
-    Mirrors ``effects/damage.py:_apply_crit_doubling`` (the legacy default
-    ``crit_mapper``): ``d20.utils.tree_map`` rebuilds each ``Dice(num, size)``
+    ``d20.utils.tree_map`` rebuilds each ``Dice(num, size)``
     as ``Dice(num*2, size)``; numeric modifiers are untouched.
     """
 

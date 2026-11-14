@@ -182,7 +182,7 @@ def test_one_attack_actor_ends_turn_on_first_swing_back_compat():
 
 
 def test_dash_then_attack_is_rejected_hard_no_double_dip():
-    """Fix round 1 — Action-economy double-dip: Dash (a turn-keeping Action
+    """Action-economy double-dip: Dash (a turn-keeping Action
     intent) spends ``action_available`` without touching
     ``attacks_remaining``/``attack_action_engaged``. A same-turn attack
     intent that follows must still be gated on the Action itself for the
@@ -519,9 +519,8 @@ class TestLightWeaponOffhandGateFailures:
 
     def test_offhand_with_no_prior_light_swing_is_rejected_no_action_economy(self):
         """A non-Light main-hand weapon never opens the TWF window at all —
-        it does not even keep a 1-attack actor's turn open (R1's back-compat
-        bar). Use a 2-attack (Extra Attack) actor swinging the longsword
-        TWICE so the turn stays open on its own multiattack budget; the
+        it does not even keep a 1-attack actor's turn open. Use a 2-attack
+        (Extra Attack) actor swinging the longsword TWICE so the turn stays open on its own multiattack budget; the
         THIRD (dagger) swing then hits the ``attacks_remaining <= 0`` gate
         with no light slug ever recorded — proving the rejection is the
         ``no_action_economy`` gate, not a same-weapon-slug artifact."""
@@ -617,7 +616,7 @@ class TestLightWeaponNegativeAbilityMod:
         assert offhand.amount == 2
 
 
-# ── Final-review fix wave — F1: multi-attack turn deadlock ─────────────────
+# ── Multi-attack turn deadlock ─────────────────────────────────────────────
 #
 # ``"pass"`` is exempt from the Action hard gate in
 # ``_action_economy_gate_failure`` — it was never an Action ("I'm done"
@@ -669,7 +668,7 @@ class TestPassAlwaysEndsTheTurn:
         assert live.current_actor_id == "mon:dummy"
 
 
-# ── Final-review fix wave — F2: off-hand swing must not end the turn ───────
+# ── Off-hand swing must not end the turn ───────────────────────────────────
 #
 # An off-hand (bonus-action) swing follows the existing bonus-action tail
 # (it never ends the turn).

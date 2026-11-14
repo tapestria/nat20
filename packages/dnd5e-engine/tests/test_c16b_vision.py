@@ -120,7 +120,7 @@ def test_blinded_viewer_cannot_see_without_special_sense():
 
 
 def test_invisible_target_unseen_unless_blindsight_or_truesight():
-    """SRD 5.2 Invisible / Blindsight / Truesight (R3): darkvision never pierces."""
+    """SRD 5.2 Invisible / Blindsight / Truesight: darkvision never pierces."""
     _handle, live = _start([_hero()], [_foe()], GridScene(width=10, height=10))
     _give_condition(live, "mon:foe", "invisible")
     hero, foe = _combatant(live, "char:hero"), _combatant(live, "mon:foe")
@@ -416,7 +416,7 @@ def test_opportunity_attack_against_invisible_mover_seen_by_blindsight_is_normal
 
 
 def test_hide_behind_three_quarters_cover_still_allowed_with_adjacent_enemy():
-    """R1: per-cell cover already breaks line of sight for every viewer —
+    """Per-cell cover already breaks line of sight for every viewer —
     the approved C14-S02 shape stays legal."""
     grid = GridScene(width=10, height=10, cover_cells={cell(0, 0): "three_quarters"})
     handle, live = _start([_hero()], [_foe()], grid)
@@ -427,7 +427,7 @@ def test_hide_behind_three_quarters_cover_still_allowed_with_adjacent_enemy():
 
 
 def test_hide_in_darkness_is_allowed_and_rejected_when_enemy_has_darkvision():
-    """R2: "An area of darkness is Heavily Obscured." + R1: an enemy whose
+    """SRD 5.2: "An area of darkness is Heavily Obscured." An enemy whose
     darkvision reaches the dark cell can see the hider → target_invalid, no
     d20 draw."""
     grid = GridScene(width=10, height=10, lighting={cell(0, 0): "dark"})
@@ -511,7 +511,7 @@ def test_frightened_attack_disadvantage_dropped_when_source_out_of_sight():
 
 
 def test_frightened_attack_disadvantage_stays_when_source_unknown():
-    """Unknown fear source (default ``implied:test``) ⇒ R5: the penalty
+    """Unknown fear source (default ``implied:test``) ⇒ the penalty
     stays even though the hero can't see the (untracked-as-source) foe."""
     grid = GridScene(width=10, height=10, lighting={cell(1, 0): "dark"})
     start = _start([_hero()], [_foe()], grid)

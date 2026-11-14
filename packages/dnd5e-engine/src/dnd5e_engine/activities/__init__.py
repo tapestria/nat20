@@ -1,6 +1,6 @@
 """Typed Foundry Activity resolver.
 
-Parallel to the legacy ``effects/`` package: consumes the typed
+Consumes the typed
 ``dnd5e_srd_data`` ``Activity`` discriminated union and emits the engine's
 existing ``CombatEvent`` union via an ``event_emitter`` callback.
 """

@@ -166,7 +166,7 @@ def test_restrained_attacker_alone_imposes_disadvantage():
 
 # ── (b2) SRD 5.2 rows that need no distance / target identity ────────────────
 #
-# Added after the final review: F2b made ``conditions_grant_advantage_on_attack``
+# F2b made ``conditions_grant_advantage_on_attack``
 # load-bearing, and three SRD 5.2 rows that need neither a distance nor the
 # identity of a specific creature were missing from it. (Prone and Grappled
 # DO need those, and stay in BACKLOG.md until C12's reach/distance sidecar.)

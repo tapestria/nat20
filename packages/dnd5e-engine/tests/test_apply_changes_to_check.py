@@ -1,4 +1,4 @@
-"""Phase 6 — apply_changes_to_check unit coverage."""
+"""apply_changes_to_check unit coverage."""
 
 from __future__ import annotations
 

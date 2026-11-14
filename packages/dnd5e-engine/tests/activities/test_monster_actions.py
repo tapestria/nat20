@@ -1,4 +1,4 @@
-"""Tests for typed monster-action selection + multiattack fan-out (cutover task 3).
+"""Tests for typed monster-action selection + multiattack fan-out.
 
 Exercised against the REAL canonical owlbear + goblin-boss via BundledAssetLoader.
 Both monsters' multiattack descriptions reference sub-attacks only by Foundry

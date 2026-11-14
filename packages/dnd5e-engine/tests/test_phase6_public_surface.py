@@ -1,4 +1,4 @@
-"""Phase 6 — lock the engine's public export surface."""
+"""Lock the engine's ActiveEffect public export surface."""
 
 from __future__ import annotations
 
@@ -6,12 +6,12 @@ from __future__ import annotations
 def test_phase6_public_surface():
     import dnd5e_engine
 
-    # Phase 6 additions
+    # Required exports
     for name in ("ActiveEffect", "ActiveEffectChange", "ActiveEffectDuration"):
         assert hasattr(dnd5e_engine, name), f"missing export: {name}"
         assert name in dnd5e_engine.__all__, f"missing __all__: {name}"
 
-    # Phase 6 deletions — symbols MAY still exist as names on submodules
+    # Retired names — symbols MAY still exist as names on submodules
     # (the import isn't necessarily removed everywhere) but they must NOT
     # be on the package public surface (__all__) anymore.
     for name in ("EffectModifier", "EffectRef", "CarriedCondition"):

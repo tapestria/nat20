@@ -38,7 +38,7 @@ from tests.c21_support import act, events, foe, monster_turn, pc, roster, start
 HERO = "char:hero"
 NEW = "mon:newcomer"
 NEW_ZONE = cell_id(9, 9)
-# The per-entity maps and sets ``_purge_entity_state`` covers (R4). An
+# The per-entity maps and sets ``_purge_entity_state`` covers. An
 # owner-keyed counter is not a creature's own state, so it is not listed.
 PURGED = (
     "actor_zone",

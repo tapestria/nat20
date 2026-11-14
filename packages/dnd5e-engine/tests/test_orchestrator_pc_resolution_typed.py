@@ -1,4 +1,4 @@
-"""Task 5 cutover — PC resolution routed through the typed-Activity resolver.
+"""PC resolution routed through the typed-Activity resolver.
 
 ``submit_player_intent`` no longer builds an Avrae IR tree + ``evaluate``.
 Instead it fetches the typed entity (weapon / spell / feat) from the lib
@@ -140,7 +140,7 @@ def _party(**pc_overrides: object) -> list[PartyMemberSpec]:
         attack_bonus=5,
         # Equal STR/DEX (mod +3) so the finesse better-of-str/dex choice and the
         # STR default both fold in the SAME governing-ability mod — the parity
-        # the weapon-attack test asserts — now off real abilities (piece 4).
+        # the weapon-attack test asserts — off real abilities.
         strength=16,
         dexterity=16,
         zone_id=_HERO_CELL,
@@ -441,7 +441,7 @@ def test_fireball_expands_to_every_creature_in_its_sphere():
     )
 
 
-# ── (e) use_item intent path (restored in the cutover fix) ──────────────────
+# ── (e) use_item intent path ───────────────────────────────────────────────
 
 
 def test_use_item_resolves_item_activities():
@@ -449,7 +449,7 @@ def test_use_item_resolves_item_activities():
 
     Net (a single-target ``SaveActivity``) forces the target's Dex save, so a
     restored ``use_item`` branch emits a ``SaveRolled`` for the named target.
-    Regression for the dropped fourth resolver branch in the Task 5 cutover."""
+    Regression: ``use_item`` is the fourth resolver branch."""
     net = BundledAssetLoader().get_item("net")
     assert net is not None
     set_lib_loader_for_tests(MemoryAssetLoader(items=[net]))
@@ -525,8 +525,8 @@ def test_use_item_potion_of_healing_heals_drinker():
 def test_detect_thoughts_stays_single_target_despite_large_aoe():
     """Detect Thoughts — its TYPED targeting SaveActivity is
     ``target.affects.count`` == "1" (explicit single-target). It must probe
-    exactly the named target, never every creature nearby. Regression for the
-    over-expansion confirmed bug in the Task 5 cutover."""
+    exactly the named target, never every creature nearby (a regression guard
+    against over-expansion)."""
     live = _run_aoe_cast("detect-thoughts")
     saved = {e.target_id for e in _events_of(live, SaveRolled)}
     assert saved == {"mon:foe"}, (
