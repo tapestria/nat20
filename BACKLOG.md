@@ -292,7 +292,15 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   these intents ever area-expands — but the ambiguous resolution itself
   stands: the proper fix resolves only the chosen activity, requiring
   `activity_id` when an item carries alternatives, as a feature already
-  does.
+  does. For the Hat of Many Spells and the Helm of Brilliance an unchosen
+  use raises `ValueError: Unhandled roll-data token: '@scaling'` after the
+  Action and the `IntentSubmitted` event are already spent (amended
+  2026-11-14): the Hat's Unknown Spell Check `dc.formula` (`10 + @scaling`)
+  raises in `activities/check.py::_resolve_dc`, right after the intent
+  event; the Helm's Explosive Emanation damage bonus (`@scaling`) raises in
+  `activities/save.py::_roll_shared_damage`, after its other activities have
+  already applied damage and conditions. Both reach the raise through
+  `activities/formula.py::resolve_roll_data`.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_resolve_intent_activities`)
 - **A seeded Incapacitated effect ends nothing (2026-09-27, C23).** SRD 5.2
   Incapacitated: "Your Concentration is broken." `_seed_active_effects` writes
@@ -688,12 +696,17 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   can only place the Cube at its own feet, in one of the eight directions,
   never offset toward a foe it can see at range.
   (`packages/dnd5e-engine/src/dnd5e_engine/areas.py::best_aim`)
-- **A delegated cast resolves against its named target only (2026-10-04,
-  C26a).** An item whose activity casts a spell (the Wand of Fireballs, a Spell
-  Scroll) resolves the spell's activities against the item intent's target
-  list, which a `cast` activity never expands: a Wand of Fireballs hits one
-  creature.
-  (`packages/dnd5e-engine/src/dnd5e_engine/activities/cast.py`)
+- **A monster's Magic Missile fires one dart (2026-11-14).** A stat-block
+  cast resolves the spell's activities against the turn's one target (or the
+  area it places), and never expands a count-bearing activity: the Night Hag's
+  level 4 Magic Missile deals one dart's damage, not six. A player's cast and
+  an item's cast split their darts (`_count_scaled_targets`).
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_resolve_monster_cast`)
+- **An item's cast is not range-gated (2026-11-14).** The spell range gate
+  reads only a `cast_spell` intent, so a `use_item` that casts a spell (a
+  Necklace of Fireballs bead, thrown "up to 60 feet") reaches a named target
+  or centres its area at any distance.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_spell_out_of_range`)
 - **Monster-cast AoE applies no forced-movement rider** (2026-08-27). Only the
   player-intent cast path calls `activities/forced_movement.py`, so a monster
   casting Thunderwave deals damage but pushes nobody.
@@ -942,6 +955,29 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   catch every creature, or every enemy, in range rather than only the
   named creature type.
   (`packages/dnd5e-engine/src/dnd5e_engine/areas.py::select_affected`)
+- **Item text that changes a delegated spell's area or targets is not
+  honoured (2026-11-14).** An item's one `cast` places the area of the spell
+  it casts, read off the spell's own activities, so what the item adds is
+  lost. The Wand of Fear casts "Fear (60-foot Cone)", but the plain spell's
+  30-foot Cone is placed; the typed cast activity carries no override. The
+  Cloak of Arachnida's web "fills twice its normal area", but the normal
+  20-foot Cube is placed; here the cast activity does carry a
+  `target.override` with a 40-foot `cube` template, which nothing reads. The
+  Ring of Animal Influence casts "Fear (affects Beasts only)", a restriction
+  that lives only in the activity's name and the description, so its Cone
+  catches allies and non-Beasts alike and can Frighten creatures the item
+  text excludes.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_delegated_cast`)
+- **An item's cast of a healing spell raises (2026-11-14).** The item path
+  supplies no spellcasting ability, so a delegated heal whose formula adds
+  the caster's modifier raises `ValueError: @mod requires a governing
+  ability but none was supplied for '@mod'` (raised by
+  `activities/formula.py::resolve_roll_data` under
+  `activities/heal.py::resolve_heal`), after the Action and
+  `IntentSubmitted` are spent. Reproduced: the Staff of Healing's Cure Wounds and Mass Cure
+  Wounds, the Dragon Orb's Cure Wounds, and the Necklace of Prayer Beads'
+  Cure Wounds bead. Mass Cure Wounds emits `AreaTargeted` before it raises.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/heal.py::resolve_heal`)
 
 ### Passive-stat projection (`activities/passive_stats.py`)
 
