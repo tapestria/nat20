@@ -258,12 +258,11 @@ def test_pc_move_to_non_adjacent_cell_walks_the_path_in_one_intent():
     assert not [e for e in live.event_log if type(e).__name__ == "MoveFailed"]
 
 
-def test_pc_move_across_a_wall_between_adjacent_cells_is_rejected():
-    """A wall on the shared edge makes the step illegal even though the two
-    cells are Chebyshev-adjacent — ``edge_distance`` returns ``None`` (SRD
-    5.2 "Corners"). Regression: this used to crash on an ``assert
-    distance_ft is not None`` inside ``_handle_move``; it must instead
-    reject the move like any other illegal step."""
+def test_pc_move_across_a_wall_between_adjacent_cells_takes_the_detour():
+    """A wall on the shared edge makes the direct step illegal even though
+    the two cells are Chebyshev-adjacent (``edge_distance`` is ``None``, SRD
+    5.2 "Corners"), so the move routes around the wall's lower end like any
+    other multi-cell move: five steps, down column 0 and back up column 1."""
     from dnd5e_engine.orchestrator import PlayerIntent, submit_player_intent
     from dnd5e_engine.specs import WallSegment
 
@@ -290,12 +289,10 @@ def test_pc_move_across_a_wall_between_adjacent_cells_is_rejected():
         return live
 
     live = asyncio.run(_run())
-    assert live.actor_zone["char:hero"] == "0,0"  # unchanged
+    assert live.actor_zone["char:hero"] == "1,0"
     moved = [e for e in live.event_log if type(e).__name__ == "ActorMoved"]
-    assert not moved
-    failed = [e for e in live.event_log if type(e).__name__ == "MoveFailed"]
-    assert failed
-    assert failed[-1].reason == "blocked_path"
+    assert [(e.from_zone, e.to_zone, e.distance_ft) for e in moved] == [("0,0", "1,0", 25)]
+    assert not [e for e in live.event_log if type(e).__name__ == "MoveFailed"]
 
 
 def test_ranged_attack_out_of_range_is_gated_on_grid():

@@ -605,15 +605,18 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   a typed push field on the save activity + a translator rule, then delete the
   registry.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/forced_movement.py`)
-- **The monster AI's closing walk ignores occupancy; line width is not modelled** (2026-08-27,
-  amended 2026-10-03, C24). The closing walk in `advance_monster_turn` calls
-  `shortest_path` without `avoid=`, so a monster may path straight through a PC
-  where a PC `"move"` intent may not; the flee walk avoids enemy spaces and never
-  ends on a creature (C24). `cells_in_template("line")` is one cell wide, so a
-  5-ft-wide Lightning Bolt is treated as a 1-cell ray and a wider
-  `template.width` is ignored.
-  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::advance_monster_turn`,
-  `packages/dnd5e-engine/src/dnd5e_engine/spatial.py::cells_in_template`)
+- **Line width is not modelled** (2026-08-27). `cells_in_template("line")` is
+  one cell wide, so a 5-ft-wide Lightning Bolt is treated as a 1-cell ray and a
+  wider `template.width` is ignored.
+  (`packages/dnd5e-engine/src/dnd5e_engine/spatial.py::cells_in_template`)
+- **An opportunity attack can leave a walking monster on its ally's cell**
+  (2026-11-14). The closing walk passes through an ally's space and plans to end
+  on a free cell (SRD 5.2: "You can't willingly end a move in a space occupied by
+  another creature"), but an opportunity attack that drops its Speed to 0
+  mid-route (a Slow hit on a Speed-10 monster) leaves it on the cell it was
+  leaving, which may be that ally's. It did not choose to end there; the SRD's Prone consequence for
+  ending a turn in another creature's space is not applied.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_plan_closing_route`)
 - **A spaced cell id is stored as written (2026-09-27, C21b).**
   `GridTopology.is_valid_cell` parses with `int()`, which also reads `"1, 1"`
   or `" 1,1"`, so `start_combat` seats a combatant at such a `zone_id` and

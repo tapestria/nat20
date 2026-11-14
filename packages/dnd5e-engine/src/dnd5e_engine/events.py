@@ -534,7 +534,7 @@ class MoveFailed(BaseModel):
         # C16 — multi-cell moves (SRD 5.2 §Movement and Position, "Playing on a Grid").
         "unreachable",  # no legal route (walls / blocked cells / enemies box the mover in)
         "occupied",  # "You can't willingly end a move in a space occupied by another creature."
-        "blocked_path",  # the single requested step crosses a wall or cuts a blocked corner
+        "blocked_path",  # an adjacent step crosses a wall or cuts a corner, with no detour
         # SRD 5.2 "Speed 0" conditions (Grappled / Restrained / Paralyzed /
         # Petrified / Unconscious) or Exhaustion reducing Speed to 0 (C12).
         "speed_zero",

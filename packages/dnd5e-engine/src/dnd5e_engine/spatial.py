@@ -9,8 +9,9 @@ the backend: a ``GridScene`` of ``"col,row"`` cells under Chebyshev distance.
 from __future__ import annotations
 
 import heapq
+import math
 from collections import deque
-from collections.abc import Collection
+from collections.abc import Collection, Iterable
 from typing import Literal, Protocol, runtime_checkable
 
 from dnd5e_engine.activities.passive_stats import CombatantSenses
@@ -100,6 +101,57 @@ def _segments_intersect(
     return bool(o4 == 0 and _on_segment(cx, cy, dx, dy, bx, by))
 
 
+# Tolerance, in cells, by which the wall index widens every segment before
+# bucketing it, so a wall the floating-point segment test calls touching is
+# never missed by a rounding error in the slab interpolation.
+_INDEX_EPS = 1e-9
+
+
+def _cells_touched(
+    p1: tuple[float, float], p2: tuple[float, float], width: int, height: int
+) -> list[tuple[int, int]] | None:
+    """Every in-grid cell ``(col, row)`` whose closed unit square the segment
+    ``p1-p2`` (widened by ``_INDEX_EPS``) touches or crosses — a superset.
+
+    Walks the segment column slab by column slab: in slab ``c`` the segment's
+    y-range is interpolated at the slab's two edges, and every row whose
+    closed square overlaps that range is yielded. A coordinate on an integer
+    boundary therefore belongs to the cells on both sides. Cells off the grid
+    are dropped: no query ever reads them.
+
+    ``None`` when the segment cannot be bucketed: a coordinate, or a slab
+    bound computed from coordinates near the float limit, is not finite. The
+    caller then tests that wall against every query.
+    """
+    x1, y1 = p1
+    x2, y2 = p2
+    if not all(math.isfinite(v) for v in (x1, y1, x2, y2)):
+        return None
+    eps = _INDEX_EPS * max(1.0, abs(x1), abs(y1), abs(x2), abs(y2))
+    xmin, xmax = min(x1, x2), max(x1, x2)
+    first_col = max(0, math.ceil(xmin - eps) - 1)
+    last_col = min(width - 1, math.floor(xmax + eps))
+    cells: list[tuple[int, int]] = []
+    for col in range(first_col, last_col + 1):
+        lo = max(col - eps, xmin)
+        hi = min(col + 1 + eps, xmax)
+        if x1 == x2:
+            ylo, yhi = min(y1, y2), max(y1, y2)
+        else:
+            # The parameter first, so huge coordinates never multiply out
+            # past the float range before the division brings them back.
+            dy = y2 - y1
+            ya = y1 + dy * ((lo - x1) / (x2 - x1))
+            yb = y1 + dy * ((hi - x1) / (x2 - x1))
+            ylo, yhi = min(ya, yb), max(ya, yb)
+        if not (math.isfinite(ylo - eps) and math.isfinite(yhi + eps)):
+            return None
+        first_row = max(0, math.ceil(ylo - eps) - 1)
+        last_row = min(height - 1, math.floor(yhi + eps))
+        cells.extend((col, row) for row in range(first_row, last_row + 1))
+    return cells
+
+
 def _bresenham_cells(x0: int, y0: int, x1: int, y1: int) -> list[str]:
     """Cell ids on the Bresenham line from ``(x0,y0)`` to ``(x1,y1)``, inclusive.
 
@@ -176,11 +228,70 @@ class GridTopology:
         self._cell_size_ft = scene.cell_size_ft
         self._blocked: set[str] = set(scene.blocked_cells)
         self._walls: list[WallSegment] = list(scene.wall_segments)
+        self._build_wall_index()
         self._cover_cells: dict[str, str] = dict(scene.cover_cells)
         self._difficult: set[str] = set(scene.difficult_terrain_cells)
         self._lighting: dict[str, LightLevel] = dict(scene.lighting)
         self._default_lighting: LightLevel = scene.default_lighting
         self._obscurement: dict[str, Obscurement] = dict(scene.obscurement_cells)
+
+    def _build_wall_index(self) -> None:
+        """Bucket every wall by the in-grid cells its segment touches, so a
+        step or sight test reads only the walls near the segment it tests.
+
+        A wall ``_cells_touched`` cannot bucket (a non-finite coordinate, or
+        slab bounds that overflow) is kept in ``_unindexed_walls`` and offered
+        to every query.
+        """
+        buckets: dict[tuple[int, int], list[WallSegment]] = {}
+        unindexed: list[WallSegment] = []
+        for wall in self._walls:
+            touched = _cells_touched(
+                (wall.x1, wall.y1), (wall.x2, wall.y2), self._width, self._height
+            )
+            if touched is None:
+                unindexed.append(wall)
+                continue
+            for cell in touched:
+                buckets.setdefault(cell, []).append(wall)
+        self._unindexed_walls: tuple[WallSegment, ...] = tuple(unindexed)
+        self._wall_index: dict[tuple[int, int], tuple[WallSegment, ...]] = {
+            cell: tuple(walls) for cell, walls in buckets.items()
+        }
+
+    def _walls_near(
+        self, p1: tuple[float, float], p2: tuple[float, float]
+    ) -> Iterable[WallSegment]:
+        """The candidate walls for the segment ``p1-p2`` between two in-grid
+        cell centres: every wall bucketed in a cell whose closed square the
+        segment touches.
+
+        Invariant: the result is a superset of the walls that intersect the
+        segment. Any intersection point lies on the segment, hence in one of
+        those squares, and the build put the wall in that square's bucket.
+        The index only narrows the candidates; ``_segments_intersect`` still
+        decides.
+        """
+        (x1, y1), (x2, y2) = p1, p2
+        if abs(x1 - x2) <= 1 and abs(y1 - y2) <= 1:
+            # One step: the segment stays inside its closed bounding box,
+            # at most a 2x2 block of cells.
+            cells: Iterable[tuple[int, int]] = [
+                (c, r)
+                for c in range(math.floor(min(x1, x2)), math.floor(max(x1, x2)) + 1)
+                for r in range(math.floor(min(y1, y2)), math.floor(max(y1, y2)) + 1)
+            ]
+        else:
+            # Two in-grid cell centres are always finite: never ``None``.
+            cells = _cells_touched(p1, p2, self._width, self._height) or []
+        seen: set[int] = set()
+        candidates: list[WallSegment] = list(self._unindexed_walls)
+        for cell in cells:
+            for wall in self._wall_index.get(cell, ()):
+                if id(wall) not in seen:
+                    seen.add(id(wall))
+                    candidates.append(wall)
+        return candidates
 
     @property
     def cell_size_ft(self) -> int:
@@ -224,7 +335,7 @@ class GridTopology:
         if self._walls:
             p1 = (ac + 0.5, ar + 0.5)
             p2 = (bc + 0.5, br + 0.5)
-            for wall in self._walls:
+            for wall in self._walls_near(p1, p2):
                 if _segments_intersect(p1, p2, (wall.x1, wall.y1), (wall.x2, wall.y2)):
                     return False
         return True
@@ -279,7 +390,7 @@ class GridTopology:
             return True
         p1 = (ac + 0.5, ar + 0.5)
         p2 = (bc + 0.5, br + 0.5)
-        for wall in self._walls:
+        for wall in self._walls_near(p1, p2):
             if _segments_intersect(p1, p2, (wall.x1, wall.y1), (wall.x2, wall.y2)):
                 return False
         return True

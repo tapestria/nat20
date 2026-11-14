@@ -527,15 +527,48 @@ def test_move_routes_around_an_enemy_but_through_an_ally() -> None:
     assert events_of(live3, MoveFailed)[0].reason == "unreachable"
 
 
-def test_single_illegal_step_reports_blocked_path() -> None:
-    scene = GridScene(
+_CUT_CORNER = GridScene(
+    width=5,
+    height=5,
+    blocked_cells=[cell(1, 0)],
+    wall_segments=[{"x1": 1, "y1": 0, "x2": 1, "y2": 1}],
+)
+
+
+def test_an_illegal_adjacent_step_takes_the_detour() -> None:
+    # The diagonal cuts the blocked cell's corner; the route around it is
+    # priced and walked like any other.
+    live = run_async(
+        _move(_CUT_CORNER, [_mover(cell(0, 0))], [_foe("mon:foe", cell(4, 4))], cell(1, 1))
+    )
+    assert not events_of(live, MoveFailed)
+    [moved] = events_of(live, events_module.ActorMoved)
+    assert (moved.from_zone, moved.to_zone, moved.distance_ft) == (cell(0, 0), cell(1, 1), 10)
+    assert live.actor_zone["char:hero"] == cell(1, 1)
+
+
+def test_an_illegal_adjacent_step_with_no_detour_reports_blocked_path() -> None:
+    boxed = GridScene(
         width=5,
         height=5,
-        blocked_cells=[cell(1, 0)],
-        wall_segments=[{"x1": 1, "y1": 0, "x2": 1, "y2": 1}],
+        wall_segments=[
+            {"x1": 1, "y1": 1, "x2": 2, "y2": 1},
+            {"x1": 1, "y1": 2, "x2": 2, "y2": 2},
+            {"x1": 1, "y1": 1, "x2": 1, "y2": 2},
+            {"x1": 2, "y1": 1, "x2": 2, "y2": 2},
+        ],
     )
-    live = run_async(_move(scene, [_mover(cell(0, 0))], [_foe("mon:foe", cell(4, 4))], cell(1, 1)))
+    live = run_async(_move(boxed, [_mover(cell(0, 0))], [_foe("mon:foe", cell(4, 4))], cell(1, 1)))
     assert events_of(live, MoveFailed)[0].reason == "blocked_path"
+    assert live.actor_zone["char:hero"] == cell(0, 0)
+
+
+def test_a_detour_beyond_the_budget_is_insufficient_movement() -> None:
+    live = run_async(
+        _move(_CUT_CORNER, [_mover(cell(0, 0), speed=5)], [_foe("mon:foe", cell(4, 4))], cell(1, 1))
+    )
+    assert events_of(live, MoveFailed)[0].reason == "insufficient_movement"
+    assert not events_of(live, events_module.ActorMoved)
     assert live.actor_zone["char:hero"] == cell(0, 0)
 
 

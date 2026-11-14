@@ -47,9 +47,29 @@ way provokes an opportunity attack, which then lands between them.
 
 A step is legal when it stays on the map, does not enter a `blocked_cells`
 square, does not cross a `wall_segments` entry, and — for a diagonal — does not
-cut an obstruction's corner. Occupancy follows SRD 5.2 §Moving Around Other
+cut an obstruction's corner. When the direct step to an adjacent destination is
+illegal, the move takes the shortest legal route around, priced and walked like
+any other route. Occupancy follows SRD 5.2 §Moving Around Other
 Creatures: **allies are passable, enemies are not**, and a move may not *end* on
 a cell another creature occupies, ally or enemy.
+
+The monster AI's closing walk follows the same occupancy rules. It looks for a
+free cell from which its attack reaches the target with line of sight, in this
+order:
+
+1. the first such cell on the fewest-cells route toward the target (enemy
+   spaces skirted), when no creature stands on it;
+2. otherwise the cheapest free cell in range, counting difficult terrain,
+   ties going to the lowest column, then row.
+
+It tries both within the movement it has left first, so a monster that can
+reach range by walking walks and attacks. Only when neither fits does it take
+the Dash (when its Action is unspent and its Speed is above 0), priced to that
+cell rather than to the target's own; a Dash takes its Action, so it attacks on
+a later turn. When no free cell in range is within reach even with a Dash, it
+walks the route as far as its movement goes and stops on the last free cell;
+with no route to the target at all, it stays where it is. An opportunity attack
+that stops it part-way can leave it on an ally's cell it was passing through.
 
 A step that takes the mover out of an enemy's reach draws that enemy's
 opportunity attack first, whoever drives the mover: a `move` intent, the
@@ -66,7 +86,7 @@ A rejected move emits `MoveFailed` with one of:
 | `speed_zero` | the mover's Speed is 0 (Grappled, Restrained, Paralyzed, Petrified, Unconscious, or Exhaustion) — checked first |
 | `not_adjacent` | no destination given, an untracked position, or the destination is the mover's own cell (the legacy reason name is kept for hosts) |
 | `occupied` | the destination holds another creature — ally or enemy |
-| `blocked_path` | the destination is adjacent, but the single step crosses a wall or cuts a blocked corner |
+| `blocked_path` | the destination is adjacent, the direct step crosses a wall or cuts a blocked corner, and no route goes around |
 | `unreachable` | no legal route at all (enemy-occupied cells are impassable; allies may be passed through) |
 | `insufficient_movement` | a legal route exists but costs more than the remaining budget — atomic, nothing moves |
 | `frightened` | the route would take a Frightened mover closer to the source of its fear (SRD 5.2: "You can't willingly move closer to the source of fear") |
