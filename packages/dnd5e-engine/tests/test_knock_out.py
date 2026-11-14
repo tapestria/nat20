@@ -127,6 +127,10 @@ def _assert_knocked_out(live: _LiveCombat, target_id: str, attacker_id: str) -> 
         ("longsword", cell_id(1, 0)),
         ("unarmed-strike", cell_id(1, 0)),
         ("dagger", cell_id(1, 0)),  # Thrown, but swung within reach
+        # SRD 5.2 Weapons table: the Javelin is a Simple Melee Weapon. It and
+        # the Sun Blade ship no attack type of their own; their weapon decides.
+        ("javelin", cell_id(1, 0)),
+        ("sun-blade", cell_id(1, 0)),
     ],
 )
 def test_a_melee_hit_that_would_drop_a_foe_knocks_it_out(weapon_id: str, foe_cell: str) -> None:
@@ -167,6 +171,7 @@ def test_a_summons_commanded_rend_knocks_out() -> None:
     [
         ("shortbow", cell_id(1, 0)),  # a ranged weapon, even at 5 feet
         ("dagger", cell_id(3, 0)),  # Thrown beyond its 5-foot reach
+        ("javelin", cell_id(3, 0)),  # Thrown beyond its 5-foot reach
     ],
 )
 def test_a_swing_that_is_not_a_melee_attack_is_refused_with_nothing_spent(
@@ -217,6 +222,50 @@ def test_a_multiattack_with_a_ranged_part_is_refused_with_nothing_spent() -> Non
     assert reason == "knock_out_not_melee"
     assert (len(live.event_log), live.rng.getstate()) == before
     assert [e for e in events(live, IntentSubmitted) if e.actor_id == "npc:captain"] == []
+
+
+def test_a_magic_weapon_with_no_attack_of_its_own_is_refused() -> None:
+    """The Flame Tongue's activities only enchant a weapon: an ``attack``
+    naming it resolves no attack, so there is no melee attack to pull."""
+    handle, _ = _scripted([pc()], [_frail()])
+    reason = _refused(
+        handle,
+        "char:hero",
+        intent_type="attack",
+        weapon_id="flame-tongue",
+        target_id="mon:foe",
+        knock_out=True,
+    )
+    assert reason == "knock_out_not_melee"
+
+
+def test_a_natural_attack_with_no_attack_type_is_refused() -> None:
+    """SRD 5.2 Grick: "Multiattack. The grick makes one Beak attack and one
+    Tentacles attack." The data gives its Beak no attack type and no reach,
+    and there is no weapon to classify, so the engine cannot tell it is a
+    melee attack and refuses the pulled blow rather than risk an unpulled
+    one."""
+    grick = foe(
+        entity_id="npc:grick",
+        entity_type="NPC",
+        name="Grick",
+        side="party",
+        initiative=19,
+        zone_id=cell_id(0, 1),
+        monster_template_slug="grick",
+    )
+    handle, live = _scripted([pc()], [grick, _frail(zone_id=cell_id(1, 1))])
+    act(handle, "char:hero", intent_type="pass")
+    assert _current_actor(live).entity_id == "npc:grick"
+    reason = _refused(
+        handle,
+        "npc:grick",
+        intent_type="attack",
+        stat_block_action_id="multiattack",
+        target_id="mon:foe",
+        knock_out=True,
+    )
+    assert reason == "knock_out_not_melee"
 
 
 def test_the_same_swing_without_the_choice_is_accepted() -> None:

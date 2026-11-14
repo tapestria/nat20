@@ -803,12 +803,15 @@ def is_melee_attack(
 ) -> bool:
     """Is this attack, at ``distance_ft`` from its target, a melee attack? A
     melee attack activity whose weapon is not a ranged weapon and not a Thrown
-    weapon thrown beyond its reach. The orchestrator refuses a knock-out
+    weapon thrown beyond its reach. An activity that names no attack type (the
+    Javelin, several magic weapons) is classified by its weapon
+    (``_is_melee_weapon``); with no weapon either, it cannot be told apart
+    from a ranged attack and is not one. The orchestrator refuses a knock-out
     choice before anything is spent unless every attack of the intent passes
     this rule; a save-based rider after the hit is not pulled."""
-    return activity.attack.type.value == "melee" and not _attack_is_effectively_ranged(
-        weapon, distance_ft
-    )
+    attack_type = activity.attack.type.value
+    melee = _is_melee_weapon(weapon) if attack_type == "" else attack_type == "melee"
+    return melee and not _attack_is_effectively_ranged(weapon, distance_ft)
 
 
 def _weapon_heavy_disadvantage(weapon: Weapon | None, caster: Combatant) -> bool:
