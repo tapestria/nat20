@@ -90,6 +90,7 @@ from dnd5e_engine.activities.actor_stats import (
 )
 from dnd5e_engine.activities.attack import (
     attacker_advantage_flags,
+    is_melee_attack,
     sneak_attack_dice,
     sneak_attack_triggers,
 )
@@ -176,6 +177,7 @@ from dnd5e_engine.events import (
     HealingApplied,
     IntentSubmitted,
     IntentType,
+    KnockedOut,
     LegendaryActionUsed,
     LegendaryResistanceUsed,
     MoveFailed,
@@ -194,6 +196,7 @@ from dnd5e_engine.lib_loader import get_lib_loader
 from dnd5e_engine.outcome import (
     CombatOutcome,
     DeathRecord,
+    KnockOutRecord,
     LootDrop,
 )
 from dnd5e_engine.rest import (
@@ -386,6 +389,15 @@ class PlayerIntent(BaseModel):
     # makes no attack roll, is refused with
     # ``AttackFailed(reason="action_unavailable")``. Ignored by other intents.
     stat_block_action_id: str | None = None
+    # SRD 5.2 Knocking Out a Creature: "When you would reduce a creature to 0
+    # Hit Points with a melee attack, you can instead reduce the creature to 1
+    # Hit Point. The creature then has the Unconscious condition." The
+    # attacker's choice for THIS attack: every melee hit it lands this intent
+    # pulls the blow. Refused with ``IntentRejectedError("knock_out_not_melee")``
+    # before anything is spent when the attack is not a melee attack: a ranged
+    # weapon, or a Thrown melee weapon at a target beyond its reach. Ignored by
+    # other intent types.
+    knock_out: bool = False
 
     @field_validator("direction")
     @classmethod
@@ -457,6 +469,10 @@ class IntentRejectedError(CombatSeamError):
         # when ``entity_id`` is not an encounter member with the Legendary
         # Resistance trait, or has no unarmed use left in its per-day pool.
         "no_legendary_resistance",
+        # SRD 5.2 Knocking Out a Creature — ``PlayerIntent.knock_out`` on an
+        # ``attack`` that is not a melee attack (a ranged weapon, a Thrown
+        # weapon beyond its reach, or a spell's own attack).
+        "knock_out_not_melee",
     ]
 
     def __init__(self, reason: RejectionReason, detail: str) -> None:
@@ -2718,6 +2734,7 @@ def _select_monster_targets(live: _LiveCombat, current: Combatant) -> list[Comba
     """Target pool for ``current``'s attack/legendary action: every living
     enemy of ``current`` — the party's members and the summons they own
     (C21: "The creature is an ally to you and your allies") — minus a
+    knocked-out creature and a
     charmer (SRD 5.2 Charmed — "You can't attack the charmer"). Extracted
     from the main-turn targeting block so a legendary action can share it
     byte-for-byte.
@@ -2725,7 +2742,11 @@ def _select_monster_targets(live: _LiveCombat, current: Combatant) -> list[Comba
     enemies = [
         c
         for c in live.initiative
-        if _is_enemy(live, current.entity_id, c.entity_id) and c.is_alive and c.hp_current > 0
+        if _is_enemy(live, current.entity_id, c.entity_id)
+        and c.is_alive
+        and c.hp_current > 0
+        # SRD 5.2 Knocking Out a Creature: out of the fight until it wakes.
+        and c.entity_id not in live.knocked_out_ids
     ]
     charmer_id = _condition_source_entity(live, current, "charmed")
     if charmer_id is not None:
@@ -3344,6 +3365,11 @@ class _LiveCombat:
     # dead encounter members, in death order (drives loot + XP projection).
     deaths_recorded: list[DeathRecord] = field(default_factory=list)
     dead_ids: set[str] = field(default_factory=set)
+    # SRD 5.2 Knocking Out a Creature — the creatures a pulled blow left
+    # Unconscious at 1 Hit Point, out of the fight until they wake or die; and
+    # their records, in knock-out order (``CombatOutcome.knock_outs``).
+    knocked_out_ids: set[str] = field(default_factory=set)
+    knock_outs: list[KnockOutRecord] = field(default_factory=list)
     # pc_id → {slot_or_feature_label: count_used} (from EffectApplied with
     # concentration / known feature names — projected onto expended_resources).
     expended_resources: dict[str, dict[str, int]] = field(default_factory=dict)
@@ -5280,6 +5306,20 @@ def _emit_apply_damage(live: _LiveCombat, event: DamageApplied) -> None:
     undead_fortitude_saved = live.undead_fortitude_holds.pop(event.target_id, False)
     if new_hp <= 0 and undead_fortitude_saved:
         new_hp = 1
+    # SRD 5.2 Knocking Out a Creature: "When you would reduce a creature to 0
+    # Hit Points with a melee attack, you can instead reduce the creature to 1
+    # Hit Point." Only a creature that has Hit Points to lose can be reduced
+    # to 0, and a summon "disappears when it drops to 0 Hit Points" whatever
+    # the attacker chose.
+    knocked_out = (
+        event.knock_out
+        and new_hp <= 0
+        and tracked > 0
+        and event.target_id not in live.dead_ids
+        and event.target_id not in live.summons
+    )
+    if knocked_out:
+        new_hp = 1
     live.tracked_hp[event.target_id] = new_hp
     # Sync hp_current / temp_hp on the initiative slot so downstream
     # readers (monster gambit targeting, OA HP checks, hydration
@@ -5365,14 +5405,23 @@ def _emit_apply_damage(live: _LiveCombat, event: DamageApplied) -> None:
             _emit_legendary_resistance_used(live, event.target_id, lr_remaining)
         if not succeeded:
             _drop_concentration(live, event.target_id)
-    if new_hp <= 0 and event.target_id not in live.dead_ids:
+    if knocked_out:
+        _knock_out(live, event.target_id)
+    elif new_hp <= 0 and event.target_id not in live.dead_ids:
+        was_knocked_out = _end_knock_out(live, event.target_id)
         if event.target_id in live.summons:
             # SRD 5.2 Summon Dragon: "The creature disappears when it drops to
             # 0 Hit Points" — no death, death save or XP. Its caster keeps
             # concentrating (the SRD is silent; a host can drop it).
             _leave_roster(live, event.target_id, "zero_hp")
         elif _target_kind_for(live, event.target_id) == "character":
-            _apply_zero_hp_to_character(live, event, hp_before=tracked, damage_after_temp=remaining)
+            _apply_zero_hp_to_character(
+                live,
+                event,
+                hp_before=tracked,
+                damage_after_temp=remaining,
+                was_knocked_out=was_knocked_out,
+            )
         else:
             # SRD 5.2 "Monster Death" — a monster dies the instant it drops to
             # 0 HP. Recursion guard: _emit re-enters here for the Death, but
@@ -5385,8 +5434,46 @@ def _emit_apply_damage(live: _LiveCombat, event: DamageApplied) -> None:
             live.event_queue.put_nowait(death_event)
 
 
+def _knock_out(live: _LiveCombat, target_id: str) -> None:
+    """SRD 5.2 Knocking Out a Creature: "The creature then has the Unconscious
+    condition." The pulled blow already left it at 1 Hit Point. ``KnockedOut``
+    names the current actor as the attacker, then Unconscious applies every
+    rule of the condition at once (Incapacitated, Prone, Speed 0, Advantage
+    against it, the auto-crit within 5 feet). No ``Unconscious`` marker and no
+    death saves: the creature is not dying. A creature knocked out again moves
+    to the end of the knock-out order with its new attacker."""
+    _end_knock_out(live, target_id)
+    live.knocked_out_ids.add(target_id)
+    live.knock_outs.append(
+        KnockOutRecord(
+            target_id=target_id,
+            target_kind=_target_kind_for(live, target_id),
+            attacker_id=live.current_actor_id,
+        )
+    )
+    _emit(live, KnockedOut(target_id=target_id, attacker_id=live.current_actor_id))
+    target = _find_combatant(live, target_id)
+    if target is not None and "unconscious" not in _condition_names(target):
+        _emit(live, ConditionApplied(target_id=target_id, condition="unconscious"))
+
+
+def _end_knock_out(live: _LiveCombat, target_id: str) -> bool:
+    """Drop ``target_id`` from the knocked-out creatures (it woke or dropped
+    to 0 Hit Points); ``True`` when it was one."""
+    if target_id not in live.knocked_out_ids:
+        return False
+    live.knocked_out_ids.discard(target_id)
+    live.knock_outs = [r for r in live.knock_outs if r.target_id != target_id]
+    return True
+
+
 def _apply_zero_hp_to_character(
-    live: _LiveCombat, event: DamageApplied, *, hp_before: int, damage_after_temp: int
+    live: _LiveCombat,
+    event: DamageApplied,
+    *,
+    hp_before: int,
+    damage_after_temp: int,
+    was_knocked_out: bool = False,
 ) -> None:
     """SRD 5.2 "Dropping to 0 Hit Points" for a Character.
 
@@ -5402,6 +5489,10 @@ def _apply_zero_hp_to_character(
       equals or exceeds your Hit Point maximum, you die." A Critical Hit
       counts as TWO failures instead of one (C15 — ``DamageApplied.is_crit``
       threaded into ``DeathSaveState.apply_damage_while_unconscious``).
+
+    ``was_knocked_out``: the character was Unconscious at 1 Hit Point from a
+    knock-out; it keeps that condition and now starts dying, so the
+    ``Unconscious`` marker is emitted for it alone.
     """
     target = _find_combatant(live, event.target_id)
     if target is None:
@@ -5422,6 +5513,8 @@ def _apply_zero_hp_to_character(
         if "unconscious" not in _condition_names(target):
             _emit(live, Unconscious(target_id=event.target_id))
             _emit(live, ConditionApplied(target_id=event.target_id, condition="unconscious"))
+        elif was_knocked_out:
+            _emit(live, Unconscious(target_id=event.target_id))
         return
     # SRD 5.2 charges a failure for damage TAKEN: an immune damage type (or a
     # hit fully absorbed by temp HP) reaches this fold with nothing left, and
@@ -5451,7 +5544,7 @@ def _apply_zero_hp_to_character(
 def _emit_apply_healing(live: _LiveCombat, event: HealingApplied) -> None:
     """Fold a ``HealingApplied`` into running state: HP tracking (capped at
     max), initiative sync, and the 0→positive revive (clear death saves +
-    unconscious condition)."""
+    unconscious condition), which also wakes a knocked-out creature."""
     tracked = live.tracked_hp.get(event.target_id)
     if tracked is None:
         return
@@ -5466,7 +5559,10 @@ def _emit_apply_healing(live: _LiveCombat, event: HealingApplied) -> None:
     # downstream readers (monster gambit targeting, hydration) observe
     # the post-heal state even when the heal didn't cross the 0->1
     # revive boundary.
-    revived = tracked == 0 and new_hp > 0
+    # SRD 5.2 Knocking Out a Creature: "The creature remains Unconscious until
+    # it regains any Hit Points" — any heal wakes it as a revive does.
+    woken = event.amount > 0 and _end_knock_out(live, event.target_id)
+    revived = (tracked == 0 and new_hp > 0) or woken
     revived_ids: list[str] = []
     for idx, c in enumerate(live.initiative):
         if c.entity_id == event.target_id:
@@ -5732,6 +5828,7 @@ def _record_death(live: _LiveCombat, event: Death, *, killer_id: str | None) -> 
     if event.target_id in live.dead_ids:
         return
     live.dead_ids.add(event.target_id)
+    _end_knock_out(live, event.target_id)
     live.deaths_recorded.append(
         DeathRecord(
             target_id=event.target_id,
@@ -9288,6 +9385,42 @@ def _validate_intent_preconditions(
     return current
 
 
+def _reject_knock_out_not_melee(
+    live: _LiveCombat, current: Combatant, intent: PlayerIntent
+) -> None:
+    """SRD 5.2 Knocking Out a Creature works only "with a melee attack". An
+    ``attack`` asking for it must resolve a melee attack activity at a
+    distance where its weapon is not a ranged weapon nor a Thrown weapon
+    beyond its reach (``activities.attack.is_melee_attack``, the rule the
+    resolver applies to the damage), so the choice never silently kills. A
+    spell's own attack (a construct's repeat) is not a weapon swing and is
+    refused too. Raises before anything is spent."""
+    if intent.intent_type != "attack" or not intent.knock_out:
+        return
+    resolved = _resolve_intent_activities(
+        intent,
+        None,
+        current,
+        stat_block_slug=_current_stat_block_slug(live, current.entity_id),
+    )
+    target = _find_combatant(live, intent.target_id) if intent.target_id else None
+    distance_ft = (
+        _target_distance_map(live, current.entity_id, [target]).get(target.entity_id)
+        if target is not None
+        else None
+    )
+    melee = intent.spell_id is None and any(
+        isinstance(activity, AttackActivity)
+        and is_melee_attack(activity, resolved.fetched_weapon, distance_ft)
+        for activity in resolved.activities
+    )
+    if not melee:
+        raise IntentRejectedError(
+            "knock_out_not_melee",
+            f"actor_id={current.entity_id!r}: only a melee attack can knock a creature out",
+        )
+
+
 def _handle_move(live: _LiveCombat, current: Combatant, intent: PlayerIntent) -> None:
     """SRD 5.2 §Movement and Position — move ``current`` to ``target_zone_id``
     along the fewest-cells legal route (``shortest_path``), paying each leg's
@@ -12469,6 +12602,7 @@ async def submit_player_intent(
     """
     live = _get_live(handle)
     current = _validate_intent_preconditions(live, handle, actor_id, intent=intent)
+    _reject_knock_out_not_melee(live, current, intent)
 
     # Turn-non-ending intents (move_mark / move / dash) dispatch through
     # their dedicated handlers and keep the actor on turn — see
@@ -12872,6 +13006,9 @@ async def submit_player_intent(
             stat_block_magnitudes=(
                 _stat_block_magnitudes_of(live, current) if intent.stat_block_action_id else None
             ),
+            # SRD 5.2 Knocking Out a Creature — the attacker's choice, for its
+            # own ``attack`` only (``_reject_knock_out_not_melee`` vetted it).
+            knock_out=intent.knock_out and intent.intent_type == "attack",
             **_pc_attack_context_kwargs(
                 live,
                 current,
@@ -13584,21 +13721,21 @@ async def narration_events(
 def _derive_ended_reason(live: _LiveCombat) -> Literal["victory", "defeat_tpk", "flee", "forced"]:
     """SRD §Combat resolution — derive ``ended_reason`` from final tracked state.
 
-    - all encounter members dead → victory
-    - all party members dead → defeat_tpk
-    - every living foe has fled (``Combatant.has_fled``) → flee
+    A creature is out of the fight when it is dead or knocked out (SRD 5.2
+    Knocking Out a Creature), on either side.
+
+    - every encounter member out → victory
+    - every party member out → defeat_tpk
+    - every foe still in the fight has fled (``Combatant.has_fled``) → flee
     - otherwise → forced (caller closed mid-combat)
     """
-    all_foes_dead = all(eid in live.dead_ids for eid in live.encounter_ids)
-    all_pcs_dead = all(eid in live.dead_ids for eid in live.party_ids)
-    if all_foes_dead and live.encounter_ids:
+    out = live.dead_ids | live.knocked_out_ids
+    if live.encounter_ids and live.encounter_ids <= out:
         return "victory"
-    if all_pcs_dead and live.party_ids:
+    if live.party_ids and live.party_ids <= out:
         return "defeat_tpk"
     living_foes = [
-        c
-        for c in live.initiative
-        if c.entity_id in live.encounter_ids and c.entity_id not in live.dead_ids
+        c for c in live.initiative if c.entity_id in live.encounter_ids and c.entity_id not in out
     ]
     if living_foes and all(c.has_fled for c in living_foes):
         return "flee"
@@ -13660,6 +13797,7 @@ def _project_outcome(live: _LiveCombat) -> CombatOutcome:
         loot_drops=loot_drops,
         xp_awarded=xp_awarded,
         expended_resources={k: dict(v) for k, v in live.expended_resources.items()},
+        knock_outs=list(live.knock_outs),
     )
 
 

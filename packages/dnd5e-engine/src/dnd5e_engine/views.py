@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from dnd5e_engine.activities.conjuration import TransformSource
-from dnd5e_engine.outcome import CombatOutcome
+from dnd5e_engine.outcome import CombatOutcome, DeathRecord
 from dnd5e_engine.types.combat import Combatant
 
 if TYPE_CHECKING:
@@ -127,6 +127,17 @@ class LiveCombatView:
     transformations: dict[str, TransformView] = field(default_factory=dict)
     # C21 — summoned creatures keyed by entity id; empty when none is seated.
     summons: dict[str, SummonView] = field(default_factory=dict)
+    # SRD 5.2 Knocking Out a Creature: the creatures a pulled melee blow left
+    # at 1 Hit Point, Unconscious, and that have not woken or died since. They
+    # are out of the fight: no monster targets them, and the combat's end
+    # reason counts them with the dead.
+    knocked_out_ids: set[str] = field(default_factory=set)
+    # The deaths so far, in order: the records ``CombatOutcome.deaths`` will
+    # hold. ``killer_id`` is the creature whose turn it was when the creature
+    # died (``None`` when that is the dead creature itself), so a death dealt
+    # by a reaction, such as an opportunity attack, names the creature whose
+    # turn it is, not the reactor.
+    deaths: list[DeathRecord] = field(default_factory=list)
 
     @classmethod
     def from_live(cls, live: _LiveCombat) -> LiveCombatView:
@@ -209,6 +220,8 @@ class LiveCombatView:
                 )
                 for entity_id, s in live.summons.items()
             },
+            knocked_out_ids=set(live.knocked_out_ids),
+            deaths=list(live.deaths_recorded),
         )
 
 

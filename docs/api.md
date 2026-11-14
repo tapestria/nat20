@@ -37,6 +37,7 @@ For what the engine actually resolves behind these signatures, see the
       members:
         - CombatOutcome
         - DeathRecord
+        - KnockOutRecord
         - LootDrop
 
 ## Content loading

@@ -36,6 +36,7 @@ _EVERY_FIELD: dict[str, Any] = {
     "as_ritual": True,
     "form_id": "wolf",
     "stat_block_action_id": "rend",
+    "knock_out": True,
 }
 
 _BROM = {"name": "Brom", "build": {"species_slug": "human", "class_slug": "fighter", "level": 3}}

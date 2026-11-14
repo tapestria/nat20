@@ -99,12 +99,14 @@ def test_the_named_target_is_attacked_over_the_lowest_hp_one() -> None:
 
 def _refusal_scene() -> tuple[CombatHandle, _LiveCombat]:
     """The dragon's turn, its Fire Breath spent (a turn start would roll its
-    recharge); the hero has killed a party-side ally; ``char:down`` lies at
-    0 Hit Points; the dragon is charmed by ``CHARMER``."""
+    recharge); the hero (two attacks per Attack action) has killed a
+    party-side ally and knocked out ``char:ko``; ``char:down`` lies at 0 Hit
+    Points; the dragon is charmed by ``CHARMER``."""
     with rng_factory(_D20Always20):
         handle, live = start(
             [
-                pc(),
+                pc(class_slug="fighter", character_level=5),
+                pc("char:ko", initiative=5, hp_current=1, zone_id=cell_id(1, 0)),
                 pc("char:down", initiative=3, hp_current=0, zone_id=cell_id(0, 2)),
                 pc(CHARMER, initiative=2, zone_id=cell_id(0, 3)),
             ],
@@ -125,6 +127,16 @@ def _refusal_scene() -> tuple[CombatHandle, _LiveCombat]:
         )
     act(handle, "char:hero", intent_type="attack", weapon_id="longsword", target_id="npc:ally")
     assert [d.target_id for d in events(live, Death)] == ["npc:ally"]
+    act(
+        handle,
+        "char:hero",
+        intent_type="attack",
+        weapon_id="longsword",
+        target_id="char:ko",
+        knock_out=True,
+    )
+    assert live.knocked_out_ids == {"char:ko"}
+    act(handle, "char:hero", intent_type="pass")
     assert _current_actor(live).entity_id == "mon:foe"
     live.monster_action_uses_by_entity["mon:foe"]["fire-breath"].recharge_spent = True
     combatant(live, "mon:foe").conditions.append(
@@ -141,6 +153,7 @@ def _refusal_scene() -> tuple[CombatHandle, _LiveCombat]:
         "mon:foe-2",  # the actor's own ally
         "npc:ally",  # dead
         "char:down",  # a character at 0 Hit Points
+        "char:ko",  # knocked out
         CHARMER,  # the actor's charmer
     ],
 )

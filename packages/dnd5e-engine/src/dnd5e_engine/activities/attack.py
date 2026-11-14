@@ -793,10 +793,21 @@ def _pulls_blow(
     attack against ``target`` is a melee attack: a melee attack activity whose
     weapon is not a ranged weapon and not a Thrown weapon thrown beyond its
     reach (``_attack_is_effectively_ranged``)."""
-    return (
-        ctx.knock_out
-        and activity.attack.type.value == "melee"
-        and not _attack_is_effectively_ranged(weapon, ctx.target_distance_ft.get(target.entity_id))
+    return ctx.knock_out and is_melee_attack(
+        activity, weapon, ctx.target_distance_ft.get(target.entity_id)
+    )
+
+
+def is_melee_attack(
+    activity: AttackActivity, weapon: Weapon | None, distance_ft: int | None
+) -> bool:
+    """Is this attack, at ``distance_ft`` from its target, a melee attack? A
+    melee attack activity whose weapon is not a ranged weapon and not a Thrown
+    weapon thrown beyond its reach. The orchestrator refuses a knock-out
+    choice with the same rule before anything is spent, so the choice never
+    silently kills."""
+    return activity.attack.type.value == "melee" and not _attack_is_effectively_ranged(
+        weapon, distance_ft
     )
 
 
