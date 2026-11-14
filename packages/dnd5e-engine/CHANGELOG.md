@@ -7,6 +7,97 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0]
+
+Lockstep release with `dnd5e-srd-data` 0.8.0 and `nat20-bridge` 0.8.0. The
+engine's floor rises to `dnd5e-srd-data>=0.8.0` (the dataset itself does not
+change); `nat20-bridge` requires both at `>=0.8.0`.
+
+An additive minor release: encounter members that fight on the party's side,
+a host-chosen target on a monster's turn, SRD 5.2 knock-outs, item casts that
+place their spell's area, a monster closing walk that honours occupancy, a
+`move` that takes a detour, and a wall index for walled grids. Every new name
+and field is defaulted, and a payload stored under 0.7.0 still validates. A
+host that matches `CombatEvent` exhaustively handles the new `KnockedOut`;
+`docs/migration/v0.7-to-v0.8.md` has every step and every moved seeded pin.
+
+### Added
+
+- **`EncounterMemberSpec.side`** and **`Side`** (`dnd5e_engine.specs`) —
+  `"encounter"` (the default) or `"party"`: a party-side member joins
+  `party_ids`, fights the encounter side and is fought by it, and dies at 0
+  Hit Points as a monster does. `start_combat` raises `ValueError` unless at
+  least one member fights on the encounter side.
+- **`advance_monster_turn(..., target_id=None)`** — the creature the acting
+  monster attacks or targets with a stat-block cast, legendary actions
+  included. An id outside the monster's own target pool, or any id on a
+  summon's turn, raises `IntentRejectedError("target_invalid")` before the
+  turn starts, with nothing rolled, spent or emitted.
+- **`PlayerIntent.knock_out`** — SRD 5.2 Knocking Out a Creature: every melee
+  hit of the `attack` that would drop a creature to 0 Hit Points leaves it at
+  1, Unconscious. Refused with the new `knock_out_not_melee` rejection reason,
+  before anything is spent, unless every attack the intent resolves is a
+  melee attack.
+- **`KnockedOut`** and **`DamageApplied.knock_out`** (`dnd5e_engine.events`):
+  `KnockedOut(target_id, attacker_id)` joins the `CombatEvent` union.
+- **`KnockOutRecord`** (top level) and **`CombatOutcome.knock_outs`** — the
+  creatures still knocked out when the combat ended, in knock-out order.
+- **`LiveCombatView.knocked_out_ids`** and **`LiveCombatView.deaths`** — the
+  creatures knocked out now, and the deaths so far with their killers.
+- **`ActivityResolutionContext.knock_out`** and **`knock_out_exempt_ids`**, the
+  same keywords on `build_activity_context`, `apply_damage(knock_out=...)` and
+  **`is_melee_attack`** (`dnd5e_engine.activities.attack`).
+- **`dnd5e_engine.testing.rng_factory`** — a test-support context manager
+  that scripts or records every die a combat opened inside it draws,
+  Initiative included. Process-wide for the block; not for production code.
+- **nat20-bridge**: `POST /v1/combat` takes `allies` (monster slugs seated on
+  the party's side); `/advance-monster` takes an optional
+  `{"target_id": ...}` body; an intent body takes `knock_out`; the view
+  reports `party_ids`, `encounter_ids`, `knocked_out_ids` and `deaths`; a
+  knock-out narrates as a line. `target_invalid` and `knock_out_not_melee`
+  answer 409.
+
+### Changed
+
+- **A `move` takes a detour**: a move to an adjacent cell whose direct step
+  crosses a wall or cuts a blocked corner walks the shortest legal route
+  around, priced and provoking like any route. `MoveFailed(reason=
+  "blocked_path")` now means no route exists, and a detour that costs more
+  than the movement left is `insufficient_movement`.
+- **The monster AI's closing walk honours occupancy**: it passes through
+  allies, never ends on another creature and never enters an enemy's cell,
+  stopping on a free cell in range with line of sight. It walks before it
+  Dashes, the Dash priced to the cell it stops on; with no reachable free cell
+  in range it walks as far as it can and stops on a free cell, and with no
+  route it stays put. A walk with no creature in the way is unchanged.
+- **An item that casts a spell targets as that spell**: a `use_item` whose one
+  resolved activity is a `cast` places the spell's area (`AreaTargeted`) and
+  reads a scaling count (Magic Missile's darts) at the item's cast level; too
+  many `target_ids` is refused before any charge is spent. A spell with an
+  attack roll still places no area.
+- **`DeathRecord.killer_id` names the creature that dealt the killing
+  damage**, whoever's turn it was: an opportunity attack's reactor, a
+  legendary action's monster, a summon, a construct's caster. It used to name
+  the creature whose turn it was. `Combatant.last_damaged_by` follows the same
+  source.
+- **XP is divided among surviving characters only**, and a foe still knocked
+  out at the end is worth its XP, as a dead one is.
+- **`ended_reason` counts a knocked-out creature as out of the fight**; a
+  standing party-side ally keeps the party in it, so a combat closed after
+  every character has died while an ally stands reads `forced` (or `flee`),
+  not `defeat_tpk`.
+- **Wall segments are indexed by the cells they touch**: a step or sight test
+  reads only nearby walls, so its cost no longer grows with the wall count.
+  Every answer is unchanged.
+- `end_combat` and `LiveCombatView.final_outcome` return a copy of the kept
+  outcome each time.
+
+### Fixed
+
+- A character already Unconscious from an effect that drops to 0 Hit Points
+  emits the `Unconscious` dying marker, as any character at 0 Hit Points does,
+  and no longer wakes at 0 Hit Points when that effect ends.
+
 ## [0.7.0]
 
 Lockstep release with `dnd5e-srd-data` 0.7.0 and `nat20-bridge` 0.7.0. The

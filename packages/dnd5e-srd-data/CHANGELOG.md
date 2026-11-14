@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0]
+
+Lockstep release with `dnd5e-engine` 0.8.0 and `nat20-bridge` 0.8.0. No
+dataset change: the canonical corpus is byte-identical to 0.7.0.
+`dnd5e-engine` 0.8.0 requires this release (`dnd5e-srd-data>=0.8.0`).
+
 ## [0.7.0]
 
 Lockstep release with `dnd5e-engine` 0.7.0 and `nat20-bridge` 0.7.0.
