@@ -326,9 +326,15 @@ def test_a_knocked_out_character_is_out_of_the_foes_pool_and_only_passes() -> No
 
 
 def test_with_every_foe_knocked_out_the_fight_is_won() -> None:
+    """SRD 5.2 Experience Points: "XP is awarded for defeating the monster in
+    combat or otherwise neutralizing it." A foe still knocked out when the
+    fight ends is worth its XP as a dead one is."""
     handle, _ = _scripted(
         [pc(), pc("char:two", initiative=19, zone_id=cell_id(1, 1))],
-        [_frail("mon:a"), _frail("mon:b", zone_id=cell_id(2, 1), initiative=2)],
+        [
+            _frail("mon:a", xp_value=100),
+            _frail("mon:b", zone_id=cell_id(2, 1), initiative=2, xp_value=50),
+        ],
     )
     act(
         handle,
@@ -354,6 +360,7 @@ def test_with_every_foe_knocked_out_the_fight_is_won() -> None:
         KnockOutRecord(target_id="mon:a", target_kind="monster", attacker_id="char:hero"),
         KnockOutRecord(target_id="mon:b", target_kind="monster", attacker_id="char:two"),
     ]
+    assert outcome.xp_awarded == {"char:hero": 75, "char:two": 75}
 
 
 def test_a_knocked_out_party_counts_as_out_for_the_end_reason() -> None:

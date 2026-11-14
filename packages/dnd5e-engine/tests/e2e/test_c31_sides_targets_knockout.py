@@ -210,6 +210,7 @@ def test_allies_host_targets_and_a_knock_out_end_in_victory() -> None:
     assert outcome.knock_outs == [
         KnockOutRecord(target_id=FOE_3, target_kind="monster", attacker_id=SCOUT)
     ]
-    # Bandits 1 and 2 are dead (300 XP); the knocked-out bandit 3 is not.
-    # The sellsword takes no share.
-    assert outcome.xp_awarded == {HERO: 150, SCOUT: 150}
+    # Bandits 1 and 2 are dead (300 XP) and bandit 3 is knocked out (50 XP):
+    # "XP is awarded for defeating the monster in combat or otherwise
+    # neutralizing it." The sellsword takes no share.
+    assert outcome.xp_awarded == {HERO: 175, SCOUT: 175}

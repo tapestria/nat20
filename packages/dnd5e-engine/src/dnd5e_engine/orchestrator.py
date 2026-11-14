@@ -13782,8 +13782,9 @@ def _project_outcome(live: _LiveCombat) -> CombatOutcome:
     surviving combatant. Carried-effect duration is taken from the most
     recent ``EffectApplied`` (the duration the effect was registered with).
     Deaths — the ordered ``DeathRecord`` list synthesized in ``_emit``.
-    XP — SRD §Encounter XP, summed across dead encounter members and divided
-    equally among surviving PCs (a solo PC takes the full total).
+    XP — SRD §Encounter XP, summed across dead or knocked-out encounter
+    members and divided equally among surviving PCs (a solo PC takes the full
+    total).
     Loot drops — dropped from this seam's projection (loot tables aren't
     plumbed into ``EncounterMemberSpec`` yet); a host looks up a monster's
     ``loot_table`` itself.
@@ -13801,10 +13802,13 @@ def _project_outcome(live: _LiveCombat) -> CombatOutcome:
         if eid in live.party_ids and thp > 0 and eid not in vanishing
     }
 
-    # SRD §Encounter XP: total XP from dead foes ÷ surviving characters; a
+    # SRD 5.2 Experience Points: "XP is awarded for defeating the monster in
+    # combat or otherwise neutralizing it." A foe dead or still knocked out is
+    # worth its XP; the total is divided among surviving characters, and a
     # party-side ally takes no share.
+    neutralized = live.dead_ids | live.knocked_out_ids
     total_xp = sum(
-        live.xp_value_by_entity.get(eid, 0) for eid in live.dead_ids if eid in live.encounter_ids
+        live.xp_value_by_entity.get(eid, 0) for eid in neutralized if eid in live.encounter_ids
     )
     surviving_pcs = [
         eid

@@ -337,6 +337,9 @@ not the top-level `__all__`.
   `knocked_out_ids` as it excludes 0-HP creatures, so no foe picks it and no host
   may name it as a target (§2); `_derive_ended_reason` counts it with the dead on
   its side (§1). A fight whose every foe is knocked out ends in `victory`.
+  SRD 5.2 Experience Points: "XP is awarded for defeating the monster in
+  combat or otherwise neutralizing it", so a foe still knocked out when the
+  fight ends is worth its `xp_value` exactly as a dead one is.
 - Its own turn comes round: a monster takes the Incapacitated `pass`
   (`:13135-13141`); a character's host submits `pass`. Regeneration at a
   monster's turn start (`_run_monster_turn_start`) heals it, and so wakes it,
@@ -493,7 +496,7 @@ the SRD rule it pins.
 **`tests/e2e/test_c31_sides_targets_knockout.py`** — one scripted fight: two
 characters, one ally, three foes; a host-chosen foe target each foe turn; the
 last foe knocked out; `end_combat` reports the ally's death, the knock-out, XP for
-the characters only, `victory`.
+every dead or knocked-out foe shared by the characters only, `victory`.
 
 **Guards and parity**
 
