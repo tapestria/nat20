@@ -47,14 +47,14 @@ class ActivityResolutionContext:
     # The casting spell's concentration flag (``Spell.concentration``). Threaded
     # into each rider ``ActiveEffect.flags`` as ``{"concentration": True}`` so the
     # orchestrator can key concentration-drop + repeat-save lineage off
-    # it. Supplied by golden fixtures now; threaded by the orchestrator (from the
-    # spell's typed ``concentration``) at cutover. Inert for non-spell activities.
+    # it. Threaded by the orchestrator from the spell's typed ``concentration``.
+    # Inert for non-spell activities.
     concentration: bool = False
     slot_level: int | None = None
     # The spell's BASE level (lowest castable slot). Upcast scaling adds
-    # ``max(0, slot_level - base_spell_level)`` steps. Supplied by golden
-    # fixtures now; by the orchestrator (from the spell's typed level) at
-    # cutover. ``None`` disables upcast scaling (a non-spell activity).
+    # ``max(0, slot_level - base_spell_level)`` steps. Supplied by the
+    # orchestrator from the spell's typed level. ``None`` disables upcast
+    # scaling (a non-spell activity).
     base_spell_level: int | None = None
     # Fixed save DC from a cast wrapper's challenge override (Foundry
     # `spell.challenge.override` + `save`): when set, the save handler uses this
@@ -74,27 +74,22 @@ class ActivityResolutionContext:
     # CHOICE of damage type (``DamagePartBlock.types`` with >1 entry — e.g.
     # Chromatic Orb's [acid, cold, fire, ...]). Keyed by activity id; the chosen
     # value must be one of the part's listed types. Absent → the first listed
-    # type is used (logged at INFO). Supplied by player intent at cutover.
+    # type is used (logged at INFO). Supplied by the player intent.
     damage_type_choices: dict[str, str] = field(default_factory=dict)
     # Reuse the engine's EXISTING passive-damage sidecar shape
-    # (entity_id -> {"resistances","immunities","vulnerabilities"}), mirroring
-    # effects/damage.py `_read_passive_modifiers`. Do NOT invent a separate
+    # (entity_id -> {"resistances","immunities","vulnerabilities"}). Do NOT invent a separate
     # target_vulnerabilities carrier.
     passive_damage_modifiers: dict[str, dict[str, list[str]]] = field(default_factory=dict)
     # Per-target saving-throw modifier sidecar, keyed entity_id -> {ability ->
-    # resolved save bonus}. Mirrors how ``effects/save.py`` sources the target
-    # save modifier (``_save_modifiers[target_id]["saves"][ability]``)
-    # — the resolved per-ability integer, NOT rebuilt from ability score +
-    # proficiency. ``Combatant`` carries no per-ability save table, so the save
-    # handler reads this sidecar; an absent target / ability contributes +0
-    # (mirrors ``_read_save_modifier``'s 0 fallback). Supplied by the orchestrator
-    # (from target stat blocks) at cutover; by golden fixtures now.
+    # resolved save bonus} — the resolved per-ability integer, NOT rebuilt from
+    # ability score + proficiency. ``Combatant`` carries no per-ability save
+    # table, so the save handler reads this sidecar; an absent target / ability
+    # contributes +0. Supplied by the orchestrator from target stat blocks.
     passive_save_modifiers: dict[str, dict[str, int]] = field(default_factory=dict)
     # Per-target additive save bonus, keyed entity_id -> a signed dice-expression
     # STRING (e.g. ``"+1d4"`` for Bless, ``"-1d4"`` for Bane; stacked sources
-    # pre-joined as ``"a + b"``). Mirrors the legacy evaluator path's
-    # ``_save_modifiers[id]["passive_save_bonus"]`` (orchestrator
-    # hydration, ``_build_hydration_payload``); rolled through ``ctx.rng`` so the
+    # pre-joined as ``"a + b"``), projected from the orchestrator's hydration
+    # (``_build_hydration_payload``); rolled through ``ctx.rng`` so the
     # bless/bane d4 lands in the same seed stream as the save d20. Absent target →
     # +0 (no bonus). Empty default keeps the golden corpus identical.
     passive_save_bonus: dict[str, str] = field(default_factory=dict)
@@ -165,17 +160,16 @@ class ActivityResolutionContext:
     # attacker -> +0.
     passive_ranged_spell_damage_bonus: dict[str, str] = field(default_factory=dict)
     # Per-target save-advantage / -disadvantage ability-code lists (UPPER-case:
-    # ``"STR"``, ``"DEX"``, ...), keyed entity_id -> list[ability]. Mirrors the
-    # OLD path's ``passive_save_adv`` / ``passive_save_dis`` (Faerie Fire,
-    # Restrained, etc.). An ability present in both cancels to normal
-    # (the legacy evaluator ``reconcile_adv``). Empty defaults keep the golden corpus identical.
+    # ``"STR"``, ``"DEX"``, ...), keyed entity_id -> list[ability] (Faerie Fire,
+    # Restrained, etc.). An ability present in both cancels to normal (SRD
+    # §Advantage and Disadvantage). Empty defaults keep the golden corpus identical.
     passive_save_adv: dict[str, list[str]] = field(default_factory=dict)
     passive_save_dis: dict[str, list[str]] = field(default_factory=dict)
     # Per-target auto-fail ability-code list (UPPER-case), keyed entity_id ->
     # list[ability]. SRD §Conditions: Paralyzed / Stunned / Petrified /
     # Unconscious creatures auto-fail STR + DEX saves; Restrained does not. When
     # the rolled ability is listed the save short-circuits to failure with NO d20
-    # draw (matching ``effects/save.py`` + ``conditions.py`` semantics), so the
+    # draw (matching ``conditions.py`` semantics), so the
     # deterministic rng stream is not perturbed. Empty default = no auto-fail.
     passive_save_auto_fail: dict[str, list[str]] = field(default_factory=dict)
     # Per-TARGET SRD 5.2 §Cover degree ("none"/"half"/"three_quarters"/
@@ -300,8 +294,7 @@ class ActivityResolutionContext:
     # ``total >= target_ac`` comparison. Absent target -> +0. Empty default
     # keeps the golden corpus identical.
     passive_ac_bonus: dict[str, int] = field(default_factory=dict)
-    # Per-actor ability/skill-check modifier sidecar, mirroring
-    # ``effects/check.py:_read_check_modifiers``'s shape
+    # Per-actor ability/skill-check modifier sidecar, shaped
     # ``{entity_id: {"skills": {slug: mod}, "ability_mods": {ability: mod},
     # "disadvantage": bool}}``. The RESOLVED per-skill / per-ability integer
     # (ability modifier + proficiency bonus, doubled with Expertise), NOT rebuilt
@@ -317,15 +310,14 @@ class ActivityResolutionContext:
     check_modifiers: dict[str, dict[str, Any]] = field(default_factory=dict)
     # Effect definitions riding the activity's applied-effect refs, to be
     # translated into runtime ``ActiveEffect``s (one per target) via
-    # ``activities/effects.passive_effect_to_active_effect``. Supplied by golden
-    # fixtures now; by the orchestrator (resolving ``activity.effects[].id`` →
-    # the spell's typed ``passive_effects``) at cutover.
+    # ``activities/effects.passive_effect_to_active_effect``. Supplied by the
+    # orchestrator (resolving ``activity.effects[].id`` → the spell's typed
+    # ``passive_effects``).
     source_passive_effects: list[PassiveEffect] = field(default_factory=list)
     # Spell lookup table for `cast` delegation, keyed by Foundry spell uuid →
     # the typed Spell. A `cast` activity resolves `spell.uuid` here, then
     # re-enters resolve_activity for each of the referenced spell's activities.
-    # Supplied by golden fixtures now; by the orchestrator (from the caster's
-    # known spells) at cutover.
+    # Supplied by the orchestrator from the caster's known spells.
     spell_book: dict[str, Spell] = field(default_factory=dict)
     # Recursion guard for `cast`: the chain of spell uuids already being cast
     # this resolution. A uuid already present means a spell-within-itself cycle —
@@ -351,8 +343,7 @@ class ActivityResolutionContext:
     # override changes (SRD §Advantage and Disadvantage). Mirrors the
     # attacker-flag half of ``rules/combat.py``'s already-implemented (but live-
     # path-orphaned) reconciliation. Supplied by the orchestrator (projected
-    # from ``live.active_effects[caster_id]``) at cutover; by golden/e2e
-    # fixtures now. Empty default keeps the golden corpus identical (no
+    # from ``live.active_effects[caster_id]``). Empty default keeps the golden corpus identical (no
     # advantage producer ⇒ every attack rolls ``normal``, as before).
     active_effects: Sequence[ActiveEffect] = ()
     # F2b — SRD §Advantage and Disadvantage, condition-derived half. The

@@ -8,8 +8,6 @@ Fire Bolt (a ranged spell attack, single ``1d10`` fire activity part, no base
 weapon), the Longsword (base ``1d8`` slashing, no activity parts), and the Mace
 of Smiting (+1 weapon, base ``1d6`` bludgeoning, ``damage.critical.bonus == "7"``).
 
-MIRRORS, does not import from, ``effects/attack.py`` + ``effects/damage.py``:
-
 * The natural-d20 roll goes through the single SRD 5.2 D20 Test primitive
   ``activities/d20.py::roll_d20_test``, honoring ``ctx.variables["force_d20"]``
   (the test seam, first target only) as ``forced_natural``. Advantage /
@@ -28,15 +26,14 @@ MIRRORS, does not import from, ``effects/attack.py`` + ``effects/damage.py``:
   below. Prone (distance-aware via ``ctx.target_distance_ft``) and Grappled (via
   ``ctx.attacker_grappler_id``) are live since C12; unseen / long-range sources
   are C15/C16b.
-* Hit / crit / miss mirrors ``effects/attack.py:_resolve_hit_outcome``: natural
+* Hit / crit / miss: natural
   20 → auto crit+hit, natural 1 → auto miss, else ``total >= AC`` (SRD §Rolling
   1 or 20 / §Making an Attack). The crit threshold is ``attack.critical.threshold
   or 20``.
 * Crit dice doubling + the modifier-once rule run through
   ``dice.roll_damage_part(crit=...)`` (SRD §Critical Hits). The activity-level
   ``damage.critical.bonus`` is a flat formula added ONCE on a crit, assigned to
-  the first resolved damage type, mirroring ``effects/damage.py`` /
-  ``activities/damage.py``.
+  the first resolved damage type, as in ``activities/damage.py``.
 
 Attack-bonus model (Foundry-structural / SRD-2024 ground truth):
 
@@ -166,8 +163,7 @@ def resolve_attack(
 
     # SRD §Advantage and Disadvantage — the attacker's own
     # ``flags.advantage.attack`` / ``flags.disadvantage.attack`` override
-    # changes (both present cancel to normal, the legacy evaluator
-    # ``reconcile_adv``). These both feed the d20 mode below (F2b) and gate the
+    # changes (both present cancel to normal). These both feed the d20 mode below (F2b) and gate the
     # SRD §Sneak Attack trigger.
     attacker_has_advantage, attacker_has_disadvantage = attacker_advantage_flags(ctx)
     # SRD 5.2 Heavy — ability-score-invariant per attack (see docstring);
@@ -624,7 +620,7 @@ def attacker_advantage_flags(ctx: ActivityResolutionContext) -> tuple[bool, bool
                 has_advantage = True
             elif ch.key == "flags.disadvantage.attack":
                 has_disadvantage = True
-    # Both present cancel to normal (the legacy evaluator ``reconcile_adv``).
+    # Both present cancel to normal (SRD §Advantage and Disadvantage).
     if has_advantage and has_disadvantage:
         return False, False
     return has_advantage, has_disadvantage
@@ -970,8 +966,8 @@ def _apply_on_hit_damage(
 
     Sets ``variables["in_crit"]`` for the duration of this target's damage rolls so
     the shared dice helper doubles dice on a crit, then restores the prior value so
-    the signal never leaks to a sibling target or a later caller (mirrors
-    ``effects/attack.py:_recurse_hit`` push/pop discipline).
+    the signal never leaks to a sibling target or a later caller (push/pop
+    discipline).
 
     Returns the total (post-modifier) damage actually dealt to ``target``
     (``apply_damage``'s return) — Vex needs this to gate its

@@ -18,8 +18,6 @@ not the event shape, so the primitive returns a ``SaveRoll`` envelope (total,
 success, kept natural, flat modifier, advantage sources) and the caller decides
 what event to emit.
 
-MIRRORS, does not import from, ``effects/save.py``:
-
 * the natural d20 honors ``ctx.variables["force_save_d20"]`` for the FIRST target
   (``target_index == 0``) only — every other target rolls live off ``ctx.rng`` so
   a forced value never silently reuses one kept d20 across a multi-target save.
@@ -27,7 +25,7 @@ MIRRORS, does not import from, ``effects/save.py``:
   sidecar (``ctx.passive_save_modifiers[entity_id][ability]``), NOT rebuilt from
   ability score + proficiency; an absent target / ability contributes +0.
 * auto-fail / advantage / disadvantage / save-bonus are sourced from the same
-  per-target sidecar shape the legacy evaluator path read off its effect store; empty
+  per-target sidecar shape; empty
   sidecars reproduce the prior single-d20 + per-ability-mod behavior exactly.
 """
 
@@ -48,8 +46,8 @@ if TYPE_CHECKING:
 
     from .context import ActivityResolutionContext
 
-# Test-determinism seam for the natural save d20 (our own code; effects/save.py
-# has none and relies on a seeded ctx.rng). Scoped to the first target.
+# Test-determinism seam for the natural save d20 (otherwise drawn from the
+# seeded ctx.rng). Scoped to the first target.
 FORCE_SAVE_D20: Final = "force_save_d20"
 
 
@@ -102,18 +100,16 @@ def roll_save(
 ) -> SaveRoll:
     """Roll ``target``'s ``ability`` save vs ``dc``; return the ``SaveRoll`` envelope.
 
-    Mirrors the full target-side save sidecar the OLD the legacy evaluator path
-    (``effects/save.py``) consumed:
+    Consumes the full target-side save sidecar:
 
     * ``ctx.passive_save_auto_fail[id]`` — if ``ability`` (upper-case) is listed
       (Paralyzed / Stunned / Petrified / Unconscious auto-fail STR + DEX), the
       save short-circuits to a failed ``SaveRoll`` with NO d20 draw, so the
-      deterministic rng stream is not perturbed (matches ``conditions.py`` +
-      ``effects/save.py:_is_auto_fail``).
+      deterministic rng stream is not perturbed (matches ``conditions.py``).
     * ``ctx.passive_save_adv[id]`` / ``ctx.passive_save_dis[id]`` — advantage /
       disadvantage on the d20, fed to the shared ``roll_d20_test`` primitive
       (F2c); an ability present in both cancels to normal (SRD 5.2 §Advantage
-      and Disadvantage, the legacy evaluator ``reconcile_adv``).
+      and Disadvantage).
     * ``ctx.passive_save_modifiers[id][ability]`` — the resolved per-ability
       integer modifier (absent → +0).
     * ``ctx.d20_test_penalty[id]`` — SRD 5.2 Exhaustion's flat ``-2 x level``
@@ -276,7 +272,7 @@ def _roll_save_d20(
 def _passive_save_bonus(ctx: ActivityResolutionContext, target: Combatant) -> int:
     """Roll ``target``'s ``passive_save_bonus`` dice expression (Bless/Bane).
 
-    Mirrors ``effects/save.py:_roll_passive_save_bonus``: the sidecar carries a
+    The sidecar carries a
     signed dice-expression string (``"+1d4"`` Bless, ``"-1d4"`` Bane; stacked
     sources pre-joined as ``"a + b"``). Evaluated through ``ctx.rng`` so the
     bonus dice land in the same seed stream as the save d20. Absent / empty → +0.
@@ -298,7 +294,7 @@ def _passive_save_bonus(ctx: ActivityResolutionContext, target: Combatant) -> in
 def _eval_node(node: d20.ast.Node, ctx: ActivityResolutionContext) -> int:
     """Evaluate a parsed ``d20`` AST against ``ctx.rng`` (deterministic seed).
 
-    Mirrors ``effects/save.py:_eval_node`` — ``d20.roll`` uses the global RNG;
+    ``d20.roll`` uses the global RNG;
     walking the AST and drawing each die face via ``ctx.rng`` keeps the bonus in
     the seeded stream. Supports the literal / dice / unary / binary / parenthetical
     node set the signed bonus expressions exercise.
@@ -330,10 +326,10 @@ def _eval_node(node: d20.ast.Node, ctx: ActivityResolutionContext) -> int:
 def _target_save_modifier(ctx: ActivityResolutionContext, target: Combatant, ability: str) -> int:
     """The target's resolved save modifier for ``ability``.
 
-    Mirrors ``effects/save.py:_read_save_modifier`` — read the RESOLVED per-
-    ability integer off the per-target sidecar, never rebuilt from ability score
-    + proficiency. ``Combatant`` carries no per-ability save table, so the value
-    comes from ``ctx.passive_save_modifiers[entity_id][ability]``; an absent
-    target or ability contributes +0 (the same 0 fallback the effects path uses).
+    Read the RESOLVED per-ability integer off the per-target sidecar, never
+    rebuilt from ability score + proficiency. ``Combatant`` carries no
+    per-ability save table, so the value comes from
+    ``ctx.passive_save_modifiers[entity_id][ability]``; an absent target or
+    ability contributes +0.
     """
     return ctx.passive_save_modifiers.get(target.entity_id, {}).get(ability, 0)

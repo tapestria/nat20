@@ -26,7 +26,7 @@ SRD spells; e.g. Call Lightning's 4d10 part) is logged loudly
 type and has no untyped bucket, and the resolver cannot invent the SRD-correct
 type. Tracked as a ``dnd5e-srd-data`` data bug in ``BACKLOG.md``.
 
-MIRRORS, does not import from, ``effects/damage.py``: @-token resolution runs
+@-token resolution runs
 through ``formula.resolve_damage_block`` (governing ability = the caster's
 spellcasting ability for a spell damage part), and target-side
 vuln/resist/immune + the ``DamageApplied`` emission run through ``apply.py``.
@@ -126,8 +126,7 @@ def _part_type(
       element. The choice is a player-intent INPUT, read from
       ``ctx.damage_type_choices[activity_id]`` when present (and validated to be one
       of the offered types). With no choice supplied the FIRST listed type is used
-      and the default is logged at INFO — explicit, not a silent coercion. The real
-      choice is supplied by player intent at cutover.
+      and the default is logged at INFO — explicit, not a silent coercion.
     * Empty list: a DATA defect (the SRD part should carry a type). There is no
       untyped bucket in ``apply_damage``, so the part is logged loudly
       (``damage_part_untyped``) and skipped. Tracked as a ``dnd5e-srd-data`` bug

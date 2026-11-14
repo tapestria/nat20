@@ -82,7 +82,7 @@ def _save_dc(
     (``_monster_save_dc``); PC with no resolvable spellcasting ability
     (unknown class / a non-caster class / a non-cast_spell intent such as
     ``use_item``, which never sets ``spellcasting_ability``) ``8 + 2 + mod``
-    (the legacy evaluator-era ``_spell_save_dc``, ``pb`` hardcoded to ``2``).
+    (``pb`` hardcoded to ``2``).
     """
     if caster.entity_type == "Monster":
         if spellcasting_ability:
@@ -250,13 +250,12 @@ def build_activity_context(
     """Adapt the caster + the pre-computed hydration sidecars into the typed
     ``ActivityResolutionContext`` the new resolver consumes.
 
-    Caster magnitudes reproduce the OLD the legacy evaluator approximations (see module
-    docstring). ``passive_damage_modifiers`` and ``save_modifiers`` are the two
-    dicts the orchestrator's ``_build_hydration_payload`` already produces —
-    passed IN so this builder stays pure (no orchestrator import, no I/O, no
-    double-compute). The wide per-target ``save_modifiers[id]`` entry is reshaped
-    into the four typed save-sidecar fields; absent fields default empty, leaving
-    the golden corpus identical.
+    Caster magnitudes follow the approximations in the module docstring.
+    ``passive_damage_modifiers`` and ``save_modifiers`` are the two dicts the
+    orchestrator's ``_build_hydration_payload`` already produces — passed IN so this
+    builder stays pure (no orchestrator import, no I/O, no double-compute). The wide
+    per-target ``save_modifiers[id]`` entry is reshaped into the four typed save-sidecar
+    fields; absent fields default empty, leaving the golden corpus identical.
 
     ``scale_values`` / ``class_levels`` are the PRE-RESOLVED ``@scale.*`` /
     ``@classes.<class>.levels`` carriers. They are resolved by the orchestrator /
@@ -317,7 +316,7 @@ def build_activity_context(
         }
         caster_proficiency_bonus = proficiency_bonus(caster.character_level)
     else:
-        # Monsters/NPCs have no per-ability sheet here: keep the legacy evaluator-era
+        # Monsters/NPCs have no per-ability sheet here: keep the
         # uniform fake (10 + 2*mod across all six abilities, PB 2) so the
         # dynamic governing-ability resolution in attack.py reproduces the old
         # uniform @mod for any ability it picks.
@@ -328,7 +327,7 @@ def build_activity_context(
     # ({ability:int}) plus the per-target sidecar keys (passive_save_bonus dice
     # string, passive_save_adv / _dis / _auto_fail UPPER-case ability lists).
     # Project EACH into its typed context field so the typed save path consumes
-    # the full sidecar the OLD effects/save.py path did.
+    # the full sidecar.
     passive_save_modifiers: dict[str, dict[str, int]] = {}
     passive_save_bonus: dict[str, str] = {}
     # Per-attacker to-hit dice bonus (Bless +1d4 / Bane −1d4). The orchestrator
@@ -368,7 +367,7 @@ def build_activity_context(
     for entity_id, dmg_entry in passive_damage_modifiers.items():
         # ``passive_damage_modifiers`` is a WIDE dict: resistance/immunity/
         # vulnerability lists PLUS the signed-dice ``passive_to_hit_bonus`` STRING
-        # the orchestrator projection wedges in (mirrors the OLD the legacy evaluator sidecar).
+        # the orchestrator projection wedges in.
         to_hit: object = dmg_entry.get("passive_to_hit_bonus")
         if isinstance(to_hit, str) and to_hit:
             passive_attack_bonus[entity_id] = to_hit

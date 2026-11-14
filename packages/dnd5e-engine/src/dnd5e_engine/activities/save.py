@@ -19,9 +19,7 @@ and the shared raw amounts are reused for every target. Only the d20 SAVE roll i
 per-target — each target rolls its own save. Rerolling the damage per target was a
 bug: two failed targets of one Fireball must take the IDENTICAL 8d6, not two rolls.
 
-MIRRORS, does not import from, ``effects/save.py`` + ``effects/damage.py``:
-
-* DC resolution mirrors ``effects/save.py:_resolve_dc`` — a missing/empty DC
+* DC resolution: a missing/empty DC
   raises ``ValueError`` (loud), never silently defaults. The DC calculations
   Foundry ships are ``"spellcasting"`` (``8 + prof + spellcasting-ability mod``),
   an ability code (``8 + prof + that ability's mod``, a stat block's own save
@@ -30,13 +28,11 @@ MIRRORS, does not import from, ``effects/save.py`` + ``effects/damage.py``:
 * The natural save d20 + the per-ability modifier + the ``total >= dc``
   comparison live in the shared ``activities/save_primitive.py:roll_save`` (also
   used by weapon-mastery topple). The d20 honors ``ctx.variables["force_save_d20"]``
-  (a NEW test seam — ``effects/save.py`` has none) for the FIRST target only; the
-  modifier is sourced exactly as ``effects/save.py:_read_save_modifier`` does — the
-  RESOLVED per-ability integer off a per-target sidecar (there:
-  ``_save_modifiers[id]["saves"]``; here: ``ctx.passive_save_modifiers[id]``),
+  (a test seam) for the FIRST target only; the modifier is the RESOLVED
+  per-ability integer off the per-target sidecar ``ctx.passive_save_modifiers[id]``,
   NOT rebuilt from ability score + proficiency. ``Combatant`` carries no per-
-  ability save table, so an absent target / ability contributes +0 (mirrors the
-  0 fallback). This handler emits ``SaveRolled`` per target around the primitive.
+  ability save table, so an absent target / ability contributes +0. This
+  handler emits ``SaveRolled`` per target around the primitive.
 * Per-part dice rolling + cantrip/upcast scaling wiring mirrors
   ``activities/damage.py`` (``character_level=ctx.caster_level``,
   ``slot_level=ctx.slot_level``, ``base_level=ctx.base_spell_level``); target-
@@ -153,9 +149,8 @@ def _resolve_dc(activity: SaveActivity, ctx: ActivityResolutionContext) -> int:
       branch). SRD 5.2 Saving Throw Effect Notation: a stat block's effect
       "provides the save's DC"; the formula carries it, as a literal (Aboleth
       16) or an expression (Swarm of Ravens Cacophony: ``8 + @prof`` = DC 10).
-    * an empty formula there, or any other ``calculation`` → ``ValueError`` (loud;
-      mirrors ``effects/save.py:_resolve_dc`` raising rather than silently
-      defaulting).
+    * an empty formula there, or any other ``calculation`` → ``ValueError`` (loud,
+      rather than silently defaulting).
 
     A cast wrapper's fixed challenge override (``ctx.save_dc_override``) bypasses
     the calculation entirely — a scroll/item DC (Dragon Orb 18) is used verbatim.

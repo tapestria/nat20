@@ -10,21 +10,17 @@ Unlike a ``save``, a check CAN carry no DC at all. A no-DC check is purely
 informational: the actor still rolls, ``CheckRolled`` is still emitted, but
 ``succeeded`` is ``None`` (no pass/fail comparison is made).
 
-MIRRORS, does not import from, ``effects/check.py``:
-
 * The ACTOR that rolls is the activity's first TARGET when one is present (an
-  imposed check — escape the manacles, resist Banish to Maze), exactly as
-  ``effects/check.py`` rolls for ``ctx.target_list[0]``. With no target the
-  CASTER rolls (a self-check — a PC's own Stealth check). Contested checks (a
-  second, opposed caster roll) are out of Piece-1-2 scope.
-* The skill→ability mapping mirrors ``effects/check.py:_SKILL_TO_ABILITY`` but is
-  keyed by the Foundry 3-letter skill *codes* the canonical ``check.associated``
-  field actually carries (``"ath"``, ``"slt"``, ``"inv"``, ...) rather than the
-  the legacy evaluator long-form (``"athletics"``). Source: ``CONFIG.DND5E.skills`` in
-  ``foundry/module/config.mjs``.
+  imposed check — escape the manacles, resist Banish to Maze), i.e.
+  ``ctx.target_list[0]``. With no target the CASTER rolls (a self-check — a
+  PC's own Stealth check). Contested checks (a second, opposed caster roll) are
+  not modelled here.
+* The skill→ability mapping is keyed by the Foundry 3-letter skill *codes* the
+  canonical ``check.associated`` field actually carries (``"ath"``, ``"slt"``,
+  ``"inv"``, ...) rather than long-form names (``"athletics"``). Source:
+  ``CONFIG.DND5E.skills`` in ``foundry/module/config.mjs``.
 * The modifier is the RESOLVED integer off a per-actor sidecar
-  (``ctx.check_modifiers``), mirroring ``effects/check.py:_read_check_modifiers``
-  / ``_modifier_for_key`` — the skill mod when a skill is named (the 3-letter
+  (``ctx.check_modifiers``) — the skill mod when a skill is named (the 3-letter
   ``associated`` code mapped to the canonical SRD slug the sidecar is keyed by,
   via ``SKILL_CODE_TO_SLUG``), else the ability mod
   (``ability_mods[ability]``), else +0. ``Combatant`` carries no per-skill table,
@@ -38,8 +34,8 @@ MIRRORS, does not import from, ``effects/check.py``:
   empty.
 
 The d20 goes through the shared ``activities/d20.py::roll_d20_test`` primitive
-(F2c) and honors ``ctx.variables["force_check_d20"]`` — a NEW test seam (our own;
-``effects/check.py`` relies on a seeded ``ctx.rng``). Condition-derived
+(F2c) and honors ``ctx.variables["force_check_d20"]`` — a test seam over the
+seeded ``ctx.rng``. Condition-derived
 disadvantage (SRD 5.2 §Frightened / §Poisoned / §Exhaustion) arrives on
 ``ctx.check_modifiers[actor]["disadvantage"]``. Riders fire AFTER
 the roll via the shared ``apply_activity_effects`` (``EffectApplied`` then
@@ -73,8 +69,7 @@ _ABILITIES: Final[frozenset[str]] = frozenset(get_args(Ability))
 
 # Foundry 3-letter skill code → governing SRD ability. Source: CONFIG.DND5E.skills
 # in foundry/module/config.mjs (each skill's ``ability`` field). The canonical
-# ``check.associated`` field carries these codes verbatim. Mirrors
-# ``effects/check.py:_SKILL_TO_ABILITY`` (which keys the legacy evaluator long-form names).
+# ``check.associated`` field carries these codes verbatim.
 _SKILL_TO_ABILITY: Final[dict[str, Ability]] = {
     "acr": "dex",
     "ani": "wis",
@@ -103,8 +98,8 @@ _SKILL_TO_ABILITY: Final[dict[str, Ability]] = {
 # (``ctx.check_modifiers[actor]["skills"]``, keyed by the long-form slug) is
 # unchanged.
 
-# Test-determinism seam for the natural check d20 (our own code; effects/check.py
-# has none and relies on a seeded ctx.rng).
+# Test-determinism seam for the natural check d20 (otherwise drawn from the
+# seeded ctx.rng).
 FORCE_CHECK_D20: Final = "force_check_d20"
 
 
@@ -259,7 +254,7 @@ def _check_modifier(
 ) -> int:
     """The actor's resolved check modifier off ``ctx.check_modifiers``.
 
-    Mirrors ``effects/check.py:_modifier_for_key`` — the skill mod takes
+    The skill mod takes
     precedence when a skill is named and present; else the ability mod
     (``ability_mods[ability]``); else +0. The sidecar shape is
     ``{entity_id: {"skills": {slug: mod}, "ability_mods": {ability: mod}}}``,
