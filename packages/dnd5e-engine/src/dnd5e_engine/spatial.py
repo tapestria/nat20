@@ -11,7 +11,7 @@ from __future__ import annotations
 import heapq
 import math
 from collections import deque
-from collections.abc import Collection, Iterable, Iterator
+from collections.abc import Collection, Iterable
 from typing import Literal, Protocol, runtime_checkable
 
 from dnd5e_engine.activities.passive_stats import CombatantSenses
@@ -109,7 +109,7 @@ _INDEX_EPS = 1e-9
 
 def _cells_touched(
     p1: tuple[float, float], p2: tuple[float, float], width: int, height: int
-) -> Iterator[tuple[int, int]]:
+) -> list[tuple[int, int]] | None:
     """Every in-grid cell ``(col, row)`` whose closed unit square the segment
     ``p1-p2`` (widened by ``_INDEX_EPS``) touches or crosses — a superset.
 
@@ -118,28 +118,38 @@ def _cells_touched(
     closed square overlaps that range is yielded. A coordinate on an integer
     boundary therefore belongs to the cells on both sides. Cells off the grid
     are dropped: no query ever reads them.
+
+    ``None`` when the segment cannot be bucketed: a coordinate, or a slab
+    bound computed from coordinates near the float limit, is not finite. The
+    caller then tests that wall against every query.
     """
     x1, y1 = p1
     x2, y2 = p2
     if not all(math.isfinite(v) for v in (x1, y1, x2, y2)):
-        return
+        return None
     eps = _INDEX_EPS * max(1.0, abs(x1), abs(y1), abs(x2), abs(y2))
     xmin, xmax = min(x1, x2), max(x1, x2)
     first_col = max(0, math.ceil(xmin - eps) - 1)
     last_col = min(width - 1, math.floor(xmax + eps))
+    cells: list[tuple[int, int]] = []
     for col in range(first_col, last_col + 1):
         lo = max(col - eps, xmin)
         hi = min(col + 1 + eps, xmax)
         if x1 == x2:
             ylo, yhi = min(y1, y2), max(y1, y2)
         else:
-            ya = y1 + (y2 - y1) * (lo - x1) / (x2 - x1)
-            yb = y1 + (y2 - y1) * (hi - x1) / (x2 - x1)
+            # The parameter first, so huge coordinates never multiply out
+            # past the float range before the division brings them back.
+            dy = y2 - y1
+            ya = y1 + dy * ((lo - x1) / (x2 - x1))
+            yb = y1 + dy * ((hi - x1) / (x2 - x1))
             ylo, yhi = min(ya, yb), max(ya, yb)
+        if not (math.isfinite(ylo - eps) and math.isfinite(yhi + eps)):
+            return None
         first_row = max(0, math.ceil(ylo - eps) - 1)
         last_row = min(height - 1, math.floor(yhi + eps))
-        for row in range(first_row, last_row + 1):
-            yield col, row
+        cells.extend((col, row) for row in range(first_row, last_row + 1))
+    return cells
 
 
 def _bresenham_cells(x0: int, y0: int, x1: int, y1: int) -> list[str]:
@@ -229,18 +239,22 @@ class GridTopology:
         """Bucket every wall by the in-grid cells its segment touches, so a
         step or sight test reads only the walls near the segment it tests.
 
-        A wall with a non-finite coordinate cannot be bucketed; it is kept in
-        ``_unindexed_walls`` and offered to every query.
+        A wall ``_cells_touched`` cannot bucket (a non-finite coordinate, or
+        slab bounds that overflow) is kept in ``_unindexed_walls`` and offered
+        to every query.
         """
         buckets: dict[tuple[int, int], list[WallSegment]] = {}
-        self._unindexed_walls: tuple[WallSegment, ...] = tuple(
-            w for w in self._walls if not all(math.isfinite(v) for v in (w.x1, w.y1, w.x2, w.y2))
-        )
+        unindexed: list[WallSegment] = []
         for wall in self._walls:
-            for cell in _cells_touched(
+            touched = _cells_touched(
                 (wall.x1, wall.y1), (wall.x2, wall.y2), self._width, self._height
-            ):
+            )
+            if touched is None:
+                unindexed.append(wall)
+                continue
+            for cell in touched:
                 buckets.setdefault(cell, []).append(wall)
+        self._unindexed_walls: tuple[WallSegment, ...] = tuple(unindexed)
         self._wall_index: dict[tuple[int, int], tuple[WallSegment, ...]] = {
             cell: tuple(walls) for cell, walls in buckets.items()
         }
@@ -268,7 +282,8 @@ class GridTopology:
                 for r in range(math.floor(min(y1, y2)), math.floor(max(y1, y2)) + 1)
             ]
         else:
-            cells = _cells_touched(p1, p2, self._width, self._height)
+            # Two in-grid cell centres are always finite: never ``None``.
+            cells = _cells_touched(p1, p2, self._width, self._height) or []
         seen: set[int] = set()
         candidates: list[WallSegment] = list(self._unindexed_walls)
         for cell in cells:

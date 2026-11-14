@@ -196,8 +196,10 @@ def test_step_and_sight_tests_do_not_scale_with_wall_count(
     calls["intersect"] = 0
     for c in range(64):
         g.has_line_of_sight("0,0", cell_id(c, 63))
-    # A sight line crosses at most ~2 * 64 cells; every wall test is local.
-    assert calls["intersect"] < 64 * 2 * 64 * 16
+    # A sight line reads only the walls bucketed along it. Testing every
+    # wall in order until one blocks costs over 10,000 segment tests on these
+    # 64 lines; the index stays under a tenth of that.
+    assert calls["intersect"] < 1_000
     assert calls["intersect"] < 64 * len(scene.wall_segments) // 4
 
 
@@ -228,6 +230,30 @@ def test_non_finite_wall_is_offered_to_every_query() -> None:
     assert g._wall_index == {}
     assert list(g._walls_near((0.5, 0.5), (1.5, 0.5))) == list(scene.wall_segments)
     cells = [cell_id(c, r) for c in range(4) for r in range(4)]
+    for a in cells:
+        for b in cells:
+            assert g.has_line_of_sight(a, b) == _ref_line_of_sight(scene, a, b), (a, b)
+            if g._chebyshev(a, b) == 1:
+                assert g._step_is_legal(a, b) == _ref_step_is_legal(g, scene, a, b), (a, b)
+
+
+@pytest.mark.parametrize(
+    "wall",
+    [
+        WallSegment(x1=-1e154, y1=-1e154, x2=1e154, y2=1e154),
+        WallSegment(x1=-1e308, y1=1e308, x2=1e308, y2=-1e308),
+        WallSegment(x1=2.5, y1=-1e300, x2=2.5, y2=1e300),
+        WallSegment(x1=-1e200, y1=2.5, x2=1e200, y2=2.5),
+    ],
+)
+def test_walls_with_huge_finite_coordinates_build_and_match_brute_force(
+    wall: WallSegment,
+) -> None:
+    """A wall far larger than the grid, whose slab arithmetic could overflow,
+    still builds and answers every step and sight test like the brute force."""
+    scene = GridScene(width=5, height=5, wall_segments=[wall])
+    g = GridTopology(scene)
+    cells = [cell_id(c, r) for c in range(5) for r in range(5)]
     for a in cells:
         for b in cells:
             assert g.has_line_of_sight(a, b) == _ref_line_of_sight(scene, a, b), (a, b)
