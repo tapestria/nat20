@@ -133,10 +133,10 @@ class LiveCombatView:
     # reason counts them with the dead.
     knocked_out_ids: set[str] = field(default_factory=set)
     # The deaths so far, in order: the records ``CombatOutcome.deaths`` will
-    # hold. ``killer_id`` is the creature whose turn it was when the creature
-    # died (``None`` when that is the dead creature itself), so a death dealt
-    # by a reaction, such as an opportunity attack, names the creature whose
-    # turn it is, not the reactor.
+    # hold. ``killer_id`` is the creature that dealt the killing damage,
+    # whoever's turn it was (an opportunity attack's reactor, a legendary
+    # action's monster); ``None`` for failed death saves and for a creature
+    # that killed itself.
     deaths: list[DeathRecord] = field(default_factory=list)
 
     @classmethod

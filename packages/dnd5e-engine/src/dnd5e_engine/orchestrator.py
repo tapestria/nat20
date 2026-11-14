@@ -3000,7 +3000,7 @@ def _resolve_monster_cast(
         current,
         target_list,
         rng=live.rng,
-        event_emitter=lambda ev: _emit(live, ev),
+        event_emitter=_resolution_emitter(live, current),
         slot_level=slot_level,
         base_spell_level=spell.level,
         spellcasting_ability=spellcasting_ability,
@@ -3173,7 +3173,7 @@ def _resolve_monster_attack_activities(
         actor,
         target_list,
         rng=live.rng,
-        event_emitter=lambda ev: _emit(live, ev),
+        event_emitter=_resolution_emitter(live, actor),
         slot_level=None,
         base_spell_level=None,
         spellcasting_ability=None,
@@ -3373,8 +3373,8 @@ class _LiveCombat:
     # pc_id → {slot_or_feature_label: count_used} (from EffectApplied with
     # concentration / known feature names — projected onto expended_resources).
     expended_resources: dict[str, dict[str, int]] = field(default_factory=dict)
-    # current actor (set at TurnStarted) — credited as killer when a non-PC
-    # drops to ≤0 HP and the orchestrator synthesizes a Death event.
+    # current actor (set at TurnStarted). Kill and knock-out credit go to the
+    # creature that dealt the damage instead (``_resolution_emitter``).
     current_actor_id: str | None = None
     # SRD §Spellcasting + class features — caster resource pools, indexed by
     # entity_id. Populated at ``start_combat`` from ``PartyMemberSpec``;
@@ -5082,8 +5082,23 @@ async def _handle_move_mark(live: _LiveCombat, caster: Combatant, intent: Player
     # Bonus action — caster keeps the turn (SRD §Action Economy).
 
 
-def _emit(live: _LiveCombat, event: CombatEvent) -> None:
+def _resolution_emitter(live: _LiveCombat, dealer: Combatant) -> Callable[[CombatEvent], None]:
+    """The ``event_emitter`` of a resolution context whose actor (the
+    context's ``caster``) is ``dealer``: every ``DamageApplied`` it emits is
+    folded as dealt by that creature, so a death or knock-out it causes names
+    the creature that resolved it (an opportunity attack's reactor, a
+    legendary action's monster), not whoever's turn it is."""
+    dealer_id = dealer.entity_id
+    return lambda event: _emit(live, event, dealer_id=dealer_id)
+
+
+def _emit(live: _LiveCombat, event: CombatEvent, *, dealer_id: str | None = None) -> None:
     """Append to the event log, update outcome-tracking running state, then enqueue.
+
+    ``dealer_id`` is the creature that dealt a ``DamageApplied``: the actor
+    of the resolution context that emitted it (``_resolution_emitter``).
+    ``None`` for a ``DamageApplied`` emitted outside a resolution, which
+    then credits no killer. Ignored for every other event.
 
     Per Agent 03 (outcome-population): the orchestrator is the single source
     of truth for end-state derivation. Per-effect handlers emit canonical
@@ -5107,7 +5122,7 @@ def _emit(live: _LiveCombat, event: CombatEvent) -> None:
         return
 
     if isinstance(event, DamageApplied):
-        _emit_apply_damage(live, event)
+        _emit_apply_damage(live, event, dealer_id=dealer_id)
         return
 
     if isinstance(event, HealingApplied):
@@ -5139,7 +5154,9 @@ def _emit(live: _LiveCombat, event: CombatEvent) -> None:
     if isinstance(event, Death):
         if event.target_id in live.dead_ids:
             return
-        _record_death(live, event, killer_id=live.current_actor_id)
+        # A ``Death`` reaches this fold only from a failed death save, rolled
+        # by the dying creature on its own turn: nobody dealt it.
+        _record_death(live, event, killer_id=None)
 
 
 def _emit_apply_turn_started(live: _LiveCombat, event: TurnStarted) -> None:
@@ -5275,10 +5292,13 @@ def _hook_expire_reaction_effects(live: _LiveCombat, actor_id: str | None) -> No
             )
 
 
-def _emit_apply_damage(live: _LiveCombat, event: DamageApplied) -> None:
+def _emit_apply_damage(
+    live: _LiveCombat, event: DamageApplied, *, dealer_id: str | None = None
+) -> None:
     """Fold a ``DamageApplied`` into running state: temp-HP absorption, HP
     tracking + initiative sync, ``last_damaged_by`` attribution, the
-    concentration CON save cascade, and non-PC death synthesis."""
+    concentration CON save cascade, and non-PC death synthesis. A death or
+    knock-out this damage causes credits ``dealer_id`` (``_emit``)."""
     tracked = live.tracked_hp.get(event.target_id)
     if tracked is None:
         return
@@ -5406,7 +5426,7 @@ def _emit_apply_damage(live: _LiveCombat, event: DamageApplied) -> None:
         if not succeeded:
             _drop_concentration(live, event.target_id)
     if knocked_out:
-        _knock_out(live, event.target_id)
+        _knock_out(live, event.target_id, attacker_id=dealer_id)
     elif new_hp <= 0 and event.target_id not in live.dead_ids:
         was_knocked_out = _end_knock_out(live, event.target_id)
         if event.target_id in live.summons:
@@ -5421,23 +5441,23 @@ def _emit_apply_damage(live: _LiveCombat, event: DamageApplied) -> None:
                 hp_before=tracked,
                 damage_after_temp=remaining,
                 was_knocked_out=was_knocked_out,
+                dealer_id=dealer_id,
             )
         else:
             # SRD 5.2 "Monster Death" — a monster dies the instant it drops to
             # 0 HP. Recursion guard: _emit re-enters here for the Death, but
             # the dead_ids set blocks double-recording, and Death's only
             # running-state effect is to record the death.
-            killer = live.current_actor_id
             death_event = Death(target_id=event.target_id, reason="damage")
-            _record_death(live, death_event, killer_id=killer)
+            _record_death(live, death_event, killer_id=dealer_id)
             live.event_log.append(death_event)
             live.event_queue.put_nowait(death_event)
 
 
-def _knock_out(live: _LiveCombat, target_id: str) -> None:
+def _knock_out(live: _LiveCombat, target_id: str, *, attacker_id: str | None) -> None:
     """SRD 5.2 Knocking Out a Creature: "The creature then has the Unconscious
     condition." The pulled blow already left it at 1 Hit Point. ``KnockedOut``
-    names the current actor as the attacker, then Unconscious applies every
+    names ``attacker_id``, the creature that dealt the blow, then Unconscious applies every
     rule of the condition at once (Incapacitated, Prone, Speed 0, Advantage
     against it, the auto-crit within 5 feet). No ``Unconscious`` marker and no
     death saves: the creature is not dying. A creature knocked out again moves
@@ -5448,10 +5468,10 @@ def _knock_out(live: _LiveCombat, target_id: str) -> None:
         KnockOutRecord(
             target_id=target_id,
             target_kind=_target_kind_for(live, target_id),
-            attacker_id=live.current_actor_id,
+            attacker_id=attacker_id,
         )
     )
-    _emit(live, KnockedOut(target_id=target_id, attacker_id=live.current_actor_id))
+    _emit(live, KnockedOut(target_id=target_id, attacker_id=attacker_id))
     target = _find_combatant(live, target_id)
     if target is not None and "unconscious" not in _condition_names(target):
         _emit(live, ConditionApplied(target_id=target_id, condition="unconscious"))
@@ -5474,6 +5494,7 @@ def _apply_zero_hp_to_character(
     hp_before: int,
     damage_after_temp: int,
     was_knocked_out: bool = False,
+    dealer_id: str | None = None,
 ) -> None:
     """SRD 5.2 "Dropping to 0 Hit Points" for a Character.
 
@@ -5492,7 +5513,8 @@ def _apply_zero_hp_to_character(
 
     ``was_knocked_out``: the character was Unconscious at 1 Hit Point from a
     knock-out; it keeps that condition and now starts dying, so the
-    ``Unconscious`` marker is emitted for it alone.
+    ``Unconscious`` marker is emitted for it alone. A death here credits
+    ``dealer_id``, the creature that dealt the damage.
     """
     target = _find_combatant(live, event.target_id)
     if target is None:
@@ -5501,7 +5523,7 @@ def _apply_zero_hp_to_character(
     remainder = damage_after_temp - hp_before if hp_before > 0 else damage_after_temp
     if remainder >= hp_max:
         death_event = Death(target_id=event.target_id, reason="instant_kill")
-        _record_death(live, death_event, killer_id=live.current_actor_id)
+        _record_death(live, death_event, killer_id=dealer_id)
         live.event_log.append(death_event)
         live.event_queue.put_nowait(death_event)
         for idx, c in enumerate(live.initiative):
@@ -5536,7 +5558,7 @@ def _apply_zero_hp_to_character(
             break
     if outcome == "dead":
         death_event = Death(target_id=event.target_id, reason="death_saves")
-        _record_death(live, death_event, killer_id=live.current_actor_id)
+        _record_death(live, death_event, killer_id=dealer_id)
         live.event_log.append(death_event)
         live.event_queue.put_nowait(death_event)
 
@@ -5820,10 +5842,12 @@ def _target_kind_for(live: _LiveCombat, entity_id: str) -> Literal["character", 
 def _record_death(live: _LiveCombat, event: Death, *, killer_id: str | None) -> None:
     """Append a DeathRecord and mark the entity dead.
 
-    Killer attribution: the current turn's actor (set by ``TurnStarted``).
-    For PC-on-monster damage that's the PC; for monster-on-monster (rare,
-    e.g. AOE friendly-fire) it's still the current actor. Synthesized deaths
-    from ``DamageApplied`` reuse this path.
+    Killer attribution: ``killer_id`` is the creature that dealt the killing
+    damage (the actor of the resolution that emitted it, ``_emit``), whoever's
+    turn it is: an opportunity attack's reactor, a legendary action's monster,
+    a commanded summon, the owner of a spell's construct. ``None`` for a death
+    nobody dealt (failed death saves) and for a creature that killed itself.
+    Synthesized deaths from ``DamageApplied`` reuse this path.
     """
     if event.target_id in live.dead_ids:
         return
@@ -9987,7 +10011,7 @@ def _resolve_construct_attack(
         owner,
         target_list,
         rng=live.rng,
-        event_emitter=lambda ev: _emit(live, ev),
+        event_emitter=_resolution_emitter(live, owner),
         slot_level=construct.slot_level,
         base_spell_level=spec.base_level,
         spellcasting_ability=ability,
@@ -12171,7 +12195,7 @@ def _resolve_readied_spell_cast(
         reactor,
         [reactor],
         rng=live.rng,
-        event_emitter=lambda ev: _emit(live, ev),
+        event_emitter=_resolution_emitter(live, reactor),
         slot_level=slot_level,
         base_spell_level=spell.level,
         spellcasting_ability=spellcasting_ability,
@@ -12354,7 +12378,7 @@ def _drain_counterspell_reaction(
         reactor,
         [current],
         rng=live.rng,
-        event_emitter=lambda ev: _emit(live, ev),
+        event_emitter=_resolution_emitter(live, reactor),
         slot_level=cs_level,
         base_spell_level=counterspell.level,
         spellcasting_ability=reactor_spellcasting_ability,
@@ -12951,7 +12975,7 @@ async def submit_player_intent(
             current,
             targets,
             rng=live.rng,
-            event_emitter=lambda ev: _emit(live, ev),
+            event_emitter=_resolution_emitter(live, current),
             slot_level=intent.slot_level,
             base_spell_level=cast_spell.level if cast_spell is not None else None,
             spellcasting_ability=spellcasting_ability,
@@ -13384,7 +13408,7 @@ def _resolve_opportunity_attack(live: _LiveCombat, reactor: Combatant, mover: Co
         reactor,
         targets,
         rng=live.rng,
-        event_emitter=lambda ev: _emit(live, ev),
+        event_emitter=_resolution_emitter(live, reactor),
         slot_level=None,
         base_spell_level=None,
         spellcasting_ability=None,

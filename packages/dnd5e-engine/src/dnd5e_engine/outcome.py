@@ -37,14 +37,15 @@ class DeathRecord(BaseModel):
     target_kind: Literal["character", "npc", "monster"]
     location_id: str
     reason: DeathReason
+    # The creature that dealt the killing damage, whoever's turn it was;
+    # ``None`` for failed death saves and for a creature that killed itself.
     killer_id: str | None = None
 
 
 class KnockOutRecord(BaseModel):
     """SRD 5.2 Knocking Out a Creature: a creature a pulled melee blow left at
-    1 Hit Point, Unconscious. ``attacker_id`` is the creature whose turn it
-    was when the blow landed: the attacker, since only a character's own
-    ``attack`` intent pulls a blow."""
+    1 Hit Point, Unconscious. ``attacker_id`` is the creature that dealt the
+    blow."""
 
     model_config = ConfigDict(extra="forbid")
 

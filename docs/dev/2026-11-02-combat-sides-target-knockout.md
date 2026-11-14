@@ -173,7 +173,7 @@ class EncounterMemberSpec(BaseModel):
   - the 0-HP fold (`:5237`): a `Character` takes the character path; every other
     creature, allies included, gets `Death(reason="damage")` — an ally dies as a
     foe does, with a `DeathRecord` whose `target_kind` is `"npc"` or
-    `"monster"` and whose `killer_id` is the current actor;
+    `"monster"` and whose `killer_id` is the creature that dealt the damage;
   - the 0-HP-at-start fold (`:7981`): only a `Character` is seated Unconscious;
   - XP (`:13416`): divided among surviving `Character`s only. The `xp_value` of a
     dead ally is never awarded (it is not in `encounter_ids`).
@@ -301,7 +301,7 @@ class DamageApplied(BaseModel):
 the target is not dead and not a summon, and `event.knock_out` is true:
 
 1. tracked HP and `hp_current` become 1 — the SRD's "instead";
-2. `KnockedOut(target_id, attacker_id=live.current_actor_id)` is emitted, then
+2. `KnockedOut(target_id, attacker_id=<the creature that dealt the blow>)` is emitted, then
    `ConditionApplied(target_id, "unconscious")` through
    `_fold_condition_onto_combatant`, so every Unconscious rule applies at once:
    Incapacitated (its turn can only `pass`, `move` fails with `speed_zero`), Prone,
@@ -324,7 +324,7 @@ class KnockedOut(BaseModel):
 
     type: Literal["knocked_out"] = "knocked_out"
     target_id: str
-    attacker_id: str | None  # the current actor; ``None`` only outside a turn
+    attacker_id: str | None  # the creature that dealt the blow
 ```
 
 `KnockedOut` joins the `CombatEvent` union and `ALL_COMBAT_EVENT_TYPES`

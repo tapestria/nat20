@@ -61,6 +61,17 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
 
 ## Monster action economy (2026-08-22)
 
+- **A monster woken by Regeneration at its own turn start still passes that
+  turn (2026-11-14).** SRD 5.2 Knocking Out a Creature: the creature "remains
+  Unconscious until it regains any Hit Points", and Regeneration heals at the
+  start of its turn, so a knocked-out Troll wakes (Prone) then. But
+  `advance_monster_turn` reads the acting `Combatant` before
+  `_run_monster_turn_start` runs and decides the turn on that snapshot: still
+  Unconscious, so it records `pass` instead of standing up and acting. The
+  same snapshot gives the flee check the pre-Regeneration Hit Points.
+  Re-reading the actor after the turn start changes seeded fights with a
+  regenerating monster, so it needs its own change.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::advance_monster_turn`)
 - **Monster-side ranged-in-melee/Vex/Sap threading is wired but inert
   (2026-09-02, C15).** `orchestrator.py`'s monster attack site
   passes `attacker_ranged_in_melee`, `attacker_vex_advantage`, and

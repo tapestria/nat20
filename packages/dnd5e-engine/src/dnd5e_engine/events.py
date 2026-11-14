@@ -446,7 +446,9 @@ class KnockedOut(BaseModel):
 
     type: Literal["knocked_out"] = "knocked_out"
     target_id: str
-    attacker_id: str | None  # the current actor; ``None`` only outside a turn
+    # the creature that dealt the blow; ``None`` only for damage emitted
+    # outside any resolution
+    attacker_id: str | None
 
 
 class Stabilized(BaseModel):

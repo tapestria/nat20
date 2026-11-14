@@ -6,11 +6,11 @@ the engine records is a ``DeathRecord``; ``get_live(handle).deaths`` lists
 them in order while the fight runs, and ``CombatOutcome.deaths`` holds the
 same list at its end.
 
-``DeathRecord.killer_id`` is the creature whose turn it is when the creature
-dies, ``None`` when that is the dead creature itself. A death dealt off the
-turn of the creature that dealt it (an opportunity attack, a legendary
-action) therefore names the creature whose turn it is, or nobody; the tests
-below pin that attribution as it stands.
+``DeathRecord.killer_id`` is the creature that dealt the killing damage,
+whoever's turn it is: an opportunity attack's reactor, a legendary action's
+monster, a commanded summon, the caster whose spell's construct struck. It is
+``None`` for a death nobody dealt (failed death saves) and for a creature
+that killed itself.
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ from dnd5e_engine.events import AttackRolled, Death, DeathSaveRolled
 from dnd5e_engine.orchestrator import _current_actor, advance_monster_turn
 from dnd5e_engine.spatial import cell_id
 from dnd5e_engine.testing import rng_factory
-from tests.c21_support import act, events, foe, monster_turn, pc, start
+from tests.c21_support import act, cleric, events, foe, monster_turn, pc, start
 
 
 class _D20Shows(random.Random):
@@ -88,10 +88,9 @@ def test_the_outcome_holds_the_last_views_deaths() -> None:
     assert get_live(handle).deaths == last
 
 
-def test_an_opportunity_attack_kill_names_nobody() -> None:
+def test_an_opportunity_attack_kill_names_the_reactor() -> None:
     """The foe walks away from the hero on its own turn and the hero's
-    opportunity attack kills it: the turn is the dead foe's, so the record
-    names no killer, though the hero dealt the blow."""
+    opportunity attack kills it."""
     with rng_factory(_D20Shows):
         handle, live = start(
             [pc(initiative=1)], seed=1, encounter=[_frail("mon:foe", initiative=20)]
@@ -100,13 +99,24 @@ def test_an_opportunity_attack_kill_names_nobody() -> None:
     act(handle, "mon:foe", intent_type="move", target_zone_id=cell_id(3, 0))
     [aoo] = [e for e in events(live, AttackRolled) if e.is_opportunity_attack]
     assert aoo.attacker_id == "char:hero"
-    assert get_live(handle).deaths == [_record("mon:foe", "monster", "damage", None)]
+    assert get_live(handle).deaths == [_record("mon:foe", "monster", "damage", "char:hero")]
 
 
-def test_a_legendary_action_kill_names_the_creature_whose_turn_it_is() -> None:
-    """After the hero's turn, the ally's turn has begun; the dragon's
-    legendary action kills the second ally. The record names the first ally,
-    whose turn it is, not the dragon."""
+def test_an_opportunity_attack_massive_damage_kill_of_a_character_names_the_reactor() -> None:
+    """A 1-Hit-Point character walks away from a foe on its own turn; the
+    foe's opportunity attack drops it with damage left over that equals its
+    Hit Point maximum (SRD 5.2 Massive Damage)."""
+    with rng_factory(_D20Shows20):
+        handle, live = start([pc(hp_current=1, hp_max=1)], seed=1, encounter=[foe()])
+    act(handle, "char:hero", intent_type="move", target_zone_id=cell_id(0, 3))
+    [aoo] = [e for e in events(live, AttackRolled) if e.is_opportunity_attack]
+    assert aoo.attacker_id == "mon:foe"
+    assert get_live(handle).deaths == [_record("char:hero", "character", "instant_kill", "mon:foe")]
+
+
+def test_a_legendary_action_kill_names_the_legendary_creature() -> None:
+    """After the hero's turn, the first ally's turn has begun; the dragon's
+    legendary action kills the second ally."""
     with rng_factory(_D20Shows20):
         handle, live = start(
             [pc(initiative=25, hp_current=60, hp_max=60)],
@@ -140,7 +150,60 @@ def test_a_legendary_action_kill_names_the_creature_whose_turn_it_is() -> None:
     assert _current_actor(live).entity_id == "npc:first"
     asyncio.run(advance_monster_turn(handle, legendary=True, target_id="npc:second"))
     assert [d.target_id for d in events(live, Death)] == ["npc:second"]
-    assert get_live(handle).deaths == [_record("npc:second", "npc", "damage", "npc:first")]
+    assert get_live(handle).deaths == [_record("npc:second", "npc", "damage", "mon:dragon")]
+
+
+def test_a_spell_constructs_kill_names_its_caster() -> None:
+    """Spiritual Weapon's force is no creature: its attack is the caster's."""
+    with rng_factory(_D20Shows):
+        handle, _ = start(
+            [cleric(spells_known=["spiritual-weapon"], spell_slots={2: 1})],
+            seed=1,
+            encounter=[_frail("mon:foe")],
+        )
+    act(
+        handle,
+        "char:cleric",
+        intent_type="cast_spell",
+        spell_id="spiritual-weapon",
+        target_id="mon:foe",
+        slot_level=2,
+    )
+    assert get_live(handle).deaths == [_record("mon:foe", "monster", "damage", "char:cleric")]
+
+
+def test_a_creature_that_kills_itself_names_nobody() -> None:
+    """A 1-Hit-Point wizard's Fireball, aimed at the foe beside it, catches
+    the wizard in its own radius, which dies of Massive Damage; the foe dies
+    too, credited to the wizard."""
+    with rng_factory(_D20Shows1):
+        handle, _ = start(
+            [
+                pc(
+                    "char:wiz",
+                    class_slug="wizard",
+                    character_level=5,
+                    hp_current=1,
+                    hp_max=1,
+                    spells_known=["fireball"],
+                    spell_slots={3: 1},
+                )
+            ],
+            seed=1,
+            encounter=[_frail("mon:foe")],
+        )
+    act(
+        handle,
+        "char:wiz",
+        intent_type="cast_spell",
+        spell_id="fireball",
+        target_id="mon:foe",
+        slot_level=3,
+    )
+    assert sorted(get_live(handle).deaths, key=lambda d: d.target_id) == [
+        _record("char:wiz", "character", "instant_kill", None),
+        _record("mon:foe", "monster", "damage", "char:wiz"),
+    ]
 
 
 def test_a_death_by_failed_death_saves_names_nobody() -> None:
