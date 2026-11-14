@@ -1,0 +1,417 @@
+{
+  "combat_outcome": {
+    "deaths": [
+      {
+        "killer_id": "char:hero",
+        "location_id": "loc:unknown",
+        "reason": "damage",
+        "target_id": "mon:goblin",
+        "target_kind": "monster"
+      }
+    ],
+    "ended_reason": "forced",
+    "expended_resources": {},
+    "handle_id": "combat:c21a-7:00000007",
+    "loot_drops": [],
+    "residual_hp": {
+      "char:hero": 40
+    },
+    "residual_temp_hp": {},
+    "xp_awarded": {}
+  },
+  "encounter_member_spec": {
+    "ac": 1,
+    "attack_bonus": 0,
+    "base_speed": 30,
+    "behavior_profile": "AGGRESSIVE",
+    "condition_immunities": [],
+    "creature_type": null,
+    "damage_dice": "1d4",
+    "damage_immunities": [],
+    "damage_resistances": [],
+    "damage_type": "bludgeoning",
+    "damage_vulnerabilities": [],
+    "dexterity": 10,
+    "entity_id": "mon:foe",
+    "entity_type": "Monster",
+    "hp_current": 500,
+    "hp_max": 500,
+    "initiative": 1,
+    "is_surprised": false,
+    "monster_template_slug": null,
+    "name": "Foe",
+    "physical_resistances_nonmagical_only": true,
+    "senses": null,
+    "xp_value": 0,
+    "zone_id": "1,0"
+  },
+  "event_log": [
+    {
+      "round_number": 1,
+      "type": "round_started"
+    },
+    {
+      "actor_id": null,
+      "phase": "round_start",
+      "round_number": 1,
+      "type": "turn_phase"
+    },
+    {
+      "actor_id": "char:hero",
+      "type": "turn_started"
+    },
+    {
+      "actor_id": "char:hero",
+      "phase": "turn_start",
+      "round_number": 1,
+      "type": "turn_phase"
+    },
+    {
+      "actor_id": "char:hero",
+      "intent_type": "attack",
+      "item_id": null,
+      "spell_id": null,
+      "target_id": "mon:goblin",
+      "type": "intent_submitted"
+    },
+    {
+      "advantage": "normal",
+      "advantage_sources": [],
+      "attacker_id": "char:hero",
+      "disadvantage_sources": [],
+      "is_crit": false,
+      "is_hit": true,
+      "is_opportunity_attack": false,
+      "modifier": 6,
+      "natural": 11,
+      "roll_total": 17,
+      "sources": [],
+      "target_id": "mon:goblin",
+      "type": "attack_rolled"
+    },
+    {
+      "amount": 9,
+      "damage_type": "slashing",
+      "is_crit": false,
+      "is_overkill": true,
+      "source_id": "greatsword",
+      "target_id": "mon:goblin",
+      "type": "damage_applied"
+    },
+    {
+      "reason": "damage",
+      "target_id": "mon:goblin",
+      "type": "death"
+    },
+    {
+      "actor_id": "char:hero",
+      "intent_type": "pass",
+      "item_id": null,
+      "spell_id": null,
+      "target_id": null,
+      "type": "intent_submitted"
+    },
+    {
+      "actor_id": "char:hero",
+      "phase": "turn_end",
+      "round_number": 1,
+      "type": "turn_phase"
+    },
+    {
+      "actor_id": "char:hero",
+      "type": "turn_ended"
+    },
+    {
+      "actor_id": "mon:goblin",
+      "type": "turn_started"
+    },
+    {
+      "actor_id": "mon:goblin",
+      "phase": "turn_start",
+      "round_number": 1,
+      "type": "turn_phase"
+    },
+    {
+      "actor_id": "mon:goblin",
+      "intent_type": "pass",
+      "item_id": null,
+      "spell_id": null,
+      "target_id": "char:hero",
+      "type": "intent_submitted"
+    },
+    {
+      "actor_id": "mon:goblin",
+      "phase": "turn_end",
+      "round_number": 1,
+      "type": "turn_phase"
+    },
+    {
+      "actor_id": "mon:goblin",
+      "type": "turn_ended"
+    },
+    {
+      "actor_id": "mon:goblin-2",
+      "type": "turn_started"
+    },
+    {
+      "actor_id": "mon:goblin-2",
+      "phase": "turn_start",
+      "round_number": 1,
+      "type": "turn_phase"
+    },
+    {
+      "reason": "forced",
+      "type": "combat_ended"
+    }
+  ],
+  "grid_scene": {
+    "blocked_cells": [
+      "4,4"
+    ],
+    "cell_size_ft": 5,
+    "cover_cells": {
+      "2,2": "half"
+    },
+    "default_lighting": "bright",
+    "difficult_terrain_cells": [],
+    "height": 10,
+    "lighting": {},
+    "obscurement_cells": {},
+    "sunlight": false,
+    "wall_segments": [
+      {
+        "x1": 6.0,
+        "x2": 6.0,
+        "y1": 0.0,
+        "y2": 5.0
+      }
+    ],
+    "width": 10
+  },
+  "party_member_spec": {
+    "ac": 10,
+    "attack_bonus": 0,
+    "base_speed": 30,
+    "character_level": 1,
+    "charisma": 10,
+    "class_slug": null,
+    "classes": {},
+    "concentration_effect_id": null,
+    "condition_immunities": [],
+    "constitution": 10,
+    "creature_type": null,
+    "custom_counters": {},
+    "damage_immunities": [],
+    "damage_resistances": [],
+    "damage_vulnerabilities": [],
+    "dexterity": 10,
+    "entity_id": "char:hero",
+    "equipment": [],
+    "feats": [],
+    "fighting_style": null,
+    "hp_current": 40,
+    "hp_max": 40,
+    "initiative": 20,
+    "intelligence": 10,
+    "is_surprised": false,
+    "movement_modes": {
+      "burrow": null,
+      "climb": null,
+      "fly": null,
+      "swim": null
+    },
+    "name": "Hero",
+    "opportunity_attack_weapon_id": null,
+    "pact_slots": {},
+    "reach_ft": 5,
+    "save_proficiencies": [],
+    "senses": {
+      "blindsight": null,
+      "darkvision": null,
+      "tremorsense": null,
+      "truesight": null
+    },
+    "skill_expertise": [],
+    "skill_proficiencies": [],
+    "slotless_casts": [],
+    "species_slug": null,
+    "spell_abilities": {},
+    "spell_slots": {},
+    "spells_known": [],
+    "strength": 10,
+    "subclass_slug": null,
+    "weapon_proficiencies": [],
+    "wisdom": 10,
+    "zone_id": "0,0"
+  },
+  "player_intents": [
+    {
+      "activity_id": null,
+      "as_ritual": false,
+      "charges_to_spend": null,
+      "direction": null,
+      "excluded_target_ids": null,
+      "feature_id": null,
+      "form_id": null,
+      "intent_type": "attack",
+      "item_id": null,
+      "pool_points": null,
+      "reaction_trigger": null,
+      "redeem_granted_die": null,
+      "shove_push": false,
+      "slot_level": null,
+      "spell_id": null,
+      "stat_block_action_id": null,
+      "target_id": "mon:goblin",
+      "target_ids": null,
+      "target_zone_id": null,
+      "two_handed": false,
+      "use_bonus_action": false,
+      "weapon_id": "greatsword"
+    },
+    {
+      "activity_id": null,
+      "as_ritual": false,
+      "charges_to_spend": null,
+      "direction": null,
+      "excluded_target_ids": null,
+      "feature_id": null,
+      "form_id": null,
+      "intent_type": "cast_spell",
+      "item_id": null,
+      "pool_points": null,
+      "reaction_trigger": null,
+      "redeem_granted_die": null,
+      "shove_push": false,
+      "slot_level": 3,
+      "spell_id": "magic-missile",
+      "stat_block_action_id": null,
+      "target_id": "mon:goblin",
+      "target_ids": null,
+      "target_zone_id": null,
+      "two_handed": false,
+      "use_bonus_action": false,
+      "weapon_id": null
+    },
+    {
+      "activity_id": null,
+      "as_ritual": false,
+      "charges_to_spend": null,
+      "direction": null,
+      "excluded_target_ids": null,
+      "feature_id": "wild-shape",
+      "form_id": "wolf",
+      "intent_type": "use_feature",
+      "item_id": null,
+      "pool_points": null,
+      "reaction_trigger": null,
+      "redeem_granted_die": null,
+      "shove_push": false,
+      "slot_level": null,
+      "spell_id": null,
+      "stat_block_action_id": null,
+      "target_id": null,
+      "target_ids": null,
+      "target_zone_id": null,
+      "two_handed": false,
+      "use_bonus_action": false,
+      "weapon_id": null
+    },
+    {
+      "activity_id": null,
+      "as_ritual": false,
+      "charges_to_spend": null,
+      "direction": null,
+      "excluded_target_ids": null,
+      "feature_id": null,
+      "form_id": null,
+      "intent_type": "dash",
+      "item_id": null,
+      "pool_points": null,
+      "reaction_trigger": null,
+      "redeem_granted_die": null,
+      "shove_push": false,
+      "slot_level": null,
+      "spell_id": null,
+      "stat_block_action_id": null,
+      "target_id": null,
+      "target_ids": null,
+      "target_zone_id": null,
+      "two_handed": false,
+      "use_bonus_action": true,
+      "weapon_id": null
+    },
+    {
+      "activity_id": null,
+      "as_ritual": false,
+      "charges_to_spend": null,
+      "direction": null,
+      "excluded_target_ids": null,
+      "feature_id": null,
+      "form_id": null,
+      "intent_type": "move",
+      "item_id": null,
+      "pool_points": null,
+      "reaction_trigger": null,
+      "redeem_granted_die": null,
+      "shove_push": false,
+      "slot_level": null,
+      "spell_id": null,
+      "stat_block_action_id": null,
+      "target_id": null,
+      "target_ids": null,
+      "target_zone_id": "2,0",
+      "two_handed": false,
+      "use_bonus_action": false,
+      "weapon_id": null
+    },
+    {
+      "activity_id": null,
+      "as_ritual": false,
+      "charges_to_spend": null,
+      "direction": null,
+      "excluded_target_ids": null,
+      "feature_id": null,
+      "form_id": null,
+      "intent_type": "use_item",
+      "item_id": "javelin-of-lightning",
+      "pool_points": null,
+      "reaction_trigger": null,
+      "redeem_granted_die": null,
+      "shove_push": false,
+      "slot_level": null,
+      "spell_id": null,
+      "stat_block_action_id": null,
+      "target_id": "mon:goblin",
+      "target_ids": null,
+      "target_zone_id": null,
+      "two_handed": false,
+      "use_bonus_action": false,
+      "weapon_id": null
+    },
+    {
+      "activity_id": null,
+      "as_ritual": false,
+      "charges_to_spend": null,
+      "direction": null,
+      "excluded_target_ids": null,
+      "feature_id": null,
+      "form_id": null,
+      "intent_type": "pass",
+      "item_id": null,
+      "pool_points": null,
+      "reaction_trigger": null,
+      "redeem_granted_die": null,
+      "shove_push": false,
+      "slot_level": null,
+      "spell_id": null,
+      "stat_block_action_id": null,
+      "target_id": null,
+      "target_ids": null,
+      "target_zone_id": null,
+      "two_handed": false,
+      "use_bonus_action": false,
+      "weapon_id": null
+    }
+  ]
+}

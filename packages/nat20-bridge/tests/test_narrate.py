@@ -15,6 +15,7 @@ from dnd5e_engine.events import (
     Death,
     EffectApplied,
     IntentSubmitted,
+    KnockedOut,
     RoundStarted,
     SpellCast,
     TurnPhase,
@@ -248,6 +249,13 @@ def test_a_summon_leaving_narrates_why() -> None:
     left = CombatantLeft(entity_id=_SPIRIT, reason="zero_hp")
     names = NAMES | {_SPIRIT: "Draconic Spirit"}
     assert narrate([left], names) == "Draconic Spirit leaves the fight (zero_hp)."
+
+
+def test_a_knock_out_names_the_attacker() -> None:
+    knocked = KnockedOut(target_id="mon:gob-1", attacker_id="char:elara")
+    assert narrate([knocked], NAMES) == "Elara knocks Goblin 1 out."
+    outside_a_turn = KnockedOut(target_id="mon:gob-1", attacker_id=None)
+    assert narrate([outside_a_turn], NAMES) == "Goblin 1 is knocked out."
 
 
 def test_every_event_type_has_a_formatter_or_is_skipped() -> None:

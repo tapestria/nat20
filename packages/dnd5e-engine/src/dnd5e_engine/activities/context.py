@@ -573,6 +573,15 @@ class ActivityResolutionContext:
     # only for the resolution an opportunity attack runs; ``attack.py`` stamps
     # it on every ``AttackRolled`` that resolution emits.
     is_opportunity_attack: bool = False
+    # SRD 5.2 Knocking Out a Creature: "When you would reduce a creature to 0
+    # Hit Points with a melee attack, you can instead reduce the creature to 1
+    # Hit Point." The attacker's choice for this resolution; ``attack.py``
+    # stamps it on the damage of every melee attack it resolves.
+    knock_out: bool = False
+    # The creatures a pulled blow cannot knock out because they leave at 0 Hit
+    # Points whatever the attacker chose (a summon). A blow against one still
+    # reduces it to 0, so Undead Fortitude's save is rolled as usual.
+    knock_out_exempt_ids: frozenset[str] = frozenset()
 
     def ability_mod(self, ability: str) -> int:
         return (self.caster_abilities.get(ability, 10) - 10) // 2

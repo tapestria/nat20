@@ -223,6 +223,7 @@ def test_a_single_target_item_cast_resolves_as_before() -> None:
             "is_overkill": False,
             "source_id": None,
             "is_crit": True,
+            "knock_out": False,
         },
         {"type": "turn_phase", "actor_id": "char:hero", "phase": "turn_end", "round_number": 1},
         {"type": "turn_ended", "actor_id": "char:hero"},

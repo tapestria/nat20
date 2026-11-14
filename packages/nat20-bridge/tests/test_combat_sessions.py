@@ -80,8 +80,8 @@ def test_a_monster_turn_the_engine_cannot_resolve_leaves_nothing_behind(
     # raises stays a server error, and the next response holds only its own.
     real = routes_combat.advance_monster_turn
 
-    async def _resolve_then_raise(handle: object) -> None:
-        await real(handle)
+    async def _resolve_then_raise(handle: object, *, target_id: str | None) -> None:
+        await real(handle, target_id=target_id)
         raise ValueError("a stat block the engine can't resolve")
 
     cid = client.post(

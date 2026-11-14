@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from dnd5e_engine.activities.conjuration import TransformSource
-from dnd5e_engine.outcome import CombatOutcome
+from dnd5e_engine.outcome import CombatOutcome, DeathRecord
 from dnd5e_engine.types.combat import Combatant
 
 if TYPE_CHECKING:
@@ -86,6 +86,8 @@ class LiveCombatView:
     """Snapshot projection of live combat state for host consumers."""
 
     initiative: list[Combatant]
+    # The party's side: the characters and any encounter member seated with
+    # ``side="party"`` (``Combatant.entity_type`` tells them apart).
     party_ids: set[str]
     encounter_ids: set[str]
     dead_ids: set[str]
@@ -125,6 +127,17 @@ class LiveCombatView:
     transformations: dict[str, TransformView] = field(default_factory=dict)
     # C21 — summoned creatures keyed by entity id; empty when none is seated.
     summons: dict[str, SummonView] = field(default_factory=dict)
+    # SRD 5.2 Knocking Out a Creature: the creatures a pulled melee blow left
+    # at 1 Hit Point, Unconscious, and that have not woken or died since. They
+    # are out of the fight: no monster targets them, and the combat's end
+    # reason counts them with the dead.
+    knocked_out_ids: set[str] = field(default_factory=set)
+    # The deaths so far, in order: the records ``CombatOutcome.deaths`` will
+    # hold. ``killer_id`` is the creature that dealt the killing damage,
+    # whoever's turn it was (an opportunity attack's reactor, a legendary
+    # action's monster); ``None`` for failed death saves and for a creature
+    # that killed itself.
+    deaths: list[DeathRecord] = field(default_factory=list)
 
     @classmethod
     def from_live(cls, live: _LiveCombat) -> LiveCombatView:
@@ -154,7 +167,9 @@ class LiveCombatView:
             current_turn_index=live.current_turn_index,
             round_number=live.round_number,
             ended=live.ended,
-            final_outcome=live.final_outcome,
+            final_outcome=(
+                live.final_outcome.model_copy(deep=True) if live.final_outcome is not None else None
+            ),
             concentration_chain={k: list(v) for k, v in live.concentration_chain.items()},
             turn=turn,
             monster_action_uses_by_entity={
@@ -207,6 +222,8 @@ class LiveCombatView:
                 )
                 for entity_id, s in live.summons.items()
             },
+            knocked_out_ids=set(live.knocked_out_ids),
+            deaths=[record.model_copy() for record in live.deaths_recorded],
         )
 
 

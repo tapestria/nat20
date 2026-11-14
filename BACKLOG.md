@@ -61,6 +61,17 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
 
 ## Monster action economy (2026-08-22)
 
+- **A monster woken by Regeneration at its own turn start still passes that
+  turn (2026-11-14).** SRD 5.2 Knocking Out a Creature: the creature "remains
+  Unconscious until it regains any Hit Points", and Regeneration heals at the
+  start of its turn, so a knocked-out Troll wakes (Prone) then. But
+  `advance_monster_turn` reads the acting `Combatant` before
+  `_run_monster_turn_start` runs and decides the turn on that snapshot: still
+  Unconscious, so it records `pass` instead of standing up and acting. The
+  same snapshot gives the flee check the pre-Regeneration Hit Points.
+  Re-reading the actor after the turn start changes seeded fights with a
+  regenerating monster, so it needs its own change.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::advance_monster_turn`)
 - **Monster-side ranged-in-melee/Vex/Sap threading is wired but inert
   (2026-09-02, C15).** `orchestrator.py`'s monster attack site
   passes `attacker_ranged_in_melee`, `attacker_vex_advantage`, and
@@ -302,6 +313,25 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   already applied damage and conditions. Both reach the raise through
   `activities/formula.py::resolve_roll_data`.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_resolve_intent_activities`)
+- **An `attack` naming a magic weapon whose activities hold no attack makes
+  no attack roll (2026-11-14).** Flame Tongue, Frost Brand, Vorpal Sword,
+  Holy Avenger and twelve more magic weapons in the dataset carry only
+  `enchant`, `save`, `summon`, `utility` or `cast` activities, so an `attack`
+  naming one resolves those (narrative no-ops for the enchantments) and rolls
+  nothing. A weapon with no activities at all gets a synthesized attack; one
+  with only non-attack activities does not. A pulled blow with one is
+  refused with `knock_out_not_melee`, since there is no attack to pull.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_resolve_intent_activities`)
+- **Some stat-block natural attacks carry no attack type (2026-11-14).** The
+  Chimera's Bite and Claw, the Giant Scorpion's Claw, the Grick's Beak and
+  the Bite of the Otyugh, Purple Worm and Wyvern ship `attack.type.value ==
+  ""` and a `self` range with no reach, though each reads "Melee Attack Roll"
+  in the SRD stat block. With no weapon to
+  classify either, `is_melee_attack` cannot tell them from a ranged attack,
+  so a commanded multiattack of any of these refuses a pulled blow with
+  `knock_out_not_melee`. The fix is in the dataset: carry the attack type
+  (or the reach) from the stat block.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/attack.py::is_melee_attack`)
 - **A seeded Incapacitated effect ends nothing (2026-09-27, C23).** SRD 5.2
   Incapacitated: "Your Concentration is broken." `_seed_active_effects` writes
   a seeded effect's statuses onto the combatant without

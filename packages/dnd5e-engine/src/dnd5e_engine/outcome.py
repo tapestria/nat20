@@ -37,7 +37,21 @@ class DeathRecord(BaseModel):
     target_kind: Literal["character", "npc", "monster"]
     location_id: str
     reason: DeathReason
+    # The creature that dealt the killing damage, whoever's turn it was;
+    # ``None`` for failed death saves and for a creature that killed itself.
     killer_id: str | None = None
+
+
+class KnockOutRecord(BaseModel):
+    """SRD 5.2 Knocking Out a Creature: a creature a pulled melee blow left at
+    1 Hit Point, Unconscious. ``attacker_id`` is the creature that dealt the
+    blow."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    target_id: str
+    target_kind: Literal["character", "npc", "monster"]
+    attacker_id: str | None
 
 
 class LootDrop(BaseModel):
@@ -79,6 +93,9 @@ class CombatOutcome(BaseModel):
     xp_awarded: dict[str, int] = Field(default_factory=dict)
     # pc_id → {slot_level_or_feature: count_used}
     expended_resources: dict[str, dict[str, int]] = Field(default_factory=dict)
+    # Creatures still Unconscious from a knock-out when the combat ended, in
+    # the order they were knocked out. A creature that woke or died is not here.
+    knock_outs: list[KnockOutRecord] = Field(default_factory=list)
 
 
 __all__ = [
@@ -86,6 +103,7 @@ __all__ = [
     "DeathReason",
     "DeathRecord",
     "EndedReason",
+    "KnockOutRecord",
     "LootDrop",
     "LootSource",
 ]

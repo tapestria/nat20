@@ -25,6 +25,7 @@ TOP_LEVEL = {
     "HitDicePool",
     "IntentRejectedError",
     "IntentType",
+    "KnockOutRecord",
     "LiveCombatView",
     "LootDrop",
     "PartyMemberSpec",
@@ -86,6 +87,14 @@ PUBLIC_MODULES = [
 
 def test_top_level_surface_is_exact():
     assert set(dnd5e_engine.__all__) == TOP_LEVEL
+
+
+def test_event_classes_stay_out_of_the_top_level():
+    """Hosts import event classes from ``dnd5e_engine.events``; the roster
+    events and ``KnockedOut`` are not top-level names."""
+    for name in ("CombatantJoined", "CombatantLeft", "KnockedOut"):
+        assert name not in dnd5e_engine.__all__
+        assert not hasattr(dnd5e_engine, name)
 
 
 def test_every_public_module_declares_all():

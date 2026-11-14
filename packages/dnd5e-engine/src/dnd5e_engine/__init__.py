@@ -59,6 +59,7 @@ from dnd5e_engine.orchestrator import (
 from dnd5e_engine.outcome import (
     CombatOutcome,
     DeathRecord,
+    KnockOutRecord,
     LootDrop,
 )
 from dnd5e_engine.rest import (
@@ -109,6 +110,7 @@ __all__ = [
     "HitDicePool",
     "IntentRejectedError",
     "IntentType",
+    "KnockOutRecord",
     "LiveCombatView",
     "LootDrop",
     "PartyMemberSpec",

@@ -36,8 +36,9 @@ from dnd5e_engine import (
 )
 from dnd5e_engine.events import CombatantJoined
 from dnd5e_engine.orchestrator import IntentRejectedError
+from dnd5e_engine.specs import Side
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from nat20_bridge.models import PartyValidateRequest, resolve_seed, slugify
 from nat20_bridge.narrate import narrate
@@ -66,7 +67,18 @@ def _sanitize_name(name: str, max_len: int = _MAX_NAME_LEN) -> str:
 class _CombatStartRequest(BaseModel):
     party: list[PartyValidateRequest]
     monsters: list[str]
+    # Monster slugs seated on the party's side, driven by /advance-monster.
+    allies: list[str] = []
     seed: int | None = None
+
+
+class _AdvanceMonsterRequest(BaseModel):
+    """The optional body of ``/advance-monster``: the creature the acting foe
+    attacks this turn, or ``None`` for the engine's own pick."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    target_id: str | None = None
 
 
 class _IntentRequest(PlayerIntent):
@@ -145,8 +157,17 @@ def _build_party_specs(
 
 
 def _build_encounter_specs(
-    state: BridgeState, monster_slugs: list[str]
+    state: BridgeState,
+    monster_slugs: list[str],
+    *,
+    side: Side = "encounter",
+    first_number: int = 1,
+    column: int = 1,
+    first_row: int = 0,
 ) -> tuple[list[EncounterMemberSpec], dict[str, str]]:
+    """One spec per slug, numbered from ``first_number`` and placed down
+    ``column`` from ``first_row``. Foes and allies share one numbering, so
+    every id and display name in a combat is unique."""
     assert state.loader is not None
     loader = state.loader
     encounter_specs = []
@@ -155,18 +176,19 @@ def _build_encounter_specs(
         monster = loader.get_monster(slug)
         if monster is None:
             raise HTTPException(status_code=404, detail=f"unknown monster: {slug!r}")
-        n = i + 1
+        n = first_number + i
         entity_id = f"mon:{slug}-{n}"
         enc = EncounterMemberSpec(
             entity_id=entity_id,
             entity_type="Monster",
             name=_sanitize_name(f"{monster.name} {n}"),
+            side=side,
             initiative=None,
             hp_current=monster.hp,
             hp_max=monster.hp,
             ac=monster.ac or 10,
             dexterity=monster.ability_scores.dex,
-            zone_id=cell_id(1, i),
+            zone_id=cell_id(column, first_row + i),
             monster_template_slug=slug,
             creature_type=str(monster.creature_type),
             damage_resistances=list(monster.damage_resistances),
@@ -190,7 +212,16 @@ async def _start_route(state: BridgeState, req: _CombatStartRequest) -> dict[str
     seed = resolve_seed(req.seed)
     party_specs, party_names = _build_party_specs(state, req.party)
     encounter_specs, monster_names = _build_encounter_specs(state, req.monsters)
-    names = {**party_names, **monster_names}
+    # Allies stand in the party's column, below its last character.
+    ally_specs, ally_names = _build_encounter_specs(
+        state,
+        req.allies,
+        side="party",
+        first_number=len(req.monsters) + 1,
+        column=0,
+        first_row=len(party_specs),
+    )
+    names = {**party_names, **monster_names, **ally_names}
 
     # Monotonic counter, not `len(state.sessions) + 1` — the latter
     # collides once any combat has ended and left `sessions` (see
@@ -202,7 +233,7 @@ async def _start_route(state: BridgeState, req: _CombatStartRequest) -> dict[str
         result = await start_combat(
             session_id=cid,
             party=party_specs,
-            encounter=encounter_specs,
+            encounter=encounter_specs + ally_specs,
             grid_scene=grid_scene,
             rng_seed=seed,
         )
@@ -236,11 +267,14 @@ async def _intent_route(state: BridgeState, cid: str, req: _IntentRequest) -> di
     return _envelope(cid, events, session.names, over=get_live(session.handle).ended)
 
 
-async def _advance_monster_route(state: BridgeState, cid: str) -> dict[str, Any]:
+async def _advance_monster_route(
+    state: BridgeState, cid: str, req: _AdvanceMonsterRequest | None
+) -> dict[str, Any]:
     session = _session(state, cid)
     _drain(session)  # what an engine fault (a 500) left queued belongs to no response
+    target_id = req.target_id if req is not None else None
     try:
-        await advance_monster_turn(session.handle)
+        await advance_monster_turn(session.handle, target_id=target_id)
     except IntentRejectedError as exc:
         raise _refused(session, 409, exc.reason) from exc
     events = _drain(session)
@@ -283,6 +317,10 @@ async def _view_route(state: BridgeState, cid: str) -> dict[str, Any]:
         "summons": {k: dataclasses.asdict(v) for k, v in live_view.summons.items()},
         "transformations": {k: dataclasses.asdict(v) for k, v in live_view.transformations.items()},
         "constructs": {k: dataclasses.asdict(v) for k, v in live_view.constructs.items()},
+        "party_ids": sorted(live_view.party_ids),
+        "encounter_ids": sorted(live_view.encounter_ids),
+        "knocked_out_ids": sorted(live_view.knocked_out_ids),
+        "deaths": [d.model_dump() for d in live_view.deaths],
     }
 
 
@@ -308,8 +346,10 @@ def build_combat_router(state: BridgeState) -> APIRouter:
         return await _intent_route(state, cid, req)
 
     @router.post("/v1/combat/{cid}/advance-monster")
-    async def advance_monster(cid: str) -> dict[str, Any]:
-        return await _advance_monster_route(state, cid)
+    async def advance_monster(
+        cid: str, req: _AdvanceMonsterRequest | None = None
+    ) -> dict[str, Any]:
+        return await _advance_monster_route(state, cid, req)
 
     @router.get("/v1/combat/{cid}")
     async def view(cid: str) -> dict[str, Any]:

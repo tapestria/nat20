@@ -293,7 +293,13 @@ def resolve_attack(
                     heavy_disadvantage=heavy_disadvantage,
                 )
         else:
-            apply_mastery_on_miss(weapon, ctx, target, governing_ability)
+            apply_mastery_on_miss(
+                weapon,
+                ctx,
+                target,
+                governing_ability,
+                knock_out=_pulls_blow(activity, ctx, weapon, target),
+            )
 
 
 def _resolve_cleave_chain(
@@ -775,6 +781,39 @@ def _attack_is_effectively_ranged(weapon: Weapon | None, distance_ft: int | None
     return distance_ft is not None and distance_ft > reach
 
 
+def _pulls_blow(
+    activity: AttackActivity,
+    ctx: ActivityResolutionContext,
+    weapon: Weapon | None,
+    target: Combatant,
+) -> bool:
+    """SRD 5.2 Knocking Out a Creature: "When you would reduce a creature to 0
+    Hit Points with a melee attack, you can instead reduce the creature to 1
+    Hit Point." True when the attacker chose that (``ctx.knock_out``) and this
+    attack against ``target`` is a melee attack: a melee attack activity whose
+    weapon is not a ranged weapon and not a Thrown weapon thrown beyond its
+    reach (``_attack_is_effectively_ranged``)."""
+    return ctx.knock_out and is_melee_attack(
+        activity, weapon, ctx.target_distance_ft.get(target.entity_id)
+    )
+
+
+def is_melee_attack(
+    activity: AttackActivity, weapon: Weapon | None, distance_ft: int | None
+) -> bool:
+    """Is this attack, at ``distance_ft`` from its target, a melee attack? A
+    melee attack activity whose weapon is not a ranged weapon and not a Thrown
+    weapon thrown beyond its reach. An activity that names no attack type (the
+    Javelin, several magic weapons) is classified by its weapon
+    (``_is_melee_weapon``); with no weapon either, it cannot be told apart
+    from a ranged attack and is not one. The orchestrator refuses a knock-out
+    choice before anything is spent unless every attack of the intent passes
+    this rule; a save-based rider after the hit is not pulled."""
+    attack_type = activity.attack.type.value
+    melee = _is_melee_weapon(weapon) if attack_type == "" else attack_type == "melee"
+    return melee and not _attack_is_effectively_ranged(weapon, distance_ft)
+
+
 def _weapon_heavy_disadvantage(weapon: Weapon | None, caster: Combatant) -> bool:
     """SRD 5.2 Heavy: "You have Disadvantage on attack rolls with a Heavy
     weapon if it's a Melee weapon and your Strength score isn't at least 13
@@ -1095,6 +1134,7 @@ def _apply_on_hit_damage(
             magical=(weapon is not None and weapon.magical) or ctx.base_spell_level is not None,
             source_id=_damage_source_id(activity, weapon, source_id_override),
             is_crit=is_crit,
+            knock_out=_pulls_blow(activity, ctx, weapon, target),
         )
     finally:
         if is_crit:
