@@ -2,20 +2,28 @@
 
 from __future__ import annotations
 
+from typing import Literal, get_args
+
 from dnd5e_engine.events import (
     AreaTargeted,
     AttackRolled,
     CombatantJoined,
     CombatantLeft,
+    CombatEvent,
     ConcentrationCheck,
     DamageApplied,
     Death,
+    EffectApplied,
+    IntentSubmitted,
     RoundStarted,
+    SpellCast,
     TurnPhase,
     TurnStarted,
 )
+from dnd5e_engine.types import ActiveEffect
+from pydantic import BaseModel
 
-from nat20_bridge.narrate import narrate
+from nat20_bridge.narrate import _FORMATTERS, _SKIPPED_EVENT_TYPES, narrate
 
 NAMES = {"char:elara": "Elara", "mon:gob-1": "Goblin 1"}
 
@@ -107,13 +115,13 @@ def test_unknown_event_never_raises() -> None:
 
 
 def test_unhandled_event_uses_generic_fallback() -> None:
-    from dnd5e_engine.events import ZoneTransit
+    # Stands in for a type added to the engine's union after this module.
+    class FutureEvent(BaseModel):
+        type: Literal["future_event"] = "future_event"
+        actor_id: str
 
-    out = narrate(
-        [ZoneTransit(actor_id="char:elara", from_zone="z1", to_zone="z2", feet_spent=30)],
-        NAMES,
-    )
-    assert out.startswith("[zone_transit]")
+    out = narrate([FutureEvent(actor_id="char:elara")], NAMES)  # type: ignore[list-item]
+    assert out.startswith("[future_event]")
     assert "actor_id=char:elara" in out
 
 
@@ -240,3 +248,56 @@ def test_a_summon_leaving_narrates_why() -> None:
     left = CombatantLeft(entity_id=_SPIRIT, reason="zero_hp")
     names = NAMES | {_SPIRIT: "Draconic Spirit"}
     assert narrate([left], names) == "Draconic Spirit leaves the fight (zero_hp)."
+
+
+def test_every_event_type_has_a_formatter_or_is_skipped() -> None:
+    # The `[type] k=v` fallback exists so narration never raises, but its dump
+    # reaches the host's LLM verbatim; every type the engine emits today gets a
+    # readable line or is deliberately dropped.
+    union = get_args(CombatEvent)[0]
+    emitted = {get_args(m.model_fields["type"].annotation)[0] for m in get_args(union)}
+    assert emitted - _FORMATTERS.keys() - _SKIPPED_EVENT_TYPES == set()
+
+
+def test_a_spell_cast_and_its_concentration_effect_read_as_prose() -> None:
+    events = [
+        IntentSubmitted(actor_id="char:elara", intent_type="cast_spell"),
+        SpellCast(
+            actor_id="char:elara",
+            spell_id="summon-dragon",
+            slot_level=5,
+            ritual=False,
+            components=["V", "S", "M"],
+            material="an object with the image of a dragon engraved on it worth 500+ GP",
+            material_consumed=False,
+            material_cost_gp=0,
+        ),
+        EffectApplied(
+            effect=ActiveEffect(
+                id="effect:summon-dragon",
+                name="Summon Dragon",
+                origin="cast:summon-dragon:char:elara",
+                target_id="char:elara",
+                flags={"concentration": True},
+            )
+        ),
+    ]
+    assert narrate(events, NAMES).splitlines() == [
+        "Elara attempts cast spell.",
+        "Elara casts Summon Dragon with a level 5 slot.",
+        "Summon Dragon takes effect on Elara (concentration).",
+    ]
+
+
+def test_a_cantrip_names_no_slot() -> None:
+    cast = SpellCast(
+        actor_id="char:elara",
+        spell_id="fire-bolt",
+        slot_level=None,
+        ritual=False,
+        components=["V", "S"],
+        material=None,
+        material_consumed=False,
+        material_cost_gp=0,
+    )
+    assert narrate([cast], NAMES) == "Elara casts Fire Bolt."
