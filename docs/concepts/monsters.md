@@ -1,8 +1,10 @@
 # Monsters
 
 Monsters take their turns through `advance_monster_turn(handle)`. The engine
-picks the action, resolves it, and emits events — there is no monster intent for
-a host to submit.
+picks the action, resolves it, and emits events. A host can name the creature a
+monster attacks (`target_id`, below), or command a creature's turn itself through
+`submit_player_intent`, as it does a summon or a
+[party-side ally](combat.md#sides).
 
 ## Getting a real monster
 
@@ -52,7 +54,10 @@ host can command one attack from a creature's current stat block with
 
 The built-in AI is deliberately simple and predictable:
 
-1. **Target** the lowest-HP living enemy — a PC or a party-side summon.
+1. **Target** the lowest-HP enemy still in the fight — a character, a
+   [party-side ally](combat.md#sides) or a party-side summon, never a
+   [knocked-out](combat.md#knocking-a-creature-out) creature — unless the host
+   names one with `target_id`.
 2. **Prefer Multiattack** when the creature has it — it is the full-action play.
 3. **Otherwise** pick an action whose own range covers the target, closing the
    distance first if needed (and Dashing when that helps).
@@ -70,6 +75,21 @@ charged. It never moves first to bring a breath into reach. Each placed area
 emits `AreaTargeted`, whose `source_id` names the action (`"fire-breath"`) or
 the spell (`"fireball"`); `IntentSubmitted.target_id` still names the creature
 the AI targets.
+
+`advance_monster_turn(handle, target_id=...)` hands the choice of target to the
+host. The monster walks toward that creature (Dashing when it must) and attacks
+it, or targets it with a stat-block cast; `IntentSubmitted.target_id` and
+`AttackRolled.target_id` name it. The id must be one the AI could have picked
+itself: an enemy of the monster in the initiative order, alive, not knocked out
+and not its charmer. Any other id, and any id on a summon's turn, raises
+`IntentRejectedError("target_invalid")` before the turn starts, so no die is
+rolled, nothing is spent and no event is emitted; there is no fallback to the
+engine's own pick. On a character's turn `not_actor_turn` is raised first. A
+fleeing or Incapacitated monster still checks the id, then takes its turn as
+it would without one. An area
+action keeps the engine's own aim, whether or not the area covers `target_id`.
+With `legendary=True` the same keyword names the legendary action's target,
+checked before `LegendaryActionUsed`.
 
 `EncounterMemberSpec.behavior_profile` selects between three profiles:
 

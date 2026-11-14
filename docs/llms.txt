@@ -28,8 +28,8 @@ Core public API (`dnd5e_engine.__all__`):
   `WallSegment`, `cell_id`, `parse_cell`.
 - Effects: `ActiveEffect`, `ActiveEffectChange`, `ActiveEffectDuration`.
 - Results: `StartCombatResult`, `EndCombatResult`, `CombatOutcome`,
-  `DeathRecord`, `LootDrop`, `PlayerIntent`, `CombatHandle`, `IntentType`,
-  `CombatEvent`.
+  `DeathRecord`, `KnockOutRecord`, `LootDrop`, `PlayerIntent`, `CombatHandle`,
+  `IntentType`, `CombatEvent`.
 
 ## Docs
 

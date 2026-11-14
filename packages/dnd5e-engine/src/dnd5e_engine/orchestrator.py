@@ -5909,8 +5909,11 @@ def _record_death(live: _LiveCombat, event: Death, *, killer_id: str | None) -> 
     Killer attribution: ``killer_id`` is the creature that dealt the killing
     damage (the actor of the resolution that emitted it, ``_emit``), whoever's
     turn it is: an opportunity attack's reactor, a legendary action's monster,
-    a commanded summon, the owner of a spell's construct. ``None`` for a death
-    nobody dealt (failed death saves) and for a creature that killed itself.
+    a commanded summon, the owner of a spell's construct. A death by death
+    saves credits the creature whose damage at 0 Hit Points added the final
+    failure (``_apply_zero_hp_to_character``), and ``None`` when the failing
+    save was rolled on the dying creature's own turn (``_emit``'s ``Death``
+    fold); ``None`` too for a creature that killed itself.
     Synthesized deaths from ``DamageApplied`` reuse this path.
     """
     if event.target_id in live.dead_ids:

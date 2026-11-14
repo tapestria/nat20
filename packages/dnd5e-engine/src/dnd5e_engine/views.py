@@ -135,8 +135,10 @@ class LiveCombatView:
     # The deaths so far, in order: the records ``CombatOutcome.deaths`` will
     # hold. ``killer_id`` is the creature that dealt the killing damage,
     # whoever's turn it was (an opportunity attack's reactor, a legendary
-    # action's monster); ``None`` for failed death saves and for a creature
-    # that killed itself.
+    # action's monster). A death by death saves names the creature whose
+    # damage at 0 Hit Points added the final failure, and nobody when the
+    # failing save was rolled on the dying creature's own turn; a creature
+    # that killed itself names nobody.
     deaths: list[DeathRecord] = field(default_factory=list)
 
     @classmethod

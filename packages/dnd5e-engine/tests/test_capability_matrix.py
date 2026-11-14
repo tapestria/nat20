@@ -315,6 +315,7 @@ _PROBES: dict[str, tuple[Any, str]] = {
             and "AreaTargeted(" in _src("orchestrator.py")
             and "excluded_target_ids" in _src("orchestrator.py")
             and "best_aim(" in _src("orchestrator.py")
+            and "def _delegated_cast(" in _src("orchestrator.py")
         ),
         "✅",
     ),
@@ -717,6 +718,23 @@ _PROBES: dict[str, tuple[Any, str]] = {
         ),
         "✅",
     ),
+    # An encounter member seated on the party's side joins ``party_ids``.
+    "Sides (party-side allies)": (
+        lambda: (
+            'side: Side = "encounter"' in _src("specs.py")
+            and 'if e.side == "party"' in _src("orchestrator.py")
+        ),
+        "✅",
+    ),
+    # The knock-out fold exists; first aid has no intent, so the row stays
+    # Partial until one lands.
+    "Knocking out a creature": (
+        lambda: (
+            "def _knock_out(" in _src("orchestrator.py")
+            and "first_aid" not in _src("orchestrator.py")
+        ),
+        "⚠️ Partial",
+    ),
     "| Cover, line of sight |": (
         lambda: (
             "def cover_on_cell(" in _src("spatial.py")
@@ -775,6 +793,8 @@ _PROBES: dict[str, tuple[Any, str]] = {
             "def rank_monster_actions(" in _src("activities/monster_actions.py")
             and "def best_aim(" in _src("areas.py")
             and "_monster_area_unaimable(" in _src("orchestrator.py")
+            and "def _validated_monster_target(" in _src("orchestrator.py")
+            and "def _plan_closing_route(" in _src("orchestrator.py")
         ),
         "✅",
     ),
