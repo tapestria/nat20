@@ -4078,7 +4078,7 @@ def _strip_condition_from_combatant(live: _LiveCombat, entity_id: str, condition
         for ac in c.conditions
         if ac.condition != condition
         or (ac.source_effect_id is not None and ac.source_effect_id in live_effect_ids)
-        or _is_knock_out_entry(live, entity_id, ac)
+        or _is_own_unconscious_entry(live, entity_id, ac)
     ]
     if len(new) != len(c.conditions):
         for idx, slot in enumerate(live.initiative):
@@ -5434,7 +5434,7 @@ def _emit_apply_damage(
     if knocked_out:
         _knock_out(live, event.target_id, attacker_id=dealer_id)
     elif new_hp <= 0 and event.target_id not in live.dead_ids:
-        was_knocked_out = _end_knock_out(live, event.target_id)
+        _end_knock_out(live, event.target_id)
         if event.target_id in live.summons:
             # SRD 5.2 Summon Dragon: "The creature disappears when it drops to
             # 0 Hit Points" — no death, death save or XP. Its caster keeps
@@ -5446,7 +5446,6 @@ def _emit_apply_damage(
                 event,
                 hp_before=tracked,
                 damage_after_temp=remaining,
-                was_knocked_out=was_knocked_out,
                 dealer_id=dealer_id,
             )
         else:
@@ -5484,35 +5483,48 @@ def _knock_out(live: _LiveCombat, target_id: str, *, attacker_id: str | None) ->
     if "unconscious" not in _condition_names(target):
         _emit(live, ConditionApplied(target_id=target_id, condition="unconscious"))
         return
-    # Already Unconscious from an effect: the knock-out still holds its own
-    # entry, so the effect ending does not wake it ("remains Unconscious until
-    # it regains any Hit Points").
-    if not any(_is_knock_out_entry(live, target_id, ac) for ac in target.conditions):
-        entry = ActiveCondition(
-            condition="unconscious",
-            source_entity_id="implied:event",
-            scope="combat",
-            applied_round=live.round_number,
-        )
-        for idx, slot in enumerate(live.initiative):
-            if slot.entity_id == target_id:
-                live.initiative[idx] = slot.model_copy(
-                    update={"conditions": [*slot.conditions, entry]}
-                )
-                break
+    _hold_own_unconscious(live, target_id)
 
 
-def _is_knock_out_entry(live: _LiveCombat, entity_id: str, ac: ActiveCondition) -> bool:
-    """Whether ``ac`` is the Unconscious a knock-out holds on ``entity_id``:
-    the one entry no effect owns, while the creature is knocked out. SRD 5.2
+def _hold_own_unconscious(live: _LiveCombat, entity_id: str) -> None:
+    """Give ``entity_id`` an Unconscious entry no effect owns, when an effect
+    already holds it Unconscious: a knock-out or a drop to 0 Hit Points keeps
+    the creature Unconscious after that effect ends
+    (``_is_own_unconscious_entry``). No event: the creature already has the
+    condition."""
+    c = _find_combatant(live, entity_id)
+    if c is None or any(_is_own_unconscious_entry(live, entity_id, ac) for ac in c.conditions):
+        return
+    entry = ActiveCondition(
+        condition="unconscious",
+        source_entity_id="implied:event",
+        scope="combat",
+        applied_round=live.round_number,
+    )
+    for idx, slot in enumerate(live.initiative):
+        if slot.entity_id == entity_id:
+            live.initiative[idx] = slot.model_copy(update={"conditions": [*slot.conditions, entry]})
+            break
+    live.active_conditions.setdefault(entity_id, set()).add("unconscious")
+
+
+def _is_own_unconscious_entry(live: _LiveCombat, entity_id: str, ac: ActiveCondition) -> bool:
+    """Whether ``ac`` is the Unconscious entry no effect owns, held while the
+    creature is knocked out or dying (alive at 0 Hit Points). SRD 5.2
     Knocking Out a Creature: "The creature remains Unconscious until it
     regains any Hit Points or until someone uses an action to administer
-    first aid to it", so only the waking fold (``_emit_apply_healing``) or a
-    drop to 0 Hit Points ends it, never another source's removal."""
+    first aid to it"; Dropping to 0 Hit Points: "you have the Unconscious
+    condition until you regain any Hit Points". Only regaining Hit Points
+    (``_emit_apply_healing``, a natural 20 on a death save, both of which
+    raise Hit Points above 0 first) or death ends it, never another source's
+    removal."""
     return (
         ac.condition == "unconscious"
         and ac.source_effect_id is None
-        and entity_id in live.knocked_out_ids
+        and (
+            entity_id in live.knocked_out_ids
+            or (live.tracked_hp.get(entity_id) == 0 and entity_id not in live.dead_ids)
+        )
     )
 
 
@@ -5532,7 +5544,6 @@ def _apply_zero_hp_to_character(
     *,
     hp_before: int,
     damage_after_temp: int,
-    was_knocked_out: bool = False,
     dealer_id: str | None = None,
 ) -> None:
     """SRD 5.2 "Dropping to 0 Hit Points" for a Character.
@@ -5550,9 +5561,10 @@ def _apply_zero_hp_to_character(
       counts as TWO failures instead of one (C15 — ``DamageApplied.is_crit``
       threaded into ``DeathSaveState.apply_damage_while_unconscious``).
 
-    ``was_knocked_out``: the character was Unconscious at 1 Hit Point from a
-    knock-out; it keeps that condition and now starts dying, so the
-    ``Unconscious`` marker is emitted for it alone. A death here credits
+    A character already Unconscious (knocked out, or held by an effect such
+    as a sleep) keeps that condition and now starts dying: the
+    ``Unconscious`` marker is emitted alone, and it holds an Unconscious entry
+    of its own so the effect ending does not wake it. A death here credits
     ``dealer_id``, the creature that dealt the damage.
     """
     target = _find_combatant(live, event.target_id)
@@ -5574,8 +5586,9 @@ def _apply_zero_hp_to_character(
         if "unconscious" not in _condition_names(target):
             _emit(live, Unconscious(target_id=event.target_id))
             _emit(live, ConditionApplied(target_id=event.target_id, condition="unconscious"))
-        elif was_knocked_out:
+        else:
             _emit(live, Unconscious(target_id=event.target_id))
+            _hold_own_unconscious(live, event.target_id)
         return
     # SRD 5.2 charges a failure for damage TAKEN: an immune damage type (or a
     # hit fully absorbed by temp HP) reaches this fold with nothing left, and
@@ -5802,7 +5815,7 @@ def _emit_apply_effect_expired(live: _LiveCombat, event: EffectExpired) -> None:
                 for ac in combatant.conditions
                 if ac.condition not in expired_effect.statuses
                 or (ac.source_effect_id is not None and ac.source_effect_id in remaining_effect_ids)
-                or _is_knock_out_entry(live, event.target_id, ac)
+                or _is_own_unconscious_entry(live, event.target_id, ac)
             ]
             if len(new_conditions) != len(combatant.conditions):
                 for idx, c in enumerate(live.initiative):
@@ -8307,6 +8320,7 @@ async def start_combat(
     for c in list(live.initiative):
         if c.entity_type == "Character" and c.is_alive and c.hp_current <= 0:
             _fold_condition_onto_combatant(live, c.entity_id, "unconscious")
+            _hold_own_unconscious(live, c.entity_id)
 
     # C12 — the seeded conditions may already zero or reduce a Speed; project
     # every combatant's opening movement budget before the first turn opens.
@@ -13877,13 +13891,13 @@ def _project_outcome(live: _LiveCombat) -> CombatOutcome:
     return CombatOutcome(
         handle_id=live.handle_id,
         ended_reason=_derive_ended_reason(live),
-        deaths=list(live.deaths_recorded),
+        deaths=[record.model_copy() for record in live.deaths_recorded],
         residual_hp=residual_hp,
         residual_temp_hp=residual_temp_hp,
         loot_drops=loot_drops,
         xp_awarded=xp_awarded,
         expended_resources={k: dict(v) for k, v in live.expended_resources.items()},
-        knock_outs=list(live.knock_outs),
+        knock_outs=[record.model_copy() for record in live.knock_outs],
     )
 
 
@@ -13900,9 +13914,11 @@ async def end_combat(handle: CombatHandle) -> EndCombatResult:
     """
     live = _get_live(handle)
     surviving = tuple(eff for target_list in live.active_effects.values() for eff in target_list)
+    # An ended combat stays readable, so every caller gets its own copy of
+    # the kept outcome.
     if live.ended and live.final_outcome is not None:
         return EndCombatResult(
-            outcome=live.final_outcome,
+            outcome=live.final_outcome.model_copy(deep=True),
             events=[],
             final_active_effects=surviving,
         )
@@ -13924,7 +13940,7 @@ async def end_combat(handle: CombatHandle) -> EndCombatResult:
     # the active_effects registry (e.g. expire handler).
     surviving = tuple(eff for target_list in live.active_effects.values() for eff in target_list)
     return EndCombatResult(
-        outcome=outcome,
+        outcome=outcome.model_copy(deep=True),
         events=end_events,
         final_active_effects=surviving,
     )

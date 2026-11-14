@@ -282,7 +282,8 @@ class PlayerIntent(BaseModel):
   it on every `DamageApplied` it emits; `resolve_attack` passes
   `knock_out=ctx.knock_out and <this swing is a melee attack>`
   (`activities/attack.py:1095`), where a melee attack is
-  `activity.attack.type.value == "melee"` and not
+  `activity.attack.type.value == "melee"` (or, for an activity that names no
+  attack type, a melee weapon) and not
   `_attack_is_effectively_ranged(weapon, distance)`. Sneak Attack dice, Savage
   Attacker, a Cleave follow-up and a weapon's damage riders are part of the same
   hit and carry the flag; a save-based rider is not an attack and does not.
@@ -366,6 +367,9 @@ not the top-level `__all__`.
   any Hit Points"). Healing ends the knock-out, not the effect's Unconscious:
   the creature is no longer knocked out (a legal target, not out of the
   fight) and stays Unconscious until that effect ends.
+  The same holds for a dying creature (alive at 0 Hit Points): "you have the
+  Unconscious condition until you regain any Hit Points", so an effect that
+  ends while it is dying leaves it Unconscious.
 - **Damage while knocked out.** The creature is at 1 Hit Point: a hit (an auto-crit
   from within 5 feet) takes it to 0 and leaves `knocked_out_ids` — a monster
   dies, a character starts dying — through the existing branches with nothing

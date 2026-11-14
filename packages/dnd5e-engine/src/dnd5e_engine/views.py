@@ -167,7 +167,9 @@ class LiveCombatView:
             current_turn_index=live.current_turn_index,
             round_number=live.round_number,
             ended=live.ended,
-            final_outcome=live.final_outcome,
+            final_outcome=(
+                live.final_outcome.model_copy(deep=True) if live.final_outcome is not None else None
+            ),
             concentration_chain={k: list(v) for k, v in live.concentration_chain.items()},
             turn=turn,
             monster_action_uses_by_entity={

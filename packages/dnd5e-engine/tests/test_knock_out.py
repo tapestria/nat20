@@ -444,6 +444,9 @@ def test_with_every_foe_knocked_out_the_fight_is_won() -> None:
         KnockOutRecord(target_id="mon:b", target_kind="monster", attacker_id="char:two"),
     ]
     assert outcome.xp_awarded == {"char:hero": 75, "char:two": 75}
+    outcome.knock_outs[0].attacker_id = "char:someone-else"
+    again = asyncio.run(end_combat(handle)).outcome
+    assert again.knock_outs[0].attacker_id == "char:hero"
 
 
 def test_a_knocked_out_party_counts_as_out_for_the_end_reason() -> None:
@@ -815,3 +818,97 @@ def test_healing_ends_the_knock_out_but_not_another_effects_unconscious() -> Non
     outcome = asyncio.run(end_combat(handle)).outcome
     assert outcome.knock_outs == []
     assert outcome.ended_reason == "forced"
+
+
+# ── Dying while another effect holds it Unconscious ─────────────────────────
+
+
+def _sleep_on(target_id: str) -> ActiveEffect:
+    return _SLEEP.model_copy(update={"target_id": target_id})
+
+
+def _expire_sleep(live: _LiveCombat, target_id: str) -> None:
+    _emit(
+        live,
+        EffectExpired(
+            effect_id=_SLEEP.id, target_id=target_id, origin=_SLEEP.origin, reason="duration"
+        ),
+    )
+
+
+def _held(live: _LiveCombat, entity_id: str) -> set[str]:
+    return {c.condition for c in combatant(live, entity_id).conditions}
+
+
+def test_a_knocked_out_creature_that_starts_dying_stays_unconscious_past_the_effect() -> None:
+    """SRD 5.2 Dropping to 0 Hit Points: "When damage reduces you to 0 Hit
+    Points and you aren't killed outright, you have the Unconscious
+    condition until you regain any Hit Points." An asleep character is
+    knocked out, then hit again and starts dying; the sleep ending leaves it
+    Unconscious, and healing wakes it."""
+    with rng_factory(_D20Shows10):
+        handle, live = start(
+            [
+                pc(class_slug="fighter", character_level=5),
+                cleric(initiative=19, zone_id=cell_id(1, 1), spells_known=["cure-wounds"]),
+                pc("char:pal", initiative=18, hp_current=1, zone_id=cell_id(0, 1)),
+            ],
+            seed=1,
+            encounter=[foe(zone_id=cell_id(9, 9))],
+            active_effects=[_sleep_on("char:pal")],
+        )
+    for knock_out in (True, False):
+        act(
+            handle,
+            "char:hero",
+            intent_type="attack",
+            weapon_id="longsword",
+            target_id="char:pal",
+            knock_out=knock_out,
+        )
+    assert live.tracked_hp["char:pal"] == 0
+    assert events(live, Unconscious) == [Unconscious(target_id="char:pal")]
+    _expire_sleep(live, "char:pal")
+    assert "unconscious" in _held(live, "char:pal")
+    assert "unconscious" in live.active_conditions["char:pal"]
+    act(handle, "char:hero", intent_type="pass")
+    act(
+        handle,
+        "char:cleric",
+        intent_type="cast_spell",
+        spell_id="cure-wounds",
+        target_id="char:pal",
+        slot_level=1,
+    )
+    assert "unconscious" not in _held(live, "char:pal")
+    assert "prone" in _held(live, "char:pal")
+
+
+def test_an_asleep_character_dropped_to_0_hp_stays_unconscious_past_the_effect() -> None:
+    """The same rule with no knock-out: a sleeping character dropped to 0 Hit
+    Points is dying, so the sleep ending does not leave it conscious. A
+    natural 20 on its death save ("you regain 1 Hit Point") wakes it."""
+    with rng_factory(_D20Shows20):
+        handle, live = start(
+            [
+                pc(),
+                pc("char:mid", initiative=8, zone_id=cell_id(5, 5)),
+                pc("char:down", initiative=5, hp_current=1, zone_id=cell_id(0, 1)),
+            ],
+            seed=1,
+            encounter=[foe(initiative=10)],
+            active_effects=[_sleep_on("char:down")],
+        )
+    act(handle, "char:hero", intent_type="pass")
+    asyncio.run(advance_monster_turn(handle, target_id="char:down"))
+    assert live.tracked_hp["char:down"] == 0
+    assert "char:down" not in live.dead_ids
+    assert events(live, Unconscious) == [Unconscious(target_id="char:down")]
+    _expire_sleep(live, "char:down")
+    assert "unconscious" in _held(live, "char:down")
+    assert "unconscious" in live.active_conditions["char:down"]
+    act(handle, "char:mid", intent_type="pass")
+    [save] = [e for e in events(live, DeathSaveRolled) if e.target_id == "char:down"]
+    assert save.outcome == "crit_success"
+    assert live.tracked_hp["char:down"] == 1
+    assert "unconscious" not in _held(live, "char:down")

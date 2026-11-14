@@ -94,6 +94,22 @@ def test_the_outcome_holds_the_last_views_deaths() -> None:
     assert get_live(handle).deaths == last
 
 
+def test_the_outcomes_deaths_are_copies() -> None:
+    with rng_factory(_D20Shows):
+        handle, _ = start([pc()], seed=1, encounter=[_frail("mon:foe")])
+    act(handle, "char:hero", intent_type="attack", weapon_id="longsword", target_id="mon:foe")
+    outcome = asyncio.run(end_combat(handle)).outcome
+    outcome.deaths[0].killer_id = "char:someone-else"
+    outcome.deaths.clear()
+    expected = [_record("mon:foe", "monster", "damage", "char:hero")]
+    assert get_live(handle).deaths == expected
+    final = get_live(handle).final_outcome
+    assert final is not None
+    assert final.deaths == expected
+    final.deaths.clear()
+    assert asyncio.run(end_combat(handle)).outcome.deaths == expected
+
+
 def test_an_opportunity_attack_kill_names_the_reactor() -> None:
     """The foe walks away from the hero on its own turn and the hero's
     opportunity attack kills it."""
