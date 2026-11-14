@@ -1,0 +1,81 @@
+name: boundary-scan
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  gitleaks:
+    runs-on: ubuntu-latest
+    env:
+      GITLEAKS_VERSION: 8.30.1
+    steps:
+      - name: Check for rules
+        id: rules
+        env:
+          RULES: ${{ secrets.BOUNDARY_GITLEAKS_TOML }}
+        run: |
+          # The secret is absent on fork PRs (or before it is configured); the push scan covers the merge.
+          if [ -z "$RULES" ]; then
+            echo "::notice::BOUNDARY_GITLEAKS_TOML is not available; skipping boundary scan."
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check out
+        if: steps.rules.outputs.present == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The scanned range reaches back to the event's base commit.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install gitleaks
+        if: steps.rules.outputs.present == 'true'
+        run: |
+          cd "$RUNNER_TEMP"
+          base="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}"
+          curl -fsSLO "$base/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -fsSLO "$base/gitleaks_${GITLEAKS_VERSION}_checksums.txt"
+          sha256sum --check --ignore-missing --strict "gitleaks_${GITLEAKS_VERSION}_checksums.txt"
+          tar -xzf "gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" gitleaks
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+
+      - name: Scan the event's commits
+        if: steps.rules.outputs.present == 'true'
+        env:
+          RULES: ${{ secrets.BOUNDARY_GITLEAKS_TOML }}
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.event.after }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          zero=0000000000000000000000000000000000000000
+          if [ "$EVENT" = pull_request ]; then
+            range=("$PR_BASE..$PR_HEAD")
+          elif [ "$AFTER" = "$zero" ]; then
+            echo "Branch deletion; nothing to scan."
+            exit 0
+          elif [ "$BEFORE" != "$zero" ] && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            range=("$BEFORE..$AFTER")
+          else
+            # New branch, or a force push whose old tip is gone: scan what the default branch lacks.
+            range=("$AFTER" --not "origin/$DEFAULT_BRANCH")
+            if [ -z "$(git rev-list -1 "${range[@]}")" ]; then
+              range=(-1 "$AFTER")
+            fi
+          fi
+          # gitleaks reads an unresolvable range as zero commits and passes, so refuse it here.
+          if ! git rev-list "${range[@]}" > /dev/null; then
+            echo "::error::Cannot resolve commit range '${range[*]}'; refusing to report a clean scan."
+            exit 1
+          fi
+          printf '%s\n' "$RULES" > "$RUNNER_TEMP/rules.toml"
+          # No -v: rule ids and matched files stay out of public logs; reproduce locally with the commit hook.
+          gitleaks git --config "$RUNNER_TEMP/rules.toml" --redact --no-banner --log-opts="${range[*]}"
