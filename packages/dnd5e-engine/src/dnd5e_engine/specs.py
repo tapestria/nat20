@@ -228,8 +228,15 @@ class PartyMemberSpec(BaseModel):
         return self
 
 
+# The side a creature fights on: the party's (the characters and their
+# allies) or the encounter's (the hostiles). A closed set, so a third side
+# would be an additive change.
+Side = Literal["party", "encounter"]
+
+
 class EncounterMemberSpec(BaseModel):
-    """One hostile (monster or NPC) entering combat."""
+    """One monster or NPC entering combat: a hostile by default, or an ally
+    fighting with the characters when ``side`` is ``"party"``."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -300,6 +307,11 @@ class EncounterMemberSpec(BaseModel):
     # Defaults to 30; a host threads the stat block's walking speed in
     # here.
     base_speed: int = 30
+    # The side this creature fights on. ``"encounter"`` (the default) is a
+    # hostile; ``"party"`` fights with the characters: every ally rule and the
+    # monster AI read it as one of theirs, and it dies at 0 Hit Points as any
+    # monster does.
+    side: Side = "encounter"
 
 
 class WallSegment(BaseModel):
@@ -389,5 +401,6 @@ __all__ = [
     "LightLevel",
     "Obscurement",
     "PartyMemberSpec",
+    "Side",
     "WallSegment",
 ]

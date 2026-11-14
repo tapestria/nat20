@@ -3258,6 +3258,9 @@ class _LiveCombat:
     handle_id: str
     session_id: str
     initiative: list[Combatant]
+    # The two sides. ``party_ids`` holds the characters and every encounter
+    # member seated with ``side="party"``; a rule meant for characters only
+    # tests ``entity_type == "Character"`` instead.
     party_ids: set[str]
     encounter_ids: set[str]
     topology: GridTopology
@@ -5341,7 +5344,7 @@ def _emit_apply_damage(live: _LiveCombat, event: DamageApplied) -> None:
             # 0 Hit Points" — no death, death save or XP. Its caster keeps
             # concentrating (the SRD is silent; a host can drop it).
             _leave_roster(live, event.target_id, "zero_hp")
-        elif event.target_id in live.party_ids:
+        elif _target_kind_for(live, event.target_id) == "character":
             _apply_zero_hp_to_character(live, event, hp_before=tracked, damage_after_temp=remaining)
         else:
             # SRD 5.2 "Monster Death" — a monster dies the instant it drops to
@@ -7959,11 +7962,19 @@ async def start_combat(
 
     ``grid_scene`` is the battlefield: every ``zone_id`` on ``party`` and
     ``encounter`` must name one of its in-bounds, unblocked cells.
+
+    An ``encounter`` member seated with ``side="party"`` fights with the
+    party (it joins ``party_ids``); at least one member must fight on the
+    encounter side, else ``ValueError``.
     """
     if not party:
         raise ValueError("start_combat: party must be non-empty")
     if not encounter:
         raise ValueError("start_combat: encounter must be non-empty")
+    if not any(e.side == "encounter" for e in encounter):
+        raise ValueError(
+            "start_combat: encounter must hold at least one member on the encounter side"
+        )
 
     # Hoisted so the SAME instance seeds both the initiative-rolling draws
     # below and every subsequent in-combat draw via ``_LiveCombat.rng``.
@@ -8027,8 +8038,9 @@ async def start_combat(
         handle_id=handle_id,
         session_id=session_id,
         initiative=combatants,
-        party_ids={p.entity_id for p in party},
-        encounter_ids={e.entity_id for e in encounter},
+        party_ids={p.entity_id for p in party}
+        | {e.entity_id for e in encounter if e.side == "party"},
+        encounter_ids={e.entity_id for e in encounter if e.side == "encounter"},
         topology=topology,
         rng=rng,
         event_queue=asyncio.Queue(),
@@ -8094,7 +8106,7 @@ async def start_combat(
     # further up this function. Monsters are excluded — a monster at 0 HP is
     # dead, never Unconscious.
     for c in list(live.initiative):
-        if c.entity_id in live.party_ids and c.is_alive and c.hp_current <= 0:
+        if c.entity_type == "Character" and c.is_alive and c.hp_current <= 0:
             _fold_condition_onto_combatant(live, c.entity_id, "unconscious")
 
     # C12 — the seeded conditions may already zero or reduce a Speed; project
@@ -13578,11 +13590,16 @@ def _project_outcome(live: _LiveCombat) -> CombatOutcome:
         if eid in live.party_ids and thp > 0 and eid not in vanishing
     }
 
-    # SRD §Encounter XP: total XP from dead foes ÷ surviving PCs.
+    # SRD §Encounter XP: total XP from dead foes ÷ surviving characters; a
+    # party-side ally takes no share.
     total_xp = sum(
         live.xp_value_by_entity.get(eid, 0) for eid in live.dead_ids if eid in live.encounter_ids
     )
-    surviving_pcs = [eid for eid in live.party_ids if eid not in live.dead_ids]
+    surviving_pcs = [
+        eid
+        for eid in live.party_ids
+        if eid not in live.dead_ids and _target_kind_for(live, eid) == "character"
+    ]
     xp_awarded: dict[str, int] = {}
     if total_xp > 0 and surviving_pcs:
         per_pc = total_xp // len(surviving_pcs)

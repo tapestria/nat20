@@ -86,6 +86,8 @@ class LiveCombatView:
     """Snapshot projection of live combat state for host consumers."""
 
     initiative: list[Combatant]
+    # The party's side: the characters and any encounter member seated with
+    # ``side="party"`` (``Combatant.entity_type`` tells them apart).
     party_ids: set[str]
     encounter_ids: set[str]
     dead_ids: set[str]
