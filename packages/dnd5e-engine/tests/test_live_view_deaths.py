@@ -78,6 +78,8 @@ def test_the_views_list_is_a_copy() -> None:
     act(handle, "char:hero", intent_type="attack", weapon_id="longsword", target_id="mon:foe")
     get_live(handle).deaths.clear()
     assert len(get_live(handle).deaths) == 1
+    get_live(handle).deaths[0].killer_id = "char:someone-else"
+    assert get_live(handle).deaths[0].killer_id == "char:hero"
 
 
 def test_the_outcome_holds_the_last_views_deaths() -> None:

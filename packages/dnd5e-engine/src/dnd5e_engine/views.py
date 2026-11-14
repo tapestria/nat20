@@ -221,7 +221,7 @@ class LiveCombatView:
                 for entity_id, s in live.summons.items()
             },
             knocked_out_ids=set(live.knocked_out_ids),
-            deaths=list(live.deaths_recorded),
+            deaths=[record.model_copy() for record in live.deaths_recorded],
         )
 
 
