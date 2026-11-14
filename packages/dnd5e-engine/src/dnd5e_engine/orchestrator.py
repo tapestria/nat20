@@ -2739,6 +2739,26 @@ def _lowest_hp_target(enemies: list[Combatant]) -> Combatant | None:
     return min(enemies, key=lambda c: c.hp_current) if enemies else None
 
 
+def _validated_monster_target(
+    live: _LiveCombat, actor: Combatant, target_id: str | None
+) -> Combatant | None:
+    """The creature a host named for ``actor``'s attack or cast, or ``None``
+    when it named none. Legal means in ``actor``'s own target pool
+    (``_select_monster_targets``); a summon's turn never takes one (SRD 5.2
+    Summon Dragon: uncommanded, "it takes the Dodge action"). Callers run
+    this before anything is rolled or emitted, so a refusal spends nothing.
+    """
+    if target_id is None:
+        return None
+    if actor.entity_id not in live.summons:
+        for c in _select_monster_targets(live, actor):
+            if c.entity_id == target_id:
+                return c
+    raise IntentRejectedError(
+        "target_invalid", f"target_id={target_id!r} is not a legal target for {actor.entity_id!r}"
+    )
+
+
 def _resolve_monster_activities(
     live: _LiveCombat,
     current: Combatant,
@@ -3175,7 +3195,9 @@ def _resolve_monster_attack_activities(
     _sync_legendary_resistance(live, pre_event_count)
 
 
-def _take_legendary_action(live: _LiveCombat, monster: Combatant) -> None:
+def _take_legendary_action(
+    live: _LiveCombat, monster: Combatant, chosen: Combatant | None = None
+) -> None:
     """SRD 5.2 §Legendary Actions — spend one of ``monster``'s legendary-
     action uses on the first offensive entry in its ``legendary_actions``
     list (stat-block order) that is currently available.
@@ -3194,6 +3216,9 @@ def _take_legendary_action(live: _LiveCombat, monster: Combatant) -> None:
     corpus carries no multi-point legendary action today (see BACKLOG for
     the point-pool follow-up).
 
+    ``chosen`` is a host-named target already validated against the same
+    pool (``_validated_monster_target``); ``None`` takes the lowest-HP pick.
+
     Raises ``IntentRejectedError("no_legendary_action", ...)`` when the
     monster's template is unresolvable, no PC target is legal, or nothing
     on the list qualifies.
@@ -3205,7 +3230,9 @@ def _take_legendary_action(live: _LiveCombat, monster: Combatant) -> None:
             "no_legendary_action",
             f"actor_id={monster.entity_id!r} has no resolvable monster template",
         )
-    target = _lowest_hp_target(_select_monster_targets(live, monster))
+    target = (
+        chosen if chosen is not None else _lowest_hp_target(_select_monster_targets(live, monster))
+    )
     if target is None:
         raise IntentRejectedError(
             "no_legendary_action", f"actor_id={monster.entity_id!r} has no legal target"
@@ -13242,7 +13269,11 @@ def _resolve_opportunity_attack(live: _LiveCombat, reactor: Combatant, mover: Co
 
 
 async def advance_monster_turn(
-    handle: CombatHandle, *, legendary: bool = False, actor_id: str | None = None
+    handle: CombatHandle,
+    *,
+    legendary: bool = False,
+    actor_id: str | None = None,
+    target_id: str | None = None,
 ) -> None:
     """Drive one monster turn through typed selection + the Activity resolver.
 
@@ -13259,8 +13290,14 @@ async def advance_monster_turn(
     multiattack out into its sub-attacks. Targeting: the lowest-HP living
     enemy, first in initiative order on a tie (the legacy gambit's
     ``target_priority="lowest_hp"`` semantics) — the party's members and the
-    summons they own, a charmer excepted (``_select_monster_targets``). An
-    area resolves against the creatures its best aim affects instead
+    summons they own, a charmer excepted (``_select_monster_targets``).
+    ``target_id`` names that creature instead: the monster walks toward it
+    (Dashing when it must) and attacks it, or targets it with a stat-block
+    cast. It must be in the same pool; any other id, and any id on a
+    summon's turn, raises ``IntentRejectedError("target_invalid", ...)``
+    before the turn starts, so nothing is rolled, spent or emitted. A dead,
+    fleeing or Incapacitated monster still validates it, then passes. An
+    area resolves against the creatures its best aim affects either way
     (``_resolve_monster_parts``).
     Resolution: each returned ``Activity`` runs through
     ``resolve_activity`` against a context
@@ -13286,14 +13323,17 @@ async def advance_monster_turn(
     (``_hand_off_departed_turn``). ``actor_id`` picks a specific encounter
     member (else the first eligible one in initiative order); both raise
     ``IntentRejectedError("no_legendary_action", ...)`` when nothing
-    qualifies right now.
+    qualifies right now. ``target_id`` is validated against the chosen
+    member's pool the same way, before ``LegendaryActionUsed``.
     """
     live = _get_live(handle)
     if live.ended:
         raise IntentRejectedError("combat_ended", f"handle={handle.handle_id}")
 
     if legendary:
-        _take_legendary_action(live, _eligible_legendary_actor(live, actor_id))
+        monster = _eligible_legendary_actor(live, actor_id)
+        chosen = _validated_monster_target(live, monster, target_id)
+        _take_legendary_action(live, monster, chosen)
         _hand_off_departed_turn(live, turn_began=False)
         return
 
@@ -13303,6 +13343,7 @@ async def advance_monster_turn(
             "not_actor_turn",
             f"current_turn={current.entity_id!r} is a Character, not a monster",
         )
+    host_target = _validated_monster_target(live, current, target_id)
 
     # C18 §Monster action economy — legendary-action reset, recharge rolls,
     # regeneration. Runs once per driven turn regardless of the flee/
@@ -13348,7 +13389,9 @@ async def advance_monster_turn(
     if not enemies:
         skip_to_record_pass = True
 
-    chosen_target: Combatant | None = _lowest_hp_target(enemies)
+    chosen_target: Combatant | None = (
+        host_target if host_target is not None else _lowest_hp_target(enemies)
+    )
 
     # ── Fleeing retreat ──────────────────────────────────────────
     # A live monster over the flee threshold spends its movement putting
