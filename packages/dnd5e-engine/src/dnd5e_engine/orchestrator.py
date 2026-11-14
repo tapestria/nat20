@@ -1970,6 +1970,99 @@ def _plan_flee_route(
     return route[::-1]
 
 
+@dataclass(frozen=True)
+class _ClosingRoute:
+    """A monster's planned closing walk: the cells to walk (``route[0]`` is its
+    own cell; a one-cell route stays put) and, when the walk needs a Dash, the
+    doubled movement budget the Dash grants."""
+
+    route: list[str]
+    dashed_budget: int | None
+
+
+def _plan_closing_route(
+    live: _LiveCombat, mover: Combatant, target_zone: str, range_ft: int
+) -> _ClosingRoute:
+    """The walk that brings ``mover`` within ``range_ft`` of ``target_zone``,
+    with line of sight, on a free cell. Monster AI, DM-adjudicated; it draws no
+    dice. SRD 5.2 Moving Around Other Creatures: "You can't willingly end a
+    move in a space occupied by another creature", and an enemy's space blocks
+    movement while an ally's may be passed through.
+
+    Tier 1 keeps the plain walk whenever no creature is in the way: the
+    fewest-cells route to the target (enemy spaces avoided, the target's own
+    excepted), cut at the first cell in range, with the Dash decided from the
+    whole route's price (``_monster_dash_movement_budget``). When that stop
+    cell holds a creature, or no such route exists, tier 2 takes the cheapest
+    free cell in range that the remaining movement reaches, then the lowest
+    ``(column, row)`` compared as integers, and a Dash only when the cell needs
+    one. When neither tier finds a cell, the mover walks the tier-1 route as
+    far as its movement goes and stops on the last free cell of it, without a
+    Dash; its attack waits for a later turn.
+    """
+    mover_id = mover.entity_id
+    start = live.actor_zone[mover_id]
+    grid = live.topology
+    enemy_cells = _occupied_cells(live, exclude=_allied_ids(live, mover_id))
+    occupied = _occupied_cells(live, exclude=(mover_id,))
+    movement = mover.movement_remaining
+    speed = _effective_speed(mover, live)
+
+    def in_range(cell: str) -> bool:
+        return _in_range_with_los(grid, cell, target_zone, range_ft)
+
+    path = grid.shortest_path(start, target_zone, avoid=enemy_cells - {target_zone})
+    stop = next((i for i in range(1, len(path)) if in_range(path[i])), None)
+    if stop is not None:
+        dashed_budget = (
+            _monster_dash_movement_budget(_path_total_distance(grid, path), movement, speed)
+            if mover.action_available
+            else None
+        )
+        stop_cost = _path_total_distance(grid, path[: stop + 1])
+        if stop_cost is None or stop_cost > (dashed_budget or movement):
+            return _ClosingRoute(_free_prefix(grid, path, movement, occupied), None)
+        if path[stop] not in occupied:
+            return _ClosingRoute(path[: stop + 1], dashed_budget)
+
+    budgets: list[tuple[int, int | None]] = [(movement, None)]
+    if mover.action_available and speed > 0:
+        budgets.append((movement + speed, movement + speed))
+    for budget_ft, dashed in budgets:
+        reached = grid.reachable_cells(start, budget_ft, avoid=enemy_cells)
+        candidates = [
+            (cost, parse_cell(cell), cell)
+            for cell, (cost, _previous) in reached.items()
+            if cell not in occupied and in_range(cell)
+        ]
+        if candidates:
+            route = [min(candidates)[2]]
+            while (previous := reached[route[-1]][1]) is not None:
+                route.append(previous)
+            return _ClosingRoute(route[::-1], dashed)
+    return _ClosingRoute(_free_prefix(grid, path, movement, occupied), None)
+
+
+def _free_prefix(
+    grid: GridTopology, path: Sequence[str], budget_ft: int, occupied: Collection[str]
+) -> list[str]:
+    """The longest start of ``path`` that ``budget_ft`` pays for, cut back to
+    its last cell no creature stands on (``path[0]``, the mover's own cell,
+    always qualifies). ``[]`` for an empty path."""
+    if not path:
+        return []
+    end, spent = 0, 0
+    for i in range(1, len(path)):
+        step = grid.edge_distance(path[i - 1], path[i])
+        if step is None or spent + step > budget_ft:
+            break
+        spent += step
+        end = i
+    while end > 0 and path[end] in occupied:
+        end -= 1
+    return list(path[: end + 1])
+
+
 def _take_walk_step(live: _LiveCombat, mover_id: str, next_cell: str) -> bool:
     """One step of a monster's walk (the closing walk, the flee walk): fire the
     opportunity attacks it provokes, then pay the step out of
@@ -2007,8 +2100,8 @@ def _take_walk_step(live: _LiveCombat, mover_id: str, next_cell: str) -> bool:
 def _walk_path(live: _LiveCombat, mover_id: str, path: Sequence[str]) -> None:
     """Walk ``mover_id`` along ``path`` (``path[0]`` is its own cell) one
     ``_take_walk_step`` at a time, stopping at the first step that can't be
-    taken. The flee walk's counterpart of the closing walk, which also stops
-    once its target is in range."""
+    taken. Both monster walks use it: the flee route and the closing route
+    (``_plan_closing_route``)."""
     for next_cell in path[1:]:
         if not _take_walk_step(live, mover_id, next_cell):
             return
@@ -9144,8 +9237,9 @@ def _handle_move(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
     destination / untracked position / destination is the current cell (the
     legacy reason is retained for hosts); ``occupied`` — "You can't willingly
     end a move in a space occupied by another creature"; ``blocked_path`` —
-    the destination is adjacent but the step crosses a wall or cuts a blocked
-    corner; ``unreachable`` — no legal route (enemy-occupied cells are
+    the destination is adjacent, the direct step crosses a wall or cuts a
+    blocked corner, and no route goes around (a detour that exists is walked
+    and priced like any other route); ``unreachable`` — no legal route (enemy-occupied cells are
     impassable, allies may be passed through); ``insufficient_movement`` — the
     whole route costs more than the remaining budget, and nothing moves;
     ``frightened`` — SRD 5.2 Frightened: "You can't willingly move closer to
@@ -9178,21 +9272,23 @@ def _handle_move(live: _LiveCombat, current: Combatant, intent: PlayerIntent) ->
     if destination in _occupied_cells(live, exclude=(actor_id,)):
         _emit(live, MoveFailed(actor_id=actor_id, reason="occupied"))
         return
-    # Adjacency alone doesn't guarantee a legal step — a wall
-    # crossing the segment or a diagonal cutting a blocked corner yields None
-    # from edge_distance (SRD 5.2 "Corners").
-    if (
-        live.topology.is_adjacent(start_zone, destination)
-        and live.topology.edge_distance(start_zone, destination) is None
-    ):
-        _emit(live, MoveFailed(actor_id=actor_id, reason="blocked_path"))
-        return
     # Enemy spaces are impassable; an ally's space, a summon's included, may
     # be passed through.
     enemy_cells = _occupied_cells(live, exclude=_allied_ids(live, actor_id))
     path = live.topology.shortest_path(start_zone, destination, avoid=enemy_cells)
     if not path:
-        _emit(live, MoveFailed(actor_id=actor_id, reason="unreachable"))
+        # Adjacency alone doesn't guarantee a legal step — a wall crossing the
+        # segment or a diagonal cutting a blocked corner yields None from
+        # edge_distance (SRD 5.2 "Corners"); with no way around either, the
+        # refusal names the blocked step.
+        blocked_step = (
+            live.topology.is_adjacent(start_zone, destination)
+            and live.topology.edge_distance(start_zone, destination) is None
+        )
+        _emit(
+            live,
+            MoveFailed(actor_id=actor_id, reason="blocked_path" if blocked_step else "unreachable"),
+        )
         return
     # "To enter a square, you must have enough movement left to pay for
     # entering" — the whole route is priced up front so a rejection is atomic.
@@ -13177,11 +13273,12 @@ async def advance_monster_turn(
     monster_activities = [activity for _, activity in monster_parts]
     has_action = bool(monster_activities) or cast_selection is not None
 
-    # Monster gambit range awareness. When the chosen attack is
-    # out of range, the monster MOVEs toward the target along the
-    # shortest path, paying each step's cost out of its per-turn
-    # movement budget. If the move brings it within range, the attack
-    # then proceeds; otherwise the attack is skipped this turn (no
+    # Monster gambit range awareness. When the chosen attack is out of
+    # range, the monster MOVEs toward the target along the route
+    # ``_plan_closing_route`` picks (a free cell in range; enemy spaces
+    # avoided), paying each step's cost out of its per-turn movement
+    # budget. If the move brings it within range, the attack then
+    # proceeds; otherwise the attack is skipped this turn (no
     # ``AttackFailed`` — the monster simply spent its movement closing
     # the distance). Ranged gambits whose normal range already covers
     # the target stay put and fire as before. Movement is planned and
@@ -13209,17 +13306,9 @@ async def advance_monster_turn(
             and target_zone is not None
             and not _in_range_with_los(live.topology, attacker_zone, target_zone, monster_range_ft)
         ):
-            # Plan the path and walk it greedily within budget.
-            path = live.topology.shortest_path(attacker_zone, target_zone)
-            dashed_budget = _monster_dash_movement_budget(
-                _path_total_distance(live.topology, path),
-                current.movement_remaining,
-                # SRD 5.2 Dash adds the creature's EFFECTIVE Speed: a Speed-0
-                # monster (Grappled / Restrained / …) "can't increase" it, so
-                # the gambit is declined outright (budget <= 0 → None).
-                _effective_speed(current, live),
-            )
-            if dashed_budget is not None and current.action_available:
+            plan = _plan_closing_route(live, current, target_zone, monster_range_ft)
+            dashed_budget = plan.dashed_budget
+            if dashed_budget is not None:
                 dashed_this_turn = True
                 for idx, c in enumerate(live.initiative):
                     if c.entity_id == current.entity_id:
@@ -13238,15 +13327,11 @@ async def advance_monster_turn(
                         budget_consumed="action",
                     ),
                 )
-            # path[0] is attacker_zone; skip it. Walk forward step by step
-            # until either (a) a step can't be taken (budget, or an
-            # opportunity attack stopped the monster), or (b) we end up
-            # within attack range.
-            for next_zone in path[1:]:
-                if not _take_walk_step(live, current.entity_id, next_zone):
-                    break
-                if _in_range_with_los(live.topology, next_zone, target_zone, monster_range_ft):
-                    break
+            # Walk the planned route; a step that can't be taken (the budget,
+            # or an opportunity attack that stopped the monster) ends the walk.
+            # An attack may stop it on an ally's cell it was passing through:
+            # it did not choose to end there.
+            _walk_path(live, current.entity_id, plan.route)
             # Re-check range after the (possibly partial) move.
             final_zone = live.actor_zone[current.entity_id]
             if not _in_range_with_los(live.topology, final_zone, target_zone, monster_range_ft):

@@ -438,7 +438,8 @@ def test_c16_s05_blocked_cell_blocks_los_and_wall_blocks_corner_cutting():
     assert attack_failed_a[0].reason == "out_of_range"
     assert not events_of(live_a, AttackRolled)
 
-    # Part B — a diagonal step that would cut a wall's corner is rejected.
+    # Part B — a diagonal step that would cut a wall's corner is never taken:
+    # the move goes around the corner instead, two squares for 10 ft.
     async def _run_b():
         set_lib_loader_for_tests(MemoryAssetLoader())
         start = await start_combat(
@@ -482,10 +483,10 @@ def test_c16_s05_blocked_cell_blocks_los_and_wall_blocks_corner_cutting():
         return live
 
     live_b = run_async(_run_b())
-    move_failed_b = events_of(live_b, MoveFailed)
-    assert move_failed_b, "diagonal step cutting the wall's corner should be rejected"
-    assert not events_of(live_b, ActorMoved)
-    assert live_b.actor_zone["char:mover"] == cell(0, 0)
+    assert not events_of(live_b, MoveFailed)
+    [moved_b] = events_of(live_b, ActorMoved)
+    assert (moved_b.from_zone, moved_b.to_zone, moved_b.distance_ft) == (cell(0, 0), cell(1, 1), 10)
+    assert live_b.actor_zone["char:mover"] == cell(1, 1)
 
 
 def test_c16_s06_multicell_move_succeeds_with_terrain_cost_or_fails_unreachable_or_occupied():

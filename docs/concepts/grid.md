@@ -47,9 +47,19 @@ way provokes an opportunity attack, which then lands between them.
 
 A step is legal when it stays on the map, does not enter a `blocked_cells`
 square, does not cross a `wall_segments` entry, and — for a diagonal — does not
-cut an obstruction's corner. Occupancy follows SRD 5.2 §Moving Around Other
+cut an obstruction's corner. When the direct step to an adjacent destination is
+illegal, the move takes the shortest legal route around, priced and walked like
+any other route. Occupancy follows SRD 5.2 §Moving Around Other
 Creatures: **allies are passable, enemies are not**, and a move may not *end* on
 a cell another creature occupies, ally or enemy.
+
+The monster AI's closing walk follows the same rules. It walks the fewest-cells
+route toward its target, skirting enemy spaces, and stops at the first cell
+from which its attack reaches with line of sight. When that cell holds a
+creature, it takes instead the cheapest free cell in range that its movement
+reaches, taking the Dash only when that cell needs it. When no free cell in
+range is within reach, it walks the route as far as its movement goes, stops on
+the last free cell, and attacks on a later turn.
 
 A step that takes the mover out of an enemy's reach draws that enemy's
 opportunity attack first, whoever drives the mover: a `move` intent, the
@@ -66,7 +76,7 @@ A rejected move emits `MoveFailed` with one of:
 | `speed_zero` | the mover's Speed is 0 (Grappled, Restrained, Paralyzed, Petrified, Unconscious, or Exhaustion) — checked first |
 | `not_adjacent` | no destination given, an untracked position, or the destination is the mover's own cell (the legacy reason name is kept for hosts) |
 | `occupied` | the destination holds another creature — ally or enemy |
-| `blocked_path` | the destination is adjacent, but the single step crosses a wall or cuts a blocked corner |
+| `blocked_path` | the destination is adjacent, the direct step crosses a wall or cuts a blocked corner, and no route goes around |
 | `unreachable` | no legal route at all (enemy-occupied cells are impassable; allies may be passed through) |
 | `insufficient_movement` | a legal route exists but costs more than the remaining budget — atomic, nothing moves |
 | `frightened` | the route would take a Frightened mover closer to the source of its fear (SRD 5.2: "You can't willingly move closer to the source of fear") |
