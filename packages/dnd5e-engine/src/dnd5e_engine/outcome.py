@@ -37,8 +37,11 @@ class DeathRecord(BaseModel):
     target_kind: Literal["character", "npc", "monster"]
     location_id: str
     reason: DeathReason
-    # The creature that dealt the killing damage, whoever's turn it was;
-    # ``None`` for failed death saves and for a creature that killed itself.
+    # The creature that dealt the killing damage, whoever's turn it was. A
+    # death by death saves names the creature whose damage at 0 Hit Points
+    # added the final failure, and ``None`` when the failing save was rolled
+    # on the dying creature's own turn; ``None`` too for a creature that
+    # killed itself.
     killer_id: str | None = None
 
 

@@ -171,5 +171,13 @@ readable — a repeat `end_combat`, `get_live`, a last `drain_pending_events`
 — until 64 later combats have ended; its handle then raises
 `UnknownHandleError`.
 
+Each `DeathRecord.killer_id` names the creature that dealt the killing damage,
+whoever's turn it was: an opportunity attack's reactor, a legendary action's
+monster, a summon, a spell construct's caster. A death by death saves names the
+creature whose damage at 0 Hit Points added the final failure, and nobody when
+the failing save was rolled on the dying creature's own turn; a creature that
+killed itself names nobody. `get_live(handle).deaths` holds the same records
+while the fight runs.
+
 Not every SRD rule is resolved. The [capability matrix](../capabilities.md) is
 the per-mechanic inventory of what is and is not enforced.
