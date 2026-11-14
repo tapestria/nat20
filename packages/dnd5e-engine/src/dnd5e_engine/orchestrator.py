@@ -1986,19 +1986,26 @@ def _plan_closing_route(
     """The walk that brings ``mover`` within ``range_ft`` of ``target_zone``,
     with line of sight, on a free cell. Monster AI, DM-adjudicated; it draws no
     dice. SRD 5.2 Moving Around Other Creatures: "You can't willingly end a
-    move in a space occupied by another creature", and an enemy's space blocks
-    movement while an ally's may be passed through.
+    move in a space occupied by another creature." The engine lets the mover
+    pass through an ally's space and treats every other creature's as blocked.
 
-    Tier 1 keeps the plain walk whenever no creature is in the way: the
-    fewest-cells route to the target (enemy spaces avoided, the target's own
-    excepted), cut at the first cell in range, with the Dash decided from the
-    whole route's price (``_monster_dash_movement_budget``). When that stop
-    cell holds a creature, or no such route exists, tier 2 takes the cheapest
-    free cell in range that the remaining movement reaches, then the lowest
-    ``(column, row)`` compared as integers, and a Dash only when the cell needs
-    one. When neither tier finds a cell, the mover walks the tier-1 route as
-    far as its movement goes and stops on the last free cell of it, without a
-    Dash; its attack waits for a later turn.
+    Two kinds of destination, tried in this order:
+
+    1. The route stop: on the fewest-cells route to the target (every enemy's
+       space avoided but the target's own), the first cell in range, when no
+       creature stands on it. Whenever nothing is in the way this is the walk
+       that ignores occupancy, cell for cell.
+    2. The cheapest free cell in range by movement cost (difficult terrain
+       counted), then the lowest ``(column, row)`` compared as integers.
+
+    Each is tried first within the movement left, so a walk that reaches
+    range without a Dash never takes one; then, when the Action is available
+    and the effective Speed is above 0, within the movement a Dash grants
+    (``_monster_dash_movement_budget``, priced to the destination, not to the
+    target's own cell). When neither fits, the mover walks the route as far
+    as its movement goes and stops on the last free cell of it, without a
+    Dash, its attack left for a later turn; with no route at all it stays
+    where it is.
     """
     mover_id = mover.entity_id
     start = live.actor_zone[mover_id]
@@ -2011,35 +2018,37 @@ def _plan_closing_route(
     def in_range(cell: str) -> bool:
         return _in_range_with_los(grid, cell, target_zone, range_ft)
 
-    path = grid.shortest_path(start, target_zone, avoid=enemy_cells - {target_zone})
-    stop = next((i for i in range(1, len(path)) if in_range(path[i])), None)
-    if stop is not None:
-        dashed_budget = (
-            _monster_dash_movement_budget(_path_total_distance(grid, path), movement, speed)
-            if mover.action_available
-            else None
-        )
-        stop_cost = _path_total_distance(grid, path[: stop + 1])
-        if stop_cost is None or stop_cost > (dashed_budget or movement):
-            return _ClosingRoute(_free_prefix(grid, path, movement, occupied), None)
-        if path[stop] not in occupied:
-            return _ClosingRoute(path[: stop + 1], dashed_budget)
-
-    budgets: list[tuple[int, int | None]] = [(movement, None)]
-    if mover.action_available and speed > 0:
-        budgets.append((movement + speed, movement + speed))
-    for budget_ft, dashed in budgets:
+    def cheapest_free_cell(budget_ft: int) -> list[str] | None:
         reached = grid.reachable_cells(start, budget_ft, avoid=enemy_cells)
         candidates = [
             (cost, parse_cell(cell), cell)
             for cell, (cost, _previous) in reached.items()
             if cell not in occupied and in_range(cell)
         ]
-        if candidates:
-            route = [min(candidates)[2]]
-            while (previous := reached[route[-1]][1]) is not None:
-                route.append(previous)
-            return _ClosingRoute(route[::-1], dashed)
+        if not candidates:
+            return None
+        route = [min(candidates)[2]]
+        while (previous := reached[route[-1]][1]) is not None:
+            route.append(previous)
+        return route[::-1]
+
+    path = grid.shortest_path(start, target_zone, avoid=enemy_cells - {target_zone})
+    stop = next((i for i in range(1, len(path)) if in_range(path[i])), None)
+    stop_cost = (
+        _path_total_distance(grid, path[: stop + 1])
+        if stop is not None and path[stop] not in occupied
+        else None
+    )
+    if stop is not None and stop_cost is not None and stop_cost <= movement:
+        return _ClosingRoute(path[: stop + 1], None)
+    if (route := cheapest_free_cell(movement)) is not None:
+        return _ClosingRoute(route, None)
+    if mover.action_available:
+        dashed_budget = _monster_dash_movement_budget(stop_cost, movement, speed)
+        if stop is not None and dashed_budget is not None:
+            return _ClosingRoute(path[: stop + 1], dashed_budget)
+        if speed > 0 and (route := cheapest_free_cell(movement + speed)) is not None:
+            return _ClosingRoute(route, movement + speed)
     return _ClosingRoute(_free_prefix(grid, path, movement, occupied), None)
 
 

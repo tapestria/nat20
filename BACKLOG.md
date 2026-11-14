@@ -612,9 +612,9 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
 - **An opportunity attack can leave a walking monster on its ally's cell**
   (2026-11-14). The closing walk passes through an ally's space and plans to end
   on a free cell (SRD 5.2: "You can't willingly end a move in a space occupied by
-  another creature"), but an opportunity attack that stops the walk mid-route
-  (Speed 0, a push) leaves the monster on the cell it was leaving, which may be
-  that ally's. It did not choose to end there; the SRD's Prone consequence for
+  another creature"), but an opportunity attack that drops its Speed to 0
+  mid-route (a Slow hit on a Speed-10 monster) leaves it on the cell it was
+  leaving, which may be that ally's. It did not choose to end there; the SRD's Prone consequence for
   ending a turn in another creature's space is not applied.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_plan_closing_route`)
 - **A spaced cell id is stored as written (2026-09-27, C21b).**

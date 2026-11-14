@@ -53,13 +53,23 @@ any other route. Occupancy follows SRD 5.2 §Moving Around Other
 Creatures: **allies are passable, enemies are not**, and a move may not *end* on
 a cell another creature occupies, ally or enemy.
 
-The monster AI's closing walk follows the same rules. It walks the fewest-cells
-route toward its target, skirting enemy spaces, and stops at the first cell
-from which its attack reaches with line of sight. When that cell holds a
-creature, it takes instead the cheapest free cell in range that its movement
-reaches, taking the Dash only when that cell needs it. When no free cell in
-range is within reach, it walks the route as far as its movement goes, stops on
-the last free cell, and attacks on a later turn.
+The monster AI's closing walk follows the same occupancy rules. It looks for a
+free cell from which its attack reaches the target with line of sight, in this
+order:
+
+1. the first such cell on the fewest-cells route toward the target (enemy
+   spaces skirted), when no creature stands on it;
+2. otherwise the cheapest free cell in range, counting difficult terrain,
+   ties going to the lowest column, then row.
+
+It tries both within the movement it has left first, so a monster that can
+reach range by walking walks and attacks. Only when neither fits does it take
+the Dash (when its Action is unspent and its Speed is above 0), priced to that
+cell rather than to the target's own; a Dash takes its Action, so it attacks on
+a later turn. When no free cell in range is within reach even with a Dash, it
+walks the route as far as its movement goes and stops on the last free cell;
+with no route to the target at all, it stays where it is. An opportunity attack
+that stops it part-way can leave it on an ally's cell it was passing through.
 
 A step that takes the mover out of an enemy's reach draws that enemy's
 opportunity attack first, whoever drives the mover: a `move` intent, the
