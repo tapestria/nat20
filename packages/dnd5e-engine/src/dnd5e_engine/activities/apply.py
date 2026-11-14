@@ -86,6 +86,7 @@ def apply_damage(
     magical: bool = False,
     source_id: str | None = None,
     is_crit: bool = False,
+    knock_out: bool = False,
 ) -> int:
     """Apply a per-damage-type rolled amount to ``target`` and emit one
     ``DamageApplied`` per valid type.
@@ -107,6 +108,11 @@ def apply_damage(
     ``source_id`` / ``is_crit`` — C15 damage-attribution metadata threaded
     straight into the emitted ``DamageApplied`` event(s); see
     ``DamageApplied.source_id`` / ``.is_crit`` for the source-id policy.
+
+    ``knock_out`` — SRD 5.2 Knocking Out a Creature: the attacker of a melee
+    attack chose to pull the blow. Stamped on every emitted ``DamageApplied``;
+    the orchestrator's fold leaves a creature it would have dropped at 1 Hit
+    Point, Unconscious.
 
     Returns the TOTAL final (post-modifier) amount actually dealt across every
     valid type — Vex: "hit a creature ... and deal damage to the
@@ -147,6 +153,9 @@ def apply_damage(
             and MonsterTraitMechanic.UNDEAD_FORTITUDE in target.trait_mechanics
             and srd_type != "radiant"
             and not is_crit
+            # A pulled blow reduces the creature to 1 Hit Point "instead" of
+            # 0, so the trait's trigger never happens and no die is drawn.
+            and not knock_out
         ):
             dc = 5 + final_amount
             roll = roll_d20_test(ctx.rng, save_modifier(target, "con").total, AdvantageSources())
@@ -185,6 +194,7 @@ def apply_damage(
                 is_overkill=is_overkill,
                 source_id=source_id,
                 is_crit=is_crit,
+                knock_out=knock_out,
             )
         )
     return total_dealt

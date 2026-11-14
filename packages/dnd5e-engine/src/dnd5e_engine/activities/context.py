@@ -573,6 +573,11 @@ class ActivityResolutionContext:
     # only for the resolution an opportunity attack runs; ``attack.py`` stamps
     # it on every ``AttackRolled`` that resolution emits.
     is_opportunity_attack: bool = False
+    # SRD 5.2 Knocking Out a Creature: "When you would reduce a creature to 0
+    # Hit Points with a melee attack, you can instead reduce the creature to 1
+    # Hit Point." The attacker's choice for this resolution; ``attack.py``
+    # stamps it on the damage of every melee attack it resolves.
+    knock_out: bool = False
 
     def ability_mod(self, ability: str) -> int:
         return (self.caster_abilities.get(ability, 10) - 10) // 2

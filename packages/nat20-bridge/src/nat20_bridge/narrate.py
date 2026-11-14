@@ -167,6 +167,14 @@ def _fmt_death(e: Any, names: dict[str, str]) -> str:
     return f"{who} dies."
 
 
+@_register("knocked_out")
+def _fmt_knocked_out(e: Any, names: dict[str, str]) -> str:
+    who = _who(e.target_id, names)
+    if e.attacker_id is None:
+        return f"{who} is knocked out."
+    return f"{_who(e.attacker_id, names)} knocks {who} out."
+
+
 @_register("combatant_joined")
 def _fmt_combatant_joined(e: Any, names: dict[str, str]) -> str:
     who = names.get(e.entity_id, e.name)

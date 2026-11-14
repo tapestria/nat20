@@ -147,6 +147,8 @@ def apply_mastery_on_miss(
     ctx: ActivityResolutionContext,
     target: Combatant,
     governing_ability: str | None,
+    *,
+    knock_out: bool = False,
 ) -> None:
     """Resolve a weapon's MISS-triggered mastery against ``target``.
 
@@ -154,9 +156,13 @@ def apply_mastery_on_miss(
     the weapon's damage type (nothing when the mod is <= 0). Every other
     mastery is HIT-triggered — nothing to do on a miss. A weapon with no
     mastery is a no-op.
+
+    ``knock_out`` — the missed attack was a melee attack whose attacker chose
+    to pull its blows (SRD 5.2 Knocking Out a Creature). Graze damage is that
+    attack's damage, so it carries the choice onto ``DamageApplied``.
     """
     if _mastery_of(weapon) == _GRAZE:
-        _resolve_graze(weapon, ctx, target, governing_ability)
+        _resolve_graze(weapon, ctx, target, governing_ability, knock_out=knock_out)
 
 
 def _mastery_of(weapon: Weapon | None) -> str | None:
@@ -174,6 +180,8 @@ def _resolve_graze(
     ctx: ActivityResolutionContext,
     target: Combatant,
     governing_ability: str | None,
+    *,
+    knock_out: bool = False,
 ) -> None:
     """Deal flat governing-ability-mod damage of the weapon's damage type on a miss.
 
@@ -197,6 +205,7 @@ def _resolve_graze(
         magical=weapon.magical,
         source_id="mastery:graze",
         is_crit=False,
+        knock_out=knock_out,
     )
 
 

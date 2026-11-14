@@ -326,6 +326,10 @@ class DamageApplied(BaseModel):
     # C15 — whether this damage event was a critical hit; feeds the
     # crit-at-0-HP two-death-save-failures clause (SRD §Damage at 0 HP).
     is_crit: bool = False
+    # SRD 5.2 Knocking Out a Creature: the attacker chose to pull this blow.
+    # Only a melee attack's damage carries it; the fold leaves a creature it
+    # would have dropped at 1 Hit Point, Unconscious, instead of dead.
+    knock_out: bool = False
 
 
 class HealingApplied(BaseModel):
@@ -433,6 +437,16 @@ class DeathSaveRolled(BaseModel):
     outcome: Literal["success", "failure", "crit_success", "crit_failure"]
     running_successes: int
     running_failures: int
+
+
+class KnockedOut(BaseModel):
+    """SRD 5.2 Knocking Out a Creature: a melee attack that would have reduced
+    ``target_id`` to 0 Hit Points left it at 1, Unconscious. Emitted after the
+    ``DamageApplied`` that did it and before the ``ConditionApplied``."""
+
+    type: Literal["knocked_out"] = "knocked_out"
+    target_id: str
+    attacker_id: str | None  # the current actor; ``None`` only outside a turn
 
 
 class Stabilized(BaseModel):
@@ -764,6 +778,7 @@ CombatEvent = Annotated[
     | Unconscious
     | DeathSaveStarted
     | DeathSaveRolled
+    | KnockedOut
     | Stabilized
     | Death
     | ZoneTransit
@@ -811,6 +826,7 @@ ALL_COMBAT_EVENT_TYPES: tuple[type[BaseModel], ...] = (
     Unconscious,
     DeathSaveStarted,
     DeathSaveRolled,
+    KnockedOut,
     Stabilized,
     Death,
     ZoneTransit,
@@ -868,6 +884,7 @@ __all__ = [
     "HealingApplied",
     "IntentSubmitted",
     "IntentType",
+    "KnockedOut",
     "LegendaryActionUsed",
     "LegendaryResistanceUsed",
     "MoveFailed",
