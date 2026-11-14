@@ -29,6 +29,7 @@ from collections import Counter
 from dnd5e_srd_data.loader import BundledAssetLoader
 
 from dnd5e_engine import PlayerIntent
+from dnd5e_engine.areas import area_activity
 from dnd5e_engine.events import AreaTargeted, CastFailed, DamageApplied, SaveRolled
 from dnd5e_engine.orchestrator import _area_plan, _item_charges_spent
 from dnd5e_engine.spatial import cell_id
@@ -108,6 +109,15 @@ def test_each_extra_charge_adds_a_dart() -> None:
     assert _item_charges_spent(live, _HERO, "wand-of-magic-missiles") == 3
 
 
+def test_a_robe_star_casts_the_level_5_magic_missile() -> None:
+    """SRD 5.2 Robe of Stars: "you can take a Magic action to remove one of
+    the stars and expend it to cast the level 5 version of Magic Missile":
+    seven darts, all at a lone target."""
+    handle, live = start([pc()], seed=3, encounter=_three_foes())
+    _use(handle, "robe-of-stars", target_id="mon:a")
+    assert _darts(live) == Counter({"mon:a": 7})
+
+
 def test_an_upcast_wand_splits_its_darts_across_named_creatures() -> None:
     handle, live = start([pc()], seed=3, encounter=_three_foes())
     _use(
@@ -132,16 +142,30 @@ def test_more_named_creatures_than_darts_is_refused_with_no_charge_spent() -> No
 
 
 def test_a_multi_activity_item_with_no_activity_chosen_never_places_an_area() -> None:
-    """The Hat of Many Spells lists alternative casts and charges none of
-    them, so a use naming no ``activity_id`` resolves all of them and is
-    ambiguous: no area, though one of them casts Fireball. Naming the
-    Fireball cast places its sphere."""
-    hat = BundledAssetLoader().get_item("hat-of-many-spells")
+    """The Horn of Blasting's blast, object damage, explosion roll and
+    misfire damage are alternatives and none is charged, so a use naming no
+    ``activity_id`` resolves all four and is ambiguous: no area, although its
+    first templated activity (the blast's 30-foot Cone) would place one.
+    Naming one cast on the Hat of Many Spells (its Fireball) is not
+    ambiguous and places that spell's sphere."""
+    loader = BundledAssetLoader()
+    horn = loader.get_item("horn-of-blasting")
+    hat = loader.get_item("hat-of-many-spells")
+    assert horn is not None
     assert hat is not None
+    unchosen = PlayerIntent(intent_type="use_item", item_id=horn.slug, target_id="mon:a")
+    blast = area_activity(horn.activities)
+    assert blast is not None
+    assert blast.id == "FMTcQOb5MZKBohdN"
+    assert not any(a.kind == "attack" for a in horn.activities)
+    assert _area_plan(unchosen, list(horn.activities)) is None
     fireball = [a for a in hat.activities if a.id == "1Oov0JtLLqUAI5g2"]
-    unchosen = PlayerIntent(intent_type="use_item", item_id=hat.slug, target_id="mon:a")
-    chosen = unchosen.model_copy(update={"activity_id": "1Oov0JtLLqUAI5g2"})
-    assert _area_plan(unchosen, list(hat.activities)) is None
+    chosen = PlayerIntent(
+        intent_type="use_item",
+        item_id=hat.slug,
+        activity_id="1Oov0JtLLqUAI5g2",
+        target_id="mon:a",
+    )
     plan = _area_plan(chosen, fireball)
     assert plan is not None
     assert plan.template is not None

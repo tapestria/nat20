@@ -292,7 +292,15 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   these intents ever area-expands — but the ambiguous resolution itself
   stands: the proper fix resolves only the chosen activity, requiring
   `activity_id` when an item carries alternatives, as a feature already
-  does.
+  does. For the Hat of Many Spells and the Helm of Brilliance an unchosen
+  use raises `ValueError: Unhandled roll-data token: '@scaling'` after the
+  Action and the `IntentSubmitted` event are already spent (amended
+  2026-11-14): the Hat's Unknown Spell Check `dc.formula` (`10 + @scaling`)
+  raises in `activities/check.py::_resolve_dc`, right after the intent
+  event; the Helm's Explosive Emanation damage bonus (`@scaling`) raises in
+  `activities/save.py::_roll_shared_damage`, after its other activities have
+  already applied damage and conditions. Both reach the raise through
+  `activities/formula.py::resolve_roll_data`.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_resolve_intent_activities`)
 - **A seeded Incapacitated effect ends nothing (2026-09-27, C23).** SRD 5.2
   Incapacitated: "Your Concentration is broken." `_seed_active_effects` writes
@@ -944,6 +952,29 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   catch every creature, or every enemy, in range rather than only the
   named creature type.
   (`packages/dnd5e-engine/src/dnd5e_engine/areas.py::select_affected`)
+- **Item text that changes a delegated spell's area or targets is not
+  honoured (2026-11-14).** An item's one `cast` places the area of the spell
+  it casts, read off the spell's own activities, so what the item adds is
+  lost. The Wand of Fear casts "Fear (60-foot Cone)", but the plain spell's
+  30-foot Cone is placed; the typed cast activity carries no override. The
+  Cloak of Arachnida's web "fills twice its normal area", but the normal
+  20-foot Cube is placed; here the cast activity does carry a
+  `target.override` with a 40-foot `cube` template, which nothing reads. The
+  Ring of Animal Influence casts "Fear (affects Beasts only)", a restriction
+  that lives only in the activity's name and the description, so its Cone
+  catches allies and non-Beasts alike and can Frighten creatures the item
+  text excludes.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_delegated_cast`)
+- **An item's cast of a healing spell raises (2026-11-14).** The item path
+  supplies no spellcasting ability, so a delegated heal whose formula adds
+  the caster's modifier raises `ValueError: @mod requires a governing
+  ability but none was supplied for '@mod'` (raised by
+  `activities/formula.py::resolve_roll_data` under
+  `activities/heal.py::resolve_heal`), after the Action and
+  `IntentSubmitted` are spent. Reproduced: the Staff of Healing's Cure Wounds and Mass Cure
+  Wounds, the Dragon Orb's Cure Wounds, and the Necklace of Prayer Beads'
+  Cure Wounds bead. Mass Cure Wounds emits `AreaTargeted` before it raises.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/heal.py::resolve_heal`)
 
 ### Passive-stat projection (`activities/passive_stats.py`)
 
