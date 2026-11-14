@@ -1,7 +1,7 @@
 # Combat sides, a host-chosen foe target, and knocking out a creature — design spec
 
 **Date:** 2026-11-02
-**Status:** accepted, in implementation
+**Status:** implemented in 0.8.0
 **Target release:** `dnd5e-engine` 0.8.0 (lockstep with `dnd5e-srd-data` and
 `nat20-bridge` 0.8.0); every change below is additive to the 0.7.0 API.
 **Location rationale:** lives in `docs/dev/` alongside the other developer design

@@ -1663,6 +1663,37 @@ one hit.
   a new `CombatEvent` member or a counters payload on an existing one.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_apply_zero_hp_to_character`)
 
+## Sides and knocking out (2026-11-14)
+
+- **First aid is not an action.** SRD 5.2 Knocking Out a Creature: the
+  creature "remains Unconscious until it regains any Hit Points or until
+  someone uses an action to administer first aid to it, which requires a
+  successful DC 10 Wisdom (Medicine) check." Only healing wakes a knocked-out
+  creature in combat; no intent spends an action on first aid. The Short Rest
+  the knock-out starts (at the end of which the condition ends) is left to
+  the host, after the fight.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_knock_out`)
+- **A melee spell attack cannot knock a creature out.** `PlayerIntent.knock_out`
+  is read on an `attack` intent only: a `cast_spell` ignores it, so a Shocking
+  Grasp that drops a creature to 0 Hit Points kills it, though the rule covers
+  any melee attack. An `attack` naming a `spell_id` (a Spiritual Weapon's
+  repeat) is refused with `knock_out_not_melee`.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_reject_knock_out_not_melee`)
+- **A monster-driven turn never pulls a blow.** `advance_monster_turn` has no
+  knock-out choice, and an opportunity attack never carries one, so a foe or an ally the engine drives always kills at 0 Hit Points. A
+  host that wants a creature to pull its blow commands it through
+  `submit_player_intent`.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::advance_monster_turn`)
+- **A party-side creature has no legendary actions or Legendary Resistance.**
+  Both read `encounter_ids` only, so a legendary monster seated with
+  `side="party"` never spends a legendary action, and
+  `resolve_legendary_resistance` refuses it with `no_legendary_resistance`.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_eligible_legendary_actor`,
+  `packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::resolve_legendary_resistance`)
+- **Two sides only.** `Side` is `"party"` or `"encounter"`: a third faction, or
+  a creature hostile to everyone, cannot be seated.
+  (`packages/dnd5e-engine/src/dnd5e_engine/specs.py::Side`)
+
 ## Conditions — SRD 5.2 rows not enforced (2026-08-27)
 
 C12 gave all 15 conditions teeth on the live combat path (see
