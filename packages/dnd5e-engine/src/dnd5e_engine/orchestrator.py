@@ -6255,10 +6255,19 @@ def _area_plan(intent: PlayerIntent, activities: Sequence[Any]) -> _AreaPlan | N
     chosen via ``activity_id`` or is the charged one still gets its area. A
     feature with several activities never gets here without ``activity_id``
     (``_resolve_feature_invocation``).
+
+    An item whose one resolved activity casts a spell (a Wand of Fireballs, a
+    Necklace of Fireballs bead) places that spell's area, as the spell would
+    (``_delegated_cast``).
     """
-    if intent.intent_type == "attack" or any(a.kind == "attack" for a in activities):
+    if intent.intent_type == "attack":
         return None
     if intent.intent_type == "use_item" and not intent.activity_id and len(activities) > 1:
+        return None
+    delegated = _delegated_cast(intent, activities)
+    if delegated is not None:
+        activities = delegated[0].activities
+    if any(a.kind == "attack" for a in activities):
         return None
     activity = area_activity(activities)
     if activity is None:
@@ -11122,7 +11131,10 @@ def _reject_over_count_targets(
     Runs BEFORE ``_consume_spell_slot`` so a rejected upcast never spends a slot —
     ``_resolve_intent_activities`` (which fetches ``activities``) does not run
     until AFTER the slot gate, so this loads the spell itself via the cached lib
-    loader and inspects ``spell.activities`` directly.
+    loader and inspects ``spell.activities`` directly. An item that casts a
+    count-bearing spell (a Wand of Magic Missiles) is checked the same way,
+    before its charges are spent, against the spell its one activity casts at
+    the level its charges buy.
 
     Returns ``True`` iff the cast was REJECTED (``CastFailed(reason=
     "target_invalid")`` emitted and the turn already advanced — the caller must
@@ -11131,15 +11143,23 @@ def _reject_over_count_targets(
     cast proceeds unchanged; ``_count_scaled_targets`` later assumes validity and
     never rejects.
     """
-    if not (intent.intent_type == "cast_spell" and intent.spell_id):
+    if intent.intent_type == "cast_spell" and intent.spell_id:
+        spell = get_lib_loader().get_spell(intent.spell_id)
+        counted = (
+            None
+            if spell is None
+            else _count_activity_and_level(intent, list(spell.activities), spell)
+        )
+    elif intent.intent_type == "use_item":
+        # The charge gate has priced this use but nothing is spent until every
+        # gate here has passed (``_record_item_charge_spend``).
+        item_activities = _resolve_intent_activities(intent, None, current).activities
+        counted = _count_activity_and_level(intent, item_activities, None)
+    else:
         return False
-    spell = get_lib_loader().get_spell(intent.spell_id)
-    if spell is None:
+    if counted is None:
         return False
-    activity = _find_count_activity(list(spell.activities))
-    if activity is None:
-        return False
-    cast_level = intent.slot_level if intent.slot_level is not None else spell.level
+    activity, cast_level = counted
     n = resolve_target_count(activity.target.affects.count, cast_level=cast_level)
     if n is None:
         return False
@@ -11154,7 +11174,7 @@ def _reject_over_count_targets(
             live,
             CastFailed(
                 actor_id=current.entity_id,
-                spell_id=intent.spell_id,
+                spell_id=intent.spell_id or "",
                 reason="target_invalid",
             ),
         )
@@ -11518,6 +11538,59 @@ def _find_count_activity(activities: list[Any]) -> Any | None:
     return None
 
 
+def _delegated_cast(
+    intent: PlayerIntent, activities: Sequence[Any]
+) -> tuple[Spell, int | None] | None:
+    """The spell a ``use_item`` casts, and the item's own printed cast level
+    (``None``: the spell's own), when its resolved activities are exactly one
+    ``cast`` whose spell the lib resolves; ``None`` otherwise.
+
+    SRD 5.2 Wand of Fireballs: "you can expend ... charges to cast Fireball";
+    the item's one cast targets as the spell it casts (its area, its darts).
+    The lookup is the one the ``cast`` handler's spell book uses
+    (``_build_cast_spell_book``)."""
+    if intent.intent_type != "use_item" or len(activities) != 1:
+        return None
+    [activity] = activities
+    if activity.kind != "cast":
+        return None
+    spell = get_lib_loader().get_spell_by_uuid(activity.spell.uuid)
+    if spell is None:
+        return None
+    return spell, activity.spell.level
+
+
+def _count_activity_and_level(
+    intent: PlayerIntent, activities: list[Any], cast_spell: Spell | None
+) -> tuple[Any, int] | None:
+    """The count-bearing activity (``_find_count_activity``) a cast resolves
+    and the level it is cast at, or ``None`` when there is none.
+
+    A ``cast_spell`` reads ``activities`` at its slot level, else the spell's
+    own. An item's one ``cast`` (``_delegated_cast``) reads the delegated
+    spell's activities at the level ``resolve_cast`` casts it: the level its
+    extra charges buy (``_item_cast_level_override``), else the item's printed
+    level, else the spell's own."""
+    if intent.intent_type == "cast_spell" and cast_spell is not None:
+        activity = _find_count_activity(activities)
+        cast_level = intent.slot_level if intent.slot_level is not None else cast_spell.level
+    elif (delegated := _delegated_cast(intent, activities)) is not None:
+        spell, printed_level = delegated
+        activity = _find_count_activity(list(spell.activities))
+        override = _item_cast_level_override(intent)
+        if override is not None:
+            cast_level = override
+        elif printed_level is not None:
+            cast_level = printed_level
+        else:
+            cast_level = spell.level
+    else:
+        return None
+    if activity is None:
+        return None
+    return activity, cast_level
+
+
 def _count_scaled_targets(
     live: _LiveCombat,
     intent: PlayerIntent,
@@ -11534,14 +11607,13 @@ def _count_scaled_targets(
     pure expander with NO rejection branch. Returns ``None`` when not applicable
     (not a cast / no count-bearing activity / not a creature count / the formula
     resolves to no count) so the caller falls through to the plain ``target_id``
-    lookup.
+    lookup. An item that casts a count-bearing spell expands the same way
+    (``_count_activity_and_level``).
     """
-    if intent.intent_type != "cast_spell" or cast_spell is None:
+    counted = _count_activity_and_level(intent, activities, cast_spell)
+    if counted is None:
         return None
-    activity = _find_count_activity(activities)
-    if activity is None:
-        return None
-    cast_level = intent.slot_level if intent.slot_level is not None else cast_spell.level
+    activity, cast_level = counted
     n = resolve_target_count(activity.target.affects.count, cast_level=cast_level)
     if n is None:
         return None

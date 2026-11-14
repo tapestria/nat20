@@ -685,12 +685,17 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   can only place the Cube at its own feet, in one of the eight directions,
   never offset toward a foe it can see at range.
   (`packages/dnd5e-engine/src/dnd5e_engine/areas.py::best_aim`)
-- **A delegated cast resolves against its named target only (2026-10-04,
-  C26a).** An item whose activity casts a spell (the Wand of Fireballs, a Spell
-  Scroll) resolves the spell's activities against the item intent's target
-  list, which a `cast` activity never expands: a Wand of Fireballs hits one
-  creature.
-  (`packages/dnd5e-engine/src/dnd5e_engine/activities/cast.py`)
+- **A monster's Magic Missile fires one dart (2026-11-14).** A stat-block
+  cast resolves the spell's activities against the turn's one target (or the
+  area it places), and never expands a count-bearing activity: the Night Hag's
+  level 4 Magic Missile deals one dart's damage, not six. A player's cast and
+  an item's cast split their darts (`_count_scaled_targets`).
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_resolve_monster_cast`)
+- **An item's cast is not range-gated (2026-11-14).** The spell range gate
+  reads only a `cast_spell` intent, so a `use_item` that casts a spell (a
+  Necklace of Fireballs bead, thrown "up to 60 feet") reaches a named target
+  or centres its area at any distance.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_spell_out_of_range`)
 - **Monster-cast AoE applies no forced-movement rider** (2026-08-27). Only the
   player-intent cast path calls `activities/forced_movement.py`, so a monster
   casting Thunderwave deals damage but pushes nobody.
