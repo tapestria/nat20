@@ -34,7 +34,7 @@ from typing import Any
 import pytest
 from dnd5e_srd_data.schema.monster import MonsterTraitMechanic
 
-from dnd5e_engine import CombatHandle, KnockOutRecord, end_combat, get_live
+from dnd5e_engine import ActiveEffect, CombatHandle, KnockOutRecord, end_combat, get_live
 from dnd5e_engine.events import (
     AttackRolled,
     CombatantLeft,
@@ -43,6 +43,7 @@ from dnd5e_engine.events import (
     DamageApplied,
     Death,
     DeathSaveRolled,
+    EffectExpired,
     HealingApplied,
     IntentSubmitted,
     KnockedOut,
@@ -52,6 +53,7 @@ from dnd5e_engine.events import (
 from dnd5e_engine.orchestrator import (
     IntentRejectedError,
     _current_actor,
+    _emit,
     _LiveCombat,
     _select_monster_targets,
     advance_monster_turn,
@@ -631,3 +633,104 @@ def test_undead_fortitude_still_saves_a_summon_a_pulled_blow_cannot_knock_out() 
     assert events(live, KnockedOut) == []
     assert events(live, CombatantLeft) == []
     assert live.tracked_hp[spirit] == 1
+
+
+# ── Knocked out while another effect holds it Unconscious ──────────────────
+
+_SLEEP = ActiveEffect(
+    id="effect:sleep",
+    name="Sleep",
+    origin="cast:sleep:char:cleric",
+    target_id="mon:foe",
+    statuses=["unconscious"],
+)
+
+
+def _asleep_and_knocked_out() -> tuple[CombatHandle, _LiveCombat]:
+    """The foe is Unconscious from a spell effect when the hero's pulled blow
+    knocks it out."""
+    with rng_factory(_D20Shows10):
+        handle, live = start(
+            [pc(), cleric(initiative=19, zone_id=cell_id(2, 0), spells_known=["cure-wounds"])],
+            seed=1,
+            encounter=[_frail(hp_max=20)],
+            active_effects=[_SLEEP],
+        )
+    act(
+        handle,
+        "char:hero",
+        intent_type="attack",
+        weapon_id="longsword",
+        target_id="mon:foe",
+        knock_out=True,
+    )
+    assert [e.target_id for e in events(live, KnockedOut)] == ["mon:foe"]
+    assert live.knocked_out_ids == {"mon:foe"}
+    return handle, live
+
+
+def _unconscious(live: _LiveCombat) -> bool:
+    held = {c.condition for c in combatant(live, "mon:foe").conditions}
+    return "unconscious" in held and "unconscious" in live.active_conditions["mon:foe"]
+
+
+def test_the_effect_ending_does_not_wake_a_knocked_out_creature() -> None:
+    """SRD 5.2 Knocking Out a Creature: "The creature remains Unconscious
+    until it regains any Hit Points or until someone uses an action to
+    administer first aid to it." The other effect's Unconscious ending is
+    neither, so the knock-out and its Unconscious last until it is healed."""
+    handle, live = _asleep_and_knocked_out()
+    _emit(
+        live,
+        EffectExpired(
+            effect_id=_SLEEP.id, target_id="mon:foe", origin=_SLEEP.origin, reason="duration"
+        ),
+    )
+    _emit(live, ConditionRemoved(target_id="mon:foe", condition="unconscious"))
+    assert _unconscious(live)
+    assert get_live(handle).knocked_out_ids == {"mon:foe"}
+    act(
+        handle,
+        "char:cleric",
+        intent_type="cast_spell",
+        spell_id="cure-wounds",
+        target_id="mon:foe",
+        slot_level=1,
+    )
+    assert live.knocked_out_ids == set()
+    held = {c.condition for c in combatant(live, "mon:foe").conditions}
+    assert "unconscious" not in held
+    assert "prone" in held
+
+
+def test_healing_ends_the_knock_out_but_not_another_effects_unconscious() -> None:
+    """Regaining Hit Points ends the knock-out ("remains Unconscious until it
+    regains any Hit Points"), not the Unconscious a still-running effect
+    imposes: the creature stays Unconscious, is no longer knocked out (a
+    legal target, not counted out of the fight), and wakes only when that
+    effect ends."""
+    handle, live = _asleep_and_knocked_out()
+    first = len(live.event_log)
+    act(
+        handle,
+        "char:cleric",
+        intent_type="cast_spell",
+        spell_id="cure-wounds",
+        target_id="mon:foe",
+        slot_level=1,
+    )
+    after = live.event_log[first:]
+    assert [e for e in after if isinstance(e, HealingApplied)]
+    assert not [e for e in after if isinstance(e, ConditionRemoved)]
+    assert _unconscious(live)
+    assert live.knocked_out_ids == set()
+    _emit(
+        live,
+        EffectExpired(
+            effect_id=_SLEEP.id, target_id="mon:foe", origin=_SLEEP.origin, reason="duration"
+        ),
+    )
+    assert "unconscious" not in {c.condition for c in combatant(live, "mon:foe").conditions}
+    outcome = asyncio.run(end_combat(handle)).outcome
+    assert outcome.knock_outs == []
+    assert outcome.ended_reason == "forced"

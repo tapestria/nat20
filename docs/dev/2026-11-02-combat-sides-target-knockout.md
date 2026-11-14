@@ -349,6 +349,13 @@ not the top-level `__all__`.
   ends Unconscious the way a revive does — `ConditionRemoved("unconscious")`,
   then Prone if not already Prone (`:5341-5357`). The 0 → positive branch is
   untouched.
+- **Another source of Unconscious.** The knock-out holds its own Unconscious
+  entry even on a creature an effect already holds Unconscious, and nothing
+  but healing or a drop to 0 Hit Points ends it: the effect ending leaves the
+  creature knocked out and Unconscious ("remains Unconscious until it regains
+  any Hit Points"). Healing ends the knock-out, not the effect's Unconscious:
+  the creature is no longer knocked out (a legal target, not out of the
+  fight) and stays Unconscious until that effect ends.
 - **Damage while knocked out.** The creature is at 1 Hit Point: a hit (an auto-crit
   from within 5 feet) takes it to 0 and leaves `knocked_out_ids` — a monster
   dies, a character starts dying — through the existing branches with nothing

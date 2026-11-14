@@ -4077,6 +4077,7 @@ def _strip_condition_from_combatant(live: _LiveCombat, entity_id: str, condition
         for ac in c.conditions
         if ac.condition != condition
         or (ac.source_effect_id is not None and ac.source_effect_id in live_effect_ids)
+        or _is_knock_out_entry(live, entity_id, ac)
     ]
     if len(new) != len(c.conditions):
         for idx, slot in enumerate(live.initiative):
@@ -5477,8 +5478,41 @@ def _knock_out(live: _LiveCombat, target_id: str, *, attacker_id: str | None) ->
     )
     _emit(live, KnockedOut(target_id=target_id, attacker_id=attacker_id))
     target = _find_combatant(live, target_id)
-    if target is not None and "unconscious" not in _condition_names(target):
+    if target is None:
+        return
+    if "unconscious" not in _condition_names(target):
         _emit(live, ConditionApplied(target_id=target_id, condition="unconscious"))
+        return
+    # Already Unconscious from an effect: the knock-out still holds its own
+    # entry, so the effect ending does not wake it ("remains Unconscious until
+    # it regains any Hit Points").
+    if not any(_is_knock_out_entry(live, target_id, ac) for ac in target.conditions):
+        entry = ActiveCondition(
+            condition="unconscious",
+            source_entity_id="implied:event",
+            scope="combat",
+            applied_round=live.round_number,
+        )
+        for idx, slot in enumerate(live.initiative):
+            if slot.entity_id == target_id:
+                live.initiative[idx] = slot.model_copy(
+                    update={"conditions": [*slot.conditions, entry]}
+                )
+                break
+
+
+def _is_knock_out_entry(live: _LiveCombat, entity_id: str, ac: ActiveCondition) -> bool:
+    """Whether ``ac`` is the Unconscious a knock-out holds on ``entity_id``:
+    the one entry no effect owns, while the creature is knocked out. SRD 5.2
+    Knocking Out a Creature: "The creature remains Unconscious until it
+    regains any Hit Points or until someone uses an action to administer
+    first aid to it", so only the waking fold (``_emit_apply_healing``) or a
+    drop to 0 Hit Points ends it, never another source's removal."""
+    return (
+        ac.condition == "unconscious"
+        and ac.source_effect_id is None
+        and entity_id in live.knocked_out_ids
+    )
 
 
 def _end_knock_out(live: _LiveCombat, target_id: str) -> bool:
@@ -5590,14 +5624,25 @@ def _emit_apply_healing(live: _LiveCombat, event: HealingApplied) -> None:
     woken = event.amount > 0 and _end_knock_out(live, event.target_id)
     revived = (tracked == 0 and new_hp > 0) or woken
     revived_ids: list[str] = []
+    live_effect_ids = {eff.id for eff in live.active_effects.get(event.target_id, [])}
     for idx, c in enumerate(live.initiative):
         if c.entity_id == event.target_id:
             heal_update: dict[str, Any] = {"hp_current": new_hp}
             if revived:
                 heal_update["is_alive"] = True
                 heal_update["death_saves"] = {}
+                # Regaining Hit Points ends the dying or knocked-out
+                # Unconscious, not one a still-running effect imposes.
+                kept = [
+                    cond
+                    for cond in c.conditions
+                    if cond.condition != "unconscious" or cond.source_effect_id in live_effect_ids
+                ]
+                if any(cond.condition == "unconscious" for cond in kept):
+                    heal_update["conditions"] = kept
+                    live.initiative[idx] = c.model_copy(update=heal_update)
+                    break
                 # SRD 5.2 Unconscious: "When this condition ends, you remain Prone."
-                kept = [cond for cond in c.conditions if cond.condition != "unconscious"]
                 if not any(cond.condition == "prone" for cond in kept):
                     kept.append(
                         ActiveCondition(
@@ -5756,6 +5801,7 @@ def _emit_apply_effect_expired(live: _LiveCombat, event: EffectExpired) -> None:
                 for ac in combatant.conditions
                 if ac.condition not in expired_effect.statuses
                 or (ac.source_effect_id is not None and ac.source_effect_id in remaining_effect_ids)
+                or _is_knock_out_entry(live, event.target_id, ac)
             ]
             if len(new_conditions) != len(combatant.conditions):
                 for idx, c in enumerate(live.initiative):
