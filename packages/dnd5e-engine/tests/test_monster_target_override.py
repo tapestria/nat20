@@ -207,7 +207,7 @@ def test_an_actor_that_cannot_act_validates_the_id_then_passes(why: str) -> None
 
 
 def test_an_out_of_reach_target_is_walked_to_never_swapped() -> None:
-    far = pc("char:far", initiative=19, hp_current=60, hp_max=60, zone_id=cell_id(8, 0))
+    far = pc("char:far", initiative=19, hp_current=60, hp_max=60, zone_id=cell_id(9, 0))
     handle, live = start([pc(), far], seed=6)
     act(handle, "char:hero", intent_type="pass")
     act(handle, "char:far", intent_type="pass")
@@ -218,7 +218,9 @@ def test_an_out_of_reach_target_is_walked_to_never_swapped() -> None:
     assert [e for e in events(live, DashTaken) if e.actor_id == "mon:foe"]
     assert [e for e in events(live, ActorMoved) if e.actor_id == "mon:foe"]
     assert not [a for a in events(live, AttackRolled) if a.attacker_id == "mon:foe"]
-    assert live.actor_zone["mon:foe"] != cell_id(1, 0)
+    # It closed on the named creature rather than swinging at the adjacent hero.
+    col, _ = (int(n) for n in live.actor_zone["mon:foe"].split(","))
+    assert col > 1
 
 
 def test_an_area_keeps_the_engines_aim() -> None:
