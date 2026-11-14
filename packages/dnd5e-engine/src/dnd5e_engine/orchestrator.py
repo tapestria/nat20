@@ -5353,18 +5353,16 @@ def _emit_apply_damage(
     # opening snapshot. Combined into the same model_copy as the
     # ``last_damaged_by`` update below.
     new_temp_hp = live.tracked_temp_hp.get(event.target_id, 0)
-    damager = live.current_actor_id
     update_payload: dict[str, Any] = {
         "hp_current": new_hp,
         "temp_hp": new_temp_hp,
     }
-    # SRD §Hellish Rebuke — track the *creature that damaged you* on the
-    # target combatant. ``current_actor_id`` is the canonical "who is
-    # acting" (same source used for kill attribution below). Self-damage
-    # (e.g. reaction damage back at the actor) is excluded so HR's
-    # validation can't ping-pong.
-    if damager and damager != event.target_id:
-        update_payload["last_damaged_by"] = damager
+    # SRD 5.2 Hellish Rebuke — "The creature that damaged you": the dealer,
+    # the same creature a kill or knock-out by this damage credits, so an
+    # opportunity attack's reactor counts though it is not the current actor.
+    # Self-damage is excluded so Hellish Rebuke's validation can't ping-pong.
+    if dealer_id and dealer_id != event.target_id:
+        update_payload["last_damaged_by"] = dealer_id
     for idx, c in enumerate(live.initiative):
         if c.entity_id == event.target_id:
             live.initiative[idx] = c.model_copy(update=update_payload)

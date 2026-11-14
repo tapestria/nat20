@@ -19,12 +19,16 @@ import asyncio
 import random
 from typing import Any
 
-from dnd5e_engine import DeathRecord, end_combat, get_live
+from dnd5e_engine import DeathRecord, PlayerIntent, end_combat, get_live
 from dnd5e_engine.events import AttackRolled, Death, DeathSaveRolled
-from dnd5e_engine.orchestrator import _current_actor, advance_monster_turn
+from dnd5e_engine.orchestrator import (
+    _current_actor,
+    _hellish_rebuke_target_invalid,
+    advance_monster_turn,
+)
 from dnd5e_engine.spatial import cell_id
 from dnd5e_engine.testing import rng_factory
-from tests.c21_support import act, cleric, events, foe, monster_turn, pc, start
+from tests.c21_support import act, cleric, combatant, events, foe, monster_turn, pc, start
 
 
 class _D20Shows(random.Random):
@@ -112,6 +116,33 @@ def test_an_opportunity_attack_massive_damage_kill_of_a_character_names_the_reac
     [aoo] = [e for e in events(live, AttackRolled) if e.is_opportunity_attack]
     assert aoo.attacker_id == "mon:foe"
     assert get_live(handle).deaths == [_record("char:hero", "character", "instant_kill", "mon:foe")]
+
+
+def test_hellish_rebuke_answers_the_opportunity_attacker_that_damaged_it() -> None:
+    """SRD 5.2 Hellish Rebuke: "Reaction, which you take in response to taking
+    damage from a creature ... The creature that damaged you is momentarily
+    surrounded by green flames." The hero walks away from one foe on its own
+    turn and that foe's opportunity attack hits it: the foe is the creature
+    that damaged it, the bystander is not."""
+    with rng_factory(_D20Shows20):
+        handle, live = start(
+            [pc(hp_current=30, hp_max=30)],
+            seed=1,
+            encounter=[foe(), foe(entity_id="mon:bystander", zone_id=cell_id(9, 9))],
+        )
+    act(handle, "char:hero", intent_type="move", target_zone_id=cell_id(0, 3))
+    [aoo] = [e for e in events(live, AttackRolled) if e.is_opportunity_attack]
+    assert (aoo.attacker_id, aoo.is_hit) == ("mon:foe", True)
+    hero = combatant(live, "char:hero")
+    assert hero.last_damaged_by == "mon:foe"
+
+    def rebuke(target_id: str) -> PlayerIntent:
+        return PlayerIntent(
+            intent_type="cast_spell", spell_id="hellish-rebuke", target_id=target_id
+        )
+
+    assert not _hellish_rebuke_target_invalid(hero, rebuke("mon:foe"))
+    assert _hellish_rebuke_target_invalid(hero, rebuke("mon:bystander"))
 
 
 def test_a_legendary_action_kill_names_the_legendary_creature() -> None:
