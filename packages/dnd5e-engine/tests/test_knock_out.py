@@ -32,6 +32,7 @@ import random
 from typing import Any
 
 import pytest
+from dnd5e_srd_data.schema.monster import MonsterTraitMechanic
 
 from dnd5e_engine import CombatHandle, KnockOutRecord, end_combat, get_live
 from dnd5e_engine.events import (
@@ -45,6 +46,7 @@ from dnd5e_engine.events import (
     HealingApplied,
     IntentSubmitted,
     KnockedOut,
+    SaveRolled,
     Unconscious,
 )
 from dnd5e_engine.orchestrator import (
@@ -560,3 +562,65 @@ def test_damage_to_a_creature_already_at_0_hp_is_not_a_knock_out() -> None:
     assert live.knocked_out_ids == set()
     assert live.tracked_hp["char:down"] == 0
     assert combatant(live, "char:down").death_saves
+
+
+def test_a_creature_immune_to_unconscious_drops_to_1_hp_and_fights_on() -> None:
+    """SRD 5.2 Immunity: "If you have Immunity to a damage type or a
+    condition, it doesn't affect you in any way." The pulled blow still
+    reduces the creature "to 1 Hit Point" instead of 0, but the Unconscious
+    condition that follows never lands, so it is not knocked out: no
+    ``KnockedOut``, still a legal target, and it acts on its own turn."""
+    handle, live = _scripted([pc()], [_frail(condition_immunities=["unconscious"])])
+    act(
+        handle,
+        "char:hero",
+        intent_type="attack",
+        weapon_id="longsword",
+        target_id="mon:foe",
+        knock_out=True,
+    )
+    [damage] = events(live, DamageApplied)
+    assert damage.knock_out
+    assert live.tracked_hp["mon:foe"] == 1
+    assert combatant(live, "mon:foe").hp_current == 1
+    assert events(live, KnockedOut) == []
+    assert events(live, ConditionApplied) == []
+    assert events(live, Death) == []
+    assert live.knocked_out_ids == set()
+    assert "unconscious" not in {c.condition for c in combatant(live, "mon:foe").conditions}
+    monster_turn(handle)
+    [foe_attack] = [e for e in events(live, AttackRolled) if e.attacker_id == "mon:foe"]
+    assert foe_attack.target_id == "char:hero"
+    outcome = asyncio.run(end_combat(handle)).outcome
+    assert outcome.knock_outs == []
+    assert outcome.deaths == []
+
+
+def test_undead_fortitude_still_saves_a_summon_a_pulled_blow_cannot_knock_out() -> None:
+    """SRD 5.2 Undead Fortitude: "If damage reduces the [monster] to 0 Hit
+    Points, it makes a Constitution saving throw (DC 5 plus the damage taken)
+    ... On a successful save, the [monster] drops to 1 Hit Point instead." A
+    pulled blow skips that save only because it leaves the creature at 1 Hit
+    Point. A summon "disappears when it drops to 0 Hit Points" whatever the
+    attacker chose, so the blow does reduce it to 0 and the save is rolled."""
+    with rng_factory(_D20Shows10):
+        handle, live = start([pc()], seed=1, active_effects=[anchor_effect("char:hero")])
+    spirit = seat_summon(live, "char:hero", zone_id=cell_id(0, 1), hp=1)
+    body = combatant(live, spirit)
+    body.ac = 1
+    body.constitution = 40
+    body.save_proficiencies = []
+    body.trait_mechanics = [MonsterTraitMechanic.UNDEAD_FORTITUDE]
+    act(
+        handle,
+        "char:hero",
+        intent_type="attack",
+        weapon_id="longsword",
+        target_id=spirit,
+        knock_out=True,
+    )
+    [save] = [e for e in events(live, SaveRolled) if e.target_id == spirit]
+    assert (save.ability, save.succeeded) == ("con", True)
+    assert events(live, KnockedOut) == []
+    assert events(live, CombatantLeft) == []
+    assert live.tracked_hp[spirit] == 1

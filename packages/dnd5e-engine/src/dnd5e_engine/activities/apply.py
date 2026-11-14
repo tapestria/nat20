@@ -154,8 +154,9 @@ def apply_damage(
             and srd_type != "radiant"
             and not is_crit
             # A pulled blow reduces the creature to 1 Hit Point "instead" of
-            # 0, so the trait's trigger never happens and no die is drawn.
-            and not knock_out
+            # 0, so the trait's trigger never happens and no die is drawn; a
+            # creature the blow cannot knock out still drops to 0.
+            and not (knock_out and target.entity_id not in ctx.knock_out_exempt_ids)
         ):
             dc = 5 + final_amount
             roll = roll_d20_test(ctx.rng, save_modifier(target, "con").total, AdvantageSources())

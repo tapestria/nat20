@@ -247,6 +247,7 @@ def build_activity_context(
     stat_block_magnitudes: StatBlockMagnitudes | None = None,
     is_opportunity_attack: bool = False,
     knock_out: bool = False,
+    knock_out_exempt_ids: frozenset[str] = frozenset(),
 ) -> ActivityResolutionContext:
     """Adapt the caster + the pre-computed hydration sidecars into the typed
     ``ActivityResolutionContext`` the new resolver consumes.
@@ -587,4 +588,5 @@ def build_activity_context(
         stat_block_magnitudes=stat_block_magnitudes,
         is_opportunity_attack=is_opportunity_attack,
         knock_out=knock_out,
+        knock_out_exempt_ids=knock_out_exempt_ids,
     )

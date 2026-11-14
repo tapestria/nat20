@@ -5330,16 +5330,22 @@ def _emit_apply_damage(
     # Hit Points with a melee attack, you can instead reduce the creature to 1
     # Hit Point." Only a creature that has Hit Points to lose can be reduced
     # to 0, and a summon "disappears when it drops to 0 Hit Points" whatever
-    # the attacker chose.
-    knocked_out = (
+    # the attacker chose. ``activities/apply.py`` skips Undead Fortitude's
+    # save on the same test (``ActivityResolutionContext.knock_out_exempt_ids``).
+    pulled = (
         event.knock_out
         and new_hp <= 0
         and tracked > 0
         and event.target_id not in live.dead_ids
         and event.target_id not in live.summons
     )
-    if knocked_out:
+    if pulled:
         new_hp = 1
+    # "The creature then has the Unconscious condition": a creature immune to
+    # it is left at 1 Hit Point and is not knocked out (SRD 5.2 Immunity: "it
+    # doesn't affect you in any way").
+    target_now = _find_combatant(live, event.target_id) if pulled else None
+    knocked_out = target_now is not None and not is_condition_immune(target_now, "unconscious")
     live.tracked_hp[event.target_id] = new_hp
     # Sync hp_current / temp_hp on the initiative slot so downstream
     # readers (monster gambit targeting, OA HP checks, hydration
@@ -13033,6 +13039,7 @@ async def submit_player_intent(
             # SRD 5.2 Knocking Out a Creature — the attacker's choice, for its
             # own ``attack`` only (``_reject_knock_out_not_melee`` vetted it).
             knock_out=intent.knock_out and intent.intent_type == "attack",
+            knock_out_exempt_ids=frozenset(live.summons),
             **_pc_attack_context_kwargs(
                 live,
                 current,
