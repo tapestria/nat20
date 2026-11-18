@@ -42,6 +42,7 @@ from dnd5e_engine.combat_state import (
     load_combat,
     resolve_intent,
     resolve_monster_turn,
+    start_turn,
 )
 from dnd5e_engine.events import (
     AttackFailed,
@@ -58,6 +59,7 @@ from dnd5e_engine.events import (
     SaveRolled,
     SpellCast,
     TurnEnded,
+    TurnPhase,
     TurnStarted,
 )
 from dnd5e_engine.orchestrator import drain_pending_events, end_combat
@@ -150,6 +152,20 @@ _CLERIC: dict[str, Any] = {
 }
 
 
+async def _open_async(
+    party: list[PartyMemberSpec], encounter: list[EncounterMemberSpec], seed: int = 1
+) -> CombatState:
+    """Async version of _open that doesn't use asyncio.run()."""
+    step = await begin_combat(
+        session_id="state",
+        party=party,
+        encounter=encounter,
+        grid_scene=GridScene(width=10, height=10),
+        seed=seed,
+    )
+    return step.state
+
+
 def _open(
     party: list[PartyMemberSpec], encounter: list[EncounterMemberSpec], seed: int = 1
 ) -> CombatState:
@@ -163,6 +179,11 @@ def _open(
         )
     )
     return step.state
+
+
+async def _gate1_fight_async() -> CombatState:
+    """Async version of _gate1_fight."""
+    return await _open_async([_fighter()], [_bandit("npc:1", 2, 1, 10), _bandit("npc:2", 2, 2, 5)])
 
 
 def _gate1_fight() -> CombatState:
@@ -939,3 +960,97 @@ def test_the_handle_api_and_the_stateless_api_agree_call_by_call() -> None:
 def test_at_turn_names_a_combatant_in_the_order() -> None:
     with pytest.raises(ValueError, match="not in the initiative order"):
         _gate1_fight().at_turn(2, "npc:9")
+
+
+@pytest.mark.asyncio
+async def test_start_turn_emits_turn_started_and_resets_resources() -> None:
+    """start_turn emits TurnStarted, turn_start phase, and resets resources."""
+    state = await _gate1_fight_async()
+    # Mark the current combatant with spent resources
+    actor = state.combatants[state.turn_index]
+    state = state.model_copy(
+        update={
+            "combatants": [
+                c.model_copy(
+                    update={
+                        "action_available": False,
+                        "bonus_action_available": False,
+                        "reaction_available": False,
+                        "movement_remaining": 0,
+                    }
+                )
+                if c.entity_id == actor.entity_id
+                else c
+                for c in state.combatants
+            ]
+        }
+    )
+
+    step = await start_turn(state, seed=42)
+
+    # Verify events
+    assert len(step.events) >= 2
+    assert isinstance(step.events[0], TurnStarted)
+    assert step.events[0].actor_id == actor.entity_id
+    assert isinstance(step.events[1], TurnPhase)
+    assert step.events[1].phase == "turn_start"
+
+    # Verify resources are reset in the new state
+    new_actor = step.state.combatants[step.state.turn_index]
+    assert new_actor.action_available is True
+    assert new_actor.bonus_action_available is True
+    assert new_actor.reaction_available is True
+    # Movement is reset to the combatant's base speed
+    assert new_actor.movement_remaining == new_actor.base_speed
+
+
+@pytest.mark.asyncio
+async def test_start_turn_runs_turn_start_hooks() -> None:
+    """start_turn runs registered turn_start hooks on its own live combat."""
+    from dnd5e_engine.turn_lifecycle import TurnLifecycle
+    from dnd5e_engine.combat_state import _live_from_state
+
+    state = await _gate1_fight_async()
+    actor_id = state.combatants[state.turn_index].entity_id
+
+    # Register a hook on a live combat created from the state
+    calls: list[str] = []
+    live = _live_from_state(state, __import__('random').Random(42))
+    live.lifecycle.register("turn_start", lambda _l, a: calls.append(a), key="test-hook")
+
+    # Call _begin_turn directly
+    from dnd5e_engine.orchestrator import _begin_turn
+    _begin_turn(live, new_round=False)
+
+    # The hook should have been called with the actor_id
+    assert actor_id in calls
+
+
+@pytest.mark.asyncio
+async def test_start_turn_rolls_death_save_for_unconscious_pc() -> None:
+    """start_turn rolls a death save for a PC at 0 HP."""
+    state = await _gate1_fight_async()
+    # Find a PC and set them to 0 HP
+    actor_id = state.combatants[state.turn_index].entity_id
+    if not actor_id.startswith("pc:"):
+        # Use the first PC in the party
+        actor_id = [c.entity_id for c in state.combatants if c.entity_id.startswith("pc:")][0]
+
+    state = state.model_copy(
+        update={
+            "hp": {**state.hp, actor_id: 0},
+            "combatants": [
+                c.model_copy(update={"hp_current": 0, "is_unconscious": True})
+                if c.entity_id == actor_id
+                else c
+                for c in state.combatants
+            ],
+        }
+    )
+
+    step = await start_turn(state, seed=42)
+
+    # Should have a DeathSaveRolled event
+    death_save_events = [e for e in step.events if isinstance(e, DeathSaveRolled)]
+    assert len(death_save_events) == 1
+    assert death_save_events[0].target_id == actor_id

@@ -63,6 +63,7 @@ from dnd5e_engine.orchestrator import (
     ReactionTrigger,
     _advance_monster_turn,
     _arm_legendary_resistance,
+    _begin_turn,
     _close_combat,
     _Construct,
     _get_live,
@@ -112,6 +113,7 @@ __all__ = [
     "resolve_intent",
     "resolve_monster_turn",
     "resume",
+    "start_turn",
     "state_digest",
 ]
 
@@ -358,12 +360,34 @@ class CombatState(_Model):
         """The combatant ``entity_id`` names, or ``None``."""
         return next((c for c in self.combatants if c.entity_id == entity_id), None)
 
+    async def start_turn(self, seed: int) -> CombatStep:
+        """Start the current turn with full lifecycle: TurnStarted event,
+        turn_start hooks, and pending death save roll.
+
+        This creates a fresh ``_LiveCombat`` from the state, runs the turn-start
+        lifecycle (same as ``_begin_turn`` with ``new_round=False``), and returns
+        the events and new state.
+
+        ``seed`` draws every die for the turn-start events (e.g., death save).
+        """
+        live = _live_from_state(self, random.Random(seed))
+        events = _capture(live)
+        _begin_turn(live, new_round=False)
+        return _step(live, events)
+
     def at_turn(self, round_number: int, active_combatant: str) -> CombatState:
         """This state with the turn moved to ``active_combatant`` in
         ``round_number``, for a host whose record names the round and the
         active combatant: the turn opens as if it had just started, with the
         combatant's turn resources as this state holds them. ``turn_events``
-        restarts at that ``TurnStarted``."""
+        restarts at that ``TurnStarted``.
+
+        Note: This method creates a state with the turn pointer updated but
+        does not emit turn-start events. Use ``start_turn`` on a fresh state
+        (or ``load_combat`` + handle API) when you need the full turn-start
+        lifecycle (events, hooks, death save). This method is for hosts that
+        track turn state independently and only need the CombatState updated.
+        """
         index = next(
             (i for i, c in enumerate(self.combatants) if c.entity_id == active_combatant), None
         )
@@ -377,6 +401,20 @@ class CombatState(_Model):
                 "turn_events": [TurnStarted(actor_id=active_combatant)],
             }
         )
+
+
+async def start_turn(state: CombatState, seed: int) -> CombatStep:
+    """Start the current turn on ``state`` with full lifecycle.
+
+    This is a convenience wrapper around ``CombatState.start_turn`` that
+    allows using ``start_turn`` as a standalone function instead of a method.
+    It creates a fresh ``_LiveCombat`` from the state, runs the turn-start
+    lifecycle (same as ``_begin_turn`` with ``new_round=False``), and returns
+    the events and new state.
+
+    ``seed`` draws every die for the turn-start events (e.g., death save).
+    """
+    return await state.start_turn(seed)
 
 
 class CombatCall(_Model):
