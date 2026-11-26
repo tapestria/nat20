@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `configure_lib_loader` documents that a host may change an overlay's contents
+  between combats while the installed loader object stays the same.
+
 ## [0.8.0]
 
 Lockstep release with `dnd5e-srd-data` 0.8.0 and `nat20-bridge` 0.8.0. The

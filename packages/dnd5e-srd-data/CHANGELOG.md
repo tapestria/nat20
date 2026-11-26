@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `OverlayAssetLoader` (also exported from the package root) layers a
+  `MemoryAssetLoader` of homebrew content over any base loader, with canonical
+  entries always winning. `replace_overlay` swaps the homebrew layer in place so
+  a host can change it between combats without reinstalling the loader.
+- `Provenance.source` accepts `"homebrew"` alongside `"foundry"`.
+
 ## [0.8.0]
 
 Lockstep release with `dnd5e-engine` 0.8.0 and `nat20-bridge` 0.8.0. No

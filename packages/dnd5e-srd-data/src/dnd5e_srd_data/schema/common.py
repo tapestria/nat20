@@ -42,7 +42,7 @@ from pydantic import (
 class Provenance(BaseModel, frozen=True):
     """Where this entry came from. One source per entry; no field-level mixing."""
 
-    source: Literal["foundry"]
+    source: Literal["foundry", "homebrew"]
     source_url: str
     ingest_date: date
     ingest_version: str

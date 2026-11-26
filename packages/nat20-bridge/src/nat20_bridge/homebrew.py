@@ -3,7 +3,7 @@
 Homebrew entries are stored as raw dicts on disk (keyed by slug), re-parsed
 through the same Pydantic schema models the canonical dataset uses, and
 exposed as a :class:`~dnd5e_srd_data.loader.MemoryAssetLoader` so they can be
-layered under :class:`~nat20_bridge.overlay.OverlayAssetLoader`.
+layered under :class:`~dnd5e_srd_data.loader.OverlayAssetLoader`.
 
 Every homebrew slug is forced to carry an ``hb-`` prefix. Since no canonical
 SRD slug starts with ``hb-``, this guarantees homebrew content can never
