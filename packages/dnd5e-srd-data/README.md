@@ -1,7 +1,13 @@
 # dnd5e-srd-data
 
-Canonical D&D 5e SRD 5.2 asset dataset shipped as a Python package. Consumed by
-[dnd5e-engine](../dnd5e-engine/) for combat resolution.
+The dataset of [Nat20](https://github.com/tapestria/nat20): the D&D 5e SRD 5.2
+(CC-BY-4.0) as typed Python models, shipped inside the package. No network, no database.
+The [dnd5e-engine](https://pypi.org/project/dnd5e-engine/) rules engine resolves combat
+against it, and it works on its own as a typed SRD lookup.
+
+```bash
+pip install dnd5e-srd-data
+```
 
 ## Usage
 

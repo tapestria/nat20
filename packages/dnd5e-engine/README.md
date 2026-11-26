@@ -1,12 +1,25 @@
 # dnd5e-engine
 
-Pure-Python D&D 5e SRD rules engine — host-agnostic, zero I/O. Combat, checks, effects,
-on a 2-D grid.
+The rules engine of [Nat20](https://github.com/tapestria/nat20): deterministic D&D 5e
+SRD 5.2 combat, checks, saving throws and effects on a 2-D grid, in pure Python.
+Host-agnostic, zero I/O.
+
+Use it when the rules must be computed, never guessed: behind an LLM game master that
+only narrates, in a Discord bot, a virtual tabletop, or a test harness. The same seed
+gives the same dice.
+
+```bash
+pip install dnd5e-engine   # brings the SRD 5.2 dataset, dnd5e-srd-data
+```
+
+Documentation: <https://tapestria.github.io/nat20/>. The
+[capability matrix](https://tapestria.github.io/nat20/capabilities/) lists what
+resolves and what does not.
 
 ## Status
 
 Working engine. It resolves combat against the typed 2024-SRD corpus shipped by
-[`dnd5e-srd-data`](../dnd5e-srd-data) (the `BundledAssetLoader` reads the bundled
+[`dnd5e-srd-data`](https://pypi.org/project/dnd5e-srd-data/) (the `BundledAssetLoader` reads the bundled
 `canonical/` data — no network, no DB). The engine is edition-agnostic: it consumes
 whatever typed content it is handed.
 
@@ -163,7 +176,7 @@ packages/dnd5e-engine/
 
 ## License
 
-- Engine code: MIT — see [`LICENSE`](LICENSE). The engine ships no SRD data.
+- Engine code: MIT — see [`LICENSE`](https://github.com/tapestria/nat20/blob/main/packages/dnd5e-engine/LICENSE). The engine ships no SRD data.
 - SRD content (the typed corpus consumed via `dnd5e-srd-data`): CC-BY-4.0 — see the
-  [`dnd5e-srd-data`](../dnd5e-srd-data) package's `LICENSE` and `NOTICE` for the
+  [`dnd5e-srd-data`](https://github.com/tapestria/nat20/tree/main/packages/dnd5e-srd-data) package's `LICENSE` and `NOTICE` for the
   dataset license and attribution chain.
