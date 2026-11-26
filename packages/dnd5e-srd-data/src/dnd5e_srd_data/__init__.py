@@ -19,7 +19,13 @@ try:  # pragma: no cover - trivial packaging fallback
 except PackageNotFoundError:  # pragma: no cover - source tree without install
     __version__ = "0.0.0+unknown"
 
-from dnd5e_srd_data.loader import AssetLoader, BundledAssetLoader, Category, MemoryAssetLoader
+from dnd5e_srd_data.loader import (
+    AssetLoader,
+    BundledAssetLoader,
+    Category,
+    MemoryAssetLoader,
+    OverlayAssetLoader,
+)
 from dnd5e_srd_data.schema import (
     AbilityScores,
     ActivationBlock,
@@ -223,6 +229,7 @@ __all__ = [
     "MonsterTrait",
     "MonsterTraitMechanic",
     "Movement",
+    "OverlayAssetLoader",
     "PassiveEffect",
     "PassiveEffectChange",
     "PrimaryAbility",

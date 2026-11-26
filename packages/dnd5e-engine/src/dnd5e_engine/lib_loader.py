@@ -33,7 +33,9 @@ def set_lib_loader_for_tests(loader: AssetLoader | None) -> None:
 def configure_lib_loader(loader: AssetLoader | None) -> None:
     """Public host seam: install a custom AssetLoader (e.g. a homebrew
     overlay). ``None`` reverts to the lazy bundled default. Hosts must
-    call this before start_combat; swapping mid-combat is unsupported."""
+    call this before start_combat; swapping mid-combat is unsupported. A host
+    may change an overlay's contents between combats (``replace_overlay``)
+    while the installed loader object stays the same."""
     global _LIB_LOADER
     _LIB_LOADER = loader
 

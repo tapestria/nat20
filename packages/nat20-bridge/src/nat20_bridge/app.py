@@ -14,7 +14,7 @@ from dnd5e_engine import (
     resolve_short_rest,
     roll_dice_str,
 )
-from dnd5e_srd_data.loader import BundledAssetLoader
+from dnd5e_srd_data.loader import BundledAssetLoader, OverlayAssetLoader
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -29,7 +29,6 @@ from nat20_bridge.models import (
     resolve_seed,
     slugify,
 )
-from nat20_bridge.overlay import OverlayAssetLoader
 from nat20_bridge.routes_combat import build_combat_router
 from nat20_bridge.routes_content import build_content_router
 from nat20_bridge.sheet import derive_sheet

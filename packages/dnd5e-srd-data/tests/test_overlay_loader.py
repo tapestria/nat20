@@ -1,12 +1,10 @@
 from datetime import date
 
-from dnd5e_srd_data.loader import BundledAssetLoader, MemoryAssetLoader
+from dnd5e_srd_data.loader import BundledAssetLoader, MemoryAssetLoader, OverlayAssetLoader
 from dnd5e_srd_data.schema.common import Provenance, ReviewState
 from dnd5e_srd_data.schema.condition import Condition, ConditionEffect, ConditionEffectKind
 from dnd5e_srd_data.schema.item import Weapon
 from dnd5e_srd_data.schema.monster import MonsterTrait
-
-from nat20_bridge.overlay import OverlayAssetLoader
 
 
 def _hb_weapon(slug: str = "hb-frost-brand") -> Weapon:
@@ -202,3 +200,35 @@ def test_overlay_list_conditions_merges_base_first_no_duplicates() -> None:
     )
     assert loader.list_conditions() == ["prone", "unconscious", "hb-blinded"]
     assert loader.get_condition("prone") is shared
+
+
+def test_replace_overlay_swaps_homebrew_and_keeps_base():
+    base = BundledAssetLoader()
+    sword = base.get_weapon("longsword")
+    first = sword.model_copy(update={"slug": "hb-first", "name": "First"})
+    second = sword.model_copy(update={"slug": "hb-second", "name": "Second"})
+    loader = OverlayAssetLoader(base=base, overlay=MemoryAssetLoader(items=[first]))
+    loader.replace_overlay(MemoryAssetLoader(items=[second]))
+    assert loader.get_item("hb-first") is None
+    assert loader.get_item("hb-second") is not None
+    assert loader.get_weapon("longsword") is not None
+    assert "hb-second" in loader.list_slugs("items")
+
+
+def test_replace_overlay_cannot_shadow_canonical():
+    base = BundledAssetLoader()
+    rogue = base.get_weapon("dagger").model_copy(update={"slug": "longsword", "name": "Rogue"})
+    loader = OverlayAssetLoader(base=base, overlay=MemoryAssetLoader())
+    loader.replace_overlay(MemoryAssetLoader(items=[rogue]))
+    assert loader.get_weapon("longsword").name != "Rogue"
+
+
+def test_provenance_accepts_homebrew_source():
+    p = Provenance(
+        source="homebrew",
+        source_url="",
+        ingest_date=date(2026, 1, 1),
+        ingest_version="x",
+        srd_version=frozenset({"5.2"}),
+    )
+    assert p.source == "homebrew"
