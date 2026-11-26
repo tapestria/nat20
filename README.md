@@ -9,9 +9,19 @@ rules engine for Python. Deterministic combat, skill checks, saving throws, effe
 and grid movement — driven by a typed, bundled SRD dataset. No network,
 no database, no game host required.
 
+## When to use it
+
+- **An LLM game master that must not invent rules.** The model narrates; Nat20 decides
+  hits, damage, saves and conditions, and the same seed gives the same dice.
+- **SillyTavern roleplay with real 5e mechanics**, through `nat20-bridge` and the
+  [SillyTavern-nat20](https://github.com/tapestria/SillyTavern-nat20) extension.
+- **A Discord bot, a virtual tabletop or a solo-play tool** that needs 5e combat and
+  checks without writing them.
+- **A typed SRD 5.2 lookup** for monsters, spells, items, classes and feats.
+
 ## What is Nat20
 
-Nat20 is a `uv` workspace of two complementary packages:
+Nat20 is a `uv` workspace of three packages:
 
 | Package | What it is | License |
 |---------|-----------|---------|

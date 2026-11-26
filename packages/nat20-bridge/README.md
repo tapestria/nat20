@@ -1,8 +1,11 @@
 # nat20-bridge
 
-A localhost HTTP sidecar that exposes the [`dnd5e-engine`](../dnd5e-engine) rules
-engine (backed by [`dnd5e-srd-data`](../dnd5e-srd-data)) to the SillyTavern nat20
-extension over a small FastAPI surface.
+[Nat20](https://github.com/tapestria/nat20) over HTTP: a localhost REST API that puts
+the [`dnd5e-engine`](https://pypi.org/project/dnd5e-engine/) D&D 5e SRD 5.2 rules
+engine (backed by [`dnd5e-srd-data`](https://pypi.org/project/dnd5e-srd-data/)) behind
+a small FastAPI surface. Any client that speaks HTTP can roll dice, resolve checks and
+run a full fight with real rules. It is the backend of the
+[SillyTavern nat20 extension](https://github.com/tapestria/SillyTavern-nat20).
 
 The bridge binds to `127.0.0.1` by default — it is not intended to be exposed on
 the network. CORS is permissive because the SillyTavern browser page fetches it

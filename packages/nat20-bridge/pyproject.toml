@@ -1,7 +1,19 @@
 [project]
 name = "nat20-bridge"
 version = "0.8.0"
-description = "Localhost HTTP sidecar exposing dnd5e-engine to the SillyTavern nat20 extension"
+description = "Nat20 over HTTP: a localhost REST API for D&D 5e SRD 5.2 rolls, checks and full combat. The backend of the SillyTavern nat20 extension."
+readme = "README.md"
+keywords = ["nat20", "dnd", "dnd5e", "5e", "srd", "ttrpg", "rules-engine", "sillytavern", "fastapi", "rest-api", "game-master"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Framework :: FastAPI",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Games/Entertainment :: Role-Playing",
+]
 requires-python = ">=3.12"
 license = { file = "LICENSE" }
 dependencies = [
@@ -13,6 +25,13 @@ dependencies = [
     "fastapi>=0.115",
     "uvicorn>=0.30",
 ]
+
+[project.urls]
+Homepage = "https://github.com/tapestria/nat20"
+Documentation = "https://tapestria.github.io/nat20/"
+Repository = "https://github.com/tapestria/nat20"
+Issues = "https://github.com/tapestria/nat20/issues"
+Changelog = "https://github.com/tapestria/nat20/releases"
 
 [project.scripts]
 nat20-bridge = "nat20_bridge.cli:main"

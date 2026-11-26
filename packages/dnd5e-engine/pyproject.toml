@@ -5,14 +5,17 @@ build-backend = "hatchling.build"
 [project]
 name = "dnd5e-engine"
 version = "0.8.0"
-description = "Pure-Python D&D 5e SRD rules engine — combat, checks, effects. Host-agnostic, zero I/O."
+description = "Nat20 rules engine: deterministic D&D 5e SRD 5.2 combat, checks and effects in pure Python. Host-agnostic, zero I/O."
 readme = "README.md"
 requires-python = ">=3.12"
 license = { file = "LICENSE" }
 authors = [{ name = "Tapestria contributors" }]
-keywords = ["dnd", "5e", "srd", "ttrpg", "rules-engine"]
+keywords = ["nat20", "dnd", "dnd5e", "5e", "srd", "srd-5.2", "ttrpg", "tabletop-rpg", "rules-engine", "combat", "dice", "game-master"]
 classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
+    "Topic :: Games/Entertainment :: Role-Playing",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -30,6 +33,13 @@ dependencies = [
     # choice flags, counts and recharges).
     "dnd5e-srd-data>=0.8.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/tapestria/nat20"
+Documentation = "https://tapestria.github.io/nat20/"
+Repository = "https://github.com/tapestria/nat20"
+Issues = "https://github.com/tapestria/nat20/issues"
+Changelog = "https://github.com/tapestria/nat20/releases"
 
 [project.optional-dependencies]
 dev = [
