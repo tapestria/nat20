@@ -10910,8 +10910,9 @@ def _classify_action_cost(
 ) -> _ActionCost:
     """SRD §Action Economy — classify an intent's action cost BEFORE emitting
     IntentSubmitted. Cast spells consult their asset's typed
-    ``casting_time.unit``; a feature invocation reads its resolved cost; all
-    other intents are Actions."""
+    ``casting_time.unit``; a feature invocation reads its resolved cost; an
+    item use reads its activities' ``activation.type``; all other intents
+    are Actions."""
     cast_spell_for_timing = (
         get_lib_loader().get_spell(intent.spell_id)
         if intent.intent_type == "cast_spell" and intent.spell_id
@@ -10928,6 +10929,14 @@ def _classify_action_cost(
     # resolved (gate + single-activity validation) above; read its cost here.
     if feature_invocation is not None and feature_invocation.is_bonus_action:
         is_bonus_action = True
+    # SRD 5.2 §Bonus Actions — an item whose activity activates as a Bonus
+    # Action (a Potion of Healing) costs the Bonus Action, not the Action.
+    # Read off the very activities the use resolves (``_item_activities``).
+    if intent.intent_type == "use_item" and intent.item_id:
+        item = get_lib_loader().get_item(intent.item_id)
+        item_activities = _item_activities(item, intent.activity_id) if item is not None else []
+        if item_activities and all(a.activation.type == "bonus" for a in item_activities):
+            is_bonus_action = True
     is_reaction_cast = casting_unit == CastingTimeUnit.REACTION
     return _ActionCost(
         is_bonus_action=is_bonus_action,
@@ -11772,6 +11781,18 @@ def _rides_the_swing(activity: Any) -> bool:
     return activity.kind == "attack" or not activity.activation.type
 
 
+def _item_activities(item: Any, activity_id: str | None) -> list[Any]:
+    """The activities a ``use_item`` of ``item`` resolves: the one
+    ``activity_id`` selects, else the one ``_item_charge_activity`` charges,
+    so no activity fires that was never paid for (a Wand of Binding's Hold
+    Person beside the Hold Monster its charges bought). An item with no
+    charge-consuming activity resolves all of them."""
+    if activity_id:
+        return [a for a in item.activities if a.id == activity_id]
+    charged = _item_charge_activity(item, None)
+    return [charged] if charged is not None else list(item.activities)
+
+
 def _resolve_intent_activities(
     intent: PlayerIntent,
     feature_invocation: _FeatureInvocation | None,
@@ -11831,20 +11852,7 @@ def _resolve_intent_activities(
         fetched_item = get_lib_loader().get_item(intent.item_id)
         if fetched_item is not None:
             source_passive_effects = list(fetched_item.passive_effects)
-            if intent.activity_id:
-                activities = [a for a in fetched_item.activities if a.id == intent.activity_id]
-            else:
-                # C2: an unselected use_item must resolve the SAME single
-                # activity ``_item_charge_activity`` will charge — resolving
-                # every activity on the item (the old behavior) emits events
-                # for activities that were never paid for (wand-of-binding:
-                # both Hold Monster AND Hold Person fired while only Hold
-                # Monster's 5 charges were spent). An item with no consuming
-                # activity (nothing prices > 0 itemUses) has nothing for
-                # ``_item_charge_activity`` to select — keep the pre-existing
-                # resolve-all behavior for that case.
-                charged = _item_charge_activity(fetched_item, None)
-                activities = [charged] if charged is not None else list(fetched_item.activities)
+            activities = _item_activities(fetched_item, intent.activity_id)
     elif intent.feature_id:
         # USE_FEATURE — the feature was already resolved to its single concrete
         # activity (repertoire gate + single-activity validation) above, BEFORE

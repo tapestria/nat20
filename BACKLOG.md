@@ -1285,6 +1285,14 @@ zone + apply logic:
 
 ## Audit 2026-08-26 — action economy & turn structure
 
+- **A Reaction-activated item spends the Action (2026-11-27).** A
+  `use_item` whose activity activates as a Reaction (the Quarterstaff of the
+  Acrobat's Attack Deflection, the Staff of the Magi's Spell Absorption, the
+  Shield of the Cavalier's Protective Field) spends the Action and ends the
+  turn: only a spell's `casting_time` routes to the Reaction budget, and an
+  item reaction has no off-turn trigger path to fire from. A Bonus
+  Action item already spends the Bonus Action.
+  (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_classify_action_cost`)
 - **`search`/`study`/`influence`/`utilize` do not exist as `IntentType`
   values at all** (`dodge`, `help`'s assist-an-attack-roll flavor and `hide`
   closed in C14, 2026-09-01; Help's ability-check flavor is still open, no

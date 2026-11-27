@@ -22,7 +22,9 @@ An `"attack"` walks only the weapon's attacks and the riders its hit triggers
 save). An activity the wielder activates (a Trident of Fish Command's
 Dominate Beast, a Mace of Terror's Wave of Terror) fires only through
 `"use_item"`, which resolves one activity: the one `activity_id` names, else
-the one that spends the item's charges.
+the one that spends the item's charges (all of them when none does). A
+`"use_item"` whose activities all activate as a Bonus Action (a Potion of
+Healing) costs the Bonus Action and keeps the turn.
 
 ## Why typed activities
 
