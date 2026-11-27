@@ -223,6 +223,7 @@ from dnd5e_engine.rules.conditions import (
     project_speed,
 )
 from dnd5e_engine.rules.dice import ability_modifier, proficiency_bonus
+from dnd5e_engine.rules.effects import filter_changes_by_bucket
 from dnd5e_engine.rules.uses import UsesRollData, evaluate_uses_formula
 from dnd5e_engine.spatial import GridTopology, SpatialTopology, cell_id, parse_cell
 from dnd5e_engine.specs import (
@@ -3795,7 +3796,8 @@ def _condition_names(c: Combatant) -> list[str]:
 def _effective_speed(c: Combatant, live: _LiveCombat | None = None) -> int:
     """SRD 5.2 walking Speed under the combatant's conditions
     (``rules.conditions.project_speed``): 0 under a Speed-0 condition, else
-    ``base_speed - 5 x exhaustion level``.
+    ``base_speed`` plus its live ``speed.walk.bonus`` effects, minus
+    ``5 x exhaustion level``.
 
     SRD 5.2 §Weapon Mastery, Slow: when ``live`` is supplied
     and ``c`` carries any outstanding ``live.slow_marks`` entry, a FLAT
@@ -3804,10 +3806,30 @@ def _effective_speed(c: Combatant, live: _LiveCombat | None = None) -> int:
     at 0. ``live=None`` (unit-test / pre-combat callers) projects
     conditions only.
     """
-    speed = project_speed(c.base_speed, _condition_names(c), exhaustion_level_of(c.conditions))
+    walk = c.base_speed
+    if live is not None:
+        walk += _walk_speed_bonus(live.active_effects.get(c.entity_id, ()))
+    speed = project_speed(walk, _condition_names(c), exhaustion_level_of(c.conditions))
     if live is not None and live.slow_marks.get(c.entity_id):
         speed = max(0, speed - 10)
     return speed
+
+
+def _walk_speed_bonus(effects: Sequence[ActiveEffect]) -> int:
+    """The flat walking-Speed bonus a combatant's live effects grant.
+
+    Read on every Speed query rather than folded into ``base_speed`` so an
+    effect that starts or ends mid-combat moves Speed from then on, and so the
+    build-derived bonus ``base_speed`` already carries is never counted twice.
+    Only ``add`` changes with an integer value count: the key names an
+    additive bonus, and a dice value would draw from the seeded stream on a
+    read-only query (determinism contract).
+    """
+    return sum(
+        amount
+        for change in filter_changes_by_bucket(effects, "speed.walk.bonus")
+        if change.mode == "add" and (amount := _flat_change_value(change.value)) is not None
+    )
 
 
 def _set_dodging(live: _LiveCombat, actor_id: str) -> None:
@@ -6108,18 +6130,10 @@ def _fold_active_effect_changes(
         # additive strings — the handler's existing parser already
         # handles them.
         #
-        # When an effect carries an
-        # ``applicable_action_types`` restriction (e.g. a +1 weapon
-        # tagged ["attack"]), the attack/damage sidecar is
-        # action-type-agnostic and would silently buff spell
-        # attacks too. Filter those buckets here: a weapon-tagged
-        # enchantment's attack.roll.bonus / damage.bonus
-        # changes don't reach the engine-sidecar path. A host's
-        # own dispatch can still apply them
-        # correctly for player-dispatched attack actions; this
-        # only means a monster-driven attack handler will not
-        # see them — which is the conservative outcome because
-        # the sidecar can't action-type-disambiguate.
+        # An ``applicable_action_types`` restriction containing
+        # ``"attack"`` (a +1 weapon) routes the effect's
+        # attack.roll.bonus / damage.bonus to the weapon-only sidecars
+        # below, so it never buffs a spell attack.
         applicable = active_effect.flags.get("applicable_action_types")
         applicable_set: set[str] | None = None
         if isinstance(applicable, list) and applicable:

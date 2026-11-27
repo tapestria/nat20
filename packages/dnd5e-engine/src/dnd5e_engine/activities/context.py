@@ -103,6 +103,15 @@ class ActivityResolutionContext:
     # stream as the attack d20. Absent → +0. Empty default keeps the golden
     # corpus identical.
     passive_attack_bonus: dict[str, str] = field(default_factory=dict)
+    # Per-ATTACKER additive damage bonus for ANY attack roll that hits, keyed
+    # entity_id -> a signed numeric/dice STRING (an untagged ``damage.bonus``
+    # change; stacked sources pre-joined). The damage analogue of
+    # ``passive_attack_bonus``: an effect with no ``applicable_action_types``
+    # restriction buffs weapon AND spell attacks alike, unlike
+    # ``passive_weapon_damage_bonus``. Sourced from the orchestrator's
+    # ``passive_damage_modifiers[id]["passive_damage_bonus"]`` projection;
+    # consumed in ``attack.py:_apply_on_hit_damage``. Absent attacker → +0.
+    passive_damage_bonus: dict[str, str] = field(default_factory=dict)
     # Per-ATTACKER additive WEAPON-ONLY to-hit bonus, keyed entity_id -> a
     # signed dice-expression STRING. The to-hit analogue of
     # ``passive_weapon_damage_bonus``: a +N weapon / weapon-tagged
