@@ -293,18 +293,29 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   `stat_block_action_id` emits only `IntentSubmitted` and ends the turn: no
   attack roll, the Action gone. It should be refused before anything is spent.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::submit_player_intent`)
-- **An `attack` or an unchosen `use_item` resolves every activity on its
-  weapon or item, not the one it means to fire (2026-10-04, C26a).** A
-  weapon's own non-attack activity (the Mace of Terror's Wave of Terror
-  save) and an item's alternative modes (Javelin of Lightning, Rod of
-  Lordly Might, the Staff of Power, the Staff of the Magi, the Staff of
-  Thunder and Lightning, Thunderous Greatclub, Horn of Blasting) all resolve
-  together against the intent's single target whenever nothing names which
-  one to fire. C26a's area resolver guards the one visible symptom — none of
-  these intents ever area-expands — but the ambiguous resolution itself
-  stands: the proper fix resolves only the chosen activity, requiring
-  `activity_id` when an item carries alternatives, as a feature already
-  does. For the Hat of Many Spells and the Helm of Brilliance an unchosen
+- **An `attack` still resolves every attack and every activation-less
+  activity on its weapon, and an unchosen `use_item` with no charged activity
+  resolves every activity on its item (2026-10-04, C26a; narrowed
+  2026-11-27).** An `attack` no longer fires a weapon's activated abilities
+  (an activity with an activation of its own that is not an attack), but it
+  still swings every attack activity (Mace of Smiting's Attack Construct
+  beside its plain attack, the Rod of Lordly Might's buttons, the Dwarven
+  Thrower's throw) and resolves every activation-less activity on every
+  swing, hit or miss: optional on-hit riders that should spend a charge (the
+  Staff of Withering, the Staff of Thunder and Lightning's Thunder and
+  Lightning) fire free, and the follow-ups of an activated ability (the Staff
+  of Power's and Staff of the Magi's Retributive Strike save, Thunderous
+  Greatclub's Earthquake fissure and object damage) fire as if it had been
+  activated. An on-hit rider the data gives an activation (the Hammer of
+  Thunderbolts' critical-hit save, the Staff of Striking's charge damage)
+  fires only through `use_item`, detached from the hit. An item's
+  alternative modes with no charged activity (Javelin of Lightning, Horn of
+  Blasting) all resolve together on an unchosen `use_item`. C26a's area
+  resolver guards the one visible symptom (none of these intents ever
+  area-expands), but the proper fix resolves only the chosen activity,
+  requiring `activity_id` when an item carries alternatives, as a feature
+  already does, and gates on-hit riders on the hit. For the Hat of Many
+  Spells and the Helm of Brilliance an unchosen
   use raises `ValueError: Unhandled roll-data token: '@scaling'` after the
   Action and the `IntentSubmitted` event are already spent (amended
   2026-11-14): the Hat's Unknown Spell Check `dc.formula` (`10 + @scaling`)

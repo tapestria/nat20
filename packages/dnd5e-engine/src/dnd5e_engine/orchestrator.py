@@ -11762,6 +11762,16 @@ def _spellcasting_ability_for(caster: Combatant, spell_slug: str) -> str | None:
     return caster.spell_abilities.get(spell_slug) or _resolve_caster_spellcasting_ability(caster)
 
 
+def _rides_the_swing(activity: Any) -> bool:
+    """Whether an ``attack`` with this activity's weapon fires it. SRD 5.2
+    §Making an Attack: the swing fires the weapon's attacks and the riders the
+    hit triggers, which carry no activation of their own (a Mace of
+    Disruption's save). Any other activity the wielder activates (a Trident of
+    Fish Command's Dominate Beast, a Mace of Terror's Wave of Terror) is a use
+    of the item, priced and charged through ``use_item``."""
+    return activity.kind == "attack" or not activity.activation.type
+
+
 def _resolve_intent_activities(
     intent: PlayerIntent,
     feature_invocation: _FeatureInvocation | None,
@@ -11787,13 +11797,13 @@ def _resolve_intent_activities(
     if intent.intent_type == "attack" and intent.weapon_id:
         fetched_weapon = get_lib_loader().get_weapon(intent.weapon_id)
         if fetched_weapon is not None:
-            activities = list(fetched_weapon.activities)
+            activities = [a for a in fetched_weapon.activities if _rides_the_swing(a)]
             # SRD §Weapon Attacks — most mundane weapons ship the AttackActivity
             # on ``Weapon.activities``; a handful of magic weapons whose attack
             # rides their base weapon ship empty activities. Synthesize one from
             # the weapon's ``damage_parts`` so a swing still resolves (parity
             # with the OLD ``_synthesize_weapon_attack``).
-            if not activities:
+            if not fetched_weapon.activities:
                 activities = [_synthesize_attack_from_weapon(fetched_weapon)]
     elif intent.intent_type == "attack" and intent.stat_block_action_id:
         # A stat-block command (C21): one swing of an action on the actor's current

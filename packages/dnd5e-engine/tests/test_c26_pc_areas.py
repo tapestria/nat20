@@ -120,11 +120,7 @@ def test_a_mace_of_terror_swing_attacks_only_its_target() -> None:
         target_id="mon:g1",
     )
     assert [e.target_id for e in events(live, AttackRolled)] == ["mon:g1"]
-    # Not pinned to ``["mon:g1"]``: whether the swing also forces a Wave of
-    # Terror save from its own target is a separate, known quirk (the save
-    # activity still resolves against the attack's single-target list). What
-    # this test pins is that it never reaches mon:g2 or mon:g3.
-    assert set(_saved(live)) <= {"mon:g1"}
+    assert _saved(live) == []
     assert _areas(live) == []
 
 
