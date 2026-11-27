@@ -212,7 +212,7 @@ def build_activity_context(
     scale_values: dict[str, int | str] | None = None,
     class_levels: dict[str, int] | None = None,
     cast_level_override: int | None = None,
-    is_feature_invocation: bool = False,
+    activities_state_own_dc: bool = False,
     active_effects: Sequence[ActiveEffect] = (),
     sneak_attack_spent: dict[str, bool] | None = None,
     sneak_attack_ally_adjacent: dict[str, bool] | None = None,
@@ -272,15 +272,18 @@ def build_activity_context(
     pure builder never touches the spatial seam; absent (``None``) → empty,
     leaving the golden corpus identical (no cover geometry ⇒ no bonus).
 
-    ``is_feature_invocation`` distinguishes a USE_FEATURE context from a spell /
-    item cast. The blanket ``save_dc_override`` carries the real spell save DC
-    (``_save_dc``: ``8 + PB + spellcasting-ability mod``, class→ability from
-    canonical class data, with the documented flat fallback for unknown /
-    non-caster classes and item casts); applying it to a FEATURE save activity
-    is wrong — a feature must compute its own DC from its save's ability + PB.
-    So for a feature invocation the override is omitted (``None``), letting the
-    save resolver fall through to ``save.dc.calculation``. The spell / item
-    path keeps the blanket override.
+    ``activities_state_own_dc`` marks a context whose activities are a
+    feature's or an item's own. The caster's spell save DC (``_save_dc``:
+    ``8 + PB + spellcasting-ability mod``, class→ability from canonical class
+    data, with the documented flat fallback for unknown / non-caster classes
+    and item casts) is a spell's DC: on a spell's own resolution it is the
+    blanket ``save_dc_override``. A feature or item save activity states its own
+    DC instead, as an ability calculation (Stunning Strike; SRD 5.2 Acid: "DC 8
+    plus your Dexterity modifier and Proficiency Bonus") or a flat formula (SRD
+    5.2 Pipes of Haunting: "DC 15 Wisdom saving throw"), so there the override
+    is omitted and the save resolver reads ``save.dc``. The caster's spell DC
+    still rides on ``spell_save_dc`` for an item's ``cast`` activity, whose
+    delegated spell rolls against it absent a challenge override.
 
     ``is_proficient_attack`` (C15) passes straight through to
     ``ActivityResolutionContext`` — the orchestrator computes it (real
@@ -421,6 +424,19 @@ def build_activity_context(
             if isinstance(codes, list) and codes:
                 dest[entity_id] = [str(c) for c in codes]
 
+    spell_save_dc = (
+        None
+        if stat_block_magnitudes is not None
+        else _save_dc(
+            caster,
+            mod,
+            caster_abilities=caster_abilities,
+            caster_proficiency_bonus=caster_proficiency_bonus,
+            spellcasting_ability=spellcasting_ability,
+        )
+        + _spell_dc_bonus(caster, passive_damage_modifiers, rng)
+    )
+
     return ActivityResolutionContext(
         rng=rng,
         caster=caster,
@@ -436,18 +452,8 @@ def build_activity_context(
         concentration=concentration,
         slot_level=slot_level,
         base_spell_level=base_spell_level,
-        save_dc_override=(
-            None
-            if is_feature_invocation or stat_block_magnitudes is not None
-            else _save_dc(
-                caster,
-                mod,
-                caster_abilities=caster_abilities,
-                caster_proficiency_bonus=caster_proficiency_bonus,
-                spellcasting_ability=spellcasting_ability,
-            )
-            + _spell_dc_bonus(caster, passive_damage_modifiers, rng)
-        ),
+        save_dc_override=None if activities_state_own_dc else spell_save_dc,
+        spell_save_dc=spell_save_dc,
         # C15: ``None`` here (host never set ``PartyMemberSpec.attack_bonus``)
         # correctly falls through in ``attack.py::_attack_bonus`` to the real
         # governing-ability-mod + proficiency-bonus computation instead of a

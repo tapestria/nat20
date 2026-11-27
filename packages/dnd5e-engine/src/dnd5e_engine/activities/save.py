@@ -152,8 +152,10 @@ def _resolve_dc(activity: SaveActivity, ctx: ActivityResolutionContext) -> int:
     * an empty formula there, or any other ``calculation`` → ``ValueError`` (loud,
       rather than silently defaulting).
 
-    A cast wrapper's fixed challenge override (``ctx.save_dc_override``) bypasses
-    the calculation entirely — a scroll/item DC (Dragon Orb 18) is used verbatim.
+    A fixed ``ctx.save_dc_override`` bypasses the calculation entirely: a cast
+    wrapper's challenge (a scroll/item DC, Dragon Orb 18, used verbatim) or the
+    caster's spell DC on a spell's own resolution. A feature's or an item's own
+    save activity gets none, so its stated DC is read here.
     """
     if ctx.save_dc_override is not None:
         return ctx.save_dc_override

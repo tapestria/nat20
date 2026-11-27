@@ -31,7 +31,7 @@ from dnd5e_srd_data.schema.common import (
 
 from dnd5e_engine.events import ConditionApplied, EffectApplied, EffectExpired, SaveRolled
 from dnd5e_engine.lib_loader import set_lib_loader_for_tests
-from tests.c20_support import act, events, foe, monster_turn, pc, start
+from tests.c20_support import act, events, foe, monster_turn, pc, start, wizard
 
 _SRD = BundledAssetLoader()
 _HERO = "char:hero"
@@ -80,6 +80,54 @@ def _load(*items) -> None:
 
 def _use(handle, item_id: str, **intent) -> None:
     act(handle, _HERO, intent_type="use_item", item_id=item_id, target_id=_FOE, **intent)
+
+
+# ── the save DC ──────────────────────────────────────────────────────────────
+
+
+def test_an_items_flat_save_dc_is_its_own() -> None:
+    _load(_homebrew("dc-rod", _save("15"), passive=[]))
+    handle, live = start([pc()], seed=1)
+    _use(handle, "dc-rod")
+    assert [s.dc for s in events(live, SaveRolled)] == [15]
+
+
+def test_pipes_of_haunting_rolls_against_its_printed_dc() -> None:
+    handle, live = start([pc()], seed=1)
+    _use(handle, "pipes-of-haunting")
+    assert [s.dc for s in events(live, SaveRolled)] == [15]
+
+
+def test_an_items_ability_save_dc_uses_the_users_ability_and_proficiency() -> None:
+    """Acid at character level 5 (PB +3) with DEX 18 (+4): DC 8 + 4 + 3."""
+    handle, live = start([pc(character_level=5, dexterity=18)], seed=1)
+    _use(handle, "acid")
+    assert [s.dc for s in events(live, SaveRolled)] == [15]
+
+
+def test_an_item_cast_without_a_fixed_dc_keeps_the_users_spell_dc() -> None:
+    """Hat of Many Spells' Fireball names no challenge DC, so the delegated
+    spell's ``spellcasting`` DC is the user's (no spellcasting class here:
+    8 + 2 + the attack-bonus-derived modifier 4)."""
+    handle, live = start([pc(attack_bonus=6)], seed=1)
+    _use(handle, "hat-of-many-spells", activity_id="1Oov0JtLLqUAI5g2")
+    saves = events(live, SaveRolled)
+    assert saves
+    assert {s.dc for s in saves} == {14}
+
+
+def test_a_spell_save_keeps_the_casters_spell_dc() -> None:
+    """A Wizard 5 with INT 20 casts Hold Person at DC 8 + 3 + 5."""
+    handle, live = start([wizard(initiative=25)], seed=1)
+    act(
+        handle,
+        "char:wiz",
+        intent_type="cast_spell",
+        spell_id="hold-person",
+        target_id=_FOE,
+        slot_level=2,
+    )
+    assert [s.dc for s in events(live, SaveRolled)] == [16]
 
 
 # ── the effect rider ─────────────────────────────────────────────────────────

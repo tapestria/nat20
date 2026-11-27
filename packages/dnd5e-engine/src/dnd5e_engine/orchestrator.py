@@ -13074,9 +13074,9 @@ async def submit_player_intent(
             # bard now — ``None`` for every non-attack intent and an attack
             # that asks for none.
             granted_die=_redeemed_die(live, current, intent),
-            # A FEATURE invocation must not inherit the blanket spell
-            # save_dc_override; its save activity computes its own ability+PB DC.
-            is_feature_invocation=bool(intent.feature_id),
+            # A feature's or an item's save activity states its own DC; the
+            # caster's spell DC is a spell's (and an item cast's) alone.
+            activities_state_own_dc=bool(intent.feature_id) or intent.intent_type == "use_item",
             # SRD 5.2 Light: the extra attack adds no positive ability modifier —
             # unless Two-Weapon Fighting: "you can add your ability modifier to
             # the damage of that attack if you aren't already adding it".
