@@ -9,7 +9,7 @@ application concerns (narrators, persistence, world state, UI) are out of scope.
 closes it. When you discover one, add it under the right section with a date and
 a `packages/…` file anchor. Keep entries engine/data-centric — no host-app paths.
 
-Anchors are current as of `dnd5e-engine` / `dnd5e-srd-data` **v0.8.0**
+Anchors are current as of `dnd5e-engine` / `dnd5e-srd-data` **v0.8.1**
 (re-verified 2026-11-14: every anchor names a file that exists, and any
 symbol it names is in that file; never a line number).
 

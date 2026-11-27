@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.1]
+
+Lockstep patch release with `dnd5e-engine` 0.8.1 and `nat20-bridge` 0.8.1. The
+canonical corpus is byte-identical to 0.8.0.
+
 ### Added
 
 - `OverlayAssetLoader` (also exported from the package root) layers a

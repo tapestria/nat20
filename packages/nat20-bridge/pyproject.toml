@@ -1,6 +1,6 @@
 [project]
 name = "nat20-bridge"
-version = "0.8.0"
+version = "0.8.1"
 description = "Nat20 over HTTP: a localhost REST API for D&D 5e SRD 5.2 rolls, checks and full combat. The backend of the SillyTavern nat20 extension."
 readme = "README.md"
 keywords = ["nat20", "dnd", "dnd5e", "5e", "srd", "ttrpg", "rules-engine", "sillytavern", "fastapi", "rest-api", "game-master"]
@@ -17,11 +17,10 @@ classifiers = [
 requires-python = ">=3.12"
 license = { file = "LICENSE" }
 dependencies = [
-    # Lockstep floors: the bridge seats allies with EncounterMemberSpec.side
-    # and passes advance_monster_turn(target_id=...), which dnd5e-engine
-    # accepts from 0.8.0.
-    "dnd5e-engine>=0.8.0",
-    "dnd5e-srd-data>=0.8.0",
+    # Lockstep floors: the bridge imports OverlayAssetLoader from
+    # dnd5e-srd-data, which ships it from 0.8.1.
+    "dnd5e-engine>=0.8.1",
+    "dnd5e-srd-data>=0.8.1",
     "fastapi>=0.115",
     "uvicorn>=0.30",
 ]
