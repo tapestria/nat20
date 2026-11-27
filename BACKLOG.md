@@ -9,7 +9,7 @@ application concerns (narrators, persistence, world state, UI) are out of scope.
 closes it. When you discover one, add it under the right section with a date and
 a `packages/…` file anchor. Keep entries engine/data-centric — no host-app paths.
 
-Anchors are current as of `dnd5e-engine` / `dnd5e-srd-data` **v0.8.1**
+Anchors are current as of `dnd5e-engine` / `dnd5e-srd-data` **v0.8.2**
 (re-verified 2026-11-14: every anchor names a file that exists, and any
 symbol it names is in that file; never a line number).
 
@@ -323,8 +323,10 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   raises in `activities/check.py::_resolve_dc`, right after the intent
   event; the Helm's Explosive Emanation damage bonus (`@scaling`) raises in
   `activities/save.py::_roll_shared_damage`, after its other activities have
-  already applied damage and conditions. Both reach the raise through
-  `activities/formula.py::resolve_roll_data`.
+  already applied damage and conditions. The Staff of Striking's Charge
+  Damage (`(@scaling)d6`, its charges spent) raises the same way in
+  `activities/damage.py::resolve_damage` (amended 2026-11-27). All three reach
+  the raise through `activities/formula.py::resolve_roll_data`.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_resolve_intent_activities`)
 - **An `attack` naming a magic weapon whose activities hold no attack makes
   no attack roll (2026-11-14).** Flame Tongue, Frost Brand, Vorpal Sword,
@@ -1011,6 +1013,12 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   catches allies and non-Beasts alike and can Frighten creatures the item
   text excludes.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_delegated_cast`)
+- **Poisoned Darts raise on a `use_item` (2026-11-27).** Three of its four
+  trap triggers roll a multiplied damage formula (`(1d3) * 2d6` poison
+  damage), which `activities/dice.py` cannot evaluate (`ValueError:
+  Unsupported binary op in dice expression: '*'`), so an unchosen use raises
+  after the intent is accepted.
+  (`packages/dnd5e-engine/src/dnd5e_engine/activities/dice.py::roll_damage_part`)
 - **An item's cast of a healing spell raises (2026-11-14).** The item path
   supplies no spellcasting ability, so a delegated heal whose formula adds
   the caster's modifier raises `ValueError: @mod requires a governing
@@ -1456,14 +1464,13 @@ zone + apply logic:
 - **Absorb Elements has no reaction path**; Hellish Rebuke is only a
   `last_damaged_by` target validator, not a trigger. (See "Reactions are not
   data-driven" above.)
-- **Four concentration spells raise after spending their slot (2026-09-26,
+- **Three concentration spells raise after spending their slot (2026-09-26,
   pre-existing).** Delayed Blast Fireball and Tsunami read `@item.uses.value`,
-  Spider Climb reads `@attributes.movement.walk`, and Phantasmal Killer's save
-  names no ability; the formula resolver has no handler for either token and
-  the save resolver refuses an empty ability, so `submit_player_intent` raises
-  `ValueError` once the slot is spent. All four are SRD 5.2 spells ("When you
-  cast a spell, you expend a slot"): the cast should resolve, or be refused
-  before the slot goes.
+  and Phantasmal Killer's save names no ability; the formula resolver has no
+  handler for that token and the save resolver refuses an empty ability, so
+  `submit_player_intent` raises `ValueError` once the slot is spent. All three
+  are SRD 5.2 spells ("When you cast a spell, you expend a slot"): the cast
+  should resolve, or be refused before the slot goes.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/formula.py::_resolve_token`)
 - **A readied spell always targets its own caster (2026-09-26,
   pre-existing).** SRD 5.2 Ready: "When you Ready a spell, you cast it as

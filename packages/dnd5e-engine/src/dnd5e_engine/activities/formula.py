@@ -29,6 +29,12 @@ Scope — the roll-data tokens that appear in canonical DICE/DC FORMULA fields
   ``[[lookup @skills.ath.passive]]``): ``10 + ability mod + Proficiency Bonus
   (doubled with Expertise) when the caster is proficient``.
 
+``@attributes.movement.walk`` appears only in effect-rider change values (Potion
+of Flying, Spider Climb: a speed "equal to your Speed"). Foundry evaluates a
+change value against the roll data of the actor the effect is applied to, so
+it resolves to ``effect_target``'s walking Speed (``Combatant.base_speed``)
+and is unhandled when no effect target is supplied.
+
 ``@scaling`` resolves only when the context carries ``scaling_value`` — a
 feature activity whose own-pool cost scales by amount (Lay on Hands' Heal).
 Spell upcasting stays with ``dice.py``'s ``DamageScalingBlock`` path; a spell
@@ -52,6 +58,8 @@ from dnd5e_engine.rules.skills import SKILL_CODE_TO_SLUG
 if TYPE_CHECKING:
     from dnd5e_srd_data.schema.common import DamagePartBlock
 
+    from dnd5e_engine.types.combat import Combatant
+
     from .context import ActivityResolutionContext
 
 _LOGGER = logging.getLogger(__name__)
@@ -67,6 +75,7 @@ _TOKEN_MOD: Final = "@mod"
 _TOKEN_SPELL_MOD: Final = "@attributes.spell.mod"
 _TOKEN_SPELL_DC: Final = "@attributes.spell.dc"
 _TOKEN_SCALING: Final = "@scaling"
+_TOKEN_WALK_SPEED: Final = "@attributes.movement.walk"
 
 # ``@abilities.<abil>.mod`` — capture the three-letter ability key.
 _ABILITY_MOD_RE: Final = re.compile(r"^@abilities\.([a-z]{3})\.mod$")
@@ -87,15 +96,20 @@ def resolve_roll_data(
     ctx: ActivityResolutionContext,
     *,
     ability: str | None = None,
+    effect_target: Combatant | None = None,
 ) -> str:
     """Replace Foundry roll-data tokens in ``expr`` with caster-derived integers.
 
     ``ability`` is the governing ability for a bare ``@mod`` (the spell's/weapon's
     ability, or the caster's spellcasting ability) — required only when ``@mod``
-    is present. The returned string is ``d20``-parseable; negative modifiers
-    render as e.g. ``"2d8 + -1"``, which ``d20.parse`` accepts.
+    is present. ``effect_target`` is the creature an effect rider's change value
+    is evaluated for (``@attributes.movement.walk``). The returned string is
+    ``d20``-parseable; negative modifiers render as e.g. ``"2d8 + -1"``, which
+    ``d20.parse`` accepts.
     """
-    resolved = _TOKEN_RE.sub(lambda m: str(_resolve_token(m.group(0), ctx, ability)), expr)
+    resolved = _TOKEN_RE.sub(
+        lambda m: str(_resolve_token(m.group(0), ctx, ability, effect_target)), expr
+    )
     return _normalize_paren_dice_count(resolved)
 
 
@@ -144,7 +158,12 @@ def resolve_damage_block(
     return block.model_copy(update=updates) if updates else block
 
 
-def _resolve_token(token: str, ctx: ActivityResolutionContext, ability: str | None) -> int | str:
+def _resolve_token(
+    token: str,
+    ctx: ActivityResolutionContext,
+    ability: str | None,
+    effect_target: Combatant | None,
+) -> int | str:
     if token == _TOKEN_PROF:
         return ctx.caster_proficiency_bonus
     if token == _TOKEN_MOD:
@@ -173,6 +192,9 @@ def _resolve_token(token: str, ctx: ActivityResolutionContext, ability: str | No
             _LOGGER.warning("roll_data_scale_unresolved token=%s", token)
             raise ValueError(f"Unresolved @scale token (absent from carrier): {token!r}")
         return value
+
+    if token == _TOKEN_WALK_SPEED and effect_target is not None:
+        return effect_target.base_speed
 
     if token == _TOKEN_SCALING and ctx.scaling_value is not None:
         return ctx.scaling_value
