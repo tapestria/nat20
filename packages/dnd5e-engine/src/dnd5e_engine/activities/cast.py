@@ -27,12 +27,13 @@ delegated save/attack handler uses it verbatim instead of the wielder's stats.
 A non-override cast still CLEARS the field for a NESTED cast (a grandchild
 never inherits a parent scroll's DC) — but a TOP-LEVEL item wrapper (nothing
 above it in ``ctx.parent_chain``) has no ``spellcasting_ability`` of its own,
-so clearing unconditionally would strip the blanket flat DC / attack bonus
+so clearing unconditionally would strip the user's spell DC / attack bonus
 ``build_activity_context`` computed for the item path, and the delegated
 save/attack handler would either raise (``save.py``, ``calculation ==
 "spellcasting"`` with no ability) or silently drop the ability-mod term
 (``attack.py``). A top-level wrapper without its own override therefore
-FALLS BACK to the inherited ``ctx`` value instead of clearing.
+hands the delegated spell the user's ``ctx.spell_save_dc`` and the inherited
+attack bonus instead of clearing.
 """
 
 from __future__ import annotations
@@ -93,8 +94,8 @@ def resolve_cast(activity: CastActivity, ctx: ActivityResolutionContext) -> None
     #    itself inside another cast's delegation) CLEARS the field so a grandchild
     #    never inherits a parent scroll's DC; a TOP-LEVEL wrapper (nothing above us
     #    in the chain) has no ``spellcasting_ability`` to fall through to, so it
-    #    INHERITS ``ctx``'s value — the item-path blanket DC / attack bonus
-    #    ``build_activity_context`` already computed for it.
+    #    takes the user's spell DC (``ctx.spell_save_dc``) and ``ctx``'s attack
+    #    bonus, both computed by ``build_activity_context`` for the item path.
     from .resolver import resolve_activity  # function-local: breaks the resolver↔cast import cycle
 
     challenge = activity.spell.challenge
@@ -108,7 +109,7 @@ def resolve_cast(activity: CastActivity, ctx: ActivityResolutionContext) -> None
         save_dc_override=(
             challenge.save
             if challenge.override
-            else (ctx.save_dc_override if not ctx.parent_chain else None)
+            else (ctx.spell_save_dc if not ctx.parent_chain else None)
         ),
         attack_bonus_override=(
             challenge.attack

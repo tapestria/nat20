@@ -56,11 +56,17 @@ class ActivityResolutionContext:
     # orchestrator from the spell's typed level. ``None`` disables upcast
     # scaling (a non-spell activity).
     base_spell_level: int | None = None
-    # Fixed save DC from a cast wrapper's challenge override (Foundry
-    # `spell.challenge.override` + `save`): when set, the save handler uses this
-    # verbatim DC instead of the spellcasting/flat calculation. Set by resolve_cast
-    # from the item's fixed challenge; None for normal (caster-stat) casting.
+    # Fixed save DC every save activity in this context rolls against, instead of
+    # its own calculation: a cast wrapper's challenge override (Foundry
+    # `spell.challenge.override` + `save`), or the caster's spell save DC on a
+    # spell's own resolution. None when the activities state their own DC (a
+    # feature's, an item's, a stat block's).
     save_dc_override: int | None = None
+    # The user's own spell save DC (SRD 5.2 §Spellcasting — Spell Save DC, plus
+    # any bonus to it). A top-level cast wrapper with no challenge override hands
+    # it to the spell it delegates to; it is kept apart from ``save_dc_override``
+    # because an item's own save activity states its DC and never reads it.
+    spell_save_dc: int | None = None
     # Fixed attack bonus from a cast wrapper's challenge override
     # (`spell.challenge.override` + `attack`): when set, the attack handler uses
     # this verbatim to-hit instead of ability + proficiency + weapon. None otherwise.

@@ -11729,13 +11729,13 @@ def _emit_spell_cast_for_on_turn_intent(
 class _ResolvedActivities:
     """The typed-entity fetch result for an intent: the activities the resolver
     will walk, plus the ancillary carriers (cast spell, weapon, spellcasting
-    ability, feature passive effects) the context builder needs."""
+    ability, the owner's passive effects) the context builder needs."""
 
     activities: list[Any]
     cast_spell: Spell | None
     fetched_weapon: Weapon | None
     spellcasting_ability: str | None
-    feature_passive_effects: list[Any]
+    source_passive_effects: list[Any]
 
 
 def _resolve_caster_spellcasting_ability(caster: Combatant) -> str | None:
@@ -11780,9 +11780,10 @@ def _resolve_intent_activities(
     spellcasting_ability: str | None = None
     # The owner entity's PassiveEffect definitions, threaded into the context so
     # an activity's effect riders (``activity.effects[].id``) resolve to a runtime
-    # ActiveEffect. A spell carries them on ``Spell.passive_effects``; a feature
-    # (Rage) on ``Feature.passive_effects``. Empty for kinds with no rider source.
-    feature_passive_effects: list[Any] = []
+    # ActiveEffect: Foundry's ``AppliedEffectField`` id points into the parent
+    # document's ``effects``, so a spell, an item and a feature (Rage) each supply
+    # their own. Empty for kinds with no rider source.
+    source_passive_effects: list[Any] = []
     if intent.intent_type == "attack" and intent.weapon_id:
         fetched_weapon = get_lib_loader().get_weapon(intent.weapon_id)
         if fetched_weapon is not None:
@@ -11804,6 +11805,7 @@ def _resolve_intent_activities(
         cast_spell = get_lib_loader().get_spell(intent.spell_id)
         if cast_spell is not None:
             activities = list(cast_spell.activities)
+            source_passive_effects = list(cast_spell.passive_effects)
             # SRD 5.2 §Spellcasting — the real class->ability mapping
             # (cleric -> wis, wizard -> int, ...), read off the caster's own
             # class doc, unless the spell has its own (Magic Initiate). ``None``
@@ -11818,6 +11820,7 @@ def _resolve_intent_activities(
         # Item/Weapon/Armor/MagicItem, all of which inherit ``activities``.
         fetched_item = get_lib_loader().get_item(intent.item_id)
         if fetched_item is not None:
+            source_passive_effects = list(fetched_item.passive_effects)
             if intent.activity_id:
                 activities = [a for a in fetched_item.activities if a.id == intent.activity_id]
             else:
@@ -11846,13 +11849,13 @@ def _resolve_intent_activities(
             if feature_invocation.extends_rage or feature_invocation.leaves_form
             else feature_invocation.activities
         )
-        feature_passive_effects = feature_invocation.passive_effects
+        source_passive_effects = feature_invocation.passive_effects
     return _ResolvedActivities(
         activities=activities,
         cast_spell=cast_spell,
         fetched_weapon=fetched_weapon,
         spellcasting_ability=spellcasting_ability,
-        feature_passive_effects=feature_passive_effects,
+        source_passive_effects=source_passive_effects,
     )
 
 
@@ -12976,7 +12979,6 @@ async def submit_player_intent(
     cast_spell = resolved.cast_spell
     fetched_weapon = _enchanted_weapon(live, current, resolved.fetched_weapon)
     spellcasting_ability = resolved.spellcasting_ability
-    feature_passive_effects = resolved.feature_passive_effects
 
     # SRD 5.2 §Areas of Effect — an intent whose save, damage or heal activity
     # carries a template resolves against the creatures that area affects
@@ -13068,9 +13070,7 @@ async def submit_player_intent(
             base_spell_level=cast_spell.level if cast_spell is not None else None,
             spellcasting_ability=spellcasting_ability,
             concentration=cast_spell.concentration if cast_spell is not None else False,
-            source_passive_effects=(
-                list(cast_spell.passive_effects) if cast_spell else feature_passive_effects
-            ),
+            source_passive_effects=resolved.source_passive_effects,
             # ``spell_book`` is the Foundry-uuid → Spell map a ``CastActivity``
             # delegates through (scroll/wand casting a referenced spell) — the
             # real uuid→Spell resolution over THIS invocation's own resolved
@@ -13088,9 +13088,9 @@ async def submit_player_intent(
             # bard now — ``None`` for every non-attack intent and an attack
             # that asks for none.
             granted_die=_redeemed_die(live, current, intent),
-            # A FEATURE invocation must not inherit the blanket spell
-            # save_dc_override; its save activity computes its own ability+PB DC.
-            is_feature_invocation=bool(intent.feature_id),
+            # A feature's or an item's save activity states its own DC; the
+            # caster's spell DC is a spell's (and an item cast's) alone.
+            activities_state_own_dc=bool(intent.feature_id) or intent.intent_type == "use_item",
             # SRD 5.2 Light: the extra attack adds no positive ability modifier —
             # unless Two-Weapon Fighting: "you can add your ability modifier to
             # the damage of that attack if you aren't already adding it".

@@ -46,11 +46,12 @@ counts are pinned by `packages/dnd5e-engine/tests/test_capability_matrix.py`.
   an attack ability, a damage type) and a carrier naming their item. True
   Polymorph, Animal Shapes and Shapechange ship no `transform` activity.
   (`packages/dnd5e-engine/src/dnd5e_engine/activities/conjuration.py::CONJURATION_ALLOWLIST`)
-- **An item's own effect riders resolve nothing on `use_item` (2026-10-06,
-  C27).** The context takes the cast spell's or the feature's passive effects,
-  never the item's, so an item activity's rider logs `effect_ref_unresolved`
-  and applies nothing: Dagger of Venom's poison ("have the Poisoned
-  condition") deals its damage on a failed save but never Poisons.
+- **A weapon's own save activity on `attack` reads neither its DC nor its
+  riders (2026-10-06, C27).** `use_item` resolves an item's save against its
+  stated DC with the item's own effect riders, but an `attack` gives the
+  weapon's save activity the attacker's spell save DC and no rider source:
+  Dagger of Venom's poison ("DC 15 Constitution saving throw ... have the
+  Poisoned condition") rolls against the wrong DC and never Poisons.
   (`packages/dnd5e-engine/src/dnd5e_engine/orchestrator.py::_resolve_intent_activities`)
 - **Monster summon riders stay narrative (2026-09-25, C21a).** A monster
   attack or an item never gets a conjuration carrier, so the 16 monster
