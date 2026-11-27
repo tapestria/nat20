@@ -337,6 +337,10 @@ def build_activity_context(
     # (a signed dice string); lift it into its own typed sidecar so attack.py can
     # roll it without reaching into the resistance-shaped damage dict.
     passive_attack_bonus: dict[str, str] = {}
+    # Per-attacker damage bonus for any attack hit (an untagged ``damage.bonus``
+    # change), the damage analogue of ``passive_attack_bonus``. The orchestrator
+    # fold lands it on ``passive_damage_modifiers[id]["passive_damage_bonus"]``.
+    passive_damage_bonus: dict[str, str] = {}
     # Per-attacker WEAPON-ONLY to-hit bonus (a +N weapon / weapon-tagged
     # ``attack.roll.bonus`` change). The orchestrator fold lands it on
     # ``passive_damage_modifiers[id]["passive_weapon_to_hit_bonus"]`` (a
@@ -373,6 +377,9 @@ def build_activity_context(
         to_hit: object = dmg_entry.get("passive_to_hit_bonus")
         if isinstance(to_hit, str) and to_hit:
             passive_attack_bonus[entity_id] = to_hit
+        any_attack_dmg: object = dmg_entry.get("passive_damage_bonus")
+        if isinstance(any_attack_dmg, str) and any_attack_dmg:
+            passive_damage_bonus[entity_id] = any_attack_dmg
         weapon_to_hit: object = dmg_entry.get("passive_weapon_to_hit_bonus")
         if isinstance(weapon_to_hit, str) and weapon_to_hit:
             passive_weapon_attack_bonus[entity_id] = weapon_to_hit
@@ -465,6 +472,7 @@ def build_activity_context(
         passive_save_modifiers=passive_save_modifiers,
         passive_save_bonus=passive_save_bonus,
         passive_attack_bonus=passive_attack_bonus,
+        passive_damage_bonus=passive_damage_bonus,
         passive_weapon_attack_bonus=passive_weapon_attack_bonus,
         passive_melee_damage_bonus=passive_melee_damage_bonus,
         passive_weapon_damage_bonus=passive_weapon_damage_bonus,

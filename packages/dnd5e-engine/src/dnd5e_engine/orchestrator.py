@@ -6130,18 +6130,10 @@ def _fold_active_effect_changes(
         # additive strings — the handler's existing parser already
         # handles them.
         #
-        # When an effect carries an
-        # ``applicable_action_types`` restriction (e.g. a +1 weapon
-        # tagged ["attack"]), the attack/damage sidecar is
-        # action-type-agnostic and would silently buff spell
-        # attacks too. Filter those buckets here: a weapon-tagged
-        # enchantment's attack.roll.bonus / damage.bonus
-        # changes don't reach the engine-sidecar path. A host's
-        # own dispatch can still apply them
-        # correctly for player-dispatched attack actions; this
-        # only means a monster-driven attack handler will not
-        # see them — which is the conservative outcome because
-        # the sidecar can't action-type-disambiguate.
+        # An ``applicable_action_types`` restriction containing
+        # ``"attack"`` (a +1 weapon) routes the effect's
+        # attack.roll.bonus / damage.bonus to the weapon-only sidecars
+        # below, so it never buffs a spell attack.
         applicable = active_effect.flags.get("applicable_action_types")
         applicable_set: set[str] | None = None
         if isinstance(applicable, list) and applicable:

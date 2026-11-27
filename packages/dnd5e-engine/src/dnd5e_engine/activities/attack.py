@@ -1096,6 +1096,16 @@ def _apply_on_hit_damage(
             if weapon_bonus_expr:
                 by_type[first_type] += roll_expr(weapon_bonus_expr, ctx.rng)
 
+        # An untagged ``damage.bonus`` effect restricts itself to no action
+        # type, so like its to-hit sibling (``passive_attack_bonus``) it rides
+        # every attack roll that hits, weapon or spell. Added once to the first
+        # damage type, rolled exactly as the weapon bonus above (no crit
+        # doubling) so the two buckets of one item stay consistent.
+        if first_type is not None:
+            any_attack_bonus_expr = ctx.passive_damage_bonus.get(ctx.caster.entity_id)
+            if any_attack_bonus_expr:
+                by_type[first_type] += roll_expr(any_attack_bonus_expr, ctx.rng)
+
         # SRD §Sneak Attack (Rogue) — once per turn, on a qualifying hit (Finesse
         # or Ranged weapon, made with Advantage OR the ally-adjacent alternative,
         # rider unspent this turn), add the feature's extra dice. Folded into the
