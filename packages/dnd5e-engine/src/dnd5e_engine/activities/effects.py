@@ -108,7 +108,9 @@ def _origin_from_name(name: str, caster_id: str) -> str:
 
 
 def _passive_change_to_active(
-    ch: PassiveEffectChange, ctx: ActivityResolutionContext | None
+    ch: PassiveEffectChange,
+    ctx: ActivityResolutionContext | None,
+    effect_target: Combatant | None,
 ) -> ActiveEffectChange:
     """Translate one lib ``PassiveEffectChange`` to an ``ActiveEffectChange``.
 
@@ -122,7 +124,10 @@ def _passive_change_to_active(
     (``"+2"`` at L5) the moment the effect lands so the next attack's hydration
     fold reads a real number, not an unresolved token. When ``ctx`` is supplied
     and the value carries an ``@``-token, it is resolved here at apply-time via
-    the same pure formula layer the dice/heal paths use.
+    the same pure formula layer the dice/heal paths use. ``effect_target`` is
+    the creature receiving the effect: Foundry evaluates a change value against
+    that actor's roll data, so its walking Speed answers
+    ``@attributes.movement.walk`` (Potion of Flying's Fly Speed).
     """
     mode = _MODE_MAP.get(ch.mode)
     if mode is None:
@@ -139,7 +144,7 @@ def _passive_change_to_active(
         # Resolve @scale.*/@classes.* (and any other roll-data token) against the
         # caster's pre-resolved carriers. No governing ability is supplied —
         # feature passive-effect change values never carry a bare ``@mod``.
-        value = resolve_roll_data(value, ctx)
+        value = resolve_roll_data(value, ctx, effect_target=effect_target)
     return ActiveEffectChange(key=ch.key, mode=mode, value=value, priority=priority)
 
 
@@ -165,6 +170,7 @@ def passive_effect_to_active_effect(
     caster_id: str,
     concentration: bool = False,
     ctx: ActivityResolutionContext | None = None,
+    effect_target: Combatant | None = None,
     extra_flags: Mapping[str, Any] | None = None,
 ) -> ActiveEffect:
     """Build the runtime ``ActiveEffect`` the resolver emits for one target.
@@ -177,6 +183,8 @@ def passive_effect_to_active_effect(
     ``ctx`` (when supplied) resolves level-scaled roll-data tokens in each
     change value at apply-time (Rage's ``@scale.barbarian.rage-damage`` → the
     concrete ``+2``); absent, change values stay verbatim Foundry strings.
+    ``effect_target`` is the creature ``target_id`` names, whose own roll data
+    a change value such as ``@attributes.movement.walk`` reads.
     """
     return ActiveEffect(
         id=_effect_id_from_name(pe.name),
@@ -186,7 +194,7 @@ def passive_effect_to_active_effect(
         disabled=pe.disabled,
         transfer=pe.transfer,
         duration=_duration_from_passive(pe.duration),
-        changes=[_passive_change_to_active(ch, ctx) for ch in pe.changes],
+        changes=[_passive_change_to_active(ch, ctx, effect_target) for ch in pe.changes],
         statuses=set(pe.statuses),
         flags={**({"concentration": True} if concentration else {}), **(extra_flags or {})},
     )
@@ -253,6 +261,7 @@ def apply_activity_effects(
             caster_id=ctx.caster.entity_id,
             concentration=ctx.concentration,
             ctx=ctx,
+            effect_target=target,
             extra_flags=extra_flags,
         )
         ctx.event_emitter(EffectApplied(effect=ae))

@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- An effect rider whose change reads the recipient's Speed
+  (`@attributes.movement.walk`) now resolves to the walking Speed of the
+  creature the effect lands on instead of raising `ValueError` after the
+  intent was paid for. Drinking a Potion of Flying (which raised since 0.8.1)
+  grants the drinker a Fly Speed equal to its Speed; Oil of Slipperiness's
+  Cover Creature, Freedom of Movement, Spider Climb and Master of Myriad
+  Forms' Aquatic Adaptation resolve the same way. The engine carries the
+  resolved fly, swim and climb Speeds on the active effect; movement does not
+  read them yet.
+
 ## [0.8.1]
 
 Lockstep patch release with `dnd5e-srd-data` 0.8.1 and `nat20-bridge` 0.8.1.
