@@ -1,6 +1,6 @@
 [project]
 name = "dnd5e-srd-data"
-version = "0.8.0"
+version = "0.8.1"
 description = "Nat20 dataset: the D&D 5e SRD 5.2 as typed Python models (monsters, spells, items, classes, feats). CC-BY-4.0."
 readme = "README.md"
 keywords = ["nat20", "dnd", "dnd5e", "5e", "srd", "srd-5.2", "ttrpg", "tabletop-rpg", "dataset", "monsters", "spells"]

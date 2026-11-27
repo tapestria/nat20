@@ -7,10 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.1]
+
+Lockstep patch release with `dnd5e-srd-data` 0.8.1 and `nat20-bridge` 0.8.1.
+Six fixes to how items resolve in combat. No API is removed; a host sees
+different events where the old behaviour was wrong: a weapon swing no longer
+fires the weapon's activated abilities, a Bonus Action item keeps the turn, and
+an item's own save uses the item's DC.
+
+### Fixed
+
+- An `attack` with a weapon now resolves only its attacks and the riders its
+  hit triggers; a weapon's activated abilities (Trident of Fish Command's
+  Dominate Beast, Mace of Terror's Wave of Terror) fire only through
+  `use_item`, which spends their charge.
+- A `use_item` whose activity activates as a Bonus Action (Potion of Healing)
+  now spends the Bonus Action and keeps the turn; a second Bonus Action that
+  turn is refused with `CastFailed(reason="no_action_economy")`.
+- An item's own `save` activity on `use_item` now rolls against the DC it
+  states (a flat formula, or an ability calculation such as Acid's 8 +
+  Dexterity modifier + Proficiency Bonus) instead of the user's spell save DC.
+  An item's `cast` activity without a fixed DC still uses the user's spell DC.
+- An item activity's effect riders now resolve from the item's own passive
+  effects: a failed save (or any save when the rider's `on_save` is set)
+  applies the referenced effect and its conditions to the target, with its
+  duration.
+- A `speed.walk.bonus` `add` change on a combatant's active effects now raises
+  its walking Speed and movement budget for as long as the effect lasts;
+  Speed-0 conditions, Exhaustion and the Slow mastery still apply on top.
+- An untagged `damage.bonus` active-effect change (no
+  `applicable_action_types`) now adds once to the damage of every attack roll
+  that hits, weapon or spell, like its untagged `attack.roll.bonus`
+  counterpart; weapon-tagged bonuses still apply to weapon swings only.
+
 ### Changed
 
 - `configure_lib_loader` documents that a host may change an overlay's contents
   between combats while the installed loader object stays the same.
+- `build_activity_context`'s `is_feature_invocation` parameter is renamed
+  `activities_state_own_dc`, and `ActivityResolutionContext` gains
+  `spell_save_dc` and `passive_damage_bonus`.
 
 ## [0.8.0]
 
