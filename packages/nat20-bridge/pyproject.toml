@@ -1,6 +1,6 @@
 [project]
 name = "nat20-bridge"
-version = "0.8.1"
+version = "0.8.2"
 description = "Nat20 over HTTP: a localhost REST API for D&D 5e SRD 5.2 rolls, checks and full combat. The backend of the SillyTavern nat20 extension."
 readme = "README.md"
 keywords = ["nat20", "dnd", "dnd5e", "5e", "srd", "ttrpg", "rules-engine", "sillytavern", "fastapi", "rest-api", "game-master"]

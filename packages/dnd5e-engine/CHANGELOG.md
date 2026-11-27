@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.2]
+
+Lockstep patch release with `dnd5e-srd-data` 0.8.2 and `nat20-bridge` 0.8.2.
+Fixes a `ValueError` that 0.8.1 introduced when a Potion of Flying is used.
+
 ### Fixed
 
 - An effect rider whose change reads the recipient's Speed
